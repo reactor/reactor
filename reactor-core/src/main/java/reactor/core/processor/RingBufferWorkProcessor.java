@@ -56,12 +56,12 @@ import java.util.concurrent.locks.LockSupport;
  */
 public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
+	private final Sequence workSequence   = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+	private final Sequence pendingRequest = new Sequence(0);
+
 	private final SequenceBarrier              barrier;
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 	private final ExecutorService              executor;
-
-	private final Sequence workSequence   = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
-	private final Sequence pendingRequest = new Sequence(0);
 
 	/**
 	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
@@ -265,15 +265,16 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		return new RingBufferWorkProcessor<E>(null, executor, bufferSize, strategy, autoCancel);
 	}
 
-	private RingBufferWorkProcessor(String name, ExecutorService executor,
+	private RingBufferWorkProcessor(String name,
+	                                ExecutorService executor,
 	                                int bufferSize,
-	                                WaitStrategy waitStrategy, boolean autoCancel) {
+	                                WaitStrategy waitStrategy,
+	                                boolean autoCancel) {
 		super(autoCancel);
 
-		this.executor = executor == null ?
-		                Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context)) :
-		                executor;
-
+		this.executor = executor == null
+		                ? Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context))
+		                : executor;
 
 		this.ringBuffer = RingBuffer.create(
 				ProducerType.SINGLE,
@@ -410,9 +411,9 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 		private final RingBuffer<MutableSignal<T>> dataProvider;
 		private final SequenceBarrier              sequenceBarrier;
-		private final Subscriber<? super T>        subscriber;
 		private final Sequence                     pendingRequest;
 		private final Sequence                     workSequence;
+		private final Subscriber<? super T>        subscriber;
 
 		private Subscription subscription;
 
@@ -430,11 +431,11 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		                           Sequence pendingRequest,
 		                           Sequence workSequence,
 		                           Subscriber<? super T> subscriber) {
-			this.subscriber = subscriber;
-			this.pendingRequest = pendingRequest;
-			this.workSequence = workSequence;
 			this.dataProvider = dataProvider;
 			this.sequenceBarrier = sequenceBarrier;
+			this.pendingRequest = pendingRequest;
+			this.workSequence = workSequence;
+			this.subscriber = subscriber;
 		}
 
 		public Subscription getSubscription() {

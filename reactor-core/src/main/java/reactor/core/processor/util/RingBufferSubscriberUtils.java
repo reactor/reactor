@@ -5,15 +5,16 @@ import reactor.core.processor.MutableSignal;
 import reactor.jarjar.com.lmax.disruptor.RingBuffer;
 
 /**
- * Created by jbrisbin on 3/24/15.
+ * Utility methods to perform common tasks associated with {@link org.reactivestreams.Subscriber} handling when the
+ * signals are stored in a {@link com.lmax.disruptor.RingBuffer}.
  */
 public final class RingBufferSubscriberUtils {
 
 	private RingBufferSubscriberUtils() {
 	}
 
-	public static <E> void onNext(E o, RingBuffer<MutableSignal<E>> ringBuffer) {
-		if (o == null) {
+	public static <E> void onNext(E value, RingBuffer<MutableSignal<E>> ringBuffer) {
+		if (value == null) {
 			throw new NullPointerException("Spec 2.13: Signal cannot be null");
 		}
 
@@ -21,14 +22,14 @@ public final class RingBufferSubscriberUtils {
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
 
 		signal.type = MutableSignal.Type.NEXT;
-		signal.value = o;
+		signal.value = value;
 		signal.error = null;
 
 		ringBuffer.publish(seqId);
 	}
 
-	public static <E> void onError(Throwable t, RingBuffer<MutableSignal<E>> ringBuffer) {
-		if (t == null) {
+	public static <E> void onError(Throwable error, RingBuffer<MutableSignal<E>> ringBuffer) {
+		if (error == null) {
 			throw new NullPointerException("Spec 2.13: Signal cannot be null");
 		}
 
@@ -37,7 +38,7 @@ public final class RingBufferSubscriberUtils {
 
 		signal.type = MutableSignal.Type.ERROR;
 		signal.value = null;
-		signal.error = t;
+		signal.error = error;
 
 		ringBuffer.publish(seqId);
 	}
@@ -53,20 +54,20 @@ public final class RingBufferSubscriberUtils {
 		ringBuffer.publish(seqId);
 	}
 
-	public static <E> void route(MutableSignal<E> task, Subscriber<? super E> sub) {
+	public static <E> void route(MutableSignal<E> task, Subscriber<? super E> subscriber) {
 		try {
 			if (task.type == MutableSignal.Type.NEXT && null != task.value) {
 				// most likely case first
-				sub.onNext(task.value);
+				subscriber.onNext(task.value);
 			} else if (task.type == MutableSignal.Type.COMPLETE) {
 				// second most likely case next
-				sub.onComplete();
+				subscriber.onComplete();
 			} else if (task.type == MutableSignal.Type.ERROR) {
 				// errors should be relatively infrequent compared to other signals
-				sub.onError(task.error);
+				subscriber.onError(task.error);
 			}
 		} catch (Throwable t) {
-			sub.onError(t);
+			subscriber.onError(t);
 		}
 	}
 

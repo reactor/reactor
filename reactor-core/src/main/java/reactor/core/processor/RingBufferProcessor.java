@@ -50,7 +50,7 @@ import java.util.concurrent.locks.LockSupport;
  * being throttled
  * if the subscribers don't catch up. With any other strictly positive demand, a subscriber will stop reading new Next
  * signals
- * (Complete and Error will still be read) as soon as the demand has been fully consumed by the pubisher.
+ * (Complete and Error will still be read) as soon as the demand has been fully consumed by the publisher.
  *
  * When more than 1 subscriber listens to that processor, they will all receive the exact same events if their
  * respective demand is still strictly positive, very much like a Fan-Out scenario.
@@ -59,7 +59,7 @@ import java.util.concurrent.locks.LockSupport;
  * throttling.
  * In effect the smaller the backlog size is defined, the smaller the difference in processing rate between subscribers
  * must remain. Since the sequence for each subscriber will point to various ringBuffer locations, the processor
- * nows when a backlog can't override the previously occupied slot.
+ * knows when a backlog can't override the previously occupied slot.
  *
  * @param <E> Type of dispatched signal
  * @author Stephane Maldini
@@ -278,9 +278,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	                            boolean autoCancel) {
 		super(autoCancel);
 
-		this.executor = executor == null ?
-		                Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context)) :
-		                executor;
+		this.executor = executor == null
+		                ? Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context))
+		                : executor;
+
 		this.ringBuffer = RingBuffer.create(
 				ProducerType.SINGLE,
 				new EventFactory<MutableSignal<E>>() {
@@ -445,8 +446,8 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 
 		private final RingBuffer<MutableSignal<T>> dataProvider;
 		private final SequenceBarrier              sequenceBarrier;
-		private final Subscriber<? super T>        subscriber;
 		private final Sequence                     pendingRequest;
+		private final Subscriber<? super T>        subscriber;
 
 		private Subscription subscription;
 
@@ -463,10 +464,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		                            SequenceBarrier sequenceBarrier,
 		                            Sequence pendingRequest,
 		                            Subscriber<? super T> subscriber) {
-			this.subscriber = subscriber;
-			this.pendingRequest = pendingRequest;
 			this.dataProvider = dataProvider;
 			this.sequenceBarrier = sequenceBarrier;
+			this.pendingRequest = pendingRequest;
+			this.subscriber = subscriber;
 		}
 
 		public Subscription getSubscription() {
@@ -501,10 +502,10 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 			if (!running.compareAndSet(false, true)) {
 				subscriber.onError(new IllegalStateException("Thread is already running"));
 				return;
-			} else {
-				sequenceBarrier.clearAlert();
-				subscriber.onSubscribe(subscription);
 			}
+
+			sequenceBarrier.clearAlert();
+			subscriber.onSubscribe(subscription);
 
 			MutableSignal<T> event = null;
 			long nextSequence = sequence.get() + 1L;
