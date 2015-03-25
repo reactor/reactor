@@ -532,7 +532,9 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				} catch (final AlertException ex) {
 					if (!running.get()) {
 						//re-initialize workSequence to latest known sequence to allow future subscribers to read it
+						if(cachedAvailableSequence != Long.MIN_VALUE) {
 							workSequence.set(cachedAvailableSequence);
+						}
 						break;
 					} else {
 						if (dataProvider.get(sequenceBarrier.getCursor()).type != MutableSignal.Type.NEXT) {

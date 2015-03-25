@@ -119,6 +119,52 @@ public class ClientServerHttpTests {
 
 	@Test
 	@Ignore
+	public void test15() throws Exception {
+
+		Broadcaster<String> broadcaster = Broadcaster.<String> create(Environment.sharedDispatcher());
+		final Stream<Buffer> processor =
+		broadcaster
+				.window(5)
+				.flatMap(s -> s.reduce(new Buffer(), Buffer::append))
+				.process(RingBufferWorkProcessor.create(false));
+
+		DummyBufferCodec codec = new DummyBufferCodec();
+		reactor.io.net.http.HttpServer<Buffer, Buffer> httpServer = NetStreams.httpServer(server -> server
+				.codec(codec).listen(8081).dispatcher(Environment.sharedDispatcher()));
+
+		httpServer.get("/data", (request) -> Streams.wrap(processor)
+				.take(2, TimeUnit.SECONDS)
+				.concatWith(Streams.just(new Buffer().append("END\n"))));
+
+		httpServer.start().awaitSuccess();
+
+		System.out.println("XXXX broadcast start");
+		for (int i = 0; i < 20; i++) {
+			Thread.sleep(200);
+			System.out.println("XXXX " + i);
+			broadcaster.onNext(i + "\n");
+		}
+		System.out.println("XXXX broadcast end");
+		Thread.sleep(30000);
+	}
+
+	public class DummyBufferCodec extends Codec<Buffer, Buffer, Buffer> {
+
+		@SuppressWarnings("resource")
+		@Override
+		public Buffer apply(Buffer t) {
+			return new Buffer(t).flip();
+		}
+
+		@Override
+		public Function<Buffer, Buffer> decoder(Consumer<Buffer> next) {
+			return null;
+		}
+
+	}
+
+	@Test
+	@Ignore
 	public void testMultipleConsumersMultipleTimes() throws Exception {
 		Sender sender = new Sender();
 
