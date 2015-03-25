@@ -18,6 +18,7 @@ package reactor.rx.action.support;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
+import reactor.core.support.NonBlocking;
 
 /**
  * @author Stephane Maldini

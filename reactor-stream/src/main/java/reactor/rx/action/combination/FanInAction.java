@@ -22,10 +22,10 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
+import reactor.core.support.NonBlocking;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
-import reactor.rx.action.support.NonBlocking;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;

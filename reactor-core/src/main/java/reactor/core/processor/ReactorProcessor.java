@@ -17,6 +17,8 @@ package reactor.core.processor;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscription;
+import reactor.core.Dispatcher;
+import reactor.core.support.NonBlocking;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -26,7 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * @author Stephane Maldini
  */
-public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E> {
+public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E>, NonBlocking {
 
 	protected static final int DEFAULT_BUFFER_SIZE = 1024;
 	protected static final int SMALL_BUFFER_SIZE   = 32;
@@ -74,4 +76,13 @@ public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E
 
 	public abstract long getAvailableCapacity();
 
+	@Override
+	public long getCapacity() {
+		return Long.MAX_VALUE;
+	}
+
+	@Override
+	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		return false;
+	}
 }

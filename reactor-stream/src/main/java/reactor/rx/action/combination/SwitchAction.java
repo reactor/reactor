@@ -21,9 +21,9 @@ import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.core.support.NonBlocking;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.DefaultSubscriber;
-import reactor.rx.action.support.NonBlocking;
 
 /**
  * @author Stephane Maldini

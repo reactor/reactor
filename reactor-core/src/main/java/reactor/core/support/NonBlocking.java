@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package reactor.rx.action.support;
+package reactor.core.support;
 
 import reactor.core.Dispatcher;
 
