@@ -20,15 +20,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.processor.util.RingBufferSubscriberUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.SpecificationExceptions;
-import reactor.jarjar.com.lmax.disruptor.AlertException;
-import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
-import reactor.jarjar.com.lmax.disruptor.EventFactory;
-import reactor.jarjar.com.lmax.disruptor.EventProcessor;
-import reactor.jarjar.com.lmax.disruptor.RingBuffer;
-import reactor.jarjar.com.lmax.disruptor.Sequence;
-import reactor.jarjar.com.lmax.disruptor.SequenceBarrier;
-import reactor.jarjar.com.lmax.disruptor.Sequencer;
-import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
 import java.util.concurrent.ExecutorService;
@@ -307,6 +299,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					subscriber
 			);
 
+
 			//set eventProcessor sequence to ringbuffer index
 			signalProcessor.sequence.set(ringBuffer.getCursor());
 
@@ -538,6 +531,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					}
 				} catch (final AlertException ex) {
 					if (!running.get()) {
+						//re-initialize workSequence to latest known sequence to allow future subscribers to read it
+							workSequence.set(cachedAvailableSequence);
 						break;
 					} else {
 						if (dataProvider.get(sequenceBarrier.getCursor()).type != MutableSignal.Type.NEXT) {
