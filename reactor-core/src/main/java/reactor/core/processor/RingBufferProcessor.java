@@ -20,16 +20,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.processor.util.RingBufferSubscriberUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.SpecificationExceptions;
-import reactor.jarjar.com.lmax.disruptor.AlertException;
-import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
-import reactor.jarjar.com.lmax.disruptor.EventFactory;
-import reactor.jarjar.com.lmax.disruptor.EventProcessor;
-import reactor.jarjar.com.lmax.disruptor.RingBuffer;
-import reactor.jarjar.com.lmax.disruptor.Sequence;
-import reactor.jarjar.com.lmax.disruptor.SequenceBarrier;
-import reactor.jarjar.com.lmax.disruptor.Sequencer;
-import reactor.jarjar.com.lmax.disruptor.TimeoutException;
-import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
 import java.util.concurrent.ExecutorService;
@@ -504,7 +495,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 				return;
 			}
 
-			sequenceBarrier.clearAlert();
 			subscriber.onSubscribe(subscription);
 
 			MutableSignal<T> event = null;
@@ -560,7 +550,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 							break;
 						} else {
 							long cursor = sequenceBarrier.getCursor();
-							if (dataProvider.get(cursor).type != MutableSignal.Type.NEXT) {
+							if (dataProvider.get(cursor).type == MutableSignal.Type.ERROR) {
 								sequence.set(cursor);
 								nextSequence = cursor;
 							} else {

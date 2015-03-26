@@ -531,17 +531,18 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					}
 				} catch (final AlertException ex) {
 					if (!running.get()) {
-						//re-initialize workSequence to latest known sequence to allow future subscribers to read it
-						if(cachedAvailableSequence != Long.MIN_VALUE) {
-							workSequence.set(cachedAvailableSequence);
+						if(Long.MIN_VALUE != cachedAvailableSequence) {
+							do {
+								nextSequence = workSequence.get();
+							} while (!workSequence.compareAndSet(nextSequence, cachedAvailableSequence));
 						}
 						break;
 					} else {
-						if (dataProvider.get(sequenceBarrier.getCursor()).type != MutableSignal.Type.NEXT) {
-							processedSequence = false;
-							nextSequence = sequenceBarrier.getCursor();
-						} else {
-							processedSequence = true;
+						final long cursor = sequenceBarrier.getCursor();
+						cachedAvailableSequence = Long.MIN_VALUE;
+						processedSequence = false;
+						if (dataProvider.get(cursor).type == MutableSignal.Type.ERROR) {
+							nextSequence = cursor;
 						}
 						sequenceBarrier.clearAlert();
 					}

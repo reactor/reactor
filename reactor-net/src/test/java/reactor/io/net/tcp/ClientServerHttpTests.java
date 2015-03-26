@@ -33,10 +33,7 @@ import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.broadcast.Broadcaster;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -169,35 +166,38 @@ public class ClientServerHttpTests {
 		Sender sender = new Sender();
 
 		int count = 1000;
-		int threads = 5;
+		int threads = 12;
 
-		for (int t = 0; t < 2; t++) {
+		for (int t=0; t<2; t++) {
 			List<List<String>> clientDatas = getClientDatas(threads, sender, count);
 
 			assertThat(clientDatas.size(), is(threads));
 
 			int total = 0;
-			List<String> numbersNoEnds = new ArrayList<String>();
+			Set<String> numbersNoEnds = new HashSet<String>();
 			List<Integer> numbersNoEndsInt = new ArrayList<Integer>();
-			for (List<String> datas : clientDatas) {
+			for (int i = 0; i<clientDatas.size(); i++) {
+				List<String> datas = clientDatas.get(i);
 				assertThat(datas, notNullValue());
-				for (String data : datas) {
+				for (int j = 0; j < datas.size(); j++) {
+					String data = datas.get(j);
 					List<String> split = split(data);
-					for (String aSplit : split) {
-						if (!aSplit.contains("END") && !numbersNoEnds.contains(aSplit)) {
-							numbersNoEnds.add(aSplit);
-							numbersNoEndsInt.add(Integer.parseInt(aSplit));
+					for (int x = 0; x<split.size(); x++) {
+						if (!split.get(x).contains("END")) {
+							numbersNoEnds.add(split.get(x));
+							numbersNoEndsInt.add(Integer.parseInt(split.get(x)));
 						}
 					}
 					total += split.size();
 				}
 			}
 			Collections.sort(numbersNoEndsInt);
-			String msg = "Run number " + t + ", total " + total;
+			String msg = "Run number " + t + ", total " + total + "\n"+numbersNoEndsInt;
+			System.out.println(msg);
 			// should have no duplicates
 			assertThat(msg, numbersNoEnds.size(), is(count));
 			// should have total + END with each thread/client
-			assertThat(msg, total, is(count + threads));
+			assertThat(msg, total, is(count+threads));
 		}
 
 	}
