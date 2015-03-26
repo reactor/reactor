@@ -118,7 +118,6 @@ class NettyTcpServerSpec extends Specification {
 
 	def "flush every 5 elems with manual decoding"() {
 		given: "a TcpServer and a TcpClient"
-			def env = Environment.initializeIfEmpty()
 			def latch = new CountDownLatch(10)
 
 			def server = NetStreams.tcpServer(port)
@@ -154,13 +153,11 @@ class NettyTcpServerSpec extends Specification {
 
 		cleanup: "the client/server where stopped"
 			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
-			Environment.terminate()
 	}
 
 
 	def "retry strategies when server fails"() {
 		given: "a TcpServer and a TcpClient"
-			def env = Environment.initializeIfEmpty()
 			def latch = new CountDownLatch(10)
 
 			def server = NetStreams.tcpServer(port)
@@ -204,7 +201,6 @@ class NettyTcpServerSpec extends Specification {
 
 		cleanup: "the client/server where stopped"
 			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
-			Environment.terminate()
 	}
 
 
