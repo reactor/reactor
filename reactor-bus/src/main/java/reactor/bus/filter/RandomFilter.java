@@ -18,7 +18,7 @@ package reactor.bus.filter;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * A {@link Filter} implementation that returns a single, randomly selected item.
@@ -28,7 +28,7 @@ import java.util.Random;
  */
 public final class RandomFilter extends AbstractFilter {
 
-	private final Random random = new Random();
+	private final ThreadLocalRandom random = ThreadLocalRandom.current();
 
 	@Override
 	public <T> List<T> doFilter(List<T> items, Object key) {
