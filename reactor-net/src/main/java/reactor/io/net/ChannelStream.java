@@ -82,7 +82,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 					doDecoded(in);
 				}
 			});
-			this.encoder = codec;
+			this.encoder = codec.encoder();
 		} else {
 			this.decoder = null;
 			this.encoder = null;

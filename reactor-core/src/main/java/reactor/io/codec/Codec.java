@@ -112,7 +112,7 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 		}
 	}
 
-	private IN invokeCallbackOrReturn(Consumer<IN> consumer, IN v){
+	protected static <IN> IN invokeCallbackOrReturn(Consumer<IN> consumer, IN v){
 		if(consumer != null){
 			consumer.accept(v);
 			return null;
