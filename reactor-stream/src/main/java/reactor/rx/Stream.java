@@ -329,11 +329,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return new Stream<E>() {
 
 			@Override
-			public Dispatcher getDispatcher() {
-				return Stream.this.getDispatcher();
-			}
-
-			@Override
 			public long getCapacity() {
 				return Stream.this.getCapacity();
 			}

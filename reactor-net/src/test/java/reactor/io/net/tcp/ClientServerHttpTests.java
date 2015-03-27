@@ -166,9 +166,9 @@ public class ClientServerHttpTests {
 		Sender sender = new Sender();
 
 		int count = 1000;
-		int threads = 12;
+		int threads = 5;
 
-		for (int t=0; t<2; t++) {
+		for (int t=0; t<10; t++) {
 			List<List<String>> clientDatas = getClientDatas(threads, sender, count);
 
 			assertThat(clientDatas.size(), is(threads));

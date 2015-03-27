@@ -534,7 +534,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						if(Long.MIN_VALUE != cachedAvailableSequence) {
 							do {
 								nextSequence = workSequence.get();
-							} while (!workSequence.compareAndSet(nextSequence, cachedAvailableSequence));
+							} while (!workSequence.compareAndSet(nextSequence, dataProvider.getCursor()));
 						}
 						break;
 					} else {
