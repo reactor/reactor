@@ -45,7 +45,7 @@ public class StringCodec extends Codec<Buffer, String, String> {
 	}
 
 	public StringCodec(Byte delimiter) {
-		this(null, Charset.forName("UTF-8"));
+		this(delimiter, Charset.forName("UTF-8"));
 	}
 
 	public StringCodec(Byte delimiter, Charset charset) {
@@ -55,7 +55,7 @@ public class StringCodec extends Codec<Buffer, String, String> {
 
 	@Override
 	public Function<String, Buffer> encoder() {
-		return new StringCodec();
+		return new StringEncoder();
 	}
 
 	@Override
