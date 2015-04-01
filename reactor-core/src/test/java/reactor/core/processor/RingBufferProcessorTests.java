@@ -116,7 +116,7 @@ public class RingBufferProcessorTests extends org.reactivestreams.tck.IdentityPr
 	}
 
 	@Override
-	public Publisher<Long> createErrorStatePublisher() {
+	public Publisher<Long> createFailedPublisher() {
 		return new Publisher<Long>() {
 			@Override
 			public void subscribe(final Subscriber<? super Long> s) {

@@ -68,6 +68,12 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		return element;
 	}
 
+
+	@Override
+	public Publisher<Integer> createFailedPublisher() {
+		return Streams.fail(new Exception("oops")).cast(Integer.class);
+	}
+
 	@BeforeTest
 	@Before
 	public void startEnv() {
@@ -153,10 +159,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		}
 	}
 
-	@Override
-	public Publisher<Integer> createErrorStatePublisher() {
-		return Streams.fail(new Exception("oops")).cast(Integer.class);
-	}
 
 	/*@Override
 	public void spec103_mustSignalOnMethodsSequentially() throws Throwable {
