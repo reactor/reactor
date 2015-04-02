@@ -751,8 +751,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 									//re-add the retained capacity
 									pendingRequest.incrementAndGet();
 
-									//if current sequence does not yet match the published one
-									if (nextSequence < availableSequence) {
 										//pause until request
 										while (pendingRequest.addAndGet(-1l) < 0l) {
 											pendingRequest.incrementAndGet();
@@ -760,10 +758,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 											sequenceBarrier.checkAlert();
 											LockSupport.parkNanos(1l);
 										}
-									} else {
-										//end-of-loop without processing and incrementing the nextSequence
-										break;
-									}
 								}
 
 								//It's an unbounded subscriber or there is enough capacity to process the signal

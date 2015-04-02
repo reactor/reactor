@@ -1323,7 +1323,7 @@ public class Buffer implements Recyclable,
 
 	@Override
 	public String toString() {
-		return (null != buffer ? buffer.toString() : "<EMPTY>");
+		return (null != buffer ? buffer.toString() : "<EMPTY>") + " - "+asString();
 	}
 
 	@Override

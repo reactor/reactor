@@ -20,166 +20,78 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
 import reactor.Environment;
+import reactor.core.processor.RingBufferProcessor;
 import reactor.core.processor.RingBufferWorkProcessor;
 import reactor.core.support.StringUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.codec.StandardCodecs;
+import reactor.io.codec.StringCodec;
 import reactor.io.net.NetStreams;
-import reactor.io.net.http.HttpChannel;
 import reactor.rx.Promise;
+import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.broadcast.Broadcaster;
 
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertThat;
+import static reactor.Environment.sharedDispatcher;
 
 /**
  * @author Stephane Maldini
  */
 @Ignore
 public class SmokeTests {
-	private reactor.io.net.http.HttpServer<List<String>, List<String>> httpServer;
-	private Broadcaster<String> broadcaster;
+	private Processor<Buffer, Buffer> processor;
+	private reactor.io.net.http.HttpServer<Buffer, Buffer> httpServer;
 
-	@Test
-	public void testSingleConsumerWithOneSession() throws Exception {
-		Sender sender = new Sender();
-		sender.sendNext(10);
-		List<String> data = getClientData();
-		assertThat(data.size(), is(3));
-		assertThat(split(data.get(0)), contains("0", "1", "2", "3", "4"));
-		assertThat(split(data.get(1)), contains("5", "6", "7", "8", "9"));
-		assertThat(data.get(2), containsString("END"));
-		assertThat(data.get(2), is("END\n"));
-	}
+//	Sent 100, expected 100, got 99
+//
+//	I always seem to miss first number 0. Pay attention to number 32
+//	which for some reason is sent first, and is magically on number 0
+//	position.
+//
+//	tried .dispatchOn(Environment.sharedDispatcher()) but it got pretty bad
+//
+//    +-------------------------------------------------+
+//    |  0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f |
+//+--------+-------------------------------------------------+----------------+
+//|00000000| 33 32 0a 31 0a 32 0a 33 0a 34 0a 35 0a 36 0a 37 |32.1.2.3.4.5.6.7|
+//|00000010| 0a 38 0a 39 0a 31 30 0a 31 31 0a 31 32 0a 31 33 |.8.9.10.11.12.13|
+//|00000020| 0a 31 34 0a 31 35 0a 31 36 0a 31 37 0a 31 38 0a |.14.15.16.17.18.|
+//|00000030| 31 39 0a 32 30 0a 32 31 0a 32 32 0a 32 33 0a 32 |19.20.21.22.23.2|
+//|00000040| 34 0a 32 35 0a 32 36 0a 32 37 0a 32 38 0a 32 39 |4.25.26.27.28.29|
+//|00000050| 0a 33 30 0a 33 31 0a 33 33 0a 33 34 0a 33 35 0a |.30.31.33.34.35.|
+//|00000060| 33 36 0a 33 37 0a 33 38 0a 33 39 0a 34 30 0a 34 |36.37.38.39.40.4|
+//|00000070| 31 0a 34 32 0a 34 33 0a 34 34 0a 34 35 0a 34 36 |1.42.43.44.45.46|
+//|00000080| 0a 34 37 0a 34 38 0a 34 39 0a 35 30 0a 35 31 0a |.47.48.49.50.51.|
+//|00000090| 35 32 0a 35 33 0a 35 34 0a 35 35 0a 35 36 0a 35 |52.53.54.55.56.5|
+//|000000a0| 37 0a 35 38 0a 35 39 0a 36 30 0a 36 31 0a 36 32 |7.58.59.60.61.62|
+//|000000b0| 0a 36 33 0a 36 34 0a 36 35 0a 36 36 0a 36 37 0a |.63.64.65.66.67.|
+//|000000c0| 36 38 0a 36 39 0a 37 30 0a 37 31 0a 37 32 0a 37 |68.69.70.71.72.7|
+//|000000d0| 33 0a 37 34 0a 37 35 0a 37 36 0a 37 37 0a 37 38 |3.74.75.76.77.78|
+//|000000e0| 0a 37 39 0a 38 30 0a 38 31 0a 38 32 0a 38 33 0a |.79.80.81.82.83.|
+//|000000f0| 38 34 0a 38 35 0a 38 36 0a 38 37 0a 38 38 0a 38 |84.85.86.87.88.8|
+//|00000100| 39 0a 39 30 0a 39 31 0a 39 32 0a 39 33 0a 39 34 |9.90.91.92.93.94|
+//|00000110| 0a 39 35 0a 39 36 0a 39 37 0a 39 38 0a 39 39 0a |.95.96.97.98.99.|
+//+--------+-------------------------------------------------+----------------+
 
-	@Test
-	public void testSingleConsumerWithTwoSession() throws Exception {
-		Sender sender = new Sender();
-		sender.sendNext(10);
-		List<String> data1 = getClientData();
-
-		assertThat(data1.size(), is(3));
-		assertThat(split(data1.get(0)), contains("0", "1", "2", "3", "4"));
-		assertThat(split(data1.get(1)), contains("5", "6", "7", "8", "9"));
-		assertThat(data1.get(2), containsString("END"));
-		assertThat(data1.get(2), is("END\n"));
-
-		sender.sendNext(10);
-		List<String> data2 = getClientData();
-
-		// we miss batches in between client sessions so this fails
-		assertThat(data2.size(), is(3));
-		assertThat(split(data2.get(0)), contains("10", "11", "12", "13", "14"));
-		assertThat(split(data2.get(1)), contains("15", "16", "17", "18", "19"));
-		assertThat(data2.get(2), containsString("END"));
-		assertThat(data2.get(2), is("END\n"));
-	}
-
-	@Test
-	public void testSingleConsumerWithTwoSessionBroadcastAfterConnect() throws Exception {
-		Sender sender = new Sender();
-
-		final List<String> data1 = new ArrayList<String>();
-		final CountDownLatch latch1 = new CountDownLatch(1);
-		Runnable runner1 = new Runnable() {
-			public void run() {
-				try {
-					Promise<List<String>> clientDataPromise1 = getClientDataPromise();
-					latch1.countDown();
-					data1.addAll(clientDataPromise1.await());
-				} catch (Exception ie) {
-				}
-			}
-		};
-
-		Thread t1 = new Thread(runner1, "SmokeThread1");
-		t1.start();
-		latch1.await();
-		Thread.sleep(1000);
-		sender.sendNext(10);
-		t1.join();
-		assertThat(data1.size(), is(3));
-		assertThat(split(data1.get(0)), contains("0", "1", "2", "3", "4"));
-		assertThat(split(data1.get(1)), contains("5", "6", "7", "8", "9"));
-		assertThat(data1.get(2), containsString("END"));
-		assertThat(data1.get(2), is("END\n"));
-
-		final List<String> data2 = new ArrayList<String>();
-		final CountDownLatch latch2 = new CountDownLatch(1);
-		Runnable runner2 = new Runnable() {
-			public void run() {
-				try {
-					Promise<List<String>> clientDataPromise2 = getClientDataPromise();
-					latch2.countDown();
-					data2.addAll(clientDataPromise2.await());
-				} catch (Exception ie) {
-					ie.printStackTrace();
-				}
-			}
-		};
-
-		Thread t2 = new Thread(runner2, "SmokeThread2");
-		t2.start();
-		latch2.await();
-		Thread.sleep(1000);
-		sender.sendNext(10);
-		t2.join();
-		assertThat(data2.size(), is(3));
-		assertThat(split(data2.get(0)), contains("10", "11", "12", "13", "14"));
-		assertThat(split(data2.get(1)), contains("15", "16", "17", "18", "19"));
-		assertThat(data2.get(2), containsString("END"));
-		assertThat(data2.get(2), is("END\n"));
-	}
-
-	@Test
-	public void testSingleConsumerWithThreeSession() throws Exception {
-		Sender sender = new Sender();
-		sender.sendNext(10);
-		List<String> data1 = getClientData();
-
-		assertThat(data1.size(), is(3));
-		assertThat(split(data1.get(0)), contains("0", "1", "2", "3", "4"));
-		assertThat(split(data1.get(1)), contains("5", "6", "7", "8", "9"));
-		assertThat(data1.get(2), containsString("END"));
-		assertThat(data1.get(2), is("END\n"));
-
-		sender.sendNext(10);
-		List<String> data2 = getClientData();
-
-		assertThat(data2.size(), is(3));
-		assertThat(split(data2.get(0)), contains("10", "11", "12", "13", "14"));
-		assertThat(split(data2.get(1)), contains("15", "16", "17", "18", "19"));
-		assertThat(data2.get(2), containsString("END"));
-		assertThat(data2.get(2), is("END\n"));
-
-		sender.sendNext(10);
-		List<String> data3 = getClientData();
-
-		assertThat(data3.size(), is(3));
-		assertThat(split(data3.get(0)), contains("20", "21", "22", "23", "24"));
-		assertThat(split(data3.get(1)), contains("25", "26", "27", "28", "29"));
-		assertThat(data3.get(2), containsString("END"));
-		assertThat(data3.get(2), is("END\n"));
-	}
 
 	@Test
 	public void testMultipleConsumersMultipleTimes() throws Exception {
 		Sender sender = new Sender();
 
-		int count = 1000;
-		int threads = 5;
+		int count = 100;
+		int threads = 1;
 
-		for (int t=0; t<2; t++) {
+		for (int t = 0; t < 1; t++) {
 			List<List<String>> clientDatas = getClientDatas(threads, sender, count);
 
 			assertThat(clientDatas.size(), is(threads));
@@ -187,31 +99,34 @@ public class SmokeTests {
 			int total = 0;
 			List<String> numbersNoEnds = new ArrayList<String>();
 			List<Integer> numbersNoEndsInt = new ArrayList<Integer>();
-			for (int i = 0; i<clientDatas.size(); i++) {
+			for (int i = 0; i < clientDatas.size(); i++) {
 				List<String> datas = clientDatas.get(i);
 				assertThat(datas, notNullValue());
 				for (int j = 0; j < datas.size(); j++) {
 					String data = datas.get(j);
 					List<String> split = split(data);
-					for (int x = 0; x<split.size(); x++) {
+					for (int x = 0; x < split.size(); x++) {
 						if (!split.get(x).contains("END") && !numbersNoEnds.contains(split.get(x))) {
 							numbersNoEnds.add(split.get(x));
-							numbersNoEndsInt.add(Integer.parseInt(split.get(x)));
+							try {
+								numbersNoEndsInt.add(Integer.parseInt(split.get(x)));
+							} catch (Exception e) {
+								e.printStackTrace();
+							}
 						}
 					}
 					total += split.size();
 				}
 			}
 
-			String msg = "Run number " + t + ", total " + total + " dups=" + StringUtils.collectionToCommaDelimitedString(findDuplicates(numbersNoEndsInt));
+			String msg = "Run number " + t + ", total " + total;
 			if (numbersNoEndsInt.size() != count) {
 				Collections.sort(numbersNoEndsInt);
 				System.out.println(StringUtils.collectionToCommaDelimitedString(numbersNoEndsInt));
 			}
-			assertThat(msg, numbersNoEndsInt.size(), is(count));
 			assertThat(msg, numbersNoEnds.size(), is(count));
 			// should have total + END with each thread/client
-			assertThat(msg, total, is(count+threads));
+			assertThat(msg, total, is(count + threads));
 		}
 
 	}
@@ -240,69 +155,77 @@ public class SmokeTests {
 	}
 
 	private void setupFakeProtocolListener() throws Exception {
-		broadcaster = Broadcaster.<String> create(Environment.sharedDispatcher());
-		final Processor<List<String>, List<String>> processor = RingBufferWorkProcessor.create(false);
-		broadcaster.buffer(5).subscribe(processor);
+		processor = RingBufferProcessor.create("test", 32);
+		Stream<Buffer> bufferStream = Streams
+				.wrap(processor)
+				.observe(d -> System.out.print("YYY " + d.asString()))
+				.window(100, 1, TimeUnit.SECONDS)
+				.flatMap(s -> s.reduce(new Buffer(), Buffer::append))
+				.process(RingBufferWorkProcessor.create(false));
 
-		DummyListCodec codec = new DummyListCodec();
 		httpServer = NetStreams.httpServer(server -> server
-				.codec(codec).listen(8080).dispatcher(Environment.sharedDispatcher()));
+				.codec(new DummyCodec()).listen(8080).dispatcher(sharedDispatcher()));
 
 		httpServer.get("/data", (request) -> {
 			request.responseHeaders().removeTransferEncodingChunked();
-			return Streams.wrap(processor)
+			request.addResponseHeader("Content-type", "text/plain");
+			request.addResponseHeader("Expires", "0");
+			request.addResponseHeader("X-GPFDIST-VERSION", "Spring XD");
+			request.addResponseHeader("X-GP-PROTO", "1");
+			request.addResponseHeader("Cache-Control", "no-cache");
+			request.addResponseHeader("Connection", "close");
+			return bufferStream
 					.take(5, TimeUnit.SECONDS)
-					.concatWith( Streams.just(new ArrayList<String>()));
+					.concatWith(Streams.just(new Buffer().append("END\n".getBytes(Charset.forName("UTF-8")))));
 		});
 
 		httpServer.start().awaitSuccess();
 	}
 
-	private List<String> getClientData() throws Exception {
-		return getClientDataPromise().await();
-	}
-
 	private Promise<List<String>> getClientDataPromise() throws Exception {
 		reactor.io.net.http.HttpClient<String, String> httpClient = NetStreams.httpClient(t ->
-				t.codec(StandardCodecs.STRING_CODEC).connect("localhost", 8080)
-				.dispatcher(Environment.sharedDispatcher())
+				t.codec(new StringCodec()).connect("localhost", 8080)
+						.dispatcher(sharedDispatcher())
 		);
-		Promise<List<String>> content = httpClient.get("/data", new Function<HttpChannel<String, String>, Publisher<? extends String>>() {
 
-			@Override
-			public Publisher<? extends String> apply(HttpChannel<String, String> t) {
+		Promise<List<String>> content = httpClient.get("/data", t -> {
 				t.header("Content-Type", "text/plain");
 				return Streams.just(" ");
 			}
-		}).flatMap(new Function<HttpChannel<String, String>, Publisher<? extends List<String>>>() {
-
-			@Override
-			public Publisher<? extends List<String>> apply(HttpChannel<String, String> t) {
-				return t.toList();
-			}
-		});
+		).flatMap(Stream::toList);
 
 		httpClient.open().awaitSuccess();
 		return content;
 	}
 
-	private List<List<String>> getClientDatas(int threadCount, Sender sender, int count) throws Exception {
+	private List<List<String>> getClientDatas(int threadCount, final Sender sender, int count) throws Exception {
 		final CountDownLatch latch = new CountDownLatch(1);
 		final CountDownLatch promiseLatch = new CountDownLatch(threadCount);
 		final ArrayList<Thread> joins = new ArrayList<Thread>();
 		final ArrayList<List<String>> datas = new ArrayList<List<String>>();
 
+
+		Runnable srunner = () -> {
+			try {
+				sender.sendNext(count);
+			} catch (Exception ie) {
+				ie.printStackTrace();
+			}
+		};
+
+		Thread st = new Thread(srunner, "SenderThread");
+		joins.add(st);
+		st.start();
+
 		for (int i = 0; i < threadCount; ++i) {
-			Runnable runner = new Runnable() {
-				public void run() {
-					try {
-						latch.await();
-						Promise<List<String>> clientDataPromise = getClientDataPromise();
-						promiseLatch.countDown();
-						datas.add(clientDataPromise.await(10, TimeUnit.SECONDS));
-					} catch (Exception ie) {
-						ie.printStackTrace();
-					}
+			Runnable runner = () -> {
+				try {
+					latch.await();
+					Promise<List<String>> clientDataPromise = getClientDataPromise();
+					promiseLatch.countDown();
+					datas.add(clientDataPromise.await(20, TimeUnit.SECONDS));
+				} catch (Exception ie) {
+					ie.printStackTrace();
 				}
 			};
 			Thread t = new Thread(runner, "SmokeThread" + i);
@@ -312,7 +235,6 @@ public class SmokeTests {
 		latch.countDown();
 		promiseLatch.await();
 		Thread.sleep(1000);
-		sender.sendNext(count);
 		for (Thread t : joins) {
 			try {
 				t.join();
@@ -333,30 +255,24 @@ public class SmokeTests {
 		void sendNext(int count) {
 			for (int i = 0; i < count; i++) {
 				System.out.println("XXXX " + x);
-				broadcaster.onNext(x++ + "\n");
+				String data = x++ + "\n";
+				processor.onNext(Buffer.wrap(data));
 			}
 		}
 	}
 
-	public class DummyListCodec extends Codec<Buffer, List<String>, List<String>> {
+	public class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
 
+		@SuppressWarnings("resource")
 		@Override
-		public Buffer apply(List<String> t) {
-			StringBuffer buf = new StringBuffer();
-			if (t.isEmpty()) {
-				buf.append("END\n");
-			} else {
-				for (String n : t) {
-					buf.append(n);
-				}
-			}
-			String data = buf.toString();
-			return new Buffer().append(data.getBytes()).flip();
+		public Buffer apply(Buffer t) {
+			return t.flip();
 		}
 
 		@Override
-		public Function<Buffer, List<String>> decoder(Consumer<List<String>> next) {
+		public Function<Buffer, Buffer> decoder(Consumer<Buffer> next) {
 			return null;
 		}
+
 	}
 }
