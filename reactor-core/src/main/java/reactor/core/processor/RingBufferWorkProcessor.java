@@ -734,8 +734,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 								//re-add the retained capacity
 								pendingRequest.incrementAndGet();
 
-								//if current sequence does not yet match the published one
-								if (nextSequence < cachedAvailableSequence) {
 									//pause until request
 									while (pendingRequest.addAndGet(-1l) < 0l) {
 										pendingRequest.incrementAndGet();
@@ -743,10 +741,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 										sequenceBarrier.checkAlert();
 										LockSupport.parkNanos(1l);
 									}
-								} else {
-									//end-of-loop without processing and incrementing the nextSequence
-									break;
-								}
 							}
 						} else {
 							//Complete or Error are terminal events, we shutdown the processor and process the signal
