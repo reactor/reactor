@@ -120,6 +120,8 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 					Throwable t = future.cause();
 					if (null != onComplete) {
 						onComplete.onError(t);
+					}else if (Environment.alive()){
+						Environment.get().routeError(t);
 					}
 				}
 				if (null != onComplete) {

@@ -136,7 +136,11 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 				channelSubscription.onNext((IN) msg);
 				return;
 			}else if(channelStream.getDecoder() == null){
-				channelSubscription.onNext((IN)new Buffer(((ByteBuf)msg).nioBuffer()));
+				try {
+					channelSubscription.onNext((IN) new Buffer(((ByteBuf) msg).nioBuffer()));
+				} finally {
+					((ByteBuf)msg).release();
+				}
 				return;
 			}
 

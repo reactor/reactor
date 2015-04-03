@@ -620,6 +620,11 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		}
 	}
 
+	@Override
+	public long getCapacity() {
+		return ringBuffer.getBufferSize();
+	}
+
 	/**
 	 * Disruptor WorkProcessor port that deals with pending demand.
 	 * <p>
@@ -734,6 +739,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 								//re-add the retained capacity
 								pendingRequest.incrementAndGet();
 
+								//if current sequence does not yet match the published one
+								//if (nextSequence < cachedAvailableSequence) {
 									//pause until request
 									while (pendingRequest.addAndGet(-1l) < 0l) {
 										pendingRequest.incrementAndGet();
@@ -741,6 +748,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 										sequenceBarrier.checkAlert();
 										LockSupport.parkNanos(1l);
 									}
+
 							}
 						} else {
 							//Complete or Error are terminal events, we shutdown the processor and process the signal
@@ -761,14 +769,12 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					}
 				} catch (final AlertException ex) {
 					if (!running.get()) {
-						if(Long.MIN_VALUE != cachedAvailableSequence) {
 							do {
-								nextSequence = workSequence.get();
+								cachedAvailableSequence = workSequence.get();
 							} while (!workSequence.compareAndSet(
-									nextSequence,
-									Math.min(dataProvider.getCursor(), sequenceBarrier.getCursor())
+									cachedAvailableSequence,
+								 Math.min(nextSequence - 1L, sequenceBarrier.getCursor())
 							));
-						}
 						break;
 					} else {
 						final long cursor = sequenceBarrier.getCursor();

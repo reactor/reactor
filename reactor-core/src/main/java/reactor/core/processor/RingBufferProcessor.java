@@ -655,6 +655,11 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		}
 	}
 
+	@Override
+	public long getCapacity() {
+		return ringBuffer.getBufferSize();
+	}
+
 	/**
 	 * Disruptor BatchEventProcessor port that deals with pending demand.
 	 * <p>

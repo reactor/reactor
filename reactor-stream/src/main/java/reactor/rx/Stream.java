@@ -326,11 +326,14 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		if(Stream.class.isAssignableFrom(processor.getClass())){
 			return (Stream<E>)processor;
 		}
+
+		final long capacity = Stream.this.getCapacity();
+
 		return new Stream<E>() {
 
 			@Override
 			public long getCapacity() {
-				return Stream.this.getCapacity();
+				return capacity;
 			}
 
 			@Override
