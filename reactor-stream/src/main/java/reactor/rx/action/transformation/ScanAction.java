@@ -26,17 +26,43 @@ public class ScanAction<T, A> extends Action<T, A> {
 
 	private final BiFunction<A, ? super T, A> fn;
 	private       A                           acc;
+	private boolean initialized = false;
+
+	private static final Object NOVALUE_SENTINEL = new Object();
 
 
+	@SuppressWarnings("unchecked")
 	public ScanAction(A initial, BiFunction<A, ? super T, A> fn) {
-		this.acc = initial;
+		this.acc = initial == null ? (A) NOVALUE_SENTINEL : initial;
 		this.fn = fn;
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	protected void doNext(T ev) {
-		acc = fn.apply(acc, ev);
+		checkInit();
+
+		if (this.acc == NOVALUE_SENTINEL) {
+			this.acc = (A) ev;
+		} else {
+			this.acc = fn.apply(acc, ev);
+		}
+
 		broadcastNext(acc);
 	}
 
+	@Override
+	protected void doComplete() {
+		checkInit();
+		super.doComplete();
+	}
+
+	private void checkInit() {
+		if (!initialized) {
+			initialized = true;
+			if (acc != NOVALUE_SENTINEL) {
+				broadcastNext(acc);
+			}
+		}
+	}
 }
