@@ -134,7 +134,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			}
 		}
 	}
-S
+
 	@Override
 	protected void doComplete() {
 		flushConsumer.accept(null);
