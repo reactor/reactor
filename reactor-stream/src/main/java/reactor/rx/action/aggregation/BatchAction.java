@@ -105,6 +105,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected void doNext(T value) {
 		index++;
 		if (first && index == 1) {
+			if (timespanRegistration != null) timespanRegistration.resume();
 			firstCallback(value);
 		}
 
@@ -113,6 +114,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		}
 
 		if (index % batchSize == 0) {
+			if (timespanRegistration != null) timespanRegistration.pause();
 			index = 0;
 			if (flush) {
 				flushConsumer.accept(value);

@@ -18,6 +18,7 @@ package reactor.core.config;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.Environment;
 import reactor.core.support.IoUtils;
 
 import java.io.IOException;
@@ -77,7 +78,7 @@ public class PropertiesConfigurationReader implements ConfigurationReader {
 
 		applySystemProperties(configuration);
 
-		String defaultDispatcherName = configuration.getProperty(PROPERTY_NAME_DEFAULT_DISPATCHER);
+		String defaultDispatcherName = configuration.getProperty(PROPERTY_NAME_DEFAULT_DISPATCHER, Environment.SHARED);
 
 		List<DispatcherConfiguration> dispatcherConfiguration = createDispatcherConfiguration(configuration);
 

@@ -13,31 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.io.net.tcp;
+package reactor.core.processor;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.AbstractReactorTest;
 import reactor.Environment;
-import reactor.core.processor.RingBufferProcessor;
-import reactor.core.processor.RingBufferWorkProcessor;
 import reactor.core.support.StringUtils;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
-import reactor.io.codec.StringCodec;
-import reactor.io.net.NetStreams;
-import reactor.io.net.Spec;
-import reactor.io.net.http.HttpChannel;
-import reactor.rx.Promise;
-import reactor.rx.Stream;
-import reactor.rx.Streams;
 
-import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -46,25 +34,29 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Stephane Maldini
  */
 @Ignore
-public class SmokeTests {
-	private Processor<Buffer, Buffer> processor;
-	private reactor.io.net.http.HttpServer<Buffer, Buffer> httpServer;
+public class ConsistentProcessorTests extends AbstractReactorTest{
+	private Processor<String, String> processor;
+	private Processor<String, String> workProcessor;
+
 	private AtomicInteger integer = new AtomicInteger();
+
 	@Test
 	public void testMultipleConsumersMultipleTimes() throws Exception {
 		Sender sender = new Sender();
 
-		int count = 100_000;
+		int count = 1000;
 		int threads = 6;
 		int fulltotaltext = 0;
 		int fulltotalints = 0;
-		int iter = 3;
+		int iter = 10;
 
+		List<Integer> total =  new ArrayList<Integer>();
 		for (int t=0; t<iter; t++) {
 			List<List<String>> clientDatas = getClientDatas(threads, sender, count);
 
@@ -87,6 +79,7 @@ public class SmokeTests {
 						fulltotaltext += 1;
 						numbersNoEnds.add(d);
 						int intnum = Integer.parseInt(d);
+						total.add(intnum);
 						if (!numbersNoEndsInt.contains(intnum)) {
 							numbersNoEndsInt.add(intnum);
 							fulltotalints += 1;
@@ -97,25 +90,30 @@ public class SmokeTests {
 
 			String msg = "Run number " + t;
 			Collections.sort(numbersNoEndsInt);
-			System.out.println(numbersNoEndsInt.size()+"/"+(integer.get()*100)+"["+StringUtils.collectionToCommaDelimitedString(numbersNoEndsInt)+"]");
+			System.out.println(msg+" with received :"+numbersNoEndsInt.size());
+			System.out.println("dups:"+ findDuplicates(numbersNoEndsInt));
 			// we can't measure individual session anymore so just
 			// check that below lists match.
 			assertThat(msg, numbersNoEndsInt.size(), is(numbersNoEnds.size()));
 		}
+		Set<Integer> dups = findDuplicates(total);
+		System.out.println("total dups:"+  dups);
+		System.out.println("total int:"+ fulltotalints);
+		System.out.println("total text:"+ fulltotaltext);
 		// check full totals because we know what this should be
 		assertThat(fulltotalints, is(count*iter));
 		assertThat(fulltotaltext, is(count*iter));
+		assertTrue(dups.isEmpty());
 	}
 
 	@Before
-	public void loadEnv() throws Exception {
-		Environment.initializeIfEmpty().assignErrorJournal();
-		setupFakeProtocolListener();
+	public void loadEnv() {
+		super.loadEnv();
+		setupPipeline();
 	}
 
 	@After
 	public void clean() throws Exception {
-		httpServer.shutdown().awaitSuccess();
 	}
 
 	public Set<Integer> findDuplicates(List<Integer> listContainingDuplicates) {
@@ -130,78 +128,21 @@ public class SmokeTests {
 		return setToReturn;
 	}
 
-	private void setupFakeProtocolListener() throws Exception {
+	private void setupPipeline() {
 		processor = RingBufferProcessor.create(false);
-		Stream<Buffer> bufferStream = Streams
-				.wrap(processor)
-				//.log("test")
-				.window(100, 1, TimeUnit.SECONDS)
-				.flatMap(s -> s.reduce(new Buffer(), Buffer::append).observe(d ->
-								integer.getAndIncrement()
-				))
-				.process(RingBufferWorkProcessor.create(false))
-				;
-
-//		Stream<Buffer> bufferStream = Streams
-//				.wrap(processor)
-//				.window(100, 1, TimeUnit.SECONDS)
-//				.flatMap(s -> s.dispatchOn(Environment.sharedDispatcher()).reduce(new Buffer(), (prev, next) -> {
-//					return prev.append(next);
-//				}))
-//				.process(RingBufferWorkProcessor.create(false));
-
-		httpServer = NetStreams.httpServer(server -> server
-				.codec(new DummyCodec()).listen(8080).dispatcher(Environment.sharedDispatcher()));
-
-
-		httpServer.get("/data", (request) -> {
-			request.responseHeaders().removeTransferEncodingChunked();
-			request.addResponseHeader("Content-type", "text/plain");
-			request.addResponseHeader("Expires", "0");
-			request.addResponseHeader("X-GPFDIST-VERSION", "Spring XD");
-			request.addResponseHeader("X-GP-PROTO", "1");
-			request.addResponseHeader("Cache-Control", "no-cache");
-			request.addResponseHeader("Connection", "close");
-			return bufferStream
-					.take(5, TimeUnit.SECONDS)
-					.concatWith(Streams.just(new Buffer().append("END\n".getBytes(Charset.forName("UTF-8")))));
-		});
-
-		httpServer.start().awaitSuccess();
+		workProcessor = RingBufferWorkProcessor.create(false);
+		processor.subscribe(workProcessor);
 	}
 
-	private Promise<List<String>> getClientDataPromise() throws Exception {
-		reactor.io.net.http.HttpClient<String, String> httpClient = NetStreams.httpClient(new Function<Spec.HttpClient<String,String>, Spec.HttpClient<String,String>>() {
-
-			@Override
-			public Spec.HttpClient<String, String> apply(Spec.HttpClient<String, String> t) {
-				return t.codec(new StringCodec()).connect("localhost", 8080)
-						.dispatcher(Environment.sharedDispatcher());
-			}
-		});
-		Promise<List<String>> content = httpClient.get("/data", new Function<HttpChannel<String, String>, Publisher<? extends String>>() {
-
-			@Override
-			public Publisher<? extends String> apply(HttpChannel<String, String> t) {
-				t.header("Content-Type", "text/plain");
-				return Streams.just(" ");
-			}
-		}).flatMap(new Function<HttpChannel<String, String>, Publisher<? extends List<String>>>() {
-
-			@Override
-			public Publisher<? extends List<String>> apply(HttpChannel<String, String> t) {
-				return t.toList();
-			}
-		});
-
-		httpClient.open().awaitSuccess();
-		return content;
+	private Receiver getClientDataPromise() throws Exception {
+		Receiver r = new Receiver();
+		workProcessor.subscribe(r);
+		return r;
 	}
 
 	private List<List<String>> getClientDatas(int threadCount, final Sender sender, int count) throws Exception {
-		final CountDownLatch latch = new CountDownLatch(1);
 		final CountDownLatch promiseLatch = new CountDownLatch(threadCount);
-		final ArrayList<Thread> joins = new ArrayList<Thread>();
+
 		final ArrayList<List<String>> datas = new ArrayList<List<String>>();
 
 
@@ -215,16 +156,19 @@ public class SmokeTests {
 			}
 		};
 		Thread st = new Thread(srunner, "SenderThread" );
-		joins.add(st);
+
 		st.start();
+
+		final Random r = new Random();
 
 		for (int i = 0; i < threadCount; ++i) {
 			Runnable runner = new Runnable() {
 				public void run() {
 					try {
-						latch.await();
-						Promise<List<String>> clientDataPromise = getClientDataPromise();
-						datas.add(clientDataPromise.await(40, TimeUnit.SECONDS));
+						Thread.sleep(r.nextInt(2000)+500);
+						Receiver clientDataPromise = getClientDataPromise();
+						clientDataPromise.latch.await(20, TimeUnit.SECONDS);
+						datas.add(clientDataPromise.data);
 						promiseLatch.countDown();
 					} catch (Exception ie) {
 						ie.printStackTrace();
@@ -232,18 +176,11 @@ public class SmokeTests {
 				}
 			};
 			Thread t = new Thread(runner, "SmokeThread" + i);
-			joins.add(t);
+
 			t.start();
 		}
-		latch.countDown();
 		promiseLatch.await();
-		Thread.sleep(1000);
-		for (Thread t : joins) {
-			try {
-				t.join();
-			} catch (InterruptedException e) {
-			}
-		}
+
 
 		return datas;
 	}
@@ -258,24 +195,46 @@ public class SmokeTests {
 		void sendNext(int count) {
 			for (int i = 0; i < count; i++) {
 //				System.out.println("XXXX " + x);
-				String data = x++ + "\n";
-				processor.onNext(new Buffer().append(data.getBytes(Charset.forName("UTF-8"))).flip());
+				processor.onNext((x++)+"\n");
 			}
 		}
 	}
 
-	public class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
+	static int subCount = 0;
 
-		@SuppressWarnings("resource")
+	class Receiver implements Subscriber<String>{
+
+		final int            id    = ++subCount;
+		final List<String>   data  = new ArrayList<>();
+		final CountDownLatch latch = new CountDownLatch(1);
+
 		@Override
-		public Buffer apply(Buffer t) {
-			return t.flip();
+		public void onSubscribe(Subscription s) {
+			Environment.timer().submit(time -> finish(s), 5, TimeUnit.SECONDS);
+			s.request(Long.MAX_VALUE);
 		}
 
 		@Override
-		public Function<Buffer, Buffer> decoder(Consumer<Buffer> next) {
-			return null;
+		public void onNext(String s) {
+			data.add(s);
 		}
 
+		@Override
+		public void onError(Throwable t) {
+			t.printStackTrace();
+		}
+
+		@Override
+		public void onComplete() {
+			finish(null);
+		}
+
+		void finish(Subscription s){
+			if(s != null){
+				s.cancel();
+			}
+			latch.countDown();
+			System.out.println("Receiver "+id+" completed");
+		}
 	}
 }
