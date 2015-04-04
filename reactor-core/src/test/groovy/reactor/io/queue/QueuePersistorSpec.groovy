@@ -71,7 +71,7 @@ class QueuePersistorSpec extends Specification {
 
 		when:
 			"an object is persisted"
-			persistor.offer(obj)
+			def id = persistor.offer(obj)
 
 		then:
 			"the object was persisted"
