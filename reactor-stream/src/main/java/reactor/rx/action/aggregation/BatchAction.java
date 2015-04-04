@@ -38,11 +38,14 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected final boolean        first;
 	protected final int            batchSize;
 	protected final Consumer<Long> timeoutTask;
-	protected final Pausable timespanRegistration;
 	protected final Dispatcher     dispatcher;
+	protected final long           timespan;
+	protected final TimeUnit       unit;
+	protected final Timer          timer;
 	protected final Consumer<T> flushConsumer = new FlushConsumer();
 
 	protected int index = 0;
+	protected Pausable timespanRegistration;
 
 	public BatchAction(
 			Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush) {
@@ -57,22 +60,22 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			this.timeoutTask = new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {
-					if (index > 0) {
 						try {
 							dispatcher.tryDispatch(null, flushConsumer, null);
 						} catch (InsufficientCapacityException e) {
 							//IGNORE
 						}
-					}
 				}
 			};
-			TimeUnit targetUnit = unit != null ? unit : TimeUnit.SECONDS;
-			timespanRegistration = timer.schedule(timeoutTask, timespan, targetUnit,
-					TimeUnit.MILLISECONDS.convert(timespan, targetUnit));
-			timespanRegistration.pause();
+
+			this.unit = unit != null ? unit : TimeUnit.SECONDS;
+			this.timespan = timespan;
+			this.timer = timer;
 		} else {
 			this.timeoutTask = null;
-			this.timespanRegistration = null;
+			this.timespan = -1L;
+			this.timer = null;
+			this.unit = null;
 		}
 		this.first = first;
 		this.flush = flush;
@@ -87,9 +90,12 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		super.doSubscribe(subscription);
-		if (timespanRegistration != null) timespanRegistration.resume();
+	public void requestMore(long n) {
+		if(timer != null){
+			if (timespanRegistration != null) timespanRegistration.cancel();
+			timespanRegistration = timer.submit(timeoutTask, timespan, unit);
+		}
+		super.requestMore(n);
 	}
 
 	protected void nextCallback(T event) {
@@ -103,10 +109,14 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void doNext(T value) {
-		index++;
-		if (first && index == 1) {
-			if (timespanRegistration != null) timespanRegistration.resume();
-			firstCallback(value);
+
+		if(++index == 1){
+			if(timer != null){
+				timespanRegistration = timer.submit(timeoutTask, timespan, unit);
+			}
+			if (first ) {
+				firstCallback(value);
+			}
 		}
 
 		if (next) {
@@ -114,14 +124,17 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		}
 
 		if (index % batchSize == 0) {
-			if (timespanRegistration != null) timespanRegistration.pause();
+			if (timespanRegistration != null) timespanRegistration.cancel();
 			index = 0;
 			if (flush) {
 				flushConsumer.accept(value);
 			}
+			if(timer != null){
+				timespanRegistration = timer.submit(timeoutTask, timespan, unit);
+			}
 		}
 	}
-
+S
 	@Override
 	protected void doComplete() {
 		flushConsumer.accept(null);
