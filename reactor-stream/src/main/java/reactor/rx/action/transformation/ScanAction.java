@@ -39,14 +39,14 @@ public class ScanAction<T, A> extends Action<T, A> {
 		this.fn = fn;
 	}
 
-	/*final AtomicBoolean once = new AtomicBoolean();
+	/*final AtomicBoolean once      = new AtomicBoolean();
 	final AtomicBoolean excessive = new AtomicBoolean();
 
 	@Override
 	public void requestMore(long n) {
 		if (once.compareAndSet(false, true)) {
 			if (acc == NOVALUE_SENTINEL || n == Long.MAX_VALUE) {
-			  super.requestMore(n);
+				super.requestMore(n);
 			} else if (n == 1) {
 				excessive.set(true);
 				super.requestMore(1);
@@ -54,7 +54,7 @@ public class ScanAction<T, A> extends Action<T, A> {
 				super.requestMore(n - 1);
 			}
 		} else {
-			if ( excessive.compareAndSet(true, false) && n != Long.MAX_VALUE) {
+			if (excessive.compareAndSet(true, false) && n != Long.MAX_VALUE) {
 				super.requestMore(n - 1);
 			} else {
 				super.requestMore(n);
@@ -62,12 +62,10 @@ public class ScanAction<T, A> extends Action<T, A> {
 		}
 	}*/
 
-
 	@Override
 	@SuppressWarnings("unchecked")
 	protected void doNext(T ev) {
 		checkInit();
-
 		if (this.acc == NOVALUE_SENTINEL) {
 			this.acc = (A) ev;
 		} else {
@@ -80,7 +78,6 @@ public class ScanAction<T, A> extends Action<T, A> {
 	@Override
 	protected void doComplete() {
 		checkInit();
-
 		super.doComplete();
 	}
 
