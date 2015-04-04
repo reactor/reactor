@@ -2600,16 +2600,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @since 1.1, 2.0
 	 */
 	public final Stream<O> scan(@Nonnull final BiFunction<O, O, O> fn) {
-		return scan(null, new BiFunction<O, O, O>() {
-					@Override
-					public O apply(O o, O o2) {
-						if (o == null) {
-							return o2;
-						}
-						return fn.apply(o, o2);
-					}
-				}
-		);
+		return scan(null, fn);
 	}
 
 	/**

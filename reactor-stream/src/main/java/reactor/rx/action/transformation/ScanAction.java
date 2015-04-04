@@ -25,6 +25,7 @@ import reactor.rx.action.Action;
 public class ScanAction<T, A> extends Action<T, A> {
 
 	private final BiFunction<A, ? super T, A> fn;
+	private final A                           initialValue;
 	private       A                           acc;
 	private boolean initialized = false;
 
@@ -33,9 +34,34 @@ public class ScanAction<T, A> extends Action<T, A> {
 
 	@SuppressWarnings("unchecked")
 	public ScanAction(A initial, BiFunction<A, ? super T, A> fn) {
-		this.acc = initial == null ? (A) NOVALUE_SENTINEL : initial;
+		this.initialValue = initial == null ? (A) NOVALUE_SENTINEL : initial;
+		this.acc = initialValue;
 		this.fn = fn;
 	}
+
+	/*final AtomicBoolean once = new AtomicBoolean();
+	final AtomicBoolean excessive = new AtomicBoolean();
+
+	@Override
+	public void requestMore(long n) {
+		if (once.compareAndSet(false, true)) {
+			if (acc == NOVALUE_SENTINEL || n == Long.MAX_VALUE) {
+			  super.requestMore(n);
+			} else if (n == 1) {
+				excessive.set(true);
+				super.requestMore(1);
+			} else {
+				super.requestMore(n - 1);
+			}
+		} else {
+			if ( excessive.compareAndSet(true, false) && n != Long.MAX_VALUE) {
+				super.requestMore(n - 1);
+			} else {
+				super.requestMore(n);
+			}
+		}
+	}*/
+
 
 	@Override
 	@SuppressWarnings("unchecked")
@@ -54,15 +80,18 @@ public class ScanAction<T, A> extends Action<T, A> {
 	@Override
 	protected void doComplete() {
 		checkInit();
+
 		super.doComplete();
 	}
 
 	private void checkInit() {
 		if (!initialized) {
 			initialized = true;
-			if (acc != NOVALUE_SENTINEL) {
-				broadcastNext(acc);
+			if (initialValue != NOVALUE_SENTINEL) {
+				broadcastNext(initialValue);
 			}
 		}
 	}
+
+
 }
