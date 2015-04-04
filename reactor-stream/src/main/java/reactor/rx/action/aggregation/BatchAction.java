@@ -33,19 +33,18 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class BatchAction<T, V> extends Action<T, V> {
 
-	protected final boolean        next;
-	protected final boolean        flush;
-	protected final boolean        first;
-	protected final int            batchSize;
-	protected final Consumer<Long> timeoutTask;
-	protected final Dispatcher     dispatcher;
-	protected final long           timespan;
-	protected final TimeUnit       unit;
-	protected final Timer          timer;
+	protected final boolean    next;
+	protected final boolean    flush;
+	protected final boolean    first;
+	protected final int        batchSize;
+	protected final Dispatcher dispatcher;
+	protected final long       timespan;
+	protected final TimeUnit   unit;
+	protected final Timer      timer;
 	protected final Consumer<T> flushConsumer = new FlushConsumer();
 
 	protected int index = 0;
-	protected Pausable timespanRegistration;
+	private Pausable timespanRegistration;
 
 	public BatchAction(
 			Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush) {
@@ -57,22 +56,10 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		super(batchSize);
 		this.dispatcher = dispatcher;
 		if (timespan > 0) {
-			this.timeoutTask = new Consumer<Long>() {
-				@Override
-				public void accept(Long aLong) {
-						try {
-							dispatcher.tryDispatch(null, flushConsumer, null);
-						} catch (InsufficientCapacityException e) {
-							//IGNORE
-						}
-				}
-			};
-
 			this.unit = unit != null ? unit : TimeUnit.SECONDS;
 			this.timespan = timespan;
 			this.timer = timer;
 		} else {
-			this.timeoutTask = null;
 			this.timespan = -1L;
 			this.timer = null;
 			this.unit = null;
@@ -89,15 +76,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		return new BatchSubscription<T>(subscription, this, batchSize);
 	}
 
-	@Override
-	public void requestMore(long n) {
-		if(timer != null){
-			if (timespanRegistration != null) timespanRegistration.cancel();
-			timespanRegistration = timer.submit(timeoutTask, timespan, unit);
-		}
-		super.requestMore(n);
-	}
-
 	protected void nextCallback(T event) {
 	}
 
@@ -110,9 +88,20 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	@Override
 	protected void doNext(T value) {
 
-		if(++index == 1){
-			if(timer != null){
-				timespanRegistration = timer.submit(timeoutTask, timespan, unit);
+		if (++index == 1) {
+			if (timer != null) {
+				timespanRegistration = timer.submit( new Consumer<Long>() {
+					@Override
+					public void accept(Long aLong) {
+						try {
+							if(isPublishing()) {
+								dispatcher.tryDispatch(null, flushConsumer, null);
+							}
+						} catch (InsufficientCapacityException e) {
+							//IGNORE
+						}
+					}
+				}, timespan, unit);
 			}
 			if (first ) {
 				firstCallback(value);
@@ -124,13 +113,13 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		}
 
 		if (index % batchSize == 0) {
-			if (timespanRegistration != null) timespanRegistration.cancel();
+			if (timespanRegistration != null) {
+				timespanRegistration.cancel();
+				timespanRegistration = null;
+			}
 			index = 0;
 			if (flush) {
 				flushConsumer.accept(value);
-			}
-			if(timer != null){
-				timespanRegistration = timer.submit(timeoutTask, timespan, unit);
 			}
 		}
 	}
@@ -139,12 +128,6 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected void doComplete() {
 		flushConsumer.accept(null);
 		super.doComplete();
-	}
-
-	@Override
-	public void cancel() {
-		if (timespanRegistration != null) timespanRegistration.cancel();
-		super.cancel();
 	}
 
 	final private class FlushConsumer implements Consumer<T> {
@@ -157,7 +140,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	public String toString() {
-		return super.toString() + "{" + (timespanRegistration != null ? "timed!" : "") + " batchSize=" + index + "/" +
+		return super.toString() + "{" + (timer != null ? "timed - "+timespan+" "+unit : "") + " batchSize=" + index + "/" +
 				batchSize + " [" + (int) ((((float) index) / ((float) batchSize)) * 100) + "%]";
 	}
 
