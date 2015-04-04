@@ -734,8 +734,10 @@ public class Buffer implements Recyclable,
 			int pos = (null == buffer ? 0 : buffer.position());
 			int len = b.remaining();
 			ensureCapacity(len);
-			buffer.put(b.byteBuffer());
-			buffer.position(pos + len);
+			if(b.byteBuffer() != null) {
+				buffer.put(b.byteBuffer());
+				buffer.position(pos + len);
+			}
 		}
 		return this;
 	}

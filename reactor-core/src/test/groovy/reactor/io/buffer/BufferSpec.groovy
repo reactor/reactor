@@ -25,12 +25,22 @@ import java.nio.ByteBuffer
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 class BufferSpec extends Specification {
 
 	def "A Buffer can be created from a String"() {
 		when: "a Buffer is created from a String"
 		def buff = Buffer.wrap("Hello World!")
+
+		then: "the Buffer contains the String"
+		buff.asString() == "Hello World!"
+	}
+
+	def "A Buffer can be appended"() {
+		when: "a Buffer is created from a String"
+		def buff = Buffer.wrap("Hello World!")
+		buff.append(new Buffer())
 
 		then: "the Buffer contains the String"
 		buff.asString() == "Hello World!"

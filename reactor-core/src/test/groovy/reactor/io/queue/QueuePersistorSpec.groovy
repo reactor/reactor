@@ -35,12 +35,11 @@ class QueuePersistorSpec extends Specification {
 
 		when:
 			"an Object is persisted"
-			def id = persistor.offer(obj)
+			persistor.offer(obj)
 
 		then:
 			"the Object was persisted"
-			id > -1
-			persistor.get(id) == obj
+			persistor.get(persistor.lastId()) == obj
 
 		when:
 			"an Object is removed"
@@ -48,7 +47,7 @@ class QueuePersistorSpec extends Specification {
 
 		then:
 			"the Object was removed"
-			null == persistor.get(id)
+			null == persistor.get(persistor.lastId())
 			persistor.size() == 0
 
 		cleanup:
@@ -65,18 +64,19 @@ class QueuePersistorSpec extends Specification {
 					StandardCodecs.STRING_CODEC,
 					true,
 					true,
+					null,
 					ChronicleQueueBuilder.indexed('queue-persistor').test()
 			)
 			def obj = "Hello World!"
 
 		when:
 			"an object is persisted"
-			def id = persistor.offer(obj)
+			persistor.offer(obj)
 
 		then:
 			"the object was persisted"
-			id > -1
-			persistor.get(id) == obj
+			persistor.get
+			persistor.get(persistor.lastId()) == obj
 			persistor.hasNext()
 
 		when:
