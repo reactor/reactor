@@ -38,7 +38,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected final boolean        first;
 	protected final int            batchSize;
 	protected final Consumer<Long> timeoutTask;
-	protected final Pausable timespanRegistration;
+	protected final Pausable       timespanRegistration;
 	protected final Dispatcher     dispatcher;
 	protected final Consumer<T> flushConsumer = new FlushConsumer();
 
@@ -57,19 +57,17 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			this.timeoutTask = new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {
-					if (index > 0) {
-						try {
-							dispatcher.tryDispatch(null, flushConsumer, null);
-						} catch (InsufficientCapacityException e) {
-							//IGNORE
-						}
+					try {
+						dispatcher.tryDispatch(null, flushConsumer, null);
+					} catch (InsufficientCapacityException e) {
+						//IGNORE
 					}
 				}
 			};
 			TimeUnit targetUnit = unit != null ? unit : TimeUnit.SECONDS;
 			timespanRegistration = timer.schedule(timeoutTask, timespan, targetUnit,
 					TimeUnit.MILLISECONDS.convert(timespan, targetUnit));
-			timespanRegistration.pause();
+			timespanRegistration.cancel();
 		} else {
 			this.timeoutTask = null;
 			this.timespanRegistration = null;
@@ -114,7 +112,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		}
 
 		if (index % batchSize == 0) {
-			if (timespanRegistration != null) timespanRegistration.pause();
+			if (timespanRegistration != null) timespanRegistration.cancel();
 			index = 0;
 			if (flush) {
 				flushConsumer.accept(value);
