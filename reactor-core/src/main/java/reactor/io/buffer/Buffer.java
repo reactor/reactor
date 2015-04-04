@@ -488,6 +488,7 @@ public class Buffer implements Recyclable,
 	 * @return the new {@code Buffer}
 	 */
 	public Buffer copy() {
+		if(buffer == null) return new Buffer();
 		snapshot();
 		Buffer b = new Buffer(buffer.remaining(), false);
 		b.append(buffer);
