@@ -57,7 +57,11 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyNetChannelInboundHandl
 		if (HttpResponse.class.isAssignableFrom(messageClass)) {
 			NettyHttpChannel httpChannel = ctx.attr(KEY).getAndRemove();
 			if(httpChannel != null){
-				httpChannel.setNettyResponse((HttpResponse) msg);
+				HttpResponse httpResponse = (HttpResponse) msg;
+				if (httpResponse.getStatus().equals(HttpResponseStatus.NOT_FOUND)) {
+					exceptionCaught(ctx, new RuntimeException("Resource not found on server"));
+				}
+				httpChannel.setNettyResponse(httpResponse);
 			}
 		} else if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
