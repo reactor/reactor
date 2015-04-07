@@ -20,6 +20,8 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.*;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.Environment;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.support.Assert;
 import reactor.io.buffer.Buffer;
@@ -186,13 +188,34 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	}
 
 	@Override
-	protected void write(Object data, Subscriber<?> onComplete, boolean flush) {
-		boolean willFlush = flush;
+	protected void write(final Object data, final Subscriber<?> onComplete, boolean flush) {
 		if (HEADERS_SENT.compareAndSet(this, 0, 1)) {
-			tcpStream.write(nettyResponse, onComplete, false);
-			willFlush = true;
+			tcpStream.write(nettyResponse, new Subscriber<Object>() {
+				@Override
+				public void onSubscribe(Subscription s) {
+					//IGNORE
+				}
+
+				@Override
+				public void onNext(Object o) {
+					//IGNORE
+				}
+
+				@Override
+				public void onError(Throwable t) {
+					if(Environment.alive()){
+						Environment.get().routeError(t);
+					}
+				}
+
+				@Override
+				public void onComplete() {
+					tcpStream.write(data, onComplete, true);
+				}
+			}, false);
+		}else{
+			tcpStream.write(data, onComplete, flush);
 		}
-		tcpStream.write(data, onComplete, willFlush);
 	}
 
 	@Override
