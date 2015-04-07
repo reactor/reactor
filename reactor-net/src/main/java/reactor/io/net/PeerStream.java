@@ -253,13 +253,11 @@ public abstract class PeerStream<IN, OUT, CONN extends ChannelStream<IN, OUT>> e
 	protected Control subscribeChannelHandlers(Stream<? extends OUT> writeStream, final CONN ch) {
 		if (writeStream.getCapacity() != Long.MAX_VALUE) {
 			return writeStream
-					.dispatchOn(ch.getIODispatcher())
-					.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(false),
+				.adaptiveConsumeOn(ch.getIODispatcher(), ch.writeThrough(false),
 							createAdaptiveDemandMapper(ch,
 									createErrorConsumer(ch)));
 		} else {
 			return writeStream
-					.dispatchOn(ch.getIODispatcher())
 					.consumeOn(ch.getIODispatcher(), ch.writeThrough(true), createErrorConsumer(ch), completeConsumer(ch));
 		}
 	}
