@@ -210,9 +210,9 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 
 				@Override
 				public void onComplete() {
-					tcpStream.write(data, onComplete, true);
+					tcpStream.write(data, onComplete, false);
 				}
-			}, false);
+			}, true);
 		}else{
 			tcpStream.write(data, onComplete, flush);
 		}

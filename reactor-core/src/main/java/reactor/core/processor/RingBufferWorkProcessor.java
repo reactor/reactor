@@ -537,7 +537,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 
 			//set eventProcessor sequence to ringbuffer index
-			signalProcessor.sequence.set(ringBuffer.getCursor());
+			signalProcessor.sequence.set(workSequence.get());
 
 			//bind eventProcessor sequence to observe the ringBuffer
 			ringBuffer.addGatingSequences(signalProcessor.sequence);

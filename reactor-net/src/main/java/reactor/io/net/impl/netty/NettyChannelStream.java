@@ -123,8 +123,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 					}else if (Environment.alive()){
 						Environment.get().routeError(t);
 					}
-				}
-				if (null != onComplete) {
+				}else if (null != onComplete) {
 					onComplete.onComplete();
 				}
 			}
