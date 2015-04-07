@@ -16,16 +16,12 @@
 
 package reactor.io.net.impl.netty.http;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.*;
 import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -139,7 +135,8 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 		return new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
-				((Channel)ch.delegate()).writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+				((Channel)ch.delegate()).writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(ChannelFutureListener
+						.CLOSE);
 			}
 		};
 	}
