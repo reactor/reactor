@@ -118,21 +118,19 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 		Stream<OUT> writeStream;
 		if (!handlers.iterator().hasNext()) {
-			writeStream = Streams.empty();
 			channelStream.write(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND), null, false);
 		} else {
 			writeStream = Streams.concat(handlers);
+			final Control c = subscribeChannelHandlers(writeStream, request);
+
+			channelStream.delegate().closeFuture().addListener(new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					c.cancel();
+				}
+			});
+			channelStream.subscribe(request.in());
 		}
-
-		final Control c = subscribeChannelHandlers(writeStream, request);
-
-		channelStream.delegate().closeFuture().addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				c.cancel();
-			}
-		});
-		channelStream.subscribe(request.in());
 		return request;
 	}
 
