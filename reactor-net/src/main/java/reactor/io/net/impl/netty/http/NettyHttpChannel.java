@@ -70,7 +70,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 		if (version.equals(HttpVersion.HTTP_1_0)) {
 			return Protocol.HTTP_1_0;
 		} else if (version.equals(HttpVersion.HTTP_1_1)) {
-			return Protocol.HTTP_2_0;
+			return Protocol.HTTP_1_1;
 		}
 		throw new IllegalStateException(version.protocolName() + " not supported");
 	}
