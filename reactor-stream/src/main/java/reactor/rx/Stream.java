@@ -417,9 +417,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			consumerAction.capacity(getCapacity());
 		}
 		subscribe(consumerAction);
-		if (consumer != null) {
-			consumerAction.requestMore(consumerAction.getCapacity());
-		}
 		return consumerAction;
 	}
 
@@ -500,7 +497,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		}
 
 		subscribe(consumerAction);
-		consumerAction.requestMore(consumerAction.getCapacity());
 		return consumerAction;
 	}
 
@@ -2917,7 +2913,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		}, terminalConsumer, terminalConsumer);
 
 		tail.subscribe(callbackAction);
-		callbackAction.requestMore(callbackAction.getCapacity());
 
 		return blockingQueue;
 	}

@@ -49,8 +49,14 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 		this.dispatcher = dispatcher == SynchronousDispatcher.INSTANCE ? TailRecurseDispatcher.INSTANCE : dispatcher;
 		this.errorConsumer = errorConsumer;
 		this.completeConsumer = completeConsumer;
+
 		//TODO define option to choose ?
 		this.capacity = Long.MAX_VALUE;
+
+
+		if (consumer != null) {
+			pendingRequests = capacity;
+		}
 	}
 
 	@Override
