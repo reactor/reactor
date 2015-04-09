@@ -137,7 +137,12 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 					if (draining) {
 						toRequest = elements;
 					} else if (elements > 0l) {
-						onRequest(elements);
+						//started
+						if(terminated == 0) {
+							onRequest(elements);
+						}else{
+							updatePendingRequests(elements);
+						}
 						toRequest = 0;
 					}
 				}
