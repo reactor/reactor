@@ -175,7 +175,6 @@ public abstract class Action<I, O> extends Stream<O>
 	protected final void doStart() {
 		final PushSubscription<O> downSub = downstreamSubscription;
 		if (downSub != null) {
-
 				downSub.start();
 		}
 	}
@@ -626,7 +625,7 @@ public abstract class Action<I, O> extends Stream<O>
 		try {
 			if (!addSubscription(subscription)) {
 				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
-			} else{
+			} else {
 				subscription.markAsDeferredStart();
 				if (upstreamSubscription != null) {
 					subscription.start();

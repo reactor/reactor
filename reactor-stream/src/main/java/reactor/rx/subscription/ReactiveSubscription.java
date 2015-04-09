@@ -166,14 +166,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
-	public void start() {
-		super.start();
-		if(pendingRequestSignals > 0L){
-			onRequest(pendingRequestSignals);
-		}
-	}
-
-	@Override
 	public void onNext(O ev) {
 
 		synchronized (this) {

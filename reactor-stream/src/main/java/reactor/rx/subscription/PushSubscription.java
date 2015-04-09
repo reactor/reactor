@@ -75,6 +75,12 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 				if (pendingRequestSignals != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, n) < 0)
 					PENDING_UPDATER.set(this, Long.MAX_VALUE);
 			}
+
+			if(terminated == -1L){
+				pendingRequestSignals = n;
+				return;
+			}
+
 			onRequest(n);
 		} catch (Throwable t) {
 			subscriber.onError(t);
@@ -133,8 +139,11 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public void start(){
-		if(subscriber != null && markAsStarted()){
+		if(subscriber != null && terminated == -1L){
 			subscriber.onSubscribe(this);
+			if(markAsStarted() && pendingRequestSignals > 0L){
+				onRequest(pendingRequestSignals);
+			}
 		}
 	}
 
