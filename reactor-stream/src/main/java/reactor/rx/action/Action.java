@@ -626,10 +626,11 @@ public abstract class Action<I, O> extends Stream<O>
 		try {
 			if (!addSubscription(subscription)) {
 				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
-			} else if (upstreamSubscription != null) {
-				subscriber.onSubscribe(subscription);
-			} else {
+			} else{
 				subscription.markAsDeferredStart();
+				if (upstreamSubscription != null) {
+					subscription.start();
+				}
 			}
 		} catch (Exception e) {
 			subscriber.onError(e);
