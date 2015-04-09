@@ -160,16 +160,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		}
 	}
 
-
-	/*@Override
-	public void spec103_mustSignalOnMethodsSequentially() throws Throwable {
-		for(int i = 0; i < 10000; i++) {
-			System.out.println(i);
-			super.spec103_mustSignalOnMethodsSequentially();
-		}
-	}*/
-
-
 	/*@Test
 	public void testAlotOfHotStreams() throws InterruptedException{
 		for(int i = 0; i<10000; i++)

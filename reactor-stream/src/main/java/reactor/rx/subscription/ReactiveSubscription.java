@@ -114,7 +114,12 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 				if (list != null) {
 					drainNext(list);
 				} else {
-					onRequest(elements);
+					//started
+					if(terminated == 0) {
+						onRequest(elements);
+					}else{
+						updatePendingRequests(elements);
+					}
 					return;
 				}
 
@@ -152,6 +157,14 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 				currentNextSignals++;
 				subscriber.onNext((O) el);
 			}
+		}
+	}
+
+	@Override
+	public void start() {
+		super.start();
+		if(pendingRequestSignals > 0L){
+			onRequest(pendingRequestSignals);
 		}
 	}
 

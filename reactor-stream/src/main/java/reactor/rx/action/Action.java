@@ -175,6 +175,7 @@ public abstract class Action<I, O> extends Stream<O>
 	protected final void doStart() {
 		final PushSubscription<O> downSub = downstreamSubscription;
 		if (downSub != null) {
+
 				downSub.start();
 		}
 	}
