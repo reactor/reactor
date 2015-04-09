@@ -16,6 +16,7 @@
 package reactor.rx.action.control;
 
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
@@ -34,7 +35,7 @@ public class RepeatAction<T> extends Action<T, T> {
 	private long currentNumRetries = 0;
 	private final Publisher<? extends T> rootPublisher;
 	private       Dispatcher             dispatcher;
-	private       long                   pendingRequests = 0l;
+	private long pendingRequests = 0l;
 
 	public RepeatAction(Dispatcher dispatcher, int numRetries, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
@@ -49,12 +50,20 @@ public class RepeatAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
-		if(capacity != Long.MAX_VALUE && pendingRequests != Long.MAX_VALUE){
-			synchronized (this){
-				if(pendingRequests != Long.MAX_VALUE) {
+		if (capacity != Long.MAX_VALUE && pendingRequests != Long.MAX_VALUE) {
+			synchronized (this) {
+				if (pendingRequests != Long.MAX_VALUE) {
 					pendingRequests--;
 				}
 			}
+		}
+	}
+
+	@Override
+	protected void doOnSubscribe(Subscription subscription) {
+		long pendingRequests = this.pendingRequests;
+		if(pendingRequests > 0) {
+			subscription.request(pendingRequests);
 		}
 	}
 
@@ -75,28 +84,20 @@ public class RepeatAction<T> extends Action<T, T> {
 
 	@Override
 	public void onComplete() {
+		cancel();
 		dispatcher.dispatch(null, new Consumer<Void>() {
 			@Override
 			public void accept(Void nothing) {
 				if (numRetries != -1 && ++currentNumRetries > numRetries) {
-					doComplete();
+					RepeatAction.super.onComplete();
 					currentNumRetries = 0;
 				} else {
-					PushSubscription<T> upstream = upstreamSubscription;
-					if (upstream != null) {
-						long pendingRequests = RepeatAction.this.pendingRequests;
-						if (rootPublisher != null) {
-							if (TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())) {
-								dispatcher.shutdown();
-								dispatcher = Environment.tailRecurse();
-							}
-							cancel();
-							rootPublisher.subscribe(RepeatAction.this);
-							upstream = upstreamSubscription;
+					if (rootPublisher != null) {
+						if (TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())) {
+							dispatcher.shutdown();
+							dispatcher = Environment.tailRecurse();
 						}
-						if (upstream != null && pendingRequests >= 0) {
-							upstream.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);
-						}
+						rootPublisher.subscribe(RepeatAction.this);
 					}
 				}
 

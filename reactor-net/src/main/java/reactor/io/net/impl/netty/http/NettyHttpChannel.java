@@ -188,7 +188,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	}
 
 	@Override
-	protected void write(final Object data, final Subscriber<?> onComplete, boolean flush) {
+	protected void write(final Object data, final Subscriber<?> onComplete, final boolean flush) {
 		if (HEADERS_SENT.compareAndSet(this, 0, 1)) {
 			tcpStream.write(nettyResponse, new Subscriber<Object>() {
 				@Override
@@ -210,7 +210,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 
 				@Override
 				public void onComplete() {
-					tcpStream.write(data, onComplete, false);
+					tcpStream.write(data, onComplete, flush);
 				}
 			}, true);
 		}else{

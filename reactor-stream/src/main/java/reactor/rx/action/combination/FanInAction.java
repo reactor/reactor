@@ -69,7 +69,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		doSubscribe(this.innerSubscriptions);
+		doOnSubscribe(this.innerSubscriptions);
 		super.subscribe(subscriber);
 	}
 
@@ -77,14 +77,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
 		inlineMerge.pendingRequests = innerSubscriptions.pendingRequestSignals() / (innerSubscriptions.runningComposables + 1);
 		publisher.subscribe(inlineMerge);
-	}
-
-
-	@Override
-	protected void doStart(long pending) {
-		if (dynamicMergeAction != null) {
-			dispatcher.dispatch(pending, dynamicMergeAction.getSubscription(), null);
-		}
 	}
 
 	public void scheduleCompletion() {
@@ -111,7 +103,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
+	protected void doOnSubscribe(Subscription subscription) {
 		if (status.compareAndSet(NOT_STARTED, RUNNING)) {
 			innerSubscriptions.maxCapacity(capacity);
 			if (publishers != null) {

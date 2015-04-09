@@ -114,7 +114,7 @@ class StreamsSpec extends Specification {
 			def e = null
 			def latch = new CountDownLatch(1)
 			def stream = Streams.from([1, 2, 3])
-					.broadcastOn(Environment.sharedDispatcher())
+					.broadcast()
 					.when(Throwable) { e = it }
 					.observeComplete { latch.countDown() }
 
@@ -353,10 +353,10 @@ class StreamsSpec extends Specification {
 					.take(4, TimeUnit.SECONDS)
 					.subscribeOn(Environment.workDispatcher())
 					.consume({
-						i++
-					}, null, {
-						last.onNext(i)
-					})
+				i++
+			}, null, {
+				last.onNext(i)
+			})
 
 		then:
 			last.await(5, TimeUnit.SECONDS) > 20_000
@@ -418,37 +418,37 @@ class StreamsSpec extends Specification {
 			tap.get() == [1, 2, 3]
 	}
 
-    def 'A Stream can check if there is a value satisfying a predicate'() {
-        given:
-            'a composable with values 1 to 5'
-            Stream s = Streams.from([1, 2, 3, 4, 5])
+	def 'A Stream can check if there is a value satisfying a predicate'() {
+		given:
+			'a composable with values 1 to 5'
+			Stream s = Streams.from([1, 2, 3, 4, 5])
 
-        when:
-            'checking for existence of values > 2 and the result of the check is collected'
-            def tap = s.exists { it > 2 }.buffer().tap()
+		when:
+			'checking for existence of values > 2 and the result of the check is collected'
+			def tap = s.exists { it > 2 }.buffer().log().tap()
 
-        then:
-            'collected should be true'
-            tap.get() == [ true ]
-
-
-        when:
-            'checking for existence of values > 5 and the result of the check is collected'
-            tap = s.exists { it > 5 }.buffer().tap()
-
-        then:
-            'collected should be false'
-            tap.get() == [ false ]
+		then:
+			'collected should be true'
+			tap.get() == [true]
 
 
-        when:
-            'checking always true predicate on empty stream and collecting the result'
-            tap = Streams.empty().exists{ true }.buffer().tap();
+		when:
+			'checking for existence of values > 5 and the result of the check is collected'
+			tap = s.exists { it > 5 }.buffer().tap()
 
-        then:
-            'collected should be false'
-            tap.get() == [ false ]
-    }
+		then:
+			'collected should be false'
+			tap.get() == [false]
+
+
+		when:
+			'checking always true predicate on empty stream and collecting the result'
+			tap = Streams.empty().exists { true }.buffer().tap();
+
+		then:
+			'collected should be false'
+			tap.get() == [false]
+	}
 
 	def "A Stream's initial values are passed to consumers"() {
 		given:
@@ -905,7 +905,7 @@ class StreamsSpec extends Specification {
 			def res = []
 			s.capacity(1).batchConsume(
 					{ res << it },
-					{ res << "r:${it*2}"; it*2 }
+					{ res << "r:${it * 2}"; it * 2 }
 			)
 
 		then:
@@ -1051,7 +1051,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'3 is emitted'
-			tap.get() == [ 3 ]
+			tap.get() == [3]
 
 		when:
 			'element with negative index is requested'
@@ -1081,7 +1081,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'3 is emitted'
-			tap.get() == [ 3 ]
+			tap.get() == [3]
 
 		when:
 			'element with index > number of values is requested'
@@ -1089,7 +1089,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'-1 is emitted'
-			tap.get() == [ -1 ]
+			tap.get() == [-1]
 	}
 
 	def "A Stream's values can be filtered"() {
@@ -1160,7 +1160,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source composable and a async processor'
 			def source = Broadcaster.<Integer> create()
-			def processor = RingBufferProcessor.<Integer>create()
+			def processor = RingBufferProcessor.<Integer> create()
 
 			def res = source.process(processor).map { it * 2 }.log('processed').toList()
 
@@ -1174,7 +1174,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the res is passed on'
-			res.await() == [2,4,6,8]
+			res.await() == [2, 4, 6, 8]
 	}
 
 	def "When a filter function throws an exception, the filtered composable accepts the error"() {
@@ -1426,7 +1426,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(150).log().buffer(350l, 650l, TimeUnit.MILLISECONDS).log().toList()
+			res = numbers.throttle(150).log('beforeBuffer').buffer(350l, 450l, TimeUnit.MILLISECONDS).log('afterBuffer').toList()
 
 		then:
 			'the collected lists are available'
@@ -1502,7 +1502,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(150).window(350l, 650l, TimeUnit.MILLISECONDS).flatMap { it.log('fm').buffer() }.toList()
+			res = numbers.throttle(150).window(350l, 450l, TimeUnit.MILLISECONDS).flatMap { it.log('fm').buffer() }.toList()
 
 		then:
 			'the collected lists are available'
@@ -1940,7 +1940,11 @@ class StreamsSpec extends Specification {
 				sleep(200)
 				it.onNext(3)
 				it.onComplete()
-			}.cache().elapsed().map { it.t1 }
+			}.log('beforeCache')
+					.cache()
+					.log('afterCache')
+					.elapsed()
+					.map { it.t1 }
 
 		when:
 			'consume it twice'
@@ -1963,10 +1967,10 @@ class StreamsSpec extends Specification {
 		then:
 			'dispatching works'
 			latch.await(2, TimeUnit.SECONDS)
+			!errors
 			nexts.size() == 6
 			nexts[0] + nexts[1] + nexts[2] >= 400
 			nexts[3] + nexts[4] + nexts[5] < 50
-			!errors
 	}
 
 	def 'Creating Streams from future'() {
@@ -2610,12 +2614,15 @@ class StreamsSpec extends Specification {
 		when:
 			'the stream triggers an exception for the 2 first elements and is using retry(2) to ignore them'
 			def i = 0
-			stream = stream.log().observe {
-				println it
+			stream = stream
+					.log('beforeObserve')
+					.observe {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
-			}.retry(2).observe { println it }.count()
+			}.retry(2)
+					.log('afterRetry')
+					.count()
 
 			def value = stream.tap()
 
@@ -2731,17 +2738,15 @@ class StreamsSpec extends Specification {
 			'using repeat() to ignore complete and resubscribe'
 			stream = Broadcaster.create()
 			i = 0
-			def tap = stream.repeat().observe { i++ }.consume()
+			def tap = stream.take(3).log().repeat().observe { i++ }.consume()
 
 			stream.onNext('test')
 			stream.onNext('test2')
 			stream.onNext('test3')
-			stream.onComplete()
 
 			stream.onNext('test')
 			stream.onNext('test2')
 			stream.onNext('test3')
-			stream.onComplete()
 
 			stream.onNext('test')
 			stream.onNext('test2')
@@ -2759,7 +2764,7 @@ class StreamsSpec extends Specification {
 			def value = Streams.create {
 				counter++
 				it.onComplete()
-			}.repeatWhen { attempts ->
+			}.log().repeatWhen { attempts ->
 				attempts.zipWith(Streams.range(1, 3)) { it.t2 }.flatMap { i ->
 					println "delay repeat by " + i + " second(s)"
 					Streams.timer(i)
@@ -2954,12 +2959,12 @@ class StreamsSpec extends Specification {
 		when: "data stream is decoded"
 			def res = Streams.just(data1, data2, data3)
 					.nest()
-					.flatMap{ IOStreams.decode(codec, it) }
+					.flatMap { IOStreams.decode(codec, it) }
 					.toList()
 					.await(5, TimeUnit.SECONDS)
 
 		then: "the buffers have been correctly decoded"
-			res == ['Hello World!','Hello World!','Hello World!','Test', 'Test', 'Test', 'End']
+			res == ['Hello World!', 'Hello World!', 'Hello World!', 'Test', 'Test', 'Test', 'End']
 	}
 
 

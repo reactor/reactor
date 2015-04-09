@@ -86,6 +86,17 @@ public class FanOutSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
+	public void start() {
+		forEach(new Consumer<PushSubscription<O>>() {
+			@Override
+			public void accept(PushSubscription<O> oPushSubscription) {
+				oPushSubscription.start();
+			}
+		});
+		super.start();
+	}
+
+	@Override
 	public void cancel() {
 		forEach(new Consumer<PushSubscription<O>>() {
 			@Override
@@ -120,6 +131,7 @@ public class FanOutSubscription<O> extends PushSubscription<O> {
 
 	public void forEach(Consumer<PushSubscription<O>> consumer) {
 		synchronized (subscriptions) {
+			if(subscriptions.isEmpty()) return;
 			for (PushSubscription<O> subscription : subscriptions) {
 				if (subscription != null) {
 					consumer.accept(subscription);

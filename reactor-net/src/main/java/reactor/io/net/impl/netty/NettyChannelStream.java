@@ -25,6 +25,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -108,7 +109,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	}
 
 	@Override
-	public void write(Object data, final Subscriber<?> onComplete, final boolean flush) {
+	public void write(final Object data, final Subscriber<?> onComplete, final boolean flush) {
 		ChannelFuture writeFuture = flush ? ioChannel.writeAndFlush(data) : ioChannel.write(data);
 
 		writeFuture.addListener(new ChannelFutureListener() {
@@ -117,7 +118,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 				boolean success = future.isSuccess();
 
 				if (!success) {
-					Throwable t = future.cause();
+					Throwable t = Exceptions.addValueAsLastCause(future.cause(), data);
 					if (null != onComplete) {
 						onComplete.onError(t);
 					}else if (Environment.alive()){

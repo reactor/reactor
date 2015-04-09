@@ -38,11 +38,15 @@ import java.util.concurrent.TimeUnit;
 public final class BufferShiftAction<T> extends Action<T, List<T>> {
 
 	private final List<List<T>> buckets = new LinkedList<>();
-	private final Pausable       timeshiftRegistration;
 	private final Consumer<Long> timeshiftTask;
+	private final long           timeshift;
+	private final TimeUnit       unit;
+	private final Timer          timer;
 	private final int            skip;
 	private final int            batchSize;
-	private       int            index;
+
+	private Pausable timeshiftRegistration;
+	private int      index;
 
 	public BufferShiftAction(Dispatcher dispatcher, int size, int skip) {
 		this(dispatcher, size, skip, -1l, -1l, null, null);
@@ -73,7 +77,13 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 			this.timeshiftTask = new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {
+					timeshiftRegistration = null;
+
 					try {
+						if (!isPublishing()) {
+							return;
+						}
+
 						dispatcher.tryDispatch(null, new Consumer<Void>() {
 							@Override
 							public void accept(Void aVoid) {
@@ -94,20 +104,15 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 				}
 			};
 
-			timeshiftRegistration = timer.schedule(timeshiftTask,
-					timeshift,
-					targetUnit);
-			timeshiftRegistration.pause();
+			this.timeshift = timeshift;
+			this.unit = targetUnit;
+			this.timer = timer;
 		} else {
-			this.timeshiftRegistration = null;
+			this.timeshift = -1l;
+			this.unit = null;
+			this.timer = null;
 			this.timeshiftTask = null;
 		}
-	}
-
-	@Override
-	public void requestMore(long n) {
-		if (timeshiftRegistration != null) timeshiftRegistration.resume();
-		super.requestMore(n);
 	}
 
 	@Override
@@ -117,7 +122,13 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 
 	@Override
 	protected void doNext(T value) {
-		if (timeshiftRegistration == null && index++ % skip == 0) {
+		if (timer != null) {
+			if(timeshiftRegistration == null) {
+				timeshiftRegistration = timer.submit(timeshiftTask,
+						timeshift,
+						unit);
+			}
+		} else if (index++ % skip == 0) {
 			buckets.add(batchSize < 2048 ? new ArrayList<T>(batchSize) : new ArrayList<T>());
 		}
 		flushCallback(value);
@@ -135,7 +146,7 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 			broadcastNext(bucket);
 		}
 		buckets.clear();
-		broadcastComplete();
+		super.doComplete();
 	}
 
 	private void flushCallback(T event) {
@@ -148,12 +159,6 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 				broadcastNext(bucket);
 			}
 		}
-	}
-
-	@Override
-	public void cancel() {
-		if (timeshiftRegistration != null) timeshiftRegistration.cancel();
-		super.cancel();
 	}
 
 	@Override

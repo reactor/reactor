@@ -118,6 +118,7 @@ class NettyTcpServerSpec extends Specification {
 
 	def "flush every 5 elems with manual decoding"() {
 		given: "a TcpServer and a TcpClient"
+			Environment.initializeIfEmpty()
 			def latch = new CountDownLatch(10)
 
 			def server = NetStreams.tcpServer(port)
@@ -153,12 +154,15 @@ class NettyTcpServerSpec extends Specification {
 
 		cleanup: "the client/server where stopped"
 			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			Environment.terminate()
 	}
 
 
 	def "retry strategies when server fails"() {
 		given: "a TcpServer and a TcpClient"
-			def latch = new CountDownLatch(10)
+			Environment.initializeIfEmpty().assignErrorJournal()
+		def elem = 10
+			def latch = new CountDownLatch(elem)
 
 			def server = NetStreams.tcpServer(port)
 			def client = NetStreams.tcpClient("localhost", port)
@@ -171,7 +175,7 @@ class NettyTcpServerSpec extends Specification {
 						.decode(codec)
 						.flatMap {
 							Streams.just(it)
-								.log('serve')
+								.log('flatmap-retry')
 								.observe {
 									if (i++ < 2) {
 										throw new Exception("test")
@@ -188,7 +192,7 @@ class NettyTcpServerSpec extends Specification {
 						.log('receive')
 						.consume { latch.countDown() }
 
-				Streams.range(1, 10)
+				Streams.range(1, elem)
 						.map { new Pojo(name: 'test' + it) }
 						.log('send')
 						.map(codec)
@@ -201,6 +205,7 @@ class NettyTcpServerSpec extends Specification {
 
 		cleanup: "the client/server where stopped"
 			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			Environment.terminate()
 	}
 
 

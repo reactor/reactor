@@ -111,6 +111,19 @@ public class CacheAction<T> extends Action<T, T> {
 	}
 
 	@Override
+	protected void subscribeWithSubscription(Subscriber<? super T> subscriber, PushSubscription<T> subscription) {
+		try {
+			if (!addSubscription(subscription)) {
+				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
+			} else {
+				subscriber.onSubscribe(subscription);
+			}
+		} catch (Exception e) {
+			subscriber.onError(e);
+		}
+	}
+
+	@Override
 	protected void doComplete() {
 		synchronized (values) {
 			values.add(Signal.<T>complete());

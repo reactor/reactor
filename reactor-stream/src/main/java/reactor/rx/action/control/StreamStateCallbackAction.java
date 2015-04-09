@@ -39,11 +39,11 @@ public class StreamStateCallbackAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void onShutdown() {
+	protected void doShutdown() {
 		if(cancelConsumer != null){
 			cancelConsumer.accept(null);
 		}
-		super.onShutdown();
+		super.doShutdown();
 	}
 
 	@Override

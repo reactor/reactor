@@ -39,6 +39,7 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 	private final Broadcaster<Long>      retryStream;
 	private final Publisher<? extends T> rootPublisher;
 	private Dispatcher             dispatcher;
+	private long pendingRequests = 0l;
 
 	public RepeatWhenAction(Dispatcher dispatcher,
 	                        Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
@@ -66,28 +67,35 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 		super.doComplete();
 	}
 
+	@Override
+	public void requestMore(long n) {
+		synchronized (this) {
+			if ((pendingRequests += n) < 0l) {
+				pendingRequests = Long.MAX_VALUE;
+			}
+		}
+		super.requestMore(n);
+	}
+
+	@Override
+	protected void doOnSubscribe(Subscription subscription) {
+		long pendingRequests = this.pendingRequests;
+		if(pendingRequests > 0) {
+			subscription.request(pendingRequests);
+		}
+	}
+
+
 	protected void doRetry() {
 		dispatcher.dispatch(null, new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
-				long pendingRequests = Long.MAX_VALUE;
 				if (rootPublisher != null) {
-					PushSubscription<T> upstream = upstreamSubscription;
-					if (upstream == null) {
-						rootPublisher.subscribe(RepeatWhenAction.this);
-						upstream = upstreamSubscription;
-					} else {
-						pendingRequests = upstream.pendingRequestSignals();
-						if(TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())){
-							dispatcher.shutdown();
-							dispatcher = Environment.tailRecurse();
-						}
-						cancel();
-						rootPublisher.subscribe(RepeatWhenAction.this);
+					if (TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())) {
+						dispatcher.shutdown();
+						dispatcher = Environment.tailRecurse();
 					}
-					if (upstream != null && pendingRequests != Long.MAX_VALUE) {
-						upstream.request(1);
-					}
+					rootPublisher.subscribe(RepeatWhenAction.this);
 				}
 			}
 		}, null);
@@ -96,8 +104,12 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 
 	@Override
 	public void onComplete() {
-		cancel();
-		retryStream.onNext(System.currentTimeMillis());
+		try {
+			cancel();
+			retryStream.onNext(System.currentTimeMillis());
+		}catch(Exception e){
+			doError(e);
+		}
 	}
 
 	@Override

@@ -69,7 +69,7 @@ import java.util.concurrent.TimeUnit;
  * Provides base functionality and an internal contract for subclasses that make use of
  * the {@link #map(reactor.fn.Function)} and {@link #filter(reactor.fn.Predicate)} methods.
  * <p>
- * A Stream can be implemented to perform specific actions on callbacks (doNext,doComplete,doError,doSubscribe).
+ * A Stream can be implemented to perform specific actions on callbacks (doNext,doComplete,doError,doOnSubscribe).
  * It is an asynchronous boundary and will run the callbacks using the input {@link Dispatcher}. Stream can
  * eventually produce a result {@code <O>} and will offer cascading over its own subscribers.
  * <p>
@@ -852,21 +852,21 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Connect an error-proof action that will ignore any error to the downstream consumers.
+	 * Connect an error-proof action that will transform an incoming error signal into a complete signal.
 	 *
 	 * @return a new fail-proof {@link Stream}
 	 */
-	public Stream<O> ignoreErrors() {
-		return ignoreErrors(Predicates.always());
+	public Stream<O> ignoreError() {
+		return ignoreError(Predicates.always());
 	}
 
 	/**
 	 * Connect an error-proof action based on the given predicate matching the current error.
 	 *
-	 * @param ignorePredicate a predicate to test if an error should be ignored and not passed to the consumers.
+	 * @param ignorePredicate a predicate to test if an error should be transformed to a complete signal.
 	 * @return a new fail-proof {@link Stream}
 	 */
-	public <E> Stream<O> ignoreErrors(final Predicate<? super Throwable> ignorePredicate) {
+	public <E> Stream<O> ignoreError(final Predicate<? super Throwable> ignorePredicate) {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
@@ -2933,7 +2933,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 					}
 
 					@Override
-					protected void onShutdown() {
+					protected void doShutdown() {
 						//IGNORE
 					}
 				};
@@ -2994,7 +2994,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 *
 	 * @return current child {@link reactor.rx.subscription.PushSubscription}
 	 */
-	public boolean cleanSubscriptionReference(PushSubscription<O> oPushSubscription) {
+	public boolean cancelSubscription(PushSubscription<O> oPushSubscription) {
 		return false;
 	}
 

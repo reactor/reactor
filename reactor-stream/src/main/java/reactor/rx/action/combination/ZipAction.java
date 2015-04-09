@@ -121,8 +121,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		broadcastTuple(true);
 
 		//can receive multiple queued complete signals
-		cancel();
-		broadcastComplete();
+		super.doComplete();
 	}
 
 	@Override

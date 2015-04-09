@@ -41,12 +41,15 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 
 	private final Consumer<Long> timeshiftTask;
 	private final List<ReactiveSubscription<T>> currentWindows = new LinkedList<>();
-	private final Pausable    timeshiftRegistration;
 	private final int         skip;
 	private final int         batchSize;
+	private final long           timeshift;
+	private final TimeUnit       unit;
+	private final Timer          timer;
 	private final Environment environment;
 	private final Dispatcher  dispatcher;
 	private       int         index;
+	private Pausable    timeshiftRegistration;
 
 	public WindowShiftAction(Environment environment, Dispatcher dispatcher, int size, int skip) {
 		this(environment, dispatcher, size, skip, -1l, -1l, null, null);
@@ -78,6 +81,11 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 			this.timeshiftTask = new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {
+					timeshiftRegistration = null;
+
+					if (!isPublishing()) {
+						return;
+					}
 					dispatcher.dispatch(null, new Consumer<Void>() {
 						@Override
 						public void accept(Void aVoid) {
@@ -94,23 +102,26 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 				}
 			};
 
-			timeshiftRegistration = timer.schedule(timeshiftTask, timeshift, targetUnit);
-			timeshiftRegistration.pause();
+			this.timeshift = timeshift;
+			this.unit = targetUnit;
+			this.timer = timer;
 		} else {
-			this.timeshiftRegistration = null;
+			this.timeshift = -1l;
+			this.unit = null;
+			this.timer = null;
 			this.timeshiftTask = null;
 		}
 	}
 
 	@Override
-	public void requestMore(long n) {
-		if (timeshiftRegistration != null) timeshiftRegistration.resume();
-		super.requestMore(n);
-	}
-
-	@Override
 	protected void doNext(T value) {
-		if (timeshiftRegistration == null && index++ % skip == 0) {
+		if (timer != null) {
+			if(timeshiftRegistration == null) {
+				timeshiftRegistration = timer.submit(timeshiftTask,
+						timeshift,
+						unit);
+			}
+		} else if (index++ % skip == 0) {
 			createWindowStream();
 		}
 		flushCallback(value);
@@ -122,7 +133,7 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 			bucket.onComplete();
 		}
 		currentWindows.clear();
-		broadcastComplete();
+		super.doComplete();
 	}
 
 	private void flushCallback(T event) {
@@ -135,12 +146,6 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 				bucket.onComplete();
 			}
 		}
-	}
-
-	@Override
-	public void cancel() {
-		if (timeshiftRegistration != null) timeshiftRegistration.cancel();
-		super.cancel();
 	}
 
 	protected ReactiveSubscription<T> createWindowStream() {

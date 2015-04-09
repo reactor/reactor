@@ -94,7 +94,11 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 				notifyShutdown();
 			}
 		});
+	}
 
+	@Override
+	public InetSocketAddress getListenAddress() {
+		return this.server.getListenAddress();
 	}
 
 	@Override
@@ -116,6 +120,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 		if (!handlers.iterator().hasNext()) {
 			channelStream.write(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND), null, false);
 		} else {
+			channelStream.subscribe(request.in());
 			writeStream = Streams.concat(handlers);
 			final Control c = subscribeChannelHandlers(writeStream, request);
 
@@ -125,7 +130,6 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 					c.cancel();
 				}
 			});
-			channelStream.subscribe(request.in());
 		}
 		return request;
 	}

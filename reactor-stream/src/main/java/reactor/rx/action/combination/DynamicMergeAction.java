@@ -120,6 +120,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 		if(wip == 0) {
 			fanInAction.scheduleCompletion();
 		}
+		super.onComplete();
 	}
 
 	@Override

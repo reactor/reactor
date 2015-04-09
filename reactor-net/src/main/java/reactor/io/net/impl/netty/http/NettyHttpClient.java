@@ -195,7 +195,6 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 			request) {
 
 		NettyHttpChannel<IN, OUT> httpChannel = new NettyHttpClientChannel(tcpStream, request);
-
 		notifyNewChannel(httpChannel);
 		mergeWrite(httpChannel);
 		return httpChannel;

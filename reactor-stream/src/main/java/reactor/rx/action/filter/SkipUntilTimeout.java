@@ -48,7 +48,7 @@ public class SkipUntilTimeout<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
+	protected void doOnSubscribe(Subscription subscription) {
 		timer.submit(new Consumer<Long>() {
 			@Override
 			public void accept(Long aLong) {

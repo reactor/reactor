@@ -46,9 +46,9 @@ public class LoggerAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
+	protected void doOnSubscribe(Subscription subscription) {
 		log.info("onSubscribe: {}", subscription);
-		super.doSubscribe(subscription);
+		super.doOnSubscribe(subscription);
 	}
 
 	@Override

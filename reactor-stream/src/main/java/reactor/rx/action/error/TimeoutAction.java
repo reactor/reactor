@@ -65,8 +65,8 @@ public final class TimeoutAction<T> extends FallbackAction<T> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		super.doSubscribe(subscription);
+	protected void doOnSubscribe(Subscription subscription) {
+		super.doOnSubscribe(subscription);
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
@@ -79,20 +79,11 @@ public final class TimeoutAction<T> extends FallbackAction<T> {
 	}
 
 	@Override
-	public void cancel() {
+	protected void doShutdown() {
 		if (timeoutRegistration != null) {
 			timeoutRegistration.cancel();
 			timeoutRegistration = null;
 		}
-		super.cancel();
-	}
-
-	@Override
-	public void doComplete() {
-		if (timeoutRegistration != null) {
-			timeoutRegistration.cancel();
-			timeoutRegistration = null;
-		}
-		super.doComplete();
+		super.doShutdown();
 	}
 }

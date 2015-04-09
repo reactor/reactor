@@ -160,7 +160,8 @@ public class StreamTests extends AbstractReactorTest {
 							if (i == 3)
 								throw new IllegalArgumentException();
 						})
-						.ignoreErrors()
+						.ignoreError()
+						.log()
 						.map(new Function<Integer, Integer>() {
 							int sum = 0;
 
@@ -172,7 +173,7 @@ public class StreamTests extends AbstractReactorTest {
 						})
 						.when(IllegalArgumentException.class, e -> exception.set(true));
 
-		await(4, s, is(12));
+		await(2, s, is(3));
 		assertThat("exception triggered", exception.get(), is(false));
 	}
 
@@ -751,7 +752,7 @@ public class StreamTests extends AbstractReactorTest {
 			Subscription s;
 
 			@Override
-			public void doSubscribe(Subscription s) {
+			public void doOnSubscribe(Subscription s) {
 				this.s = s;
 				s.request(1);
 			}

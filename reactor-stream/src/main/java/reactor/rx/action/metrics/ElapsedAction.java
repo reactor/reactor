@@ -29,8 +29,8 @@ public class ElapsedAction<T> extends Action<T, Tuple2<Long, T>> {
 	private long lastTime;
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		super.doSubscribe(subscription);
+	protected void doOnSubscribe(Subscription subscription) {
+		super.doOnSubscribe(subscription);
 		lastTime = System.currentTimeMillis();
 	}
 

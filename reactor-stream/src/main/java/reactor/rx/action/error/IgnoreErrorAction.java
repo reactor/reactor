@@ -40,6 +40,8 @@ final public class IgnoreErrorAction<T> extends Action<T, T> {
 	protected void doError(Throwable cause) {
 		if (!ignorePredicate.test(cause)) {
 			super.doError(cause);
+		}else{
+			doComplete();
 		}
 	}
 

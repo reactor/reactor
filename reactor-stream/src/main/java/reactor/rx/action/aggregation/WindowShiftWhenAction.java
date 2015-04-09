@@ -56,8 +56,8 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		super.doSubscribe(subscription);
+	protected void doOnSubscribe(Subscription subscription) {
+		super.doOnSubscribe(subscription);
 
 		bucketOpening.subscribe(new Subscriber<Object>() {
 			Subscription s;
@@ -117,7 +117,7 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 			bucket.onComplete();
 		}
 		currentWindows.clear();
-		broadcastComplete();
+		super.doComplete();
 	}
 
 	@Override

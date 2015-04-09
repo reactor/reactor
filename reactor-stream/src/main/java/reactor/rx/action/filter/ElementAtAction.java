@@ -52,8 +52,8 @@ public class ElementAtAction<T> extends Action<T, T> {
     @Override
     protected void doNext(T ev) {
         if (currentIndex == index) {
-            broadcastNext(ev);
             cancel();
+            broadcastNext(ev);
             broadcastComplete();
         }
         currentIndex++;

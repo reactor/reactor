@@ -74,7 +74,7 @@ public abstract class TcpServer<IN, OUT>
 	 *
 	 * @return
 	 */
-	protected InetSocketAddress getListenAddress() {
+	public InetSocketAddress getListenAddress() {
 		return listenAddress;
 	}
 

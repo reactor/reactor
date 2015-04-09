@@ -48,18 +48,18 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void doStart(long pending) {
-		requestMore(pending);
-	}
-
-	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
 	}
 
 	@Override
 	public void onComplete() {
-		throttleStream.onComplete();
+		try {
+			throttleStream.onComplete();
+			doShutdown();
+		}catch(Exception e){
+			doError(e);
+		}
 	}
 
 	@Override

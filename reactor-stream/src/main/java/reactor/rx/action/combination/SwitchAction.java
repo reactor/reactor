@@ -82,7 +82,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 	}
 
 	@Override
-	protected void onShutdown() {
+	protected void doShutdown() {
 		SwitchSubscriber subscriber;
 		synchronized (this) {
 			subscriber = switchSubscriber;
@@ -93,7 +93,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 		if (subscriber != null) {
 			subscriber.cancel();
 		}
-		super.onShutdown();
+		super.doShutdown();
 	}
 
 	@Override

@@ -93,24 +93,10 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void doStart(long pending) {
-		requestMore(pending);
-		//super.requestMore(1);
-	}
-
-	@Override
-	public void cancel() {
+	protected void doShutdown() {
 		if(timeoutRegistration != null) {
 			timeoutRegistration.cancel();
 		}
-		super.cancel();
-	}
-
-	@Override
-	public void doComplete() {
-		if(timeoutRegistration != null) {
-			timeoutRegistration.cancel();
-		}
-		super.doComplete();
+		super.doShutdown();
 	}
 }

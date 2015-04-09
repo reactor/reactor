@@ -151,7 +151,6 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		};
 	}
 
-
 	@Override
 	protected Control mergeWrite(ChannelStream<IN, OUT> ch) {
 		final Control c = super.mergeWrite(ch);

@@ -60,18 +60,19 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		super.doError(ev);
-		if (currentWindow != null)
+		if (currentWindow != null) {
 			currentWindow.onError(ev);
+		}
+		super.doError(ev);
 	}
 
 	@Override
 	protected void doComplete() {
-		super.doComplete();
 		if (currentWindow != null) {
 			currentWindow.onComplete();
 			currentWindow = null;
 		}
+		super.doComplete();
 	}
 
 	@Override

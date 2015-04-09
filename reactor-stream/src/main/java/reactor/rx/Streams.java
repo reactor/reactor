@@ -588,10 +588,17 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> concat(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
 		final List<Publisher<? extends T>> publishers = new ArrayList<>();
 		for (Publisher<? extends T> mergedPublisher : mergedPublishers) {
 			publishers.add(mergedPublisher);
+		}
+		int size = publishers.size();
+		if (size == 1) {
+			return Streams.wrap((Publisher<T>) publishers.get(0));
+		} else if (size == 0) {
+			return empty();
 		}
 		return new ConcatAction<T>(SynchronousDispatcher.INSTANCE, publishers);
 	}

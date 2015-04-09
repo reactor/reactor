@@ -57,14 +57,18 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 
 		InnerSubscriber(FanInAction<I, I, I, ? extends FanInAction.InnerSubscriber<I, I, I>> outerAction) {
 			super(outerAction);
+
+			setSubscription(
+					new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(null, this)
+			);
 		}
 
 		@Override
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(final Subscription subscription) {
-			setSubscription(
-					new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(subscription, this)
-			);
+			s.wrapped = subscription;
+			pendingRequests = outerAction.innerSubscriptions.pendingRequestSignals();
+
 			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();
 			}
@@ -119,13 +123,13 @@ final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.Inn
 		@SuppressWarnings("unchecked")
 		int addSubscription(FanInAction.InnerSubscriber s) {
 			int newSize = super.addSubscription(s);
-			current = peek();
 			return newSize;
 		}
 
 		@Override
 		protected void parallelRequest(long elements) {
-			if (current != null) {
+			current = peek();
+			if (current != null && current.wrapped != null) {
 				current.request(elements);
 			} else {
 				updatePendingRequests(elements);

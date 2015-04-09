@@ -32,7 +32,7 @@ class HttpSpec extends Specification {
 	Environment env
 
 	def setup() {
-		env = Environment.initializeIfEmpty()
+		env = Environment.initializeIfEmpty().assignErrorJournal()
 	}
 
 	def "http responds to requests from clients"() {

@@ -86,7 +86,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	public void cancel() {
 		TERMINAL_UPDATER.set(this, 1);
 		if (publisher != null) {
-			publisher.cleanSubscriptionReference(this);
+			publisher.cancelSubscription(this);
 		}
 	}
 
@@ -130,6 +130,20 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 				newPending = n > 0 ? Long.MAX_VALUE : 0;
 			}
 		}while(!PENDING_UPDATER.compareAndSet(this, oldPending, newPending));
+	}
+
+	public void start(){
+		if(subscriber != null && markAsStarted()){
+			subscriber.onSubscribe(this);
+		}
+	}
+
+	public final boolean markAsStarted(){
+		return TERMINAL_UPDATER.compareAndSet(this, -1, 0);
+	}
+
+	public final boolean markAsDeferredStart(){
+		return TERMINAL_UPDATER.compareAndSet(this, 0, -1);
 	}
 
 	protected void onRequest(long n) {

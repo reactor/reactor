@@ -583,7 +583,7 @@ public class TcpServerTests {
 
 		private LengthFieldMessageWriter(int port) {
 			this.port = port;
-			this.length = rand.nextInt(256);
+			this.length = rand.nextInt(156)+100;
 		}
 
 		@Override

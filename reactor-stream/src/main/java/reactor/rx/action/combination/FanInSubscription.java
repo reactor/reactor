@@ -230,7 +230,9 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 			extends FanInAction.InnerSubscriber<O, E, ?>> implements Subscription {
 
 		final SUBSCRIBER   subscriber;
-		final Subscription wrapped;
+
+		//lazy mutable to respect ordering for peek() operations
+		Subscription wrapped;
 
 		public InnerSubscription(Subscription wrapped, SUBSCRIBER subscriber) {
 			this.wrapped = wrapped;

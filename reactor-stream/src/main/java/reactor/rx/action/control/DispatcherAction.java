@@ -50,19 +50,13 @@ public final class DispatcherAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
+	protected void doOnSubscribe(Subscription subscription) {
 		long toRequest = PENDING_UPDATER.getAndSet(this, 0l);
 		if (toRequest > 0l) {
 			requestMore(toRequest);
 		}
 	}
 
-
-
-	@Override
-	protected void doStart(long pending) {
-		//
-	}
 
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {

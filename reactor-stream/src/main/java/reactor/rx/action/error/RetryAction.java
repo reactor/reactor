@@ -24,7 +24,6 @@ import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.Predicate;
 import reactor.rx.action.Action;
-import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
@@ -54,9 +53,9 @@ public class RetryAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		dispatcher = Environment.tailRecurse();
-		super.doSubscribe(subscription);
+	protected void doOnSubscribe(Subscription subscription) {
+		long pendingRequest = this.pendingRequests;
+		subscription.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);
 	}
 
 	@Override
@@ -78,8 +77,10 @@ public class RetryAction<T> extends Action<T, T> {
 		if ((numRetries != -1 && ++currentNumRetries > numRetries) && (retryMatcher == null || !retryMatcher.test
 				(throwable))) {
 			doError(throwable);
+			doShutdown();
 			currentNumRetries = 0;
 		} else {
+			cancel();
 			dispatcher.dispatch(throwable, throwableConsumer, null);
 
 		}
@@ -103,22 +104,13 @@ public class RetryAction<T> extends Action<T, T> {
 	private class ThrowableConsumer implements Consumer<Throwable> {
 		@Override
 		public void accept(Throwable throwable) {
-			PushSubscription<?> upstream = upstreamSubscription;
-			if (upstream != null) {
-				long pendingRequests = RetryAction.this.pendingRequests;
 				if (rootPublisher != null) {
 					if(TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())){
 						dispatcher.shutdown();
 						dispatcher = Environment.tailRecurse();
 					}
-					cancel();
 					rootPublisher.subscribe(RetryAction.this);
-					upstream = upstreamSubscription;
 				}
-				if (upstream != null && pendingRequests >= 0) {
-					upstream.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);
-				}
-			}
 		}
 	}
 }

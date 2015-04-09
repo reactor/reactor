@@ -42,8 +42,6 @@ import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * An Action is a reactive component to subscribe to a {@link org.reactivestreams.Publisher} and in particular
  * to a {@link reactor.rx.Stream}. Stream is usually the place where actions are created.
@@ -142,7 +140,7 @@ public abstract class Action<I, O> extends Stream<O>
 				subscription.maxCapacity(asyncSubscriber.getCapacity());
 			}
 
-			subscribeWithSubscription(subscriber, subscription, asyncSubscriber == null);
+			subscribeWithSubscription(subscriber, subscription);
 
 		} catch (Exception e) {
 			subscriber.onError(e);
@@ -151,7 +149,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		if(subscription == null){
+		if (subscription == null) {
 			throw new NullPointerException("Spec 2.13: Subscription cannot be null");
 		}
 
@@ -167,14 +165,17 @@ public abstract class Action<I, O> extends Stream<O>
 		upstreamSubscription.maxCapacity(getCapacity());
 
 		try {
-			doSubscribe(subscription);
-
-			long pending;
-			if (downstreamSubscription != null && (pending = downstreamSubscription.pendingRequestSignals()) > 0l) {
-				doStart(pending);
-			}
+			doOnSubscribe(subscription);
+			doStart();
 		} catch (Throwable t) {
 			doError(t);
+		}
+	}
+
+	protected final void doStart() {
+		final PushSubscription<O> downSub = downstreamSubscription;
+		if (downSub != null) {
+				downSub.start();
 		}
 	}
 
@@ -185,7 +186,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onNext(I ev) {
-		if(ev == null){
+		if (ev == null) {
 			throw new NullPointerException("Spec 2.13: Signal cannot be null");
 		}
 		try {
@@ -199,6 +200,7 @@ public abstract class Action<I, O> extends Stream<O>
 	public void onComplete() {
 		try {
 			doComplete();
+			doShutdown();
 		} catch (Throwable t) {
 			doError(t);
 		}
@@ -206,11 +208,12 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onError(Throwable cause) {
-		if(cause == null){
+		if (cause == null) {
 			throw new NullPointerException("Spec 2.13: Signal cannot be null");
 		}
 		if (upstreamSubscription != null) upstreamSubscription.updatePendingRequests(0l);
 		doError(cause);
+		doShutdown();
 	}
 
 	/**
@@ -379,10 +382,10 @@ public abstract class Action<I, O> extends Stream<O>
 							super.request(elements);
 							requestUpstream(capacity, isComplete(), elements);
 						}
-					}, false);
+					});
 				} else {
 					subscribeWithSubscription(newStream,
-							createSubscription(newStream, queueSupplier.get()), false);
+							createSubscription(newStream, queueSupplier.get()));
 				}
 				return newStream;
 			}
@@ -509,12 +512,12 @@ public abstract class Action<I, O> extends Stream<O>
 	 */
 
 	@Override
-	public boolean cleanSubscriptionReference(final PushSubscription<O> subscription) {
+	public boolean cancelSubscription(final PushSubscription<O> subscription) {
 		if (this.downstreamSubscription == null) return false;
 
 		if (subscription == this.downstreamSubscription) {
 			this.downstreamSubscription = null;
-			onShutdown();
+			cancel();
 			return true;
 		} else {
 			PushSubscription<O> dsub = this.downstreamSubscription;
@@ -523,7 +526,7 @@ public abstract class Action<I, O> extends Stream<O>
 						((FanOutSubscription<O>) this.downstreamSubscription);
 
 				if (fsub.remove(subscription) && fsub.isEmpty()) {
-					onShutdown();
+					cancel();
 					return true;
 				}
 			}
@@ -575,26 +578,16 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 	}
 
-	protected void doSubscribe(Subscription subscription) {
+	protected void doOnSubscribe(Subscription subscription) {
 	}
 
 	protected void doComplete() {
-		if (downstreamSubscription == null) {
-			cancel();
-		}
 		broadcastComplete();
-	}
-
-	protected void doStart(long pending) {
-		upstreamSubscription.request(pending);
 	}
 
 	abstract protected void doNext(I ev);
 
 	protected void doError(Throwable ev) {
-		if (downstreamSubscription == null) {
-			cancel();
-		}
 		if (downstreamSubscription != null) {
 			try {
 				downstreamSubscription.onError(ev);
@@ -627,51 +620,15 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @param subscriber
 	 * @param subscription
 	 */
-	protected final void subscribeWithSubscription(final Subscriber<? super O> subscriber, final PushSubscription<O>
-			subscription, boolean dispatched) {
+	protected void subscribeWithSubscription(final Subscriber<? super O> subscriber, final PushSubscription<O>
+			subscription) {
 		try {
-			if (addSubscription(subscription)) {
-				if (!dispatched) {
-					subscriber.onSubscribe(subscription);
-				} else {
-					Dispatcher _dispatcher = getDispatcher();
-
-					final Dispatcher dispatcher =
-							SynchronousDispatcher.INSTANCE == _dispatcher ?
-									TailRecurseDispatcher.INSTANCE :
-									_dispatcher;
-
-					final AtomicLong pendingOnSub = new AtomicLong(-1l);
-							subscriber.onSubscribe(new Subscription() {
-								@Override
-								public void request(long n) {
-									if(!pendingOnSub.compareAndSet(-1l, n)) {
-										dispatcher.dispatch(n, subscription, null);
-									}
-								}
-
-								@Override
-								public void cancel() {
-									subscription.cancel();
-								}
-
-								@Override
-								public int hashCode() {
-									return subscriber.hashCode();
-								}
-
-								@Override
-								public boolean equals(Object obj) {
-									return subscriber.equals(obj);
-								}
-							});
-
-					if(!pendingOnSub.compareAndSet(-1l, 0l)){
-						dispatcher.dispatch(pendingOnSub.get(), subscription, null);
-					}
-				}
-			} else {
+			if (!addSubscription(subscription)) {
 				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
+			} else if (upstreamSubscription != null) {
+				subscriber.onSubscribe(subscription);
+			} else {
+				subscription.markAsDeferredStart();
 			}
 		} catch (Exception e) {
 			subscriber.onError(e);
@@ -701,8 +658,8 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 	}
 
-	protected void onShutdown() {
-		cancel();
+	protected void doShutdown() {
+		recycle();
 	}
 
 	private boolean inspectPublisher(Action<?, ?> that, Class<?> actionClass) {
@@ -715,7 +672,6 @@ public abstract class Action<I, O> extends Stream<O>
 	public void recycle() {
 		downstreamSubscription = null;
 		upstreamSubscription = null;
-		capacity = Long.MAX_VALUE;
 	}
 
 	@Override

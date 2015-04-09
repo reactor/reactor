@@ -36,8 +36,8 @@ public class ExistsAction<T> extends Action<T, Boolean> {
     protected void doNext(T ev) {
         if (predicate.test(ev)) {
             elementFound = true;
-            broadcastNext(true);
             cancel();
+            broadcastNext(true);
             broadcastComplete();
         }
     }

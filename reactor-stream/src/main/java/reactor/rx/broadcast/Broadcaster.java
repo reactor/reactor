@@ -16,6 +16,7 @@
 package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
@@ -34,6 +35,19 @@ import reactor.rx.subscription.ReactiveSubscription;
  * @author Stephane Maldini
  */
 public class Broadcaster<O> extends Action<O, O> {
+
+	@SuppressWarnings("unchecked")
+	static public final Subscription HOT_SUBSCRIPTION = new PushSubscription(null, null) {
+		@Override
+		public void request(long n) {
+			//IGNORE
+		}
+
+		@Override
+		public void cancel() {
+			//IGNORE
+		}
+	};
 
 	protected final Dispatcher  dispatcher;
 	protected final Environment environment;
@@ -101,10 +115,14 @@ public class Broadcaster<O> extends Action<O, O> {
 	 *
 	 * INTERNAL
 	 */
+	@SuppressWarnings("unchecked")
 	protected Broadcaster(Environment environment, Dispatcher dispatcher, long capacity) {
 		super(capacity);
 		this.dispatcher = dispatcher;
 		this.environment = environment;
+
+		//start broadcaster
+		this.upstreamSubscription = (PushSubscription<O>)HOT_SUBSCRIPTION;
 	}
 
 	@Override
@@ -126,6 +144,22 @@ public class Broadcaster<O> extends Action<O, O> {
 			dispatcher.dispatch(ev, this, null);
 		} else {
 			super.onNext(ev);
+		}
+	}
+
+	@Override
+	public void onSubscribe(Subscription subscription) {
+		if(upstreamSubscription == HOT_SUBSCRIPTION){
+			upstreamSubscription = null;
+			super.onSubscribe(subscription);
+
+			PushSubscription<O> downSub = downstreamSubscription;
+			if(downSub != null && downSub.pendingRequestSignals() > 0L ){
+				subscription.request(downSub.pendingRequestSignals());
+			}
+
+		}else{
+			super.onSubscribe(subscription);
 		}
 	}
 
@@ -190,9 +224,49 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
+	protected void subscribeWithSubscription(Subscriber<? super O> subscriber, PushSubscription<O> subscription) {
+		try {
+			if (!addSubscription(subscription)) {
+				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
+			} else {
+				subscriber.onSubscribe(subscription);
+			}
+		} catch (Exception e) {
+			subscriber.onError(e);
+		}
+	}
+
+	@Override
+	public void cancel() {
+		if(upstreamSubscription != HOT_SUBSCRIPTION){
+			super.cancel();
+		}
+	}
+
+	@Override
+	public void recycle() {
+		if(HOT_SUBSCRIPTION != upstreamSubscription){
+			upstreamSubscription = null;
+		}
+		downstreamSubscription = null;
+	}
+
+	@Override
 	public Broadcaster<O> capacity(long elements) {
 		super.capacity(elements);
 		return this;
+	}
+
+	@Override
+	protected void requestUpstream(long capacity, boolean terminated, long elements) {
+		if (upstreamSubscription != null && upstreamSubscription != HOT_SUBSCRIPTION && !terminated) {
+			requestMore(elements);
+		} else {
+			PushSubscription<O> _downstreamSubscription = downstreamSubscription;
+			if (_downstreamSubscription != null && _downstreamSubscription.pendingRequestSignals() == 0L) {
+				_downstreamSubscription.updatePendingRequests(elements);
+			}
+		}
 	}
 
 

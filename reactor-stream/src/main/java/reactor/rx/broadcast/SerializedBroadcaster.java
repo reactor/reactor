@@ -70,6 +70,7 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
+		super.onSubscribe(subscription);
 		serializer.onSubscribe(subscription);
 	}
 

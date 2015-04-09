@@ -30,8 +30,8 @@ public class MaterializeAction<T> extends Action<T, Signal<T>> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		super.doSubscribe(subscription);
+	protected void doOnSubscribe(Subscription subscription) {
+		super.doOnSubscribe(subscription);
 		broadcastNext(Signal.<T>subscribe(subscription));
 	}
 

@@ -35,7 +35,6 @@ import reactor.rx.broadcast.Broadcaster;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -176,15 +175,6 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 
 	Consumer<OUT> writeThrough(boolean autoflush) {
 		return new WriteConsumer(autoflush);
-	}
-
-	protected final void cascadeErrorToPeer(Throwable t) {
-		if(IOException.class == t.getClass()){
-			log.debug("Writing on channel failed", t);
-		}else {
-			log.error("Writing on channel failed", t);
-		}
-		peer.notifyError(t);
 	}
 
 	protected void doDecoded(IN in) {

@@ -33,7 +33,6 @@ import reactor.rx.subscription.PushSubscription;
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
- * @author Andy Wilkinson
  */
 public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdapter {
 
@@ -54,10 +53,6 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 
 	public PushSubscription<IN> subscription() {
 		return channelSubscription;
-	}
-
-	public NettyChannelStream<IN, ?> channelStream() {
-		return channelStream;
 	}
 
 	@Override
@@ -88,8 +83,8 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 					}
 				}
 			};
-			channelStream.registerOnPeer();
 			subscriber.onSubscribe(channelSubscription);
+			channelStream.registerOnPeer();
 			super.channelActive(ctx);
 		} catch (Throwable err) {
 			subscriber.onError(err);

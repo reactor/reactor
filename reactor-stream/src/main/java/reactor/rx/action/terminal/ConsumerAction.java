@@ -90,7 +90,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
+	protected void doOnSubscribe(Subscription subscription) {
 		long toRequest;
 		synchronized (this){
 			toRequest = pendingRequests;

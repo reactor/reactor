@@ -59,8 +59,8 @@ public class SmokeTests {
 	public void testMultipleConsumersMultipleTimes() throws Exception {
 		Sender sender = new Sender();
 
-		int count = 100_000;
-		int threads = 6;
+		int count = 250_000;
+		int threads = 3;
 		int fulltotaltext = 0;
 		int fulltotalints = 0;
 		int iter = 3;
@@ -97,7 +97,7 @@ public class SmokeTests {
 
 			String msg = "Run number " + t;
 			Collections.sort(numbersNoEndsInt);
-			System.out.println(numbersNoEndsInt.size()+"/"+(integer.get()*100)+"["+StringUtils.collectionToCommaDelimitedString(numbersNoEndsInt)+"]");
+			System.out.println(numbersNoEndsInt.size()+"/"+(integer.get()*100));
 			// we can't measure individual session anymore so just
 			// check that below lists match.
 			assertThat(msg, numbersNoEndsInt.size(), is(numbersNoEnds.size()));
@@ -163,7 +163,8 @@ public class SmokeTests {
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
 			return bufferStream
-					.take(5, TimeUnit.SECONDS)
+					.timeout(3, TimeUnit.SECONDS, Streams.empty())
+					.observeComplete(v -> System.out.println("COMPLETE"))
 					.concatWith(Streams.just(new Buffer().append("END\n".getBytes(Charset.forName("UTF-8")))));
 		});
 
@@ -269,6 +270,7 @@ public class SmokeTests {
 		@SuppressWarnings("resource")
 		@Override
 		public Buffer apply(Buffer t) {
+			System.out.println("XXXXXX" + Thread.currentThread());
 			return t.flip();
 		}
 

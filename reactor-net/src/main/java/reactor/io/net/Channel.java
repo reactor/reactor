@@ -65,7 +65,7 @@ public interface Channel<IN, OUT> extends Publisher<IN> {
 	/**
 	 * Spec class for assigning multiple event handlers on a channel.
 	 */
-	public static interface ConsumerSpec {
+	interface ConsumerSpec {
 		/**
 		 * Assign a {@link Runnable} to be invoked when the channel is closed.
 		 *

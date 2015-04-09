@@ -38,8 +38,8 @@ public class BufferWhenAction<T> extends Action<T, List<T>> {
 	}
 
 	@Override
-	protected void doSubscribe(Subscription subscription) {
-		super.doSubscribe(subscription);
+	protected void doOnSubscribe(Subscription subscription) {
+		super.doOnSubscribe(subscription);
 
 		boundarySupplier.get().subscribe(new Subscriber<Object>() {
 
