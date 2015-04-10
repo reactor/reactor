@@ -73,7 +73,7 @@ public final class TimeoutAction<T> extends FallbackAction<T> {
 
 	@Override
 	protected void doNormalNext(T ev) {
-		timeoutRegistration.cancel();
+		if(timeoutRegistration != null) timeoutRegistration.cancel();
 		broadcastNext(ev);
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}

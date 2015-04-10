@@ -37,14 +37,12 @@ import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 
-import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 
 /**
@@ -68,7 +66,7 @@ public class SmokeTests {
 		for (int t=0; t<iter; t++) {
 			List<List<String>> clientDatas = getClientDatas(threads, sender, count);
 
-			assertThat(clientDatas.size(), is(threads));
+			assertThat(clientDatas.size(), greaterThanOrEqualTo(threads));
 
 			List<String> numbersNoEnds = new ArrayList<String>();
 			List<Integer> numbersNoEndsInt = new ArrayList<Integer>();
@@ -97,12 +95,19 @@ public class SmokeTests {
 
 			String msg = "Run number " + t;
 			Collections.sort(numbersNoEndsInt);
-			System.out.println(numbersNoEndsInt.size()+"/"+(integer.get()*100));
+			System.out.println(numbersNoEndsInt.size() + "/" + (integer.get() * 100));
 			// we can't measure individual session anymore so just
 			// check that below lists match.
 			assertThat(msg, numbersNoEndsInt.size(), is(numbersNoEnds.size()));
+			System.out.println(numbersNoEndsInt);
+			for(int i = 0; i < numbersNoEndsInt.size(); i++){
+				if(i > 0){
+					assertThat(numbersNoEndsInt.get(i - 1), is(numbersNoEndsInt.get(i) - 1));
+				}
+			}
 		}
 		// check full totals because we know what this should be
+
 		assertThat(fulltotalints, is(count*iter));
 		assertThat(fulltotaltext, is(count*iter));
 	}
@@ -136,11 +141,8 @@ public class SmokeTests {
 				.wrap(processor)
 				//.log("test")
 				.window(100, 1, TimeUnit.SECONDS)
-				.flatMap(s -> s.reduce(new Buffer(), Buffer::append).observe(d ->
-								integer.getAndIncrement()
-				))
-				.process(RingBufferWorkProcessor.create(false))
-				;
+				.flatMap(s -> s.reduce(new Buffer(), Buffer::append))
+						.process(RingBufferWorkProcessor.create(false));
 
 //		Stream<Buffer> bufferStream = Streams
 //				.wrap(processor)
@@ -163,10 +165,13 @@ public class SmokeTests {
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
 			return bufferStream
-
-					.take(5L, TimeUnit.SECONDS)
-					.observeComplete(v -> System.out.println("COMPLETE"))
-					.concatWith(Streams.just(new Buffer().append("END\n".getBytes(Charset.forName("UTF-8")))));
+					.observe(d ->
+									integer.getAndIncrement()
+					)
+					.take(10)
+					.timeout(3, TimeUnit.SECONDS, Streams.<Buffer>empty())
+					.concatWith(Streams.just(Buffer.wrap("END\n")))
+					.observeComplete(v -> System.out.println("YYYYY COMPLETE "+Thread.currentThread()));
 		});
 
 		httpServer.start().awaitSuccess();
@@ -202,7 +207,6 @@ public class SmokeTests {
 
 	private List<List<String>> getClientDatas(int threadCount, final Sender sender, int count) throws Exception {
 		final CountDownLatch latch = new CountDownLatch(1);
-		final CountDownLatch promiseLatch = new CountDownLatch(threadCount);
 		final ArrayList<Thread> joins = new ArrayList<Thread>();
 		final ArrayList<List<String>> datas = new ArrayList<List<String>>();
 
@@ -225,9 +229,17 @@ public class SmokeTests {
 				public void run() {
 					try {
 						latch.await();
-						Promise<List<String>> clientDataPromise = getClientDataPromise();
-						datas.add(clientDataPromise.await(40, TimeUnit.SECONDS));
-						promiseLatch.countDown();
+						boolean end = false;
+						while(!end) {
+							Promise<List<String>> clientDataPromise = getClientDataPromise();
+							List<String> res = clientDataPromise.await(40, TimeUnit.SECONDS);
+							if(res == null || res.size() == 1L && res.get(0) != null && res.get(0).contains("END")){
+								System.out.println("Client finished");
+								end = true;
+							}else {
+								datas.add(res);
+							}
+						}
 					} catch (Exception ie) {
 						ie.printStackTrace();
 					}
@@ -238,7 +250,6 @@ public class SmokeTests {
 			t.start();
 		}
 		latch.countDown();
-		promiseLatch.await();
 		Thread.sleep(1000);
 		for (Thread t : joins) {
 			try {
@@ -261,7 +272,7 @@ public class SmokeTests {
 			for (int i = 0; i < count; i++) {
 //				System.out.println("XXXX " + x);
 				String data = x++ + "\n";
-				processor.onNext(new Buffer().append(data.getBytes(Charset.forName("UTF-8"))).flip());
+				processor.onNext(Buffer.wrap(data));
 			}
 		}
 	}
@@ -271,8 +282,9 @@ public class SmokeTests {
 		@SuppressWarnings("resource")
 		@Override
 		public Buffer apply(Buffer t) {
-			System.out.println("XXXXXX" + Thread.currentThread());
-			return t.flip();
+			Buffer b = t.flip();
+			System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
+			return b;
 		}
 
 		@Override

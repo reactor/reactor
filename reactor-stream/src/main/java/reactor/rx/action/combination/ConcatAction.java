@@ -55,7 +55,10 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 
 	@Override
 	protected void doNext(Publisher<? extends T> ev) {
-		ev.subscribe(new ConcatInnerSubscriber());
+		ConcatInnerSubscriber concatInnerSubscriber = new ConcatInnerSubscriber();
+		queue.add(Signal.next(concatInnerSubscriber));
+		WIP_UPDATER.getAndIncrement(ConcatAction.this);
+		ev.subscribe(concatInnerSubscriber);
 	}
 
 	@Override
@@ -65,7 +68,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 			if (WIP_UPDATER.getAndIncrement(this) == 0) {
 				subscribeNext();
 			}
-		}catch(Exception e){
+		} catch (Exception e) {
 			doError(e);
 		}
 	}
@@ -123,7 +126,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 	}
 
 	private void decrementRequested() {
-		if(requested != Long.MAX_VALUE) {
+		if (requested != Long.MAX_VALUE) {
 			REQUESTED_UPDATER.decrementAndGet(this);
 		}
 	}
@@ -139,7 +142,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 	void subscribeNext() {
 		if (requested > 0) {
 			Signal<ConcatInnerSubscriber> o = queue.poll();
-			if( o == null) return;
+			if (o == null) return;
 			if (o.isOnComplete()) {
 				broadcastComplete();
 			} else {
@@ -161,7 +164,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 		private Subscription s;
 
 		void requestMore(long n) {
-			if(s != null){
+			if (s != null) {
 				s.request(n);
 			}
 		}
@@ -169,8 +172,8 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 		@Override
 		public void onSubscribe(Subscription s) {
 			this.s = s;
-			queue.add(Signal.next(this));
-			if (WIP_UPDATER.getAndIncrement(ConcatAction.this) == 0) {
+			Signal<ConcatInnerSubscriber> c = queue.peek();
+			if (c != null && c.get() == this) {
 				subscribeNext();
 			}
 		}
