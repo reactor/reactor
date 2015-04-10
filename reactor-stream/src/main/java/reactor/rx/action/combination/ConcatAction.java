@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc, All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,127 +18,182 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
+import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.rx.action.Action;
+import reactor.rx.action.Signal;
+import reactor.rx.subscription.PushSubscription;
 
-import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * @author Stephane Maldini
  * @since 2.0
  */
-final public class ConcatAction<O> extends FanInAction<O, O, O, ConcatAction.InnerSubscriber<O>> {
+final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 
-	public ConcatAction(Dispatcher dispatcher, List<? extends Publisher<? extends O>> composables) {
-		super(dispatcher, composables);
+	private final ConcurrentLinkedQueue<Signal<ConcatInnerSubscriber>> queue;
+
+	volatile int wip;
+	@SuppressWarnings("rawtypes")
+	static final AtomicIntegerFieldUpdater<ConcatAction> WIP_UPDATER = AtomicIntegerFieldUpdater.newUpdater
+			(ConcatAction.class, "wip");
+
+	// accessed by REQUESTED_UPDATER
+	private volatile long requested;
+	@SuppressWarnings("rawtypes")
+	private static final AtomicLongFieldUpdater<ConcatAction> REQUESTED_UPDATER = AtomicLongFieldUpdater.newUpdater
+			(ConcatAction.class, "requested");
+
+
+	volatile ConcatInnerSubscriber currentSubscriber;
+
+	public ConcatAction() {
+		this.queue = new ConcurrentLinkedQueue<>();
 	}
 
 	@Override
-	protected void doNext(O ev) {
-		broadcastNext(ev);
+	protected void doNext(Publisher<? extends T> ev) {
+		ev.subscribe(new ConcatInnerSubscriber());
+		if (WIP_UPDATER.getAndIncrement(this) == 0) {
+			subscribeNext();
+		}
 	}
-
-	protected InnerSubscriber<O> createSubscriber() {
-		return new InnerSubscriber<O>(this);
-	}
-
 
 	@Override
-	protected FanInSubscription<O, O, O, InnerSubscriber<O>> createFanInSubscription() {
-		return new ConcatSubscription(this);
+	public void onComplete() {
+		try {
+			queue.add(Signal.complete());
+			if (WIP_UPDATER.getAndIncrement(this) == 0) {
+				subscribeNext();
+			}
+		}catch(Exception e){
+			doError(e);
+		}
 	}
 
-	/*@Override
-	protected PushSubscription<O> createTrackingSubscription(Subscription subscription) {
-		return innerSubscriptions;
+	@Override
+	protected void doOnSubscribe(Subscription subscription) {
+		requestMore(Long.MAX_VALUE);
 	}
-	*/
 
-	public static final class InnerSubscriber<I> extends FanInAction.InnerSubscriber<I, I, I> {
+	@Override
+	public void subscribe(Subscriber<? super T> subscriber) {
+		super.subscribe(SerializedSubscriber.create(subscriber));
+	}
 
-		InnerSubscriber(FanInAction<I, I, I, ? extends FanInAction.InnerSubscriber<I, I, I>> outerAction) {
-			super(outerAction);
+	@Override
+	protected void requestUpstream(long capacity, boolean terminated, long elements) {
+		requestFromChild(elements);
+	}
 
-			setSubscription(
-					new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(null, this)
-			);
+	private void requestFromChild(long n) {
+		// we track 'requested' so we know whether we should subscribe the next or not
+		if (REQUESTED_UPDATER.getAndAdd(this, n) == 0) {
+			if (currentSubscriber == null && wip > 0) {
+				// this means we may be moving from one subscriber to another after having stopped processing
+				// so need to kick off the subscribe via this request notification
+				subscribeNext();
+				return;
+			}
+		}
+
+		if (currentSubscriber != null) {
+			// otherwise we are just passing it through to the currentSubscriber
+			currentSubscriber.requestMore(n);
+		}
+	}
+
+	@Override
+	protected void subscribeWithSubscription(Subscriber<? super T> subscriber, PushSubscription<T> subscription) {
+		try {
+			if (!addSubscription(subscription)) {
+				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
+			} else {
+				subscription.markAsDeferredStart();
+				subscription.start();
+			}
+		} catch (Exception e) {
+			subscriber.onError(e);
+		}
+	}
+
+	@Override
+	public void cancel() {
+		queue.clear();
+		super.cancel();
+	}
+
+	private void decrementRequested() {
+		if(requested != Long.MAX_VALUE) {
+			REQUESTED_UPDATER.decrementAndGet(this);
+		}
+	}
+
+	void completeInner() {
+		requestMore(1);
+		currentSubscriber = null;
+		if (WIP_UPDATER.decrementAndGet(this) > 0) {
+			subscribeNext();
+		}
+	}
+
+	void subscribeNext() {
+		if (requested > 0) {
+			Signal<ConcatInnerSubscriber> o = queue.poll();
+			if( o == null) return;
+			if (o.isOnComplete()) {
+				broadcastComplete();
+			} else {
+				ConcatInnerSubscriber concatInnerSubscriber = o.get();
+				currentSubscriber = concatInnerSubscriber;
+				concatInnerSubscriber.requestMore(requested);
+			}
+		} else {
+			// requested == 0, so we'll peek to see if we are completed, otherwise wait until another request
+			Signal<?> o = queue.peek();
+			if (o != null && o.isOnComplete()) {
+				broadcastComplete();
+			}
+		}
+	}
+
+	class ConcatInnerSubscriber implements Subscriber<T> {
+
+		private Subscription s;
+
+		void requestMore(long n) {
+			if(s != null){
+				s.request(n);
+			}
 		}
 
 		@Override
-		@SuppressWarnings("unchecked")
-		public void onSubscribe(final Subscription subscription) {
-			s.wrapped = subscription;
-			pendingRequests = outerAction.innerSubscriptions.pendingRequestSignals();
-
-			if (outerAction.dynamicMergeAction != null) {
-				outerAction.dynamicMergeAction.decrementWip();
-			}
-			if(pendingRequests > 0l){
-				request(pendingRequests);
-			}
+		public void onSubscribe(Subscription s) {
+			this.s = s;
+			queue.add(Signal.next(this));
 		}
 
 		@Override
-		public void onNext(I ev) {
-			//Action.log.debug("event [" + ev + "] by: " + this);
-			outerAction.innerSubscriptions.onNext(ev);
-			emittedSignals++;
-			if (--pendingRequests < 0) pendingRequests = 0l;
+		public void onNext(T t) {
+			ConcatAction.this.decrementRequested();
+			broadcastNext(t);
+		}
+
+		@Override
+		public void onError(Throwable e) {
+			ConcatAction.this.onError(e);
 		}
 
 		@Override
 		public void onComplete() {
-			if(TERMINATE_UPDATER.compareAndSet(this, 0, 1) ) {
-				s.cancel();
-				outerAction.status.set(COMPLETING);
-				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
-				Subscription current = outerAction.innerSubscriptions.shift(sequenceId);
-
-				long request = outerAction.innerSubscriptions.pendingRequestSignals();
-				if (current != null &&  request > 0) {
-					current.request(request);
-				}
-				if (left == 0
-						&& !outerAction.checkDynamicMerge()
-						) {
-					outerAction.innerSubscriptions.serialComplete();
-				}
-			}
+			ConcatAction.this.completeInner();
 		}
 
-		@Override
-		public String toString() {
-			return "Concat.InnerSubscriber{pending=" + pendingRequests + ", emitted=" + emittedSignals + "}";
-		}
 	}
 
-	private final class ConcatSubscription extends FanInSubscription<O, O, O, InnerSubscriber<O>> {
+	;
 
-		InnerSubscription<O, O, InnerSubscriber<O>> current = null;
-
-		public ConcatSubscription(Subscriber<? super O> subscriber) {
-			super(subscriber);
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		int addSubscription(FanInAction.InnerSubscriber s) {
-			int newSize = super.addSubscription(s);
-			return newSize;
-		}
-
-		@Override
-		protected void parallelRequest(long elements) {
-			current = peek();
-			if (current != null && current.wrapped != null) {
-				current.request(elements);
-			} else {
-				updatePendingRequests(elements);
-			}
-
-			if (terminated) {
-				cancel();
-			}
-		}
-	}
 
 }

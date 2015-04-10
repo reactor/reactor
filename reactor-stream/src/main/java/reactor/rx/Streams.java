@@ -600,7 +600,9 @@ public class Streams {
 		} else if (size == 0) {
 			return empty();
 		}
-		return new ConcatAction<T>(SynchronousDispatcher.INSTANCE, publishers);
+		ConcatAction<T> concatAction = new ConcatAction<T>();
+		from(mergedPublishers).subscribe(concatAction);
+		return concatAction;
 	}
 
 	/**
@@ -614,10 +616,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends Publisher<? extends T>> concatdPublishers) {
-		final Action<Publisher<? extends T>, T> concatAction = new DynamicMergeAction<T, T>(
-				new ConcatAction<T>(SynchronousDispatcher.INSTANCE, null)
-		);
-
+		final Action<Publisher<? extends T>, T> concatAction = new ConcatAction<>();
 		concatdPublishers.subscribe(concatAction);
 		return concatAction;
 	}

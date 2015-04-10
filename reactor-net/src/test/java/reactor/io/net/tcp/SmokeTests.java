@@ -59,7 +59,7 @@ public class SmokeTests {
 	public void testMultipleConsumersMultipleTimes() throws Exception {
 		Sender sender = new Sender();
 
-		int count = 250_000;
+		int count = 10_000;
 		int threads = 3;
 		int fulltotaltext = 0;
 		int fulltotalints = 0;
@@ -163,7 +163,8 @@ public class SmokeTests {
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
 			return bufferStream
-					.timeout(3, TimeUnit.SECONDS, Streams.empty())
+
+					.take(5L, TimeUnit.SECONDS)
 					.observeComplete(v -> System.out.println("COMPLETE"))
 					.concatWith(Streams.just(new Buffer().append("END\n".getBytes(Charset.forName("UTF-8")))));
 		});

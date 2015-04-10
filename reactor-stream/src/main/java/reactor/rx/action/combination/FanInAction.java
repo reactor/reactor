@@ -40,12 +40,12 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		O> {
 
 
-	final FanInSubscription<I, E, O, SUBSCRIBER>     innerSubscriptions;
-	final Iterable<? extends Publisher<? extends I>> publishers;
-
 	final static protected int NOT_STARTED = 0;
 	final static protected int RUNNING     = 1;
 	final static protected int COMPLETING  = 2;
+
+	final FanInSubscription<I, E, O, SUBSCRIBER>     innerSubscriptions;
+	final Iterable<? extends Publisher<? extends I>> publishers;
 
 	final AtomicInteger status = new AtomicInteger();
 	final protected Dispatcher dispatcher;
@@ -62,7 +62,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	                   Iterable<? extends Publisher<? extends I>> publishers) {
 		super();
 		this.dispatcher = SynchronousDispatcher.INSTANCE == dispatcher ?
-		                  Environment.tailRecurse() : dispatcher;
+				Environment.tailRecurse() : dispatcher;
 		this.publishers = publishers;
 		this.upstreamSubscription = this.innerSubscriptions = createFanInSubscription();
 	}
@@ -75,7 +75,8 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	public void addPublisher(Publisher<? extends I> publisher) {
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
-		inlineMerge.pendingRequests = innerSubscriptions.pendingRequestSignals() / (innerSubscriptions.runningComposables + 1);
+		inlineMerge.pendingRequests = innerSubscriptions.pendingRequestSignals() / (innerSubscriptions.runningComposables
+				+ 1);
 		publisher.subscribe(inlineMerge);
 	}
 
@@ -135,7 +136,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	public void onNext(E ev) {
 		super.onNext(ev);
-		if(innerSubscriptions.shouldRequestPendingSignals()){
+		if (innerSubscriptions.shouldRequestPendingSignals()) {
 			long left = upstreamSubscription.pendingRequestSignals();
 			if (left > 0l) {
 				upstreamSubscription.updatePendingRequests(-left);
@@ -202,7 +203,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 		public void cancel() {
 			Subscription s = this.s;
-			if(s != null){
+			if (s != null) {
 				s.cancel();
 			}
 		}
@@ -251,7 +252,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 				outerAction.innerSubscriptions.remove(sequenceId);
 				if (left == 0) {
-					if (!outerAction.checkDynamicMerge()){
+					if (!outerAction.checkDynamicMerge()) {
 						outerAction.innerSubscriptions.serialComplete();
 					}
 				}

@@ -237,7 +237,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@SuppressWarnings("unchecked")
 	private void awaitLatch(Control tail, CountDownLatch latch) throws Exception {
-		if (!latch.await(5, TimeUnit.SECONDS)) {
+		if (!latch.await(50, TimeUnit.SECONDS)) {
 			throw new Exception("Never completed: (" + latch.getCount() + ") "
 					+ tail.debug());
 		}

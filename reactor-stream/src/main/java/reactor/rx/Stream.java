@@ -972,8 +972,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return map(fn).lift(new Supplier<Action<Publisher<? extends V>, V>>() {
 			@Override
 			public Action<Publisher<? extends V>, V> get() {
-				return new DynamicMergeAction<V, V>(
-						new ConcatAction<V>(SynchronousDispatcher.INSTANCE, null));
+				return new ConcatAction<V>();
 			}
 		});
 	}
@@ -1038,8 +1037,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				new ConcatAction<>(SynchronousDispatcher.INSTANCE, Arrays.asList(Stream.this, publisher))
-						.subscribe(s);
+				Stream<Publisher<? extends O>> just = Streams.just(Stream.this, publisher);
+				ConcatAction<O> concatBAction = new ConcatAction<>();
+				just.subscribe(concatBAction);
+				concatBAction.subscribe(s);
 			}
 
 			@Override
@@ -1087,28 +1088,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 */
 	public final Stream<O> startWith(final Publisher<? extends O> publisher) {
 		if(publisher == null) return this;
-		return new Stream<O>() {
-			@Override
-			public void subscribe(Subscriber<? super O> s) {
-				new ConcatAction<>(SynchronousDispatcher.INSTANCE, Arrays.asList(publisher, Stream.this))
-						.subscribe(s);
-			}
-
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
-			}
-
-			@Override
-			public Dispatcher getDispatcher() {
-				return Stream.this.getDispatcher();
-			}
-
-			@Override
-			public Environment getEnvironment() {
-				return Stream.this.getEnvironment();
-			}
-		};
+		return Streams.concat(publisher, this);
 	}
 
 	/**
