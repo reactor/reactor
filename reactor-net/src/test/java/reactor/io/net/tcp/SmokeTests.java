@@ -166,7 +166,7 @@ public class SmokeTests {
 
 					.take(5L, TimeUnit.SECONDS)
 					.observeComplete(v -> System.out.println("COMPLETE"))
-					.concatWith(Streams.just(new Buffer().append("END\n".getBytes(Charset.forName("UTF-8")))))
+					.concatWith(Streams.just(new Buffer().append("END\n".getBytes(Charset.forName("UTF-8")))));
 		});
 
 		httpServer.start().awaitSuccess();
