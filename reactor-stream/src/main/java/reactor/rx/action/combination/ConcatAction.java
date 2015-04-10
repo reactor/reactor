@@ -56,15 +56,12 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 	@Override
 	protected void doNext(Publisher<? extends T> ev) {
 		ev.subscribe(new ConcatInnerSubscriber());
-		if (WIP_UPDATER.getAndIncrement(this) == 0) {
-			subscribeNext();
-		}
 	}
 
 	@Override
 	public void onComplete() {
 		try {
-			queue.add(Signal.complete());
+			queue.add(Signal.<ConcatInnerSubscriber>complete());
 			if (WIP_UPDATER.getAndIncrement(this) == 0) {
 				subscribeNext();
 			}
@@ -173,6 +170,9 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 		public void onSubscribe(Subscription s) {
 			this.s = s;
 			queue.add(Signal.next(this));
+			if (WIP_UPDATER.getAndIncrement(ConcatAction.this) == 0) {
+				subscribeNext();
+			}
 		}
 
 		@Override

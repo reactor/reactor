@@ -1038,9 +1038,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
 				Stream<Publisher<? extends O>> just = Streams.just(Stream.this, publisher);
-				ConcatAction<O> concatBAction = new ConcatAction<>();
-				just.subscribe(concatBAction);
-				concatBAction.subscribe(s);
+				ConcatAction<O> concatAction = new ConcatAction<>();
+				concatAction.subscribe(s);
+				just.subscribe(concatAction);
 			}
 
 			@Override
