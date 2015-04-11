@@ -107,11 +107,6 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 		}
 	}
 
-	@Override
-	protected void write(Buffer data, Subscriber<?> onComplete, boolean flush) {
-		write(data.byteBuffer(), onComplete, flush);
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	protected void write(Object data, Subscriber<?> onComplete, boolean flush) {

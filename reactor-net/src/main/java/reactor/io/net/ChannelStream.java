@@ -188,7 +188,9 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	 * @param onComplete The callback to invoke when the write is complete.
 	 */
 	protected void write(Buffer data, Subscriber<?> onComplete, boolean flush) {
-		write(data.byteBuffer(), onComplete, flush);
+		if(data.byteBuffer() != null) {
+			write(data.byteBuffer(), onComplete, flush);
+		}
 	}
 
 	/**
