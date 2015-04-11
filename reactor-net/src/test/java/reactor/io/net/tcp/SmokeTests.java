@@ -15,6 +15,7 @@
  */
 package reactor.io.net.tcp;
 
+import org.apache.commons.collections.list.SynchronizedList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -37,6 +38,7 @@ import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -50,27 +52,32 @@ import static org.junit.Assert.assertThat;
  */
 @Ignore
 public class SmokeTests {
-	private Processor<Buffer, Buffer> processor;
+	private Processor<Buffer, Buffer>                      processor;
 	private reactor.io.net.http.HttpServer<Buffer, Buffer> httpServer;
-	private AtomicInteger integer = new AtomicInteger();
+	private AtomicInteger integer            = new AtomicInteger();
+	private AtomicInteger integerPostTimeout = new AtomicInteger();
+	private AtomicInteger integerPostTake    = new AtomicInteger();
+	private AtomicInteger integerPostConcat  = new AtomicInteger();
+	private List<String>  serverList         = SynchronizedList.decorate(new ArrayList<String>());
+
 	@Test
 	public void testMultipleConsumersMultipleTimes() throws Exception {
 		Sender sender = new Sender();
 
 		int count = 10_000;
-		int threads = 3;
+		int threads = 6;
 		int fulltotaltext = 0;
 		int fulltotalints = 0;
 		int iter = 3;
 
-		for (int t=0; t<iter; t++) {
+		for (int t = 0; t < iter; t++) {
 			List<List<String>> clientDatas = getClientDatas(threads, sender, count);
 
 			assertThat(clientDatas.size(), greaterThanOrEqualTo(threads));
 
 			List<String> numbersNoEnds = new ArrayList<String>();
 			List<Integer> numbersNoEndsInt = new ArrayList<Integer>();
-			for (int i = 0; i<clientDatas.size(); i++) {
+			for (int i = 0; i < clientDatas.size(); i++) {
 				List<String> datas = clientDatas.get(i);
 				assertThat(datas, notNullValue());
 				StringBuffer buf = new StringBuffer();
@@ -85,23 +92,29 @@ public class SmokeTests {
 						fulltotaltext += 1;
 						numbersNoEnds.add(d);
 						int intnum = Integer.parseInt(d);
-						if (!numbersNoEndsInt.contains(intnum)) {
-							numbersNoEndsInt.add(intnum);
-							fulltotalints += 1;
-						}
+						numbersNoEndsInt.add(intnum);
+						fulltotalints += 1;
 					}
 				}
 			}
 
 			String msg = "Run number " + t;
 			Collections.sort(numbersNoEndsInt);
+			System.out.println("\n" +
+					"---- STATISTICS ----------------- \n" +
+					"client batches: " + integer + " \n" +
+					"post take batches: " + integerPostTake + "\n" +
+					"post timeout batches: " + integerPostTimeout + "\n" +
+					"post concat batches: " + integerPostConcat + "\n" +
+					"-----------------------------------");
 			System.out.println(numbersNoEndsInt.size() + "/" + (integer.get() * 100));
 			// we can't measure individual session anymore so just
 			// check that below lists match.
 			assertThat(msg, numbersNoEndsInt.size(), is(numbersNoEnds.size()));
-			System.out.println(numbersNoEndsInt);
-			for(int i = 0; i < numbersNoEndsInt.size(); i++){
-				if(i > 0){
+			//System.out.println(numbersNoEndsInt);
+			System.out.println(serverList);
+			for (int i = 0; i < numbersNoEndsInt.size(); i++) {
+				if (i > 0) {
 					assertThat(numbersNoEndsInt.get(i - 1), is(numbersNoEndsInt.get(i) - 1));
 				}
 			}
@@ -169,9 +182,22 @@ public class SmokeTests {
 									integer.getAndIncrement()
 					)
 					.take(10)
+					.observe(d ->
+									integerPostTake.getAndIncrement()
+					)
 					.timeout(3, TimeUnit.SECONDS, Streams.<Buffer>empty())
-					.concatWith(Streams.just(Buffer.wrap("END\n")))
-					.observeComplete(v -> System.out.println("YYYYY COMPLETE "+Thread.currentThread()));
+					.observe(d ->
+									integerPostTimeout.getAndIncrement()
+					)
+					.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
+					.observe(d ->
+									integerPostConcat.getAndIncrement()
+			)
+					.observeComplete(no -> {
+								integerPostConcat.decrementAndGet();
+								System.out.println("YYYYY COMPLETE " + Thread.currentThread());
+							}
+					);
 		});
 
 		httpServer.start().awaitSuccess();
@@ -232,7 +258,7 @@ public class SmokeTests {
 						boolean end = false;
 						while(!end) {
 							Promise<List<String>> clientDataPromise = getClientDataPromise();
-							List<String> res = clientDataPromise.await(40, TimeUnit.SECONDS);
+							List<String> res = clientDataPromise.await(10, TimeUnit.SECONDS);
 							if(res == null || res.size() == 1L && res.get(0) != null && res.get(0).contains("END")){
 								System.out.println("Client finished");
 								end = true;
@@ -283,7 +309,13 @@ public class SmokeTests {
 		@Override
 		public Buffer apply(Buffer t) {
 			Buffer b = t.flip();
-			System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
+			if(Thread.currentThread().getName().contains("reactor-tcp")){
+				for(StackTraceElement se : Thread.currentThread().getStackTrace()){
+					System.out.println(Thread.currentThread()+ "- "+se.getLineNumber()+": "+se);
+				}
+				System.out.println(Thread.currentThread()+" END\n");
+			}
+			//System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
 			return b;
 		}
 
