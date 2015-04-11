@@ -54,8 +54,8 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
 	protected Stream<T> createWindowStream() {
 		Broadcaster<T> action = timer != null && dispatcher == SynchronousDispatcher.INSTANCE ?
-				SerializedBroadcaster.create(environment, dispatcher) :
-				Broadcaster.create(environment, dispatcher);
+				SerializedBroadcaster.<T>create(environment, dispatcher) :
+				Broadcaster.<T>create(environment, dispatcher);
 		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
 		currentWindow = _currentWindow;
 		action.onSubscribe(_currentWindow);
