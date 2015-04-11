@@ -15,7 +15,6 @@
  */
 package reactor.io.net.tcp;
 
-import org.apache.commons.collections.list.SynchronizedList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -58,7 +57,6 @@ public class SmokeTests {
 	private AtomicInteger integerPostTimeout = new AtomicInteger();
 	private AtomicInteger integerPostTake    = new AtomicInteger();
 	private AtomicInteger integerPostConcat  = new AtomicInteger();
-	private List<String>  serverList         = SynchronizedList.decorate(new ArrayList<String>());
 
 	@Test
 	public void testMultipleConsumersMultipleTimes() throws Exception {
@@ -112,7 +110,6 @@ public class SmokeTests {
 			// check that below lists match.
 			assertThat(msg, numbersNoEndsInt.size(), is(numbersNoEnds.size()));
 			//System.out.println(numbersNoEndsInt);
-			System.out.println(serverList);
 			for (int i = 0; i < numbersNoEndsInt.size(); i++) {
 				if (i > 0) {
 					assertThat(numbersNoEndsInt.get(i - 1), is(numbersNoEndsInt.get(i) - 1));
