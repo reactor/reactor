@@ -66,7 +66,7 @@ public class SmokeTests {
 		int threads = 6;
 		int fulltotaltext = 0;
 		int fulltotalints = 0;
-		int iter = 3;
+		int iter = 10;
 
 		for (int t = 0; t < iter; t++) {
 			List<List<String>> clientDatas = getClientDatas(threads, sender, count);
@@ -255,7 +255,7 @@ public class SmokeTests {
 						boolean end = false;
 						while(!end) {
 							Promise<List<String>> clientDataPromise = getClientDataPromise();
-							List<String> res = clientDataPromise.await(10, TimeUnit.SECONDS);
+							List<String> res = clientDataPromise.await(20, TimeUnit.SECONDS);
 							if(res == null || res.size() == 1L && res.get(0) != null && res.get(0).contains("END")){
 								System.out.println("Client finished");
 								end = true;
@@ -273,7 +273,6 @@ public class SmokeTests {
 			t.start();
 		}
 		latch.countDown();
-		Thread.sleep(1000);
 		for (Thread t : joins) {
 			try {
 				t.join();
