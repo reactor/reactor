@@ -17,9 +17,11 @@ package reactor.rx.action.aggregation;
 
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.broadcast.SerializedBroadcaster;
 import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.concurrent.TimeUnit;
@@ -51,7 +53,9 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	}
 
 	protected Stream<T> createWindowStream() {
-		Broadcaster<T> action = Broadcaster.create(environment, dispatcher);
+		Broadcaster<T> action = timer != null && dispatcher == SynchronousDispatcher.INSTANCE ?
+				SerializedBroadcaster.create(environment, dispatcher) :
+				Broadcaster.create(environment, dispatcher);
 		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
 		currentWindow = _currentWindow;
 		action.onSubscribe(_currentWindow);
