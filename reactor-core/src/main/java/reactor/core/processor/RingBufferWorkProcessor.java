@@ -769,16 +769,14 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					}
 				} catch (IllegalStateException | AlertException ex) {
 					if (!running.get()) {
-						if(cachedAvailableSequence != Long.MIN_VALUE) {
 							long rewind;
 							do {
 								cachedAvailableSequence = workSequence.get();
-								rewind = (cachedAvailableSequence >= nextSequence ? 1L + cachedAvailableSequence - nextSequence : 2L);
+								rewind = (cachedAvailableSequence >= nextSequence ? 1L + cachedAvailableSequence - nextSequence : 0L);
 							} while (!workSequence.compareAndSet(
 									cachedAvailableSequence,
 									cachedAvailableSequence - rewind
 							));
-						}
 						sequenceBarrier.clearAlert();
 						break;
 					} else {
