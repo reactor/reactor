@@ -54,6 +54,21 @@ public final class RingBufferSubscriberUtils {
 	}
 
 	public static <E> void route(MutableSignal<E> task, Subscriber<? super E> subscriber) {
+		if (task.type == MutableSignal.Type.NEXT && null != task.value) {
+				// most likely case first
+				subscriber.onNext(task.value);
+			} else if (task.type == MutableSignal.Type.COMPLETE) {
+				// second most likely case next
+				subscriber.onComplete();
+			} else if (task.type == MutableSignal.Type.ERROR) {
+				// errors should be relatively infrequent compared to other signals
+				subscriber.onError(task.error);
+			}
+
+	}
+
+
+	public static <E> void routeOnce(MutableSignal<E> task, Subscriber<? super E> subscriber) {
 		E value = task.value;
 		task.value = null;
 		try {

@@ -733,7 +733,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 							readNextEvent(event);
 
 							//It's an unbounded subscriber or there is enough capacity to process the signal
-							RingBufferSubscriberUtils.route(event, subscriber);
+							RingBufferSubscriberUtils.routeOnce(event, subscriber);
 
 							processedSequence = true;
 
@@ -786,7 +786,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				signal = processor.ringBuffer.get(replayedSequence.get() + 1L);
 				try {
 					readNextEvent(signal);
-					RingBufferSubscriberUtils.route(signal, subscriber);
+					RingBufferSubscriberUtils.routeOnce(signal, subscriber);
 					processor.ringBuffer.removeGatingSequence(replayedSequence);
 				} catch (AlertException | CancelException ce) {
 					processor.ringBuffer.removeGatingSequence(sequence);
