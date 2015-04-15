@@ -23,7 +23,6 @@ public final class RingBufferSubscriberUtils {
 		signal.type = MutableSignal.Type.NEXT;
 		signal.value = value;
 		signal.error = null;
-		//signal.consumed = false;
 
 		ringBuffer.publish(seqId);
 	}
@@ -39,7 +38,6 @@ public final class RingBufferSubscriberUtils {
 		signal.type = MutableSignal.Type.ERROR;
 		signal.value = null;
 		signal.error = error;
-		//signal.consumed = false;
 
 		ringBuffer.publish(seqId);
 	}
@@ -51,28 +49,28 @@ public final class RingBufferSubscriberUtils {
 		signal.type = MutableSignal.Type.COMPLETE;
 		signal.value = null;
 		signal.error = null;
-		//signal.consumed = false;
 
 		ringBuffer.publish(seqId);
 	}
 
 	public static <E> void route(MutableSignal<E> task, Subscriber<? super E> subscriber) {
-		//task.consumed = true;
-		//try {
-			if (task.type == MutableSignal.Type.NEXT && null != task.value) {
+		MutableSignal.Type type = task.type;
+		task.type = null;
+		try {
+			if (type == MutableSignal.Type.NEXT && null != task.value) {
 				// most likely case first
 				subscriber.onNext(task.value);
-			} else if (task.type == MutableSignal.Type.COMPLETE) {
+			} else if (type == MutableSignal.Type.COMPLETE) {
 				// second most likely case next
 				subscriber.onComplete();
-			} else if (task.type == MutableSignal.Type.ERROR) {
+			} else if (type == MutableSignal.Type.ERROR) {
 				// errors should be relatively infrequent compared to other signals
 				subscriber.onError(task.error);
 			}
-		//}catch(Throwable t){
-			//task.consumed = false;
-			//throw t;
-		//}
+		}catch(Throwable t){
+			task.type = type;
+			throw  t;
+		}
 	}
 
 }

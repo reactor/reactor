@@ -13,6 +13,5 @@ public final class MutableSignal<T> {
 	public Type      type     = Type.NEXT;
 	public T         value    = null;
 	public Throwable error    = null;
-	//public boolean   consumed = false;
 
 }

@@ -62,9 +62,11 @@ public class SmokeTests {
 	private final AtomicInteger integerPostTake    = new AtomicInteger();
 	private final AtomicInteger integerPostConcat  = new AtomicInteger();
 
-	private final int count   = 10_000;
+	private final int count   = 33_000;
 	private final int threads = 6;
 	private final int iter    = 10;
+	private final int windowBatch    = 1000;
+	private final int takeCount    = 1;
 
 	@SuppressWarnings("unchecked")
 	private List<Integer> windowsData = SynchronizedList.decorate(new ArrayList<>());
@@ -81,7 +83,7 @@ public class SmokeTests {
 
 				fulltotalints += clientDatas.size();
 
-				System.out.println(clientDatas.size() + "/" + (integer.get() * 100));
+				System.out.println(clientDatas.size() + "/" + (integerPostConcat.get() * windowBatch));
 
 				for (int i = 0; i < clientDatas.size(); i++) {
 					if (i > 0) {
@@ -136,7 +138,7 @@ public class SmokeTests {
 		Stream<String> bufferStream = Streams
 				.wrap(processor)
 						//.log("test")
-				.window(1000, 2, TimeUnit.SECONDS)
+				.window(windowBatch, 2, TimeUnit.SECONDS)
 				.flatMap(s -> s
 						.observe(d ->
 										windows.getAndIncrement()
@@ -174,7 +176,7 @@ public class SmokeTests {
 					)
 
 
-					.take(5, TimeUnit.SECONDS)
+					.take(takeCount)
 					.observe(d ->
 									integerPostTake.getAndIncrement()
 					)
@@ -264,7 +266,7 @@ public class SmokeTests {
 							int size = collected.size();
 
 							//previous empty
-							if (count == counter.get() || size == 0 && empty) break;
+							if (size == 0 && empty) break;
 
 							datas.addAll(collected);
 							counter.addAndGet(size);
