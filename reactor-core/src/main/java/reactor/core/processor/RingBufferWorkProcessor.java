@@ -752,6 +752,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						//processor.barrier.alert();
 						break;
 					} catch (AlertException ex) {
+						processor.barrier.clearAlert();
+
 						if (!running.get()) {
 							if(cachedAvailableSequence != Long.MIN_VALUE) {
 								processor.cancelledSequences.add(sequence);
@@ -761,7 +763,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 							break;
 
 						} else {
-							processor.barrier.clearAlert();
+
 							final long cursor = processor.barrier.getCursor();
 							if (processor.ringBuffer.get(cursor).type == MutableSignal.Type.ERROR) {
 								RingBufferSubscriberUtils.route(processor.ringBuffer.get(cursor), subscriber);
