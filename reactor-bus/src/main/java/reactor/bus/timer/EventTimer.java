@@ -23,10 +23,10 @@ import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.selector.HeaderResolver;
 import reactor.bus.selector.Selector;
+import reactor.core.processor.CancelException;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
-import reactor.fn.support.CancelConsumerException;
 import reactor.fn.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
@@ -121,7 +121,7 @@ public class EventTimer implements Timer {
 										continue;
 									}
 									reg.getObject().accept(now);
-								} catch (CancelConsumerException cce) {
+								} catch (CancelException cce) {
 									reg.cancel();
 								} catch (Throwable t) {
 									LOG.error(t.getMessage(), t);

@@ -203,7 +203,9 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 
 				@Override
 				public void onError(Throwable t) {
-					if(Environment.alive()){
+					if(onComplete != null){
+						onComplete.onError(t);
+					}else if(Environment.alive()){
 						Environment.get().routeError(t);
 					}
 				}

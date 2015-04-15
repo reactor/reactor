@@ -32,16 +32,18 @@ public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E
 
 	protected static final int DEFAULT_BUFFER_SIZE = 1024;
 	protected static final int SMALL_BUFFER_SIZE   = 32;
+	protected final boolean autoCancel;
 
 	protected final ClassLoader context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
 	};
 
-	private final AtomicLong subscriberCount;
+	protected final AtomicLong subscriberCount;
 
 	protected Subscription upstreamSubscription;
 
 	public ReactorProcessor(boolean autoCancel) {
-		this.subscriberCount = autoCancel ? new AtomicLong(0l) : null;
+		this.subscriberCount = new AtomicLong(0);
+		this.autoCancel = autoCancel;
 	}
 
 	@Override
@@ -58,17 +60,17 @@ public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E
 		this.upstreamSubscription = s;
 	}
 
-	protected void incrementSubscribers() {
-		if (subscriberCount != null) {
-			subscriberCount.incrementAndGet();
-		}
+	protected boolean incrementSubscribers() {
+		return subscriberCount.getAndIncrement() == 0l;
 	}
 
 	protected boolean decrementSubscribers() {
 		Subscription subscription = upstreamSubscription;
-		if (subscriberCount != null && subscriberCount.decrementAndGet() == 0l && subscription != null) {
-			upstreamSubscription = null;
-			subscription.cancel();
+		if (subscriberCount.decrementAndGet() == 0l) {
+			if (subscription != null && autoCancel) {
+				upstreamSubscription = null;
+				subscription.cancel();
+			}
 			return true;
 		}
 		return false;

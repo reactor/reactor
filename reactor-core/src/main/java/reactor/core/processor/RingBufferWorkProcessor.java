@@ -23,6 +23,8 @@ import reactor.core.support.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -47,13 +49,6 @@ import java.util.concurrent.locks.LockSupport;
  * @author Stephane Maldini
  */
 public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
-
-	private final Sequence workSequence   = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
-	private final Sequence pendingRequest = new Sequence(0);
-
-	private final SequenceBarrier              barrier;
-	private final RingBuffer<MutableSignal<E>> ringBuffer;
-	private final ExecutorService              executor;
 
 	/**
 	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
@@ -492,6 +487,20 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		return new RingBufferWorkProcessor<E>(null, executor, bufferSize, strategy, true, autoCancel);
 	}
 
+
+	/**
+	 * Instance
+	 */
+
+
+	private final Sequence        workSequence       = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+	private final Sequence        pendingRequest     = new Sequence(0);
+	private final Queue<Sequence> cancelledSequences = new ConcurrentLinkedQueue<>();
+
+	private final SequenceBarrier              barrier;
+	private final RingBuffer<MutableSignal<E>> ringBuffer;
+	private final ExecutorService              executor;
+
 	private RingBufferWorkProcessor(String name,
 	                                ExecutorService executor,
 	                                int bufferSize,
@@ -528,16 +537,13 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		}
 		try {
 			final WorkSignalProcessor<E> signalProcessor = new WorkSignalProcessor<E>(
-					ringBuffer,
-					barrier,
-					pendingRequest,
-					workSequence,
-					subscriber
+					subscriber,
+					this
 			);
 
 
 			//set eventProcessor sequence to ringbuffer index
-			//signalProcessor.sequence.set(workSequence.get());
+			signalProcessor.sequence.set(workSequence.get());
 
 			//bind eventProcessor sequence to observe the ringBuffer
 			ringBuffer.addGatingSequences(signalProcessor.sequence);
@@ -546,7 +552,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 			signalProcessor.setSubscription(new RingBufferSubscription(subscriber, signalProcessor));
 
 			//start the subscriber thread
-			incrementSubscribers();
 			executor.execute(signalProcessor);
 
 		} catch (Throwable t) {
@@ -612,11 +617,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 		@Override
 		public void cancel() {
-			try {
-				eventProcessor.halt();
-			} finally {
-				decrementSubscribers();
-			}
+			eventProcessor.halt();
 		}
 	}
 
@@ -643,32 +644,19 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		private final AtomicBoolean running  = new AtomicBoolean(false);
 		private final Sequence      sequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
 
-		private final RingBuffer<MutableSignal<T>> dataProvider;
-		private final SequenceBarrier              sequenceBarrier;
-		private final Sequence                     pendingRequest;
-		private final Sequence                     workSequence;
-		private final Subscriber<? super T>        subscriber;
+		private final RingBufferWorkProcessor<T> processor;
+		private final Subscriber<? super T>      subscriber;
 
 		private Subscription subscription;
 
 		/**
 		 * Construct a {@link com.lmax.disruptor.EventProcessor} that will automatically track the progress by updating
 		 * its
-		 * sequence when
-		 * the {@link com.lmax.disruptor.EventHandler#onEvent(Object, long, boolean)} method returns.
-		 *
-		 * @param dataProvider    to which events are published.
-		 * @param sequenceBarrier on which it is waiting.
+		 * sequence
 		 */
-		public WorkSignalProcessor(RingBuffer<MutableSignal<T>> dataProvider,
-		                           SequenceBarrier sequenceBarrier,
-		                           Sequence pendingRequest,
-		                           Sequence workSequence,
-		                           Subscriber<? super T> subscriber) {
-			this.dataProvider = dataProvider;
-			this.sequenceBarrier = sequenceBarrier;
-			this.pendingRequest = pendingRequest;
-			this.workSequence = workSequence;
+		public WorkSignalProcessor(Subscriber<? super T> subscriber,
+		                           RingBufferWorkProcessor<T> processor) {
+			this.processor = processor;
 			this.subscriber = subscriber;
 		}
 
@@ -688,7 +676,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		@Override
 		public void halt() {
 			running.set(false);
-			sequenceBarrier.alert();
+			//processor.barrier.alert();
 		}
 
 		@Override
@@ -706,96 +694,142 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				return;
 			}
 
-			sequenceBarrier.clearAlert();
+			if (processor.incrementSubscribers() && processor.workSequence.get() != -1L) {
+				long rewind = processor.ringBuffer.getMinimumGatingSequence() - 1L;
+				processor.workSequence.set(rewind);
+			}
+
 			subscriber.onSubscribe(subscription);
+
 
 			boolean processedSequence = true;
 			long cachedAvailableSequence = Long.MIN_VALUE;
 			long nextSequence = sequence.get();
-			MutableSignal<T> event = null;
-			while (true) {
-				try {
-					// if previous sequence was processed - fetch the next sequence and set
-					// that we have successfully processed the previous sequence
-					// typically, this will be true
-					// this prevents the sequence getting too far forward if an exception
-					// is thrown from the WorkHandler
-					if (processedSequence) {
-						processedSequence = false;
-						do {
-							nextSequence = workSequence.get() + 1L;
-							sequence.set(nextSequence - 1L);
-						}
-						while (!workSequence.compareAndSet(nextSequence - 1L, nextSequence));
-					}
+			MutableSignal<T> event;
 
-					if (cachedAvailableSequence >= nextSequence) {
-						event = dataProvider.get(nextSequence);
+			processor.barrier.clearAlert();
 
-						//if event is Next Signal we need to handle backpressure (pendingRequests)
-						if (event.type == MutableSignal.Type.NEXT) {
-							//if bounded and out of capacity
-							if (pendingRequest.get() != Long.MAX_VALUE && pendingRequest.addAndGet(-1l) < 0l) {
-								//re-add the retained capacity
-								pendingRequest.incrementAndGet();
+			try {
+				if (replay()) {
+					return;
+				}
 
-								//if current sequence does not yet match the published one
-								//if (nextSequence < cachedAvailableSequence) {
-								//pause until request
-								while (pendingRequest.addAndGet(-1l) < 0l) {
-									pendingRequest.incrementAndGet();
-									//Todo Use WaitStrategy?
-									sequenceBarrier.checkAlert();
-									LockSupport.parkNanos(1l);
-								}
-
-							}
-						} else {
-							//Complete or Error are terminal events, we shutdown the processor and process the signal
-							running.set(false);
-							RingBufferSubscriberUtils.route(event, subscriber);
-							if (event.type == MutableSignal.Type.ERROR) {
-								sequenceBarrier.alert();
-							}
-							throw AlertException.INSTANCE;
-						}
-
-						//It's an unbounded subscriber or there is enough capacity to process the signal
-						RingBufferSubscriberUtils.route(event, subscriber);
-						processedSequence = true;
-
-					} else {
-						cachedAvailableSequence = sequenceBarrier.waitFor(nextSequence);
-					}
-				} catch (IllegalStateException | AlertException ex) {
-					if (!running.get()) {
-							long rewind;
+				while (true) {
+					try {
+						// if previous sequence was processed - fetch the next sequence and set
+						// that we have successfully processed the previous sequence
+						// typically, this will be true
+						// this prevents the sequence getting too far forward if an exception
+						// is thrown from the WorkHandler
+						if (processedSequence) {
+							processedSequence = false;
 							do {
-								cachedAvailableSequence = workSequence.get();
-								rewind = (cachedAvailableSequence >= nextSequence ? 1L + cachedAvailableSequence - nextSequence : 0L);
-							} while (!workSequence.compareAndSet(
-									cachedAvailableSequence,
-									cachedAvailableSequence - rewind
-							));
-						sequenceBarrier.clearAlert();
-						break;
-					} else {
-						final long cursor = sequenceBarrier.getCursor();
-						cachedAvailableSequence = Long.MIN_VALUE;
-						processedSequence = false;
-						if (dataProvider.get(cursor).type == MutableSignal.Type.ERROR) {
-							nextSequence = cursor;
+								nextSequence = processor.workSequence.get() + 1L;
+								sequence.set(nextSequence - 1L);
+							}
+							while (!processor.workSequence.compareAndSet(nextSequence - 1L, nextSequence));
 						}
-					}
 
-				} catch (final Throwable ex) {
-					subscriber.onError(ex);
-					sequence.set(nextSequence);
-					processedSequence = true;
+						if (cachedAvailableSequence >= nextSequence) {
+							event = processor.ringBuffer.get(nextSequence);
+
+							//if(!event.consumed) {
+							readNextEvent(event);
+
+							//It's an unbounded subscriber or there is enough capacity to process the signal
+							RingBufferSubscriberUtils.route(event, subscriber);
+							//}
+							processedSequence = true;
+
+						} else {
+							cachedAvailableSequence = processor.barrier.waitFor(nextSequence);
+						}
+
+					} catch (CancelException ce) {
+						sequence.set(nextSequence - 1L);
+						processor.cancelledSequences.add(sequence);
+						//processor.barrier.alert();
+						break;
+					} catch (AlertException ex) {
+						if (!running.get()) {
+							processor.ringBuffer.removeGatingSequence(sequence);
+							break;
+
+						} else {
+
+							final long cursor = processor.barrier.getCursor();
+							if (processor.ringBuffer.get(cursor).type == MutableSignal.Type.ERROR) {
+								RingBufferSubscriberUtils.route(processor.ringBuffer.get(cursor), subscriber);
+							} else if (replay()) {
+								break;
+							}
+
+							processor.barrier.clearAlert();
+
+							//continue event-loop
+						}
+
+					} catch (final Throwable ex) {
+						subscriber.onError(ex);
+						sequence.set(nextSequence);
+						processedSequence = true;
+					}
+				}
+
+			} finally {
+				running.set(false);
+				processor.decrementSubscribers();
+			}
+		}
+
+		private boolean replay() {
+			Sequence replayedSequence;
+			MutableSignal<T> signal;
+			while ((replayedSequence = processor.cancelledSequences.poll()) != null) {
+				signal = processor.ringBuffer.get(replayedSequence.get() + 1L);
+				try {
+					//if(!signal.consumed) {
+					readNextEvent(signal);
+					RingBufferSubscriberUtils.route(signal, subscriber);
+					//}
+					processor.ringBuffer.removeGatingSequence(replayedSequence);
+				} catch (AlertException | CancelException ce) {
+					processor.ringBuffer.removeGatingSequence(sequence);
+					processor.cancelledSequences.add(replayedSequence);
+					return true;
 				}
 			}
-			dataProvider.removeGatingSequence(sequence);
-			running.set(false);
+			return false;
+		}
+
+		private void readNextEvent(MutableSignal<T> event) throws AlertException {
+			//if event is Next Signal we need to handle backpressure (pendingRequests)
+			if (event.type == MutableSignal.Type.NEXT) {
+				//if bounded and out of capacity
+				if (processor.pendingRequest.get() != Long.MAX_VALUE && processor.pendingRequest.addAndGet(-1l) < 0l) {
+					//re-add the retained capacity
+					processor.pendingRequest.incrementAndGet();
+
+					//if current sequence does not yet match the published one
+					//if (nextSequence < cachedAvailableSequence) {
+					//pause until request
+					while (processor.pendingRequest.addAndGet(-1l) < 0l) {
+						processor.pendingRequest.incrementAndGet();
+						if (!running.get()) throw CancelException.INSTANCE;
+						//Todo Use WaitStrategy?
+						LockSupport.parkNanos(1l);
+					}
+
+				}
+			} else {
+				//Complete or Error are terminal events, we shutdown the processor and process the signal
+				running.set(false);
+				RingBufferSubscriberUtils.route(event, subscriber);
+				if (event.type == MutableSignal.Type.ERROR) {
+					processor.barrier.alert();
+				}
+				throw AlertException.INSTANCE;
+			}
 		}
 	}
 

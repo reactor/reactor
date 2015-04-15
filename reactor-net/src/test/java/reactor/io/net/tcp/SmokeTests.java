@@ -15,6 +15,7 @@
  */
 package reactor.io.net.tcp;
 
+import org.apache.commons.collections.list.SynchronizedList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -37,13 +38,13 @@ import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 
-import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 
 /**
@@ -51,75 +52,60 @@ import static org.junit.Assert.assertThat;
  */
 @Ignore
 public class SmokeTests {
-	private Processor<Buffer, Buffer>                      processor;
-	private reactor.io.net.http.HttpServer<Buffer, Buffer> httpServer;
-	private AtomicInteger integer            = new AtomicInteger();
-	private AtomicInteger integerPostTimeout = new AtomicInteger();
-	private AtomicInteger integerPostTake    = new AtomicInteger();
-	private AtomicInteger integerPostConcat  = new AtomicInteger();
+	private Processor<String, String>                      processor;
+	private reactor.io.net.http.HttpServer<String, String> httpServer;
+
+	private final AtomicInteger postReduce         = new AtomicInteger();
+	private final AtomicInteger windows            = new AtomicInteger();
+	private final AtomicInteger integer            = new AtomicInteger();
+	private final AtomicInteger integerPostTimeout = new AtomicInteger();
+	private final AtomicInteger integerPostTake    = new AtomicInteger();
+	private final AtomicInteger integerPostConcat  = new AtomicInteger();
+
+	private final int count   = 10_000;
+	private final int threads = 6;
+	private final int iter    = 10;
+
+	@SuppressWarnings("unchecked")
+	private List<Integer> windowsData = SynchronizedList.decorate(new ArrayList<>());
 
 	@Test
 	public void testMultipleConsumersMultipleTimes() throws Exception {
-		Sender sender = new Sender();
-
-		int count = 10_000;
-		int threads = 6;
-		int fulltotaltext = 0;
 		int fulltotalints = 0;
-		int iter = 10;
 
 		for (int t = 0; t < iter; t++) {
-			List<List<String>> clientDatas = getClientDatas(threads, sender, count);
+			List<Integer> clientDatas = new ArrayList<>();
+			try {
+				clientDatas.addAll(getClientDatas(threads, new Sender(), count));
+				Collections.sort(clientDatas);
 
-			assertThat(clientDatas.size(), greaterThanOrEqualTo(threads));
+				fulltotalints += clientDatas.size();
 
-			List<String> numbersNoEnds = new ArrayList<String>();
-			List<Integer> numbersNoEndsInt = new ArrayList<Integer>();
-			for (int i = 0; i < clientDatas.size(); i++) {
-				List<String> datas = clientDatas.get(i);
-				assertThat(datas, notNullValue());
-				StringBuffer buf = new StringBuffer();
-				for (int j = 0; j < datas.size(); j++) {
-					buf.append(datas.get(j));
-				}
+				System.out.println(clientDatas.size() + "/" + (integer.get() * 100));
 
-				List<String> split = split(buf.toString());
-				for (int x = 0; x < split.size(); x++) {
-					String d = split.get(x);
-					if (StringUtils.hasText(d) && !d.contains("END")) {
-						fulltotaltext += 1;
-						numbersNoEnds.add(d);
-						int intnum = Integer.parseInt(d);
-						numbersNoEndsInt.add(intnum);
-						fulltotalints += 1;
+				for (int i = 0; i < clientDatas.size(); i++) {
+					if (i > 0) {
+						assertThat(clientDatas.get(i - 1), is(clientDatas.get(i) - 1));
 					}
 				}
-			}
+				assertThat(clientDatas.size(), greaterThanOrEqualTo(count));
 
-			String msg = "Run number " + t;
-			Collections.sort(numbersNoEndsInt);
-			System.out.println("\n" +
-					"---- STATISTICS ----------------- \n" +
-					"client batches: " + integer + " \n" +
-					"post take batches: " + integerPostTake + "\n" +
-					"post timeout batches: " + integerPostTimeout + "\n" +
-					"post concat batches: " + integerPostConcat + "\n" +
-					"-----------------------------------");
-			System.out.println(numbersNoEndsInt.size() + "/" + (integer.get() * 100));
-			// we can't measure individual session anymore so just
-			// check that below lists match.
-			assertThat(msg, numbersNoEndsInt.size(), is(numbersNoEnds.size()));
-			//System.out.println(numbersNoEndsInt);
-			for (int i = 0; i < numbersNoEndsInt.size(); i++) {
-				if (i > 0) {
-					assertThat(numbersNoEndsInt.get(i - 1), is(numbersNoEndsInt.get(i) - 1));
-				}
+			} catch (Throwable ae) {
+				System.out.println(clientDatas.size() + " - " + clientDatas);
+				Collections.sort(windowsData);
+				System.out.println(windowsData.size() + " - " + windowsData);
+				List<Integer> dups = findDuplicates(windowsData);
+				Collections.sort(dups);
+				System.out.println("Dups: "+dups.size()+" - " + dups);
+				throw ae;
+			} finally {
+				printStats(t);
 			}
 		}
+
 		// check full totals because we know what this should be
 
-		assertThat(fulltotalints, is(count*iter));
-		assertThat(fulltotaltext, is(count*iter));
+		assertThat(fulltotalints, is(count * iter));
 	}
 
 	@Before
@@ -133,9 +119,9 @@ public class SmokeTests {
 		httpServer.shutdown().awaitSuccess();
 	}
 
-	public Set<Integer> findDuplicates(List<Integer> listContainingDuplicates) {
-		final Set<Integer> setToReturn = new HashSet<Integer>();
-		final Set<Integer> set1 = new HashSet<Integer>();
+	public List<Integer> findDuplicates(List<Integer> listContainingDuplicates) {
+		final List<Integer> setToReturn = new ArrayList<>();
+		final Set<Integer> set1 = new HashSet<>();
 
 		for (Integer yourInt : listContainingDuplicates) {
 			if (!set1.add(yourInt)) {
@@ -147,12 +133,19 @@ public class SmokeTests {
 
 	private void setupFakeProtocolListener() throws Exception {
 		processor = RingBufferProcessor.create(false);
-		Stream<Buffer> bufferStream = Streams
+		Stream<String> bufferStream = Streams
 				.wrap(processor)
-				//.log("test")
-				.window(100, 1, TimeUnit.SECONDS)
-				.flatMap(s -> s.reduce(new Buffer(), Buffer::append))
-						.process(RingBufferWorkProcessor.create(false));
+						//.log("test")
+				.window(1000, 2, TimeUnit.SECONDS)
+				.flatMap(s -> s
+						.observe(d ->
+										windows.getAndIncrement()
+						)
+						.reduce("", String::concat)
+						.observe(d ->
+										postReduce.getAndIncrement()
+						))
+				.process(RingBufferWorkProcessor.create(false));
 
 //		Stream<Buffer> bufferStream = Streams
 //				.wrap(processor)
@@ -163,7 +156,8 @@ public class SmokeTests {
 //				.process(RingBufferWorkProcessor.create(false));
 
 		httpServer = NetStreams.httpServer(server -> server
-				.codec(new DummyCodec()).listen(8080).dispatcher(Environment.sharedDispatcher()));
+						.codec(new StringCodec()).listen(8080)
+		);
 
 
 		httpServer.get("/data", (request) -> {
@@ -178,18 +172,25 @@ public class SmokeTests {
 					.observe(d ->
 									integer.getAndIncrement()
 					)
+
+
 					.take(10)
 					.observe(d ->
 									integerPostTake.getAndIncrement()
 					)
-					.timeout(3, TimeUnit.SECONDS, Streams.<Buffer>empty())
+					.timeout(2, TimeUnit.SECONDS, Streams.<String>empty())
 					.observe(d ->
 									integerPostTimeout.getAndIncrement()
 					)
-					.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
+							//.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
+
+					.concatWith(Streams.just("END"))
+					.observe(d ->
+									windowsData.addAll(parseCollection(d))
+					)
 					.observe(d ->
 									integerPostConcat.getAndIncrement()
-			)
+					)
 					.observeComplete(no -> {
 								integerPostConcat.decrementAndGet();
 								System.out.println("YYYYY COMPLETE " + Thread.currentThread());
@@ -200,8 +201,9 @@ public class SmokeTests {
 		httpServer.start().awaitSuccess();
 	}
 
-	private Promise<List<String>> getClientDataPromise() throws Exception {
-		reactor.io.net.http.HttpClient<String, String> httpClient = NetStreams.httpClient(new Function<Spec.HttpClient<String,String>, Spec.HttpClient<String,String>>() {
+	private List<String> getClientDataPromise() throws Exception {
+		reactor.io.net.http.HttpClient<String, String> httpClient = NetStreams.httpClient(new Function<Spec
+				.HttpClient<String, String>, Spec.HttpClient<String, String>>() {
 
 			@Override
 			public Spec.HttpClient<String, String> apply(Spec.HttpClient<String, String> t) {
@@ -209,13 +211,9 @@ public class SmokeTests {
 						.dispatcher(Environment.sharedDispatcher());
 			}
 		});
-		Promise<List<String>> content = httpClient.get("/data", new Function<HttpChannel<String, String>, Publisher<? extends String>>() {
-
-			@Override
-			public Publisher<? extends String> apply(HttpChannel<String, String> t) {
-				t.header("Content-Type", "text/plain");
-				return Streams.just(" ");
-			}
+		Promise<List<String>> content = httpClient.get("/data", t -> {
+			t.header("Content-Type", "text/plain");
+			return Streams.just(" ");
 		}).flatMap(new Function<HttpChannel<String, String>, Publisher<? extends List<String>>>() {
 
 			@Override
@@ -225,15 +223,17 @@ public class SmokeTests {
 		});
 
 		httpClient.open().awaitSuccess();
-		return content;
+		content.awaitSuccess(20, TimeUnit.SECONDS);
+		httpClient.close().awaitSuccess();
+		return content.get();
 	}
 
-	private List<List<String>> getClientDatas(int threadCount, final Sender sender, int count) throws Exception {
+	@SuppressWarnings("unchecked")
+	private List<Integer> getClientDatas(int threadCount, final Sender sender, int count) throws Exception {
 		final CountDownLatch latch = new CountDownLatch(1);
-		final ArrayList<Thread> joins = new ArrayList<Thread>();
-		final ArrayList<List<String>> datas = new ArrayList<List<String>>();
+		final List<Integer> datas = SynchronizedList.decorate(new ArrayList<>());
 
-
+		windowsData.clear();
 		Runnable srunner = new Runnable() {
 			public void run() {
 				try {
@@ -243,44 +243,71 @@ public class SmokeTests {
 				}
 			}
 		};
-		Thread st = new Thread(srunner, "SenderThread" );
-		joins.add(st);
+		Thread st = new Thread(srunner, "SenderThread");
 		st.start();
-
+		CountDownLatch thread = new CountDownLatch(threadCount);
+		AtomicInteger counter = new AtomicInteger();
 		for (int i = 0; i < threadCount; ++i) {
 			Runnable runner = new Runnable() {
 				public void run() {
 					try {
-						latch.await();
-						boolean end = false;
-						while(!end) {
-							Promise<List<String>> clientDataPromise = getClientDataPromise();
-							List<String> res = clientDataPromise.await(20, TimeUnit.SECONDS);
-							if(res == null || res.size() == 1L && res.get(0) != null && res.get(0).contains("END")){
-								System.out.println("Client finished");
-								end = true;
-							}else {
-								datas.add(res);
+						boolean empty = false;
+						while (true) {
+							List<String> res = getClientDataPromise();
+							if (res == null) {
+								if (empty) break;
+								empty = true;
+								continue;
 							}
+
+							List<Integer> collected = parseCollection(res);
+							int size = collected.size();
+
+							//previous empty
+							if (count == counter.get() || size == 0 && empty) break;
+
+							datas.addAll(collected);
+							counter.addAndGet(size);
+							empty = size == 0;
+							System.out.println("Client received " + size + " elements, current total: " + counter + ", batches: " +
+									integerPostConcat);
 						}
+						System.out.println("Client finished");
 					} catch (Exception ie) {
 						ie.printStackTrace();
+					} finally {
+						thread.countDown();
 					}
 				}
 			};
 			Thread t = new Thread(runner, "SmokeThread" + i);
-			joins.add(t);
 			t.start();
 		}
 		latch.countDown();
-		for (Thread t : joins) {
-			try {
-				t.join();
-			} catch (InterruptedException e) {
+
+		thread.await(60, TimeUnit.SECONDS);
+		return datas;
+	}
+
+	private List<Integer> parseCollection(List<String> res) {
+		StringBuilder buf = new StringBuilder();
+		for (int j = 0; j < res.size(); j++) {
+			buf.append(res.get(j));
+		}
+		return parseCollection(buf.toString());
+	}
+
+	private List<Integer> parseCollection(String res) {
+		List<Integer> integers = new ArrayList<>();
+
+		//System.out.println(Thread.currentThread()+res.replaceAll("\n",","));
+		List<String> split = split(res);
+		for (String d : split) {
+			if (StringUtils.hasText(d) && !d.contains("END")) {
+				integers.add(Integer.parseInt(d));
 			}
 		}
-
-		return datas;
+		return integers;
 	}
 
 	private static List<String> split(String data) {
@@ -294,9 +321,23 @@ public class SmokeTests {
 			for (int i = 0; i < count; i++) {
 //				System.out.println("XXXX " + x);
 				String data = x++ + "\n";
-				processor.onNext(Buffer.wrap(data));
+				processor.onNext(data);
 			}
 		}
+	}
+
+	private void printStats(int t){
+		System.out.println("\n" +
+				"---- STATISTICS ----------------- \n" +
+				"run: " + (t + 1) + " \n" +
+				"windowed : " + windows + " \n" +
+				"post reduce: " + postReduce + " \n" +
+				"client batches: " + integer + " \n" +
+				"post take batches: " + integerPostTake + "\n" +
+				"post timeout batches: " + integerPostTimeout + "\n" +
+				"post concat batches: " + integerPostConcat + "\n" +
+				"-----------------------------------");
+
 	}
 
 	public class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
@@ -305,11 +346,11 @@ public class SmokeTests {
 		@Override
 		public Buffer apply(Buffer t) {
 			Buffer b = t.flip();
-			if(Thread.currentThread().getName().contains("reactor-tcp")){
-				for(StackTraceElement se : Thread.currentThread().getStackTrace()){
-					System.out.println(Thread.currentThread()+ "- "+se.getLineNumber()+": "+se);
+			if (Thread.currentThread().getName().contains("reactor-tcp")) {
+				for (StackTraceElement se : Thread.currentThread().getStackTrace()) {
+					System.out.println(Thread.currentThread() + "- " + se.getLineNumber() + ": " + se);
 				}
-				System.out.println(Thread.currentThread()+" END\n");
+				System.out.println(Thread.currentThread() + " END\n");
 			}
 			//System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
 			return b;

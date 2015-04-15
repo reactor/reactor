@@ -1,16 +1,18 @@
 package reactor.core.processor;
 
 /**
- * Created by jbrisbin on 3/24/15.
+ * @author jbrisbin
+ * @author smaldini
  */
-public class MutableSignal<T> {
+public final class MutableSignal<T> {
 
 	public enum Type {
 		NEXT, ERROR, COMPLETE
 	}
 
-	public Type      type  = Type.NEXT;
-	public T         value = null;
-	public Throwable error = null;
+	public Type      type     = Type.NEXT;
+	public T         value    = null;
+	public Throwable error    = null;
+	//public boolean   consumed = false;
 
 }

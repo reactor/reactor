@@ -16,6 +16,7 @@
 
 package reactor.fn.support;
 
+import reactor.core.processor.CancelException;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -80,7 +81,7 @@ public class SingleUseConsumer<T> implements Consumer<T> {
 			} else {
 				doAccept(t);
 			}
-			throw new CancelConsumerException();
+			throw CancelException.INSTANCE;
 		}
 	}
 

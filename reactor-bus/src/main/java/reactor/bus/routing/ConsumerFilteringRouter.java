@@ -21,10 +21,10 @@ import org.slf4j.LoggerFactory;
 import reactor.bus.Event;
 import reactor.bus.filter.Filter;
 import reactor.bus.registry.Registration;
+import reactor.core.processor.CancelException;
 import reactor.core.support.Assert;
 import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
-import reactor.fn.support.CancelConsumerException;
 
 import java.util.List;
 
@@ -70,7 +70,7 @@ public class ConsumerFilteringRouter implements Router {
 				}
 				try {
 					((Consumer<E>)reg.getObject()).accept(event);
-				} catch (CancelConsumerException cancel) {
+				} catch (CancelException cancel) {
 					reg.cancel();
 				} catch (Throwable t) {
 					if (null != errorConsumer) {

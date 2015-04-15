@@ -24,6 +24,7 @@ import reactor.core.Dispatcher;
 import reactor.core.alloc.Recyclable;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
+import reactor.core.processor.CancelException;
 import reactor.core.queue.CompletableLinkedQueue;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Exceptions;
@@ -191,7 +192,7 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 		try {
 			doNext(ev);
-		} catch (UnlinkedActionException uae){
+		} catch (CancelException uae){
 			throw uae;
 		} catch (Throwable cause) {
 			doError(Exceptions.addValueAsLastCause(cause, ev));
@@ -252,7 +253,7 @@ public abstract class Action<I, O> extends Stream<O>
 		PushSubscription<O> downstreamSubscription = this.downstreamSubscription;
 		if (downstreamSubscription == null) {
 			if(upstreamSubscription == null){
-				throw UnlinkedActionException.INSTANCE;
+				throw CancelException.INSTANCE;
 			}
 			/*if (log.isTraceEnabled()) {
 				log.trace("event [" + ev + "] dropped by: " + getClass().getSimpleName() + ":" + this);
@@ -262,6 +263,8 @@ public abstract class Action<I, O> extends Stream<O>
 
 		try {
 			downstreamSubscription.onNext(ev);
+		} catch(CancelException ce){
+			throw ce;
 		} catch (Throwable throwable) {
 			doError(Exceptions.addValueAsLastCause(throwable, ev));
 		}
@@ -692,20 +695,6 @@ public abstract class Action<I, O> extends Stream<O>
 								", max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) + "}"
 						: "") +
 				(upstreamSubscription != null ? upstreamSubscription : "") + '}';
-	}
-
-	public static class UnlinkedActionException extends IllegalStateException{
-		static final UnlinkedActionException INSTANCE = new UnlinkedActionException();
-
-		private UnlinkedActionException() {
-			super("Cannot dispatch signals on a fully unlinked action (upstream and downstream are null)");
-		}
-
-		@Override
-		public synchronized Throwable fillInStackTrace()
-		{
-			return this;
-		}
 	}
 
 }
