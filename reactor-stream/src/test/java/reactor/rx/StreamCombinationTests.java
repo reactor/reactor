@@ -15,6 +15,7 @@
  */
 package reactor.rx;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +46,11 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	private Broadcaster<SensorData>       sensorEven;
 	private Broadcaster<SensorData>       sensorOdd;
 
+	@Before
+	public void before(){
+		sensorEven();
+		sensorOdd();
+	}
 
 	public Consumer<Object> loggingConsumer() {
 		return m -> LOG.info("(int) msg={}", m);
@@ -57,7 +63,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		return allSensors;
 	}
 
-	public Broadcaster<SensorData> sensorOdd() {
+	public Stream<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
 			this.sensorOdd = Broadcaster.<SensorData>create(env, env.getCachedDispatchers().get());
@@ -69,7 +75,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		return sensorOdd;
 	}
 
-	public Broadcaster<SensorData> sensorEven() {
+	public Stream<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
 			this.sensorEven = Broadcaster.<SensorData>create(env, env.getCachedDispatchers().get());
@@ -117,19 +123,29 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		awaitLatch(tail, latch);
 	}
 
+	/*@Test
+	public void sampleConcatTestConsistent() throws Exception {
+		for(int i = 0; i < 1000; i++){
+			System.out.println("------");
+			sampleConcatTest();
+		}
+	}*/
+
 	@Test
 	public void sampleConcatTest() throws Exception {
 		int elements = 40;
+
 		CountDownLatch latch = new CountDownLatch(elements+1);
 
 		Control tail = Streams.concat(sensorOdd(), sensorEven())
 				.log("concat")
 				.consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 
+		System.out.println(tail.debug());
 		generateData(elements);
 
-		sensorEven().onComplete();
-		sensorOdd().onComplete();
+		sensorEven.onComplete();
+		sensorOdd.onComplete();
 
 		awaitLatch(tail, latch);
 	}
@@ -146,8 +162,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		generateData(elements);
 
-		sensorEven().onComplete();
-		sensorOdd().onComplete();
+		sensorEven.onComplete();
+		sensorOdd.onComplete();
 
 		awaitLatch(tail, latch);
 	}
@@ -164,8 +180,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		generateData(elements);
 
-		sensorEven().onComplete();
-		sensorOdd().onComplete();
+		sensorEven.onComplete();
+		sensorOdd.onComplete();
 
 		awaitLatch(tail, latch);
 	}
@@ -237,7 +253,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@SuppressWarnings("unchecked")
 	private void awaitLatch(Control tail, CountDownLatch latch) throws Exception {
-		if (!latch.await(50, TimeUnit.SECONDS)) {
+		if (!latch.await(10, TimeUnit.SECONDS)) {
 			throw new Exception("Never completed: (" + latch.getCount() + ") "
 					+ tail.debug());
 		}
@@ -251,9 +267,9 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		for (long i = 0; i < elements; i++) {
 			data = new SensorData(i, random.nextFloat() * 100);
 			if (i % 2 == 0) {
-				upstream = sensorEven();
+				upstream = sensorEven;
 			} else {
-				upstream = sensorOdd();
+				upstream = sensorOdd;
 			}
 			upstream.onNext(data);
 		}

@@ -103,6 +103,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doError(Throwable ev) {
+		cancel();
 		if (errorConsumer != null) {
 			errorConsumer.accept(ev);
 		}
@@ -111,6 +112,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doComplete() {
+		cancel();
 		if (completeConsumer != null) {
 			completeConsumer.accept(null);
 		}

@@ -54,7 +54,7 @@ public class RetryAction<T> extends Action<T, T> {
 
 	@Override
 	protected void doOnSubscribe(Subscription subscription) {
-		long pendingRequest = this.pendingRequests;
+		long pendingRequests = this.pendingRequests;
 		subscription.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);
 	}
 

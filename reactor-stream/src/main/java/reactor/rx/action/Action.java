@@ -252,13 +252,10 @@ public abstract class Action<I, O> extends Stream<O>
 		//log.debug("event [" + ev + "] by: " + getClass().getSimpleName());
 		PushSubscription<O> downstreamSubscription = this.downstreamSubscription;
 		if (downstreamSubscription == null) {
-			if(upstreamSubscription == null){
 				throw CancelException.INSTANCE;
-			}
 			/*if (log.isTraceEnabled()) {
 				log.trace("event [" + ev + "] dropped by: " + getClass().getSimpleName() + ":" + this);
 			}*/
-			return;
 		}
 
 		try {
@@ -668,7 +665,7 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	protected void doShutdown() {
-		recycle();
+		//recycle();
 	}
 
 	private boolean inspectPublisher(Action<?, ?> that, Class<?> actionClass) {

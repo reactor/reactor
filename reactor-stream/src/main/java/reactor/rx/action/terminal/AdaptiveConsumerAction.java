@@ -131,12 +131,14 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doError(Throwable ev) {
+		cancel();
 		requestMapperStream.onError(ev);
 		super.doError(ev);
 	}
 
 	@Override
 	protected void doShutdown() {
+		cancel();
 		requestMapperStream.onComplete();
 		super.doShutdown();
 	}

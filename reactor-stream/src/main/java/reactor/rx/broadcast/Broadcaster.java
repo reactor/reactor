@@ -247,8 +247,10 @@ public class Broadcaster<O> extends Action<O, O> {
 	public void recycle() {
 		if(HOT_SUBSCRIPTION != upstreamSubscription){
 			upstreamSubscription = null;
+		} else {
+			downstreamSubscription = null;
 		}
-		downstreamSubscription = null;
+
 	}
 
 	@Override
