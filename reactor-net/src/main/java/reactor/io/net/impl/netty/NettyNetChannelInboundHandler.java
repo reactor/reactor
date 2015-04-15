@@ -23,6 +23,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.Environment;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.Spec;
 import reactor.rx.subscription.PushSubscription;
@@ -38,7 +39,7 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final Subscriber<? super IN>    subscriber;
+	private final   Subscriber<? super IN>    subscriber;
 	protected final NettyChannelStream<IN, ?> channelStream;
 
 	private volatile ByteBuf              remainder;
@@ -93,7 +94,7 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 
 	@Override
 	public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-		if (channelSubscription.isComplete()) {
+		if (this.channelSubscription == null || channelSubscription.isComplete()) {
 			return;
 		}
 
@@ -104,17 +105,28 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 				ctx.read();
 			}
 		} catch (Throwable throwable) {
-			channelSubscription.onError(throwable);
+			if (channelSubscription != null) {
+				channelSubscription.onError(throwable);
+			} else if (Environment.alive()) {
+				Environment.get().routeError(throwable);
+			}
 		}
 	}
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 		try {
-			channelSubscription.onComplete();
+			if (this.channelSubscription != null) {
+				channelSubscription.onComplete();
+				channelSubscription = null;
+			}
 			super.channelInactive(ctx);
 		} catch (Throwable err) {
-			channelSubscription.onError(err);
+			if (channelSubscription != null) {
+				channelSubscription.onError(err);
+			} else if (Environment.alive()) {
+				Environment.get().routeError(err);
+			}
 		}
 	}
 
@@ -123,18 +135,18 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		try {
 
-			if (channelSubscription.isComplete() || msg.getClass() == EmptyByteBuf.class) {
+			if (channelSubscription == null || channelSubscription.isComplete() || msg.getClass() == EmptyByteBuf.class) {
 				return;
 			}
 
 			if (channelStream.getDecoder() == Spec.NOOP_DECODER || !ByteBuf.class.isAssignableFrom(msg.getClass())) {
 				channelSubscription.onNext((IN) msg);
 				return;
-			}else if(channelStream.getDecoder() == null){
+			} else if (channelStream.getDecoder() == null) {
 				try {
 					channelSubscription.onNext((IN) new Buffer(((ByteBuf) msg).nioBuffer()));
 				} finally {
-					((ByteBuf)msg).release();
+					((ByteBuf) msg).release();
 				}
 				return;
 			}
@@ -173,19 +185,22 @@ public class NettyNetChannelInboundHandler<IN> extends ChannelInboundHandlerAdap
 				}
 			}
 		} catch (Throwable t) {
-			channelSubscription.onError(t);
+			if (channelSubscription != null) {
+				channelSubscription.onError(t);
+			} else if (Environment.alive()) {
+				Environment.get().routeError(t);
+			}
 		}
 
 	}
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-		if ("Broken pipe".equals(cause.getMessage()) || "Connection reset by peer".equals(cause.getMessage())) {
-			if (log.isDebugEnabled()) {
-				log.debug(ctx.channel().toString() + " " + cause.getMessage());
-			}
+		if (channelSubscription != null) {
+			channelSubscription.onError(cause);
+		} else if (Environment.alive()) {
+			Environment.get().routeError(cause);
 		}
-		channelSubscription.onError(cause);
 	}
 
 	private boolean bufferHasSufficientCapacity(ByteBuf receiver, ByteBuf provider) {

@@ -25,6 +25,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.processor.CancelException;
 import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
@@ -95,7 +96,11 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 		NettyNetChannelInboundHandler ch = ioChannel.pipeline().get(NettyNetChannelInboundHandler.class);
 		PushSubscription<IN> subscription = ch == null ? null : ch.subscription();
 		if (subscription != null) {
-			subscription.onNext(in);
+			try {
+				subscription.onNext(in);
+			} catch (CancelException ce){
+				//I
+			}
 		} else {
 			super.doDecoded(in);
 		}
