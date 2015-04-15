@@ -54,21 +54,21 @@ public final class RingBufferSubscriberUtils {
 	}
 
 	public static <E> void route(MutableSignal<E> task, Subscriber<? super E> subscriber) {
-		MutableSignal.Type type = task.type;
-		task.type = null;
+		E value = task.value;
+		task.value = null;
 		try {
-			if (type == MutableSignal.Type.NEXT && null != task.value) {
+			if (task.type == MutableSignal.Type.NEXT && null != value) {
 				// most likely case first
-				subscriber.onNext(task.value);
-			} else if (type == MutableSignal.Type.COMPLETE) {
+				subscriber.onNext(value);
+			} else if (task.type == MutableSignal.Type.COMPLETE) {
 				// second most likely case next
 				subscriber.onComplete();
-			} else if (type == MutableSignal.Type.ERROR) {
+			} else if (task.type == MutableSignal.Type.ERROR) {
 				// errors should be relatively infrequent compared to other signals
 				subscriber.onError(task.error);
 			}
 		}catch(Throwable t){
-			task.type = type;
+			task.value = value;
 			throw  t;
 		}
 	}
