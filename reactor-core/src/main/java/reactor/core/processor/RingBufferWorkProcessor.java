@@ -543,7 +543,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 
 			//set eventProcessor sequence to ringbuffer index
-			signalProcessor.sequence.set(workSequence.get());
+			signalProcessor.sequence.set(ringBuffer.getMinimumGatingSequence());
 
 			//bind eventProcessor sequence to observe the ringBuffer
 			ringBuffer.addGatingSequences(signalProcessor.sequence);
@@ -621,7 +621,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 			long current = workSequence.get();
 			if (decrementSubscribers() && current != -1L) {
 				long rewind = ringBuffer.getMinimumGatingSequence();
-				workSequence.set(rewind - 1L);
+				workSequence.set(rewind);
 			}
 		}
 	}
@@ -755,11 +755,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						processor.barrier.clearAlert();
 
 						if (!running.get()) {
-							if(cachedAvailableSequence != Long.MIN_VALUE){
+								sequence.set(nextSequence - 1L);
 								processor.cancelledSequences.add(sequence);
-							}else {
-								processor.ringBuffer.removeGatingSequence(sequence);
-							}
 							break;
 
 						} else {
@@ -767,8 +764,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 							final long cursor = processor.barrier.getCursor();
 							if (processor.ringBuffer.get(cursor).type == MutableSignal.Type.ERROR) {
 								RingBufferSubscriberUtils.route(processor.ringBuffer.get(cursor), subscriber);
-							} else if (replay()) {
-								break;
 							}
 							//continue event-loop
 						}
