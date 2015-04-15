@@ -618,6 +618,11 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		@Override
 		public void cancel() {
 			eventProcessor.halt();
+			long current = workSequence.get();
+			if (decrementSubscribers() && current != -1L) {
+				long rewind =ringBuffer.getMinimumGatingSequence();
+				workSequence.set(rewind);
+			}
 		}
 	}
 
@@ -676,7 +681,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		@Override
 		public void halt() {
 			running.set(false);
-			//processor.barrier.alert();
+			processor.barrier.alert();
 		}
 
 		@Override
@@ -748,7 +753,11 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						break;
 					} catch (AlertException ex) {
 						if (!running.get()) {
-							processor.ringBuffer.removeGatingSequence(sequence);
+							if(cachedAvailableSequence != Long.MIN_VALUE) {
+								processor.cancelledSequences.add(sequence);
+							}else {
+								processor.ringBuffer.removeGatingSequence(sequence);
+							}
 							break;
 
 						} else {
@@ -771,11 +780,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 			} finally {
 				running.set(false);
-				long current = processor.workSequence.get();
-				if (processor.decrementSubscribers() && current != -1L) {
-					long rewind = processor.ringBuffer.getMinimumGatingSequence();
-					processor.workSequence.set(rewind);
-				}
 			}
 		}
 
