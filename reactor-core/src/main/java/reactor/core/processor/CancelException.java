@@ -24,7 +24,7 @@ public final class CancelException extends RuntimeException {
 	public static final CancelException INSTANCE = new CancelException();
 
 	private CancelException() {
-		super("Cannot dispatch signals on a fully unlinked action (upstream and downstream are null)");
+		super("The subscriber has denied dispatching");
 	}
 
 	@Override

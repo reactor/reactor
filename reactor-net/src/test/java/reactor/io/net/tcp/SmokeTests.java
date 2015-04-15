@@ -174,7 +174,7 @@ public class SmokeTests {
 					)
 
 
-					.take(10)
+					.take(5, TimeUnit.SECONDS)
 					.observe(d ->
 									integerPostTake.getAndIncrement()
 					)

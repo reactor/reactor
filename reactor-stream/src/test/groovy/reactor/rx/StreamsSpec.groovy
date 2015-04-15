@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.reactivestreams.Subscription
 import reactor.Environment
 import reactor.core.dispatch.SynchronousDispatcher
+import reactor.core.processor.CancelException
 import reactor.core.processor.RingBufferProcessor
 import reactor.fn.BiFunction
 import reactor.io.buffer.Buffer
@@ -2145,6 +2146,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'last value known is 5 and stream is in error state'
+			thrown CancelException
 			error in TimeoutException
 			value.get() == 5
 	}
