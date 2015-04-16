@@ -2242,7 +2242,7 @@ class StreamsSpec extends Specification {
 	def 'Streams can be materialized'() {
 		when:
 			'A source stream emits next signals followed by complete'
-			def res = []
+			List res = []
 			def myStream = Streams.create { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
@@ -2260,7 +2260,7 @@ class StreamsSpec extends Specification {
 			)
 
 		then:
-			res == ['SUBSCRIBE', 'NEXT', 'NEXT', 'NEXT', 'COMPLETE', 'complete']
+			res == ['NEXT', 'NEXT', 'NEXT', 'COMPLETE', 'complete']
 
 		when:
 			'A source stream emits next signals followed by complete'
@@ -2279,7 +2279,7 @@ class StreamsSpec extends Specification {
 			)
 
 		then:
-			res == ['SUBSCRIBE', 'NEXT', 'ERROR']
+			res == ['NEXT', 'ERROR']
 	}
 
 	def 'Streams can be dematerialized'() {

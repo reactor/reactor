@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.transformation;
 
-import org.reactivestreams.Subscription;
 import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
 
@@ -27,12 +26,6 @@ public class MaterializeAction<T> extends Action<T, Signal<T>> {
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(Signal.next(ev));
-	}
-
-	@Override
-	protected void doOnSubscribe(Subscription subscription) {
-		super.doOnSubscribe(subscription);
-		broadcastNext(Signal.<T>subscribe(subscription));
 	}
 
 	@Override

@@ -190,6 +190,11 @@ public abstract class Action<I, O> extends Stream<O>
 		if (ev == null) {
 			throw new NullPointerException("Spec 2.13: Signal cannot be null");
 		}
+
+		if (upstreamSubscription == null && downstreamSubscription == null) {
+			throw CancelException.INSTANCE;
+		}
+
 		try {
 			doNext(ev);
 		} catch (CancelException uae){
@@ -253,9 +258,6 @@ public abstract class Action<I, O> extends Stream<O>
 		PushSubscription<O> downstreamSubscription = this.downstreamSubscription;
 		if (downstreamSubscription == null) {
 				throw CancelException.INSTANCE;
-			/*if (log.isTraceEnabled()) {
-				log.trace("event [" + ev + "] dropped by: " + getClass().getSimpleName() + ":" + this);
-			}*/
 		}
 
 		try {

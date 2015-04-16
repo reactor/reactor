@@ -711,10 +711,10 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 			processor.barrier.clearAlert();
 
-			try {
-				if (replay()) {
-					return;
-				}
+			if (replay()) {
+				running.set(false);
+				return;
+			}
 
 				while (true) {
 					try {
@@ -755,8 +755,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						processor.barrier.clearAlert();
 
 						if (!running.get()) {
-								sequence.set(nextSequence - 1L);
-								processor.cancelledSequences.add(sequence);
+							sequence.set(nextSequence - 1L);
+							processor.cancelledSequences.add(sequence);
 							break;
 
 						} else {
@@ -774,11 +774,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						processedSequence = true;
 					}
 				}
-
-			} finally {
 				running.set(false);
 			}
-		}
 
 		private boolean replay() {
 			Sequence replayedSequence;
