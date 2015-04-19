@@ -40,8 +40,8 @@ class EnvironmentSpec extends Specification {
 
 		then:
 			"its dispatchers are cleaned up"
-			1 * dispatcher.shutdown()
-			1 * dispatcher2.shutdown()
+			1 * dispatcher.awaitAndShutdown()
+			1 * dispatcher2.awaitAndShutdown()
 	}
 
 	def "An environment can create Dispatchers"() {
