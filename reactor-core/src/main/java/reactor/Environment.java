@@ -784,7 +784,7 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 		}
 
 		for (Dispatcher dispatcher : dispatchers) {
-			dispatcher.shutdown();
+			dispatcher.awaitAndShutdown();
 		}
 
 		for (DispatcherSupplier dispatcherSupplier : dispatcherFactories.values()) {
@@ -838,7 +838,7 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 			public void shutdown() {
 				for (Dispatcher dispatcher : dispatchers) {
 					if (dispatcher != null) {
-						dispatcher.shutdown();
+						dispatcher.awaitAndShutdown();
 					}
 				}
 				terminated = true;
