@@ -16,8 +16,9 @@
 
 package reactor;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 
 /**
  * @author Jon Brisbin
@@ -27,13 +28,19 @@ public abstract class AbstractReactorTest {
 
 	protected Environment env;
 
-	@Before
-	public void loadEnv() {
-		env = Environment.initializeIfEmpty().assignErrorJournal();
+
+	@BeforeClass
+	public static void loadEnv() {
+		Environment.initializeIfEmpty().assignErrorJournal();
 	}
 
-	@After
-	public void closeEnv() {
+	@Before
+	public void assignEnv() {
+		env = Environment.get();
+	}
+
+	@AfterClass
+	public static void closeEnv() {
 		Environment.terminate();
 	}
 

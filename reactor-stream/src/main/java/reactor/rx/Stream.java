@@ -701,8 +701,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} running on a different {@link Dispatcher}
 	 */
 	public Stream<O> dispatchOn(final Environment environment, @Nonnull final Dispatcher dispatcher) {
-		if (dispatcher == SynchronousDispatcher.INSTANCE
-				|| dispatcher == getDispatcher()) {
+		if (dispatcher == SynchronousDispatcher.INSTANCE) {
 
 			if (environment != null && environment != getEnvironment()) {
 				return env(environment);

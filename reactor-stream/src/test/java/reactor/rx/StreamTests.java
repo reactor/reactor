@@ -965,6 +965,49 @@ public class StreamTests extends AbstractReactorTest {
 		Streams.just(1).map(IDENTITY_FUNCTION);
 	}
 
+	@Test
+	public void consistentMultithreadingWithPartition() throws InterruptedException {
+		List<String> ids = Arrays.asList("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
+
+		DispatcherSupplier supplier1 = Environment.newCachedDispatchers(2, "pool1");
+		DispatcherSupplier supplier2 = Environment.newCachedDispatchers(5, "pool2");
+
+		CountDownLatch latch = new CountDownLatch(10);
+
+		Streams.from(ids)
+				.dispatchOn(Environment.sharedDispatcher())
+				.partition(2)
+						// here we receive multiple streams
+				.flatMap(stream -> stream
+								// we need to call dispatch on each stream
+								.dispatchOn(supplier1.get())
+								.map(s -> s + " " + Thread.currentThread().toString())
+				)
+				.map(t -> {
+					System.out.println("First partition: "+Thread.currentThread() + ", worker=" + t);
+					return t;
+				})
+						// Also tried to do another dispatch but with no success.
+//                .dispatchOn(Environment.sharedDispatcher())
+				.partition(5)
+						// here we receive multiple streams
+				.flatMap(stream -> stream
+								// we need to call dispatch on each stream
+								.dispatchOn(supplier2.get())
+								.map(s -> s + " " + Thread.currentThread().toString())
+				)
+				.dispatchOn(Environment.sharedDispatcher())
+						// worker threads should be funneled into the same, specific thread
+						// https://groups.google.com/forum/#!msg/reactor-framework/JO0hGftOaZs/20IhESjPQI0J
+				.consume(t -> {
+					System.out.println("Second partition: "+Thread.currentThread() + ", worker=" + t);
+					latch.countDown();
+				});
+
+
+		assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
+	}
+
 	private static final Function<Integer, Integer> IDENTITY_FUNCTION = new Function<Integer, Integer>() {
 		@Override
 		public Integer apply(Integer value) {
