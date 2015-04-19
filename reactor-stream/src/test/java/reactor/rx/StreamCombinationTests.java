@@ -15,6 +15,7 @@
  */
 package reactor.rx;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -52,6 +53,12 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		sensorOdd();
 	}
 
+	@After
+	public void after(){
+		sensorEven.getDispatcher().awaitAndShutdown();
+		sensorOdd.getDispatcher().awaitAndShutdown();
+	}
+
 	public Consumer<Object> loggingConsumer() {
 		return m -> LOG.info("(int) msg={}", m);
 	}
@@ -66,7 +73,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public Stream<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
-			this.sensorOdd = Broadcaster.<SensorData>create(env, env.getCachedDispatchers().get());
+			this.sensorOdd = Broadcaster.<SensorData>create(Environment.newDispatcher());
 
 			// add substream to "master" list
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
@@ -78,7 +85,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public Stream<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
-			this.sensorEven = Broadcaster.<SensorData>create(env, env.getCachedDispatchers().get());
+			this.sensorEven = Broadcaster.<SensorData>create(Environment.newDispatcher());
 
 			// add substream to "master" list
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
