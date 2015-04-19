@@ -181,7 +181,6 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements+1);
 
 		Control tail = sensorOdd().concatWith(sensorEven())
-				.dispatchOn(Environment.sharedDispatcher())
 				.log("concat")
 				.consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 
@@ -249,7 +248,6 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
 		Control tail = Streams.zip(sensorEven(), sensorOdd(), this::computeMin)
-				.dispatchOn(env)
 				.log("sampleZipTest")
 				.consume(x -> latch.countDown());
 
