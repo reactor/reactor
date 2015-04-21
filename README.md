@@ -4,7 +4,7 @@
 
 `Reactor` is a foundational library building for reactive fast data applications on the JVM. It provides abstractions for Java, Groovy, [Clojure](https://github.com/clojurewerkz/meltdown) and other JVM languages to make building event and data-driven applications easier. It’s also really fast. On a recent laptop with a dual-core processor, it's possible to process over 15,000,000 events per second with the `RingBufferDispatcher` and over 25,000,000 events per second in a single thread. Other dispatchers are available to provide the developer with a range of choices from thread-pool style, long-running task execution to non-blocking, high-volume task dispatching.
 
-[![Build Status](https://drone.io/github.com/reactor/reactor/status.png)](https://drone.io/github.com/reactor/reactor/latest)
+[![Build Status](http://drone.io/github.com/reactor/reactor/status.png)](https://drone.io/github.com/reactor/reactor/latest)
 
 ### Build instructions
 
