@@ -20,8 +20,8 @@ import net.openhft.chronicle.ChronicleQueueBuilder;
 import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
+import reactor.io.queue.ChronicleQueuePersistor;
 import reactor.io.queue.PersistentQueue;
-import reactor.io.queue.VanillaChronicleQueuePersistor;
 
 import java.io.IOException;
 
@@ -34,11 +34,13 @@ public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 
 	public static String DEFAULT_BASE_PATH = System.getProperty("java.io.tmpdir") + "/persistent-queue";
 
-	private String  basePath     = DEFAULT_BASE_PATH;
-	private boolean clearOnStart = false;
-	private boolean deleteOnExit = false;
+	private String  basePath       = DEFAULT_BASE_PATH;
+	private boolean clearOnStart   = false;
+	private boolean deleteOnExit   = false;
+	private long    indexBlockSize = 16L << 20;
+	private boolean sync           = false;
+	private long    dataBlockSize  = 64L << 20;
 	private Codec<Buffer, T, T> codec;
-	private ChronicleQueueBuilder.VanillaChronicleQueueBuilder config = ChronicleQueueBuilder.vanilla(basePath);
 
 	public PersistentQueueSpec<T> codec(Codec<Buffer, T, T> codec) {
 		this.codec = codec;
@@ -61,29 +63,32 @@ public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 	}
 
 	public PersistentQueueSpec<T> dataBlockSize(int size) {
-		config.dataBlockSize(size);
+		this.dataBlockSize = size;
 		return this;
 	}
 
 	public PersistentQueueSpec<T> sync(boolean synchronousMode) {
-		config.synchronous(synchronousMode);
+		this.sync = synchronousMode;
 		return this;
 	}
 
-	public PersistentQueueSpec<T> indexBlockSize(int excerpts) {
-		config.indexBlockSize(excerpts);
+	public PersistentQueueSpec<T> indexBlockSize(int indexBlockSize) {
+		this.indexBlockSize = indexBlockSize;
 		return this;
 	}
 
 	@Override
 	public PersistentQueue<T> get() {
 		try {
-			return new PersistentQueue<T>(new VanillaChronicleQueuePersistor<T>(basePath,
+			return new PersistentQueue<T>(new ChronicleQueuePersistor<T>(basePath,
 					codec,
 					clearOnStart,
 					deleteOnExit,
-					config));
-		} catch(IOException e) {
+					ChronicleQueueBuilder.vanilla(basePath)
+							.indexBlockSize(indexBlockSize)
+							.synchronous(sync)
+							.dataBlockSize(dataBlockSize)));
+		} catch (IOException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
 	}

@@ -60,7 +60,7 @@ class QueuePersistorSpec extends Specification {
 
 		given:
 			"an IndexedChronicleQueuePersistor"
-			def persistor = new VanillaChronicleQueuePersistor<String>(
+			def persistor = new ChronicleQueuePersistor<String>(
 					"queue-persistor",
 					StandardCodecs.STRING_CODEC,
 					true,

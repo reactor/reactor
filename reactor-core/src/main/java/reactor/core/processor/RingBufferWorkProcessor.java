@@ -18,7 +18,7 @@ package reactor.core.processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.processor.util.RingBufferSubscriberUtils;
-import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.processor.util.SingleUseExecutor;
 import reactor.core.support.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
@@ -26,7 +26,6 @@ import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -510,7 +509,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		super(autoCancel);
 
 		this.executor = executor == null
-				? Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name))
+				? SingleUseExecutor.create(name)
 				: executor;
 
 		this.ringBuffer = RingBuffer.create(
@@ -572,6 +571,9 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	@Override
 	public void onComplete() {
 		RingBufferSubscriberUtils.onComplete(ringBuffer);
+		if (executor.getClass() == SingleUseExecutor.class) {
+			executor.shutdown();
+		}
 	}
 
 	@Override
@@ -716,66 +718,68 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				return;
 			}
 
-				while (true) {
-					try {
-						// if previous sequence was processed - fetch the next sequence and set
-						// that we have successfully processed the previous sequence
-						// typically, this will be true
-						// this prevents the sequence getting too far forward if an exception
-						// is thrown from the WorkHandler
-						if (processedSequence) {
-							processedSequence = false;
-							do {
-								nextSequence = processor.workSequence.get() + 1L;
-								sequence.set(nextSequence - 1L);
-							}
-							while (!processor.workSequence.compareAndSet(nextSequence - 1L, nextSequence));
+			while (true) {
+				try {
+					// if previous sequence was processed - fetch the next sequence and set
+					// that we have successfully processed the previous sequence
+					// typically, this will be true
+					// this prevents the sequence getting too far forward if an exception
+					// is thrown from the WorkHandler
+					if (processedSequence) {
+						processedSequence = false;
+						do {
+							nextSequence = processor.workSequence.get() + 1L;
+							sequence.set(nextSequence - 1L);
 						}
+						while (!processor.workSequence.compareAndSet(nextSequence - 1L, nextSequence));
+					}
 
-						if (cachedAvailableSequence >= nextSequence) {
-							event = processor.ringBuffer.get(nextSequence);
+					if (cachedAvailableSequence >= nextSequence) {
+						event = processor.ringBuffer.get(nextSequence);
 
-							readNextEvent(event);
+						readNextEvent(event);
 
-							//It's an unbounded subscriber or there is enough capacity to process the signal
-							RingBufferSubscriberUtils.routeOnce(event, subscriber);
+						//It's an unbounded subscriber or there is enough capacity to process the signal
+						RingBufferSubscriberUtils.routeOnce(event, subscriber);
 
-							processedSequence = true;
+						processedSequence = true;
 
-						} else {
-							cachedAvailableSequence = processor.barrier.waitFor(nextSequence);
-						}
+					} else {
+						cachedAvailableSequence = processor.barrier.waitFor(nextSequence);
+					}
 
-					} catch (CancelException ce) {
+				} catch (CancelException ce) {
+					sequence.set(nextSequence - 1L);
+					processor.cancelledSequences.add(sequence);
+					//processor.barrier.alert();
+					break;
+				} catch (AlertException ex) {
+					if (!running.get()) {
 						sequence.set(nextSequence - 1L);
 						processor.cancelledSequences.add(sequence);
-						//processor.barrier.alert();
 						break;
-					} catch (AlertException ex) {
-						processor.barrier.clearAlert();
 
-						if (!running.get()) {
-							sequence.set(nextSequence - 1L);
-							processor.cancelledSequences.add(sequence);
+					} else {
+
+						final long cursor = processor.barrier.getCursor();
+						if (processor.ringBuffer.get(cursor).type == MutableSignal.Type.ERROR) {
+							RingBufferSubscriberUtils.route(processor.ringBuffer.get(cursor), subscriber);
 							break;
-
 						} else {
-
-							final long cursor = processor.barrier.getCursor();
-							if (processor.ringBuffer.get(cursor).type == MutableSignal.Type.ERROR) {
-								RingBufferSubscriberUtils.route(processor.ringBuffer.get(cursor), subscriber);
-							}
-							//continue event-loop
+							processor.barrier.clearAlert();
 						}
 
-					} catch (final Throwable ex) {
-						subscriber.onError(ex);
-						sequence.set(nextSequence);
-						processedSequence = true;
+						//continue event-loop
 					}
+
+				} catch (final Throwable ex) {
+					subscriber.onError(ex);
+					sequence.set(nextSequence);
+					processedSequence = true;
 				}
-				running.set(false);
 			}
+			running.set(false);
+		}
 
 		private boolean replay() {
 			Sequence replayedSequence;

@@ -35,6 +35,7 @@ public class NamedDaemonThreadFactory implements ThreadFactory {
 	private static final AtomicInteger COUNTER = new AtomicInteger(0);
 
 	private final String                          prefix;
+	private final boolean                         daemon;
 	private final ClassLoader                     contextClassLoader;
 	private final Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
 
@@ -43,8 +44,7 @@ public class NamedDaemonThreadFactory implements ThreadFactory {
 	 * &lt;prefix&gt; is the given {@code prefix} and &lt;n&gt; is the count of threads
 	 * created thus far by this class.
 	 *
-	 * @param prefix
-	 * 		The thread name prefix
+	 * @param prefix The thread name prefix
 	 */
 	public NamedDaemonThreadFactory(String prefix) {
 		this(prefix, new ClassLoader(Thread.currentThread().getContextClassLoader()) {});
@@ -56,19 +56,20 @@ public class NamedDaemonThreadFactory implements ThreadFactory {
 	 * created thus far by this class. If the contextClassLoader parameter is not null it will assign it to the forged
 	 * Thread
 	 *
-	 * @param prefix
-	 * 		The thread name prefix
-	 * @param contextClassLoader
-	 * 		An optional classLoader to assign to thread
+	 * @param prefix             The thread name prefix
+	 * @param contextClassLoader An optional classLoader to assign to thread
 	 */
 	public NamedDaemonThreadFactory(String prefix, ClassLoader contextClassLoader) {
-		this(prefix, contextClassLoader, null);
+		this(prefix, contextClassLoader, null, true);
 	}
 
 	public NamedDaemonThreadFactory(String prefix,
 	                                ClassLoader contextClassLoader,
-	                                Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
+	                                Thread.UncaughtExceptionHandler uncaughtExceptionHandler,
+	                                boolean daemon
+	) {
 		this.prefix = prefix;
+		this.daemon = daemon;
 		this.contextClassLoader = contextClassLoader;
 		this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 	}
@@ -77,11 +78,11 @@ public class NamedDaemonThreadFactory implements ThreadFactory {
 	public Thread newThread(Runnable runnable) {
 		Thread t = new Thread(runnable);
 		t.setName(prefix + "-" + COUNTER.incrementAndGet());
-		t.setDaemon(true);
-		if(contextClassLoader != null) {
+		t.setDaemon(daemon);
+		if (contextClassLoader != null) {
 			t.setContextClassLoader(contextClassLoader);
 		}
-		if(null != uncaughtExceptionHandler) {
+		if (null != uncaughtExceptionHandler) {
 			t.setUncaughtExceptionHandler(uncaughtExceptionHandler);
 		}
 		return t;

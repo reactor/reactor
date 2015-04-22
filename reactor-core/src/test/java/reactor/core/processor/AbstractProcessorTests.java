@@ -87,48 +87,40 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 		} else {
 			final Random random = new Random();
 
-			return new Publisher<Long>() {
+			return s -> s.onSubscribe(new Subscription() {
+				volatile boolean terminated = false;
+
 				@Override
-				public void subscribe(final Subscriber<? super Long> s) {
-					s.onSubscribe(new Subscription() {
-						volatile boolean terminated = false;
-
-						@Override
-						public void request(long n) {
-							if(!terminated) {
-								for(long i = 0; i< n; i++) {
-									s.onNext(random.nextLong());
-								}
-							}
+				public void request(long n) {
+					if(!terminated) {
+						for(long i = 0; i< n; i++) {
+							s.onNext(random.nextLong());
 						}
-
-						@Override
-						public void cancel() {
-							terminated = true;
-						}
-					});
+					}
 				}
-			};
+
+				@Override
+				public void cancel() {
+					terminated = true;
+				}
+			});
 		}
 	}
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
-		return new Publisher<Long>() {
-			@Override
-			public void subscribe(final Subscriber<? super Long> s) {
-				s.onSubscribe(new Subscription() {
-					@Override
-					public void request(long n) {
-					}
+		return s -> {
+			s.onSubscribe(new Subscription() {
+				@Override
+				public void request(long n) {
+				}
 
-					@Override
-					public void cancel() {
-					}
-				});
-				s.onError(new Exception("test"));
+				@Override
+				public void cancel() {
+				}
+			});
+			s.onError(new Exception("test"));
 
-			}
 		};
 	}
 }

@@ -18,13 +18,12 @@ package reactor.core.processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.processor.util.RingBufferSubscriberUtils;
-import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.processor.util.SingleUseExecutor;
 import reactor.core.support.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -508,7 +507,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		super(autoCancel);
 
 		this.executor = executor == null
-		                ? Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name))
+		                ? SingleUseExecutor.create(name)
 		                : executor;
 
 		this.ringBuffer = RingBuffer.create(
@@ -573,6 +572,9 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	@Override
 	public void onComplete() {
 		RingBufferSubscriberUtils.onComplete(ringBuffer);
+		if(executor.getClass() == SingleUseExecutor.class){
+			executor.shutdown();
+		}
 	}
 
 	@Override

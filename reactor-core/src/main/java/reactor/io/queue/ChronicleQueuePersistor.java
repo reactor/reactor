@@ -40,9 +40,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  * @see <a href="https://github.com/peter-lawrey/Java-Chronicle">Java Chronicle</a>
  */
-public class VanillaChronicleQueuePersistor<T> implements QueuePersistor<T> {
+public class ChronicleQueuePersistor<T> implements QueuePersistor<T> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(VanillaChronicleQueuePersistor.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ChronicleQueuePersistor.class);
 
 	private final Object     monitor = new Object();
 	private final AtomicLong lastId  = new AtomicLong();
@@ -58,17 +58,17 @@ public class VanillaChronicleQueuePersistor<T> implements QueuePersistor<T> {
 
 
 	/**
-	 * Create an {@link VanillaChronicleQueuePersistor} based on the given base path.
+	 * Create an {@link ChronicleQueuePersistor} based on the given base path.
 	 *
 	 * @param basePath Directory in which to create the Chronicle.
 	 * @throws IOException
 	 */
-	public VanillaChronicleQueuePersistor(@Nonnull String basePath) throws IOException {
+	public ChronicleQueuePersistor(@Nonnull String basePath) throws IOException {
 		this(basePath, new JavaSerializationCodec<T>(), false, false, ChronicleQueueBuilder.vanilla(basePath));
 	}
 
 	/**
-	 * Create an {@link VanillaChronicleQueuePersistor} based on the given base path, encoder and decoder. Optionally,
+	 * Create an {@link ChronicleQueuePersistor} based on the given base path, encoder and decoder. Optionally,
 	 * passing {@literal false} to {@code clearOnStart} skips clearing the Chronicle on start for appending.
 	 *
 	 * @param basePath     Directory in which to create the Chronicle.
@@ -78,11 +78,11 @@ public class VanillaChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 * @param config       ChronicleConfig to use.
 	 * @throws IOException
 	 */
-	public VanillaChronicleQueuePersistor(@Nonnull String basePath,
-	                                      @Nonnull Codec<Buffer, T, T> codec,
-	                                      boolean clearOnStart,
-	                                      boolean deleteOnExit,
-	                                      @Nonnull ChronicleQueueBuilder config) throws IOException {
+	public ChronicleQueuePersistor(@Nonnull String basePath,
+	                               @Nonnull Codec<Buffer, T, T> codec,
+	                               boolean clearOnStart,
+	                               boolean deleteOnExit,
+	                               @Nonnull ChronicleQueueBuilder config) throws IOException {
 		this.basePath = basePath;
 		this.codec = codec;
 		this.deleteOnExit = deleteOnExit;
@@ -230,7 +230,7 @@ public class VanillaChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	public Iterator<T> iterator() {
 		return new Iterator<T>() {
 			public boolean hasNext() {
-				return VanillaChronicleQueuePersistor.this.hasNext();
+				return ChronicleQueuePersistor.this.hasNext();
 			}
 
 			@SuppressWarnings("unchecked")

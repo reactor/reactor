@@ -45,7 +45,7 @@ public class TakeAction<T> extends Action<T, T> {
 	public String toString() {
 		return super.toString() + "{" +
 				"take=" + limit +
-				"counted=" + counted +
+				", counted=" + counted +
 				'}';
 	}
 }

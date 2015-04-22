@@ -30,7 +30,7 @@ class PersistentQueueSpec extends Specification {
 	static QueuePersistor<String> persistor() {
 		def config = ChronicleQueueBuilder.indexed('persistent-queue')
 
-		new VanillaChronicleQueuePersistor<String>(
+		new ChronicleQueuePersistor<String>(
 				"persistent-queue",
 				StandardCodecs.STRING_CODEC,
 				false,
@@ -42,7 +42,7 @@ class PersistentQueueSpec extends Specification {
 	static <T> QueuePersistor<T> jsonPersistor(Class<T> type) {
 		def config = ChronicleQueueBuilder.indexed('persistent-queue')
 
-		new VanillaChronicleQueuePersistor<T>(
+		new ChronicleQueuePersistor<T>(
 				"persistent-queue",
 				new JsonCodec<T, T>(type),
 				false,

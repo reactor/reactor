@@ -16,6 +16,9 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 /**
  * @author Stephane Maldini
@@ -31,5 +34,64 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 	@Override
 	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
 		//IGNORE since subscribers see distinct data
+	}
+
+	@Override
+	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
+			Throwable {
+		for(int i = 0; i < 100; i++) {
+			System.out.println("test "+i);
+			super.required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError();
+		}
+	}
+
+	public static void main(String... args){
+		Publisher<Long> pub = s -> s.onSubscribe(new Subscription() {
+			volatile boolean terminated = false;
+
+			@Override
+			public void request(long n) {
+				if(!terminated) {
+					for(long i = 0; i< n; i++) {
+						s.onNext(i);
+						try {
+							Thread.sleep(1000);
+						}catch(InterruptedException ie){
+						}
+					}
+					terminated = true;
+					s.onComplete();
+				}
+			}
+
+			@Override
+			public void cancel() {
+				terminated = true;
+			}
+		});
+
+		Processor<Long, Long> processor = RingBufferWorkProcessor.<Long>create();
+		pub.subscribe(processor);
+		processor.subscribe(new Subscriber<Long>() {
+			@Override
+			public void onSubscribe(Subscription s) {
+				s.request(5);
+			}
+
+			@Override
+			public void onNext(Long aLong) {
+				System.out.println("next "+aLong);
+			}
+
+			@Override
+			public void onError(Throwable t) {
+
+			}
+
+			@Override
+			public void onComplete() {
+				System.out.println("finish");
+			}
+		});
 	}
 }
