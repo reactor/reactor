@@ -16,122 +16,16 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import org.reactivestreams.tck.TestEnvironment;
-
-import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class RingBufferProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Long> {
-
-	public RingBufferProcessorTests() {
-		super(new TestEnvironment(2000, true), 3500);
-	}
-
-	@Override
-	public ExecutorService publisherExecutorService() {
-		return Executors.newCachedThreadPool();
-	}
-
-	@Override
-	public Long createElement(int element) {
-		return (long)element;
-	}
+public class RingBufferProcessorTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-
 		return RingBufferProcessor.<Long>create("tckRingBufferProcessor", bufferSize);
 	}
 
-	@Override
-	public Publisher<Long> createHelperPublisher(final long elements) {
-		if (elements < 100 && elements > 0) {
-			return new Publisher<Long>() {
-				long cursor = 0;
-				@Override
-				public void subscribe(final Subscriber<? super Long> s) {
-					s.onSubscribe(new Subscription() {
-
-						volatile boolean terminated = false;
-
-						@Override
-						public void request(long n) {
-							if(terminated) return;
-							long i = 0l;
-							while(i < n && cursor < elements){
-								if(terminated) {
-									break;
-								}
-								s.onNext(cursor++);
-								i++;
-							}
-							if(cursor == elements){
-								terminated = true;
-								s.onComplete();
-							}
-						}
-
-						@Override
-						public void cancel() {
-							terminated = true;
-						}
-					});
-				}
-			};
-
-		} else {
-			final Random random = new Random();
-
-			return new Publisher<Long>() {
-				@Override
-				public void subscribe(final Subscriber<? super Long> s) {
-					s.onSubscribe(new Subscription() {
-						volatile boolean terminated = false;
-
-						@Override
-						public void request(long n) {
-							if(!terminated) {
-								for(long i = 0; i< n; i++) {
-									s.onNext(random.nextLong());
-								}
-							}
-						}
-
-						@Override
-						public void cancel() {
-							terminated = true;
-						}
-					});
-				}
-			};
-		}
-	}
-
-	@Override
-	public Publisher<Long> createFailedPublisher() {
-		return new Publisher<Long>() {
-			@Override
-			public void subscribe(final Subscriber<? super Long> s) {
-				s.onSubscribe(new Subscription() {
-					@Override
-					public void request(long n) {
-					}
-
-					@Override
-					public void cancel() {
-					}
-				});
-				s.onError(new Exception("test"));
-
-			}
-		};
-	}
 }

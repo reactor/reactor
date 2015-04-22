@@ -508,7 +508,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		super(autoCancel);
 
 		this.executor = executor == null
-		                ? Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, context))
+		                ? Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name))
 		                : executor;
 
 		this.ringBuffer = RingBuffer.create(
@@ -806,7 +806,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 				running.set(false);
 			}
 		}
-
 	}
 
 }

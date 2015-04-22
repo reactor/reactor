@@ -21,7 +21,7 @@ import reactor.core.Dispatcher;
 import reactor.core.support.NonBlocking;
 import reactor.fn.Consumer;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * A base processor
@@ -30,19 +30,21 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E>, NonBlocking {
 
-	protected static final int DEFAULT_BUFFER_SIZE = 1024;
+	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
+
 	protected static final int SMALL_BUFFER_SIZE   = 32;
+
 	protected final boolean autoCancel;
 
-	protected final ClassLoader context = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
-	};
-
-	protected final AtomicLong subscriberCount;
+	@SuppressWarnings("unused")
+	private volatile int subscriberCount = 0;
+	protected static final AtomicIntegerFieldUpdater<ReactorProcessor> SUBSCRIBER_COUNT =
+			AtomicIntegerFieldUpdater
+					.newUpdater(ReactorProcessor.class, "subscriberCount");
 
 	protected Subscription upstreamSubscription;
 
 	public ReactorProcessor(boolean autoCancel) {
-		this.subscriberCount = new AtomicLong(0);
 		this.autoCancel = autoCancel;
 	}
 
@@ -61,12 +63,12 @@ public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E
 	}
 
 	protected boolean incrementSubscribers() {
-		return subscriberCount.getAndIncrement() == 0l;
+		return SUBSCRIBER_COUNT.getAndIncrement(this) == 0;
 	}
 
 	protected boolean decrementSubscribers() {
 		Subscription subscription = upstreamSubscription;
-		if (subscriberCount.decrementAndGet() == 0l) {
+		if (SUBSCRIBER_COUNT.decrementAndGet(this) == 0) {
 			if (subscription != null && autoCancel) {
 				upstreamSubscription = null;
 				subscription.cancel();
