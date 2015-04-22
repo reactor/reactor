@@ -26,7 +26,6 @@ import reactor.io.codec.Codec;
 import reactor.io.codec.JavaSerializationCodec;
 
 import javax.annotation.Nonnull;
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collection;
@@ -41,9 +40,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  * @see <a href="https://github.com/peter-lawrey/Java-Chronicle">Java Chronicle</a>
  */
-public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
+public class VanillaChronicleQueuePersistor<T> implements QueuePersistor<T> {
 
-	private static final Logger LOG = LoggerFactory.getLogger(IndexedChronicleQueuePersistor.class);
+	private static final Logger LOG = LoggerFactory.getLogger(VanillaChronicleQueuePersistor.class);
 
 	private final Object     monitor = new Object();
 	private final AtomicLong lastId  = new AtomicLong();
@@ -55,21 +54,21 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	private final String              basePath;
 	private final Codec<Buffer, T, T> codec;
 	private final boolean             deleteOnExit;
-	private final Chronicle    data;
+	private final Chronicle           data;
 
 
 	/**
-	 * Create an {@link IndexedChronicleQueuePersistor} based on the given base path.
+	 * Create an {@link VanillaChronicleQueuePersistor} based on the given base path.
 	 *
 	 * @param basePath Directory in which to create the Chronicle.
 	 * @throws IOException
 	 */
-	public IndexedChronicleQueuePersistor(@Nonnull String basePath) throws IOException {
-		this(basePath, new JavaSerializationCodec<T>(), false, false, ChronicleQueueBuilder.indexed(basePath));
+	public VanillaChronicleQueuePersistor(@Nonnull String basePath) throws IOException {
+		this(basePath, new JavaSerializationCodec<T>(), false, false, ChronicleQueueBuilder.vanilla(basePath));
 	}
 
 	/**
-	 * Create an {@link IndexedChronicleQueuePersistor} based on the given base path, encoder and decoder. Optionally,
+	 * Create an {@link VanillaChronicleQueuePersistor} based on the given base path, encoder and decoder. Optionally,
 	 * passing {@literal false} to {@code clearOnStart} skips clearing the Chronicle on start for appending.
 	 *
 	 * @param basePath     Directory in which to create the Chronicle.
@@ -79,7 +78,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	 * @param config       ChronicleConfig to use.
 	 * @throws IOException
 	 */
-	public IndexedChronicleQueuePersistor(@Nonnull String basePath,
+	public VanillaChronicleQueuePersistor(@Nonnull String basePath,
 	                                      @Nonnull Codec<Buffer, T, T> codec,
 	                                      boolean clearOnStart,
 	                                      boolean deleteOnExit,
@@ -88,18 +87,13 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 		this.codec = codec;
 		this.deleteOnExit = deleteOnExit;
 
+		data = config.build();
+		lastId.set(data.lastWrittenIndex());
 		if (clearOnStart) {
-			for (String name : new String[]{basePath + ".data", basePath + ".index"}) {
-				File file = new File(name);
-				if (file.exists()) {
-					file.delete();
-				}
-			}
+			data.clear();
 		}
 
 		ChronicleTools.warmup();
-		data = config.build();
-		lastId.set(data.lastWrittenIndex());
 
 		Excerpt ex = data.createExcerpt();
 		ex.skip(4);
@@ -236,7 +230,7 @@ public class IndexedChronicleQueuePersistor<T> implements QueuePersistor<T> {
 	public Iterator<T> iterator() {
 		return new Iterator<T>() {
 			public boolean hasNext() {
-				return IndexedChronicleQueuePersistor.this.hasNext();
+				return VanillaChronicleQueuePersistor.this.hasNext();
 			}
 
 			@SuppressWarnings("unchecked")

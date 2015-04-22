@@ -20,8 +20,8 @@ import net.openhft.chronicle.ChronicleQueueBuilder;
 import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.queue.IndexedChronicleQueuePersistor;
 import reactor.io.queue.PersistentQueue;
+import reactor.io.queue.VanillaChronicleQueuePersistor;
 
 import java.io.IOException;
 
@@ -38,7 +38,7 @@ public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 	private boolean clearOnStart = false;
 	private boolean deleteOnExit = false;
 	private Codec<Buffer, T, T> codec;
-	private ChronicleQueueBuilder.IndexedChronicleQueueBuilder config = ChronicleQueueBuilder.indexed(basePath);
+	private ChronicleQueueBuilder.VanillaChronicleQueueBuilder config = ChronicleQueueBuilder.vanilla(basePath);
 
 	public PersistentQueueSpec<T> codec(Codec<Buffer, T, T> codec) {
 		this.codec = codec;
@@ -60,18 +60,8 @@ public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 		return this;
 	}
 
-	public PersistentQueueSpec<T> cacheLineSize(int size) {
-		config.cacheLineSize(size);
-		return this;
-	}
-
 	public PersistentQueueSpec<T> dataBlockSize(int size) {
 		config.dataBlockSize(size);
-		return this;
-	}
-
-	public PersistentQueueSpec<T> messageCapacity(int size) {
-		config.messageCapacity(size);
 		return this;
 	}
 
@@ -88,11 +78,11 @@ public class PersistentQueueSpec<T> implements Supplier<PersistentQueue<T>> {
 	@Override
 	public PersistentQueue<T> get() {
 		try {
-			return new PersistentQueue<T>(new IndexedChronicleQueuePersistor<T>(basePath,
-																																					codec,
-																																					clearOnStart,
-																																					deleteOnExit,
-																																					config));
+			return new PersistentQueue<T>(new VanillaChronicleQueuePersistor<T>(basePath,
+					codec,
+					clearOnStart,
+					deleteOnExit,
+					config));
 		} catch(IOException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
