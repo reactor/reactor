@@ -65,8 +65,8 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	                        @Nonnull PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,
 	                        @Nonnull Dispatcher ioDispatcher,
 	                        @Nonnull Dispatcher eventsDispatcher) {
-		Assert.notNull(env, "IO Dispatcher cannot be null");
-		Assert.notNull(env, "Events Reactor cannot be null");
+		Assert.notNull(ioDispatcher, "IO Dispatcher cannot be null");
+		Assert.notNull(eventsDispatcher, "Events Reactor cannot be null");
 		this.env = env;
 		this.prefetch = prefetch;
 		this.ioDispatcher = ioDispatcher;
