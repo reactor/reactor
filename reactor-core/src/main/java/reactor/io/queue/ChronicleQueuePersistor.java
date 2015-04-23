@@ -117,7 +117,7 @@ public class ChronicleQueuePersistor<T> implements QueuePersistor<T> {
 			data.close();
 
 			if (deleteOnExit) {
-				ChronicleTools.deleteOnExit(basePath);
+				data.clear();
 			}
 		} catch (IOException e) {
 			throw new IllegalStateException(e.getMessage(), e);
