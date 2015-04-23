@@ -136,10 +136,10 @@ public class ZeroMQ<T> {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
 		TcpClient<T, T> client = NetStreams.tcpClient(ZeroMQTcpClient.class,
-				new Function<Spec.TcpClient<T, T>, Spec.TcpClient<T, T>>() {
+				new Function<Spec.TcpClientSpec<T, T>, Spec.TcpClientSpec<T, T>>() {
 
 					@Override
-					public Spec.TcpClient<T, T> apply(Spec.TcpClient<T, T> spec) {
+					public Spec.TcpClientSpec<T, T> apply(Spec.TcpClientSpec<T, T> spec) {
 						return spec.env(env).dispatcher(dispatcher).codec(codec)
 								.options(new ZeroMQClientSocketOptions()
 										.context(zmqCtx)
@@ -158,10 +158,10 @@ public class ZeroMQ<T> {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
 		TcpServer<T, T> server = NetStreams.<T, T>tcpServer(ZeroMQTcpServer.class,
-				new Function<Spec.TcpServer<T, T>, Spec.TcpServer<T, T>>() {
+				new Function<Spec.TcpServerSpec<T, T>, Spec.TcpServerSpec<T, T>>() {
 
 					@Override
-					public Spec.TcpServer<T, T> apply(Spec.TcpServer<T, T> spec) {
+					public Spec.TcpServerSpec<T, T> apply(Spec.TcpServerSpec<T, T> spec) {
 						return spec
 								.env(env).dispatcher(dispatcher).codec(codec)
 								.options(new ZeroMQServerSocketOptions()

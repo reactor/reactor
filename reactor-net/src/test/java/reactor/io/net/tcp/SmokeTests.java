@@ -202,11 +202,10 @@ public class SmokeTests {
 	}
 
 	private List<String> getClientDataPromise() throws Exception {
-		reactor.io.net.http.HttpClient<String, String> httpClient = NetStreams.httpClient(new Function<Spec
-				.HttpClient<String, String>, Spec.HttpClient<String, String>>() {
+		reactor.io.net.http.HttpClient<String, String> httpClient = NetStreams.httpClient(new Function<Spec.HttpClientSpec<String, String>, Spec.HttpClientSpec<String, String>>() {
 
 			@Override
-			public Spec.HttpClient<String, String> apply(Spec.HttpClient<String, String> t) {
+			public Spec.HttpClientSpec<String, String> apply(Spec.HttpClientSpec<String, String> t) {
 				return t.codec(new StringCodec()).connect("localhost", httpServer.getListenAddress().getPort())
 						.dispatcher(Environment.sharedDispatcher());
 			}

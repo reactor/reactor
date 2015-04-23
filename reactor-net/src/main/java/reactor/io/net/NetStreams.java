@@ -211,9 +211,9 @@ public class NetStreams extends Streams {
 	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static TcpServer<Buffer, Buffer> tcpServer(final String bindAddress, final int port) {
-		return tcpServer(new Function<Spec.TcpServer<Buffer, Buffer>, Spec.TcpServer<Buffer, Buffer>>() {
+		return tcpServer(new Function<Spec.TcpServerSpec<Buffer, Buffer>, Spec.TcpServerSpec<Buffer, Buffer>>() {
 			@Override
-			public Spec.TcpServer<Buffer, Buffer> apply(Spec.TcpServer<Buffer, Buffer> serverSpec) {
+			public Spec.TcpServerSpec<Buffer, Buffer> apply(Spec.TcpServerSpec<Buffer, Buffer> serverSpec) {
 				if(Environment.alive()){
 					serverSpec.env(Environment.get());
 				}
@@ -254,7 +254,7 @@ public class NetStreams extends Streams {
 	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> TcpServer<IN, OUT> tcpServer(
-			Function<? super Spec.TcpServer<IN, OUT>, ? extends Spec.TcpServer<IN, OUT>> configuringFunction
+			Function<? super Spec.TcpServerSpec<IN, OUT>, ? extends Spec.TcpServerSpec<IN, OUT>> configuringFunction
 	) {
 		return tcpServer(DEFAULT_TCP_SERVER_TYPE, configuringFunction);
 	}
@@ -291,9 +291,9 @@ public class NetStreams extends Streams {
 	 */
 	public static <IN, OUT> TcpServer<IN, OUT> tcpServer(
 			Class<? extends TcpServer> serverFactory,
-			Function<? super Spec.TcpServer<IN, OUT>, ? extends Spec.TcpServer<IN, OUT>> configuringFunction
+			Function<? super Spec.TcpServerSpec<IN, OUT>, ? extends Spec.TcpServerSpec<IN, OUT>> configuringFunction
 	) {
-		return configuringFunction.apply(new Spec.TcpServer<IN, OUT>(serverFactory)).get();
+		return configuringFunction.apply(new Spec.TcpServerSpec<IN, OUT>(serverFactory)).get();
 	}
 
 
@@ -426,9 +426,9 @@ public class NetStreams extends Streams {
 	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static TcpClient<Buffer, Buffer> tcpClient(final String bindAddress, final int port) {
-		return tcpClient(new Function<Spec.TcpClient<Buffer, Buffer>, Spec.TcpClient<Buffer, Buffer>>() {
+		return tcpClient(new Function<Spec.TcpClientSpec<Buffer, Buffer>, Spec.TcpClientSpec<Buffer, Buffer>>() {
 			@Override
-			public Spec.TcpClient<Buffer, Buffer> apply(Spec.TcpClient<Buffer, Buffer> clientSpec) {
+			public Spec.TcpClientSpec<Buffer, Buffer> apply(Spec.TcpClientSpec<Buffer, Buffer> clientSpec) {
 				if(Environment.alive()){
 					clientSpec.env(Environment.get());
 				}
@@ -469,7 +469,7 @@ public class NetStreams extends Streams {
 	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> TcpClient<IN, OUT> tcpClient(
-			Function<? super Spec.TcpClient<IN, OUT>, ? extends Spec.TcpClient<IN, OUT>> configuringFunction
+			Function<? super Spec.TcpClientSpec<IN, OUT>, ? extends Spec.TcpClientSpec<IN, OUT>> configuringFunction
 	) {
 		return tcpClient(DEFAULT_TCP_CLIENT_TYPE, configuringFunction);
 	}
@@ -506,9 +506,9 @@ public class NetStreams extends Streams {
 	 */
 	public static <IN, OUT> TcpClient<IN, OUT> tcpClient(
 			Class<? extends TcpClient> clientFactory,
-			Function<? super Spec.TcpClient<IN, OUT>, ? extends Spec.TcpClient<IN, OUT>> configuringFunction
+			Function<? super Spec.TcpClientSpec<IN, OUT>, ? extends Spec.TcpClientSpec<IN, OUT>> configuringFunction
 	) {
-		return configuringFunction.apply(new Spec.TcpClient<IN, OUT>(clientFactory)).get();
+		return configuringFunction.apply(new Spec.TcpClientSpec<IN, OUT>(clientFactory)).get();
 	}
 
 	// HTTP
@@ -542,9 +542,9 @@ public class NetStreams extends Streams {
 	 * @return
 	 */
 	public static <IN, OUT> HttpServer<IN, OUT> httpServer(final String bindAddress, final int port) {
-		return httpServer(new Function<Spec.HttpServer<IN, OUT>, Spec.HttpServer<IN, OUT>>() {
+		return httpServer(new Function<Spec.HttpServerSpec<IN, OUT>, Spec.HttpServerSpec<IN, OUT>>() {
 			@Override
-			public Spec.HttpServer<IN, OUT> apply(Spec.HttpServer<IN, OUT> serverSpec) {
+			public Spec.HttpServerSpec<IN, OUT> apply(Spec.HttpServerSpec<IN, OUT> serverSpec) {
 				if(Environment.alive()){
 					serverSpec.env(Environment.get());
 				}
@@ -560,7 +560,7 @@ public class NetStreams extends Streams {
 	 * @return
 	 */
 	public static <IN, OUT> HttpServer<IN, OUT> httpServer(
-			Function<? super Spec.HttpServer<IN, OUT>, ? extends Spec.HttpServer<IN, OUT>> configuringFunction
+			Function<? super Spec.HttpServerSpec<IN, OUT>, ? extends Spec.HttpServerSpec<IN, OUT>> configuringFunction
 	) {
 		return httpServer(DEFAULT_HTTP_SERVER_TYPE, configuringFunction);
 	}
@@ -574,9 +574,9 @@ public class NetStreams extends Streams {
 	 */
 	public static <IN, OUT> HttpServer<IN, OUT> httpServer(
 			Class<? extends HttpServer> serverFactory,
-			Function<? super Spec.HttpServer<IN, OUT>, ? extends Spec.HttpServer<IN, OUT>> configuringFunction
+			Function<? super Spec.HttpServerSpec<IN, OUT>, ? extends Spec.HttpServerSpec<IN, OUT>> configuringFunction
 	) {
-		return configuringFunction.apply(new Spec.HttpServer<IN, OUT>(serverFactory)).get();
+		return configuringFunction.apply(new Spec.HttpServerSpec<IN, OUT>(serverFactory)).get();
 	}
 
 
@@ -584,9 +584,9 @@ public class NetStreams extends Streams {
 	 * @return
 	 */
 	public static HttpClient<Buffer, Buffer> httpClient() {
-		return httpClient(new Function<Spec.HttpClient<Buffer, Buffer>, Spec.HttpClient<Buffer, Buffer>>() {
+		return httpClient(new Function<Spec.HttpClientSpec<Buffer, Buffer>, Spec.HttpClientSpec<Buffer, Buffer>>() {
 			@Override
-			public Spec.HttpClient<Buffer, Buffer> apply(Spec.HttpClient<Buffer, Buffer> clientSpec) {
+			public Spec.HttpClientSpec<Buffer, Buffer> apply(Spec.HttpClientSpec<Buffer, Buffer> clientSpec) {
 				if(Environment.alive()){
 					clientSpec.env(Environment.get());
 				}
@@ -627,7 +627,7 @@ public class NetStreams extends Streams {
 	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> HttpClient<IN, OUT> httpClient(
-			Function<? super Spec.HttpClient<IN, OUT>, ? extends Spec.HttpClient<IN, OUT>> configuringFunction
+			Function<? super Spec.HttpClientSpec<IN, OUT>, ? extends Spec.HttpClientSpec<IN, OUT>> configuringFunction
 	) {
 		return httpClient(DEFAULT_HTTP_CLIENT_TYPE, configuringFunction);
 	}
@@ -666,9 +666,9 @@ public class NetStreams extends Streams {
 	 */
 	public static <IN, OUT> HttpClient<IN, OUT> httpClient(
 			Class<? extends HttpClient> clientFactory,
-			Function<? super Spec.HttpClient<IN, OUT>, ? extends Spec.HttpClient<IN, OUT>> configuringFunction
+			Function<? super Spec.HttpClientSpec<IN, OUT>, ? extends Spec.HttpClientSpec<IN, OUT>> configuringFunction
 	) {
-		return configuringFunction.apply(new Spec.HttpClient<IN, OUT>(clientFactory)).get();
+		return configuringFunction.apply(new Spec.HttpClientSpec<IN, OUT>(clientFactory)).get();
 	}
 
 	// UDP
@@ -801,9 +801,9 @@ public class NetStreams extends Streams {
 	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static DatagramServer<Buffer, Buffer> udpServer(final String bindAddress, final int port) {
-		return udpServer(new Function<Spec.DatagramServer<Buffer, Buffer>, Spec.DatagramServer<Buffer, Buffer>>() {
+		return udpServer(new Function<Spec.DatagramServerSpec<Buffer, Buffer>, Spec.DatagramServerSpec<Buffer, Buffer>>() {
 			@Override
-			public Spec.DatagramServer<Buffer, Buffer> apply(Spec.DatagramServer<Buffer, Buffer> serverSpec) {
+			public Spec.DatagramServerSpec<Buffer, Buffer> apply(Spec.DatagramServerSpec<Buffer, Buffer> serverSpec) {
 				if(Environment.alive()){
 					serverSpec.env(Environment.get());
 				}
@@ -844,7 +844,7 @@ public class NetStreams extends Streams {
 	 * @return a new Stream of ChannelStream, typically a peer of connections.
 	 */
 	public static <IN, OUT> DatagramServer<IN, OUT> udpServer(
-			Function<? super Spec.DatagramServer<IN, OUT>, ? extends Spec.DatagramServer<IN, OUT>> configuringFunction
+			Function<? super Spec.DatagramServerSpec<IN, OUT>, ? extends Spec.DatagramServerSpec<IN, OUT>> configuringFunction
 	) {
 		return udpServer(DEFAULT_UDP_SERVER_TYPE, configuringFunction);
 	}
@@ -881,9 +881,9 @@ public class NetStreams extends Streams {
 	 */
 	public static <IN, OUT> DatagramServer<IN, OUT> udpServer(
 			Class<? extends DatagramServer> serverFactory,
-			Function<? super Spec.DatagramServer<IN, OUT>, ? extends Spec.DatagramServer<IN, OUT>> configuringFunction
+			Function<? super Spec.DatagramServerSpec<IN, OUT>, ? extends Spec.DatagramServerSpec<IN, OUT>> configuringFunction
 	) {
-		return configuringFunction.apply(new Spec.DatagramServer<IN, OUT>(serverFactory)).get();
+		return configuringFunction.apply(new Spec.DatagramServerSpec<IN, OUT>(serverFactory)).get();
 	}
 
 

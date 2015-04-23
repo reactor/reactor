@@ -55,7 +55,7 @@ class ClientServerIntegrationSpec extends Specification {
 			def consumerMock = Mock(Consumer) { data.size() * accept(_) }
 			def codec = new LengthFieldCodec(new JsonCodec(Pojo))
 
-			def server = new Spec.TcpServer<Pojo, Pojo>(NettyTcpServer).
+			def server = new Spec.TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
 					env(env1).dispatcher("sync").
 					listen(port).
 					codec(codec).
@@ -67,7 +67,7 @@ class ClientServerIntegrationSpec extends Specification {
 					} as Consumer<Channel<Pojo, Pojo>>).
 					get()
 
-			def client = new Spec.TcpClient<Pojo, Pojo>(NettyTcpClient).
+			def client = new Spec.TcpClientSpec<Pojo, Pojo>(NettyTcpClient).
 					env(env2).dispatcher("sync").
 					codec(codec).
 					connect("localhost", port).
@@ -108,14 +108,14 @@ class ClientServerIntegrationSpec extends Specification {
 			def consumerMock = Mock(Consumer) { data.size() * accept(_) }
 			def codec = new LengthFieldCodec(new JsonCodec(Pojo))
 
-			def server = new Spec.TcpServer<Pojo, Pojo>(NettyTcpServer).
+			def server = new Spec.TcpServerSpec<Pojo, Pojo>(NettyTcpServer).
 					env(env1).dispatcher("sync").
 					listen(port).
 					codec(codec).
 					consume({ conn -> data.each { pojo -> conn.sendAndForget(pojo) } } as Consumer).
 					get()
 
-			def client = new Spec.TcpClient<Pojo, Pojo>(NettyTcpClient).
+			def client = new Spec.TcpClientSpec<Pojo, Pojo>(NettyTcpClient).
 					env(env2).dispatcher("sync").
 					codec(codec).
 					connect("localhost", port).

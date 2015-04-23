@@ -114,26 +114,26 @@ public class AbstractNetClientServerTest {
 		return port;
 	}
 
-	protected <T> Spec.TcpServer<T, T> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
+	protected <T> Spec.TcpServerSpec<T, T> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
 	                                                  Class<? extends T> dataType) {
 		return createTcpServer(type, dataType, dataType);
 	}
 
-	protected <IN, OUT> Spec.TcpServer<IN, OUT> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
+	protected <IN, OUT> Spec.TcpServerSpec<IN, OUT> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
 	                                                           Class<? extends IN> inType,
 	                                                           Class<? extends OUT> outType) {
-		return new Spec.TcpServer<IN, OUT>(type).env(env1).dispatcher("sync").listen(LOCALHOST, port);
+		return new Spec.TcpServerSpec<IN, OUT>(type).env(env1).dispatcher("sync").listen(LOCALHOST, port);
 	}
 
-	protected <T> Spec.TcpClient<T, T> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
+	protected <T> Spec.TcpClientSpec<T, T> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
 	                                                  Class<? extends T> dataType) {
 		return createTcpClient(type, dataType, dataType);
 	}
 
-	protected <IN, OUT> Spec.TcpClient<IN, OUT> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
+	protected <IN, OUT> Spec.TcpClientSpec<IN, OUT> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
 	                                                           Class<? extends IN> inType,
 	                                                           Class<? extends OUT> outType) {
-		return new Spec.TcpClient<IN, OUT>(type).env(env2).dispatcher("sync").connect(LOCALHOST, port);
+		return new Spec.TcpClientSpec<IN, OUT>(type).env(env2).dispatcher("sync").connect(LOCALHOST, port);
 	}
 
 	protected <T> void assertTcpClientServerExchangedData(Class<? extends reactor.io.net.tcp.TcpServer> serverType,

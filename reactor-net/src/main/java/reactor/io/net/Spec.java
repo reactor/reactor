@@ -71,9 +71,9 @@ public interface Spec {
 	//
 	//   Client and Server Specifications
 	//
-	abstract static class Server<IN, OUT,
+	abstract static class ServerSpec<IN, OUT,
 			CONN extends Channel<IN, OUT>,
-			S extends Server<IN, OUT, CONN, S, N>,
+			S extends ServerSpec<IN, OUT, CONN, S, N>,
 			N extends reactor.io.net.Server<IN, OUT, CONN>>
 			extends DispatcherComponentSpec<S, N> {
 
@@ -171,7 +171,7 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class TcpClient<IN, OUT> extends DispatcherComponentSpec<TcpClient<IN, OUT>, reactor.io.net.tcp.TcpClient<IN, OUT>> {
+	class TcpClientSpec<IN, OUT> extends DispatcherComponentSpec<TcpClientSpec<IN, OUT>, reactor.io.net.tcp.TcpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.tcp.TcpClient> clientImplConstructor;
 
@@ -189,7 +189,7 @@ public interface Spec {
 		 * 		The concrete implementation of {@link reactor.io.net.tcp.TcpClient} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
-		TcpClient(@Nonnull Class<? extends reactor.io.net.tcp.TcpClient> clientImpl) {
+		TcpClientSpec(@Nonnull Class<? extends reactor.io.net.tcp.TcpClient> clientImpl) {
 			Assert.notNull(clientImpl, "TcpClient implementation class cannot be null.");
 			try {
 				this.clientImplConstructor = (Constructor<reactor.io.net.tcp.TcpClient>) clientImpl.getDeclaredConstructor(
@@ -215,7 +215,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public TcpClient<IN, OUT> options(ClientSocketOptions options) {
+		public TcpClientSpec<IN, OUT> options(ClientSocketOptions options) {
 			this.options = options;
 			return this;
 		}
@@ -229,7 +229,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public TcpClient<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
+		public TcpClientSpec<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
 			this.sslOptions = sslOptions;
 			return this;
 		}
@@ -244,7 +244,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public TcpClient<IN, OUT> connect(@Nonnull String host, int port) {
+		public TcpClientSpec<IN, OUT> connect(@Nonnull String host, int port) {
 			return connect(new InetSocketAddress(host, port));
 		}
 
@@ -256,7 +256,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public TcpClient<IN, OUT> connect(@Nonnull InetSocketAddress connectAddress) {
+		public TcpClientSpec<IN, OUT> connect(@Nonnull InetSocketAddress connectAddress) {
 			Assert.isNull(this.connectAddress, "Connect address is already set.");
 			this.connectAddress = connectAddress;
 			return this;
@@ -270,7 +270,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public TcpClient<IN, OUT> codec(@Nullable Codec<Buffer, IN, OUT> codec) {
+		public TcpClientSpec<IN, OUT> codec(@Nullable Codec<Buffer, IN, OUT> codec) {
 			Assert.isNull(this.codec, "Codec has already been set.");
 			this.codec = codec;
 			return this;
@@ -283,7 +283,7 @@ public interface Spec {
 		 * @return this
 		 */
 		@SuppressWarnings("unchecked")
-		public TcpClient<IN, OUT> rawData(boolean israw) {
+		public TcpClientSpec<IN, OUT> rawData(boolean israw) {
 			if(israw){
 				this.codec = NOOP_CODEC;
 			}
@@ -320,8 +320,8 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class TcpServer<IN, OUT>
-			extends Server<IN, OUT, ChannelStream<IN, OUT>, TcpServer<IN, OUT>, reactor.io.net.tcp.TcpServer<IN, OUT>> {
+	class TcpServerSpec<IN, OUT>
+			extends ServerSpec<IN, OUT, ChannelStream<IN, OUT>, TcpServerSpec<IN, OUT>, reactor.io.net.tcp.TcpServer<IN, OUT>> {
 
 		private final Constructor<? extends reactor.io.net.tcp.TcpServer> serverImplConstructor;
 
@@ -334,7 +334,7 @@ public interface Spec {
 		 * 		The concrete implementation of {@link reactor.io.net.tcp.TcpServer} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
-		TcpServer(@Nonnull Class<? extends reactor.io.net.tcp.TcpServer> serverImpl) {
+		TcpServerSpec(@Nonnull Class<? extends reactor.io.net.tcp.TcpServer> serverImpl) {
 			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
 			try {
 				this.serverImplConstructor = serverImpl.getDeclaredConstructor(
@@ -361,7 +361,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public TcpServer<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
+		public TcpServerSpec<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
 			this.sslOptions = sslOptions;
 			return this;
 		}
@@ -391,13 +391,13 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class DatagramServer<IN, OUT>
-			extends Server<IN, OUT, ChannelStream<IN, OUT>, DatagramServer<IN, OUT>, reactor.io.net.udp.DatagramServer<IN, OUT>> {
+	class DatagramServerSpec<IN, OUT>
+			extends ServerSpec<IN, OUT, ChannelStream<IN, OUT>, DatagramServerSpec<IN, OUT>, reactor.io.net.udp.DatagramServer<IN, OUT>> {
 		protected final Constructor<? extends reactor.io.net.udp.DatagramServer> serverImplCtor;
 
 		private NetworkInterface multicastInterface;
 
-		DatagramServer(Class<? extends reactor.io.net.udp.DatagramServer> serverImpl) {
+		DatagramServerSpec(Class<? extends reactor.io.net.udp.DatagramServer> serverImpl) {
 			Assert.notNull(serverImpl, "NetServer implementation class cannot be null.");
 			try {
 				this.serverImplCtor = serverImpl.getDeclaredConstructor(
@@ -423,7 +423,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public DatagramServer<IN, OUT> multicastInterface(NetworkInterface iface) {
+		public DatagramServerSpec<IN, OUT> multicastInterface(NetworkInterface iface) {
 			this.multicastInterface = iface;
 			return this;
 		}
@@ -458,8 +458,8 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class HttpServer<IN, OUT>
-			extends Server<IN, OUT, HttpChannel<IN, OUT>, HttpServer<IN, OUT>, reactor.io.net.http.HttpServer<IN, OUT>> {
+	class HttpServerSpec<IN, OUT>
+			extends ServerSpec<IN, OUT, HttpChannel<IN, OUT>, HttpServerSpec<IN, OUT>, reactor.io.net.http.HttpServer<IN, OUT>> {
 
 		private final Constructor<? extends reactor.io.net.http.HttpServer> serverImplConstructor;
 
@@ -472,7 +472,7 @@ public interface Spec {
 		 * 		The concrete implementation of {@link reactor.io.net.http.HttpClient} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
-		HttpServer(@Nonnull Class<? extends reactor.io.net.http.HttpServer> serverImpl) {
+		HttpServerSpec(@Nonnull Class<? extends reactor.io.net.http.HttpServer> serverImpl) {
 			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
 			try {
 				this.serverImplConstructor = serverImpl.getDeclaredConstructor(
@@ -499,7 +499,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public HttpServer<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
+		public HttpServerSpec<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
 			this.sslOptions = sslOptions;
 			return this;
 		}
@@ -533,7 +533,7 @@ public interface Spec {
 	 *
 	 * @author Stephane Maldini
 	 */
-	class HttpClient<IN, OUT> extends DispatcherComponentSpec<HttpClient<IN, OUT>, reactor.io.net.http.HttpClient<IN, OUT>> {
+	class HttpClientSpec<IN, OUT> extends DispatcherComponentSpec<HttpClientSpec<IN, OUT>, reactor.io.net.http.HttpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.http.HttpClient> clientImplConstructor;
 
@@ -549,7 +549,7 @@ public interface Spec {
 		 * 		The concrete implementation of {@link reactor.io.net.http.HttpClient} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
-		HttpClient(@Nonnull Class<? extends reactor.io.net.http.HttpClient> clientImpl) {
+		HttpClientSpec(@Nonnull Class<? extends reactor.io.net.http.HttpClient> clientImpl) {
 			Assert.notNull(clientImpl, "TcpClient implementation class cannot be null.");
 			try {
 				this.clientImplConstructor = (Constructor<reactor.io.net.http.HttpClient>) clientImpl.getDeclaredConstructor(
@@ -575,7 +575,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public HttpClient<IN, OUT> options(ClientSocketOptions options) {
+		public HttpClientSpec<IN, OUT> options(ClientSocketOptions options) {
 			this.options = options;
 			return this;
 		}
@@ -589,7 +589,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public HttpClient<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
+		public HttpClientSpec<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
 			this.sslOptions = sslOptions;
 			return this;
 		}
@@ -604,7 +604,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public HttpClient<IN, OUT> connect(@Nonnull String host, int port) {
+		public HttpClientSpec<IN, OUT> connect(@Nonnull String host, int port) {
 			return connect(new InetSocketAddress(host, port));
 		}
 
@@ -616,7 +616,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public HttpClient<IN, OUT> connect(@Nonnull InetSocketAddress connectAddress) {
+		public HttpClientSpec<IN, OUT> connect(@Nonnull InetSocketAddress connectAddress) {
 			Assert.isNull(this.connectAddress, "Connect address is already set.");
 			this.connectAddress = connectAddress;
 			return this;
@@ -630,7 +630,7 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public HttpClient<IN, OUT> codec(@Nullable Codec<Buffer, IN, OUT> codec) {
+		public HttpClientSpec<IN, OUT> codec(@Nullable Codec<Buffer, IN, OUT> codec) {
 			Assert.isNull(this.codec, "Codec has already been set.");
 			this.codec = codec;
 			return this;
