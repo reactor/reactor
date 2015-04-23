@@ -200,16 +200,16 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		return httpChannel;
 	}
 
-	/*@Override
+	@Override
 	protected Consumer<Void> completeConsumer(final HttpChannel<IN, OUT> ch) {
 		return new Consumer<Void>() {
 			@Override
 			@SuppressWarnings("unchecked")
 			public void accept(Void aVoid) {
-				((NettyHttpChannel)ch).write(new DefaultLastHttpContent(Unpooled.EMPTY_BUFFER), null, true);
+				((NettyHttpChannel)ch).write(null, null, true);
 			}
 		};
-	}*/
+	}
 
 	@Override
 	protected Control mergeWrite(HttpChannel<IN, OUT> ch) {
@@ -266,6 +266,8 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 			promise = Promises.ready(getEnvironment(), getDispatcher());
 		}
 
+
+
 		@Override
 		protected void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
 			body.append(data);
@@ -277,14 +279,18 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		@Override
 		protected void write(Object data, Subscriber<?> onComplete, boolean flush) {
 			if (HEADERS_SENT.compareAndSet(this, 0, 1)) {
+				ByteBuffer byteBuffer = body.flip().byteBuffer();
 				HttpRequest req = new DefaultFullHttpRequest(
 						request.getProtocolVersion(),
 						request.getMethod(),
 						request.getUri(),
-						Unpooled.wrappedBuffer(body.flip().byteBuffer()));
+						byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled.EMPTY_BUFFER);
 				HttpHeaders.setContentLength(req, body.limit());
-				HttpHeaders.setHeader(req, HttpHeaders.Names.CONTENT_TYPE,
-						HttpHeaders.getHeader(request, HttpHeaders.Names.CONTENT_TYPE));
+
+				String header = HttpHeaders.getHeader(request, HttpHeaders.Names.CONTENT_TYPE);
+				if(header != null){
+					HttpHeaders.setHeader(req, HttpHeaders.Names.CONTENT_TYPE, header);
+				}
 				tcpStream.write(req, promise, true);
 			}
 		}

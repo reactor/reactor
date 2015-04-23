@@ -716,8 +716,10 @@ public class Buffer implements Recyclable,
 	 */
 	public Buffer append(ByteBuffer... buffers) {
 		for(ByteBuffer bb : buffers) {
-			ensureCapacity(bb.remaining());
-			buffer.put(bb);
+			if(bb != null) {
+				ensureCapacity(bb.remaining());
+				buffer.put(bb);
+			}
 		}
 		return this;
 	}

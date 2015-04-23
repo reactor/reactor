@@ -21,7 +21,6 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
 import reactor.Environment;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.processor.RingBufferWorkProcessor;
@@ -33,7 +32,6 @@ import reactor.io.codec.Codec;
 import reactor.io.codec.StringCodec;
 import reactor.io.net.NetStreams;
 import reactor.io.net.Spec;
-import reactor.io.net.http.HttpChannel;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
@@ -213,16 +211,9 @@ public class SmokeTests {
 						.dispatcher(Environment.sharedDispatcher());
 			}
 		});
-		Promise<List<String>> content = httpClient.get("/data", t -> {
-			t.header("Content-Type", "text/plain");
-			return Streams.just(" ");
-		}).flatMap(new Function<HttpChannel<String, String>, Publisher<? extends List<String>>>() {
-
-			@Override
-			public Publisher<? extends List<String>> apply(HttpChannel<String, String> t) {
-				return t.toList();
-			}
-		});
+		Promise<List<String>> content = httpClient
+				.get("/data", t -> Streams.empty())
+				.flatMap(Stream::toList);
 
 		httpClient.open().awaitSuccess();
 		content.awaitSuccess(20, TimeUnit.SECONDS);

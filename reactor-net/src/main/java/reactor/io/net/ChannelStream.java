@@ -59,7 +59,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	private final Function<OUT, Buffer> encoder;
 	private final long                  prefetch;
 
-	protected ChannelStream(final @Nonnull Environment env,
+	protected ChannelStream(final @Nullable Environment env,
 	                        @Nullable Codec<Buffer, IN, OUT> codec,
 	                        long prefetch,
 	                        @Nonnull PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,

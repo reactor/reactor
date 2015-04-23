@@ -51,7 +51,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	private final Channel ioChannel;
 
-	public NettyChannelStream(@Nonnull Environment env,
+	public NettyChannelStream(@Nullable Environment env,
 	                          @Nullable Codec<Buffer, IN, OUT> codec,
 	                          long prefetch,
 	                          @Nonnull PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,
