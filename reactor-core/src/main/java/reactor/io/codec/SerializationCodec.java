@@ -129,7 +129,11 @@ public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, O
 				@Override
 				public IN apply(Buffer buffer) {
 					try {
-						return deserializer(engine, readType(buffer), next).apply(buffer.asBytes());
+						Class<IN> clazz = readType(buffer);
+						byte[] bytes = buffer.asBytes();
+						buffer.position(buffer.limit());
+
+						return deserializer(engine, clazz, next).apply(bytes);
 					} catch (RuntimeException e) {
 						if (log.isErrorEnabled()) {
 							log.error("Could not decode " + buffer, e);
