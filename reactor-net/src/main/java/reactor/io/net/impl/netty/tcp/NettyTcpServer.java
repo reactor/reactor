@@ -173,6 +173,9 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			public void operationComplete(ChannelFuture future) throws Exception {
 				log.info("BIND {}", future.channel().localAddress());
 				if (future.isSuccess()) {
+					if(listenAddress.getPort() == 0){
+						listenAddress = (InetSocketAddress)future.channel().localAddress();
+					}
 					promise.onNext(true);
 				} else {
 					promise.onError(future.cause());

@@ -158,7 +158,7 @@ public class SmokeTests {
 //				.process(RingBufferWorkProcessor.create(false));
 
 		httpServer = NetStreams.httpServer(server -> server
-						.codec(new StringCodec()).listen(8080)
+						.codec(new StringCodec()).listen(0)
 		);
 
 
@@ -209,7 +209,7 @@ public class SmokeTests {
 
 			@Override
 			public Spec.HttpClient<String, String> apply(Spec.HttpClient<String, String> t) {
-				return t.codec(new StringCodec()).connect("localhost", 8080)
+				return t.codec(new StringCodec()).connect("localhost", httpServer.getListenAddress().getPort())
 						.dispatcher(Environment.sharedDispatcher());
 			}
 		});

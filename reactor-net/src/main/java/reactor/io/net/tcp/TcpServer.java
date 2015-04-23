@@ -45,9 +45,12 @@ public abstract class TcpServer<IN, OUT>
 		extends PeerStream<IN, OUT, ChannelStream<IN, OUT>>
 		implements Server<IN, OUT, ChannelStream<IN, OUT>> {
 
-	private final InetSocketAddress   listenAddress;
 	private final ServerSocketOptions options;
 	private final SslOptions          sslOptions;
+
+
+	//Carefully reset
+	protected InetSocketAddress listenAddress;
 
 	protected TcpServer(@Nonnull Environment env,
 	                    @Nonnull Dispatcher dispatcher,
