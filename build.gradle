@@ -408,14 +408,19 @@ project('reactor-net') {
   ]
 
   dependencies {
-    compile project(':reactor-bus')
+    compile (project(':reactor-bus')){
+      transitive = false
+    }
     compile project(':reactor-stream')
     compile(files(project(":reactor-core").disruptorRepackJar))
 
-    compile "io.netty:netty-all:$nettyVersion"
+    optional "io.netty:netty-all:$nettyVersion"
 
     optional "org.zeromq:jeromq:$jeromqVersion",
         "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+
+    //FIXME fix internals to avoid this dependency
+    optional "com.goldmansachs:gs-collections:$gsCollectionsVersion"
 
     // Testing
     testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion",
@@ -444,9 +449,11 @@ project('reactor-groovy-extensions') {
   apply plugin: 'groovy'
 
   dependencies {
+    compile (project(':reactor-bus')){
+      transitive = false
+    }
     compile project(':reactor-core'),
         project(':reactor-stream'),
-        project(':reactor-bus'),
         "org.codehaus.groovy:groovy:$groovyVersion"
   }
 }
@@ -480,8 +487,12 @@ project('reactor-logback') {
 
   dependencies {
     compile(files(project(":reactor-core").disruptorRepackJar))
-    compile project(':reactor-bus'),
-        "ch.qos.logback:logback-classic:$logbackVersion",
+    compile project(':reactor-core')
+    compile (project(':reactor-bus')){
+      transitive = false
+    }
+
+    compile "ch.qos.logback:logback-classic:$logbackVersion",
         "net.openhft:chronicle:$openHftChronicleVersion",
         "commons-cli:commons-cli:1.2"
   }
