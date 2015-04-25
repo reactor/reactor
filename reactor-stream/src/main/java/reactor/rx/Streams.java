@@ -145,6 +145,17 @@ public class Streams {
 
 
 	/**
+	 * Build a {@literal Stream} that will never emit anything.
+	 *
+	 * @return a new {@link Stream}
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Stream<T> never() {
+		return (Stream<T>) NEVER;
+	}
+
+
+	/**
 	 * Build a {@literal Stream} that will only emit an error signal to any new subscriber.
 	 *
 	 * @return a new {@link Stream}
@@ -1796,4 +1807,25 @@ public class Streams {
 			throw exception.get();
 		}
 	}
+
+	private static final Stream NEVER = new Stream() {
+		final Subscription NEVER_SUBSCRIPTION = new Subscription() {
+			@Override
+			public void request(long l) {
+				//IGNORE
+			}
+
+			@Override
+			public void cancel() {
+				//IGNORE
+			}
+		};
+
+		@Override
+		public void subscribe(Subscriber subscriber) {
+			if (subscriber != null) {
+				subscriber.onSubscribe(NEVER_SUBSCRIPTION);
+			}
+		}
+	};
 }
