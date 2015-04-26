@@ -17,10 +17,8 @@ package reactor.io.net.tcp;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
 import reactor.Environment;
 import reactor.core.processor.RingBufferWorkProcessor;
 import reactor.core.support.StringUtils;
@@ -30,7 +28,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.StandardCodecs;
 import reactor.io.net.NetStreams;
-import reactor.io.net.http.HttpChannel;
+import reactor.io.net.http.HttpClient;
 import reactor.rx.Promise;
 import reactor.rx.Streams;
 import reactor.rx.broadcast.Broadcaster;
@@ -45,7 +43,6 @@ import static org.junit.Assert.assertThat;
 /**
  * @author Stephane Maldini
  */
-@Ignore
 public class ClientServerHttpTests {
 	private reactor.io.net.http.HttpServer<List<String>, List<String>> httpServer;
 	private Broadcaster<String> broadcaster;
@@ -55,6 +52,7 @@ public class ClientServerHttpTests {
 		Sender sender = new Sender();
 		sender.sendNext(10);
 		List<String> data = getClientData();
+		System.out.println(data);
 		assertThat(data.size(), is(3));
 		assertThat(split(data.get(0)), contains("0", "1", "2", "3", "4"));
 		assertThat(split(data.get(1)), contains("5", "6", "7", "8", "9"));
@@ -246,13 +244,16 @@ public class ClientServerHttpTests {
 
 		DummyListCodec codec = new DummyListCodec();
 		httpServer = NetStreams.httpServer(server -> server
-				.codec(codec).listen(8080).dispatcher(Environment.sharedDispatcher()));
+				.codec(codec).listen(0).dispatcher(Environment.sharedDispatcher()));
 
 		httpServer.get("/data", (request) -> {
 			request.responseHeaders().removeTransferEncodingChunked();
-			return Streams.wrap(processor)
-					.take(5, TimeUnit.SECONDS)
-					.concatWith( Streams.just(new ArrayList<String>()));
+			return request.writeWith(
+					Streams.wrap(processor)
+							.timeout(1, TimeUnit.SECONDS, Streams.empty())
+							.concatWith(Streams.just(new ArrayList<String>()))
+							.capacity(1l)
+			);
 		});
 
 		httpServer.start().awaitSuccess();
@@ -263,27 +264,15 @@ public class ClientServerHttpTests {
 	}
 
 	private Promise<List<String>> getClientDataPromise() throws Exception {
-		reactor.io.net.http.HttpClient<String, String> httpClient = NetStreams.httpClient(t ->
-				t.codec(StandardCodecs.STRING_CODEC).connect("localhost", 8080)
-				.dispatcher(Environment.sharedDispatcher())
+		HttpClient<String, String> httpClient = NetStreams.httpClient(t ->
+						t.codec(StandardCodecs.STRING_CODEC).connect("localhost", httpServer.getListenAddress().getPort())
+								.dispatcher(Environment.sharedDispatcher())
 		);
-		Promise<List<String>> content = httpClient.get("/data", new Function<HttpChannel<String, String>, Publisher<? extends String>>() {
 
-			@Override
-			public Publisher<? extends String> apply(HttpChannel<String, String> t) {
-				t.header("Content-Type", "text/plain");
-				return Streams.just(" ");
-			}
-		}).flatMap(new Function<HttpChannel<String, String>, Publisher<? extends List<String>>>() {
-
-			@Override
-			public Publisher<? extends List<String>> apply(HttpChannel<String, String> t) {
-				return t.toList();
-			}
-		});
-
-		httpClient.open().awaitSuccess();
-		return content;
+		return httpClient.get("/data" )
+				.flatMap(s ->
+						s.log().toList()
+				);
 	}
 
 	private List<List<String>> getClientDatas(int threadCount, Sender sender, int count) throws Exception {

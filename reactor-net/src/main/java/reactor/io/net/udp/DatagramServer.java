@@ -16,21 +16,16 @@
 
 package reactor.io.net.udp;
 
-import org.reactivestreams.Publisher;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
-import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
-import reactor.io.net.PeerStream;
-import reactor.io.net.Server;
+import reactor.io.net.ReactorPeer;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.rx.Promise;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -40,40 +35,24 @@ import java.net.NetworkInterface;
  * @author Stephane Maldini
  */
 public abstract class DatagramServer<IN, OUT>
-		extends PeerStream<IN, OUT, ChannelStream<IN, OUT>>
-		implements Server<IN, OUT, ChannelStream<IN, OUT>> {
+		extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   listenAddress;
 	private final NetworkInterface    multicastInterface;
 	private final ServerSocketOptions options;
 
-	protected DatagramServer(@Nonnull Environment env,
-	                         @Nonnull Dispatcher dispatcher,
-	                         @Nullable InetSocketAddress listenAddress,
-	                         @Nullable NetworkInterface multicastInterface,
-	                         @Nonnull ServerSocketOptions options,
-	                         @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec);
+	protected DatagramServer(Environment env,
+	                         Dispatcher dispatcher,
+	                         InetSocketAddress listenAddress,
+	                         NetworkInterface multicastInterface,
+	                         ServerSocketOptions options,
+	                         Codec<Buffer, IN, OUT> codec) {
+		super(env, dispatcher, codec, options.prefetch());
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.listenAddress = listenAddress;
 		this.multicastInterface = multicastInterface;
 		this.options = options;
 	}
-
-	@Override
-	public Server<IN, OUT, ChannelStream<IN, OUT>> pipeline(
-			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
-		doPipeline(serviceFunction);
-		return this;
-	}
-
-	/**
-	 * Start and bind this {@literal DatagramServer} to the configured listen port.
-	 *
-	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link DatagramServer} is started
-	 */
-	public abstract Promise<Boolean> start();
-
 
 	/**
 	 * Join a multicast group.
@@ -85,7 +64,7 @@ public abstract class DatagramServer<IN, OUT>
 	 *
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been joined
 	 */
-	public abstract Promise<Boolean> join(InetAddress multicastAddress, NetworkInterface iface);
+	public abstract Promise<Void> join(InetAddress multicastAddress, NetworkInterface iface);
 
 	/**
 	 * Join a multicast group.
@@ -95,7 +74,7 @@ public abstract class DatagramServer<IN, OUT>
 	 *
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been joined
 	 */
-	public Promise<Boolean> join(InetAddress multicastAddress) {
+	public Promise<Void> join(InetAddress multicastAddress) {
 		return join(multicastAddress, null);
 	}
 
@@ -109,7 +88,7 @@ public abstract class DatagramServer<IN, OUT>
 	 *
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been left
 	 */
-	public abstract Promise<Boolean> leave(InetAddress multicastAddress, NetworkInterface iface);
+	public abstract Promise<Void> leave(InetAddress multicastAddress, NetworkInterface iface);
 
 	/**
 	 * Leave a multicast group.
@@ -119,7 +98,7 @@ public abstract class DatagramServer<IN, OUT>
 	 *
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been left
 	 */
-	public Promise<Boolean> leave(InetAddress multicastAddress) {
+	public Promise<Void> leave(InetAddress multicastAddress) {
 		return leave(multicastAddress, null);
 	}
 

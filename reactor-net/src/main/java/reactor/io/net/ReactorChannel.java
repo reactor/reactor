@@ -18,23 +18,22 @@ package reactor.io.net;
 
 import org.reactivestreams.Publisher;
 import reactor.fn.Consumer;
-import reactor.rx.action.Control;
 
 import java.net.InetSocketAddress;
 
 /**
- * {@code NetChannel} is a virtual connection that often matches with a Socket or a Channel (e.g. Netty).
+ * {@code Channel} is a virtual connection that often matches with a Socket or a Channel (e.g. Netty).
  * Implementations handle interacting inbound (received data) and errors by subscribing to it.
- * Sending data to outbound, closing and even flushing behavior are effectively replying on that virtual connection.
- * That can be achieved by sinking 1 or more {@link this#sink(org.reactivestreams.Publisher)} that will forward data to outbound.
- * When all drained Publisher completes, the channel will automatically close.
- * When an error is met by any of the publisher and is not retried, the channel will also be closed.
+ *
+ * Writing and "flushing" is controlled by sinking 1 or more {@link this#writeWith(org.reactivestreams.Publisher)}
+ * that will forward data to outbound.
+ * When a drained Publisher completes or error, the channel will automatically "flush" its pending writes.
  *
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public interface Channel<IN, OUT> extends Publisher<IN> {
+public interface ReactorChannel<IN, OUT> extends Publisher<IN> {
 
 	/**
 	 * Get the address of the remote peer.
@@ -45,14 +44,14 @@ public interface Channel<IN, OUT> extends Publisher<IN> {
 
 	/**
 	 * Send data to the peer, listen for any error on write and close on terminal signal (complete|error).
-	 * If more than one publisher is attached (multiple calls to sink()) completion occurs after all publishers complete.
+	 * If more than one publisher is attached (multiple calls to writeWith()) completion occurs after all publishers complete.
 	 *
 	 * @param dataStream
 	 * 		the dataStream publishing OUT items to write on this channel
 	 *
-	 * @return Control to unregister that sink anytime (cancel)
+	 * @return A Publisher to signal successful sequence write (e.g. after "flush") or any error during write
 	 */
-	Control sink(Publisher<? extends OUT> dataStream);
+	Publisher<Void> writeWith(Publisher<? extends OUT> dataStream);
 
 
 	/**

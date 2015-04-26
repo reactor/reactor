@@ -411,16 +411,15 @@ project('reactor-net') {
     compile (project(':reactor-bus')){
       transitive = false
     }
+
     compile project(':reactor-stream')
+
     compile(files(project(":reactor-core").disruptorRepackJar))
 
     optional "io.netty:netty-all:$nettyVersion"
 
     optional "org.zeromq:jeromq:$jeromqVersion",
         "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
-
-    //FIXME fix internals to avoid this dependency
-    optional "com.goldmansachs:gs-collections:$gsCollectionsVersion"
 
     // Testing
     testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion",

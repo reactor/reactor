@@ -32,8 +32,11 @@ import java.util.UUID;
  */
 public abstract class ZeroMQWorker implements Runnable {
 
-	private final Logger log   = LoggerFactory.getLogger(getClass());
-	private final ZLoop  zloop = new ZLoop();
+	private final static Logger log   = LoggerFactory.getLogger(ZeroMQWorker.class);
+
+	public static final byte[] CLOSE_MSG = "ZMQ.EVENT_CLOSED".getBytes();
+
+	private final        ZLoop  zloop = new ZLoop();
 
 	private final UUID                id;
 	private final int                 socketType;
@@ -62,9 +65,11 @@ public abstract class ZeroMQWorker implements Runnable {
 				if (null == msg || msg.size() == 0) {
 					return 0;
 				}
+
 				if (closed) {
 					return -1;
 				}
+
 
 				b.onNext(msg);
 
@@ -88,7 +93,7 @@ public abstract class ZeroMQWorker implements Runnable {
 			configure(socket);
 
 			pollin = new ZMQ.PollItem(socket, ZMQ.Poller.POLLIN);
-			if (log.isTraceEnabled()) {
+			if (log.isDebugEnabled()) {
 				zloop.verbose(true);
 			}
 			zloop.addPoller(pollin, inputHandler, null);
@@ -98,7 +103,7 @@ public abstract class ZeroMQWorker implements Runnable {
 			zloop.start();
 
 			zmq.destroySocket(socket);
-		}catch (Exception e){
+		} catch (Exception e) {
 			b.onError(e);
 		}
 	}

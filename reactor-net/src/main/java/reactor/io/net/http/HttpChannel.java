@@ -19,10 +19,7 @@ package reactor.io.net.http;
 import reactor.Environment;
 import reactor.bus.selector.HeaderResolver;
 import reactor.core.Dispatcher;
-import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
-import reactor.io.net.PeerStream;
 import reactor.io.net.http.model.*;
 
 import java.util.Map;
@@ -41,13 +38,10 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 			AtomicIntegerFieldUpdater.newUpdater(HttpChannel.class, "statusAndHeadersSent");
 
 	public HttpChannel(Environment env,
-	                   Codec<Buffer, IN, OUT> codec,
 	                   long prefetch,
-	                   PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,
-	                   Dispatcher ioDispatcher,
 	                   Dispatcher eventsDispatcher
 	) {
-		super(env, codec, prefetch, peer, ioDispatcher, eventsDispatcher);
+		super(env, null, prefetch, eventsDispatcher);
 	}
 
 	// REQUEST contract

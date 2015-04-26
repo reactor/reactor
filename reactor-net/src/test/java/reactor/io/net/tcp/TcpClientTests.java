@@ -21,14 +21,13 @@ import io.netty.handler.codec.http.*;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.reactivestreams.Publisher;
 import reactor.Environment;
 import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple;
-import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.StandardCodecs;
 import reactor.io.net.NetStreams;
-import reactor.io.net.Reconnect;
 import reactor.io.net.impl.netty.NettyClientSocketOptions;
 import reactor.io.net.impl.netty.tcp.NettyTcpClient;
 import reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient;
@@ -56,7 +55,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Jon Brisbin
@@ -114,18 +114,16 @@ public class TcpClientTests {
 						s.env(env).codec(StandardCodecs.STRING_CODEC).connect("localhost", echoServerPort)
 		);
 
-		client.next().onSuccess(conn -> {
-			conn.consume(s -> {
+		client.start(conn -> {
+			conn.log("conn").consume(s -> {
 				latch.countDown();
 			});
-			conn.sink(Streams.just("Hello World!"));
+			return conn.writeWith(Streams.just("Hello World!"));
 		});
-
-		client.open();
 
 		latch.await(30, TimeUnit.SECONDS);
 
-		client.close();
+		client.shutdown();
 
 		assertThat("latch was counted down", latch.getCount(), is(0L));
 	}
@@ -140,14 +138,14 @@ public class TcpClientTests {
 						.connect(new InetSocketAddress(echoServerPort))
 		);
 
-		client.pipeline(input -> {
+		client.start(input -> {
 			input.consume(d -> latch.countDown());
-			return Streams.just("Hello");
-		}).open();
+			return input.writeWith(Streams.just("Hello"));
+		});
 
 		latch.await(30, TimeUnit.SECONDS);
 
-		client.close();
+		client.shutdown();
 
 		assertThat("latch was counted down", latch.getCount(), is(0L));
 	}
@@ -165,20 +163,22 @@ public class TcpClientTests {
 								.connect("localhost", echoServerPort)
 		);
 
-		client.pipeline(input -> {
+		client.start(input -> {
 			input.log("received").consume(s -> {
 				strings.add(s);
 				latch.countDown();
 			});
 
-			return Streams.range(1, messages)
-					.map(i -> "Hello World!")
-					.subscribeOn(env.getDefaultDispatcher());
-		}).open();
+			return input.writeWith(
+					Streams.range(1, messages)
+							.map(i -> "Hello World!")
+							.subscribeOn(env.getDefaultDispatcher())
+			);
+		});
 
 		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings,
 				latch.await(5, TimeUnit.SECONDS));
-		client.close();
+		client.shutdown();
 
 		assertEquals(messages, strings.size());
 		Set<String> uniqueStrings = new HashSet<String>(strings);
@@ -194,7 +194,7 @@ public class TcpClientTests {
 						.connect("localhost", echoServerPort)
 		);
 
-		assertTrue("Client was not closed within 30 seconds", client.close().awaitSuccess(30, TimeUnit.SECONDS));
+		assertTrue("Client was not closed within 30 seconds", client.shutdown().awaitSuccess(30, TimeUnit.SECONDS));
 	}
 
 	@Test
@@ -206,25 +206,22 @@ public class TcpClientTests {
 						.env(env)
 						.connect("localhost", abortServerPort + 3)
 		)
-				.open(new Reconnect() {
-					@Override
-					public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {
-						switch (attempt) {
-							case 1:
-								totalDelay.addAndGet(100);
-								return Tuple.of(currentAddress, 100L);
-							case 2:
-								totalDelay.addAndGet(500);
-								return Tuple.of(currentAddress, 500L);
-							case 3:
-								totalDelay.addAndGet(1000);
-								return Tuple.of(currentAddress, 1000L);
-							default:
-								latch.countDown();
-								return null;
-						}
+				.start(null, (currentAddress, attempt) -> {
+					switch (attempt) {
+						case 1:
+							totalDelay.addAndGet(100);
+							return Tuple.of(currentAddress, 100L);
+						case 2:
+							totalDelay.addAndGet(500);
+							return Tuple.of(currentAddress, 500L);
+						case 3:
+							totalDelay.addAndGet(1000);
+							return Tuple.of(currentAddress, 1000L);
+						default:
+							latch.countDown();
+							return null;
 					}
-				});
+				}).consume(System.out::println);
 
 		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 		assertThat("totalDelay was >1.6s", totalDelay.get(), greaterThanOrEqualTo(1600L));
@@ -239,12 +236,11 @@ public class TcpClientTests {
 						.connect("localhost", abortServerPort)
 		);
 
-		tcpClient.consume(connection -> {
+		tcpClient.start(connection -> {
 			connectionLatch.countDown();
 			connection.consume();
-		});
-
-		tcpClient.open((currentAddress, attempt) -> {
+			return Streams.never();
+		}, (currentAddress, attempt) -> {
 			reconnectionLatch.countDown();
 			return null;
 		});
@@ -254,8 +250,9 @@ public class TcpClientTests {
 	}
 
 	@Test
-	public void consumerSpecAssignsEventHandlers() throws InterruptedException {
-		final CountDownLatch latch = new CountDownLatch(3);
+	public void consumerSpecAssignsEventHandlers() throws InterruptedException, IOException {
+		final CountDownLatch latch = new CountDownLatch(2);
+		final CountDownLatch close = new CountDownLatch(1);
 		final AtomicLong totalDelay = new AtomicLong();
 		final long start = System.currentTimeMillis();
 
@@ -264,22 +261,24 @@ public class TcpClientTests {
 						.connect("localhost", timeoutServerPort)
 		);
 
-		client.next().onSuccess(p ->
-						p.on()
-								.close(v -> latch.countDown())
-								.readIdle(500, v -> {
-									totalDelay.addAndGet(System.currentTimeMillis() - start);
-									latch.countDown();
-								})
-								.writeIdle(500, v -> {
-									totalDelay.addAndGet(System.currentTimeMillis() - start);
-									latch.countDown();
-								})
-		);
+		client.start(p -> {
+					p.on()
+							.close(v -> close.countDown())
+							.readIdle(500, v -> {
+								totalDelay.addAndGet(System.currentTimeMillis() - start);
+								latch.countDown();
+							})
+							.writeIdle(500, v -> {
+								totalDelay.addAndGet(System.currentTimeMillis() - start);
+								latch.countDown();
+							});
 
-		client.open().await(5, TimeUnit.SECONDS);
+					return Streams.timer(env.getTimer(), 1).after().log();
+				}
+		).await(5, TimeUnit.SECONDS);
 
 		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
+		assertTrue("close was counted down", close.await(30, TimeUnit.SECONDS));
 		assertThat("totalDelay was >500ms", totalDelay.get(), greaterThanOrEqualTo(500L));
 	}
 
@@ -293,14 +292,14 @@ public class TcpClientTests {
 						.connect("localhost", heartbeatServerPort)
 		);
 
-		client.next().onSuccess(p ->
-						p.on()
-								.readIdle(500, v -> {
-									latch.countDown();
-								})
-		);
-
-		client.open().await();
+		client.start(p -> {
+					p.on()
+							.readIdle(500, v -> {
+								latch.countDown();
+							});
+					return Streams.timer(env.getTimer(), 1).after().log();
+				}
+		).await();
 
 		Thread.sleep(700);
 		heartbeatServer.close();
@@ -323,19 +322,19 @@ public class TcpClientTests {
 		);
 
 
-		client.next().onSuccess(connection -> {
+		client.start(connection -> {
 					connection.on()
 							.writeIdle(500, v -> {
 								latch.countDown();
 							});
 
+					List<Publisher<Void>> allWrites = new ArrayList<>();
 					for (int i = 0; i < 5; i++) {
-						connection.sinkBuffers(Streams.just(Buffer.wrap("a")).throttle(100));
+						allWrites.add(connection.writeBufferWith(Streams.just(Buffer.wrap("a")).throttle(500, env.getTimer())));
 					}
+					return Streams.merge(allWrites);
 				}
-		);
-
-		client.open().await();
+		).await();
 
 		assertTrue(latch.await(5, TimeUnit.SECONDS));
 
@@ -361,14 +360,12 @@ public class TcpClientTests {
 
 
 		final CountDownLatch latch = new CountDownLatch(1);
-		client.next().onSuccess(resp -> {
+		client.start(resp -> {
 			latch.countDown();
 			System.out.println("resp: " + resp);
 
-			resp.sink(Streams.just(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")));
-		});
-
-		client.open().await();
+			return resp.writeWith(Streams.just(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")));
+		}).await();
 
 
 		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
@@ -384,16 +381,14 @@ public class TcpClientTests {
 						.listen(port)
 		);
 
-		zmqs.pipeline(ch ->
-			ch.map(buff -> {
+		zmqs.start(ch ->
+			ch.writeWith(ch.log("zmq").take(1).map(buff -> {
 				if (buff.remaining() == 12) {
 					latch.countDown();
 				}
 				return Buffer.wrap("Goodbye World!");
-			})
-		);
-
-		assertTrue("server was started", zmqs.start().awaitSuccess(5, TimeUnit.SECONDS));
+			}))
+		).await(5, TimeUnit.SECONDS);
 
 		TcpClient<Buffer, Buffer> zmqc = NetStreams.<Buffer, Buffer>tcpClient(ZeroMQTcpClient.class, s -> s
 						.env(env)
@@ -402,16 +397,13 @@ public class TcpClientTests {
 
 		final Promise<Buffer> promise = Promises.prepare();
 
-		zmqc.pipeline(ch -> {
-			ch.subscribe(promise);
-			return Streams.just(Buffer.wrap("Hello World!"));
-		});
-
-
-		assertNotNull("channel was connected", zmqc.open().await(5, TimeUnit.SECONDS));
+		zmqc.start(ch -> {
+			ch.log("zmq-c").subscribe(promise);
+			return ch.writeWith(Streams.just(Buffer.wrap("Hello World!")));
+		}).await(5, TimeUnit.SECONDS);
 
 		String msg = promise
-				.await(10, TimeUnit.SECONDS)
+				.await(30, TimeUnit.SECONDS)
 				.asString();
 
 
@@ -519,7 +511,6 @@ public class TcpClientTests {
 					ch.read(buff);
 				}
 			} catch (IOException e) {
-				// Server closed
 			}
 		}
 

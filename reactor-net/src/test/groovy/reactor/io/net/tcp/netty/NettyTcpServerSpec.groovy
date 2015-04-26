@@ -51,14 +51,10 @@ class NettyTcpServerSpec extends Specification {
 			}
 
 		when: "the server is started"
-			server.consume { conn ->
-				conn.sinkBuffers(Streams.just(Buffer.wrap("Hello World!")))
-			}
+			server.start { conn ->
+				conn.writeBufferWith(Streams.just(Buffer.wrap("Hello World!")))
+			}.await()
 
-		then: "the server was started"
-			server.start().awaitSuccess()
-
-		when: "data is sent"
 			def client = new SimpleClient(port, dataLatch, Buffer.wrap("Hello World!"))
 			client.start()
 			dataLatch.await(5, TimeUnit.SECONDS)
@@ -88,17 +84,15 @@ class NettyTcpServerSpec extends Specification {
 			}
 
 		when: "the server is started"
-			server.pipeline { conn ->
-				conn.map { pojo ->
-					assert pojo.name == "John Doe"
-					new Pojo(name: "Jane Doe")
-				}
-			}
+			server.start { conn ->
+				conn.writeWith(
+						conn.take(1).map { pojo ->
+							assert pojo.name == "John Doe"
+							new Pojo(name: "Jane Doe")
+						}
+				)
+			}.await()
 
-		then: "the server was started"
-			server.start().awaitSuccess(50, TimeUnit.SECONDS)
-
-		when: "a pojo is written"
 			def client = new SimpleClient(port, dataLatch, Buffer.wrap("{\"name\":\"John Doe\"}"))
 			client.start()
 			dataLatch.await(5, TimeUnit.SECONDS)
@@ -126,34 +120,37 @@ class NettyTcpServerSpec extends Specification {
 			def codec = new JsonCodec<Pojo, Pojo>(Pojo)
 
 		when: "the client/server are prepared"
-			server.pipeline { input ->
-				input
-						.decode(codec)
-						.log('serve')
-						.map(codec)
-						.capacity(5l)
-			}
+			server.start { input ->
+				input.writeWith(
+						input
+								.decode(codec)
+								.log('serve')
+								.map(codec)
+								.capacity(5l)
+				)
+			}.await()
 
-			client.pipeline { input ->
+			client.start { input ->
 				input
 						.decode(codec)
 						.log('receive')
 						.consume { latch.countDown() }
 
-				Streams.range(1, 10)
-						.map { new Pojo(name: 'test' + it) }
-						.log('send')
-						.map(codec)
-						.capacity(10l)
-			}
+				input.writeWith(
+						Streams.range(1, 10)
+								.map { new Pojo(name: 'test' + it) }
+								.log('send')
+								.map(codec)
+				)
+			}.await()
 
 		then: "the client/server were started"
-			server?.start()?.flatMap { client.open() }?.awaitSuccess(5, TimeUnit.SECONDS)
 			latch.await(10, TimeUnit.SECONDS)
 
 
 		cleanup: "the client/server where stopped"
-			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			client.shutdown().onSuccess{ println 'test' }.await()
+			server.shutdown().await()
 			Environment.terminate()
 	}
 
@@ -161,7 +158,7 @@ class NettyTcpServerSpec extends Specification {
 	def "retry strategies when server fails"() {
 		given: "a TcpServer and a TcpClient"
 			Environment.initializeIfEmpty().assignErrorJournal()
-		def elem = 10
+			def elem = 10
 			def latch = new CountDownLatch(elem)
 
 			def server = NetStreams.tcpServer(port)
@@ -170,41 +167,45 @@ class NettyTcpServerSpec extends Specification {
 			def i = 0
 
 		when: "the client/server are prepared"
-			server.pipeline { input ->
-				input
+			server.start { input ->
+				input.writeWith(input
 						.decode(codec)
 						.flatMap {
-							Streams.just(it)
-								.log('flatmap-retry')
-								.observe {
-									if (i++ < 2) {
-										throw new Exception("test")
-									}
-								}
-								.retry(2)
+					Streams.just(it)
+							.log('flatmap-retry')
+							.observe {
+						if (i++ < 2) {
+							throw new Exception("test")
 						}
-						.map(codec)
-			}
+					}
+					.retry(2)
+				}
+				.map(codec)
+						.capacity(10l)
+				)
+			}.await()
 
-			client.pipeline { input ->
+			client.start { input ->
 				input
 						.decode(codec)
 						.log('receive')
 						.consume { latch.countDown() }
 
-				Streams.range(1, elem)
-						.map { new Pojo(name: 'test' + it) }
-						.log('send')
-						.map(codec)
-			}
+				input.writeWith(
+						Streams.range(1, elem)
+								.map { new Pojo(name: 'test' + it) }
+								.log('send')
+								.map(codec)
+				)
+			}.await()
 
 		then: "the client/server were started"
-			server?.start()?.flatMap { client.open() }?.awaitSuccess(5, TimeUnit.SECONDS)
 			latch.await(10, TimeUnit.SECONDS)
 
 
 		cleanup: "the client/server where stopped"
-			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			client.shutdown().await()
+			server.shutdown().await()
 			Environment.terminate()
 	}
 

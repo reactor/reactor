@@ -22,14 +22,13 @@ import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.selector.Selector;
-import reactor.bus.selector.Selectors;
 import reactor.core.Dispatcher;
-import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.NetSelectors;
-import reactor.io.net.PeerStream;
-import reactor.io.net.Server;
+import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.ReactorPeer;
+import reactor.rx.Promise;
 
 import java.net.InetSocketAddress;
 import java.util.Iterator;
@@ -40,18 +39,25 @@ import java.util.List;
  *
  * @param <IN>  The type that will be received by this server
  * @param <OUT> The type that will be sent by this server
- *
  * @author Stephane Maldini
  */
 public abstract class HttpServer<IN, OUT>
-		extends PeerStream<IN, OUT, HttpChannel<IN, OUT>>
-		implements Server<IN, OUT, HttpChannel<IN, OUT>> {
+		extends ReactorPeer<IN, OUT, HttpChannel<IN, OUT>> {
 
-	protected final Registry<Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>> routedWriters;
+	protected final Registry<ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> routedWriters;
 
 	protected HttpServer(Environment env, Dispatcher dispatcher, Codec<Buffer, IN, OUT> codec) {
 		super(env, dispatcher, codec);
 		this.routedWriters = Registries.create();
+	}
+
+	/**
+	 * Start the server without any global handler, only the specific routed methods (get, post...) will apply.
+	 *
+	 * @return a Promise fulfilled when server is started
+	 */
+	public Promise<Void> start() {
+		return start(null);
 	}
 
 	/**
@@ -69,17 +75,9 @@ public abstract class HttpServer<IN, OUT>
 	@SuppressWarnings("unchecked")
 	public HttpServer<IN, OUT> route(
 			final Selector condition,
-			final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
+			final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> serviceFunction) {
 
 		routedWriters.register(condition, serviceFunction);
-		return this;
-	}
-
-
-	@Override
-	public Server<IN, OUT, HttpChannel<IN, OUT>> pipeline(
-			final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
-		route(Selectors.matchAll(), serviceFunction);
 		return this;
 	}
 
@@ -89,8 +87,7 @@ public abstract class HttpServer<IN, OUT>
 	 * @return
 	 */
 	public final HttpServer<IN, OUT> get(String path,
-	                                     final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
-			                                     handler) {
+	                                     final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		route(NetSelectors.get(path), handler);
 		return this;
 	}
@@ -101,8 +98,7 @@ public abstract class HttpServer<IN, OUT>
 	 * @return
 	 */
 	public final HttpServer<IN, OUT> post(String path,
-	                                      final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
-			                                      handler) {
+	                                      final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		route(NetSelectors.post(path), handler);
 		return this;
 	}
@@ -114,8 +110,7 @@ public abstract class HttpServer<IN, OUT>
 	 * @return
 	 */
 	public final HttpServer<IN, OUT> put(String path,
-	                                     final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
-			                                     handler) {
+	                                     final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		route(NetSelectors.put(path), handler);
 		return this;
 	}
@@ -126,24 +121,22 @@ public abstract class HttpServer<IN, OUT>
 	 * @return
 	 */
 	public final HttpServer<IN, OUT> delete(String path,
-	                                        final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
-			                                        handler) {
+	                                        final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		route(NetSelectors.delete(path), handler);
 		return this;
 	}
 
-	@Override
-	protected Iterable<Publisher<? extends OUT>> routeChannel(final HttpChannel<IN, OUT> ch) {
-		final List<Registration<? extends Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>>>
+	protected Iterable<? extends Publisher<Void>> routeChannel(final HttpChannel<IN, OUT> ch) {
+		final List<Registration<? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
 				selected = routedWriters.select(ch);
 
-		return new Iterable<Publisher<? extends OUT>>() {
+		return new Iterable<Publisher<Void>>() {
 			@Override
-			public Iterator<Publisher<? extends OUT>> iterator() {
-				final Iterator<Registration<? extends Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>>>
+			public Iterator<Publisher<Void>> iterator() {
+				final Iterator<Registration<? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
 						iterator = selected.iterator();
 
-				return new Iterator<Publisher<? extends OUT>>() {
+				return new Iterator<Publisher<Void>>() {
 					@Override
 					public boolean hasNext() {
 						return iterator.hasNext();
@@ -157,9 +150,8 @@ public abstract class HttpServer<IN, OUT>
 					//Lazy apply
 					@Override
 					@SuppressWarnings("unchecked")
-					public Publisher<? extends OUT> next() {
-						Registration<? extends Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>> next
-								= iterator.next();
+					public Publisher<Void> next() {
+						Registration<? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> next = iterator.next();
 						if (next != null) {
 							ch.paramsResolver(next.getSelector().getHeaderResolver());
 							return next.getObject().apply(ch);

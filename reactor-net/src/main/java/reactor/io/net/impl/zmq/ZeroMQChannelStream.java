@@ -16,26 +16,27 @@
 
 package reactor.io.net.impl.zmq;
 
-import com.gs.collections.api.list.MutableList;
-import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
-import com.gs.collections.impl.list.mutable.FastList;
-import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.processor.CancelException;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
-import reactor.io.net.PeerStream;
+import reactor.rx.action.support.DefaultSubscriber;
+import reactor.rx.subscription.PushSubscription;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Jon Brisbin
@@ -43,22 +44,113 @@ import java.nio.ByteBuffer;
  */
 public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
-	private final ZeroMQConsumerSpec          eventSpec     = new ZeroMQConsumerSpec();
-	private final MutableList<Consumer<Void>> closeHandlers = SynchronizedMutableList.of(FastList
-			.<Consumer<Void>>newList());
+	private final ZeroMQConsumerSpec eventSpec = new ZeroMQConsumerSpec();
+	private final InetSocketAddress remoteAddress;
 
 	private volatile String     connectionId;
 	private volatile ZMQ.Socket socket;
 
-	private ZMsg currentMsg;
+	private Subscriber<? super IN> inputSub;
 
-	public ZeroMQChannelStream(@Nonnull Environment env,
+	public ZeroMQChannelStream(Environment env,
 	                           long prefetch,
-	                           PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,
-	                           @Nonnull Dispatcher eventsDispatcher,
-	                           @Nonnull Dispatcher ioDispatcher,
-	                           @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, codec, prefetch, peer, ioDispatcher, eventsDispatcher);
+	                           Dispatcher eventsDispatcher,
+	                           InetSocketAddress remoteAddress,
+	                           Codec<Buffer, IN, OUT> codec) {
+		super(env, codec, prefetch, eventsDispatcher);
+		this.remoteAddress = remoteAddress;
+	}
+
+	@Override
+	protected void doSubscribeWriter(Publisher<? extends OUT> writer, final Subscriber<? super Void> postWriter) {
+		writer.subscribe(new DefaultSubscriber<OUT>() {
+
+			ZMsg currentMsg;
+
+			@Override
+			public void onSubscribe(final Subscription subscription) {
+				eventSpec.close(new Consumer<Void>() {
+					@Override
+					public void accept(Void aVoid) {
+						subscription.cancel();
+					}
+				});
+				subscription.request(Long.MAX_VALUE);
+				postWriter.onSubscribe(subscription);
+			}
+
+			@Override
+			public void onNext(OUT out) {
+				final ByteBuffer data;
+				if (Buffer.class.isAssignableFrom(out.getClass())) {
+					data = ((Buffer) out).byteBuffer();
+				} else if (getEncoder() != null) {
+					data = getEncoder().apply(out).byteBuffer();
+				} else {
+					postWriter.onError(
+							Exceptions.addValueAsLastCause(new IllegalArgumentException("Data cannot be encoded"), out));
+					return;
+				}
+
+				byte[] bytes = new byte[data.remaining()];
+				data.get(bytes);
+				boolean isNewMsg;
+				ZMsg msg;
+				msg = currentMsg;
+				currentMsg = new ZMsg();
+				if (msg == null) {
+					msg = currentMsg;
+					isNewMsg = true;
+				} else {
+					isNewMsg = false;
+				}
+
+				if (isNewMsg) {
+					switch (socket.getType()) {
+						case ZMQ.ROUTER:
+							msg.add(new ZFrame(connectionId));
+							break;
+						default:
+					}
+				}
+				msg.add(new ZFrame(bytes));
+			}
+
+			@Override
+			public void onError(Throwable throwable) {
+				doFlush(currentMsg, null);
+				postWriter.onError(throwable);
+			}
+
+			@Override
+			public void onComplete() {
+				doFlush(currentMsg, postWriter);
+			}
+		});
+	}
+
+	@Override
+	public void doDecoded(IN in) {
+		try {
+			if (inputSub != null) {
+				inputSub.onNext(in);
+			}
+		} catch (CancelException ce) {
+			//IGNORE
+		}
+	}
+
+	@Override
+	public void subscribe(Subscriber<? super IN> subscriber) {
+		if (subscriber == null) {
+			throw new IllegalStateException("Input Subscriber cannot be null");
+		}
+		synchronized (this) {
+			if (inputSub != null) return;
+			inputSub = subscriber;
+		}
+
+		inputSub.onSubscribe(new PushSubscription<IN>(null, inputSub));
 	}
 
 	public ZeroMQChannelStream<IN, OUT> setConnectionId(String connectionId) {
@@ -73,58 +165,10 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	@Override
 	public InetSocketAddress remoteAddress() {
-		return null;
+		return remoteAddress;
 	}
 
-	@Override
-	protected void write(ByteBuffer data, final Subscriber<?> onComplete, boolean flush) {
-		byte[] bytes = new byte[data.remaining()];
-		data.get(bytes);
-		boolean isNewMsg;
-		ZMsg msg;
-		synchronized (this) {
-			msg = currentMsg;
-			currentMsg = new ZMsg();
-			if (msg == null) {
-				msg = currentMsg;
-				isNewMsg = true;
-			}else{
-				isNewMsg = false;
-			}
-		}
-		if (isNewMsg) {
-			switch (socket.getType()) {
-				case ZMQ.ROUTER:
-					msg.add(new ZFrame(connectionId));
-					break;
-				default:
-			}
-		}
-		msg.add(new ZFrame(bytes));
-
-		if (flush) {
-			doFlush(onComplete);
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	@Override
-	protected void write(Object data, Subscriber<?> onComplete, boolean flush) {
-		Buffer buff = getEncoder().apply((OUT) data);
-		write(buff.byteBuffer(), onComplete, flush);
-	}
-
-	@Override
-	protected synchronized void flush() {
-		doFlush(null);
-	}
-
-	private void doFlush(final Subscriber<?> onComplete) {
-		ZMsg msg;
-		synchronized (this) {
-			msg = currentMsg;
-			currentMsg = null;
-		}
+	private void doFlush(ZMsg msg, final Subscriber<? super Void> onComplete) {
 		if (null != msg) {
 			boolean success = msg.send(socket);
 			if (null != onComplete) {
@@ -141,13 +185,20 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 		getDispatcher().dispatch(null, new Consumer<Void>() {
 			@Override
 			public void accept(Void v) {
-				closeHandlers.removeIf(new CheckedPredicate<Consumer<Void>>() {
-					@Override
-					public boolean safeAccept(Consumer<Void> r) throws Exception {
-						r.accept(null);
-						return true;
+				try {
+					final List<Consumer<Void>> closeHandlers;
+					synchronized (eventSpec.closeHandlers) {
+						closeHandlers = new ArrayList<Consumer<Void>>(eventSpec.closeHandlers);
 					}
-				});
+
+					for (Consumer<Void> r : closeHandlers) {
+						r.accept(null);
+					}
+				} catch (Throwable t) {
+					if (inputSub != null) {
+						inputSub.onError(t);
+					}
+				}
 			}
 		}, null);
 	}
@@ -166,16 +217,21 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	@Override
 	public String toString() {
 		return "ZeroMQNetChannel{" +
-				"closeHandlers=" + closeHandlers +
+				"closeHandlers=" + eventSpec.closeHandlers +
 				", connectionId='" + connectionId + '\'' +
 				", socket=" + socket +
 				'}';
 	}
 
-	private class ZeroMQConsumerSpec implements ConsumerSpec {
+	private static class ZeroMQConsumerSpec implements ConsumerSpec {
+
+		final List<Consumer<Void>> closeHandlers = new ArrayList<>();
+
 		@Override
 		public ConsumerSpec close(Consumer<Void> onClose) {
-			closeHandlers.add(onClose);
+			synchronized (closeHandlers) {
+				closeHandlers.add(onClose);
+			}
 			return this;
 		}
 

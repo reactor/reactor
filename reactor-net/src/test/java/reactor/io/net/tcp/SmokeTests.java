@@ -31,7 +31,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.StringCodec;
 import reactor.io.net.NetStreams;
-import reactor.io.net.Spec;
+import reactor.io.net.http.HttpClient;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
@@ -168,7 +168,7 @@ public class SmokeTests {
 			request.addResponseHeader("X-GP-PROTO", "1");
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
-			return bufferStream
+			return request.writeWith(bufferStream
 					.observe(d ->
 									integer.getAndIncrement()
 					)
@@ -195,28 +195,25 @@ public class SmokeTests {
 								integerPostConcat.decrementAndGet();
 								System.out.println("YYYYY COMPLETE " + Thread.currentThread());
 							}
-					);
+					))
+					.capacity(1L);
 		});
 
 		httpServer.start().awaitSuccess();
 	}
 
 	private List<String> getClientDataPromise() throws Exception {
-		reactor.io.net.http.HttpClient<String, String> httpClient = NetStreams.httpClient(new Function<Spec.HttpClientSpec<String, String>, Spec.HttpClientSpec<String, String>>() {
+		HttpClient<String, String> httpClient = NetStreams.httpClient(s ->
+				s.codec(new StringCodec()).connect("localhost", httpServer.getListenAddress().getPort())
+						.dispatcher(Environment.sharedDispatcher())
+		);
 
-			@Override
-			public Spec.HttpClientSpec<String, String> apply(Spec.HttpClientSpec<String, String> t) {
-				return t.codec(new StringCodec()).connect("localhost", httpServer.getListenAddress().getPort())
-						.dispatcher(Environment.sharedDispatcher());
-			}
-		});
 		Promise<List<String>> content = httpClient
-				.get("/data", t -> Streams.empty())
+				.get("/data")
 				.flatMap(Stream::toList);
 
-		httpClient.open().awaitSuccess();
 		content.awaitSuccess(20, TimeUnit.SECONDS);
-		httpClient.close().awaitSuccess();
+		httpClient.shutdown().awaitSuccess();
 		return content.get();
 	}
 

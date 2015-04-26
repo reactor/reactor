@@ -34,7 +34,7 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 	private boolean tcpNoDelay = true;
 	private int     rcvbuf     = Buffer.SMALL_BUFFER_SIZE;
 	private int     sndbuf     = Buffer.SMALL_BUFFER_SIZE;
-	private long    prefetch   = -1l;
+	private long    prefetch   = Long.MAX_VALUE;
 
 	/**
 	 * Gets the {@code SO_TIMEOUT} value
@@ -59,7 +59,7 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 	/**
 	 * Gets the {@code prefetch} maximum in-flight value
 	 *
-	 * @return the prefetch value, {@code -1l} if undefined
+	 * @return the prefetch value, {@code Long.MAX} if undefined
 	 */
 	public long prefetch() {
 		return prefetch;

@@ -18,7 +18,6 @@ package reactor.io.net.impl.netty.tcp;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
@@ -33,24 +32,20 @@ import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
+import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
-import reactor.io.net.impl.netty.NettyEventLoopDispatcher;
-import reactor.io.net.impl.netty.NettyNetChannelInboundHandler;
 import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
-import reactor.rx.action.Control;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -65,19 +60,19 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
-	private final Logger log = LoggerFactory.getLogger(NettyTcpServer.class);
+	private final static Logger log = LoggerFactory.getLogger(NettyTcpServer.class);
 
 	private final NettyServerSocketOptions nettyOptions;
 	private final ServerBootstrap          bootstrap;
 	private final EventLoopGroup           selectorGroup;
 	private final EventLoopGroup           ioGroup;
 
-	protected NettyTcpServer(@Nonnull Environment env,
-	                         @Nonnull Dispatcher dispatcher,
-	                         @Nullable InetSocketAddress listenAddress,
+	protected NettyTcpServer(Environment env,
+	                         Dispatcher dispatcher,
+	                         InetSocketAddress listenAddress,
 	                         final ServerSocketOptions options,
 	                         final SslOptions sslOptions,
-	                         @Nullable Codec<Buffer, IN, OUT> codec) {
+	                         Codec<Buffer, IN, OUT> codec) {
 		super(env, dispatcher, listenAddress, options, sslOptions, codec);
 
 		if (options instanceof NettyServerSocketOptions) {
@@ -86,11 +81,13 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			this.nettyOptions = null;
 		}
 
-		int selectThreadCount = getEnvironment().getProperty("reactor.tcp.selectThreadCount", Integer.class,
+		int selectThreadCount = getDefaultEnvironment().getProperty("reactor.tcp.selectThreadCount", Integer.class,
 				Environment.PROCESSORS / 2);
-		int ioThreadCount = getEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment
+		int ioThreadCount = getDefaultEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment
 				.PROCESSORS);
+
 		this.selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
+
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
@@ -104,70 +101,52 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
 				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
 				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
-				.localAddress((null == listenAddress ? new InetSocketAddress(3000) : listenAddress))
+				.localAddress((null == listenAddress ? new InetSocketAddress(0) : listenAddress))
 				.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-				.childOption(ChannelOption.AUTO_READ, sslOptions != null)
-				.childHandler(new ChannelInitializer<SocketChannel>() {
-					@Override
-					public void initChannel(final SocketChannel ch) throws Exception {
-						SocketChannelConfig config = ch.config();
-						config.setReceiveBufferSize(options.rcvbuf());
-						config.setSendBufferSize(options.sndbuf());
-						config.setKeepAlive(options.keepAlive());
-						config.setReuseAddress(options.reuseAddr());
-						config.setSoLinger(options.linger());
-						config.setTcpNoDelay(options.tcpNoDelay());
+				.childOption(ChannelOption.AUTO_READ, sslOptions != null);
+	}
 
+	@Override
+	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
 
-						if (log.isDebugEnabled()) {
-							log.debug("CONNECT {}", ch);
-						}
+		bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
+			@Override
+			public void initChannel(final SocketChannel ch) throws Exception {
+				if(nettyOptions != null) {
+					SocketChannelConfig config = ch.config();
+					config.setReceiveBufferSize(nettyOptions.rcvbuf());
+					config.setSendBufferSize(nettyOptions.sndbuf());
+					config.setKeepAlive(nettyOptions.keepAlive());
+					config.setReuseAddress(nettyOptions.reuseAddr());
+					config.setSoLinger(nettyOptions.linger());
+					config.setTcpNoDelay(nettyOptions.tcpNoDelay());
+				}
 
-						if (null != sslOptions) {
-							SSLEngine ssl = new SSLEngineSupplier(sslOptions, false).get();
-							if (log.isDebugEnabled()) {
-								log.debug("SSL enabled using keystore {}",
-										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
-							}
-							ch.pipeline().addLast(new SslHandler(ssl));
-						}
+				if (log.isDebugEnabled()) {
+					log.debug("CONNECT {}", ch);
+				}
 
-						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
-							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
-						}
-
-						bindChannel(ch, options.prefetch());
+				if (null != getSslOptions()) {
+					SSLEngine ssl = new SSLEngineSupplier(getSslOptions(), false).get();
+					if (log.isDebugEnabled()) {
+						log.debug("SSL enabled using keystore {}",
+								(null != getSslOptions().keystoreFile() ? getSslOptions().keystoreFile() : "<DEFAULT>"));
 					}
-				});
-	}
+					ch.pipeline().addLast(new SslHandler(ssl));
+				}
 
-	@Override
-	protected Consumer<Void> completeConsumer(final ChannelStream<IN, OUT> ch) {
-		return new Consumer<Void>() {
-			@Override
-			public void accept(Void aVoid) {
-				((Channel)ch.delegate()).writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
-			}
-		};
-	}
+				if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
+					nettyOptions.pipelineConfigurer().accept(ch.pipeline());
+				}
 
-	@Override
-	protected Control mergeWrite(ChannelStream<IN, OUT> ch) {
-		final Control c = super.mergeWrite(ch);
-		if(c == null) return null;
-		((Channel)ch.delegate()).closeFuture().addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				c.cancel();
+				bindChannel(handler, ch);
 			}
 		});
-		return c;
-	}
 
-	@Override
-	public Promise<Boolean> start() {
 		ChannelFuture bindFuture = bootstrap.bind();
-		final Promise<Boolean> promise = Promises.ready(getEnvironment(), getDispatcher());
+
+
+		final Promise<Void> promise = Promises.ready(getDefaultEnvironment(), getDefaultDispatcher());
 		bindFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
@@ -176,7 +155,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 					if(listenAddress.getPort() == 0){
 						listenAddress = (InetSocketAddress)future.channel().localAddress();
 					}
-					promise.onNext(true);
+					promise.onComplete();
 				} else {
 					promise.onError(future.cause());
 				}
@@ -188,8 +167,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Promise<Boolean> shutdown() {
-		final Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
+	public Promise<Void> doShutdown() {
+		final Promise<Void> d = Promises.prepare();
 
 		final AtomicInteger groupsToShutdown = new AtomicInteger(2);
 		GenericFutureListener listener = new GenericFutureListener() {
@@ -197,8 +176,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			@Override
 			public void operationComplete(Future future) throws Exception {
 				if (groupsToShutdown.decrementAndGet() == 0) {
-					notifyShutdown();
-					d.onNext(true);
+					d.onComplete();
 				}
 			}
 		};
@@ -210,20 +188,14 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		return d;
 	}
 
-
-
-	@Override
-	protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
+	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, Object nativeChannel) {
 		SocketChannel ch = (SocketChannel)nativeChannel;
-		//int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
 		NettyChannelStream<IN ,OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getEnvironment(),
+				getDefaultEnvironment(),
 				getDefaultCodec(),
-				prefetch == -1l ? getPrefetchSize() : prefetch,
-				this,
-				new NettyEventLoopDispatcher(ch.eventLoop(), 256),
-				getDispatcher(),
+				getDefaultPrefetchSize(),
+				getDefaultDispatcher(),
 				ch
 		);
 
@@ -233,10 +205,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			pipeline.addLast(new LoggingHandler(getClass()));
 		}
 		pipeline.addLast(
-				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel)
+				new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel)
 		);
-
-		return netChannel;
 	}
 
 }

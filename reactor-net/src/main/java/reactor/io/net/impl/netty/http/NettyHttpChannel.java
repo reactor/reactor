@@ -16,25 +16,17 @@
 
 package reactor.io.net.impl.netty.http;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.*;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.support.Assert;
-import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.PeerStream;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.model.HttpHeaders;
 import reactor.io.net.http.model.*;
 import reactor.io.net.impl.netty.NettyChannelStream;
 
 import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
 
 /**
  * @author Sebastien Deleuze
@@ -49,11 +41,9 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	private       NettyHttpResponseHeaders    responseHeaders;
 
 	public NettyHttpChannel(NettyChannelStream<IN, OUT> tcpStream,
-	                        PeerStream<IN, OUT, ChannelStream<IN, OUT>> server,
-	                        HttpRequest request, Codec<Buffer, IN, OUT> codec
+	                        HttpRequest request
 	) {
-		super(tcpStream.getEnvironment(), codec, tcpStream.getCapacity(), server,
-				SynchronousDispatcher.INSTANCE, SynchronousDispatcher.INSTANCE);
+		super(tcpStream.getEnvironment(), tcpStream.getCapacity(), tcpStream.getDispatcher());
 		this.tcpStream = tcpStream;
 		this.nettyRequest = request;
 		this.nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
@@ -61,6 +51,21 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 		this.responseHeaders = new NettyHttpResponseHeaders(this.nettyResponse);
 
 		responseHeader(ResponseHeaders.TRANSFER_ENCODING, "chunked");
+	}
+
+	@Override
+	protected void doSubscribeWriter(Publisher<? extends OUT> writer, Subscriber<? super Void> postWriter) {
+		tcpStream.doSubscribeWriter(writer, postWriter);
+	}
+
+	@Override
+	protected void doDecoded(IN in) {
+		tcpStream.doDecoded(in);
+	}
+
+	@Override
+	public void subscribe(Subscriber<? super IN> subscriber) {
+		tcpStream.subscribe(subscriber);
 	}
 
 	// REQUEST contract
@@ -182,50 +187,4 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 		this.nettyResponse = nettyResponse;
 	}
 
-	@Override
-	protected void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
-		write(new DefaultHttpContent(Unpooled.wrappedBuffer(data)), onComplete, flush);
-	}
-
-	@Override
-	protected void write(final Object data, final Subscriber<?> onComplete, final boolean flush) {
-		if (HEADERS_SENT.compareAndSet(this, 0, 1)) {
-			tcpStream.write(nettyResponse, new Subscriber<Object>() {
-				@Override
-				public void onSubscribe(Subscription s) {
-					//IGNORE
-				}
-
-				@Override
-				public void onNext(Object o) {
-					//IGNORE
-				}
-
-				@Override
-				public void onError(Throwable t) {
-					if(onComplete != null){
-						onComplete.onError(t);
-					}else if(Environment.alive()){
-						Environment.get().routeError(t);
-					}
-				}
-
-				@Override
-				public void onComplete() {
-					tcpStream.write(data, onComplete, flush);
-				}
-			}, true);
-		}else{
-			tcpStream.write(data, onComplete, flush);
-		}
-	}
-
-	@Override
-	protected void flush() {
-		tcpStream.flush();
-	}
-
-	NettyChannelStream<IN, OUT> tcpStream() {
-		return tcpStream;
-	}
 }

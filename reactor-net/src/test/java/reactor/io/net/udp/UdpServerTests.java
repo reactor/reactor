@@ -7,22 +7,15 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.fn.Consumer;
 import reactor.io.codec.StandardCodecs;
 import reactor.io.net.NetStreams;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.impl.netty.udp.NettyDatagramServer;
 import reactor.io.net.tcp.support.SocketUtils;
+import reactor.rx.Streams;
 
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.MulticastSocket;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.StandardProtocolFamily;
+import java.net.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
@@ -70,16 +63,14 @@ public class UdpServerTests {
 						.codec(StandardCodecs.BYTE_ARRAY_CODEC)
 		);
 
-		server.consume(ch -> ch.consume(new Consumer<byte[]>() {
-			@Override
-			public void accept(byte[] bytes) {
+		server.start(ch -> {
+			ch.consume(bytes -> {
 				if (bytes.length == 1024) {
 					latch.countDown();
 				}
-			}
-		}));
-
-		server.start().onComplete(p -> {
+			});
+			return Streams.never();
+		}).onComplete(p -> {
 			try {
 				DatagramChannel udp = DatagramChannel.open();
 				udp.configureBlocking(true);
@@ -116,27 +107,23 @@ public class UdpServerTests {
 			DatagramServer<byte[], byte[]> server = NetStreams.<byte[], byte[]>udpServer(
 					NettyDatagramServer.class,
 					spec -> spec.env(env)
-					            .dispatcher(Environment.SHARED)
-					            .listen(port)
-					            .options(new ServerSocketOptions()
-							                     .reuseAddr(true)
-							                     .protocolFamily(StandardProtocolFamily.INET))
-					            .codec(StandardCodecs.BYTE_ARRAY_CODEC)
+							.dispatcher(Environment.SHARED)
+							.listen(port)
+							.options(new ServerSocketOptions()
+									.reuseAddr(true)
+									.protocolFamily(StandardProtocolFamily.INET))
+							.codec(StandardCodecs.BYTE_ARRAY_CODEC)
 			);
 
-			server.consume(ch -> ch.consume(new Consumer<byte[]>() {
-				int count = 0;
-
-				@Override
-				public void accept(byte[] bytes) {
+			server.start(ch -> {
+				ch.consume(bytes -> {
 					//log.info("{} got {} bytes", ++count, bytes.length);
 					if (bytes.length == 1024) {
 						latch.countDown();
 					}
-				}
-			}));
-
-			server.start().onSuccess(b -> {
+				});
+				return Streams.empty();
+			}).onComplete(b -> {
 				try {
 					for (Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
 					     ifaces.hasMoreElements(); ) {
@@ -149,29 +136,28 @@ public class UdpServerTests {
 					throw new IllegalStateException(t);
 				}
 			}).await();
-				servers.add(server);
-			}
 
-			for (int i = 0; i < Environment.PROCESSORS; i++) {
-			threadPool.submit(new Runnable() {
-				@Override
-				public void run() {
-					try {
-						MulticastSocket multicast = new MulticastSocket();
-						multicast.joinGroup(new InetSocketAddress(multicastGroup, port), multicastInterface);
+			servers.add(server);
+		}
 
-						byte[] data = new byte[1024];
-						new Random().nextBytes(data);
+		for (int i = 0; i < Environment.PROCESSORS; i++) {
+			threadPool.submit(() -> {
+				try {
+					MulticastSocket multicast = new MulticastSocket();
+					multicast.joinGroup(new InetSocketAddress(multicastGroup, port), multicastInterface);
 
-						multicast.send(new DatagramPacket(data, data.length, multicastGroup, port));
+					byte[] data = new byte[1024];
+					new Random().nextBytes(data);
 
-						multicast.close();
-					} catch (Exception e) {
-						throw new IllegalStateException(e);
-					}
+					multicast.send(new DatagramPacket(data, data.length, multicastGroup, port));
+
+					multicast.close();
+				} catch (Exception e) {
+					throw new IllegalStateException(e);
 				}
 			}).get(5, TimeUnit.SECONDS);
 		}
+
 
 		assertThat("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 
@@ -185,7 +171,7 @@ public class UdpServerTests {
 			return false;
 		}
 
-		for (Enumeration<InetAddress> i = iface.getInetAddresses(); i.hasMoreElements();) {
+		for (Enumeration<InetAddress> i = iface.getInetAddresses(); i.hasMoreElements(); ) {
 			InetAddress address = i.nextElement();
 			if (address.getClass() == Inet4Address.class) {
 				return true;
@@ -200,13 +186,15 @@ public class UdpServerTests {
 			return NetUtil.LOOPBACK_IF;
 		}
 
-		for (Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces(); ifaces.hasMoreElements();) {
+		for (Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces(); ifaces.hasMoreElements(); ) {
 			NetworkInterface iface = ifaces.nextElement();
 			if (isMulticastEnabledIPv4Interface(iface)) {
 				return iface;
 			}
 		}
 
-		throw new UnsupportedOperationException("This test requires a multicast enabled IPv4 network interface, but none were found");
+		throw new UnsupportedOperationException("This test requires a multicast enabled IPv4 network interface, but none" +
+				" " +
+				"were found");
 	}
 }

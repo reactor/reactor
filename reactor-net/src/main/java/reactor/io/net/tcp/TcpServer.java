@@ -16,21 +16,16 @@
 
 package reactor.io.net.tcp;
 
-import org.reactivestreams.Publisher;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
-import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
-import reactor.io.net.PeerStream;
-import reactor.io.net.Server;
+import reactor.io.net.ReactorPeer;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 
 /**
@@ -42,8 +37,7 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class TcpServer<IN, OUT>
-		extends PeerStream<IN, OUT, ChannelStream<IN, OUT>>
-		implements Server<IN, OUT, ChannelStream<IN, OUT>> {
+		extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final ServerSocketOptions options;
 	private final SslOptions          sslOptions;
@@ -52,24 +46,17 @@ public abstract class TcpServer<IN, OUT>
 	//Carefully reset
 	protected InetSocketAddress listenAddress;
 
-	protected TcpServer(@Nonnull Environment env,
-	                    @Nonnull Dispatcher dispatcher,
-	                    @Nullable InetSocketAddress listenAddress,
+	protected TcpServer(Environment env,
+	                    Dispatcher dispatcher,
+	                    InetSocketAddress listenAddress,
 	                    ServerSocketOptions options,
 	                    SslOptions sslOptions,
-	                    @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec);
+	                    Codec<Buffer, IN, OUT> codec) {
+		super(env, dispatcher, codec, options.prefetch());
 		this.listenAddress = listenAddress;
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.options = options;
 		this.sslOptions = sslOptions;
-	}
-
-	@Override
-	public Server<IN, OUT, ChannelStream<IN, OUT>> pipeline(
-			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
-		doPipeline(serviceFunction);
-		return this;
 	}
 
 	/**

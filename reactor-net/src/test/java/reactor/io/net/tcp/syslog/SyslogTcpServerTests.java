@@ -37,6 +37,7 @@ import reactor.io.net.codec.syslog.SyslogCodec;
 import reactor.io.net.codec.syslog.SyslogMessage;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.syslog.hdfs.HdfsConsumer;
+import reactor.rx.Streams;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -149,19 +150,18 @@ public class SyslogTcpServerTests {
 								.codec(new SyslogCodec())
 		);
 
-		server.consume(conn -> {
+		server.start(conn -> {
 					conn.consume(msg -> {
 						count.incrementAndGet();
 					});
 
 					conn.consume(hdfs);
+					return Streams.never();
 				}
-		);
-
-		server.start().await();
+		).await();
 
 		for (int i = 0; i < threads; i++) {
-			new SyslogMessageWriter(3000).start();
+			new SyslogMessageWriter(server.getListenAddress().getPort()).start();
 		}
 
 		while (count.get() < (msgs * threads)) {

@@ -27,52 +27,37 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.rx.IOStreams;
-import reactor.rx.Stream;
-import reactor.rx.Streams;
-import reactor.rx.action.Control;
-import reactor.rx.broadcast.Broadcaster;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.nio.ByteBuffer;
+import reactor.rx.*;
 
 /**
- * An abstract {@link Channel} implementation that handles the basic interaction and behave as a {@link
+ * An abstract {@link ReactorChannel} implementation that handles the basic interaction and behave as a {@link
  * reactor.rx.Stream}.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Channel<IN, OUT> {
+public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements ReactorChannel<IN, OUT> {
 
-	protected final Logger log = LoggerFactory.getLogger(getClass());
+	protected static final Logger log = LoggerFactory.getLogger(ChannelStream.class);
 
-	protected final PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer;
-	protected final Broadcaster<IN>     contentStream;
-	private final   Environment         env;
 
-	private final Dispatcher ioDispatcher;
+	private final Environment env;
+
 	private final Dispatcher eventsDispatcher;
 
 	private final Function<Buffer, IN>  decoder;
 	private final Function<OUT, Buffer> encoder;
 	private final long                  prefetch;
 
-	protected ChannelStream(final @Nullable Environment env,
-	                        @Nullable Codec<Buffer, IN, OUT> codec,
+	protected ChannelStream(final Environment env,
+	                        Codec<Buffer, IN, OUT> codec,
 	                        long prefetch,
-	                        @Nonnull PeerStream<IN, OUT, ChannelStream<IN, OUT>> peer,
-	                        @Nonnull Dispatcher ioDispatcher,
-	                        @Nonnull Dispatcher eventsDispatcher) {
-		Assert.notNull(ioDispatcher, "IO Dispatcher cannot be null");
+	                        Dispatcher eventsDispatcher) {
+
 		Assert.notNull(eventsDispatcher, "Events Reactor cannot be null");
 		this.env = env;
 		this.prefetch = prefetch;
-		this.ioDispatcher = ioDispatcher;
-		this.peer = peer;
 		this.eventsDispatcher = eventsDispatcher;
-		this.contentStream = Broadcaster.<IN>create(env, eventsDispatcher);
 
 		if (null != codec) {
 			this.decoder = codec.decoder(new Consumer<IN>() {
@@ -89,16 +74,48 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	}
 
 	@Override
-	public void subscribe(Subscriber<? super IN> s) {
-		contentStream.subscribe(s);
+	@SuppressWarnings("unchecked")
+	final public Stream<Void> writeWith(Publisher<? extends OUT> source) {
+		final Publisher<? extends OUT> sourceStream;
+
+		if (Stream.class.isAssignableFrom(source.getClass())) {
+			Stream<? extends OUT> stream = ((Stream<? extends OUT>) source);
+			if (stream.getCapacity() != Long.MAX_VALUE) {
+				//batch flush for every window and return when all have completed
+				return stream
+						.window((int) Math.min(Integer.MAX_VALUE, stream.getCapacity()))
+						.flatMap(new Function<Stream<? extends OUT>, Publisher<Void>>() {
+							@Override
+							public Publisher<Void> apply(Stream<? extends OUT> stream) {
+								Promise<Void> promise = Promises.prepare();
+								doSubscribeWriter(stream, promise);
+								return promise;
+							}
+						});
+			} else {
+				sourceStream = source;
+			}
+
+		}else{
+			sourceStream = source;
+		}
+
+		return new Stream<Void>() {
+			@Override
+			public void subscribe(Subscriber<? super Void> s) {
+				doSubscribeWriter(sourceStream, s);
+			}
+		};
 	}
 
-	@Override
-	public Control sink(Publisher<? extends OUT> source) {
-		return peer.subscribeChannelHandlers(Streams.create(source), this);
-	}
-
-	final public Control sinkBuffers(Publisher<? extends Buffer> source) {
+	/**
+	 * Write Buffer directly to be encoded if any codec has been setup
+	 *
+	 * @param source the raw source to encode
+	 *
+	 * @return the acknowledgement publisher from {@link #writeWith(Publisher)}
+	 */
+	final public Stream<Void> writeBufferWith(Publisher<? extends Buffer> source) {
 		Stream<OUT> encodedSource = Streams.create(source).map(new Function<Buffer, OUT>() {
 			@Override
 			@SuppressWarnings("unchecked")
@@ -112,7 +129,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 			}
 		});
 
-		return sink(encodedSource);
+		return writeWith(encodedSource);
 	}
 
 	@Override
@@ -130,10 +147,6 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 		return prefetch;
 	}
 
-	public final Dispatcher getIODispatcher() {
-		return ioDispatcher;
-	}
-
 	public final Function<Buffer, IN> getDecoder() {
 		return decoder;
 	}
@@ -143,20 +156,11 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	}
 
 	/**
-	 * Direct access to receiving side - should be used to forward incoming data manually or testing purpose
-	 *
-	 * @return a writer for the current ChannelStream consumers
-	 */
-	final public Subscriber<IN> in() {
-		return contentStream;
-	}
-
-	/**
 	 * Convert the current stream data into the decoded type produced by the passed codec
 	 *
 	 * @return the decoded stream
 	 */
-	final public <DECODED> Stream<DECODED> decode(Codec<IN, DECODED, ?> codec){
+	final public <DECODED> Stream<DECODED> decode(Codec<IN, DECODED, ?> codec) {
 		return IOStreams.decode(codec, this);
 	}
 
@@ -165,84 +169,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements Chann
 	 */
 	public abstract Object delegate();
 
-	/**
-	 * notify Peer subscribers the channel has been created and attach the Peer defined writer Publishers
-	 */
-	public void registerOnPeer() {
-		peer.notifyNewChannel(this);
-		peer.mergeWrite(this);
-	}
+	protected abstract void doSubscribeWriter(Publisher<? extends OUT> writer, Subscriber<? super Void> postWriter);
 
-	Consumer<OUT> writeThrough(boolean autoflush) {
-		return new WriteConsumer(autoflush);
-	}
-
-	protected void doDecoded(IN in) {
-		contentStream.onNext(in);
-	}
-
-	/**
-	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
-	 *
-	 * @param data       The data to write, as a {@link Buffer}.
-	 * @param onComplete The callback to invoke when the write is complete.
-	 */
-	protected void write(Buffer data, Subscriber<?> onComplete, boolean flush) {
-		if(data.byteBuffer() != null) {
-			write(data.byteBuffer(), onComplete, flush);
-		}
-	}
-
-	/**
-	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
-	 *
-	 * @param data       The data to write.
-	 * @param onComplete The callback to invoke when the write is complete.
-	 * @param flush      whether to flush the underlying IO channel
-	 */
-	protected abstract void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush);
-
-	/**
-	 * Subclasses must implement this method to perform the actual IO of writing data to the connection.
-	 *
-	 * @param data       The data to write.
-	 * @param onComplete The callback to invoke when the write is complete.
-	 * @param flush      whether to flush the underlying IO channel
-	 */
-	protected abstract void write(Object data, Subscriber<?> onComplete, boolean flush);
-
-	/**
-	 * Subclasses must implement this method to perform IO flushes.
-	 */
-	protected abstract void flush();
-
-	final class WriteConsumer implements Consumer<OUT> {
-
-		final boolean autoflush;
-
-		public WriteConsumer(boolean autoflush) {
-			this.autoflush = autoflush;
-		}
-
-		@Override
-		public void accept(OUT data) {
-		try {
-				if (null != encoder) {
-					Buffer bytes = encoder.apply(data);
-					if (bytes.remaining() > 0) {
-						write(bytes, null, autoflush);
-					}
-				} else {
-					if (Buffer.class == data.getClass()) {
-						write((Buffer) data, null, autoflush);
-					} else {
-						write(data, null, autoflush);
-					}
-				}
-			} catch (Throwable t) {
-				peer.notifyError(t);
-			}
-		}
-	}
-
+	protected abstract void doDecoded(IN in);
 }
