@@ -222,6 +222,20 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 
 	/**
+	 * Only forward onError and onComplete signals into the returned stream.
+	 *
+	 * @return {@literal new Stream}
+	 */
+	public final Stream<Void> after() {
+		return lift(new Supplier<Action<O, Void>>() {
+			@Override
+			public Action<O, Void> get() {
+				return new AfterAction<O>();
+			}
+		});
+	}
+
+	/**
 	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.action.Signal}.
 	 * Since the error is materialized as a {@code Signal}, the propagation will be stopped.
 	 * Complete signal will first emit a {@code Signal.complete()} and then effectively complete the stream.

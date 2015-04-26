@@ -245,7 +245,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		public void onComplete() {
 			//Action.log.debug("event [complete] by: " + this);
 			if (TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
-				s.cancel();
+				if(s != null) s.cancel();
 				outerAction.status.set(COMPLETING);
 				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
 				left = left < 0l ? 0l : left;

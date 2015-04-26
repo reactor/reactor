@@ -150,6 +150,28 @@ class StreamsSpec extends Specification {
 			value1 == value2
 	}
 
+	def 'A deferred Stream can filter terminal states'() {
+		given:
+			'a composable with an initial value'
+			def stream = Streams.just('test')
+
+		when:
+			'the complete signal is observed and stream is retrieved'
+			def tap = stream.after().next()
+
+		then:
+			'it is available'
+			tap.awaitSuccess()
+
+		when:
+			'the error signal is observed and stream is retrieved'
+			stream = Streams.fail(new Exception())
+			stream.after().next().await()
+
+		then:
+			'it is available'
+			thrown Exception
+	}
 
 	def 'A deferred Stream can listen for terminal states'() {
 		given:
