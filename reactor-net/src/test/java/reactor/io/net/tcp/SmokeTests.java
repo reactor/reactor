@@ -63,8 +63,8 @@ public class SmokeTests {
 	private final int count   = 33_000;
 	private final int threads = 6;
 	private final int iter    = 10;
-	private final int windowBatch    = 1000;
-	private final int takeCount    = 1;
+	private final int windowBatch    = 500;
+	private final int takeCount    = 10;
 
 	@SuppressWarnings("unchecked")
 	private List<Integer> windowsData = SynchronizedList.decorate(new ArrayList<>());
@@ -156,7 +156,7 @@ public class SmokeTests {
 //				.process(RingBufferWorkProcessor.create(false));
 
 		httpServer = NetStreams.httpServer(server -> server
-						.codec(new StringCodec()).listen(0)
+						.codec(new StringCodec()).listen(0).dispatcher(Environment.sharedDispatcher())
 		);
 
 
@@ -195,8 +195,8 @@ public class SmokeTests {
 								integerPostConcat.decrementAndGet();
 								System.out.println("YYYYY COMPLETE " + Thread.currentThread());
 							}
-					))
-					.capacity(1L);
+					)
+			);
 		});
 
 		httpServer.start().awaitSuccess();

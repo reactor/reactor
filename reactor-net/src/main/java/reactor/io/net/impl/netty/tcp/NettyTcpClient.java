@@ -232,7 +232,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 		ChannelPipeline pipeline = ch.pipeline();
 		if (log.isDebugEnabled()) {
-			pipeline.addLast(new LoggingHandler(getClass()));
+			pipeline.addLast(new LoggingHandler(NettyTcpClient.class));
 		}
 		pipeline.addLast(
 				new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel)

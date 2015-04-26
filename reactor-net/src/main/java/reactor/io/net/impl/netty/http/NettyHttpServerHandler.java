@@ -32,12 +32,8 @@ import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
 
 /**
- * Conversion between Netty types ({@link io.netty.handler.codec.http.HttpRequest}, {@link io.netty.handler.codec
- * .http.HttpResponse}, {@link io.netty.handler.codec.http.HttpContent} and {@link io.netty.handler.codec.http
- * .LastHttpContent})
- * and Reactor types ({@link NettyHttpChannel} and {@link reactor.io.buffer.Buffer}).
+ * Conversion between Netty types  and Reactor types ({@link NettyHttpChannel} and {@link reactor.io.buffer.Buffer}).
  *
- * @author Sebastien Deleuze
  * @author Stephane Maldini
  */
 public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<IN, OUT> {
@@ -85,7 +81,9 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 						@Override
 						public void onComplete() {
 							if(channelSubscription == null) {
-								ctx.channel().close();
+								ctx.channel().flush().close();
+							}else{
+
 							}
 						}
 					});

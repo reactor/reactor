@@ -27,7 +27,9 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.rx.*;
+import reactor.rx.IOStreams;
+import reactor.rx.Stream;
+import reactor.rx.Streams;
 
 /**
  * An abstract {@link ReactorChannel} implementation that handles the basic interaction and behave as a {@link
@@ -75,29 +77,23 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 
 	@Override
 	@SuppressWarnings("unchecked")
-	final public Stream<Void> writeWith(Publisher<? extends OUT> source) {
-		final Publisher<? extends OUT> sourceStream;
+	final public Stream<Void> writeWith(final Publisher<? extends OUT> source) {
+		final Stream<? extends OUT> sourceStream;
 
 		if (Stream.class.isAssignableFrom(source.getClass())) {
-			Stream<? extends OUT> stream = ((Stream<? extends OUT>) source);
-			if (stream.getCapacity() != Long.MAX_VALUE) {
-				//batch flush for every window and return when all have completed
-				return stream
-						.window((int) Math.min(Integer.MAX_VALUE, stream.getCapacity()))
-						.flatMap(new Function<Stream<? extends OUT>, Publisher<Void>>() {
-							@Override
-							public Publisher<Void> apply(Stream<? extends OUT> stream) {
-								Promise<Void> promise = Promises.prepare();
-								doSubscribeWriter(stream, promise);
-								return promise;
-							}
-						});
-			} else {
-				sourceStream = source;
-			}
-
+			sourceStream = ((Stream<? extends OUT>) source);
 		}else{
-			sourceStream = source;
+			sourceStream = new Stream<OUT>(){
+				@Override
+				public void subscribe(Subscriber<? super OUT> subscriber) {
+					source.subscribe(subscriber);
+				}
+
+				@Override
+				public long getCapacity() {
+					return prefetch;
+				}
+			};
 		}
 
 		return new Stream<Void>() {

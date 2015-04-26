@@ -202,7 +202,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		ChannelPipeline pipeline = ch.pipeline();
 
 		if(log.isDebugEnabled()){
-			pipeline.addLast(new LoggingHandler(getClass()));
+			pipeline.addLast(new LoggingHandler(NettyTcpServer.class));
 		}
 		pipeline.addLast(
 				new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel)

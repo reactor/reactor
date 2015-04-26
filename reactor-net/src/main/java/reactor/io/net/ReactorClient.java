@@ -50,7 +50,7 @@ public abstract class ReactorClient<IN, OUT, CONN extends ChannelStream<IN, OUT>
 	}
 
 	/**
-	 * Open a channel to the configured address and return a {@link reactor.rx..Stream} that will be populated
+	 * Open a channel to the configured address and return a {@link reactor.rx.Stream} that will be populated
 	 * by the {@link ChannelStream} every time a connection or reconnection is made.
 	 * <p>
 	 * The returned {@link Stream} will typically complete when all reconnect options have been used, or error if

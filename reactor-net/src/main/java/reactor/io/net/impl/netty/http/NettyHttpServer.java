@@ -141,7 +141,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 		ChannelPipeline pipeline = ch.pipeline();
 
 		if(log.isDebugEnabled()){
-			pipeline.addLast(new LoggingHandler(getClass()));
+			pipeline.addLast(new LoggingHandler(NettyHttpServer.class));
 		}
 
 		pipeline

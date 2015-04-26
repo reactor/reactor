@@ -20,7 +20,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.util.ReferenceCountUtil;
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -32,6 +31,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.Spec;
+import reactor.rx.Stream;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.subscription.PushSubscription;
 
@@ -118,7 +118,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 					@Override
 					public void onComplete() {
-						if(channelSubscription == null) {
+						if (channelSubscription == null) {
 							ctx.channel().close();
 						}
 					}
@@ -231,47 +231,15 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 	@Override
 	public void write(final ChannelHandlerContext ctx, Object msg, final ChannelPromise promise) throws Exception {
-		if (msg instanceof Publisher) {
+		if (msg instanceof Stream) {
 			@SuppressWarnings("unchecked")
-			final Publisher<?> data = (Publisher<?>) msg;
+			Stream<?> data = (Stream<?>) msg;
 
-			data.subscribe(new DefaultSubscriber<Object>() {
-
-				ChannelFuture lastWrite;
-
-				@Override
-				public void onSubscribe(final Subscription s) {
-					s.request(Long.MAX_VALUE); // TODO: Netty Backpressure (currently logical BackPressure at ChannelStream
-					// level)
-					ctx.channel().closeFuture().addListener(new ChannelFutureListener() {
-						@Override
-						public void operationComplete(ChannelFuture future) throws Exception {
-							s.cancel();
-						}
-					});
-				}
-
-				@Override
-				public void onNext(Object w) {
-					try {
-						lastWrite = doOnWrite(w, ctx);
-					} catch (Throwable t) {
-						onError(Exceptions.addValueAsLastCause(t, w));
-					}
-				}
-
-				@Override
-				public void onError(Throwable t) {
-					log.error("Write error", t);
-					doOnTerminate(ctx, lastWrite, promise);
-				}
-
-				@Override
-				public void onComplete() {
-					doOnTerminate(ctx, lastWrite, promise);
-				}
-
-			});
+			if (data.getCapacity() == Long.MAX_VALUE) {
+				data.subscribe(new FlushOnTerminateSubscriber(ctx, promise));
+			} else {
+				data.subscribe(new FlushOnCapacitySubscriber(ctx, promise, data.getCapacity()));
+			}
 		} else {
 			super.write(ctx, msg, promise);
 		}
@@ -284,35 +252,41 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 			channelSubscription.onError(cause);
 		} else if (Environment.alive()) {
 			Environment.get().routeError(cause);
-		} else{
+		} else {
 			log.error("Unexpected issue", cause);
 		}
 	}
 
-	protected ChannelFuture doOnWrite(Object data, ChannelHandlerContext ctx){
+	protected ChannelFuture doOnWrite(Object data, ChannelHandlerContext ctx) {
 		if (data.getClass().equals(Buffer.class)) {
-			return ctx.channel().write(Unpooled.wrappedBuffer(((Buffer)data).byteBuffer()));
-		}else if(Unpooled.EMPTY_BUFFER != data){
+			return ctx.channel().write(Unpooled.wrappedBuffer(((Buffer) data).byteBuffer()));
+		} else if (Unpooled.EMPTY_BUFFER != data) {
 			return ctx.channel().write(data);
 		}
 		return null;
 	}
 
-	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last, final ChannelPromise promise){
-		if(ctx.channel().isOpen()) {
-			ctx.flush();
-			if (last != null) {
-				last.addListener(new ChannelFutureListener() {
-					@Override
-					public void operationComplete(ChannelFuture future) throws Exception {
-						if (future.isSuccess()) {
-							promise.trySuccess();
-						} else {
-							promise.tryFailure(future.cause());
-						}
+	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last, final ChannelPromise promise) {
+		if (ctx.channel().isOpen()) {
+			ChannelFutureListener listener = new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					if (future.isSuccess()) {
+						promise.trySuccess();
+					} else {
+						promise.tryFailure(future.cause());
 					}
-				});
+				}
+			};
+
+			if (last != null) {
+				ctx.flush();
+				last.addListener(listener);
+			} else {
+				ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(listener);
 			}
+		} else {
+			promise.trySuccess();
 		}
 	}
 
@@ -358,4 +332,120 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		}
 	}
 
+	private class FlushOnTerminateSubscriber extends DefaultSubscriber<Object> {
+
+		private final ChannelHandlerContext ctx;
+		private final ChannelPromise        promise;
+		ChannelFuture lastWrite;
+
+		public FlushOnTerminateSubscriber(ChannelHandlerContext ctx, ChannelPromise promise) {
+			this.ctx = ctx;
+			this.promise = promise;
+		}
+
+		@Override
+		public void onSubscribe(final Subscription s) {
+			ctx.channel().closeFuture().addListener(new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					s.cancel();
+				}
+			});
+			s.request(Long.MAX_VALUE);
+		}
+
+		@Override
+		public void onNext(Object w) {
+			try {
+				lastWrite = doOnWrite(w, ctx);
+			} catch (Throwable t) {
+				onError(Exceptions.addValueAsLastCause(t, w));
+			}
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			log.error("Write error", t);
+			doOnTerminate(ctx, lastWrite, promise);
+		}
+
+		@Override
+		public void onComplete() {
+			doOnTerminate(ctx, lastWrite, promise);
+		}
+	}
+
+	private class FlushOnCapacitySubscriber extends DefaultSubscriber<Object> implements Runnable {
+
+		private final ChannelHandlerContext ctx;
+		private final ChannelPromise        promise;
+		private final long                  capacity;
+
+		private Subscription subscription;
+		private long written = 0L;
+
+		private final ChannelFutureListener writeListener = new ChannelFutureListener() {
+
+
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				if (!future.isSuccess() && future.cause() != null) {
+					promise.tryFailure(future.cause());
+					return;
+				}
+
+				if (--written == 0L) {
+					if (subscription != null) {
+						subscription.request(capacity);
+					}
+				}
+			}
+		};
+
+		public FlushOnCapacitySubscriber(ChannelHandlerContext ctx, ChannelPromise promise, long capacity) {
+			this.ctx = ctx;
+			this.promise = promise;
+			this.capacity = capacity;
+		}
+
+		@Override
+		public void onSubscribe(final Subscription s) {
+			subscription = s;
+			ctx.channel().closeFuture().addListener(new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					s.cancel();
+				}
+			});
+			s.request(capacity);
+		}
+
+		@Override
+		public void onNext(Object w) {
+			try {
+				doOnWrite(w, ctx).addListener(writeListener);
+				ctx.channel().eventLoop().execute(this);
+			} catch (Throwable t) {
+				onError(Exceptions.addValueAsLastCause(t, w));
+			}
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			log.error("Write error", t);
+			doOnTerminate(ctx, null, promise);
+		}
+
+		@Override
+		public void onComplete() {
+			doOnTerminate(ctx, null, promise);
+		}
+
+		@Override
+		public void run() {
+			if (++written == capacity){
+				ctx.flush();
+			}
+		}
+	}
 }

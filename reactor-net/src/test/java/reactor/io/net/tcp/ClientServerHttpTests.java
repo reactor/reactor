@@ -251,8 +251,10 @@ public class ClientServerHttpTests {
 			return request.writeWith(
 					Streams.wrap(processor)
 							.timeout(1, TimeUnit.SECONDS, Streams.empty())
+							.log("server")
 							.concatWith(Streams.just(new ArrayList<String>()))
-							.capacity(1l)
+							.capacity(1L)
+
 			);
 		});
 
@@ -271,7 +273,7 @@ public class ClientServerHttpTests {
 
 		return httpClient.get("/data" )
 				.flatMap(s ->
-						s.log().toList()
+						s.log("client").toList()
 				);
 	}
 

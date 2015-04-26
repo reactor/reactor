@@ -277,7 +277,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		ChannelPipeline pipeline = ioChannel.pipeline();
 
 		if(log.isDebugEnabled()){
-			pipeline.addLast(new LoggingHandler(getClass()));
+			pipeline.addLast(new LoggingHandler(NettyDatagramServer.class));
 		}
 
 		pipeline.addLast(

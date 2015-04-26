@@ -39,9 +39,9 @@ import reactor.rx.Streams;
  * <pre>
  * {@code
  * //echo server
- * NetStreams.tcpServer(1234).pipeline( connection -> connection );
+ * NetStreams.tcpServer(1234).start( connection -> ch.writeWith(connection) );
  *
- * NetStreams.tcpClient(1234).pipeline( connection ->
+ * NetStreams.tcpClient(1234).start( connection ->
  *    connection
  *      //Listen for any incoming data on that connection, they will be Buffer an IOStream can easily decode
  *      .nest()
@@ -49,19 +49,20 @@ import reactor.rx.Streams;
  *      .consume(log::info);
  *
  *    //Push anything from the publisher returned, here a simple Reactor Stream. By default a Buffer is expected
- *    return Streams.just(Buffer.wrap("hello\n"));
+ *    //Will close after write
+ *    return connection.writeWith(Streams.just(Buffer.wrap("hello\n")));
  * });
  *
  * //We can also preconfigure global codecs and other custom client/server parameter with the Function signature:
- * NetStreams.tcpServer(spec -> spec.codec(kryoCodec).listen(1235)).pipeline( intput -> {
+ * NetStreams.tcpServer(spec -> spec.codec(kryoCodec).listen(1235)).start( intput -> {
  *      input.consume(log::info);
- *      return Streams.period(1l);
+ *      return input.writeWith(Streams.period(1l));
  * });
  *
  * //Assigning the same codec to a client and a server greatly improve readability and provide for extended type safety.
- * NetStreams.tcpClient(spec -> spec.connect("localhost", 1235).codec(kryoCodec)).pipeline( input -> {
+ * NetStreams.tcpClient(spec -> spec.connect("localhost", 1235).codec(kryoCodec)).start( input -> {
  *   input.consume(log::info);
- *   return Streams.just("hello");
+ *   return input.writeWith(Streams.just("hello"));
  * });
  *
  * }
@@ -112,18 +113,8 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
-	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
-	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
-	 * data.
-	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -156,9 +147,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -193,9 +181,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -229,9 +214,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -275,9 +257,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -315,9 +294,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpServer#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -360,9 +336,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -396,9 +369,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -433,9 +403,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -470,9 +437,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -516,9 +480,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -556,9 +517,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.tcp.TcpClient#pipeline} to both define the input consumers and the
-	 * output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -686,9 +644,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.http.HttpClient#pipeline} to both define the input consumers and
-	 * the output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -730,9 +685,6 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.http.HttpClient#pipeline} to both define the input consumers and
-	 * the output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -767,19 +719,12 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will
-	 * emit:
-	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
-	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers
-	 * and the output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -803,19 +748,12 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will
-	 * emit:
-	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
-	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers
-	 * and the output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -841,19 +779,12 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will
-	 * emit:
-	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
-	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers
-	 * and the output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -878,19 +809,12 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will
-	 * emit:
-	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
-	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers
-	 * and the output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -925,19 +849,12 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will
-	 * emit:
-	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
-	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers
-	 * and the output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -967,19 +884,12 @@ public class NetStreams extends Streams {
 	/**
 	 * Bind a new UDP server to the specified bind address and port.
 	 * <p>
-	 * A {@link reactor.io.net.udp.DatagramServer} is a specific kind of {@link org.reactivestreams.Publisher} that will
-	 * emit:
-	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
-	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
 	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
 	 * .reactivestreams.Publisher}.
-	 * An alternative is to use {@link reactor.io.net.udp.DatagramServer#pipeline} to both define the input consumers
-	 * and the output
-	 * producers in a single call;
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
