@@ -754,6 +754,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					//processor.barrier.alert();
 					break;
 				} catch (AlertException ex) {
+
 					if (!running.get()) {
 						sequence.set(nextSequence - 1L);
 						processor.cancelledSequences.add(sequence);

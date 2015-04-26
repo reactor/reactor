@@ -113,7 +113,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		SwitchSubscriber subscriber;
 		synchronized (this) {
-			if ((pendingRequests += elements) > 0) pendingRequests = Long.MAX_VALUE;
+			if ((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
 			subscriber = switchSubscriber;
 		}
 		super.requestUpstream(capacity, terminated, elements);

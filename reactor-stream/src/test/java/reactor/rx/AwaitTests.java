@@ -81,7 +81,7 @@ public class AwaitTests extends AbstractReactorTest {
 				} catch (InterruptedException e){
 					//IGNORE
 				}
-				int t = 1 / 0;
+				throw new RuntimeException();
 		});
 
 		for(int i = 0; i<16; i++){
