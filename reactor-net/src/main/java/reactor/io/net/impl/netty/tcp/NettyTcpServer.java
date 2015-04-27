@@ -168,6 +168,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public Promise<Void> doShutdown() {
+
 		final Promise<Void> d = Promises.prepare();
 
 		final AtomicInteger groupsToShutdown = new AtomicInteger(2);

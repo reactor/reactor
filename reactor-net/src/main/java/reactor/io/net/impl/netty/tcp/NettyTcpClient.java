@@ -204,6 +204,11 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	protected Promise<Void> doShutdown() {
+
+		if(nettyOptions != null && nettyOptions.eventLoopGroup() != null){
+			return Promises.success();
+		}
+
 		final Promise<Void> promise = Promises.prepare();
 
 		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {

@@ -84,7 +84,7 @@ public abstract class ReactorPeer<IN, OUT, CONN extends ChannelStream<IN, OUT>> 
 		if (started.compareAndSet(true, false)) {
 			return doShutdown();
 		}
-		return Promises.<Void>success(null);
+		return Promises.success();
 	}
 
 	/**

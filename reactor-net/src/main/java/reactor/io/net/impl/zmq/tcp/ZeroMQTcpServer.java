@@ -227,7 +227,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		}
 		threadPool.shutdownNow();
 
-		return Promises.<Void>success(null);
+		return Promises.success();
 	}
 
 }

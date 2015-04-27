@@ -15,6 +15,7 @@
  */
 package reactor.io.net.tcp;
 
+import io.netty.channel.nio.NioEventLoopGroup;
 import org.apache.commons.collections.list.SynchronizedList;
 import org.junit.After;
 import org.junit.Before;
@@ -32,6 +33,7 @@ import reactor.io.codec.Codec;
 import reactor.io.codec.StringCodec;
 import reactor.io.net.NetStreams;
 import reactor.io.net.http.HttpClient;
+import reactor.io.net.impl.netty.NettyClientSocketOptions;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
@@ -60,11 +62,22 @@ public class SmokeTests {
 	private final AtomicInteger integerPostTake    = new AtomicInteger();
 	private final AtomicInteger integerPostConcat  = new AtomicInteger();
 
-	private final int count   = 33_000;
-	private final int threads = 6;
-	private final int iter    = 10;
-	private final int windowBatch    = 50;
-	private final int takeCount    = 100;
+	private final int     count           = 1_000_000;
+	private final int     threads         = 6;
+	private final int     iter            = 10;
+	private final int     windowBatch     = 50;
+	private final int     takeCount       = 100;
+	private final boolean addToWindowData = false;
+
+	private final NettyClientSocketOptions nettyOptions =
+			new NettyClientSocketOptions().eventLoopGroup(new NioEventLoopGroup(6));
+
+	private final NetStreams.HttpClientFactory<String, String> clientFactory =
+			spec -> spec
+					.options(nettyOptions)
+					.codec(new StringCodec())
+					.connect("localhost", httpServer.getListenAddress().getPort())
+					.dispatcher(Environment.sharedDispatcher());
 
 	@SuppressWarnings("unchecked")
 	private List<Integer> windowsData = SynchronizedList.decorate(new ArrayList<>());
@@ -96,7 +109,7 @@ public class SmokeTests {
 				System.out.println(windowsData.size() + " - " + windowsData);
 				List<Integer> dups = findDuplicates(windowsData);
 				Collections.sort(dups);
-				System.out.println("Dups: "+dups.size()+" - " + dups);
+				System.out.println("Dups: " + dups.size() + " - " + dups);
 				throw ae;
 			} finally {
 				printStats(t);
@@ -185,8 +198,11 @@ public class SmokeTests {
 							//.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
 
 					.concatWith(Streams.just("END"))
-					.observe(d ->
-									windowsData.addAll(parseCollection(d))
+					.observe(d -> {
+								if(addToWindowData) {
+									windowsData.addAll(parseCollection(d));
+								}
+							}
 					)
 					.observe(d ->
 									integerPostConcat.getAndIncrement()
@@ -196,7 +212,6 @@ public class SmokeTests {
 								System.out.println("YYYYY COMPLETE " + Thread.currentThread());
 							}
 					)
-					.capacity(takeCount)
 			);
 		});
 
@@ -204,16 +219,13 @@ public class SmokeTests {
 	}
 
 	private List<String> getClientDataPromise() throws Exception {
-		HttpClient<String, String> httpClient = NetStreams.httpClient(s ->
-				s.codec(new StringCodec()).connect("localhost", httpServer.getListenAddress().getPort())
-						.dispatcher(Environment.sharedDispatcher())
-		);
+		HttpClient<String, String> httpClient = NetStreams.httpClient(clientFactory);
 
 		Promise<List<String>> content = httpClient
 				.get("/data")
 				.flatMap(Stream::toList);
 
-		content.awaitSuccess(20, TimeUnit.SECONDS);
+		content.awaitSuccess(600, TimeUnit.SECONDS);
 		httpClient.shutdown().awaitSuccess();
 		return content.get();
 	}
@@ -275,7 +287,7 @@ public class SmokeTests {
 		}
 		latch.countDown();
 
-		thread.await(60, TimeUnit.SECONDS);
+		thread.await(600, TimeUnit.SECONDS);
 		return datas;
 	}
 
