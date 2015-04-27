@@ -106,7 +106,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 					return Streams.empty();
 				}
-				return Streams.merge(handlers);
+				return Streams.concat(handlers);
 			}
 		});
 	}

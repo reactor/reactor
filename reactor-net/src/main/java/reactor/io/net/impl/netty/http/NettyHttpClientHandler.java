@@ -62,20 +62,43 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		handler.apply(request)
 				.subscribe(new DefaultSubscriber<Void>() {
 					@Override
-					public void onSubscribe(Subscription s) {
-						ctx.writeAndFlush(request.getNettyRequest());
-						s.request(Long.MAX_VALUE);
+					public void onSubscribe(final Subscription s) {
+						if(request.checkHeader()) {
+							ctx.writeAndFlush(request.getNettyRequest()).addListener(new ChannelFutureListener() {
+								@Override
+								public void operationComplete(ChannelFuture future) throws Exception {
+									if (future.isSuccess()) {
+										s.request(Long.MAX_VALUE);
+									} else {
+										log.error("Error processing initial headers. Closing the channel.", future.cause());
+										s.cancel();
+										if (ctx.channel().isOpen()) {
+											ctx.channel().close();
+										}
+									}
+								}
+							});
+						}else{
+							s.request(Long.MAX_VALUE);
+						}
+
 					}
 
 					@Override
 					public void onError(Throwable t) {
 						log.error("Error processing connection. Closing the channel.", t);
-						ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+						if(ctx.channel().isOpen()) {
+							ctx.channel().close();
+						}
 					}
 
 					@Override
 					public void onComplete() {
-						ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+						if(channelSubscription == null) {
+							ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(ChannelFutureListener.CLOSE);
+						}else{
+							ctx.flush();
+						}
 					}
 				});
 	}
@@ -89,6 +112,8 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 			}
 		} else if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
+		} else {
+			super.channelRead(ctx, msg );
 		}
 	}
 
@@ -105,31 +130,34 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	@Override
 	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last, final ChannelPromise promise) {
 		ByteBuffer byteBuffer = body.flip().byteBuffer();
-		HttpRequest req = new DefaultFullHttpRequest(
-				request.getNettyRequest().getProtocolVersion(),
-				request.getNettyRequest().getMethod(),
-				request.getNettyRequest().getUri(),
-				byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled.EMPTY_BUFFER);
+		if(request.checkHeader()) {
+			HttpRequest req = new DefaultFullHttpRequest(
+					request.getNettyRequest().getProtocolVersion(),
+					request.getNettyRequest().getMethod(),
+					request.getNettyRequest().getUri(),
+					byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled.EMPTY_BUFFER);
 
-		if(byteBuffer != null){
-			HttpHeaders.setContentLength(req, body.limit());
+			if (byteBuffer != null) {
+				HttpHeaders.setContentLength(req, body.limit());
 
-			String header = HttpHeaders.getHeader(request.getNettyRequest(), HttpHeaders.Names.CONTENT_TYPE);
-			if (header != null) {
-				HttpHeaders.setHeader(req, HttpHeaders.Names.CONTENT_TYPE, header);
-			}
-		}
-
-
-		ctx.writeAndFlush(req).addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (future.isSuccess()) {
-					promise.trySuccess();
-				} else {
-					promise.tryFailure(future.cause());
+				String header = HttpHeaders.getHeader(request.getNettyRequest(), HttpHeaders.Names.CONTENT_TYPE);
+				if (header != null) {
+					HttpHeaders.setHeader(req, HttpHeaders.Names.CONTENT_TYPE, header);
 				}
 			}
-		});
+			ctx.writeAndFlush(req).addListener(new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					if (future.isSuccess()) {
+						promise.trySuccess();
+					} else {
+						promise.tryFailure(future.cause());
+					}
+				}
+			});
+		}else{
+			ctx.write(new DefaultHttpContent(byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled.EMPTY_BUFFER));
+		}
+		body.reset();
 	}
 }

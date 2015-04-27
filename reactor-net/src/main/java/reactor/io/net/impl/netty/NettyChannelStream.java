@@ -31,6 +31,7 @@ import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannel;
 import reactor.rx.Streams;
+import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.subscription.PushSubscription;
 
 import java.net.InetSocketAddress;
@@ -65,17 +66,17 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	public void doSubscribeWriter(Publisher<? extends OUT> writer, final Subscriber<? super Void> postWriter) {
 
 		final Publisher<?> encodedWriter;
-		if(getEncoder() != null){
+		if (getEncoder() != null) {
 			encodedWriter = Streams.wrap(writer).map(getEncoder());
-		}else{
+		} else {
 			encodedWriter = writer;
 		}
 
-		//postWriter.onSubscribe(new PushSubscription<>(null, postWriter));
 		ioChannel.write(encodedWriter).addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				if (future.isSuccess()) {
+					postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
 					postWriter.onComplete();
 				} else {
 					postWriter.onError(future.cause());
@@ -108,7 +109,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 			try {
 				subscription.onNext(in);
 			} catch (CancelException ce){
-				//IGNORE
+
 			}
 		}
 	}

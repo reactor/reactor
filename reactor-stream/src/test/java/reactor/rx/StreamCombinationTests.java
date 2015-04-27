@@ -144,7 +144,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		CountDownLatch latch = new CountDownLatch(elements+1);
 
-		Control tail = Streams.concat(sensorOdd(), sensorEven())
+		Control tail = Streams.concat(sensorOdd(), sensorEven().cache())
 				.log("concat")
 				.consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 
@@ -180,7 +180,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements+1);
 
-		Control tail = sensorOdd().concatWith(sensorEven())
+		Control tail = sensorOdd().concatWith(sensorEven().cache())
 				.log("concat")
 				.consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 

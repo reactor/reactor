@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.processor.CancelException;
 import reactor.core.support.Exceptions;
+import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
@@ -179,7 +180,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 				try {
 					channelSubscription.onNext((IN) new Buffer(((ByteBuf) msg).nioBuffer()));
 				} finally {
-					((ByteBuf) msg).release();
+					ReferenceCountUtil.release(msg);
 				}
 				return;
 			}
@@ -217,8 +218,6 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					remainder = null;
 				}
 			}
-		} catch (CancelException ce) {
-			ReferenceCountUtil.release(msg);
 		} catch (Throwable t) {
 			if (channelSubscription != null) {
 				channelSubscription.onError(t);
@@ -315,6 +314,22 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		data.skipBytes(b.position() - start);
 	}
 
+	@SuppressWarnings("unused")
+	protected void doOnSubscribe(ChannelHandlerContext ctx, final Subscription s, long request, final Consumer<Void>
+			cb) {
+		ctx.channel().closeFuture().addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				if (log.isDebugEnabled()) {
+					log.debug("Cancel connection");
+				}
+				cb.accept(null);
+				s.cancel();
+			}
+		});
+		s.request(request);
+	}
+
 	/**
 	 * An event to attach a {@link Subscriber} to the {@link NettyChannelStream}
 	 * created by {@link NettyChannelHandlerBridge}
@@ -332,11 +347,12 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		}
 	}
 
-	private class FlushOnTerminateSubscriber extends DefaultSubscriber<Object> {
+	private class FlushOnTerminateSubscriber extends DefaultSubscriber<Object> implements Consumer<Void> {
 
 		private final ChannelHandlerContext ctx;
 		private final ChannelPromise        promise;
 		ChannelFuture lastWrite;
+		Subscription  subscription;
 
 		public FlushOnTerminateSubscriber(ChannelHandlerContext ctx, ChannelPromise promise) {
 			this.ctx = ctx;
@@ -344,20 +360,34 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		}
 
 		@Override
-		public void onSubscribe(final Subscription s) {
-			ctx.channel().closeFuture().addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					s.cancel();
-				}
-			});
-			s.request(Long.MAX_VALUE);
+		public void accept(Void aVoid) {
+			this.subscription = null;
 		}
 
 		@Override
-		public void onNext(Object w) {
+		public void onSubscribe(final Subscription s) {
+			this.subscription = s;
+			doOnSubscribe(ctx, s, Long.MAX_VALUE, this);
+		}
+
+		@Override
+		public void onNext(final Object w) {
+			if (subscription == null) {
+				throw CancelException.INSTANCE;
+			}
 			try {
-				lastWrite = doOnWrite(w, ctx);
+				ChannelFuture cf = doOnWrite(w, ctx);
+				lastWrite = cf;
+				if (cf != null && log.isDebugEnabled()) {
+					cf.addListener(new ChannelFutureListener() {
+						@Override
+						public void operationComplete(ChannelFuture future) throws Exception {
+							if (!future.isSuccess()) {
+								log.error("write error :" + ((Buffer) w).asString(), future.cause());
+							}
+						}
+					});
+				}
 			} catch (Throwable t) {
 				onError(Exceptions.addValueAsLastCause(t, w));
 			}
@@ -365,17 +395,21 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 		@Override
 		public void onError(Throwable t) {
+			subscription = null;
 			log.error("Write error", t);
 			doOnTerminate(ctx, lastWrite, promise);
 		}
 
 		@Override
 		public void onComplete() {
+			if (subscription == null) throw new IllegalStateException("already flushed");
+			subscription = null;
 			doOnTerminate(ctx, lastWrite, promise);
 		}
 	}
 
-	private class FlushOnCapacitySubscriber extends DefaultSubscriber<Object> implements Runnable {
+	private class FlushOnCapacitySubscriber extends DefaultSubscriber<Object>
+			implements Runnable, Consumer<Void> {
 
 		private final ChannelHandlerContext ctx;
 		private final ChannelPromise        promise;
@@ -393,9 +427,8 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					promise.tryFailure(future.cause());
 					return;
 				}
-
-				if (--written == 0L) {
-					if (subscription != null) {
+				if (subscription != null) {
+					if (--written == 0L) {
 						subscription.request(capacity);
 					}
 				}
@@ -411,17 +444,14 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		@Override
 		public void onSubscribe(final Subscription s) {
 			subscription = s;
-			ctx.channel().closeFuture().addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					s.cancel();
-				}
-			});
-			s.request(capacity);
+			doOnSubscribe(ctx, s, capacity, this);
 		}
 
 		@Override
 		public void onNext(Object w) {
+			if (subscription == null) {
+				throw CancelException.INSTANCE;
+			}
 			try {
 				doOnWrite(w, ctx).addListener(writeListener);
 				ctx.channel().eventLoop().execute(this);
@@ -433,19 +463,26 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		@Override
 		public void onError(Throwable t) {
 			log.error("Write error", t);
+			subscription = null;
 			doOnTerminate(ctx, null, promise);
 		}
 
 		@Override
 		public void onComplete() {
+			subscription = null;
 			doOnTerminate(ctx, null, promise);
 		}
 
 		@Override
 		public void run() {
-			if (++written == capacity){
+			if (++written == capacity) {
 				ctx.flush();
 			}
+		}
+
+		@Override
+		public void accept(Void aVoid) {
+			subscription = null;
 		}
 	}
 }

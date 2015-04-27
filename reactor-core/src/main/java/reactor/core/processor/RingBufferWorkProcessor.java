@@ -584,6 +584,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				", executor=" + executor +
 				", workSequence=" + workSequence +
 				", pendingRequest=" + pendingRequest +
+				", cancelledSequence=" + cancelledSequences +
 				'}';
 	}
 

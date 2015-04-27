@@ -118,7 +118,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 			}
 		};
 
-		this.reply = Promises.ready(env, dispatcher);
+		this.reply = Promises.prepare();
 	}
 
 	@Override

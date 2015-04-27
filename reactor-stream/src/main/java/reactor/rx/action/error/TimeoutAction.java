@@ -16,7 +16,6 @@
 package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -65,9 +64,9 @@ public final class TimeoutAction<T> extends FallbackAction<T> {
 	}
 
 	@Override
-	protected void doOnSubscribe(Subscription subscription) {
-		super.doOnSubscribe(subscription);
+	public void requestMore(long req) {
 		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+		super.requestMore(req);
 	}
 
 

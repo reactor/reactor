@@ -187,4 +187,8 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 		this.nettyResponse = nettyResponse;
 	}
 
+	boolean checkHeader(){
+		return HEADERS_SENT.compareAndSet(this, 0, 1);
+	}
+
 }

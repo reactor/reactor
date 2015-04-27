@@ -19,17 +19,25 @@ package reactor.io.net.impl.netty.http;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.LastHttpContent;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Conversion between Netty types  and Reactor types ({@link NettyHttpChannel} and {@link reactor.io.buffer.Buffer}).
@@ -51,9 +59,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	@Override
 	public void channelActive(ChannelHandlerContext ctx) throws Exception {
 		ctx.fireChannelActive();
-		if (ctx.channel().isActive()) {
-			ctx.read();
-		}
+		ctx.read();
 	}
 
 	@Override
@@ -62,36 +68,60 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		if (request == null && io.netty.handler.codec.http.HttpRequest.class.isAssignableFrom(messageClass)) {
 			request = new NettyHttpChannel<IN, OUT>(tcpStream, (io.netty.handler.codec.http.HttpRequest) msg);
 
-			handler.apply(request)
-					.subscribe(new DefaultSubscriber<Void>() {
-						@Override
-						public void onSubscribe(Subscription s) {
-							ctx.writeAndFlush(request.getNettyResponse());
-							s.request(Long.MAX_VALUE);
-						}
+			final Publisher<Void> closePublisher = handler.apply(request);
+			final Subscriber<Void> closeSub = new DefaultSubscriber<Void>() {
 
-						@Override
-						public void onError(Throwable t) {
-							log.error("Error processing connection. Closing the channel.", t);
-							if(channelSubscription == null) {
-								ctx.channel().close();
+				@Override
+				public void onSubscribe(Subscription s) {
+					s.request(Long.MAX_VALUE);
+				}
+
+				@Override
+				public void onError(Throwable t) {
+					log.error("Error processing connection. Closing the channel.", t);
+					if (channelSubscription == null && ctx.channel().isOpen()) {
+						ctx.channel().close();
+					}
+				}
+
+				@Override
+				public void onComplete() {
+					if (channelSubscription == null && ctx.channel().isOpen()) {
+						if(log.isDebugEnabled()){
+							log.debug("Close Http Response ");
+						}
+						ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(new ChannelFutureListener() {
+							@Override
+							public void operationComplete(ChannelFuture future) throws Exception {
+								if(ctx.channel().isOpen()){
+									ctx.channel().close();
+								}
 							}
+						});
+					}
+				}
+			};
+
+			if (request.checkHeader()) {
+				ctx.writeAndFlush(request.getNettyResponse()).addListener(new ChannelFutureListener() {
+					@Override
+					public void operationComplete(ChannelFuture future) throws Exception {
+						if (future.isSuccess()) {
+							closePublisher.subscribe(closeSub);
+						} else {
+							closeSub.onError(future.cause());
 						}
+					}
+				});
+			} else {
+				closePublisher.subscribe(closeSub);
+			}
 
-						@Override
-						public void onComplete() {
-							if(channelSubscription == null) {
-								ctx.channel().flush().close();
-							}else{
-
-							}
-						}
-					});
-
-		} if (HttpContent.class.isAssignableFrom(messageClass)) {
+		}
+		if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
 
-			if(DefaultLastHttpContent.class.equals(msg.getClass())) {
+			if (DefaultLastHttpContent.class.equals(msg.getClass())) {
 				if (channelSubscription != null) {
 					channelSubscription.onComplete();
 					channelSubscription = null;
@@ -101,11 +131,12 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	}
 
 	@Override
-	protected ChannelFuture doOnWrite(Object data, ChannelHandlerContext ctx) {
+	protected ChannelFuture doOnWrite(final Object data, final ChannelHandlerContext ctx) {
 		if (data.getClass().equals(Buffer.class)) {
 			return ctx.write(new DefaultHttpContent(Unpooled.wrappedBuffer(((Buffer) data).byteBuffer())));
 		} else {
 			return ctx.write(data);
 		}
 	}
+
 }

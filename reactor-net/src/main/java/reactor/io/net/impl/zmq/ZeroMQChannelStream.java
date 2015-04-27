@@ -31,6 +31,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
+import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.subscription.PushSubscription;
 
 import java.net.InetSocketAddress;
@@ -76,7 +77,7 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 					}
 				});
 				subscription.request(Long.MAX_VALUE);
-				postWriter.onSubscribe(subscription);
+				postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
 			}
 
 			@Override

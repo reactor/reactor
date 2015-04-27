@@ -19,10 +19,12 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
+import reactor.core.processor.CancelException;
 import reactor.core.reactivestreams.SerializedSubscriber;
 import reactor.core.support.NonBlocking;
 import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
+import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -35,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  */
 final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 
-	private final ConcurrentLinkedQueue<Signal<ConcatInnerSubscriber>> queue;
+	private final ConcurrentLinkedQueue<Signal<Publisher<? extends T>>> queue;
 
 	volatile int wip;
 	@SuppressWarnings("rawtypes")
@@ -57,19 +59,17 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 
 	@Override
 	protected void doNext(Publisher<? extends T> ev) {
-		ConcatInnerSubscriber concatInnerSubscriber = new ConcatInnerSubscriber();
+		queue.add(Signal.<Publisher<? extends T>>next(ev));
+
 		if(WIP_UPDATER.getAndIncrement(this) == 0){
-			currentSubscriber = concatInnerSubscriber;
-		}else{
-			queue.add(Signal.next(concatInnerSubscriber));
+			subscribeNext();
 		}
-		ev.subscribe(concatInnerSubscriber);
 	}
 
 	@Override
 	public void onComplete() {
 		try {
-			queue.add(Signal.<ConcatInnerSubscriber>complete());
+			queue.add(Signal.<Publisher<? extends T>>complete());
 			if (WIP_UPDATER.getAndIncrement(this) == 0) {
 				subscribeNext();
 			}
@@ -80,7 +80,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 
 	@Override
 	protected void doOnSubscribe(Subscription subscription) {
-		requestMore(Long.MAX_VALUE);
+		requestMore(1L);
 	}
 
 	@Override
@@ -137,22 +137,23 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 	}
 
 	void completeInner() {
-		//requestMore(1);
 		currentSubscriber = null;
 		if (WIP_UPDATER.decrementAndGet(this) > 0) {
 			subscribeNext();
 		}
+		requestMore(1L);
 	}
 
 	void subscribeNext() {
 		if (requested > 0) {
-			Signal<ConcatInnerSubscriber> o = queue.poll();
+			Signal<Publisher<? extends T>> o = queue.poll();
 			if (o == null) return;
 			if (o.isOnComplete()) {
 				broadcastComplete();
 			} else {
-				currentSubscriber = o.get();
-				currentSubscriber.requestMore(requested);
+				Publisher<? extends T> source = o.get();
+				currentSubscriber = new ConcatInnerSubscriber();
+				source.subscribe(currentSubscriber);
 			}
 		} else {
 			// requested == 0, so we'll peek to see if we are completed, otherwise wait until another request
@@ -164,6 +165,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 	}
 
 	class ConcatInnerSubscriber implements Subscriber<T>, NonBlocking {
+
 		private Subscription s;
 
 		void requestMore(long n) {
@@ -175,7 +177,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 		@Override
 		public void onSubscribe(Subscription s) {
 			this.s = s;
-			if (currentSubscriber == this && requested > 0) {
+			if (requested > 0) {
 				s.request(requested);
 			}
 		}
@@ -188,11 +190,13 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 
 		@Override
 		public void onError(Throwable e) {
+			s = null;
 			ConcatAction.this.onError(e);
 		}
 
 		@Override
 		public void onComplete() {
+			s = null;
 			ConcatAction.this.completeInner();
 		}
 
