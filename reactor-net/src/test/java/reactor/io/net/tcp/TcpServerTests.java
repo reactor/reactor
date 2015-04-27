@@ -439,7 +439,7 @@ public class TcpServerTests {
 		//create a server dispatching data on the default shared dispatcher, and serializing/deserializing as string
 		HttpServer<String, String> httpServer = NetStreams.httpServer(server -> server
 				.codec(StandardCodecs.STRING_CODEC)
-				.listen(8080)
+				.listen(0)
 				.dispatcher(Environment.sharedDispatcher()));
 
 		//Listen for anything exactly hitting the root URI and route the incoming connection request to the callback
@@ -466,6 +466,8 @@ public class TcpServerTests {
 			broadcaster.onNext(System.currentTimeMillis() + "\n");
 		}
 
+
+		httpServer.shutdown().awaitSuccess();
 
 	}
 

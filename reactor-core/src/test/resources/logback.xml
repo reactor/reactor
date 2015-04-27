@@ -24,7 +24,7 @@
 		</encoder>
 	</appender>
 
-	<logger name="reactor" level="debug"/>
+	<logger name="reactor" level="info"/>
 	<logger name="after-flatmap" level="debug"/>
 
 	<root level="info">
