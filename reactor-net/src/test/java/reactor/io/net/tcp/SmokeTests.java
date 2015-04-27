@@ -239,6 +239,7 @@ public class SmokeTests {
 		final List<Integer> datas = SynchronizedList.decorate(new ArrayList<>());
 
 		windowsData.clear();
+		Thread.sleep(1500);
 		Runnable srunner = new Runnable() {
 			public void run() {
 				try {
@@ -290,7 +291,7 @@ public class SmokeTests {
 		}
 		latch.countDown();
 
-		thread.await(60, TimeUnit.SECONDS);
+		thread.await(120, TimeUnit.SECONDS);
 		return datas;
 	}
 
