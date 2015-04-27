@@ -17,6 +17,7 @@ package reactor.io.net.tcp;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Processor;
 import reactor.Environment;
@@ -43,6 +44,7 @@ import static org.junit.Assert.assertThat;
 /**
  * @author Stephane Maldini
  */
+@Ignore
 public class ClientServerHttpTests {
 	private reactor.io.net.http.HttpServer<List<String>, List<String>> httpServer;
 	private Broadcaster<String> broadcaster;
