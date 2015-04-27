@@ -208,6 +208,37 @@ class PromisesSpec extends Specification {
       acceptedValue == failure
   }
 
+  def "A promise can only listen to terminal states"() {
+    given:
+      "a Promise with an onError Consumer"
+      def promise = Promises.prepare()
+      def after = promise.after()
+
+    when:
+      "the promise is fulfilled"
+      promise.onNext "test"
+
+    then:
+      "the promise is invoked without the accepted value"
+      after.isComplete()
+      after.isSuccess()
+      !after.get()
+
+    when:
+      "the promise is rejected"
+      promise = Promises.prepare()
+      after = promise.after()
+
+      promise.onError new Exception()
+
+    then:
+      "the promise is invoked with the rejecting value"
+      after.isComplete()
+      after.isError()
+      after.reason().class == Exception
+  }
+
+
   def "An onError consumer is called when added to an already-rejected promise"() {
     given:
       "a rejected Promise"

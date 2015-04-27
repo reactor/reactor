@@ -63,8 +63,8 @@ public class SmokeTests {
 	private final int count   = 33_000;
 	private final int threads = 6;
 	private final int iter    = 10;
-	private final int windowBatch    = 500;
-	private final int takeCount    = 10;
+	private final int windowBatch    = 50;
+	private final int takeCount    = 100;
 
 	@SuppressWarnings("unchecked")
 	private List<Integer> windowsData = SynchronizedList.decorate(new ArrayList<>());
@@ -196,6 +196,7 @@ public class SmokeTests {
 								System.out.println("YYYYY COMPLETE " + Thread.currentThread());
 							}
 					)
+					.capacity(takeCount)
 			);
 		});
 

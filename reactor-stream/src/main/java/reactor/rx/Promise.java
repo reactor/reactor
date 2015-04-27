@@ -167,7 +167,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 			}
 		}
 
-		return stream().lift(new Supplier<Action<O,O>>() {
+		return stream().lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
 				return new Action<O, O>() {
@@ -192,6 +192,27 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 				};
 			}
 		}).next();
+	}
+
+	/**
+	 * Only forward onError and onComplete signals into the returned stream.
+	 *
+	 * @return {@literal new Promise}
+	 */
+	public final Promise<Void> after() {
+		if (dispatcher == SynchronousDispatcher.INSTANCE || TailRecurseDispatcher.class == dispatcher.getClass()) {
+			lock.lock();
+			try {
+				if (finalState == FinalState.COMPLETE) {
+					return Promises.<Void>success(environment, dispatcher, null);
+				}
+			} catch (Throwable t) {
+				return Promises.<Void>error(environment, dispatcher, t);
+			} finally {
+				lock.unlock();
+			}
+		}
+		return stream().after().next();
 	}
 
 	/**
