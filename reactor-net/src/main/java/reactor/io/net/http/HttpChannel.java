@@ -26,6 +26,10 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
+ *
+ * A Request/Response {@link ChannelStream} extension that provides for several helpers to control HTTP behavior and
+ *  observe its metadata.
+ *
  * @author Sebastien Deleuze
  * @author Stephane maldini
  */
@@ -49,7 +53,7 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	/**
 	 * Read all URI params
 	 *
-	 * @return
+	 * @return a map of resolved parameters against their matching key name
 	 */
 	public final Map<String, String> params() {
 		return null != paramsResolver ? paramsResolver.resolve(uri()) : null;
@@ -58,8 +62,9 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	/**
 	 * Read URI param from the given key
 	 *
-	 * @param key
-	 * @return
+	 * @param key matching key
+	 *
+	 * @return the resolved parameter for the given key name
 	 */
 	public final String param(String key) {
 		Map<String, String> params = null;
@@ -70,13 +75,16 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	}
 
 	/**
-	 * @return
+	 * @return Resolved HTTP request headers
 	 */
 	public abstract HttpHeaders headers();
 
 	/**
-	 * @param name
-	 * @param value
+	 * Register an HTTP request header
+	 *
+	 * @param name Header name
+	 * @param value Header content
+	 *
 	 * @return this
 	 */
 	public final HttpChannel<IN, OUT> header(String name, String value) {
@@ -91,8 +99,11 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	protected abstract void doHeader(String name, String value);
 
 	/**
+	 * Accumulate a Request Header using the given name and value, appending ";" for each new value
+	 *
 	 * @param name
 	 * @param value
+	 *
 	 * @return this
 	 */
 	public HttpChannel<IN, OUT> addHeader(String name, String value) {
@@ -107,17 +118,17 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	protected abstract void doAddHeader(String name, String value);
 
 	/**
-	 * @return
+	 * @return the resolved request protocol (HTTP 1.1 etc)
 	 */
 	public abstract Protocol protocol();
 
 	/**
-	 * @return
+	 * @return the resolved target address
 	 */
 	public abstract String uri();
 
 	/**
-	 * @return
+	 * @return the resolved request method (HTTP 1.1 etc)
 	 */
 	public abstract Method method();
 
@@ -129,12 +140,15 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	// RESPONSE contract
 
 	/**
-	 * @return
+	 * @return the resolved HTTP Response Status
 	 */
 	public abstract Status responseStatus();
 
 	/**
-	 * @param status
+	 * Set the response status to an outgoing response
+	 *
+	 * @param status the status to define
+	 *
 	 * @return this
 	 */
 	public HttpChannel<IN, OUT> responseStatus(Status status) {
@@ -149,13 +163,16 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	protected abstract void doResponseStatus(Status status);
 
 	/**
-	 * @return
+	 * @return the resolved response HTTP headers
 	 */
 	public abstract ResponseHeaders responseHeaders();
 
 	/**
-	 * @param name
-	 * @param value
+	 * Define the response HTTP header for the given key
+	 *
+	 * @param name the HTTP response header key to override
+	 * @param value the HTTP response header content
+	 *
 	 * @return this
 	 */
 	public final HttpChannel<IN, OUT> responseHeader(String name, String value) {
@@ -170,8 +187,11 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	protected abstract void doResponseHeader(String name, String value);
 
 	/**
-	 * @param name
-	 * @param value
+	 * Accumulate a response HTTP header for the given key name, appending ";" for each new value
+	 *
+	 * @param name the HTTP response header name
+	 * @param value the HTTP response header value
+	 *
 	 * @return this
 	 */
 	public HttpChannel<IN, OUT> addResponseHeader(String name, String value) {
@@ -186,13 +206,16 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	protected abstract void doAddResponseHeader(String name, String value);
 
 	/**
-	 * @return
+	 * @return the Transfer setting for this http connection (e.g. event-stream)
 	 */
 	public abstract Transfer transfer();
 
 
 	/**
-	 * @param transfer
+	 * Define the Transfer mode for this http connection
+	 *
+	 * @param transfer the new transfer mode
+	 *
 	 * @return this
 	 */
 	public abstract HttpChannel<IN, OUT> transfer(Transfer transfer);

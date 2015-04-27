@@ -25,7 +25,7 @@ import java.net.InetSocketAddress;
  * {@code Channel} is a virtual connection that often matches with a Socket or a Channel (e.g. Netty).
  * Implementations handle interacting inbound (received data) and errors by subscribing to it.
  *
- * Writing and "flushing" is controlled by sinking 1 or more {@link this#writeWith)}
+ * Writing and "flushing" is controlled by sinking 1 or more {@link #writeWith(Publisher)}
  * that will forward data to outbound.
  * When a drained Publisher completes or error, the channel will automatically "flush" its pending writes.
  *

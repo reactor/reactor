@@ -105,7 +105,7 @@ public abstract class DatagramServer<IN, OUT>
 	/**
 	 * Get the address to which this server is bound.
 	 *
-	 * @return
+	 * @return the bind address
 	 */
 	protected InetSocketAddress getListenAddress() {
 		return listenAddress;
@@ -114,14 +114,14 @@ public abstract class DatagramServer<IN, OUT>
 	/**
 	 * Get the {@link java.net.NetworkInterface} on which multicast will be performed.
 	 *
-	 * @return
+	 * @return the multicast NetworkInterface
 	 */
 	protected NetworkInterface getMulticastInterface() { return multicastInterface; }
 
 	/**
 	 * Get the {@link reactor.io.net.config.ServerSocketOptions} currently in effect.
 	 *
-	 * @return
+	 * @return the server options in use
 	 */
 	protected ServerSocketOptions getOptions() {
 		return options;

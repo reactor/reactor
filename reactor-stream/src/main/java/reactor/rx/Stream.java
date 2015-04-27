@@ -103,7 +103,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Defer the subscription of an {@link Action} to the actual pipeline.
-	 * Terminal operations such as {@link this#consume(reactor.fn.Consumer)} will start the subscription chain.
+	 * Terminal operations such as {@link #consume(reactor.fn.Consumer)} will start the subscription chain.
 	 * It will listen for current Stream signals and will be eventually producing signals as well (subscribe,error,
 	 * complete,next).
 	 * <p>
@@ -273,7 +273,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Subscribe a new {@link Broadcaster} and return it for future subscribers interactions. Effectively it turns any
 	 * stream into an Hot Stream where subscribers will only values from the time T when they subscribe to the returned
-	 * stream. Complete and Error signals are however retained unless {@link this#keepAlive()} has been called before.
+	 * stream. Complete and Error signals are however retained unless {@link #keepAlive()} has been called before.
 	 * <p>
 	 *
 	 * @return a new {@literal stream} whose values are broadcasted to all subscribers
@@ -285,7 +285,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	/**
 	 * Subscribe a new {@link Broadcaster} and return it for future subscribers interactions. Effectively it turns any
 	 * stream into an Hot Stream where subscribers will only values from the time T when they subscribe to the returned
-	 * stream. Complete and Error signals are however retained unless {@link this#keepAlive()} has been called before.
+	 * stream. Complete and Error signals are however retained unless {@link #keepAlive()} has been called before.
 	 * <p>
 	 *
 	 * @param dispatcher the dispatcher to run the signals
@@ -405,7 +405,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Stream}. As such this a terminal action to be placed on a stream flow.
 	 * It will also eagerly prefetch upstream publisher.
 	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
+	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
@@ -419,7 +419,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
 	 * publisher.
 	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
+	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 *
 	 * @param dispatcher the dispatcher to run the consumer
 	 * @param consumer   the consumer to invoke on each value
@@ -527,7 +527,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * S that will instruct the consumer to request S more elements, possibly altering the "batch" size if wished.
 	 * <p>
 	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
+	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
@@ -548,7 +548,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * long signals
 	 * S that will instruct the consumer to request S more elements.
 	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
+	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
@@ -572,7 +572,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * S that will instruct the consumer to request S more elements, possibly altering the "batch" size if wished.
 	 * <p>
 	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
+	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
@@ -604,7 +604,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * an approriate ordering Dispatcher should be used.
 	 * <p>
 	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link this#observe(reactor.fn.Consumer)}
+	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
@@ -991,10 +991,10 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * {@link this#lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream}.
+	 * {@link #lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream}.
 	 * Dynamic merge requires use of reactive-pull
 	 * offered by default StreamSubscription. If merge hasn't getCapacity() to take new elements because its {@link
-	 * this#getCapacity()(long)} instructed so, the subscription will buffer
+	 * #getCapacity()(long)} instructed so, the subscription will buffer
 	 * them.
 	 *
 	 * @param <V> the inner stream flowing data type that will be the produced signal.
@@ -1007,7 +1007,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * {@link this#lift(Supplier)} all the nested {@link Publisher} values from this current upstream and from the
+	 * {@link #lift(Supplier)} all the nested {@link Publisher} values from this current upstream and from the
 	 * passed publisher.
 	 *
 	 * @return the merged stream
@@ -1039,7 +1039,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * {@link this#lift(Supplier)} all the nested {@link Publisher} values from this current upstream and then on
+	 * {@link #lift(Supplier)} all the nested {@link Publisher} values from this current upstream and then on
 	 * complete consume from the
 	 * passed publisher.
 	 *
@@ -1105,7 +1105,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * {@link this#lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
+	 * {@link #lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
 	 * complete.
 	 * The result will be produced with a list of each upstream most recent emitted data.
 	 *
@@ -1117,7 +1117,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * {@link this#lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
+	 * {@link #lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
 	 * complete.
 	 * The result will be produced with a list of each upstream most recent emitted data.
 	 *
@@ -1130,7 +1130,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 
 	/**
-	 * {@link this#lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
+	 * {@link #lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
 	 * complete.
 	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
 	 *
@@ -1152,7 +1152,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * {@link this#lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
+	 * {@link #lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
 	 * complete.
 	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
 	 *
@@ -1166,7 +1166,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * {@link this#lift(Supplier)} with the passed {@link Publisher} values to a new {@link Stream} until one of them
+	 * {@link #lift(Supplier)} with the passed {@link Publisher} values to a new {@link Stream} until one of them
 	 * complete.
 	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
 	 *
@@ -1200,20 +1200,20 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * {@link this#lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} calling the logic
+	 * {@link #lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} calling the logic
 	 * inside the provided fanInAction for complex merging strategies.
 	 * {@link reactor.rx.action.combination.FanInAction} provides helpers to create subscriber for each source,
 	 * a registry of incoming sources and overriding doXXX signals as usual to produce the result via
 	 * reactor.rx.action.Action#broadcastXXX.
 	 * <p>
-	 * A default fanInAction will act like {@link this#merge()}, passing values to doNext. In java8 one can then
+	 * A default fanInAction will act like {@link #merge()}, passing values to doNext. In java8 one can then
 	 * implement
 	 * stream.fanIn(data -> broadcastNext(data)) or stream.fanIn(System.out::println)
 	 * <p>
 	 * Dynamic merge (moving nested data into the top-level returned stream) requires use of reactive-pull offered by
 	 * default StreamSubscription. If merge hasn't getCapacity() to
 	 * take new elements because its {@link
-	 * this#getCapacity()(long)} instructed so, the subscription will buffer
+	 * #getCapacity()(long)} instructed so, the subscription will buffer
 	 * them.
 	 *
 	 * @param <T> the nested type of flowing upstream Stream.
@@ -1260,7 +1260,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * ready to be polled when the action fire the pending requests.
 	 * - The following pairs of Action->Action will synchronously pass data
 	 * - Any pair of Stream->Subscriber or Action->Subscriber will behave as with the root Stream->Action pair rule.
-	 * - {@link this#onOverflowBuffer()} force this staging behavior, with a possibilty to pass a {@link reactor.core.queue
+	 * - {@link #onOverflowBuffer()} force this staging behavior, with a possibilty to pass a {@link reactor.core.queue
 	 * .PersistentQueue}
 	 *
 	 * @param elements maximum number of in-flight data
@@ -2252,7 +2252,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()},
 	 * complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
@@ -2265,7 +2265,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()},
 	 * complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
@@ -2279,7 +2279,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()},
 	 * complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
@@ -2293,7 +2293,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned fresh {@link Stream}. Possible flush triggers are: {@link this#getCapacity()},
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()},
 	 * complete signal or request signal.
 	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 *
@@ -2312,7 +2312,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	}
 
 	/**
-	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@link this#getCapacity()}
+	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@link #getCapacity()}
 	 * times. The nested streams will be pushed into the returned {@code Stream}.
 	 *
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window

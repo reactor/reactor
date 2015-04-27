@@ -60,9 +60,9 @@ public abstract class TcpServer<IN, OUT>
 	}
 
 	/**
-	 * Get the address to which this server is bound.
+	 * Get the address to which this server is bound. If port 0 was used, returns the resolved port if possible
 	 *
-	 * @return
+	 * @return the address bound
 	 */
 	public InetSocketAddress getListenAddress() {
 		return listenAddress;
@@ -71,7 +71,7 @@ public abstract class TcpServer<IN, OUT>
 	/**
 	 * Get the {@link reactor.io.net.config.ServerSocketOptions} currently in effect.
 	 *
-	 * @return
+	 * @return the current server options
 	 */
 	protected ServerSocketOptions getOptions() {
 		return options;

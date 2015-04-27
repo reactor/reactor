@@ -113,8 +113,7 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -145,8 +144,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -179,8 +177,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -212,8 +209,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -255,8 +251,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -292,8 +287,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -334,8 +328,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -367,8 +360,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -401,8 +393,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -435,8 +426,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -478,8 +468,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -515,8 +504,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -547,37 +535,44 @@ public class NetStreams extends Streams {
 	// HTTP
 
 	/**
-	 * @return
+	 * Build a simple Netty HTTP server listening on 127.0.0.1 and 12012
+	 * @return a simple HTTP Server
 	 */
 	public static HttpServer<Buffer, Buffer> httpServer() {
 		return httpServer(DEFAULT_BIND_ADDRESS);
 	}
 
 	/**
-	 * @param bindAddress
-	 * @return
+	 * Build a simple Netty HTTP server listening on 127.0.0.1 and 12012
+	 *
+	 * @param bindAddress address to listen for (e.g. 0.0.0.0 or 127.0.0.1)
+	 * @return a simple HTTP server
 	 */
-	public static <IN, OUT> HttpServer<IN, OUT> httpServer(String bindAddress) {
+	public static HttpServer<Buffer, Buffer> httpServer(String bindAddress) {
 		return httpServer(bindAddress, DEFAULT_PORT);
 	}
 
 	/**
-	 * @param port
-	 * @return
+	 *  Build a simple Netty HTTP server listening on 127.0.0.1 and the passed port
+	 *
+	 * @param port the port to listen to
+	 * @return a simple HTTP server
 	 */
-	public static <IN, OUT> HttpServer<IN, OUT> httpServer(int port) {
+	public static HttpServer<Buffer, Buffer> httpServer(int port) {
 		return httpServer(DEFAULT_BIND_ADDRESS, port);
 	}
 
 	/**
-	 * @param bindAddress
-	 * @param port
-	 * @return
+	 *  Build a simple Netty HTTP server listening othe passed bind address and port
+	 *
+	 * @param bindAddress address to listen for (e.g. 0.0.0.0 or 127.0.0.1)
+	 * @param port the port to listen to
+	 * @return a simple HTTP server
 	 */
-	public static <IN, OUT> HttpServer<IN, OUT> httpServer(final String bindAddress, final int port) {
-		return httpServer(new Function<Spec.HttpServerSpec<IN, OUT>, Spec.HttpServerSpec<IN, OUT>>() {
+	public static HttpServer<Buffer, Buffer> httpServer(final String bindAddress, final int port) {
+		return httpServer(new Function<Spec.HttpServerSpec<Buffer, Buffer>, Spec.HttpServerSpec<Buffer, Buffer>>() {
 			@Override
-			public Spec.HttpServerSpec<IN, OUT> apply(Spec.HttpServerSpec<IN, OUT> serverSpec) {
+			public Spec.HttpServerSpec<Buffer, Buffer> apply(Spec.HttpServerSpec<Buffer, Buffer> serverSpec) {
 				if (Environment.alive()) {
 					serverSpec.env(Environment.get());
 				}
@@ -587,10 +582,12 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 * @param configuringFunction
-	 * @param <IN>
-	 * @param <OUT>
-	 * @return
+	 * Build a Netty HTTP Server with the passed factory
+	 *
+	 * @param configuringFunction a factory to build server configuration (see also {@link HttpServerFactory}
+	 * @param <IN> incoming data type
+	 * @param <OUT> outgoing data type
+	 * @return a Netty HTTP server with the passed factory
 	 */
 	public static <IN, OUT> HttpServer<IN, OUT> httpServer(
 			Function<? super Spec.HttpServerSpec<IN, OUT>, ? extends Spec.HttpServerSpec<IN, OUT>> configuringFunction
@@ -599,11 +596,11 @@ public class NetStreams extends Streams {
 	}
 
 	/**
-	 * @param serverFactory
-	 * @param configuringFunction
-	 * @param <IN>
-	 * @param <OUT>
-	 * @return
+	 * @param serverFactory a target implementation server class
+	 * @param configuringFunction a factory to build server configuration (see also {@link HttpServerFactory}
+	 * @param <IN> incoming data type
+	 * @param <OUT> outgoing data type
+	 * @return a simple HTTP server
 	 */
 	public static <IN, OUT> HttpServer<IN, OUT> httpServer(
 			Class<? extends HttpServer> serverFactory,
@@ -614,7 +611,7 @@ public class NetStreams extends Streams {
 
 
 	/**
-	 * @return
+	 * @return a simple HTTP client
 	 */
 	public static HttpClient<Buffer, Buffer> httpClient() {
 		return httpClient(new Function<Spec.HttpClientSpec<Buffer, Buffer>, Spec.HttpClientSpec<Buffer, Buffer>>() {
@@ -642,8 +639,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -683,8 +679,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -723,8 +718,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -752,8 +746,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -783,8 +776,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -813,8 +805,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -853,8 +844,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -888,8 +878,7 @@ public class NetStreams extends Streams {
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactorChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.rx.Stream#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.

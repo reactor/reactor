@@ -39,6 +39,7 @@ import java.util.List;
  *
  * @param <IN>  The type that will be received by this server
  * @param <OUT> The type that will be sent by this server
+ *
  * @author Stephane Maldini
  */
 public abstract class HttpServer<IN, OUT>
@@ -61,16 +62,20 @@ public abstract class HttpServer<IN, OUT>
 	}
 
 	/**
-	 * Get the address to which this server is bound.
+	 * Get the address to which this server is bound. If port 0 was used on configuration, try resolving the port.
 	 *
-	 * @return
+	 * @return the bind address
 	 */
 	public abstract InetSocketAddress getListenAddress();
 
 	/**
-	 * @param condition
-	 * @param serviceFunction
-	 * @return
+	 * Register an handler for the given Selector condition, incoming connections will query the internal registry
+	 *  to invoke the matching handlers. Implementation may choose to reply 404 if no route matches.
+	 *
+	 * @param condition a {@link Selector} to match the incoming connection with registered handler
+	 * @param serviceFunction an handler to invoke for the given condition
+	 *
+	 * @return {@code this}
 	 */
 	@SuppressWarnings("unchecked")
 	public HttpServer<IN, OUT> route(
@@ -82,9 +87,15 @@ public abstract class HttpServer<IN, OUT>
 	}
 
 	/**
-	 * @param path
-	 * @param handler
-	 * @return
+	 * Listen for HTTP GET on the passed path to be used as a routing condition. Incoming connections will query the internal registry
+	 *  to invoke the matching handlers.
+	 * 
+	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)} 
+	 * 
+	 * @param path The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param handler an handler to invoke for the given condition
+	 * 
+	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> get(String path,
 	                                     final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
@@ -93,9 +104,14 @@ public abstract class HttpServer<IN, OUT>
 	}
 
 	/**
-	 * @param path
-	 * @param handler
-	 * @return
+	 * Listen for HTTP POST on the passed path to be used as a routing condition. Incoming connections will query the internal registry
+	 *  to invoke the matching handlers.
+	 *
+	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
+	 *
+	 * @param path The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param handler an handler to invoke for the given condition
+	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> post(String path,
 	                                      final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
@@ -105,9 +121,15 @@ public abstract class HttpServer<IN, OUT>
 
 
 	/**
-	 * @param path
-	 * @param handler
-	 * @return
+	 * Listen for HTTP PUT on the passed path to be used as a routing condition. Incoming connections will query the internal registry
+	 *  to invoke the matching handlers.
+	 *
+	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
+	 *
+	 * @param path The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param handler an handler to invoke for the given condition
+	 * 
+	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> put(String path,
 	                                     final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
@@ -116,9 +138,15 @@ public abstract class HttpServer<IN, OUT>
 	}
 
 	/**
-	 * @param path
-	 * @param handler
-	 * @return
+	 * Listen for HTTP DELETE on the passed path to be used as a routing condition. Incoming connections will query the internal registry
+	 *  to invoke the matching handlers.
+	 *
+	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
+	 *
+	 * @param path The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param handler an handler to invoke for the given condition
+	 *
+	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> delete(String path,
 	                                        final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
