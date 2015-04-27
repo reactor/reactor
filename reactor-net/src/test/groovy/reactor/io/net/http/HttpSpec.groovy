@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit
  */
 class HttpSpec extends Specification {
 
-	static final int port = 8080
 	Environment env
 
 	def setup() {
@@ -40,12 +39,7 @@ class HttpSpec extends Specification {
 
 		  //Listen on localhost using default impl (Netty) and assign a global codec to receive/reply String data
 			def server = NetStreams.httpServer {
-				it.codec(StandardCodecs.STRING_CODEC).listen(port).dispatcher(Environment.sharedDispatcher())
-			}
-
-		  //Prepare a client using default impl (Netty) to connect on http://localhost:port/ and assign global codec to send/receive String data
-			def client = NetStreams.httpClient {
-				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", port).dispatcher(Environment.sharedDispatcher())
+				it.codec(StandardCodecs.STRING_CODEC).listen(0).dispatcher(Environment.sharedDispatcher())
 			}
 
 		when: "the server is prepared"
@@ -70,7 +64,13 @@ class HttpSpec extends Specification {
 
 		when: "data is sent with Reactor HTTP support"
 
-		  //prepare an http post request-reply flow
+
+			//Prepare a client using default impl (Netty) to connect on http://localhost:port/ and assign global codec to send/receive String data
+			def client = NetStreams.httpClient {
+				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port).dispatcher(Environment.sharedDispatcher())
+			}
+
+			//prepare an http post request-reply flow
 			def content = client.post('/test/World') { HttpChannel<String,String> req ->
 				//prepare content-type
 				req.header('Content-Type', 'text/plain')
