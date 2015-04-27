@@ -424,6 +424,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				if (!future.isSuccess() && future.cause() != null) {
+					log.error("error during write");
 					promise.tryFailure(future.cause());
 					return;
 				}

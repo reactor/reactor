@@ -815,6 +815,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					while (processor.pendingRequest.addAndGet(-1l) < 0l) {
 						processor.pendingRequest.incrementAndGet();
 						if (!running.get()) throw CancelException.INSTANCE;
+						processor.barrier.checkAlert();
 						//Todo Use WaitStrategy?
 						LockSupport.parkNanos(1l);
 					}

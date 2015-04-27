@@ -24,20 +24,15 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpContent;
-import io.netty.handler.codec.http.LastHttpContent;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Conversion between Netty types  and Reactor types ({@link NettyHttpChannel} and {@link reactor.io.buffer.Buffer}).
@@ -90,6 +85,9 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 						if(log.isDebugEnabled()){
 							log.debug("Close Http Response ");
 						}
+						ctx.channel().flush();
+						ctx.channel().close();
+						/*
 						ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(new ChannelFutureListener() {
 							@Override
 							public void operationComplete(ChannelFuture future) throws Exception {
@@ -98,6 +96,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 								}
 							}
 						});
+						 */
 					}
 				}
 			};

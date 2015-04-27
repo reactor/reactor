@@ -213,6 +213,7 @@ public class SmokeTests {
 										System.out.println("YYYYY COMPLETE " + Thread.currentThread());
 									}
 							)
+					//.capacity(1L)
 					//.log("writer")
 			);
 		});
