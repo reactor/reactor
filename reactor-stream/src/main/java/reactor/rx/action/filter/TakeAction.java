@@ -26,8 +26,20 @@ public class TakeAction<T> extends Action<T, T> {
 	private final long         limit;
 	private long counted = 0l;
 
+	private boolean requested = false;
+
 	public TakeAction(long limit) {
 		this.limit = limit;
+	}
+
+	@Override
+	public void requestMore(long n) {
+		synchronized (this){
+			if(!requested){
+				requested = true;
+			}
+		}
+		super.requestMore(limit);
 	}
 
 	@Override

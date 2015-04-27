@@ -145,6 +145,17 @@ public class Streams {
 
 
 	/**
+	 * Build a {@literal Stream} that will never emit anything.
+	 *
+	 * @return a new {@link Stream}
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Stream<T> never() {
+		return (Stream<T>) NEVER;
+	}
+
+
+	/**
 	 * Build a {@literal Stream} that will only emit an error signal to any new subscriber.
 	 *
 	 * @return a new {@link Stream}
@@ -796,10 +807,16 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> merge(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
 		final List<Publisher<? extends T>> publishers = new ArrayList<>();
 		for (Publisher<? extends T> mergedPublisher : mergedPublishers) {
 			publishers.add(mergedPublisher);
+		}
+		if(publishers.size() == 0){
+			return empty();
+		}else if(publishers.size() == 1){
+			return wrap((Publisher<T>)publishers.get(0));
 		}
 		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, publishers);
 	}
@@ -1796,4 +1813,25 @@ public class Streams {
 			throw exception.get();
 		}
 	}
+
+	private static final Stream NEVER = new Stream() {
+		final Subscription NEVER_SUBSCRIPTION = new Subscription() {
+			@Override
+			public void request(long l) {
+				//IGNORE
+			}
+
+			@Override
+			public void cancel() {
+				//IGNORE
+			}
+		};
+
+		@Override
+		public void subscribe(Subscriber subscriber) {
+			if (subscriber != null) {
+				subscriber.onSubscribe(NEVER_SUBSCRIPTION);
+			}
+		}
+	};
 }

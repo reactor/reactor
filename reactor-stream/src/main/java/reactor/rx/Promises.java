@@ -125,6 +125,15 @@ public final class Promises {
 	}
 
 	/**
+	 * Create a {@link Promise} already completed without any data.
+	 *
+	 * @return A {@link Promise} that is completed
+	 */
+	public static Promise<Void> success() {
+		return success(null, SynchronousDispatcher.INSTANCE, null);
+	}
+
+	/**
 	 * Create a {@link Promise} using the given value to complete the {@link Promise}
 	 * immediately.
 	 *

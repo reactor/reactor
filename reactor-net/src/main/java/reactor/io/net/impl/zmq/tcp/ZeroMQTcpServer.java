@@ -16,6 +16,7 @@
 
 package reactor.io.net.impl.zmq.tcp;
 
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
@@ -31,6 +32,8 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.impl.zmq.ZeroMQChannelStream;
@@ -40,12 +43,11 @@ import reactor.io.net.tcp.TcpServer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
+import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.broadcast.SerializedBroadcaster;
 import reactor.rx.stream.GroupedStream;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -58,7 +60,7 @@ import java.util.concurrent.Future;
  */
 public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
-	private final Logger log = LoggerFactory.getLogger(getClass());
+	private static final Logger log = LoggerFactory.getLogger(ZeroMQTcpServer.class);
 
 	private final int                       ioThreadCount;
 	private final ZeroMQServerSocketOptions zmqOpts;
@@ -67,15 +69,15 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private volatile ZeroMQWorker worker;
 	private volatile Future<?>    workerFuture;
 
-	public ZeroMQTcpServer(@Nonnull Environment env,
-	                       @Nonnull Dispatcher eventsDispatcher,
-	                       @Nullable InetSocketAddress listenAddress,
+	public ZeroMQTcpServer(Environment env,
+	                       Dispatcher eventsDispatcher,
+	                       InetSocketAddress listenAddress,
 	                       ServerSocketOptions options,
 	                       SslOptions sslOptions,
-	                       @Nullable Codec<Buffer, IN, OUT> codec) {
+	                       Codec<Buffer, IN, OUT> codec) {
 		super(env, eventsDispatcher, listenAddress, options, sslOptions, codec);
 
-		this.ioThreadCount = getEnvironment().getProperty("reactor.zmq.ioThreadCount", Integer.class, 1);
+		this.ioThreadCount = getDefaultEnvironment().getProperty("reactor.zmq.ioThreadCount", Integer.class, 1);
 
 		if (options instanceof ZeroMQServerSocketOptions) {
 			this.zmqOpts = (ZeroMQServerSocketOptions) options;
@@ -87,16 +89,16 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Boolean> start() {
+	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
 		Assert.isNull(worker, "This ZeroMQ server has already been started");
 
-		final Promise<Boolean> promise = Promises.ready(getEnvironment(), getDispatcher());
+		final Promise<Void> promise = Promises.ready(getDefaultEnvironment(), getDefaultDispatcher());
 
 		final UUID id = UUIDUtils.random();
 		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.ROUTER);
 		ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
 
-		Broadcaster<ZMsg> broadcaster = SerializedBroadcaster.create(getEnvironment());
+		Broadcaster<ZMsg> broadcaster = SerializedBroadcaster.create(getDefaultEnvironment());
 
 		final Stream<GroupedStream<String, ZMsg>> grouped = broadcaster.groupBy(new Function<ZMsg, String>() {
 			@Override
@@ -145,14 +147,31 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 					socket.bind(addr);
 					grouped.consume(new Consumer<GroupedStream<String, ZMsg>>() {
 						@Override
-						public void accept(GroupedStream<String, ZMsg> stringZMsgGroupedStream) {
+						public void accept(final GroupedStream<String, ZMsg> stringZMsgGroupedStream) {
 
 							final ZeroMQChannelStream<IN, OUT> netChannel =
-									bindChannel(null, null != zmqOpts ? zmqOpts.prefetch() : -1l)
+									bindChannel()
 											.setConnectionId(stringZMsgGroupedStream.key())
 											.setSocket(socket);
 
-							netChannel.registerOnPeer();
+							handler.apply(netChannel).subscribe(new DefaultSubscriber<Void>(){
+								@Override
+								public void onSubscribe(Subscription s) {
+									s.request(Long.MAX_VALUE);
+								}
+
+								@Override
+								public void onComplete() {
+									log.debug("Closing handler "+stringZMsgGroupedStream.key());
+									netChannel.close();
+								}
+
+								@Override
+								public void onError(Throwable t) {
+									log.error("Error during registration "+stringZMsgGroupedStream.key(), t);
+									netChannel.close();
+								}
+							});
 
 							stringZMsgGroupedStream.consume(new Consumer<ZMsg>() {
 								@Override
@@ -162,26 +181,20 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 										if (netChannel.getDecoder() != null) {
 											netChannel.getDecoder().apply(Buffer.wrap(content.getData()));
 										} else {
-											netChannel.in().onNext((IN) Buffer.wrap(content.getData()));
+											netChannel.doDecoded((IN) Buffer.wrap(content.getData()));
 										}
 									}
 									msg.destroy();
 								}
-							}, createErrorConsumer(netChannel), new Consumer<Void>() {
+							}, null, new Consumer<Void>() {
 								@Override
 								public void accept(Void aVoid) {
-									try {
-										netChannel.close();
-									} catch (Throwable t) {
-										notifyError(t);
-									}
+									netChannel.close();
 								}
 							});
-
-
 						}
 					});
-					promise.onNext(true);
+					promise.onComplete();
 				} catch (Exception e) {
 					promise.onError(e);
 				}
@@ -192,25 +205,21 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		return promise;
 	}
 
-	@Override
-	protected ZeroMQChannelStream<IN, OUT> bindChannel(Object ioChannel, long prefetch) {
+	protected ZeroMQChannelStream<IN, OUT> bindChannel() {
 		return new ZeroMQChannelStream<IN, OUT>(
-				getEnvironment(),
-				prefetch == -1l ? getPrefetchSize() : prefetch,
-				this,
-				getDispatcher(),
-				getDispatcher(),
+				getDefaultEnvironment(),
+				getDefaultPrefetchSize(),
+				getDefaultDispatcher(),
+				null,
 				getDefaultCodec()
 		);
 	}
 
 	@Override
-	public Promise<Boolean> shutdown() {
+	protected Promise<Void> doShutdown() {
 		if (null == worker) {
-			return Promises.<Boolean>error(new IllegalStateException("This ZeroMQ server has not been started"));
+			return Promises.<Void>error(new IllegalStateException("This ZeroMQ server has not been started"));
 		}
-
-		Promise<Boolean> d = Promises.ready(getEnvironment(), getDispatcher());
 
 		worker.shutdown();
 		if (!workerFuture.isDone()) {
@@ -218,11 +227,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		}
 		threadPool.shutdownNow();
 
-		notifyShutdown();
-		d.onNext(true);
-
-
-		return d;
+		return Promises.success();
 	}
 
 }

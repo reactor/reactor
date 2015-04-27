@@ -32,25 +32,26 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
-import reactor.fn.Function;
 import reactor.fn.Supplier;
+import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
+import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.io.net.impl.netty.NettyClientSocketOptions;
-import reactor.io.net.impl.netty.NettyEventLoopDispatcher;
-import reactor.io.net.impl.netty.NettyNetChannelInboundHandler;
 import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.action.Control;
+import reactor.rx.broadcast.BehaviorBroadcaster;
+import reactor.rx.broadcast.Broadcaster;
 
 import javax.net.ssl.SSLEngine;
 import java.net.InetSocketAddress;
@@ -67,7 +68,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
-	private final Logger log = LoggerFactory.getLogger(NettyTcpClient.class);
+	private static final Logger log = LoggerFactory.getLogger(NettyTcpClient.class);
 
 	private final NettyClientSocketOptions nettyOptions;
 	private final Bootstrap                bootstrap;
@@ -75,7 +76,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final Supplier<ChannelFuture>  connectionSupplier;
 
 	private volatile InetSocketAddress connectAddress;
-	private volatile boolean           closing;
 
 	/**
 	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code
@@ -126,35 +126,13 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				.option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
 				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.option(ChannelOption.AUTO_READ, sslOptions != null)
-				//.remoteAddress(this.connectAddress)
-				.handler(new ChannelInitializer<SocketChannel>() {
-					@Override
-					public void initChannel(final SocketChannel ch) throws Exception {
-						ch.config().setConnectTimeoutMillis(options.timeout());
-
-						if (null != sslOptions) {
-							SSLEngine ssl = new SSLEngineSupplier(sslOptions, true).get();
-							if (log.isDebugEnabled()) {
-								log.debug("SSL enabled using keystore {}",
-										(null != sslOptions.keystoreFile() ? sslOptions.keystoreFile() : "<DEFAULT>"));
-							}
-							ch.pipeline().addLast(new SslHandler(ssl));
-						} else {
-							ch.config().setAutoRead(false);
-						}
-
-						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
-							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
-						}
-
-						bindChannel(ch, options.prefetch());
-					}
-				});
+						//.remoteAddress(this.connectAddress)
+				;
 
 		this.connectionSupplier = new Supplier<ChannelFuture>() {
 			@Override
 			public ChannelFuture get() {
-				if (!closing) {
+				if (started.get()) {
 					return bootstrap.connect(getConnectAddress());
 				} else {
 					return null;
@@ -164,44 +142,80 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<Boolean> open() {
-		final Promise<Boolean> connection = map(new Function<ChannelStream<IN,OUT>, Boolean>() {
-			@Override
-			public Boolean apply(ChannelStream<IN, OUT> channelStream) {
-				return true;
-			}
-		}).next();
+	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
 
-		openChannel(new ConnectingChannelListener());
-		return connection;
+		final Promise<Void> promise = Promises.ready(getDefaultEnvironment(), getDefaultDispatcher());
+
+		ChannelFutureListener listener = new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				if(future.isSuccess()){
+					promise.onComplete();
+				}else{
+					promise.onError(future.cause());
+				}
+			}
+		};
+		addHandler(handler);
+		openChannel(listener);
+		return promise;
 	}
 
-	@Override
-	public Stream<Boolean> open(final Reconnect reconnect) {
-		openChannel(new ReconnectingChannelListener(connectAddress, reconnect));
-		return map(new Function<ChannelStream<IN, OUT>, Boolean>() {
+	@SuppressWarnings("unchecked")
+	private void addHandler(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler){
+		final ReactorChannelHandler<IN,OUT, ChannelStream<IN, OUT>> targetHandler = null == handler ?
+				(ReactorChannelHandler<IN,OUT, ChannelStream<IN, OUT>> )PING :
+				handler;
+
+		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
 			@Override
-			public Boolean apply(ChannelStream<IN, OUT> channelStream) {
-				return true;
+			public void initChannel(final SocketChannel ch) throws Exception {
+				ch.config().setConnectTimeoutMillis(getOptions().timeout());
+
+				if (null != getSslOptions()) {
+					SSLEngine ssl = new SSLEngineSupplier(getSslOptions(), true).get();
+					if (log.isDebugEnabled()) {
+						log.debug("SSL enabled using keystore {}",
+								(null != getSslOptions().keystoreFile() ? getSslOptions().keystoreFile() : "<DEFAULT>"));
+					}
+					ch.pipeline().addLast(new SslHandler(ssl));
+				} else {
+					ch.config().setAutoRead(false);
+				}
+
+				if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
+					nettyOptions.pipelineConfigurer().accept(ch.pipeline());
+				}
+
+				bindChannel(targetHandler, ch);
 			}
 		});
 	}
 
 	@Override
-	public Promise<Boolean> close() {
-		final Promise<Boolean> promise;
-		if (!closing) {
-			promise = Promises.ready(getEnvironment(), getDispatcher());
-			closing = true;
-		} else {
-			return Promises.success(true);
+	protected Stream<Tuple2<InetSocketAddress, Integer>> doStart(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>>
+			                                                       handler, final Reconnect reconnect) {
+
+		ReconnectingChannelListener listener = new ReconnectingChannelListener(connectAddress, reconnect);
+		addHandler(handler);
+		openChannel(listener);
+		return listener.broadcaster;
+	}
+
+	@Override
+	protected Promise<Void> doShutdown() {
+
+		if(nettyOptions != null && nettyOptions.eventLoopGroup() != null){
+			return Promises.success();
 		}
+
+		final Promise<Void> promise = Promises.prepare();
 
 		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
 			@Override
 			public void operationComplete(Future<Object> future) throws Exception {
 				if (future.isDone() && future.isSuccess()) {
-					promise.onNext(true);
+					promise.onComplete();
 				} else {
 					promise.onError(future.cause());
 				}
@@ -210,44 +224,24 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		return promise;
 	}
 
-	@Override
-	protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
+	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, Object nativeChannel) {
 		SocketChannel ch = (SocketChannel) nativeChannel;
-		int backlog = getEnvironment().getProperty("reactor.tcp.connectionReactorBacklog", Integer.class, 128);
 
 		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getEnvironment(),
+				getDefaultEnvironment(),
 				getDefaultCodec(),
-				prefetch == -1l ? getPrefetchSize() : prefetch,
-				this,
-				new NettyEventLoopDispatcher(ch.eventLoop(), backlog),
-				getDispatcher(),
+				getDefaultPrefetchSize(),
+				getDefaultDispatcher(),
 				ch
 		);
 
 		ChannelPipeline pipeline = ch.pipeline();
-		if(log.isDebugEnabled()){
-			pipeline.addLast(new LoggingHandler(getClass()));
+		if (log.isDebugEnabled()) {
+			pipeline.addLast(new LoggingHandler(NettyTcpClient.class));
 		}
 		pipeline.addLast(
-				new NettyNetChannelInboundHandler<IN>(netChannel.in(), netChannel)
+				new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel)
 		);
-
-
-		return netChannel;
-	}
-
-	@Override
-	protected Control mergeWrite(ChannelStream<IN, OUT> ch) {
-		final Control c = super.mergeWrite(ch);
-		if(c == null) return null;
-		((Channel)ch.delegate()).closeFuture().addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				c.cancel();
-			}
-		});
-		return c;
 	}
 
 	private void openChannel(ChannelFutureListener listener) {
@@ -257,25 +251,12 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		}
 	}
 
-	private class ConnectingChannelListener implements ChannelFutureListener {
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public void operationComplete(ChannelFuture future) throws Exception {
-			if (!future.isSuccess()) {
-				if (log.isErrorEnabled()) {
-					log.error(future.cause().getMessage(), future.cause());
-				}
-				notifyError(future.cause());
-				return;
-			}
-		}
-	}
-
 	private class ReconnectingChannelListener implements ChannelFutureListener {
 
 		private final AtomicInteger attempts = new AtomicInteger(0);
 		private final Reconnect reconnect;
+		private final Broadcaster<Tuple2<InetSocketAddress, Integer>> broadcaster =
+				BehaviorBroadcaster.create(getDefaultEnvironment(), getDefaultDispatcher());
 
 		private volatile InetSocketAddress connectAddress;
 
@@ -288,6 +269,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		@SuppressWarnings("unchecked")
 		@Override
 		public void operationComplete(final ChannelFuture future) throws Exception {
+			broadcaster.onNext(Tuple.of(connectAddress, attempts.get()));
 			if (!future.isSuccess()) {
 				int attempt = attempts.incrementAndGet();
 				Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
@@ -299,19 +281,17 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					future.channel().eventLoop().submit(new Runnable() {
 						@Override
 						public void run() {
-							notifyError(future.cause());
+							broadcaster.onError(future.cause());
 						}
 					});
 					return;
 				}
-
 				attemptReconnect(tup);
 			} else {
 				// connected
 				if (log.isInfoEnabled()) {
 					log.info("CONNECTED: " + future.channel());
 				}
-
 				final Channel ioCh = future.channel();
 				ioCh.pipeline().addLast(new ChannelDuplexHandler() {
 					@Override
@@ -322,10 +302,11 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 						Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempts.incrementAndGet());
 						if (null == tup) {
+							broadcaster.onComplete();
 							// do not attempt a reconnect
 							return;
 						}
-						if (!closing) {
+						if (!started.get()) {
 							attemptReconnect(tup);
 						}
 						super.channelInactive(ctx);
@@ -334,7 +315,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			}
 		}
 
-		private void attemptReconnect(Tuple2<InetSocketAddress, Long> tup) {
+		private void attemptReconnect(final Tuple2<InetSocketAddress, Long> tup) {
 			connectAddress = tup.getT1();
 			bootstrap.remoteAddress(connectAddress);
 			long delay = tup.getT2();
@@ -343,7 +324,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				log.info("Failed to connect to {}. Attempting reconnect in {}ms.", connectAddress, delay);
 			}
 
-			getEnvironment().getTimer()
+			getDefaultEnvironment().getTimer()
 					.submit(
 							new Consumer<Long>() {
 								@Override

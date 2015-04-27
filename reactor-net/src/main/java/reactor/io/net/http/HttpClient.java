@@ -16,98 +16,134 @@
 
 package reactor.io.net.http;
 
-import org.reactivestreams.Publisher;
 import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.Client;
-import reactor.io.net.PeerStream;
+import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.ReactorClient;
+import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.http.model.Method;
 import reactor.rx.Promise;
 
 /**
  * The base class for a Reactor-based Http client.
  *
- * @param <IN>
- * 		The type that will be received by this client
- * @param <OUT>
- * 		The type that will be sent by this client
- *
+ * @param <IN>  The type that will be received by this client
+ * @param <OUT> The type that will be sent by this client
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public abstract class HttpClient<IN, OUT>
-		extends PeerStream<IN, OUT, HttpChannel<IN, OUT>>
-		implements Client<IN, OUT, HttpChannel<IN, OUT>> {
+		extends ReactorClient<IN, OUT, HttpChannel<IN, OUT>> {
 
 	protected HttpClient(Environment env,
 	                     Dispatcher dispatcher,
-	                     Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec);
-	}
-
-	@Override
-	public Client<IN, OUT, HttpChannel<IN, OUT>> pipeline(
-			final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
-		doPipeline(serviceFunction);
-		return this;
+	                     Codec<Buffer, IN, OUT> codec,
+	                     ClientSocketOptions options) {
+		super(env, dispatcher, codec, options.prefetch());
 	}
 
 	/**
-	 * @param url
-	 * @param handler
-	 * @return
+	 * HTTP GET the passed URL. When connection has been made, the passed handler is invoked and can be used to build
+	 *  precisely the request and write data to it.
+	 *
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
+	 *
+	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
 	 */
 	public final Promise<? extends HttpChannel<IN, OUT>> get(String url,
-	                                     final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
-			                                     handler) {
-
+	                                                         final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
+			                                                         handler) {
 		return request(Method.GET, url, handler);
 	}
 
+
 	/**
-	 * @param url
-	 * @param handler
-	 * @return
+	 * HTTP GET the passed URL.
+	 *
+	 * @param url the target remote URL
+	 *
+	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 */
+	public final Promise<? extends HttpChannel<IN, OUT>> get(String url) {
+
+		return request(Method.GET, url, null);
+	}
+
+	/**
+	 * HTTP POST the passed URL. When connection has been made, the passed handler is invoked and can be used to build
+	 *  precisely the request and write data to it.
+	 *
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
+	 *
+	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
 	 */
 	public final Promise<? extends HttpChannel<IN, OUT>> post(String url,
-	                                      final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
-			                                      handler) {
+	                                                          final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
+			                                                          handler) {
 		return request(Method.POST, url, handler);
 	}
 
 
 	/**
-	 * @param url
-	 * @param handler
-	 * @return
+	 * HTTP PUT the passed URL. When connection has been made, the passed handler is invoked and can be used to build
+	 *  precisely the request and write data to it.
+	 *
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
+	 *
+	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
 	 */
 	public final Promise<? extends HttpChannel<IN, OUT>> put(String url,
-	                                     final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
-			                                     handler) {
+	                                                         final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
+			                                                         handler) {
 		return request(Method.PUT, url, handler);
 	}
 
 	/**
-	 * @param url
-	 * @param handler
-	 * @return
+	 * HTTP DELETE the passed URL. When connection has been made, the passed handler is invoked and can be used to build
+	 *  precisely the request and write data to it.
+	 *
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
+	 *
+	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
 	 */
 	public final Promise<? extends HttpChannel<IN, OUT>> delete(String url,
-	                                        final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
-			                                        handler) {
+	                                                            final ReactorChannelHandler<IN, OUT, HttpChannel<IN,
+			                                                            OUT>> handler) {
 		return request(Method.DELETE, url, handler);
 	}
 
+	/**
+	 * HTTP DELETE the passed URL. When connection has been made, the passed handler is invoked and can be used to build
+	 *  precisely the request and write data to it.
+	 *
+	 * @param url the target remote URL
+	 *
+	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 */
 	public final Promise<? extends HttpChannel<IN, OUT>> delete(String url) {
 		return request(Method.DELETE, url, null);
 	}
 
-	
+
+	/**
+	 * Use the passed HTTP method to send to the given URL.
+	 * When connection has been made, the passed handler is invoked and can be used to build
+	 *  precisely the request and write data to it.
+	 *
+	 * @param method the HTTP method to send
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
+	 *
+	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 */
 	public abstract Promise<? extends HttpChannel<IN, OUT>> request(Method method, String url,
-	                                            final Function<HttpChannel<IN, OUT>, ? extends Publisher<? extends OUT>>
-	                                            handler);
+	                                                                final ReactorChannelHandler<IN, OUT, HttpChannel<IN,
+			                                                                OUT>> handler);
 
 }

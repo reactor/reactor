@@ -16,26 +16,22 @@
 
 package reactor.io.net.impl.netty.http;
 
-import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
+import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
@@ -43,17 +39,15 @@ import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpClient;
 import reactor.io.net.http.model.Method;
 import reactor.io.net.impl.netty.NettyChannelStream;
-import reactor.io.net.impl.netty.NettyEventLoopDispatcher;
 import reactor.io.net.impl.netty.tcp.NettyTcpClient;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
-import reactor.rx.action.Control;
+import reactor.rx.Streams;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URL;
-import java.nio.ByteBuffer;
 
 /**
  * A Netty-based {@code TcpClient}.
@@ -65,9 +59,11 @@ import java.nio.ByteBuffer;
  */
 public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 
-	private final Logger log = LoggerFactory.getLogger(NettyHttpClient.class);
+	private final static Logger log = LoggerFactory.getLogger(NettyHttpClient.class);
 
 	private final NettyTcpClient<IN, OUT> client;
+	private final Promise<NettyHttpChannel<IN, OUT>> reply;
+
 	private String lastURL = "http://localhost:8080";
 
 	/**
@@ -92,7 +88,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	                       final ClientSocketOptions options,
 	                       final SslOptions sslOptions,
 	                       final Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec);
+		super(env, dispatcher, codec, options);
 
 		this.client = new NettyTcpClient<IN, OUT>(
 				env,
@@ -103,9 +99,9 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 				codec
 		) {
 			@Override
-			protected NettyChannelStream<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
-				NettyHttpClient.this.bindChannel(nativeChannel, prefetch);
-				return null;
+			protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, Object
+					nativeChannel) {
+				NettyHttpClient.this.bindChannel(handler, nativeChannel);
 			}
 
 			@Override
@@ -121,121 +117,79 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 				}
 			}
 		};
+
+		this.reply = Promises.prepare();
+	}
+
+	@Override
+	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
+		return client.start(new ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>>() {
+			@Override
+			public Publisher<Void> apply(ChannelStream<IN, OUT> inoutChannelStream) {
+				final NettyHttpChannel<IN, OUT> ch = ((NettyHttpChannel<IN, OUT>) inoutChannelStream);
+				return handler.apply(ch);
+			}
+		});
+	}
+
+	@Override
+	protected Stream<Tuple2<InetSocketAddress, Integer>> doStart(final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler,
+	                                                     final Reconnect reconnect) {
+		return client.start(new ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>>() {
+			@Override
+			public Publisher<Void> apply(ChannelStream<IN, OUT> inoutChannelStream) {
+				final NettyHttpChannel<IN, OUT> ch = ((NettyHttpChannel<IN, OUT>) inoutChannelStream);
+				return handler.apply(ch);
+			}
+		}, reconnect);
 	}
 
 	@Override
 	public Promise<? extends HttpChannel<IN, OUT>> request(final Method method, final String url,
-	                                                       final Function<HttpChannel<IN, OUT>, ? extends Publisher<?
-			                                                       extends OUT>>
+	                                                       final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
 			                                                       handler) {
 		lastURL = url;
 		Assert.isTrue(method != null && url != null);
-		final Promise<HttpChannel<IN, OUT>> p = Promises.prepare();
-
-		subscribe(new Subscriber<HttpChannel<IN, OUT>>() {
+		start(new ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>() {
 			@Override
-			public void onSubscribe(Subscription s) {
-				s.request(Long.MAX_VALUE);
-			}
+			public Publisher<Void> apply(HttpChannel<IN, OUT> inoutHttpChannel) {
+				final NettyHttpChannel<IN, OUT> ch = ((NettyHttpChannel<IN, OUT>) inoutHttpChannel);
 
-			@Override
-			public void onNext(HttpChannel<IN, OUT> inoutHttpChannel) {
-				final NettyHttpClientChannel ch = ((NettyHttpClientChannel) inoutHttpChannel);
-				ch
-						.getNettyRequest()
+				ch.getNettyRequest()
 						.setUri(URI.create(url).getPath())
 						.setMethod(new HttpMethod(method.getName()));
 
-				ch.promise.onComplete(new Consumer<Promise<Object>>() {
-					@Override
-					public void accept(Promise<Object> promise) {
-						if(promise.isError()){
-							p.onError(promise.reason());
-						}else{
-							p.onNext(ch);
-						}
-					}
-				});
-
 				if (handler != null) {
-					addWritePublisher(handler.apply(inoutHttpChannel));
+					try {
+						Publisher<Void> p = handler.apply(ch);
+						reply.onNext(ch);
+						return p;
+					}catch (Throwable t){
+						reply.onError(t);
+						return Promises.error(t);
+					}
+				}else{
+					reply.onNext(ch);
+					return Streams.never();
 				}
 			}
-
-			@Override
-			public void onError(Throwable t) {
-				p.onError(t);
-			}
-
-			@Override
-			public void onComplete() {
-
-			}
 		});
-		return p;
+		return reply;
 	}
 
 	@Override
-	public Promise<Boolean> open() {
-		return client.open();
+	protected final Promise<Void> doShutdown() {
+		return client.shutdown();
 	}
 
-	@Override
-	public Stream<Boolean> open(final Reconnect reconnect) {
-		return client.open(reconnect);
-	}
-
-	@Override
-	public Promise<Boolean> close() {
-		return client.close();
-	}
-
-	protected NettyHttpChannel<IN, OUT> createClientRequest(final NettyChannelStream<IN, OUT> tcpStream, final
-	HttpRequest
-			request) {
-
-		NettyHttpChannel<IN, OUT> httpChannel = new NettyHttpClientChannel(tcpStream, request);
-		notifyNewChannel(httpChannel);
-		mergeWrite(httpChannel);
-		return httpChannel;
-	}
-
-	@Override
-	protected Consumer<Void> completeConsumer(final HttpChannel<IN, OUT> ch) {
-		return new Consumer<Void>() {
-			@Override
-			@SuppressWarnings("unchecked")
-			public void accept(Void aVoid) {
-				((NettyHttpChannel)ch).write(null, null, true);
-			}
-		};
-	}
-
-	@Override
-	protected Control mergeWrite(HttpChannel<IN, OUT> ch) {
-		final Control c = super.mergeWrite(ch);
-		if(c == null) return null;
-		((Channel)ch.delegate()).closeFuture().addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				c.cancel();
-			}
-		});
-		return c;
-	}
-
-	@Override
-	protected HttpChannel<IN, OUT> bindChannel(Object nativeChannel, long prefetch) {
+	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, Object nativeChannel) {
 		SocketChannel ch = (SocketChannel) nativeChannel;
-		int backlog = 128;
 
 		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getEnvironment(),
+				getDefaultEnvironment(),
 				getDefaultCodec(),
-				prefetch == -1l ? getPrefetchSize() : prefetch,
-				client,
-				new NettyEventLoopDispatcher(ch.eventLoop(), backlog),
-				getDispatcher(),
+				getDefaultPrefetchSize(),
+				getDefaultDispatcher(),
 				ch
 		);
 
@@ -246,53 +200,6 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		}
 		pipeline
 				.addLast(new HttpClientCodec())
-				.addLast(new NettyHttpClientHandler<IN, OUT>(netChannel, this));
-		return null;
-	}
-
-	private class NettyHttpClientChannel extends NettyHttpChannel<IN, OUT> {
-
-
-		final         Buffer                      body;
-		private final NettyChannelStream<IN, OUT> tcpStream;
-		private final HttpRequest                 request;
-		private final Promise<Object>             promise;
-
-		public NettyHttpClientChannel(NettyChannelStream<IN, OUT> tcpStream, HttpRequest request) {
-			super(tcpStream, NettyHttpClient.this.client, request, NettyHttpClient.this.getDefaultCodec());
-			this.tcpStream = tcpStream;
-			this.request = request;
-			body = new Buffer();
-			promise = Promises.ready(getEnvironment(), getDispatcher());
-		}
-
-
-
-		@Override
-		protected void write(ByteBuffer data, Subscriber<?> onComplete, boolean flush) {
-			body.append(data);
-			if (flush) {
-				write((Object)null, null, true);
-			}
-		}
-
-		@Override
-		protected void write(Object data, Subscriber<?> onComplete, boolean flush) {
-			if (HEADERS_SENT.compareAndSet(this, 0, 1)) {
-				ByteBuffer byteBuffer = body.flip().byteBuffer();
-				HttpRequest req = new DefaultFullHttpRequest(
-						request.getProtocolVersion(),
-						request.getMethod(),
-						request.getUri(),
-						byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled.EMPTY_BUFFER);
-				HttpHeaders.setContentLength(req, body.limit());
-
-				String header = HttpHeaders.getHeader(request, HttpHeaders.Names.CONTENT_TYPE);
-				if(header != null){
-					HttpHeaders.setHeader(req, HttpHeaders.Names.CONTENT_TYPE, header);
-				}
-				tcpStream.write(req, promise, true);
-			}
-		}
+				.addLast(new NettyHttpClientHandler<IN, OUT>(handler, netChannel));
 	}
 }

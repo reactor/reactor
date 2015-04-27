@@ -47,7 +47,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.net.NetSelectors#http)}.
+	 * An alias for {@link reactor.io.net.NetSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -63,7 +63,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.net.NetSelectors#http)}.
+	 * An alias for {@link reactor.io.net.NetSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -79,7 +79,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.net.NetSelectors#http)}.
+	 * An alias for {@link reactor.io.net.NetSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -95,7 +95,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.net.NetSelectors#http)}.
+	 * An alias for {@link reactor.io.net.NetSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>

@@ -1,7 +1,5 @@
 package reactor.io.net;
 
-import com.gs.collections.api.RichIterable;
-import com.gs.collections.impl.list.mutable.FastList;
 import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
@@ -23,10 +21,8 @@ import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -56,33 +52,6 @@ public class AbstractNetClientServerTest {
 			name[i] = CHARS.charAt(random.nextInt(CHARS.length()));
 		}
 		return new Data(random.nextInt(), random.nextLong(), new String(name));
-	}
-
-	protected static <IN, OUT> ChannelStream<IN, OUT> assertClientStarted(TcpClient<IN, OUT> client)
-			throws InterruptedException {
-		Promise<ChannelStream<IN, OUT>> p = client.next();
-		assertNotNull(client.getClass().getSimpleName() + " was started", client.open().await(5, TimeUnit.SECONDS));
-		return p.await(5, TimeUnit.SECONDS);
-	}
-
-	protected static <IN, OUT> void assertClientStopped(Client<IN, OUT, ?> client)
-			throws InterruptedException {
-		Promise<Boolean> closed = client.close();
-		closed.await(1, TimeUnit.SECONDS);
-		assertTrue(client.getClass().getSimpleName() + " was stopped", closed.isSuccess());
-	}
-
-
-	protected static <IN, OUT> void assertServerStarted(Server<IN, OUT, ?> server) throws InterruptedException {
-		Promise<Boolean> started = server.start();
-		started.await(5, TimeUnit.SECONDS);
-		assertTrue(server.getClass().getSimpleName() + " was started", started.isSuccess());
-	}
-
-	protected static <IN, OUT> void assertServerStopped(Server<IN, OUT, ?> server) throws InterruptedException {
-		Promise<Boolean> started = server.shutdown();
-		started.await(1, TimeUnit.SECONDS);
-		assertTrue(server.getClass().getSimpleName() + " was stopped", started.isSuccess());
 	}
 
 	@Before
@@ -168,8 +137,7 @@ public class AbstractNetClientServerTest {
 						.codec(elCodec)
 		);
 
-		server.pipeline(ch -> ch);
-		assertServerStarted(server);
+		server.start(ch -> ch.writeWith(ch.take(1))).await();
 
 		TcpClient<T, T> client = NetStreams.tcpClient(clientType, s -> s
 						.env(env2)
@@ -179,14 +147,13 @@ public class AbstractNetClientServerTest {
 
 		final Promise<T> p = Promises.prepare();
 
-		client.pipeline(input -> {
-			input.subscribe(p);
-			return Streams.just(data);
-		});
+		client.start(input -> {
+			input.log("echo-in").subscribe(p);
+			return input.writeWith(Streams.just(data).log("echo-out")).log("echo.close");
+		}).await();
 
-		assertClientStarted(client);
 
-		T reply = p.await(5, TimeUnit.SECONDS);
+		T reply = p.await(50, TimeUnit.SECONDS);
 
 		assertTrue("reply was correct", replyPredicate.test(reply));
 
@@ -194,25 +161,6 @@ public class AbstractNetClientServerTest {
 //		assertClientStopped(client);
 	}
 
-	protected Environment getServerEnvironment() {
-		return env1;
-	}
-
-	protected Environment getClientEnvironment() {
-		return env2;
-	}
-
-	protected Future<?> submitServer(Runnable r) {
-		return serverPool.submit(r);
-	}
-
-	protected RichIterable<Future<?>> submitClients(Runnable r) {
-		FastList<Future<?>> futures = FastList.newList();
-		for (int i = 0; i < senderThreads; i++) {
-			futures.add(clientPool.submit(r));
-		}
-		return futures.toImmutable();
-	}
 
 	protected static class Data {
 		private int    count;

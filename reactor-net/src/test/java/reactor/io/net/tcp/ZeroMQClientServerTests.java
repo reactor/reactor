@@ -81,12 +81,12 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 	@Test//(timeout = 60000)
 	public void zmqRequestReply() throws InterruptedException {
 		ZMQ.reply("tcp://*:" + getPort())
-		   .onSuccess(ch -> ch.sink(ch.observe(d -> latch.countDown())));
+		   .onSuccess(ch -> ch.writeWith(ch.observe(d -> latch.countDown())).consume());
 
 		ZMQ.request("tcp://127.0.0.1:" + getPort())
 		   .onSuccess(ch -> {
 			              ch.consume(d -> latch.countDown());
-			              ch.sink(Streams.just(data));
+			              ch.writeWith(Streams.just(data)).consume();
 		              }
 		   );
 
@@ -99,7 +99,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		   .onSuccess(ch -> latch.countDown());
 
 		ZMQ.push("tcp://127.0.0.1:" + getPort())
-		   .onSuccess(ch -> ch.sink(Streams.just(data)));
+		   .onSuccess(ch -> ch.writeWith(Streams.just(data)).consume());
 
 		assertTrue("PULL socket received data", latch.await(1, TimeUnit.SECONDS));
 	}
@@ -110,9 +110,11 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		   .onSuccess(ch -> latch.countDown());
 
 		ZMQ.dealer("tcp://127.0.0.1:" + getPort())
-		   .onSuccess(ch -> ch.sink(Streams.just(data)));
+		   .onSuccess(ch ->
+						   ch.writeWith(Streams.just(data).log("zmqp")).consume()
+		   );
 
-		assertTrue("ROUTER socket received data", latch.await(5, TimeUnit.SECONDS));
+		assertTrue("ROUTER socket received data", latch.await(50, TimeUnit.SECONDS));
 	}
 
 	@Test(timeout = 60000)
@@ -128,9 +130,7 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 		Thread.sleep(500);
 
 		ZMQ.dealer("inproc://queue" + getPort())
-		   .onSuccess(ch -> {
-			   ch.sink(Streams.just(data));
-		   });
+				.onSuccess(ch -> ch.writeWith(Streams.just(data)).consume());
 
 		assertTrue("ROUTER socket received inproc data", latch.await(1, TimeUnit.SECONDS));
 	}

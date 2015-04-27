@@ -584,6 +584,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				", executor=" + executor +
 				", workSequence=" + workSequence +
 				", pendingRequest=" + pendingRequest +
+				", cancelledSequence=" + cancelledSequences +
 				'}';
 	}
 
@@ -754,6 +755,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					//processor.barrier.alert();
 					break;
 				} catch (AlertException ex) {
+
 					if (!running.get()) {
 						sequence.set(nextSequence - 1L);
 						processor.cancelledSequences.add(sequence);
@@ -813,6 +815,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					while (processor.pendingRequest.addAndGet(-1l) < 0l) {
 						processor.pendingRequest.incrementAndGet();
 						if (!running.get()) throw CancelException.INSTANCE;
+						processor.barrier.checkAlert();
 						//Todo Use WaitStrategy?
 						LockSupport.parkNanos(1l);
 					}

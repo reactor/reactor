@@ -29,7 +29,7 @@ public interface NonBlocking {
 	 *
 	 * @return true if the component wishes to use a back-pressure ready message-passing (e.g., ReactiveSubscription)
 	 */
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity);
+	boolean isReactivePull(Dispatcher dispatcher, long producerCapacity);
 
 	/**
 	 * Return defined element capacity, used to drive new {@link org.reactivestreams.Subscription}
@@ -37,5 +37,5 @@ public interface NonBlocking {
 	 *
 	 * @return long capacity
 	 */
-	public long getCapacity();
+	long getCapacity();
 }

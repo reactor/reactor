@@ -53,7 +53,7 @@ public class FallbackAction<T> extends Action<T, T> {
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		synchronized (this) {
-			if ((pendingRequests += elements) > 0) pendingRequests = Long.MAX_VALUE;
+			if ((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
 		}
 		super.requestUpstream(capacity, terminated, elements);
 	}

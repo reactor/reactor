@@ -16,20 +16,17 @@
 
 package reactor.io.net.impl.zmq.tcp;
 
-import com.gs.collections.api.list.MutableList;
-import com.gs.collections.impl.block.function.checked.CheckedFunction0;
-import com.gs.collections.impl.block.predicate.checked.CheckedPredicate;
-import com.gs.collections.impl.list.mutable.FastList;
-import com.gs.collections.impl.list.mutable.SynchronizedMutableList;
-import com.gs.collections.impl.map.mutable.SynchronizedMutableMap;
-import com.gs.collections.impl.map.mutable.UnifiedMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.reactivestreams.Publisher;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.Environment;
+import reactor.bus.registry.Registration;
+import reactor.bus.registry.Registries;
+import reactor.bus.registry.Registry;
+import reactor.bus.selector.Selectors;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
+import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -40,28 +37,39 @@ import reactor.io.net.impl.zmq.ZeroMQServerSocketOptions;
 import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.TcpServer;
 import reactor.rx.Promise;
+import reactor.rx.Promises;
+import reactor.rx.Streams;
 
 import java.lang.reflect.Field;
-import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class ZeroMQ<T> {
 
-	private static final SynchronizedMutableMap<Integer, String> SOCKET_TYPES = SynchronizedMutableMap.of(UnifiedMap
-			.<Integer, String>newMap());
+	private final static Registry<String> SOCKET_TYPES = Registries.create();
 
-	private final Logger                                    log     = LoggerFactory.getLogger(getClass());
-	private final MutableList<reactor.io.net.tcp.TcpClient> clients = SynchronizedMutableList.of(FastList.<reactor.io
-			.net.tcp.TcpClient>newList());
-	private final MutableList<reactor.io.net.tcp.TcpServer> servers = SynchronizedMutableList.of(FastList.<reactor.io
-			.net.tcp.TcpServer>newList());
-
+	static {
+		for (Field f : ZMQ.class.getDeclaredFields()) {
+			if (int.class.isAssignableFrom(f.getType())) {
+				f.setAccessible(true);
+				try {
+					int val = f.getInt(null);
+					SOCKET_TYPES.register(Selectors.$(val), f.getName());
+				} catch (IllegalAccessException e) {
+				}
+			}
+		}
+	}
 
 	private final Environment env;
 	private final Dispatcher  dispatcher;
 	private final ZContext    zmqCtx;
+
+	private final List<ReactorPeer<T, T, ChannelStream<T, T>>> peers = new ArrayList<>();
 
 	@SuppressWarnings("unchecked")
 	private volatile Codec<Buffer, T, T> codec    = (Codec<Buffer, T, T>) StandardCodecs.PASS_THROUGH_CODEC;
@@ -83,24 +91,13 @@ public class ZeroMQ<T> {
 	}
 
 	public static String findSocketTypeName(final int socketType) {
-		return SOCKET_TYPES.getIfAbsentPut(socketType, new CheckedFunction0<String>() {
-			@Override
-			public String safeValue() throws Exception {
-				for (Field f : ZMQ.class.getDeclaredFields()) {
-					if (int.class.isAssignableFrom(f.getType())) {
-						f.setAccessible(true);
-						try {
-							int val = f.getInt(null);
-							if (socketType == val) {
-								return f.getName();
-							}
-						} catch (IllegalAccessException e) {
-						}
-					}
-				}
-				return "";
-			}
-		});
+		List<Registration<? extends String>> registrations = SOCKET_TYPES.select(socketType);
+		if(registrations.isEmpty()){
+			return "";
+		}else{
+			return registrations.get(0).getObject();
+		}
+
 	}
 
 	public ZeroMQ<T> codec(Codec<Buffer, T, T> codec) {
@@ -136,7 +133,7 @@ public class ZeroMQ<T> {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
 		TcpClient<T, T> client = NetStreams.tcpClient(ZeroMQTcpClient.class,
-				new Function<Spec.TcpClientSpec<T, T>, Spec.TcpClientSpec<T, T>>() {
+				new NetStreams.TcpClientFactory<T, T>() {
 
 					@Override
 					public Spec.TcpClientSpec<T, T> apply(Spec.TcpClientSpec<T, T> spec) {
@@ -148,17 +145,27 @@ public class ZeroMQ<T> {
 					}
 				});
 
-		clients.add(client);
-		Promise<ChannelStream<T, T>> promise = client.next();
-		client.open();
+		final Promise<ChannelStream<T, T>> promise = Promises.ready(env, dispatcher);
+		client.start(new ReactorChannelHandler<T, T, ChannelStream<T, T>>() {
+			@Override
+			public Publisher<Void> apply(ChannelStream<T, T> ttChannelStream) {
+				promise.onNext(ttChannelStream);
+				return Streams.never();
+			}
+		});
+
+		synchronized (peers) {
+			peers.add(client);
+		}
+
 		return promise;
 	}
 
 	public Promise<ChannelStream<T, T>> createServer(final String addrs, final int socketType) {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
-		TcpServer<T, T> server = NetStreams.<T, T>tcpServer(ZeroMQTcpServer.class,
-				new Function<Spec.TcpServerSpec<T, T>, Spec.TcpServerSpec<T, T>>() {
+		final TcpServer<T, T> server = NetStreams.tcpServer(ZeroMQTcpServer.class,
+				new NetStreams.TcpServerFactory<T, T>() {
 
 					@Override
 					public Spec.TcpServerSpec<T, T> apply(Spec.TcpServerSpec<T, T> spec) {
@@ -171,14 +178,20 @@ public class ZeroMQ<T> {
 					}
 				});
 
+		final Promise<ChannelStream<T, T>> promise = Promises.ready(env, dispatcher);
+		server.start(new ReactorChannelHandler<T, T, ChannelStream<T, T>>() {
+			@Override
+			public Publisher<Void> apply(ChannelStream<T, T> ttChannelStream) {
+				promise.onNext(ttChannelStream);
+				return Streams.never();
+			}
+		});
 
-		Promise<ChannelStream<T, T>> d = server.next();
+		synchronized (peers) {
+			peers.add(server);
+		}
 
-		servers.add(server);
-
-		server.start();
-
-		return d;
+		return promise;
 	}
 
 	public void shutdown() {
@@ -187,24 +200,23 @@ public class ZeroMQ<T> {
 		}
 		shutdown = true;
 
-		servers.removeIf(new CheckedPredicate<Server>() {
+		List<ReactorPeer<T, T, ChannelStream<T, T>>> _peers;
+		synchronized (peers) {
+			_peers = new ArrayList<>(peers);
+		}
+
+		Streams.from(_peers).flatMap(new Function<ReactorPeer, Publisher<Void>>() {
 			@Override
-			public boolean safeAccept(Server server) throws Exception {
-				Promise promise = server.shutdown();
-				promise.await(60, TimeUnit.SECONDS);
-				Assert.isTrue(promise.isSuccess(), "Server " + server + " not properly shut down");
-				return true;
+			@SuppressWarnings("unchecked")
+			public Publisher<Void> apply(final ReactorPeer ttChannelStreamReactorPeer) {
+				return ttChannelStreamReactorPeer.shutdown().onSuccess(new Consumer() {
+					@Override
+					public void accept(Object o) {
+						peers.remove(ttChannelStreamReactorPeer);
+					}
+				});
 			}
-		});
-		clients.removeIf(new CheckedPredicate<Client>() {
-			@Override
-			public boolean safeAccept(Client client) throws Exception {
-				Promise promise = client.close();
-				promise.await(60, TimeUnit.SECONDS);
-				Assert.isTrue(promise.isSuccess(), "Client " + client + " not properly shut down");
-				return true;
-			}
-		});
+		}).consume();
 
 //		if (log.isDebugEnabled()) {
 //			log.debug("Destroying {} on {}", zmqCtx, this);

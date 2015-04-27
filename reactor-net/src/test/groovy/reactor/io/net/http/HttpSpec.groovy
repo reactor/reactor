@@ -51,14 +51,17 @@ class HttpSpec extends Specification {
 		when: "the server is prepared"
 
 		  //prepare post request consumer on /test/* and capture the URL parameter "param"
-			server.post('/test/{param}') { req ->
+			server.post('/test/{param}') { HttpChannel<String,String> req ->
 
 				//log then transform then log received http request content from the request body and the resolved URL parameter "param"
 				//the returned stream is bound to the request stream and will auto read/close accordingly
-				req
+
+				req.writeWith(
+						req
 						.log('server-received')
 						.map { it + ' ' + req.param('param') + '!' }
 						.log('server-reply')
+				)
 
 			}
 
@@ -68,14 +71,16 @@ class HttpSpec extends Specification {
 		when: "data is sent with Reactor HTTP support"
 
 		  //prepare an http post request-reply flow
-			def content = client.post('/test/World') { req ->
+			def content = client.post('/test/World') { HttpChannel<String,String> req ->
 				//prepare content-type
 				req.header('Content-Type', 'text/plain')
 
 				//return a producing stream to send some data along the request
-				Streams
+				req.writeWith(
+						Streams
 						.just("Hello")
 						.log('client-send')
+				)
 
 			}.flatMap { replies ->
 				//successful request, listen for the first returned next reply and pass it downstream
@@ -90,15 +95,12 @@ class HttpSpec extends Specification {
 
 
 		then: "data was recieved"
-			//execute the request now
-			client.open().awaitSuccess()
-
 			//the produced reply should be there soon
 			content.await() == "Hello World!"
 
 		cleanup: "the client/server where stopped"
 		//note how we order first the client then the server shutdown
-			client?.close()?.flatMap { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			client?.shutdown()?.onComplete{ server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
 	}
 
 }

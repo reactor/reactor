@@ -15,6 +15,7 @@
  */
 package reactor.io.net.tcp;
 
+import io.netty.channel.nio.NioEventLoopGroup;
 import org.apache.commons.collections.list.SynchronizedList;
 import org.junit.After;
 import org.junit.Before;
@@ -31,7 +32,8 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.StringCodec;
 import reactor.io.net.NetStreams;
-import reactor.io.net.Spec;
+import reactor.io.net.http.HttpClient;
+import reactor.io.net.impl.netty.NettyClientSocketOptions;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
@@ -60,14 +62,27 @@ public class SmokeTests {
 	private final AtomicInteger integerPostTake    = new AtomicInteger();
 	private final AtomicInteger integerPostConcat  = new AtomicInteger();
 
-	private final int count   = 33_000;
-	private final int threads = 6;
-	private final int iter    = 10;
-	private final int windowBatch    = 1000;
-	private final int takeCount    = 1;
+	private final int     count           = 1_000_000;
+	private final int     threads         = 6;
+	private final int     iter            = 10;
+	private final int     windowBatch     = 200;
+	private final int     takeCount       = 100;
+	private final boolean addToWindowData = count < 50_000;
+
+	private final NettyClientSocketOptions nettyOptions =
+			new NettyClientSocketOptions().eventLoopGroup(new NioEventLoopGroup(6));
+
+	private final NetStreams.HttpClientFactory<String, String> clientFactory =
+			spec -> spec
+					.options(nettyOptions)
+					.codec(new StringCodec())
+					.connect("localhost", httpServer.getListenAddress().getPort())
+					.dispatcher(Environment.sharedDispatcher());
 
 	@SuppressWarnings("unchecked")
 	private List<Integer> windowsData = SynchronizedList.decorate(new ArrayList<>());
+
+	private RingBufferWorkProcessor<String> workProcessor;
 
 	@Test
 	public void testMultipleConsumersMultipleTimes() throws Exception {
@@ -91,12 +106,12 @@ public class SmokeTests {
 				assertThat(clientDatas.size(), greaterThanOrEqualTo(count));
 
 			} catch (Throwable ae) {
-				System.out.println(clientDatas.size() + " - " + clientDatas);
+				System.out.println(clientDatas.size() + " - " + (addToWindowData ? clientDatas : ""));
 				Collections.sort(windowsData);
-				System.out.println(windowsData.size() + " - " + windowsData);
+				System.out.println(windowsData.size() + " - " + (addToWindowData ? windowsData : ""));
 				List<Integer> dups = findDuplicates(windowsData);
 				Collections.sort(dups);
-				System.out.println("Dups: "+dups.size()+" - " + dups);
+				System.out.println("Dups: " + dups.size() + " - " + dups);
 				throw ae;
 			} finally {
 				printStats(t);
@@ -133,6 +148,7 @@ public class SmokeTests {
 
 	private void setupFakeProtocolListener() throws Exception {
 		processor = RingBufferProcessor.create(false);
+		workProcessor = RingBufferWorkProcessor.create(false);
 		Stream<String> bufferStream = Streams
 				.wrap(processor)
 						//.log("test")
@@ -145,7 +161,7 @@ public class SmokeTests {
 						.observe(d ->
 										postReduce.getAndIncrement()
 						))
-				.process(RingBufferWorkProcessor.create(false));
+				.process(workProcessor);
 
 //		Stream<Buffer> bufferStream = Streams
 //				.wrap(processor)
@@ -156,7 +172,7 @@ public class SmokeTests {
 //				.process(RingBufferWorkProcessor.create(false));
 
 		httpServer = NetStreams.httpServer(server -> server
-						.codec(new StringCodec()).listen(0)
+						.codec(new StringCodec()).listen(0).dispatcher(Environment.sharedDispatcher())
 		);
 
 
@@ -168,55 +184,52 @@ public class SmokeTests {
 			request.addResponseHeader("X-GP-PROTO", "1");
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
-			return bufferStream
-					.observe(d ->
-									integer.getAndIncrement()
-					)
+			return request.writeWith(bufferStream
+							.observe(d ->
+											integer.getAndIncrement()
+							)
+							.take(takeCount)
+							.observe(d ->
+											integerPostTake.getAndIncrement()
+							)
+							.timeout(2, TimeUnit.SECONDS, Streams.<String>empty())
+							.observe(d ->
+											integerPostTimeout.getAndIncrement()
+							)
+									//.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
 
-
-					.take(takeCount)
-					.observe(d ->
-									integerPostTake.getAndIncrement()
-					)
-					.timeout(2, TimeUnit.SECONDS, Streams.<String>empty())
-					.observe(d ->
-									integerPostTimeout.getAndIncrement()
-					)
-							//.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
-
-					.concatWith(Streams.just("END"))
-					.observe(d ->
-									windowsData.addAll(parseCollection(d))
-					)
-					.observe(d ->
-									integerPostConcat.getAndIncrement()
-					)
-					.observeComplete(no -> {
-								integerPostConcat.decrementAndGet();
-								System.out.println("YYYYY COMPLETE " + Thread.currentThread());
-							}
-					);
+							.concatWith(Streams.just("END"))
+							.observe(d -> {
+										if (addToWindowData) {
+											windowsData.addAll(parseCollection(d));
+										}
+									}
+							)
+							.observe(d ->
+											integerPostConcat.getAndIncrement()
+							)
+							.observeComplete(no -> {
+										integerPostConcat.decrementAndGet();
+										System.out.println("YYYYY COMPLETE " + Thread.currentThread());
+									}
+							)
+					//.capacity(1L)
+					//.log("writer")
+			);
 		});
 
 		httpServer.start().awaitSuccess();
 	}
 
 	private List<String> getClientDataPromise() throws Exception {
-		reactor.io.net.http.HttpClient<String, String> httpClient = NetStreams.httpClient(new Function<Spec.HttpClientSpec<String, String>, Spec.HttpClientSpec<String, String>>() {
+		HttpClient<String, String> httpClient = NetStreams.httpClient(clientFactory);
 
-			@Override
-			public Spec.HttpClientSpec<String, String> apply(Spec.HttpClientSpec<String, String> t) {
-				return t.codec(new StringCodec()).connect("localhost", httpServer.getListenAddress().getPort())
-						.dispatcher(Environment.sharedDispatcher());
-			}
-		});
 		Promise<List<String>> content = httpClient
-				.get("/data", t -> Streams.empty())
+				.get("/data")
 				.flatMap(Stream::toList);
 
-		httpClient.open().awaitSuccess();
 		content.awaitSuccess(20, TimeUnit.SECONDS);
-		httpClient.close().awaitSuccess();
+		httpClient.shutdown().awaitSuccess();
 		return content.get();
 	}
 
@@ -226,6 +239,7 @@ public class SmokeTests {
 		final List<Integer> datas = SynchronizedList.decorate(new ArrayList<>());
 
 		windowsData.clear();
+		Thread.sleep(1500);
 		Runnable srunner = new Runnable() {
 			public void run() {
 				try {
@@ -277,7 +291,7 @@ public class SmokeTests {
 		}
 		latch.countDown();
 
-		thread.await(60, TimeUnit.SECONDS);
+		thread.await(120, TimeUnit.SECONDS);
 		return datas;
 	}
 
@@ -328,6 +342,7 @@ public class SmokeTests {
 				"post take batches: " + integerPostTake + "\n" +
 				"post timeout batches: " + integerPostTimeout + "\n" +
 				"post concat batches: " + integerPostConcat + "\n" +
+				"workProcessor state: " + workProcessor + "\n" +
 				"-----------------------------------");
 
 	}

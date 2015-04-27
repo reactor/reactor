@@ -13,12 +13,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package reactor.rx.action.control;
+
+import reactor.rx.action.Action;
 
 /**
- * Reactive network components are located in this package scope implementing the following exposed contract:
- * A {@link reactor.io.net.ReactorPeer} NetServer/NetClient is a {@link org.reactivestreams.Publisher} of
- * {@link reactor.io.net.ReactorChannel} that are themselves {@link org.reactivestreams.Publisher} of input data.
- * This input data will be the received information from a Server perspective and response information from a Client perspective.
- * A channel also expose useful methods to write, close and generally control the lifecycle of the underlying connection.
+ * @author Stephane Maldini
+ * @since 2.0
  */
-package reactor.io.net;
+public class AfterAction<T> extends Action<T, Void> {
+
+	@Override
+	protected void doNext(T ev) {
+		//IGNORE
+	}
+
+	@Override
+	protected void doError(Throwable ev) {
+		broadcastError(ev);
+	}
+
+	@Override
+	protected void doComplete() {
+		broadcastComplete();
+	}
+
+}

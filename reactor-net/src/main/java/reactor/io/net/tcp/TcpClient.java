@@ -16,20 +16,15 @@
 
 package reactor.io.net.tcp;
 
-import org.reactivestreams.Publisher;
 import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
-import reactor.io.net.Client;
-import reactor.io.net.PeerStream;
+import reactor.io.net.ReactorClient;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 
 /**
@@ -44,30 +39,22 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class TcpClient<IN, OUT>
-		extends PeerStream<IN, OUT, ChannelStream<IN, OUT>>
-		implements Client<IN, OUT, ChannelStream<IN, OUT>> {
+		extends ReactorClient<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   connectAddress;
 	private final ClientSocketOptions options;
 	private final SslOptions          sslOptions;
 
-	protected TcpClient(@Nonnull Environment env,
-	                    @Nonnull Dispatcher dispatcher,
-	                    @Nullable InetSocketAddress connectAddress,
-	                    @Nullable ClientSocketOptions options,
-	                    @Nullable SslOptions sslOptions,
-	                    @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec);
+	protected TcpClient(Environment env,
+	                    Dispatcher dispatcher,
+	                    InetSocketAddress connectAddress,
+	                    ClientSocketOptions options,
+	                    SslOptions sslOptions,
+	                    Codec<Buffer, IN, OUT> codec) {
+		super(env, dispatcher, codec, options.prefetch());
 		this.connectAddress = (null != connectAddress ? connectAddress : new InetSocketAddress("127.0.0.1", 3000));
 		this.options = options;
 		this.sslOptions = sslOptions;
-	}
-
-	@Override
-	public Client<IN, OUT, ChannelStream<IN, OUT>> pipeline(
-			final Function<ChannelStream<IN, OUT>, ? extends Publisher<? extends OUT>> serviceFunction) {
-		doPipeline(serviceFunction);
-		return this;
 	}
 
 	/**

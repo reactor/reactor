@@ -31,6 +31,9 @@ import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.http.HttpChannel;
+import reactor.io.net.http.HttpServer;
+import reactor.io.net.tcp.TcpServer;
+import reactor.io.net.udp.DatagramServer;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -49,14 +52,14 @@ import java.util.List;
  */
 public interface Spec {
 
-	public static final Function NOOP_DECODER = new Function() {
+	Function NOOP_DECODER = new Function() {
 		@Override
 		public Object apply(Object o) {
 			return o;
 		}
 	};
 
-	public static final Codec NOOP_CODEC = new Codec() {
+	Codec NOOP_CODEC = new Codec() {
 		@Override
 		public Function decoder(Consumer next) {
 			return NOOP_DECODER;
@@ -71,10 +74,10 @@ public interface Spec {
 	//
 	//   Client and Server Specifications
 	//
-	abstract static class ServerSpec<IN, OUT,
-			CONN extends Channel<IN, OUT>,
-			S extends ServerSpec<IN, OUT, CONN, S, N>,
-			N extends reactor.io.net.Server<IN, OUT, CONN>>
+	abstract class PeerSpec<IN, OUT,
+			CONN extends ChannelStream<IN, OUT>,
+			S extends PeerSpec<IN, OUT, CONN, S, N>,
+			N extends ReactorPeer<IN, OUT, CONN>>
 			extends DispatcherComponentSpec<S, N> {
 
 		protected ServerSocketOptions options = new ServerSocketOptions();
@@ -321,7 +324,7 @@ public interface Spec {
 	 * @author Stephane Maldini
 	 */
 	class TcpServerSpec<IN, OUT>
-			extends ServerSpec<IN, OUT, ChannelStream<IN, OUT>, TcpServerSpec<IN, OUT>, reactor.io.net.tcp.TcpServer<IN, OUT>> {
+			extends PeerSpec<IN, OUT, ChannelStream<IN, OUT>, TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {
 
 		private final Constructor<? extends reactor.io.net.tcp.TcpServer> serverImplConstructor;
 
@@ -392,7 +395,7 @@ public interface Spec {
 	 * @author Stephane Maldini
 	 */
 	class DatagramServerSpec<IN, OUT>
-			extends ServerSpec<IN, OUT, ChannelStream<IN, OUT>, DatagramServerSpec<IN, OUT>, reactor.io.net.udp.DatagramServer<IN, OUT>> {
+			extends PeerSpec<IN, OUT, ChannelStream<IN, OUT>, DatagramServerSpec<IN, OUT>, DatagramServer<IN, OUT>> {
 		protected final Constructor<? extends reactor.io.net.udp.DatagramServer> serverImplCtor;
 
 		private NetworkInterface multicastInterface;
@@ -459,7 +462,7 @@ public interface Spec {
 	 * @author Stephane Maldini
 	 */
 	class HttpServerSpec<IN, OUT>
-			extends ServerSpec<IN, OUT, HttpChannel<IN, OUT>, HttpServerSpec<IN, OUT>, reactor.io.net.http.HttpServer<IN, OUT>> {
+			extends PeerSpec<IN, OUT, HttpChannel<IN, OUT>, HttpServerSpec<IN, OUT>, HttpServer<IN, OUT>> {
 
 		private final Constructor<? extends reactor.io.net.http.HttpServer> serverImplConstructor;
 
