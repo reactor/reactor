@@ -73,9 +73,11 @@ public class SmokeTests {
 	private final boolean addToWindowData = count < 50_000;
 
 	private int port;
+	private Codec<Buffer, Buffer, Buffer> codec;
 
 	public SmokeTests() {
 		this.port = 0;
+		this.codec = new DummyCodec();
 	}
 /*
 	public SmokeTests(int port) {
@@ -197,6 +199,7 @@ public class SmokeTests {
 	public static void main(String... args) throws Exception {
 		SmokeTests smokeTests = new SmokeTests();
 		smokeTests.port = 8080;
+		smokeTests.codec = new GpdistCodec();
 		smokeTests.loadEnv();
 
 		System.out.println("Starting on " + smokeTests.httpServer.getListenAddress());
@@ -212,7 +215,7 @@ public class SmokeTests {
 					sender.sendNext(count);
 					long end = System.currentTimeMillis();
 					System.out.println("Finishing emitting : " + new Date(end));
-					System.out.println("Duration: " + ((end - start)/1000));
+					System.out.println("Duration: " + ((end - start) / 1000));
 					smokeTests.processor.onComplete();
 					//smokeTests.httpServer.shutdown();
 				} catch (Exception ie) {
@@ -263,7 +266,7 @@ public class SmokeTests {
 //				.process(RingBufferWorkProcessor.create(false));
 
 		httpServer = NetStreams.httpServer(server -> server
-						.codec(new DummyCodec()).listen(port).dispatcher(Environment.sharedDispatcher())
+						.codec(codec).listen(port).dispatcher(Environment.sharedDispatcher())
 		);
 
 
@@ -500,7 +503,7 @@ public class SmokeTests {
 
 	}
 
-	public class GpdistCodec extends Codec<Buffer, Buffer, Buffer> {
+	public static class GpdistCodec extends Codec<Buffer, Buffer, Buffer> {
 
 		final byte[] h1 = Character.toString('D').getBytes(Charset.forName("UTF-8"));
 
