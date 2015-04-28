@@ -64,9 +64,9 @@ public class SmokeTests {
 
 	private final int     count           = 10_000_000;
 	private final int     threads         = 6;
-	private final int     iter            = 10;
+	private final int     iter            = 20;
 	private final int     windowBatch     = 200;
-	private final int     takeCount       = 100;
+	private final int     takeCount       = 1000;
 	private final boolean addToWindowData = count < 50_000;
 
 	private NettyClientSocketOptions nettyOptions;
@@ -218,7 +218,6 @@ public class SmokeTests {
 										System.out.println("YYYYY COMPLETE " + Thread.currentThread());
 									}
 							)
-							.capacity(1L)
 					//.log("writer")
 			);
 		});

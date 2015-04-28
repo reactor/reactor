@@ -570,6 +570,41 @@ public class TcpServerTests {
 		}
 	}
 
+	@Test
+	public void testIssue462() throws InterruptedException {
+
+		final CountDownLatch countDownLatch = new CountDownLatch(1);
+
+		TcpServer<String, String> server =
+				NetStreams.tcpServer(s ->
+								s
+										.codec(new StringCodec())
+										.listen(0)
+				);
+
+		server.start(ch -> {
+			ch.log("channel").consume(trip -> {
+				countDownLatch.countDown();
+			});
+			return Streams.never();
+		}).await();
+
+		TcpClient<String, String> client =
+				NetStreams.tcpClient(s ->
+								s
+										.codec(new StringCodec())
+										.connect("127.0.0.1", server.listenAddress.getPort())
+				);
+
+
+
+		client.start(ch ->
+						ch.writeWith(Streams.just("test"))
+		);
+
+		assertThat("countDownLatch counted down", countDownLatch.await(5, TimeUnit.SECONDS));
+	}
+
 	private class HttpRequestWriter implements Runnable {
 		private final int port;
 
