@@ -770,6 +770,10 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						final long cursor = processor.barrier.getCursor();
 						if (processor.ringBuffer.get(cursor).type == MutableSignal.Type.ERROR) {
 							RingBufferSubscriberUtils.route(processor.ringBuffer.get(cursor), subscriber);
+							Subscription s = processor.upstreamSubscription;
+							if(s != null){
+								s.cancel();
+							}
 							break;
 						}else{
 							processor.barrier.clearAlert();
@@ -833,6 +837,10 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				RingBufferSubscriberUtils.route(event, subscriber);
 				if (event.type == MutableSignal.Type.ERROR) {
 					processor.barrier.alert();
+				}
+				Subscription s = processor.upstreamSubscription;
+				if(s != null){
+					s.cancel();
 				}
 				throw AlertException.INSTANCE;
 			}
