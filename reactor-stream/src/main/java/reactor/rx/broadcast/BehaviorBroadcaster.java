@@ -186,20 +186,24 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	@Override
 	public void onNext(O ev) {
-		synchronized (this) {
-			if (lastSignal.type == Signal.Type.COMPLETE ||
-					lastSignal.type == Signal.Type.ERROR)
-				return;
-			lastSignal.value = ev;
-			lastSignal.error = null;
-			lastSignal.type = Signal.Type.NEXT;
+		if (!dispatcher.inContext()) {
+			dispatcher.dispatch(ev, this, null);
+		} else {
+			synchronized (this) {
+				if (lastSignal.type == Signal.Type.COMPLETE ||
+						lastSignal.type == Signal.Type.ERROR)
+					return;
+				lastSignal.value = ev;
+				lastSignal.error = null;
+				lastSignal.type = Signal.Type.NEXT;
+				try {
+					broadcastNext(ev);
+				} catch (CancelException ce) {
+					//IGNORE since cached
+				}
+			}
 		}
 
-		try {
-			broadcastNext(ev);
-		} catch (CancelException ce) {
-			//IGNORE since cached
-		}
 	}
 
 	@Override

@@ -804,7 +804,8 @@ class PromisesSpec extends Specification {
 
     when:
       "p1 is consumed by p2"
-      Promise p2 = p1.onSuccess({ Integer.parseInt it }).
+      Promise p2 = p1
+          .onSuccess({ Integer.parseInt it }).
           map { sleep(3000); it }
 
     and:
