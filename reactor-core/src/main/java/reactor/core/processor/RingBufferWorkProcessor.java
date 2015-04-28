@@ -766,6 +766,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						if (processor.ringBuffer.get(cursor).type == MutableSignal.Type.ERROR) {
 							RingBufferSubscriberUtils.route(processor.ringBuffer.get(cursor), subscriber);
 							break;
+						}else{
+							processor.barrier.clearAlert();
 						}
 
 						//continue event-loop
