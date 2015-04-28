@@ -69,6 +69,16 @@ public class SmokeTests {
 	private final int     takeCount       = 1000;
 	private final boolean addToWindowData = count < 50_000;
 
+	private final int port;
+
+	public SmokeTests() {
+		this.port = 0;
+	}
+
+	public SmokeTests(int port) {
+		this.port = port;
+	}
+
 	private NettyClientSocketOptions nettyOptions;
 
 	private final NetStreams.HttpClientFactory<String, String> clientFactory =
@@ -182,10 +192,11 @@ public class SmokeTests {
 	}
 
 	public static void main(String... args) throws Exception {
-		SmokeTests smokeTests = new SmokeTests();
+		SmokeTests smokeTests = new SmokeTests(8080);
 		smokeTests.loadEnv();
 
-		System.out.println("Starting on "+smokeTests.httpServer.getListenAddress());
+		System.out.println("Starting on " + smokeTests.httpServer.getListenAddress());
+		System.out.println("Should setup a loop of wget for :"+(smokeTests.count /( smokeTests.windowBatch*smokeTests.takeCount)));
 
 		final int count = 100_000_000;
 		Runnable srunner = new Runnable() {
@@ -193,6 +204,7 @@ public class SmokeTests {
 			public void run() {
 				try {
 					sender.sendNext(count);
+					smokeTests.processor.onComplete();
 				} catch (Exception ie) {
 					ie.printStackTrace();
 				}
@@ -200,6 +212,7 @@ public class SmokeTests {
 		};
 		Thread st = new Thread(srunner, "SenderThread");
 		st.start();
+
 	}
 
 	public List<Integer> findDuplicates(List<Integer> listContainingDuplicates) {
@@ -240,7 +253,7 @@ public class SmokeTests {
 //				.process(RingBufferWorkProcessor.create(false));
 
 		httpServer = NetStreams.httpServer(server -> server
-						.codec(new StringCodec()).listen(0).dispatcher(Environment.sharedDispatcher())
+						.codec(new StringCodec()).listen(port).dispatcher(Environment.sharedDispatcher())
 		);
 
 

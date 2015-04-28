@@ -103,9 +103,10 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 			}
 		}
 
-		if (currentSubscriber != null) {
+		ConcatInnerSubscriber subscriber = currentSubscriber;
+		if (subscriber != null) {
 			// otherwise we are just passing it through to the currentSubscriber
-			currentSubscriber.requestMore(n);
+			subscriber.requestMore(n);
 		}
 	}
 
