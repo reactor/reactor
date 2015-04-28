@@ -386,7 +386,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 						@Override
 						public void operationComplete(ChannelFuture future) throws Exception {
 							if (!future.isSuccess()) {
-								log.error("write error :" + ((Buffer) w).asString(), future.cause());
+								log.error("write error :" + w, future.cause());
 							}
 						}
 					});

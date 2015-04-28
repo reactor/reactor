@@ -62,7 +62,7 @@ public class SmokeTests {
 	private final AtomicInteger integerPostTake    = new AtomicInteger();
 	private final AtomicInteger integerPostConcat  = new AtomicInteger();
 
-	private final int     count           = 10_000_000;
+	private final int     count           = 100_000_000;
 	private final int     threads         = 6;
 	private final int     iter            = 20;
 	private final int     windowBatch     = 200;
@@ -82,6 +82,43 @@ public class SmokeTests {
 	private List<Integer> windowsData = SynchronizedList.decorate(new ArrayList<>());
 
 	private RingBufferWorkProcessor<String> workProcessor;
+
+
+	@Test
+	public void testMultipleConsumersMultipleTimesSize() throws Exception {
+		int fulltotalints = 0;
+
+		nettyOptions =
+				new NettyClientSocketOptions().eventLoopGroup(new NioEventLoopGroup(10));
+
+		for (int t = 0; t < iter; t++) {
+			int size = 0;
+			try {
+				size = getClientDataSize(threads, new Sender(), count);
+
+				fulltotalints += size;
+
+				System.out.println(size + "/" + (integerPostConcat.get() * windowBatch));
+
+				assertThat(size, greaterThanOrEqualTo(count));
+
+			} catch (Throwable ae) {
+				System.out.println("Client received: " + size);
+				Collections.sort(windowsData);
+				System.out.println("Server received: " + windowsData.size() + " - " + (addToWindowData ? windowsData : ""));
+				List<Integer> dups = findDuplicates(windowsData);
+				Collections.sort(dups);
+				System.out.println("Dups: " + dups.size() + " - " + dups);
+				throw ae;
+			} finally {
+				printStats(t);
+			}
+		}
+
+		// check full totals because we know what this should be
+
+		assertThat(fulltotalints, is(count * iter));
+	}
 
 	@Test
 	public void testMultipleConsumersMultipleTimes() throws Exception {
@@ -136,7 +173,33 @@ public class SmokeTests {
 
 	@After
 	public void clean() throws Exception {
+		processor.onComplete();
 		httpServer.shutdown().awaitSuccess();
+	}
+
+	public Sender newSender(){
+		return new Sender();
+	}
+
+	public static void main(String... args) throws Exception {
+		SmokeTests smokeTests = new SmokeTests();
+		smokeTests.loadEnv();
+
+		System.out.println("Starting on "+smokeTests.httpServer.getListenAddress());
+
+		final int count = 100_000_000;
+		Runnable srunner = new Runnable() {
+			final Sender sender = smokeTests.newSender();
+			public void run() {
+				try {
+					sender.sendNext(count);
+				} catch (Exception ie) {
+					ie.printStackTrace();
+				}
+			}
+		};
+		Thread st = new Thread(srunner, "SenderThread");
+		st.start();
 	}
 
 	public List<Integer> findDuplicates(List<Integer> listContainingDuplicates) {
@@ -218,6 +281,7 @@ public class SmokeTests {
 										System.out.println("YYYYY COMPLETE " + Thread.currentThread());
 									}
 							)
+							.capacity(1L)
 					//.log("writer")
 			);
 		});
@@ -296,8 +360,69 @@ public class SmokeTests {
 		}
 		latch.countDown();
 
-		thread.await(120, TimeUnit.SECONDS);
+		thread.await(500, TimeUnit.SECONDS);
 		return datas;
+	}
+
+	@SuppressWarnings("unchecked")
+	private int getClientDataSize(int threadCount, final Sender sender, int count) throws Exception {
+		final CountDownLatch latch = new CountDownLatch(1);
+
+		windowsData.clear();
+		Thread.sleep(1500);
+		Runnable srunner = new Runnable() {
+			public void run() {
+				try {
+					sender.sendNext(count);
+				} catch (Exception ie) {
+					ie.printStackTrace();
+				}
+			}
+		};
+		Thread st = new Thread(srunner, "SenderThread");
+		st.start();
+		CountDownLatch thread = new CountDownLatch(threadCount);
+		AtomicInteger counter = new AtomicInteger();
+		for (int i = 0; i < threadCount; ++i) {
+			Runnable runner = new Runnable() {
+				public void run() {
+					try {
+						boolean empty = false;
+						while (true) {
+							List<String> res = getClientDataPromise();
+							if (res == null) {
+								if (empty) break;
+								empty = true;
+								continue;
+							}
+
+							List<Integer> collected = parseCollection(res);
+							Collections.sort(collected);
+							int size = collected.size();
+
+							//previous empty
+							if (size == 0 && empty) break;
+
+							counter.addAndGet(size);
+							empty = size == 0;
+							System.out.println("Client received " + size + " elements, current total: " + counter + ", batches: " +
+									integerPostConcat+", between [ "+(size > 0 ? collected.get(0) +" -> "+collected.get(size - 1) : "")+ " ]");
+						}
+						System.out.println("Client finished");
+					} catch (Exception ie) {
+						ie.printStackTrace();
+					} finally {
+						thread.countDown();
+					}
+				}
+			};
+			Thread t = new Thread(runner, "SmokeThread" + i);
+			t.start();
+		}
+		latch.countDown();
+
+		thread.await(500, TimeUnit.SECONDS);
+		return counter.get();
 	}
 
 	private List<Integer> parseCollection(List<String> res) {

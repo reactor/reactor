@@ -101,8 +101,10 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 				//404
 				if(handlers == null){
-					request.delegate().writeAndFlush(
-							new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND));
+					if(request.checkHeader()) {
+						request.delegate().writeAndFlush(
+								new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND));
+					}
 
 					return Streams.empty();
 				}
