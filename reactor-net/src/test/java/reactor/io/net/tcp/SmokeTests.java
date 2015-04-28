@@ -206,7 +206,12 @@ public class SmokeTests {
 			final Sender sender = smokeTests.newSender();
 			public void run() {
 				try {
+					long start = System.currentTimeMillis();
+					System.out.println("Starting emitting : "+new Date(start));
 					sender.sendNext(count);
+					long end = System.currentTimeMillis();
+					System.out.println("Finishing emitting : " + new Date(end));
+					System.out.println("Duration: " + ((end - start)/1000));
 					smokeTests.processor.onComplete();
 					smokeTests.httpServer.shutdown();
 				} catch (Exception ie) {
@@ -270,34 +275,34 @@ public class SmokeTests {
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
 			return request.writeWith(bufferStream
-							.observe(d ->
-											integer.getAndIncrement()
-							)
+//							.observe(d ->
+//											integer.getAndIncrement()
+//							)
 							.take(takeCount)
-							.observe(d ->
-											integerPostTake.getAndIncrement()
-							)
+//							.observe(d ->
+//											integerPostTake.getAndIncrement()
+//							)
 							.timeout(2, TimeUnit.SECONDS, Streams.<Buffer>empty())
-							.observe(d ->
-											integerPostTimeout.getAndIncrement()
-							)
+//							.observe(d ->
+//											integerPostTimeout.getAndIncrement()
+//							)
 									//.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
 
 							.concatWith(Streams.just(Buffer.wrap(new byte[0])))//END
-							.observe(d -> {
-										if (addToWindowData) {
-											windowsData.addAll(parseCollection(d.asString()));
-										}
-									}
-							)
-							.observe(d ->
-											integerPostConcat.getAndIncrement()
-							)
-							.observeComplete(no -> {
-										integerPostConcat.decrementAndGet();
-										System.out.println("YYYYY COMPLETE " + Thread.currentThread());
-									}
-							)
+//							.observe(d -> {
+//										if (addToWindowData) {
+//											windowsData.addAll(parseCollection(d.asString()));
+//										}
+//									}
+//							)
+//							.observe(d ->
+//											integerPostConcat.getAndIncrement()
+//							)
+//							.observeComplete(no -> {
+//										integerPostConcat.decrementAndGet();
+//										System.out.println("YYYYY COMPLETE " + Thread.currentThread());
+//									}
+//							)
 							.capacity(1L)
 					//.log("writer")
 			);
@@ -503,8 +508,10 @@ public class SmokeTests {
 //			Buffer b = t.flip();
 //			//System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
 //			return b;
-			byte[] h2 = ByteBuffer.allocate(4).putInt(t.flip().remaining()).array();
-			return new Buffer().append(h1).append(h2).append(t).flip();
+			int size = t.flip().remaining();
+			byte[] h2 = ByteBuffer.allocate(4).putInt(size).array();
+			ByteBuffer bb = ByteBuffer.allocate(size);
+			return new Buffer().append(h1).append(h2).append(t.copy()).flip();
 		}
 
 		@Override
