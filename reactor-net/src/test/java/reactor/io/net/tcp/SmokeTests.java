@@ -72,15 +72,15 @@ public class SmokeTests {
 	private final int     takeCount       = 1000;
 	private final boolean addToWindowData = count < 50_000;
 
-	private final int port;
+	private int port;
 
 	public SmokeTests() {
 		this.port = 0;
 	}
-
+/*
 	public SmokeTests(int port) {
 		this.port = port;
-	}
+	}*/
 
 	private NettyClientSocketOptions nettyOptions;
 
@@ -195,7 +195,8 @@ public class SmokeTests {
 	}
 
 	public static void main(String... args) throws Exception {
-		SmokeTests smokeTests = new SmokeTests(8080);
+		SmokeTests smokeTests = new SmokeTests();
+		smokeTests.port = 8080;
 		smokeTests.loadEnv();
 
 		System.out.println("Starting on " + smokeTests.httpServer.getListenAddress());
@@ -213,7 +214,7 @@ public class SmokeTests {
 					System.out.println("Finishing emitting : " + new Date(end));
 					System.out.println("Duration: " + ((end - start)/1000));
 					smokeTests.processor.onComplete();
-					smokeTests.httpServer.shutdown();
+					//smokeTests.httpServer.shutdown();
 				} catch (Exception ie) {
 					ie.printStackTrace();
 				}
@@ -288,7 +289,8 @@ public class SmokeTests {
 //							)
 									//.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
 
-							.concatWith(Streams.just(Buffer.wrap(new byte[0])))//END
+							.concatWith(Streams.just(Buffer.wrap("END")))//END
+							//.concatWith(Streams.just(Buffer.wrap(new byte[0])))//END
 //							.observe(d -> {
 //										if (addToWindowData) {
 //											windowsData.addAll(parseCollection(d.asString()));
@@ -498,7 +500,7 @@ public class SmokeTests {
 
 	}
 
-	public class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
+	public class GpdistCodec extends Codec<Buffer, Buffer, Buffer> {
 
 		final byte[] h1 = Character.toString('D').getBytes(Charset.forName("UTF-8"));
 
@@ -510,8 +512,24 @@ public class SmokeTests {
 //			return b;
 			int size = t.flip().remaining();
 			byte[] h2 = ByteBuffer.allocate(4).putInt(size).array();
-			ByteBuffer bb = ByteBuffer.allocate(size);
-			return new Buffer().append(h1).append(h2).append(t.copy()).flip();
+			return new Buffer().append(h1).append(h2).append(t).flip();
+		}
+
+		@Override
+		public Function<Buffer, Buffer> decoder(Consumer<Buffer> next) {
+			return null;
+		}
+
+	}
+
+	public class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
+
+		@SuppressWarnings("resource")
+		@Override
+		public Buffer apply(Buffer t) {
+			Buffer b = t.flip();
+			//System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
+			return b;
 		}
 
 		@Override
