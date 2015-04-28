@@ -146,7 +146,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		ChannelFuture bindFuture = bootstrap.bind();
 
 
-		final Promise<Void> promise = Promises.ready(getDefaultEnvironment(), getDefaultDispatcher());
+		final Promise<Void> promise = Promises.prepare();
 		bindFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {

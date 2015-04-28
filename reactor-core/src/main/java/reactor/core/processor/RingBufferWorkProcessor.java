@@ -493,7 +493,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 
 	private final Sequence        workSequence       = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
-	private final Sequence        pendingRequest     = new Sequence(0);
 	private final Queue<Sequence> cancelledSequences = new ConcurrentLinkedQueue<>();
 
 	private final SequenceBarrier              barrier;
@@ -583,7 +582,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				", ringBuffer=" + ringBuffer +
 				", executor=" + executor +
 				", workSequence=" + workSequence +
-				", pendingRequest=" + pendingRequest +
 				", cancelledSequence=" + cancelledSequences +
 				'}';
 	}
@@ -604,12 +602,12 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				return;
 			}
 
-			if (!eventProcessor.isRunning() || pendingRequest.get() == Long.MAX_VALUE) {
+			if (!eventProcessor.isRunning() || eventProcessor.pendingRequest.get() == Long.MAX_VALUE) {
 				return;
 			}
 
-			if (pendingRequest.addAndGet(n) < 0) {
-				pendingRequest.set(Long.MAX_VALUE);
+			if (eventProcessor.pendingRequest.addAndGet(n) < 0) {
+				eventProcessor.pendingRequest.set(Long.MAX_VALUE);
 			}
 
 			final Subscription parent = upstreamSubscription;
@@ -649,8 +647,9 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	 */
 	private final static class WorkSignalProcessor<T> implements EventProcessor {
 
-		private final AtomicBoolean running  = new AtomicBoolean(false);
-		private final Sequence      sequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+		private final AtomicBoolean running        = new AtomicBoolean(false);
+		private final Sequence      sequence       = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+		private final Sequence      pendingRequest = new Sequence(0);
 
 		private final RingBufferWorkProcessor<T> processor;
 		private final Subscriber<? super T>      subscriber;
@@ -767,8 +766,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						if (processor.ringBuffer.get(cursor).type == MutableSignal.Type.ERROR) {
 							RingBufferSubscriberUtils.route(processor.ringBuffer.get(cursor), subscriber);
 							break;
-						} else {
-							processor.barrier.clearAlert();
 						}
 
 						//continue event-loop
@@ -804,22 +801,24 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		private void readNextEvent(MutableSignal<T> event) throws AlertException {
 			//if event is Next Signal we need to handle backpressure (pendingRequests)
 			if (event.type == MutableSignal.Type.NEXT) {
+				if (event.value == null){
+					return;
+				}
+
 				//if bounded and out of capacity
-				if (processor.pendingRequest.get() != Long.MAX_VALUE && processor.pendingRequest.addAndGet(-1l) < 0l) {
+				if (pendingRequest.get() != Long.MAX_VALUE && pendingRequest.addAndGet(-1l) < 0l) {
 					//re-add the retained capacity
-					processor.pendingRequest.incrementAndGet();
+					pendingRequest.incrementAndGet();
 
 					//if current sequence does not yet match the published one
 					//if (nextSequence < cachedAvailableSequence) {
 					//pause until request
-					while (processor.pendingRequest.addAndGet(-1l) < 0l) {
-						processor.pendingRequest.incrementAndGet();
+					while (pendingRequest.addAndGet(-1l) < 0l) {
+						pendingRequest.incrementAndGet();
 						if (!running.get()) throw CancelException.INSTANCE;
-						processor.barrier.checkAlert();
 						//Todo Use WaitStrategy?
 						LockSupport.parkNanos(1l);
 					}
-
 				}
 			} else if (event.type != null) {
 				//Complete or Error are terminal events, we shutdown the processor and process the signal

@@ -63,14 +63,13 @@ public class SmokeTests {
 	private final AtomicInteger integerPostConcat  = new AtomicInteger();
 
 	private final int     count           = 1_000_000;
-	private final int     threads         = 6;
+	private final int     threads         = 3;
 	private final int     iter            = 10;
 	private final int     windowBatch     = 200;
 	private final int     takeCount       = 100;
 	private final boolean addToWindowData = count < 50_000;
 
-	private final NettyClientSocketOptions nettyOptions =
-			new NettyClientSocketOptions().eventLoopGroup(new NioEventLoopGroup(6));
+	private NettyClientSocketOptions nettyOptions;
 
 	private final NetStreams.HttpClientFactory<String, String> clientFactory =
 			spec -> spec
@@ -87,6 +86,9 @@ public class SmokeTests {
 	@Test
 	public void testMultipleConsumersMultipleTimes() throws Exception {
 		int fulltotalints = 0;
+
+		nettyOptions =
+				new NettyClientSocketOptions().eventLoopGroup(new NioEventLoopGroup(10));
 
 		for (int t = 0; t < iter; t++) {
 			List<Integer> clientDatas = new ArrayList<>();
@@ -106,10 +108,13 @@ public class SmokeTests {
 				assertThat(clientDatas.size(), greaterThanOrEqualTo(count));
 
 			} catch (Throwable ae) {
-				System.out.println(clientDatas.size() + " - " + (addToWindowData ? clientDatas : ""));
+				System.out.println("Client received: " + clientDatas.size() + " - " + (addToWindowData ? clientDatas : ""));
+				List<Integer> dups = findDuplicates(clientDatas);
+				Collections.sort(dups);
+				System.out.println("Dups: " + dups.size() + " - " + dups);
 				Collections.sort(windowsData);
-				System.out.println(windowsData.size() + " - " + (addToWindowData ? windowsData : ""));
-				List<Integer> dups = findDuplicates(windowsData);
+				System.out.println("Server received: " + windowsData.size() + " - " + (addToWindowData ? windowsData : ""));
+				dups = findDuplicates(windowsData);
 				Collections.sort(dups);
 				System.out.println("Dups: " + dups.size() + " - " + dups);
 				throw ae;
@@ -213,7 +218,7 @@ public class SmokeTests {
 										System.out.println("YYYYY COMPLETE " + Thread.currentThread());
 									}
 							)
-					//.capacity(1L)
+							.capacity(1L)
 					//.log("writer")
 			);
 		});
@@ -267,6 +272,7 @@ public class SmokeTests {
 							}
 
 							List<Integer> collected = parseCollection(res);
+							Collections.sort(collected);
 							int size = collected.size();
 
 							//previous empty
@@ -276,7 +282,7 @@ public class SmokeTests {
 							counter.addAndGet(size);
 							empty = size == 0;
 							System.out.println("Client received " + size + " elements, current total: " + counter + ", batches: " +
-									integerPostConcat);
+									integerPostConcat+", between [ "+(size > 0 ? collected.get(0) +" -> "+collected.get(size - 1) : "")+ " ]");
 						}
 						System.out.println("Client finished");
 					} catch (Exception ie) {
@@ -342,7 +348,6 @@ public class SmokeTests {
 				"post take batches: " + integerPostTake + "\n" +
 				"post timeout batches: " + integerPostTimeout + "\n" +
 				"post concat batches: " + integerPostConcat + "\n" +
-				"workProcessor state: " + workProcessor + "\n" +
 				"-----------------------------------");
 
 	}

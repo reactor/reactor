@@ -65,16 +65,21 @@ public final class TimeoutAction<T> extends FallbackAction<T> {
 
 	@Override
 	public void requestMore(long req) {
-		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+		synchronized (this) {
+			if (timeoutRegistration != null) timeoutRegistration.cancel();
+			timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+		}
 		super.requestMore(req);
 	}
 
 
 	@Override
 	protected void doNormalNext(T ev) {
-		if(timeoutRegistration != null) timeoutRegistration.cancel();
+		synchronized (this) {
+			if (timeoutRegistration != null) timeoutRegistration.cancel();
+			timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
+		}
 		broadcastNext(ev);
-		timeoutRegistration = timer.submit(timeoutTask, timeout, TimeUnit.MILLISECONDS);
 	}
 
 	@Override

@@ -78,6 +78,7 @@ public class ClientServerHttpTests {
 		List<String> data2 = getClientData();
 
 		// we miss batches in between client sessions so this fails
+		System.out.println(data2);
 		assertThat(data2.size(), is(3));
 		assertThat(split(data2.get(0)), contains("10", "11", "12", "13", "14"));
 		assertThat(split(data2.get(1)), contains("15", "16", "17", "18", "19"));
@@ -252,8 +253,8 @@ public class ClientServerHttpTests {
 			request.responseHeaders().removeTransferEncodingChunked();
 			return request.writeWith(
 					Streams.wrap(processor)
-							.timeout(1, TimeUnit.SECONDS, Streams.empty())
 							.log("server")
+							.timeout(2, TimeUnit.SECONDS, Streams.empty())
 							.concatWith(Streams.just(new ArrayList<String>()))
 							.capacity(1L)
 

@@ -19,6 +19,7 @@ import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.processor.CancelException;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
 import reactor.rx.action.Action;
@@ -36,14 +37,14 @@ import reactor.rx.subscription.ReactiveSubscription;
 public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	/**
-	 * Build a {@literal Broadcaster}, rfirst broadcasting the most recent signal then starting with the passed value, 
+	 * Build a {@literal Broadcaster}, rfirst broadcasting the most recent signal then starting with the passed value,
 	 * then ready to broadcast values with {@link reactor.rx.action
 	 * .Broadcaster#onNext(Object)},
 	 * {@link reactor.rx.broadcast.Broadcaster#onError(Throwable)}, {@link reactor.rx.broadcast.Broadcaster#onComplete
 	 * ()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 * <p>
-	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to 
+	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to
 	 * broadcast at a time.
 	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
 	 *
@@ -55,14 +56,14 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value, 
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value,
 	 * then ready to broadcast values with {@link
 	 * reactor.rx.broadcast.Broadcaster#onNext(Object)},
 	 * {@link reactor.rx.broadcast.Broadcaster#onError(Throwable)}, {@link reactor.rx.broadcast.Broadcaster#onComplete
 	 * ()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 * <p>
-	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to 
+	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to
 	 * broadcast at a time.
 	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
 	 *
@@ -75,7 +76,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value, 
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value,
 	 * then  ready to broadcast values with {@link
 	 * reactor.rx.action.Action#onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
@@ -90,7 +91,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value, 
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value,
 	 * then ready to broadcast values with {@link Broadcaster#onNext
 	 * (Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
@@ -109,13 +110,14 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then ready to broadcast values with {@link
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then ready to broadcast values with
+	 * {@link
 	 * reactor.rx.broadcast.Broadcaster#onNext(Object)},
 	 * {@link reactor.rx.broadcast.Broadcaster#onError(Throwable)}, {@link reactor.rx.broadcast.Broadcaster#onComplete
 	 * ()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 * <p>
-	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to 
+	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to
 	 * broadcast at a time.
 	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
 	 *
@@ -128,7 +130,8 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then ready to broadcast values with {@link
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then ready to broadcast values with
+	 * {@link
 	 * reactor.rx.action.Action#onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
@@ -142,7 +145,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then 
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then
 	 * ready to broadcast values with {@link Broadcaster#onNext
 	 * (Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
@@ -182,22 +185,27 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	}
 
 	@Override
-	protected void doNext(O ev) {
-		synchronized (this){
-			if(lastSignal.type == Signal.Type.COMPLETE ||
+	public void onNext(O ev) {
+		synchronized (this) {
+			if (lastSignal.type == Signal.Type.COMPLETE ||
 					lastSignal.type == Signal.Type.ERROR)
 				return;
 			lastSignal.value = ev;
 			lastSignal.error = null;
 			lastSignal.type = Signal.Type.NEXT;
 		}
-		super.doNext(ev);
+
+		try {
+			broadcastNext(ev);
+		} catch (CancelException ce) {
+			//IGNORE since cached
+		}
 	}
 
 	@Override
 	protected void doComplete() {
-		synchronized (this){
-			if(lastSignal.type == Signal.Type.COMPLETE ||
+		synchronized (this) {
+			if (lastSignal.type == Signal.Type.COMPLETE ||
 					lastSignal.type == Signal.Type.ERROR)
 				return;
 			lastSignal.error = null;
@@ -208,8 +216,8 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		synchronized (this){
-			if(lastSignal.type == Signal.Type.COMPLETE ||
+		synchronized (this) {
+			if (lastSignal.type == Signal.Type.COMPLETE ||
 					lastSignal.type == Signal.Type.ERROR)
 				return;
 			lastSignal.value = null;
@@ -239,7 +247,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 					@Override
 					public void request(long n) {
 						//Promise behavior, emit last value before completing
-						if(n > 0 && capacity == 1l && withDefault.value != null){
+						if (n > 0 && capacity == 1l && withDefault.value != null) {
 							capacity = 0l;
 							subscriber.onNext(withDefault.value);
 						}
@@ -272,13 +280,13 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 						@Override
 						public void request(long n) {
-							if(!started && n > 0){
+							if (!started && n > 0) {
 								started = true;
 								subscriber.onNext(withDefault.value);
-								if(n - 1 > 0){
-									super.request(n-1);
+								if (n - 1 > 0) {
+									super.request(n - 1);
 								}
-							}else{
+							} else {
 								super.request(n);
 							}
 						}
