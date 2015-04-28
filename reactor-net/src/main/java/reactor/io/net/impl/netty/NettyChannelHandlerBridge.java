@@ -323,6 +323,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 				if (log.isDebugEnabled()) {
 					log.debug("Cancel connection");
 				}
+				s.cancel();
 				cb.accept(null);
 			}
 		});
@@ -360,11 +361,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 		@Override
 		public void accept(Void aVoid) {
-			Subscription s = subscription;
 			subscription = null;
-			if(s != null){
-				s.cancel();
-			}
 		}
 
 		@Override
@@ -489,11 +486,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 		@Override
 		public void accept(Void aVoid) {
-			Subscription s = subscription;
 			subscription = null;
-			if(s != null){
-				s.cancel();
-			}
 		}
 	}
 }

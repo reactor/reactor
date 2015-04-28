@@ -33,11 +33,14 @@ import reactor.io.codec.Codec;
 import reactor.io.codec.StringCodec;
 import reactor.io.net.NetStreams;
 import reactor.io.net.http.HttpClient;
+import reactor.io.net.http.HttpServer;
 import reactor.io.net.impl.netty.NettyClientSocketOptions;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -52,8 +55,8 @@ import static org.junit.Assert.assertThat;
  */
 @Ignore
 public class SmokeTests {
-	private Processor<String, String>                      processor;
-	private reactor.io.net.http.HttpServer<String, String> httpServer;
+	private Processor<Buffer, Buffer>  processor;
+	private HttpServer<Buffer, Buffer> httpServer;
 
 	private final AtomicInteger postReduce         = new AtomicInteger();
 	private final AtomicInteger windows            = new AtomicInteger();
@@ -91,7 +94,7 @@ public class SmokeTests {
 	@SuppressWarnings("unchecked")
 	private List<Integer> windowsData = SynchronizedList.decorate(new ArrayList<>());
 
-	private RingBufferWorkProcessor<String> workProcessor;
+	private RingBufferWorkProcessor<Buffer> workProcessor;
 
 
 	@Test
@@ -205,6 +208,7 @@ public class SmokeTests {
 				try {
 					sender.sendNext(count);
 					smokeTests.processor.onComplete();
+					smokeTests.httpServer.shutdown();
 				} catch (Exception ie) {
 					ie.printStackTrace();
 				}
@@ -230,7 +234,7 @@ public class SmokeTests {
 	private void setupFakeProtocolListener() throws Exception {
 		processor = RingBufferProcessor.create(false);
 		workProcessor = RingBufferWorkProcessor.create(false);
-		Stream<String> bufferStream = Streams
+		Stream<Buffer> bufferStream = Streams
 				.wrap(processor)
 						//.log("test")
 				.window(windowBatch, 2, TimeUnit.SECONDS)
@@ -238,7 +242,7 @@ public class SmokeTests {
 						.observe(d ->
 										windows.getAndIncrement()
 						)
-						.reduce("", String::concat)
+						.reduce(new Buffer(), Buffer::append)
 						.observe(d ->
 										postReduce.getAndIncrement()
 						))
@@ -253,7 +257,7 @@ public class SmokeTests {
 //				.process(RingBufferWorkProcessor.create(false));
 
 		httpServer = NetStreams.httpServer(server -> server
-						.codec(new StringCodec()).listen(port).dispatcher(Environment.sharedDispatcher())
+						.codec(new DummyCodec()).listen(port).dispatcher(Environment.sharedDispatcher())
 		);
 
 
@@ -273,16 +277,16 @@ public class SmokeTests {
 							.observe(d ->
 											integerPostTake.getAndIncrement()
 							)
-							.timeout(2, TimeUnit.SECONDS, Streams.<String>empty())
+							.timeout(2, TimeUnit.SECONDS, Streams.<Buffer>empty())
 							.observe(d ->
 											integerPostTimeout.getAndIncrement()
 							)
 									//.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
 
-							.concatWith(Streams.just("END"))
+							.concatWith(Streams.just(Buffer.wrap(new byte[0])))//END
 							.observe(d -> {
 										if (addToWindowData) {
-											windowsData.addAll(parseCollection(d));
+											windowsData.addAll(parseCollection(d.asString()));
 										}
 									}
 							)
@@ -470,7 +474,7 @@ public class SmokeTests {
 			for (int i = 0; i < count; i++) {
 //				System.out.println("XXXX " + x);
 				String data = x++ + "\n";
-				processor.onNext(data);
+				processor.onNext(Buffer.wrap(data));
 			}
 		}
 	}
@@ -491,18 +495,16 @@ public class SmokeTests {
 
 	public class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
 
+		final byte[] h1 = Character.toString('D').getBytes(Charset.forName("UTF-8"));
+
 		@SuppressWarnings("resource")
 		@Override
 		public Buffer apply(Buffer t) {
-			Buffer b = t.flip();
-			if (Thread.currentThread().getName().contains("reactor-tcp")) {
-				for (StackTraceElement se : Thread.currentThread().getStackTrace()) {
-					System.out.println(Thread.currentThread() + "- " + se.getLineNumber() + ": " + se);
-				}
-				System.out.println(Thread.currentThread() + " END\n");
-			}
-			//System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
-			return b;
+//			Buffer b = t.flip();
+//			//System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
+//			return b;
+			byte[] h2 = ByteBuffer.allocate(4).putInt(t.flip().remaining()).array();
+			return new Buffer().append(h1).append(h2).append(t).flip();
 		}
 
 		@Override

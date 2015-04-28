@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.core.processor.CancelException;
 import reactor.core.reactivestreams.SerializedSubscriber;
 import reactor.core.support.NonBlocking;
 import reactor.rx.action.Action;
@@ -184,20 +183,25 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 
 		@Override
 		public void onNext(T t) {
-			if(s == null) throw CancelException.INSTANCE;
 			ConcatAction.this.decrementRequested();
 			broadcastNext(t);
 		}
 
 		@Override
 		public void onError(Throwable e) {
-			s = null;
+			Subscription s = this.s;
+			if(s != null){
+				s.cancel();
+			}
 			ConcatAction.this.onError(e);
 		}
 
 		@Override
 		public void onComplete() {
-			s = null;
+			Subscription s = this.s;
+			if(s != null) {
+				s.cancel();
+			}
 			ConcatAction.this.completeInner();
 		}
 

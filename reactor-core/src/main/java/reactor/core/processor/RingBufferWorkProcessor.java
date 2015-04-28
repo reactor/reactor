@@ -565,6 +565,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	@Override
 	public void onError(Throwable t) {
 		RingBufferSubscriberUtils.onError(t, ringBuffer);
+		barrier.alert();
 	}
 
 	@Override
@@ -573,6 +574,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		if (executor.getClass() == SingleUseExecutor.class) {
 			executor.shutdown();
 		}
+		barrier.alert();
 	}
 
 	@Override
