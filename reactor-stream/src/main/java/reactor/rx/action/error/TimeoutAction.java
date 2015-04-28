@@ -48,7 +48,7 @@ public final class TimeoutAction<T> extends FallbackAction<T> {
 		}
 	};
 
-	private volatile Pausable timeoutRegistration;
+	private Pausable timeoutRegistration;
 
 	public TimeoutAction(final Dispatcher dispatcher, Publisher<? extends T> fallback, Timer timer, long timeout) {
 		super(fallback);

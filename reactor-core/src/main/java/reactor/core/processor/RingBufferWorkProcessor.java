@@ -620,9 +620,10 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		public void cancel() {
 			eventProcessor.halt();
 			long current = workSequence.get();
-			if (decrementSubscribers() && current != -1L) {
+			if (decrementSubscribers() == 0 && current != -1L) {
 				long rewind = ringBuffer.getMinimumGatingSequence();
 				workSequence.set(rewind);
+				barrier.alert();
 			}
 		}
 	}
@@ -683,7 +684,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		@Override
 		public void halt() {
 			running.set(false);
-			processor.barrier.alert();
+			//processor.barrier.alert();
 		}
 
 		@Override

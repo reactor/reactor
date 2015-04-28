@@ -24,6 +24,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.LastHttpContent;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -66,8 +67,11 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 			final Publisher<Void> closePublisher = handler.apply(request);
 			final Subscriber<Void> closeSub = new DefaultSubscriber<Void>() {
 
+				Subscription subscription;
+
 				@Override
 				public void onSubscribe(Subscription s) {
+					subscription = s;
 					s.request(Long.MAX_VALUE);
 				}
 
@@ -81,12 +85,13 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 				@Override
 				public void onComplete() {
+					subscription.cancel();
 					if (channelSubscription == null && ctx.channel().isOpen()) {
 						if(log.isDebugEnabled()){
 							log.debug("Close Http Response ");
 						}
-						ctx.channel().flush();
-						ctx.channel().close();
+						ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(ChannelFutureListener.CLOSE);
+						//ctx.channel().close();
 						/*
 						ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(new ChannelFutureListener() {
 							@Override
@@ -119,12 +124,9 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		}
 		if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
-
-			if (DefaultLastHttpContent.class.equals(msg.getClass())) {
-				if (channelSubscription != null) {
-					channelSubscription.onComplete();
-					channelSubscription = null;
-				}
+			if (channelSubscription != null && DefaultLastHttpContent.class.equals(msg.getClass())) {
+				channelSubscription.onComplete();
+				channelSubscription = null;
 			}
 		}
 	}

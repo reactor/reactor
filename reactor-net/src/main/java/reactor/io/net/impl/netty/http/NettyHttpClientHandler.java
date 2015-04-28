@@ -63,7 +63,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 				.subscribe(new DefaultSubscriber<Void>() {
 					@Override
 					public void onSubscribe(final Subscription s) {
-						if(request.checkHeader()) {
+						if (request.checkHeader()) {
 							ctx.writeAndFlush(request.getNettyRequest()).addListener(new ChannelFutureListener() {
 								@Override
 								public void operationComplete(ChannelFuture future) throws Exception {
@@ -78,7 +78,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 									}
 								}
 							});
-						}else{
+						} else {
 							s.request(Long.MAX_VALUE);
 						}
 
@@ -87,16 +87,16 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 					@Override
 					public void onError(Throwable t) {
 						log.error("Error processing connection. Closing the channel.", t);
-						if(ctx.channel().isOpen()) {
+						if (ctx.channel().isOpen()) {
 							ctx.channel().close();
 						}
 					}
 
 					@Override
 					public void onComplete() {
-						if(channelSubscription == null) {
+						if (channelSubscription == null) {
 							ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(ChannelFutureListener.CLOSE);
-						}else{
+						} else {
 							ctx.flush();
 						}
 					}
@@ -110,10 +110,16 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 			if (request != null) {
 				request.setNettyResponse((HttpResponse) msg);
 			}
+			if(FullHttpResponse.class.isAssignableFrom(messageClass)){
+				ctx.channel().close();
+			}
 		} else if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
+			if (DefaultLastHttpContent.class.equals(msg.getClass())) {
+				ctx.channel().close();
+			}
 		} else {
-			super.channelRead(ctx, msg );
+			super.channelRead(ctx, msg);
 		}
 	}
 
@@ -130,7 +136,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	@Override
 	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last, final ChannelPromise promise) {
 		ByteBuffer byteBuffer = body.flip().byteBuffer();
-		if(request.checkHeader()) {
+		if (request.checkHeader()) {
 			HttpRequest req = new DefaultFullHttpRequest(
 					request.getNettyRequest().getProtocolVersion(),
 					request.getNettyRequest().getMethod(),
@@ -155,8 +161,9 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 					}
 				}
 			});
-		}else{
-			ctx.write(new DefaultHttpContent(byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled.EMPTY_BUFFER));
+		} else {
+			ctx.write(new DefaultHttpContent(byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled
+					.EMPTY_BUFFER));
 		}
 		body.reset();
 	}

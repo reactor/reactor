@@ -24,7 +24,6 @@ import reactor.core.reactivestreams.SerializedSubscriber;
 import reactor.core.support.NonBlocking;
 import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
-import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -184,6 +183,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 
 		@Override
 		public void onNext(T t) {
+			if(s == null) throw CancelException.INSTANCE;
 			ConcatAction.this.decrementRequested();
 			broadcastNext(t);
 		}

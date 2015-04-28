@@ -66,16 +66,17 @@ public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E
 		return SUBSCRIBER_COUNT.getAndIncrement(this) == 0;
 	}
 
-	protected boolean decrementSubscribers() {
+	protected int decrementSubscribers() {
 		Subscription subscription = upstreamSubscription;
-		if (SUBSCRIBER_COUNT.decrementAndGet(this) == 0) {
+		int subs = SUBSCRIBER_COUNT.decrementAndGet(this);
+		if (subs == 0) {
 			if (subscription != null && autoCancel) {
 				upstreamSubscription = null;
 				subscription.cancel();
 			}
-			return true;
+			return subs;
 		}
-		return false;
+		return subs;
 	}
 
 	public abstract long getAvailableCapacity();
