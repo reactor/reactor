@@ -258,7 +258,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 	protected ChannelFuture doOnWrite(Object data, ChannelHandlerContext ctx) {
 		if (data.getClass().equals(Buffer.class)) {
-			return ctx.channel().write(Unpooled.wrappedBuffer(((Buffer) data).byteBuffer()));
+			return ctx.channel().write(ctx.channel().alloc().buffer().writeBytes(((Buffer) data).byteBuffer()));
 		} else if (Unpooled.EMPTY_BUFFER != data) {
 			return ctx.channel().write(data);
 		}

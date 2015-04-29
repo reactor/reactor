@@ -17,7 +17,6 @@
 package reactor.io.net.impl.netty.http;
 
 import io.netty.buffer.ByteBufHolder;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -134,7 +133,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	@Override
 	protected ChannelFuture doOnWrite(final Object data, final ChannelHandlerContext ctx) {
 		if (data.getClass().equals(Buffer.class)) {
-			return ctx.write(new DefaultHttpContent(Unpooled.wrappedBuffer(((Buffer) data).byteBuffer())));
+			return ctx.write(new DefaultHttpContent(ctx.channel().alloc().buffer().writeBytes(((Buffer) data).byteBuffer())));
 		} else {
 			return ctx.write(data);
 		}
