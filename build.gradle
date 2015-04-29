@@ -51,7 +51,7 @@ ext {
       "http://docs.oracle.com/javaee/6/api/",
       "http://fasterxml.github.io/jackson-databind/javadoc/2.5/",
       "http://www.goldmansachs.com/gs-collections/javadoc/5.1.0/",
-      "http://www.reactive-streams.org/reactive-streams-tck-1.0.0.final-javadoc/"
+      "http://www.reactive-streams.org/reactive-streams-tck-1.0.0-javadoc/"
   ] as String[]
 }
 
@@ -262,12 +262,12 @@ project('reactor-core') {
     compile(files(disruptorRepackJar))
 
     // Reactive Streams
-    compile "org.reactivestreams:reactive-streams:1.0.0.final"
+    compile "org.reactivestreams:reactive-streams:1.0.0"
 
     // Logging
     compile "org.slf4j:slf4j-api:$slf4jVersion"
 
-    testCompile "org.reactivestreams:reactive-streams-tck:1.0.0.final"
+    testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
 
     // High-speed Messaging
     optional "net.openhft:chronicle:$openHftChronicleVersion",
@@ -320,7 +320,7 @@ project('reactor-stream') {
         "net.openhft:lang:$openHftLangVersion"
 
 
-    testCompile "org.reactivestreams:reactive-streams-tck:1.0.0.final"
+    testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
     testCompile project(':reactor-bus')
     testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
   }
