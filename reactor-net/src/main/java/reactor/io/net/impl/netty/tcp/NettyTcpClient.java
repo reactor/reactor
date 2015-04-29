@@ -306,9 +306,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							// do not attempt a reconnect
 							return;
 						}
-						if (!started.get()) {
-							attemptReconnect(tup);
-						}
+
+						attemptReconnect(tup);
 						super.channelInactive(ctx);
 					}
 				});
