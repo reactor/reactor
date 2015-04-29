@@ -133,7 +133,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	@Override
 	protected ChannelFuture doOnWrite(final Object data, final ChannelHandlerContext ctx) {
 		if (data.getClass().equals(Buffer.class)) {
-			return ctx.write(new DefaultHttpContent(ctx.channel().alloc().buffer().writeBytes(((Buffer) data).byteBuffer())));
+			return ctx.write(new DefaultHttpContent(convertBufferToByteBuff(ctx, (Buffer) data)));
 		} else {
 			return ctx.write(data);
 		}

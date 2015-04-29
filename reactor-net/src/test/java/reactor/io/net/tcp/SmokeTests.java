@@ -217,8 +217,8 @@ public class SmokeTests {
 					long end = System.currentTimeMillis();
 					System.out.println("Finishing emitting : " + new Date(end));
 					System.out.println("Duration: " + ((end - start) / 1000));
-
-					smokeTests.httpServer.shutdown().onComplete(v -> smokeTests.processor.onComplete());
+					smokeTests.processor.onComplete();
+					//smokeTests.httpServer.shutdown().onComplete(v -> );
 				} catch (Exception ie) {
 					ie.printStackTrace();
 				}
@@ -308,7 +308,7 @@ public class SmokeTests {
 //										System.out.println("YYYYY COMPLETE " + Thread.currentThread());
 //									}
 //							)
-							.capacity(1L)
+							.capacity(5L)
 					//.log("writer")
 			);
 		});
