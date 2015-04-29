@@ -44,6 +44,7 @@ import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -216,8 +217,8 @@ public class SmokeTests {
 					long end = System.currentTimeMillis();
 					System.out.println("Finishing emitting : " + new Date(end));
 					System.out.println("Duration: " + ((end - start) / 1000));
-					smokeTests.processor.onComplete();
-					//smokeTests.httpServer.shutdown();
+
+					smokeTests.httpServer.shutdown().onComplete(v -> smokeTests.processor.onComplete());
 				} catch (Exception ie) {
 					ie.printStackTrace();
 				}
@@ -292,8 +293,7 @@ public class SmokeTests {
 //							)
 									//.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
 
-							.concatWith(Streams.just(Buffer.wrap("END")))//END
-							//.concatWith(Streams.just(Buffer.wrap(new byte[0])))//END
+							.concatWith(Streams.just(GpdistCodec.class.equals(codec.getClass()) ?  Buffer.wrap(new byte[0]) : Buffer.wrap("END")))//END
 //							.observe(d -> {
 //										if (addToWindowData) {
 //											windowsData.addAll(parseCollection(d.asString()));
@@ -527,12 +527,30 @@ public class SmokeTests {
 
 	public class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
 
+		AtomicBoolean guard = new AtomicBoolean();
+		Thread thread;
+		Buffer lastBuffer;
+
 		@SuppressWarnings("resource")
 		@Override
 		public Buffer apply(Buffer t) {
-			Buffer b = t.flip();
-			//System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
-			return b;
+			try {
+				if (guard.compareAndSet(false, true)) {
+					thread = Thread.currentThread();
+					lastBuffer = t;
+					Buffer b = t.flip();
+
+					//System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
+					return b;
+				}else{
+					throw new IllegalStateException(Thread.currentThread()+" "+thread+ " - "+t.hashCode()+" "+lastBuffer.hashCode());
+				}
+			}finally {
+				if(guard.compareAndSet(true, false)){
+				}else{
+					throw new IllegalStateException(Thread.currentThread()+" "+thread+ " - "+t.hashCode()+" "+lastBuffer.hashCode());
+				}
+			}
 		}
 
 		@Override
