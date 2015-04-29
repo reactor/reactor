@@ -428,8 +428,8 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					promise.tryFailure(future.cause());
 					return;
 				}
-				if (subscription != null) {
-					if (--written == 0L) {
+				if (capacity == 1L || --written == 0L) {
+					if (subscription != null) {
 						subscription.request(capacity);
 					}
 				}
@@ -455,7 +455,11 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 			}
 			try {
 				doOnWrite(w, ctx).addListener(writeListener);
-				ctx.channel().eventLoop().execute(this);
+				if (capacity == 1L) {
+					ctx.flush();
+				} else {
+					ctx.channel().eventLoop().execute(this);
+				}
 			} catch (Throwable t) {
 				onError(Exceptions.addValueAsLastCause(t, w));
 			}
@@ -471,7 +475,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		@Override
 		public void onComplete() {
 			subscription = null;
-			if(log.isDebugEnabled()) {
+			if (log.isDebugEnabled()) {
 				log.debug("Flush Connection");
 			}
 			doOnTerminate(ctx, null, promise);

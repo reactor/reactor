@@ -625,9 +625,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 			if (decrementSubscribers() == 0 && current != -1L) {
 				long rewind = ringBuffer.getMinimumGatingSequence();
 				workSequence.set(rewind);
-				if(SUBSCRIBER_COUNT.get(RingBufferWorkProcessor.this) == 0){
-					barrier.alert();
-				}
+				barrier.alert();
 			}
 		}
 	}
