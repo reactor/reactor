@@ -115,7 +115,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 			}
 		} else if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
-			if (DefaultLastHttpContent.class.equals(msg.getClass())) {
+			if (LastHttpContent.class.isAssignableFrom(messageClass)) {
 				ctx.channel().close();
 			}
 		} else {
