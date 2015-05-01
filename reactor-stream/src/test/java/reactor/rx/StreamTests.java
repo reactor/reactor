@@ -40,6 +40,7 @@ import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
 import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.stream.BarrierStream;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,6 +58,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
+import static reactor.bus.selector.Selectors.$;
 
 /**
  * @author Jon Brisbin
@@ -698,8 +700,8 @@ public class StreamTests extends AbstractReactorTest {
 						.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
 						.consume(items -> {
 							batchesDistribution.compute(items.size(),
-									(key,
-									 value) -> value == null ? 1 : value + 1);
+							                            (key,
+							                             value) -> value == null ? 1 : value + 1);
 							items.forEach(item -> latch.countDown());
 						}));
 
@@ -735,16 +737,16 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<Integer> s = Streams.just("2222")
 				.map(Integer::parseInt)
 				.flatMap(l ->
-								Streams.<Integer>merge(
-										globalFeed,
-										Streams.just(1111, l, 3333, 4444, 5555, 6666)
-								)
-										.log("merged")
-										.dispatchOn(env)
-										.log("dispatched")
-										.observeSubscribe(x -> afterSubscribe.countDown())
-										.filter(nearbyLoc -> 3333 >= nearbyLoc)
-										.filter(nearbyLoc -> 2222 <= nearbyLoc)
+						         Streams.<Integer>merge(
+								         globalFeed,
+								         Streams.just(1111, l, 3333, 4444, 5555, 6666)
+						         )
+						                .log("merged")
+						                .dispatchOn(env)
+						                .log("dispatched")
+						                .observeSubscribe(x -> afterSubscribe.countDown())
+						                .filter(nearbyLoc -> 3333 >= nearbyLoc)
+						                .filter(nearbyLoc -> 2222 <= nearbyLoc)
 
 				);
 
@@ -860,10 +862,11 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<Integer> worker = Streams.from(tasks).dispatchOn(env);
 
 		Control tail = worker.partition(2).consume(s ->
-						s
-								.dispatchOn(env.getCachedDispatcher())
-								.map(v -> v)
-								.consume(v -> countDownLatch.countDown(), Throwable::printStackTrace)
+				                                           s
+						                                           .dispatchOn(env.getCachedDispatcher())
+						                                           .map(v -> v)
+						                                           .consume(v -> countDownLatch.countDown(),
+						                                                    Throwable::printStackTrace)
 		);
 
 		countDownLatch.await(5, TimeUnit.SECONDS);
@@ -1006,6 +1009,46 @@ public class StreamTests extends AbstractReactorTest {
 
 
 		assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
+	}
+
+	@Test
+	public void barrierStreamWaitsForAllDelegatesToBeInvoked() throws Exception {
+		Environment.initializeIfEmpty().assignErrorJournal();
+
+		CountDownLatch latch1 = new CountDownLatch(1);
+		CountDownLatch latch2 = new CountDownLatch(1);
+		CountDownLatch latch3 = new CountDownLatch(1);
+
+		BarrierStream barrierStream = new BarrierStream(Environment.get(), Environment.cachedDispatcher());
+
+		EventBus bus = EventBus.create(Environment.get());
+		bus.on($("hello"), barrierStream.wrap((Event<String> ev) -> {
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException e) {
+			}
+			latch1.countDown();
+		}));
+
+		Streams.just("Hello World!")
+		       .map(barrierStream.wrap((Function<String, String>) String::toUpperCase))
+		       .consume(s -> {
+			       latch2.countDown();
+		       });
+
+		barrierStream.consume(vals -> {
+			try {
+				Thread.sleep(500);
+			} catch (InterruptedException e) {
+			}
+			latch3.countDown();
+		});
+
+		bus.notify("hello", Event.wrap("Hello World!"));
+
+		assertThat("EventBus Consumer has been invoked", latch1.await(1, TimeUnit.SECONDS), is(true));
+		assertThat("Stream map Function has been invoked", latch2.getCount(), is(0L));
+		assertThat("BarrierStreams has published downstream", latch3.await(1, TimeUnit.SECONDS), is(true));
 	}
 
 	private static final Function<Integer, Integer> IDENTITY_FUNCTION = new Function<Integer, Integer>() {
