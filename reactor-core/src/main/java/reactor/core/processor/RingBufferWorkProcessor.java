@@ -495,7 +495,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	private final Sequence        workSequence       = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
 	private final Queue<Sequence> cancelledSequences = new ConcurrentLinkedQueue<>();
 
-	private final SequenceBarrier              barrier;
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 	private final ExecutorService              executor;
 
@@ -525,7 +524,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 		ringBuffer.addGatingSequences(workSequence);
 
-		this.barrier = ringBuffer.newBarrier();
 	}
 
 	@Override
@@ -564,23 +562,24 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 	@Override
 	public void onError(Throwable t) {
-		RingBufferSubscriberUtils.onError(t, ringBuffer);
-		barrier.alert();
+		for (int i = 0; i < SUBSCRIBER_COUNT.get(this); i++) {
+			RingBufferSubscriberUtils.onError(t, ringBuffer);
+		}
 	}
 
 	@Override
 	public void onComplete() {
-		RingBufferSubscriberUtils.onComplete(ringBuffer);
+		for (int i = 0; i < SUBSCRIBER_COUNT.get(this); i++) {
+			RingBufferSubscriberUtils.onComplete(ringBuffer);
+		}
 		if (executor.getClass() == SingleUseExecutor.class) {
 			executor.shutdown();
 		}
-		barrier.alert();
 	}
 
 	@Override
 	public String toString() {
 		return "RingBufferWorkProcessor{" +
-				"barrier=" + barrier +
 				", ringBuffer=" + ringBuffer +
 				", executor=" + executor +
 				", workSequence=" + workSequence +
@@ -620,16 +619,8 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 		@Override
 		public void cancel() {
+			decrementSubscribers();
 			eventProcessor.halt();
-			long current = workSequence.get();
-			int subs = decrementSubscribers();
-			if (subs == 0 && current != -1L) {
-				long rewind = ringBuffer.getMinimumGatingSequence();
-				workSequence.set(rewind);
-				if(SUBSCRIBER_COUNT.get(RingBufferWorkProcessor.this) == 0l){
-					barrier.alert();
-				}
-			}
 		}
 	}
 
@@ -654,9 +645,11 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 	private final static class WorkSignalProcessor<T> implements EventProcessor {
 
 		private final AtomicBoolean running        = new AtomicBoolean(false);
+
 		private final Sequence      sequence       = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
 		private final Sequence      pendingRequest = new Sequence(0);
 
+		private final SequenceBarrier            barrier;
 		private final RingBufferWorkProcessor<T> processor;
 		private final Subscriber<? super T>      subscriber;
 
@@ -671,6 +664,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		                           RingBufferWorkProcessor<T> processor) {
 			this.processor = processor;
 			this.subscriber = subscriber;
+			this.barrier = processor.ringBuffer.newBarrier();
 		}
 
 		public Subscription getSubscription() {
@@ -689,7 +683,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		@Override
 		public void halt() {
 			running.set(false);
-			//processor.barrier.alert();
+			barrier.alert();
 		}
 
 		@Override
@@ -715,9 +709,9 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 			boolean processedSequence = true;
 			long cachedAvailableSequence = Long.MIN_VALUE;
 			long nextSequence = sequence.get();
-			MutableSignal<T> event;
+			MutableSignal<T> event = null;
 
-			processor.barrier.clearAlert();
+			barrier.clearAlert();
 
 			if (replay()) {
 				running.set(false);
@@ -751,33 +745,42 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						processedSequence = true;
 
 					} else {
-						cachedAvailableSequence = processor.barrier.waitFor(nextSequence);
+						cachedAvailableSequence = barrier.waitFor(nextSequence);
 					}
 
 				} catch (CancelException ce) {
-					sequence.set(nextSequence - 1L);
+					if (event != null &&
+							event.type == MutableSignal.Type.NEXT &&
+							event.value != null) {
+						sequence.set(nextSequence - 1L);
+					} else {
+						sequence.set(nextSequence);
+					}
 					processor.cancelledSequences.add(sequence);
-					//processor.barrier.alert();
+					//barrier.alert();
 					break;
 				} catch (AlertException ex) {
 
 					if (!running.get()) {
-						sequence.set(nextSequence - 1L);
-						processor.cancelledSequences.add(sequence);
-						break;
+						barrier.clearAlert();
+						//sequence.set(nextSequence - 1L);
+						//processor.cancelledSequences.add(sequence);
+						if(processor.upstreamSubscription == null){
+							break;
+						}
 
 					} else {
 
-						final long cursor = processor.barrier.getCursor();
+						final long cursor = barrier.getCursor();
 						if (processor.ringBuffer.get(cursor).type == MutableSignal.Type.ERROR) {
 							RingBufferSubscriberUtils.route(processor.ringBuffer.get(cursor), subscriber);
 							Subscription s = processor.upstreamSubscription;
-							if(s != null){
+							if (s != null) {
 								s.cancel();
 							}
 							break;
-						}else{
-							processor.barrier.clearAlert();
+						} else {
+							barrier.clearAlert();
 						}
 
 						//continue event-loop
@@ -813,7 +816,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		private void readNextEvent(MutableSignal<T> event) throws AlertException {
 			//if event is Next Signal we need to handle backpressure (pendingRequests)
 			if (event.type == MutableSignal.Type.NEXT) {
-				if (event.value == null){
+				if (event.value == null) {
 					return;
 				}
 
@@ -836,14 +839,11 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 				//Complete or Error are terminal events, we shutdown the processor and process the signal
 				running.set(false);
 				RingBufferSubscriberUtils.route(event, subscriber);
-				if (event.type == MutableSignal.Type.ERROR) {
-					processor.barrier.alert();
-				}
 				Subscription s = processor.upstreamSubscription;
-				if(s != null){
+				if (s != null) {
 					s.cancel();
 				}
-				throw AlertException.INSTANCE;
+				throw CancelException.INSTANCE;
 			}
 		}
 	}
