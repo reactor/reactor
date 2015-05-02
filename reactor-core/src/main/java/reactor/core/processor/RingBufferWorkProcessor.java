@@ -562,13 +562,15 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 	@Override
 	public void onError(Throwable t) {
-		for (int i = 0; i < SUBSCRIBER_COUNT.get(this); i++) {
+		RingBufferSubscriberUtils.onError(t, ringBuffer);
+		for (int i = 1; i < SUBSCRIBER_COUNT.get(this); i++) {
 			RingBufferSubscriberUtils.onError(t, ringBuffer);
 		}
 	}
 
 	@Override
 	public void onComplete() {
+		RingBufferSubscriberUtils.onComplete(ringBuffer);
 		for (int i = 0; i < SUBSCRIBER_COUNT.get(this); i++) {
 			RingBufferSubscriberUtils.onComplete(ringBuffer);
 		}
@@ -619,7 +621,11 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 		@Override
 		public void cancel() {
-			decrementSubscribers();
+			Subscription subscription = upstreamSubscription;
+			if(subscription != null && autoCancel && SUBSCRIBER_COUNT.get(RingBufferWorkProcessor.this) - 1 == 0){
+				upstreamSubscription = null;
+				subscription.cancel();
+			}
 			eventProcessor.halt();
 		}
 	}
@@ -664,6 +670,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		                           RingBufferWorkProcessor<T> processor) {
 			this.processor = processor;
 			this.subscriber = subscriber;
+			
 			this.barrier = processor.ringBuffer.newBarrier();
 		}
 
@@ -698,6 +705,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 		public void run() {
 			if (!running.compareAndSet(false, true)) {
 				subscriber.onError(new IllegalStateException("Thread is already running"));
+				processor.decrementSubscribers();
 				return;
 			}
 
@@ -715,6 +723,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 			if (replay()) {
 				running.set(false);
+				processor.decrementSubscribers();
 				return;
 			}
 
@@ -766,6 +775,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 						//sequence.set(nextSequence - 1L);
 						//processor.cancelledSequences.add(sequence);
 						if(processor.upstreamSubscription == null){
+							processor.ringBuffer.removeGatingSequence(sequence);
 							break;
 						}
 
@@ -792,6 +802,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					processedSequence = true;
 				}
 			}
+			processor.decrementSubscribers();
 			running.set(false);
 		}
 

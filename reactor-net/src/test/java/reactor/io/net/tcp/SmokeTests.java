@@ -44,7 +44,6 @@ import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -73,7 +72,7 @@ public class SmokeTests {
 	private final int     takeCount       = 1000;
 	private final boolean addToWindowData = count < 50_000;
 
-	private int port;
+	private int                           port;
 	private Codec<Buffer, Buffer, Buffer> codec;
 
 	public SmokeTests() {
@@ -100,40 +99,75 @@ public class SmokeTests {
 	private RingBufferWorkProcessor<Buffer> workProcessor;
 
 
-	@Test
-	public void testMultipleConsumersMultipleTimesSize() throws Exception {
-		int fulltotalints = 0;
+	@Before
+	public void loadEnv() throws Exception {
+		Environment.initializeIfEmpty().assignErrorJournal();
+		setupFakeProtocolListener();
+	}
 
-		nettyOptions =
-				new NettyClientSocketOptions().eventLoopGroup(new NioEventLoopGroup(10));
+	@After
+	public void clean() throws Exception {
+		processor.onComplete();
+		httpServer.shutdown().awaitSuccess();
+	}
 
-		for (int t = 0; t < iter; t++) {
-			int size = 0;
-			try {
-				size = getClientDataSize(threads, new Sender(), count);
+	public Sender newSender() {
+		return new Sender();
+	}
 
-				fulltotalints += size;
+	class Sender {
 
-				System.out.println(size + "/" + (integerPostConcat.get() * windowBatch));
+		int x = 0;
 
-				assertThat(size, greaterThanOrEqualTo(count));
-
-			} catch (Throwable ae) {
-				System.out.println("Client received: " + size);
-				Collections.sort(windowsData);
-				System.out.println("Server received: " + windowsData.size() + " - " + (addToWindowData ? windowsData : ""));
-				List<Integer> dups = findDuplicates(windowsData);
-				Collections.sort(dups);
-				System.out.println("Dups: " + dups.size() + " - " + dups);
-				throw ae;
-			} finally {
-				printStats(t);
+		void sendNext(int count) {
+			for (int i = 0; i < count; i++) {
+//				System.out.println("XXXX " + x);
+				String data = x++ + "\n";
+				processor.onNext(Buffer.wrap(data));
 			}
 		}
+	}
 
-		// check full totals because we know what this should be
+	public static void main(String... args) throws Exception {
+		SmokeTests smokeTests = new SmokeTests();
+		smokeTests.port = 8080;
+		smokeTests.codec = new GpdistCodec();
+		smokeTests.loadEnv();
 
-		assertThat(fulltotalints, is(count * iter));
+		System.out.println("Starting on " + smokeTests.httpServer.getListenAddress());
+		System.out.println("Should setup a loop of wget for :" + (smokeTests.count / (smokeTests.windowBatch * smokeTests
+				.takeCount)));
+
+		final int count = 100_000_000;
+		Runnable srunner = new Runnable() {
+			final Sender sender = smokeTests.newSender();
+
+			public void run() {
+				try {
+					long start = System.currentTimeMillis();
+					System.out.println("Starting emitting : " + new Date(start));
+
+					sender.sendNext(count);
+
+					long end = System.currentTimeMillis();
+
+					System.out.println("Finishing emitting : " + new Date(end));
+
+					long duration = ((end - start) / 1000);
+
+					System.out.println("Duration: " + duration);
+					System.out.println("Rate: " + count / duration + " packets/sec");
+
+					smokeTests.processor.onComplete();
+					smokeTests.printStats(1);
+				} catch (Exception ie) {
+					ie.printStackTrace();
+				}
+			}
+		};
+		Thread st = new Thread(srunner, "SenderThread");
+		st.start();
+
 	}
 
 	@Test
@@ -181,72 +215,48 @@ public class SmokeTests {
 		assertThat(fulltotalints, is(count * iter));
 	}
 
-	@Before
-	public void loadEnv() throws Exception {
-		Environment.initializeIfEmpty().assignErrorJournal();
-		setupFakeProtocolListener();
-	}
+	@Test
+	public void testMultipleConsumersMultipleTimesSize() throws Exception {
+		int fulltotalints = 0;
 
-	@After
-	public void clean() throws Exception {
-		processor.onComplete();
-		httpServer.shutdown().awaitSuccess();
-	}
+		nettyOptions =
+				new NettyClientSocketOptions().eventLoopGroup(new NioEventLoopGroup(10));
 
-	public Sender newSender(){
-		return new Sender();
-	}
+		for (int t = 0; t < iter; t++) {
+			int size = 0;
+			try {
+				size = getClientDataSize(threads, new Sender(), count);
 
-	public static void main(String... args) throws Exception {
-		SmokeTests smokeTests = new SmokeTests();
-		smokeTests.port = 8080;
-		smokeTests.codec = new GpdistCodec();
-		smokeTests.loadEnv();
+				fulltotalints += size;
 
-		System.out.println("Starting on " + smokeTests.httpServer.getListenAddress());
-		System.out.println("Should setup a loop of wget for :"+(smokeTests.count /( smokeTests.windowBatch*smokeTests.takeCount)));
+				System.out.println(size + "/" + (integerPostConcat.get() * windowBatch));
 
-		final int count = 100_000_000;
-		Runnable srunner = new Runnable() {
-			final Sender sender = smokeTests.newSender();
-			public void run() {
-				try {
-					long start = System.currentTimeMillis();
-					System.out.println("Starting emitting : "+new Date(start));
-					sender.sendNext(count);
-					long end = System.currentTimeMillis();
-					System.out.println("Finishing emitting : " + new Date(end));
-					System.out.println("Duration: " + ((end - start) / 1000));
-					smokeTests.processor.onComplete();
-					//smokeTests.httpServer.shutdown().onComplete(v -> );
-				} catch (Exception ie) {
-					ie.printStackTrace();
-				}
-			}
-		};
-		Thread st = new Thread(srunner, "SenderThread");
-		st.start();
+				assertThat(size, greaterThanOrEqualTo(count));
 
-	}
-
-	public List<Integer> findDuplicates(List<Integer> listContainingDuplicates) {
-		final List<Integer> setToReturn = new ArrayList<>();
-		final Set<Integer> set1 = new HashSet<>();
-
-		for (Integer yourInt : listContainingDuplicates) {
-			if (!set1.add(yourInt)) {
-				setToReturn.add(yourInt);
+			} catch (Throwable ae) {
+				System.out.println("Client received: " + size);
+				Collections.sort(windowsData);
+				System.out.println("Server received: " + windowsData.size() + " - " + (addToWindowData ? windowsData : ""));
+				List<Integer> dups = findDuplicates(windowsData);
+				Collections.sort(dups);
+				System.out.println("Dups: " + dups.size() + " - " + dups);
+				throw ae;
+			} finally {
+				printStats(t);
 			}
 		}
-		return setToReturn;
+
+		// check full totals because we know what this should be
+
+		assertThat(fulltotalints, is(count * iter));
 	}
 
 	private void setupFakeProtocolListener() throws Exception {
+
 		processor = RingBufferProcessor.create(false);
 		workProcessor = RingBufferWorkProcessor.create(false);
 		Stream<Buffer> bufferStream = Streams
 				.wrap(processor)
-						//.log("test")
 				.window(windowBatch, 2, TimeUnit.SECONDS)
 				.flatMap(s -> s
 						.observe(d ->
@@ -255,16 +265,9 @@ public class SmokeTests {
 						.reduce(new Buffer(), Buffer::append)
 						.observe(d ->
 										postReduce.getAndIncrement()
-						))
+						)
+				)
 				.process(workProcessor);
-
-//		Stream<Buffer> bufferStream = Streams
-//				.wrap(processor)
-//				.window(100, 1, TimeUnit.SECONDS)
-//				.flatMap(s -> s.dispatchOn(Environment.sharedDispatcher()).reduce(new Buffer(), (prev, next) -> {
-//					return prev.append(next);
-//				}))
-//				.process(RingBufferWorkProcessor.create(false));
 
 		httpServer = NetStreams.httpServer(server -> server
 						.codec(codec).listen(port).dispatcher(Environment.sharedDispatcher())
@@ -280,36 +283,25 @@ public class SmokeTests {
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
 			return request.writeWith(bufferStream
-//							.observe(d ->
-//											integer.getAndIncrement()
-//							)
+							.observe(d ->
+											integer.getAndIncrement()
+							)
 							.take(takeCount)
-//							.observe(d ->
-//											integerPostTake.getAndIncrement()
-//							)
+							.observe(d ->
+											integerPostTake.getAndIncrement()
+							)
 							.timeout(2, TimeUnit.SECONDS, Streams.<Buffer>empty())
-//							.observe(d ->
-//											integerPostTimeout.getAndIncrement()
-//							)
-									//.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
-
+							.observe(d ->
+											integerPostTimeout.getAndIncrement()
+							)
 							.concatWith(Streams.just(GpdistCodec.class.equals(codec.getClass()) ?  Buffer.wrap(new byte[0]) : Buffer.wrap("END")))//END
-//							.observe(d -> {
-//										if (addToWindowData) {
-//											windowsData.addAll(parseCollection(d.asString()));
-//										}
-//									}
-//							)
-//							.observe(d ->
-//											integerPostConcat.getAndIncrement()
-//							)
-//							.observeComplete(no -> {
-//										integerPostConcat.decrementAndGet();
-//										System.out.println("YYYYY COMPLETE " + Thread.currentThread());
-//									}
-//							)
-							.capacity(5L)
-					//.log("writer")
+							.observe(d ->
+											integerPostConcat.getAndIncrement()
+							)
+							.observeComplete(no ->
+										integerPostConcat.decrementAndGet()
+							)//END
+							.capacity(1L)
 			);
 		});
 
@@ -372,7 +364,8 @@ public class SmokeTests {
 							counter.addAndGet(size);
 							empty = size == 0;
 							System.out.println("Client received " + size + " elements, current total: " + counter + ", batches: " +
-									integerPostConcat+", between [ "+(size > 0 ? collected.get(0) +" -> "+collected.get(size - 1) : "")+ " ]");
+									integerPostConcat + ", between [ " + (size > 0 ? collected.get(0) + " -> " + collected.get(size - 1)
+									: "") + " ]");
 						}
 						System.out.println("Client finished");
 					} catch (Exception ie) {
@@ -389,6 +382,18 @@ public class SmokeTests {
 
 		thread.await(500, TimeUnit.SECONDS);
 		return datas;
+	}
+
+	public List<Integer> findDuplicates(List<Integer> listContainingDuplicates) {
+		final List<Integer> setToReturn = new ArrayList<>();
+		final Set<Integer> set1 = new HashSet<>();
+
+		for (Integer yourInt : listContainingDuplicates) {
+			if (!set1.add(yourInt)) {
+				setToReturn.add(yourInt);
+			}
+		}
+		return setToReturn;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -433,7 +438,8 @@ public class SmokeTests {
 							counter.addAndGet(size);
 							empty = size == 0;
 							System.out.println("Client received " + size + " elements, current total: " + counter + ", batches: " +
-									integerPostConcat+", between [ "+(size > 0 ? collected.get(0) +" -> "+collected.get(size - 1) : "")+ " ]");
+									integerPostConcat + ", between [ " + (size > 0 ? collected.get(0) + " -> " + collected.get(size - 1)
+									: "") + " ]");
 						}
 						System.out.println("Client finished");
 					} catch (Exception ie) {
@@ -477,19 +483,7 @@ public class SmokeTests {
 		return Arrays.asList(data.split("\\r?\\n"));
 	}
 
-	class Sender {
-		int x = 0;
-
-		void sendNext(int count) {
-			for (int i = 0; i < count; i++) {
-//				System.out.println("XXXX " + x);
-				String data = x++ + "\n";
-				processor.onNext(Buffer.wrap(data));
-			}
-		}
-	}
-
-	private void printStats(int t){
+	private void printStats(int t) {
 		System.out.println("\n" +
 				"---- STATISTICS ----------------- \n" +
 				"run: " + (t + 1) + " \n" +
@@ -527,36 +521,68 @@ public class SmokeTests {
 
 	public class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
 
-		AtomicBoolean guard = new AtomicBoolean();
-		Thread thread;
-		Buffer lastBuffer;
-
 		@SuppressWarnings("resource")
 		@Override
 		public Buffer apply(Buffer t) {
-			try {
-				if (guard.compareAndSet(false, true)) {
-					thread = Thread.currentThread();
-					lastBuffer = t;
-					Buffer b = t.flip();
+			Buffer b = t.flip();
 
-					//System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
-					return b;
-				}else{
-					throw new IllegalStateException(Thread.currentThread()+" "+thread+ " - "+t.hashCode()+" "+lastBuffer.hashCode());
-				}
-			}finally {
-				if(guard.compareAndSet(true, false)){
-				}else{
-					throw new IllegalStateException(Thread.currentThread()+" "+thread+ " - "+t.hashCode()+" "+lastBuffer.hashCode());
-				}
-			}
+			//System.out.println("XXXXXX " + Thread.currentThread()+" "+b.asString().replaceAll("\n", ", "));
+			return b;
 		}
 
 		@Override
 		public Function<Buffer, Buffer> decoder(Consumer<Buffer> next) {
 			return null;
 		}
-
 	}
+
+	/*
+
+	Stream<Buffer> bufferStream = Streams
+				.wrap(processor)
+				.window(windowBatch, 2, TimeUnit.SECONDS)
+				.flatMap(s -> s
+						.observe(d ->
+										windows.getAndIncrement()
+						)
+						.reduce(new Buffer(), Buffer::append)
+						.observe(d ->
+										postReduce.getAndIncrement()
+						))
+				.process(workProcessor);
+
+
+	request.writeWith(bufferStream
+//							.observe(d ->
+//											integer.getAndIncrement()
+//							)
+							.take(takeCount)
+//							.observe(d ->
+//											integerPostTake.getAndIncrement()
+//							)
+							.timeout(2, TimeUnit.SECONDS, Streams.<Buffer>empty())
+//							.observe(d ->
+//											integerPostTimeout.getAndIncrement()
+//							)
+									//.concatWith(Streams.just(new Buffer().append("END".getBytes(Charset.forName("UTF-8")))))
+
+							.concatWith(Streams.just(GpdistCodec.class.equals(codec.getClass()) ?  Buffer.wrap(new byte[0]) : Buffer
+							.wrap("END")))//END
+//							.observe(d -> {
+//										if (addToWindowData) {
+//											windowsData.addAll(parseCollection(d.asString()));
+//										}
+//									}
+//							)
+//							.observe(d ->
+//											integerPostConcat.getAndIncrement()
+//							)
+//							.observeComplete(no -> {
+//										integerPostConcat.decrementAndGet();
+//										System.out.println("YYYYY COMPLETE " + Thread.currentThread());
+//									}
+//							)
+							.capacity(5L)
+					//.log("writer")
+	 */
 }
