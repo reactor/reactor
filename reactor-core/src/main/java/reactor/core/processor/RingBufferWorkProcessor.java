@@ -537,6 +537,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					this
 			);
 
+			signalProcessor.sequence.set(workSequence.get());
 
 			//bind eventProcessor sequence to observe the ringBuffer
 			ringBuffer.addGatingSequences(signalProcessor.sequence);
@@ -766,12 +767,12 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 					//barrier.alert();
 					break;
 				} catch (AlertException ex) {
-					barrier.clearAlert();
 					if (!running.get()) {
 						sequence.set(nextSequence - 1L);
 						processor.cancelledSequences.add(sequence);
 						break;
 					}
+					barrier.clearAlert();
 					//continue event-loop
 
 				} catch (final Throwable ex) {
