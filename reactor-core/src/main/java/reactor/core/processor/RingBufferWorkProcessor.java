@@ -717,13 +717,14 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 			long nextSequence = sequence.get();
 			MutableSignal<T> event = null;
 
-			barrier.clearAlert();
 
 			if (replay()) {
 				running.set(false);
 				processor.decrementSubscribers();
 				return;
 			}
+
+			barrier.clearAlert();
 
 			while (true) {
 				try {
