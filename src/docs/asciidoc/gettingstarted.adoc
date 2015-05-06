@@ -1,0 +1,36 @@
+[[getting-started]]
+ifndef::env-github[]
+== *Introducing Reactor*
+endif::[]
+
+[source,bash]
+[subs="attributes"]
+----
+$ cd reactor-{appversion}
+----
+
+[NOTE]
+====
+If the server could not be reached, the prompt will read
+
+[TIP]
+====
+If the server could not be reached, the prompt will read
+
+
+[[start]]
+=== What is Reactor and how it could help you ?
+
+=== Requirements
+
+[[architecture]]
+=== Architecture Overview
+
+
+[[reactivestreams]]
+=== Reactive Streams
+Why is Reactor tied to the Reactive Streams ?
+
+[[rx]]
+=== Reactive Extensions
+What are Reactive Extensions and why Reactor `Streams` derive from them ?

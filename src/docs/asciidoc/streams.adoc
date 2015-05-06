@@ -1,0 +1,207 @@
+[[streams]]
+ifndef::env-github[]
+== Coordinating (a)synchronous tasks with Streams and Promises
+endif::[]
+
+[[streams-basics]]
+== Streams Basics
+Using a `Stream` or a `Promise` and the Reactive Streams standard to compose pipelines.
+
+It's not an overstatement to say that `Stream` is the Reactor library's _raison d'être_. It is an incredibly useful and flexible component. It's flexible enough to be used to just compose asynchronous actions together like RxJava's `Observable`. But it's powerful enough it can function as an asynchronous work queue that forks and joins arbitrary compositions or other Reactive Streams components coming from one of the other implementors of the standard.footnoteref:[reactive-streams-implementors, Currently http://akka.io[Akka Streams], http://ratpack.io[Ratpack], and https://github.com/ReactiveX/RxJava[RxJava]]
+
+There are basically two rough categories of streams: a "hot" `Stream` and a "cold" `Stream`. A "hot" `Stream` is unbounded and capable of accepting input data like a sink. A "cold" `Stream` is bounded and generally created from a fixed collection of data like a `List` or other `Iterable`.
+
+[NOTE]
+====
+Reactor uses an `Environment` to keep sets of `Dispatcher` instances around for shared use in a given JVM (and classloader). An `Environment` instance can be created and passed around in an application to avoid classloading segregation issues or the static helpers can be used. Throughout the examples on this site, we'll use the static helpers and encourage you to do likewise. To do that, you'll need to initialize the static `Environment` somewhere in your application.
+
+[source,java]
+----
+static {
+  Environment.initialize();
+}
+----
+====
+
+=== Creating Streams and Promises
+
+==== From Known DataSources
+
+You can create a `Stream` from a variety of sources, including an `Iterable` of known values, a single value to use as the basis for a flow of tasks, another `Stream`, or even a `Publisher` from another Reactive Streams implementation. The latter is extremely useful, for example, to connect a Ratpack WebSocket connection, which is also a Reactive Streams `Publisher`, to your application's internal Reactor `Stream`.
+
+[pass]
+<div class="ui segment">
+
+.Streams.just()
+[source,java]
+----
+Stream<String> st = Streams.just("Hello World!"); // <1>
+
+st.dispatchOn(Environment.cachedDispatcher()) // <2>
+  .map(String::toUpperCase) // <3>
+  .consume(s -> System.out.printf("%s greeting = %s%n", Thread.currentThread(), s)); // <4>
+----
+<1> Create a `Stream` from a known value but do not assign a default `Dispatcher`.
+<2> `.dispatchOn(Dispatcher)` tells the `Stream` which thread to execute tasks on. Use this to move execution from one thread to another.
+<3> Transform the input using a commonly-found convention: the map() method.
+<4> Produce demand on the pipeline, which means "start processing now".
+
+[pass]
+</div>
+
+[[streams-reactivestreams]]
+==== From Existing Reactive Publishers
+
+==== From Custom Reactive Publishers
+
+==== From Broadcasted data
+
+If you are dealing with an unbounded stream of data items like what would be common with a web application that accepts user input via a REST interface, you probably want to use the "hot" variety of `Stream` in Reactor, which we call a link:/docs/api/index.html?reactor/rx/stream/Broadcaster.html[Broadcaster].
+
+To use it, you simply declare a pipeline of composable, functional tasks on the `Broadcaster` and later call link:/docs/api/reactor/rx/stream/Broadcaster.html#onNext-O-[`Broadcaster.onNext(T)`] to publish values into the pipeline.
+
+[pass]
+.Broadcaster.create()
+[source,java]
+----
+Broadcaster<String> sink = Broadcaster.create(Environment.get()); // <1>
+
+sink.map(String::toUpperCase) // <2>
+    .consume(s -> System.out.printf("%s greeting = %s%n", Thread.currentThread(), s)); // <3>
+
+sink.onNext("Hello World!"); // <4>
+----
+<1> Create a `Broadcaster` using the default, shared `RingBufferDispatcher` as the `Dispatcher`.
+<2> Transform the input using a commonly-found convention: the map() method.
+<3> `.consume()` is a "terminal" operation, which means it produces demand in Reactive Streams parlance.
+<4> Publish a value into the pipeline, which will cause the tasks to be invoked.
+
+[pass]
+
+[IMPORTANT]
+====
+Since Reactor implements the Reactive Streams standard, it's important to understand how each of the steps in a pipeline communicate with one another. If you're not sure what that means, then be sure to read the https://github.com/reactive-streams/reactive-streams/blob/v1.0.0.M3/README.md[Reactive Streams explanation] to understand what it means to "produce demand" and what a `Subscription` and a `Subscriber` are. Without that foundation, some of the following explanations might be confusing.
+====
+
+
+For the win.
+
+=== Setting Capacity
+
+The Reactive Streams standard encourages application developers to set reasonable limits on in-flight data. This prevents components from becoming innudated with more data than they can handle, which causes unpredictable problems throughput an application. One of the core concepts of Reactive Streams is that of "backpressure", or the ability for a pipeline to communicate to upstream components that it can only handle a fixed number of items at a time. A useful term to describe this process of queueing and requesting small chunks of a large volume of data is "microbatching".
+
+Within a Reactor `Stream`, it's possible to microbatch items to limit the amount of data in-flight at any given time. This has distinct advantages in a number of ways, not the least of which is that it limits expsoure to data loss by preventing the system from accepting more data than it can afford to lose if the system was to crash.
+
+To limit the amount of data in-flight in a `Stream`, use the link:/docs/api/reactor/rx/Stream.html#capacity-long-[`.capacity(long)`] method.
+
+[pass]
+<div class="ui segment">
+
+.Streams.just()
+[source,java]
+----
+Stream<String> st;
+
+st.capacity(256) // <1>
+  .consume(s -> service.doWork(s)); // <2>
+----
+<1> Limit the amount of data in-flight to no more than 256 elements at a time.
+<2> Produce demand upstream by requesting the next 256 elements of data.
+
+[pass]
+</div>
+
+=== Functional Composition
+
+Similar to many other functional libraries, Reactor provides a number of useful methods for composing functions on a `Stream`. You can passively observe values, transform them from one kind to another, filter out values you don't want, buffer values until a size or time trigger is tripped, and many other useful operations.
+
+==== Observe
+
+If you want to passively observe data as it passes through the pipeline, then use the `.observe(Consumer)` methods. To observe values, use link:/docs/api/reactor/rx/Stream.html#observe-reactor.fn.Consumer-[`.observe(Consumer<? super T>)`]. To observe errors without dealing with them definitively, use link:/docs/api/reactor/rx/Stream.html#observeError-java.lang.Class-reactor.fn.BiConsumer-[`.observe(Class<? extends Throwable>, BiConsumer<Object,? extends Throwable>)`]. To observe the Reactive Streams complete signal, use link:/docs/api/reactor/rx/Stream.html#observeComplete-reactor.fn.Consumer-[`.observeComplete(Consumer<Void>)`]. To observe the cancel signal, use link:/docs/api/reactor/rx/Stream.html#observeCancel-reactor.fn.Consumer-[`.observeCancel(Consumer<Void>)`]. To observe the Reactive Streams subscribe signal, use link:/docs/api/reactor/rx/Stream.html#observeSubscribe-reactor.fn.Consumer-[`.observeSubscribe(Consumer<? super Subscription<T>>)`].
+
+[pass]
+.observe(Consumer<T>)
+[source,java]
+----
+Stream<String> st;
+
+st.observe(s -> LOG.info("Got input [{}] on thread [{}}]", s, Thread.currentThread())) // <1>
+  .observeComplete(v -> LOG.info("Stream is complete")) // <2>
+  .observeError(Throwable.class, (o, t) -> LOG.error("{} caused an error: {}", o, t)) // <3>
+  .consume(s -> service.doWork(s)); // <4>
+----
+<1> Passively observe values passing through without producing demand.
+<2> Run once all values have been processed and the `Stream` is marked complete.
+<3> Run any time an error is propagated.
+<4> Produce demand on the pipeline and consume any values.
+
+[pass]
+
+==== Filter
+
+It's possible to filter items passing through a `Stream` so that downstream actions only see the data you want them to see. This is accomplished by using the link:/docs/api/reactor/rx/Stream.html#filter-reactor.fn.Predicate-[`.filter(Predicate<T>)`] method.
+
+[pass]
+.filter(Predicate<T>)
+[source,java]
+----
+Stream<String> st;
+
+st.filter(s -> s.startsWith("Hello")) // <1>
+  .consume(s -> service.doWork(s)); // <2>
+----
+<1> This will only allow values that start with the string `'Hello'` to pass downstream.
+<2> Produce demand on the pipeline and consume any values.
+[pass]
+
+==== Transformation
+
+==== (A)Sync Transformation: FlatMap
+
+==== Limits
+
+==== Blocking
+
+[[streams-multithreading]]
+== Understanding the threading model
+The story behind Stream/Promise threading.
+
+[[streams-microbatching]]
+== MicroBatching
+Using a `Stream` as a `MicroBatching` strategy to aggregate small payloads.
+
+[[streams-backpressure]]
+== Backpressure and Overflow
+Using a `Stream` and Reactive Streams standard to control, back-off or overflow massive data throughput.
+
+[[streams-combine]]
+== Combinatory Operations
+  Combining multiple Reactive Streams data `Publishers` in an controlled fashion.
+
+[[streams-microservice]]
+== MicroServices
+Using a `Stream` or a `Promise` to deal with remote `MicroService` latency.
+
+[[streams-microservice-start]]
+=== Creating Non-Blocking Services
+[[streams-microservice-compose]]
+=== Composing multiple Services Calls
+[[streams-microservice-share]]
+=== Choosing the right (multi)threading strategy
+
+[[streams-errors]]
+== Error Handling
+Using a `Stream` to build fault tolerant pipelines.
+
+[[streams-analytics]]
+== Analytics
+Using a `Stream` to compute metrics and any inline stateful processing.
+
+[[streams-partition]]
+== Partitioning
+Partition a `Stream` for concurrent, parallel work.
+
+An important aspect of the functional composition approach to reactive programming is that work can be broken up into discreet chunks and scheduled to run on arbitrary Dispatchers. This means you can easily compose a flow of work that starts with an input value, executes work on another thread, and then passes through subsequent transformation steps once the result is available. This is one of the more common usage patterns with Reactor.
+
+TODO: example of using a `Stream` as a work queue.
+

@@ -1,0 +1,17 @@
+"You should never do your asynchronous work alone."
+-- Jon Brisbin, After writing Reactor 1
+
+"You should never do your asynchronous work alone."
+-- Stephane Maldini, After writing Reactor 2
+
+[[core-functional]]
+== Functional Artefacts
+Using Functional interfaces to organize your Reactor code.
+
+[[core-dispatchers]]
+== Environment and Dispatchers
+Using Environment and Dispatchers to compute or schedule (a)synchronous tasks.
+
+[[core-codecs]]
+== Codecs and Buffer
+Working with Codecs and Buffer to marshall/unmarshall bytes efficiently.
