@@ -29,7 +29,8 @@ In fact Reactor aims to be truely non-blocking for a maximum of interactions and
 Being non-blocking matters, especially when messaging scale relatively becomes important (10k msg/s, 100k msg/s 1M...).
 There is some theory behind (see http://en.wikipedia.org/wiki/Amdahl%27s_law[Amdahl's Law]),
  but let's first call for some good sense. Let's say you use a pure https://docs.oracle.com/javase/tutorial/essential/concurrency/executors.html[Executor] approach.
-[source,java]:
+
+[source,java]
 ----
 private ExecutorService  threadPool = Executors.newFixedThreadPool(8);
 
