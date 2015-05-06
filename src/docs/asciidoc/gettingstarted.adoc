@@ -76,16 +76,19 @@ nasty side-effects in your application, and we do it in a minimal overhead fashi
 
 * Leveraging some smart structures, we traded-off the allocation issue at runtime with pre-allocation at startup-time.
 * Our main message-passing structures come bounded so we don't pile up tasks infinitely.
-* Using popular patterns such as Reactive and Event-Driven Architectures, we offer non-blocking end-to flows including replies.
+* Using popular patterns such as Reactive and Event-Driven Architectures, we offer non-blocking end-to-end flows including replies.
 * Implementing the new Reactive Streams Standard, we made bounded structures efficient by not requesting more than their current capacity
-* We applied these concepts to IPC and provide IO non-blocking drivers that understand flow-control
-* We expose a Functional API to help developers organizing their code in a side-effect free way. Understand by side-effect you can expect by convention where you are thread-safe and fault-tolerant.
+* We applied these concepts to IPC and provide non-blocking IO drivers that understand flow-control
+* We expose a Functional API to help developers organizing their code in a side-effect free way. Understand by side-effect you can determine where you are thread-safe and fault-tolerant.
+
+=== About the Project
 
 The project started in 2012, with a long internal incubation time, then Reactor 1.x appeared in 2013.
 Reactor 1 has been implemented successfully by different organizations: Open Source (e.g. Metldown) and Commercial (e.g. Pivotal RTI).
-In 2014 we started collaborating on the emerging Reactive Streams Standard and proceeded to a massive re-engineering targeting April 2015 version 2.0.1.RELEASE.
+In 2014 we started collaborating on the emerging <<gettingstarted.adoc/#reactivestreams,Reactive Streams Standard>> and proceeded to a massive re-engineering targeting April 2015 version 2.0.1.RELEASE.
 The standard closed the last gap our _Dispatching_ mechanism was still having: controlling how much in-flight data was possibly hitting our boundaries.
-Parallel to that work we also decided to re-align some of our Event-Driven and Task Coordination API to the increasingly popular and documented Reactive Extensions.
+
+Parallel to that work we also decided to re-align some of our Event-Driven and Task Coordination API to the increasingly popular and documented <<gettingstarted.adoc/#rx,Reactive Extensions>>.
 
 Reactor is sponsored by http://pivotal.io[Pivotal] where the two core committers actually work. We do try to provide an incentive to our cousin Spring user base.
 However we do not force our community into adopting Spring and we remain an embedable toolkit for the mass (Well, wait to see the goodies offered by those guys).
