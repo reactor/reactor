@@ -20,7 +20,7 @@ buildscript {
 		jcenter()
 	}
 	dependencies {
-		compile 'net.sf.docbook:docbook-xsl:1.78.1:resources@zip'
+		classpath 'net.sf.docbook:docbook-xsl:1.78.1:resources@zip'
 		classpath 'io.spring.gradle:docbook-reference-plugin:0.3.0'
 		classpath 'org.asciidoctor:asciidoctor-gradle-plugin:1.5.2'
 		//classpath 'org.asciidoctor:asciidoctorj-pdf:1.5.0-alpha.6' // asciidoctor pdf still has issues with callouts, etc. Still relying on docbook+pdf for now
