@@ -1,4 +1,4 @@
-= Reactor
+= Reactor Guide
 Stephane Maldini; Jon Brisbin;
 :appversion: 2.0.1.RELEASE (wiki)
 ifndef::host-github[:ext-relative: {outfilesuffix}]

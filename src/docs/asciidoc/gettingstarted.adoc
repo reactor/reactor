@@ -1,36 +1,118 @@
 [[getting-started]]
-ifndef::env-github[]
 == *Introducing Reactor*
-endif::[]
 
-[source,bash]
-[subs="attributes"]
-----
-$ cd reactor-{appversion}
-----
-
-[NOTE]
-====
-If the server could not be reached, the prompt will read
-
-[TIP]
-====
-If the server could not be reached, the prompt will read
-
+In this section, we're going to discover the reason de vivre of Reactor and the standards that have been implemented.
 
 [[start]]
 === What is Reactor and how it could help you ?
 
+So you came to have a look at Reactor, maybe typing some keywords in your favorite search engine like _Reactive_,
+_Spring+Reactive_, _Asynchronous+Java_ or just _What the heck is Reactor_.
+
+In a nutshell Reactor is a lightweight JVM foundation that deals with *asynchronous* message-passing _efficiently_.
+What means efficiency here is down to a few factors:
+
+* How do you deal with memory garbage generated just to pass a message from A to B ?
+* How do you handle overflow when a consumer is temporarely or permanentely slower than your producing resource ?
+* How do you control the asynchronous flow without using blocking producing resources ?
+
+From empiric studies (mostly rage tweets), we know that asynchronous programming is hard,
+especially when a platform like the JVM offers so many options.
+In fact Reactor aims to be truely non-blocking for a maximum of interactions and we offer an API to discourage the use of:
+
+* Blocking wait : e.g. Future._get()_
+* Unsafe data access : e.g. ReentrantLock._lock()_
+* Exception Bubbles : e.g. try...catch...finally
+* Synchronization blocks : e.g. synchronized{ }
+* Enveloppe Allocation (GC Pressure) : e.g. new Enveloppe<T>(event)
+
+Being non-blocking matters, especially when messaging scale relatively becomes important (10k msg/s, 100k msg/s 1M...).
+There is some theory behind (see http://en.wikipedia.org/wiki/Amdahl%27s_law[Amdahl's Law]),
+ but let's first call for some good sense. Let's say you use a pure https://docs.oracle.com/javase/tutorial/essential/concurrency/executors.html[Executor] approach.
+[source,java]:
+----
+private ExecutorService  threadPool = Executors.newFixedThreadPool(8);
+
+final List<T> batches = new ArrayList<T>();
+
+Callable<T> t = new Callable<T>() // <1>
+{
+   public T run()
+   {
+        synchronized(batches){ // <2>
+	        T result = callDatabase(msg); // <3>
+          batches.add(result);
+          return result;
+        }
+   }
+};
+
+Future<T> f = threadPool.submit(t); // <4>
+T result = f.get() // <5>
+----
+1> Allocate Callable, might lead to GC pressure
+2> Synchronization will force stop-and-check for every threads
+3> Potentially runs relatively slower than producer execution rate
+4> Use a Queue based system to pass the task to the target thread
+5> Block on callDatabase reply
+
+In this simple example we want to demonstrate it is not going to scale-up as expected:
+
+* Allocating objects might cause GC pauses especially if the tasks are there to stay long
+** GC Pause will cause overall degradation of performances
+* The Queue comes unbounded by default and because of the slower database call, tasks will pile up
+** It's not considered as a Memory Leak but still its side effects are nasty: more work for the JVM GC scan, risk to loose important chunks of data...
+** In addition, classic Linked Queues also generate memory pressure by allocating Nodes
+* Finally the vicious circle kicks-in when blocking replies are used
+** Blocking replies will cause producer slow-down. In the end the flow becomes relatively synchronous since we have to wait for each reply before submitting more tasks.
+** Any callDatabase Exception will be passed in an uncontrolled fashion to the producer, negating any fault-tolerance normally offered by the thread boundary.
+
+Non-blocking is hard to achieve, and especially now in a world of distributed systems, fashionly called MicroService Architecture
+for the common hackernews/cloud reader. Reactor makes little compromises over performances and tries to leverage the best patterns around
+to make the developper task looks not like a mathematical thesis. We have accepted the fact that nothing travels faster than light, and
+latency is a real-world concern every system might have to deal with at some point. We offer a framework that lets you mitigate latency
+nasty side-effects in your application, and we do it in a minimal overhead fashion.
+
+* Leveraging some smart structures, we traded-off the allocation issue at runtime with pre-allocation at startup-time.
+* Our main message-passing structures come bounded so we don't pile up tasks infinitely.
+* Using popular patterns such as Reactive and Event-Driven Architectures, we offer non-blocking end-to flows including replies.
+* Implementing the new Reactive Streams Standard, we made bounded structures efficient by not requesting more than their current capacity
+* We applied these concepts to IPC and provide IO non-blocking drivers that understand flow-control
+* We expose a Functional API to help developers organizing their code in a side-effect free way. Understand by side-effect you can expect by convention where you are thread-safe and fault-tolerant.
+
+The project started in 2012, with a long internal incubation time, then Reactor 1.x appeared in 2013.
+Reactor 1 has been implemented successfully by different organizations: Open Source (e.g. Metldown) and Commercial (e.g. Pivotal RTI).
+In 2014 we started collaborating on the emerging Reactive Streams Standard and proceeded to a massive re-engineering targeting April 2015 version 2.0.1.RELEASE.
+The standard closed the last gap our _Dispatching_ mechanism was still having: controlling how much in-flight data was possibly hitting our boundaries.
+Parallel to that work we also decided to re-align some of our Event-Driven and Task Coordination API to the increasingly popular and documented Reactive Extensions.
+
+Reactor is sponsored by http://pivotal.io[Pivotal] where the two core committers actually work. We do try to provide an incentive to our cousin Spring user base.
+However we do not force our community into adopting Spring and we remain an embedable toolkit for the mass (Well, wait to see the goodies offered by those guys).
+In fact one of the Reactor goals is to stay non-opinonated in the way you solve your asynchronous and functional issues.
+
+Reactor is http://www.apache.org/licenses/LICENSE-2.0.html[Apache 2.0 licensed] and available on https://github.com/reactor/reactor[GitHub].
+
 === Requirements
+
+* Reactor needs Java 7 at least to execute.
+** The full expressive potential happens with Java 8 Lambdas.
+** As a fallback have a look at Spring, Clojure or Groovy extensions
+* Reactor runs at full capacity when the JVM supports *Unsafe* access (e.g., not the case for Android)
+** All *RingBuffer* based features will not work when Unsafe is missing
+* Reactor is packaged as JAR archives and can be pulled in any project as a dependency
 
 [[architecture]]
 === Architecture Overview
-
+.The main modules present in Reactor 2
+image::images/modules.png[Module Organization, width=500]
 
 [[reactivestreams]]
 === Reactive Streams
-Why is Reactor tied to the Reactive Streams ?
+http://www.reactive-streams.org[Reactive Streams] is a new standard, adopted by different vendors and tech industries including Oracle with a target to include the specification into Java 9 and onwards.
 
 [[rx]]
 === Reactive Extensions
 What are Reactive Extensions and why Reactor `Streams` derive from them ?
+
+Reactive Extensions, or more commonly https://msdn.microsoft.com/en-gb/data/gg577609.aspx[Rx],
+are a set of well-defined Functional APIs extending the Observable pattern to an epic scale.
