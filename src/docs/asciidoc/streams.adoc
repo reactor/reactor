@@ -29,9 +29,6 @@ static {
 
 You can create a `Stream` from a variety of sources, including an `Iterable` of known values, a single value to use as the basis for a flow of tasks, another `Stream`, or even a `Publisher` from another Reactive Streams implementation. The latter is extremely useful, for example, to connect a Ratpack WebSocket connection, which is also a Reactive Streams `Publisher`, to your application's internal Reactor `Stream`.
 
-[pass]
-<div class="ui segment">
-
 .Streams.just()
 [source,java]
 ----
@@ -46,9 +43,6 @@ st.dispatchOn(Environment.cachedDispatcher()) // <2>
 <3> Transform the input using a commonly-found convention: the map() method.
 <4> Produce demand on the pipeline, which means "start processing now".
 
-[pass]
-</div>
-
 [[streams-reactivestreams]]
 ==== From Existing Reactive Publishers
 
@@ -60,7 +54,6 @@ If you are dealing with an unbounded stream of data items like what would be com
 
 To use it, you simply declare a pipeline of composable, functional tasks on the `Broadcaster` and later call link:/docs/api/reactor/rx/stream/Broadcaster.html#onNext-O-[`Broadcaster.onNext(T)`] to publish values into the pipeline.
 
-[pass]
 .Broadcaster.create()
 [source,java]
 ----
@@ -75,8 +68,6 @@ sink.onNext("Hello World!"); // <4>
 <2> Transform the input using a commonly-found convention: the map() method.
 <3> `.consume()` is a "terminal" operation, which means it produces demand in Reactive Streams parlance.
 <4> Publish a value into the pipeline, which will cause the tasks to be invoked.
-
-[pass]
 
 [IMPORTANT]
 ====
@@ -94,9 +85,6 @@ Within a Reactor `Stream`, it's possible to microbatch items to limit the amount
 
 To limit the amount of data in-flight in a `Stream`, use the link:/docs/api/reactor/rx/Stream.html#capacity-long-[`.capacity(long)`] method.
 
-[pass]
-<div class="ui segment">
-
 .Streams.just()
 [source,java]
 ----
@@ -108,9 +96,6 @@ st.capacity(256) // <1>
 <1> Limit the amount of data in-flight to no more than 256 elements at a time.
 <2> Produce demand upstream by requesting the next 256 elements of data.
 
-[pass]
-</div>
-
 === Functional Composition
 
 Similar to many other functional libraries, Reactor provides a number of useful methods for composing functions on a `Stream`. You can passively observe values, transform them from one kind to another, filter out values you don't want, buffer values until a size or time trigger is tripped, and many other useful operations.
@@ -119,7 +104,6 @@ Similar to many other functional libraries, Reactor provides a number of useful 
 
 If you want to passively observe data as it passes through the pipeline, then use the `.observe(Consumer)` methods. To observe values, use link:/docs/api/reactor/rx/Stream.html#observe-reactor.fn.Consumer-[`.observe(Consumer<? super T>)`]. To observe errors without dealing with them definitively, use link:/docs/api/reactor/rx/Stream.html#observeError-java.lang.Class-reactor.fn.BiConsumer-[`.observe(Class<? extends Throwable>, BiConsumer<Object,? extends Throwable>)`]. To observe the Reactive Streams complete signal, use link:/docs/api/reactor/rx/Stream.html#observeComplete-reactor.fn.Consumer-[`.observeComplete(Consumer<Void>)`]. To observe the cancel signal, use link:/docs/api/reactor/rx/Stream.html#observeCancel-reactor.fn.Consumer-[`.observeCancel(Consumer<Void>)`]. To observe the Reactive Streams subscribe signal, use link:/docs/api/reactor/rx/Stream.html#observeSubscribe-reactor.fn.Consumer-[`.observeSubscribe(Consumer<? super Subscription<T>>)`].
 
-[pass]
 .observe(Consumer<T>)
 [source,java]
 ----
@@ -135,13 +119,10 @@ st.observe(s -> LOG.info("Got input [{}] on thread [{}}]", s, Thread.currentThre
 <3> Run any time an error is propagated.
 <4> Produce demand on the pipeline and consume any values.
 
-[pass]
-
 ==== Filter
 
 It's possible to filter items passing through a `Stream` so that downstream actions only see the data you want them to see. This is accomplished by using the link:/docs/api/reactor/rx/Stream.html#filter-reactor.fn.Predicate-[`.filter(Predicate<T>)`] method.
 
-[pass]
 .filter(Predicate<T>)
 [source,java]
 ----
@@ -152,7 +133,6 @@ st.filter(s -> s.startsWith("Hello")) // <1>
 ----
 <1> This will only allow values that start with the string `'Hello'` to pass downstream.
 <2> Produce demand on the pipeline and consume any values.
-[pass]
 
 ==== Transformation
 

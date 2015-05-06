@@ -13,7 +13,6 @@ Reactor's link:/docs/api/index.html?reactor/core/processor/RingBufferProcessor.h
 
 To create a `RingBufferProcessor`, you use static `create` helper methods.
 
-[pass]
 [source,java]
 ----
 Processor<Integer, Integer> p = RingBufferProcessor.create("test", 32); // <1>
@@ -31,8 +30,6 @@ input.subscribe(p); // <6>
 <4> Each call to `consume` creates a Disruptor `EventProcessor` on its own `Thread`.
 <5> Each call to `consume` creates a Disruptor `EventProcessor` on its own `Thread`.
 <6> Subscribe this `Processor` to a Reactive Streams `Publisher`.
-
-[pass]
 
 Each element of data passed to the Processor's `Subscribe.onNext(Buffer)` method will be "broadcast" to all consumers. There's no round-robin distribution with this `Processor` because that's in the `RingBufferWorkProcessor`, discussed below. If you passed the integers 1, 2 and 3 into the `Processor`, you would see output in the console similar to this:
 
@@ -57,14 +54,11 @@ Unlike the standard `RingBufferProcessor`, which broadcasts its values to all co
 
 To use the `RingBufferWorkProcessor`, the only thing you have to change from the above code sample is the reference to the static `create` method. You'll use the one on the `RingBufferWorkProcessor` class itself instead. The rest of the code remains identical.
 
-[pass]
 [source,java]
 ----
 Processor<Integer, Integer> p = RingBufferWorkProcessor.create("test", 32); // <1>
 ----
 <1> Create a `Processor` with an internal RingBuffer capacity of 32 slots.
-
-[pass]
 
 Now when values are published to the `Processor`, they will not be broadcast to every consumer, but be partitioned based on the number of consumers. When we run this sample, we see output like this now:
 

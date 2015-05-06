@@ -1,10 +1,8 @@
 [[bus]]
-ifndef::env-github[]
 == Routing data with the Event Bus.
-endif::[]
 
 [[bus-publish-subscribe]]
-=== Publish/Subscribe
+== Publish/Subscribe
 Using an `EventBus` to publish and respond to events using Publish/Subscribe.
 
 Reactor's `EventBus` allows you to register a `Consumer` to handle events when the notification key matches a certain condition. This assignment is achieved via the `Selector`. It's similar to subscribing to a topic, though Reactor's `Selector` implementations can match on a variety of critera, from `Class<?>` type to regexes, to `JsonPath` expressions. It is a very flexible and powerful abstraction that provides a wide range of possibilities.
@@ -15,9 +13,6 @@ You can register multiple Consumers using the same `Selector` and multiple `Sele
 ====
 If you're upgrading from Reactor 1.1, you'll see that the `Reactor` class no longer exists. It has been renamed to `EventBus` to more accurately reflect its role in the framework.
 ====
-
-[pass]
-<div class="ui segment">
 
 .Handling events using a Selector
 [source,java]
@@ -35,22 +30,16 @@ bus.notify("topic", Event.wrap("Hello World!")); // <3>
 <2> Assign a `Consumer` to invoke when the `EventBus` is notified with a key that matches the `Selector`.
 <3> Publish an `Event` into the `EventBus` using the given topic.
 
-[pass]
-</div>
-
 [NOTE]
 ====
 The shorthand static method `$` is just a convenience helper that is identical to `Selectors.object()`. Some people don't like to use the shorthand methods like `$()` for `ObjectSelector`, `R()` for `RegexSelector`, `T()` for `ClassSelector`, and so forth. The link:/docs/api/reactor/bus/selector/Selectors.html#method.summary[Selectors] class has longer method name alternatives for these shorthand versions, which are simply aliases to reduce code noise and make reactive code a little more readable.
 ====
 
 [[bus-request-reply]]
-=== Request/Reply
+== Request/Reply
 Using an `EventBus` to publish and respond to events using Request/Reply.
 
 It's often the case that you want to receive a reply from a task executed on an EventBus's configured `Dispatcher`. Reactor's `EventBus` provides for more event handling models beyond the simple publish/subscribe model. You can also register a `Function` rather than a `Consumer` and have the `EventBus` automatically notify a `replyTo` key of the return value of the `Function`. Rather than using the `.on()` and `.notify()` methods, you use the `.receive()`, and `.send()` methods.
-
-[pass]
-<div class="ui segment">
 
 .Request/Reply
 [source,java]
@@ -71,13 +60,7 @@ bus.send("job.sink", Event.wrap("Hello World!", "reply.sink")); // <3>
 <2> Assign a `Function` to perform work in the `Dispatcher` thread and return a result.
 <3> Publish an `Event` into the bus using the given `replyTo` key.
 
-[pass]
-</div>
-
 If you don't have a generic topic on which to publish replies, you can combine the request and reply operation into a single call using the `.sendAndReceive(Object, Event<?>, Consumer<Event<?>>)` method. This performs a `.send()` call and invokes the given replyTo callback on the `Dispatcher` thread when the Functions are invoked.
-
-[pass]
-<div class="ui segment">
 
 .sendAndReceive()
 [source,java]
@@ -97,15 +80,9 @@ bus.sendAndReceive(
 <1> Assign a `Function` to perform work in the `Dispatcher` thread and return a result.
 <2> Publish an `Event` into the bus and schedule the given replyTo `Consumer` on the `Dispatcher`, passing the receive Function's result as input.
 
-[pass]
-</div>
-
-==== Cancelling a Task
+=== Cancelling a Task
 
 Sometimes you want to cancel a task to cause it to stop responding to event notifications. The registration methods `.on()` and `.receive()` return a `Registration` object which, if a reference to it is held, can be used later to cancel a `Consumer` or `Function` for a given `Selector`.
-
-[pass]
-<div class="ui segment">
 
 [source,java]
 ----
@@ -126,9 +103,6 @@ bus.notify("topic", Event.wrap("Hello World!")); // <3>
 <2> Cancel the `Registration` to prevent further events from reaching the `Consumer`.
 <3> Nothing should happen as a result of this notification.
 
-[pass]
-</div>
-
 [NOTE]
 ====
 Keep in mind that cancelling a `Registration` involves accessing the internal `Registry` in an atomic way. In a system in which a large number of events are flowing into Consumers, it's likely that your `Consumer` or `Function` might see some values after you've invoked the `.cancel()` method, but before the `Registry` has had a chance to clear the caches and remove the `Registration`. The `.cancel()` method could be described as a "request to cancel as soon as possible".
@@ -137,5 +111,5 @@ You'll notice this behavior right away in test classes where there's no time del
 ====
 
 [[bus-registry]]
-=== Registry
+== Registry
 Using a `Registry` to cache in-memory values.
