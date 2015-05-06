@@ -6,6 +6,22 @@ endif::[]
 === Overview
 How is Reactor Net module working ?
 
+[NOTE]
+---
+Reactive IPC
+---
+
+=== Channels
+How is Reactor Net module working ?
+
+=== Channel Handlers
+
+=== Specifications
+
+=== Client Specification
+
+=== Server Specification
+
 [[net-backpressure]]
 === Backpressure
 Using Reactor and Reactive Stream standard for flow-control with TCP network peers.
