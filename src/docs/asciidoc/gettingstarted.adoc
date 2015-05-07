@@ -80,10 +80,12 @@ latency is a real-world concern every system might have to deal with at some poi
 * Leveraging some smart structures, we traded-off the *allocation issue* at runtime with pre-allocation at startup-time.
 * Our main message-passing structures come *bounded* so we don't pile up tasks infinitely.
 * Using popular patterns such as *Reactive and Event-Driven Architectures*, we offer *non-blocking end-to-end flows* including replies.
-* Implementing the new Reactive Streams Standard, we made bounded structures *efficient* by not requesting more than their current capacity
-* We applied these concepts to IPC and provide *non-blocking IO drivers* that understand flow-control
+* Implementing the new <<gettingstarted.adoc#reactivestreams,Reactive Streams>> Standard, we made bounded structures *efficient* by not requesting more than their current capacity
+* We applied these concepts to <<net.adoc#net-overview,IPC>> and provide *non-blocking IO drivers* that understand flow-control
 * We expose a Functional API to help developers organizing their code in a *side-effect free* way. Understand by side-effect you can determine where you are thread-safe and fault-tolerant.
+* Reactor is a companion of choice for any demanding _realtime_ Data *Streaming* use cases that are designed with *Latency* and *Fault-Tolerance*
 ****
+
 
 === About the Project
 
@@ -127,10 +129,10 @@ it successfully passed the TCK for the implementing classes, which fortunately w
 .The Reactive Streams Contract
 image::images/rs.png[The Reactive Streams Contract, width=500]
 
+*TBD Summary of RS*
+
 We have worked with the standard since the inception of Reactor 2 and progressed in our journey until the *1.0.0* was about to release.
 It is now available on _Maven Central_ and other popular mirrors. You will also find it as a *transitive dependency to reactor-core*.
-
-*TBD Summary of RS*
 
 [[rx]]
 === Reactive Extensions
@@ -140,8 +142,20 @@ are a set of well-defined Functional APIs extending the Observable pattern to an
 
 *TBD Summary of Rx*
 
+The standard implementation of Reactive Extensions in the JVM is https://github.com/ReactiveX/RxJava[RxJava].
+It provides a powerful functional API and ports mostly all the concept over from the original Microsoft library.
+
 Reactor 2 provides a <<streams.adoc#streams,specific module>> implementing a subset of the documented Extensions and on a very few occasion adapting the name
-to match the behavior.
+to match our specific behavior. This focused approach around data-centric issues (microbatching, composition...) is depending on
+Reactor <<core.adoc#core-functional,Functional>> units, <<core.adoc#core-dispatchers,Dispatchers>> and <<gettingstarted.adoc#reactive-streams>> contract.
+We encourage users who need the full flavor of Reactive Extensions to try out RxJava and https://github.com/ReactiveX/RxJavaReactiveStreams[bridge with us].
+In the end the user can benefit from powerful asynchronous and IO capacities provided by Reactor while composing with the complete RxJava ecosystem.
+
+NOTE: Some operations, behaviors, and the immediate understanding of Reactive Streams are still unique to Reactor as of now and we will try to flesh out
+the unique features in the <<streams.adoc#streams,appropriate section>>.
+
+IMPORTANT: <<net.adoc#net-overview,Async IO>> capabilities are also depending on _Stream Capacity_ for
+backpressure and auto-flush options.
 
 .Main differences between Rx and Reactor Streams
 [cols="3*", options="header"]
