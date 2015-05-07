@@ -1,7 +1,8 @@
 [[getting-started]]
 == *Introducing Reactor*
 
-In this section, we're going to discover the reason de vivre of Reactor and the standards that have been implemented.
+[quote, Preface, TL;DR]
+Reactor is a companion of choice for any demanding _realtime_ *Data Streaming* use cases that are designed with *Latency* and *Fault-Tolerance* in mind.
 
 [[start]]
 === What is Reactor ?
@@ -80,10 +81,9 @@ latency is a real-world concern every system might have to deal with at some poi
 * Leveraging some smart structures, we traded-off the *allocation issue* at runtime with pre-allocation at startup-time.
 * Our main message-passing structures come *bounded* so we don't pile up tasks infinitely.
 * Using popular patterns such as *Reactive and Event-Driven Architectures*, we offer *non-blocking end-to-end flows* including replies.
-* Implementing the new <<gettingstarted.adoc#reactivestreams,Reactive Streams>> Standard, we made bounded structures *efficient* by not requesting more than their current capacity
-* We applied these concepts to <<net.adoc#net-overview,IPC>> and provide *non-blocking IO drivers* that understand flow-control
+* Implementing the new <<gettingstarted.adoc#reactivestreams,Reactive Streams>> Standard, we made bounded structures *efficient* by not requesting more than their current capacity.
+* We applied these concepts to <<net.adoc#net-overview,IPC>> and provide *non-blocking IO drivers* that understand flow-control.
 * We expose a Functional API to help developers organizing their code in a *side-effect free* way. Understand by side-effect you can determine where you are thread-safe and fault-tolerant.
-* Reactor is a companion of choice for any demanding _realtime_ Data *Streaming* use cases that are designed with *Latency* and *Fault-Tolerance*
 ****
 
 
