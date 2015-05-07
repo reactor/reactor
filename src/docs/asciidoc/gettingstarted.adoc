@@ -2,36 +2,34 @@
 == *Introducing Reactor*
 
 [quote, Preface, TL;DR]
-Reactor is a companion of choice for any demanding _realtime_ *Data Streaming* use cases that are designed with *Latency* and *Fault-Tolerance* in mind.
+Reactor is a foundational library for building demanding, realtime *Data-Streaming* applications and micro, nano, and pico-services that must exhibit *Low-Latency* and be *Fault-Tolerance*.
 
 [[start]]
 === What is Reactor ?
 
-So you came to have a look at Reactor, maybe typing some keywords in your favorite search engine like _Reactive_,
-_Spring+Reactive_, _Asynchronous+Java_ or just _What the heck is Reactor_.
+So you came to have a look at Reactor. Maybe you typed some keywords in your favorite search engine like _Reactive_,
+_Spring+Reactive_, _Asynchronous+Java_ or just _What the heck is Reactor?_.
 
-In a nutshell Reactor is a lightweight JVM foundation that deals with *asynchronous* message-passing _efficiently_.
+In a nutshell Reactor is a lightweight, foundational library for the JVM that helps your service or application to _efficiently_ and _asynchronously_ pass messages.
 
-.What means efficiency here is down to a few factors:
+.What do you mean by "efficiently"?
 ****
-* How do you deal with *memory* garbage generated just to pass a message from A to B ?
-* How do you handle *overflow* when a consumer is temporarely or permanentely slower than your producing resource ?
-* How do you control the *asynchronous flow* without using blocking producing resources ?
+* Little to no *memory* garbage created just to pass a message from A to B.
+* Handle *overflow* when consumers are slower at processing messages than the producer is at producing them.
+* Provide for *asynchronous flow* without blocking if at all possible.
 ****
 
-From empiric studies (mostly rage tweets), we know that asynchronous programming is hard,
-especially when a platform like the JVM offers so many options.
-In fact Reactor aims to be truely non-blocking for a maximum of interactions and we offer an API to discourage the use of:
+From empirical studies (mostly _#rage_ and _#drunk_ tweets), we know that asynchronous programming is hard--especially when a platform like the JVM offers so many options. Reactor aims to be truly non-blocking for a majority of use cases and we offer an API that is measurably more efficient than relying on low-level primitives in the JDK's _java.util.concurrent_ utilties. Reactor provides alternatives to (and discourages the use of):
 
 * Blocking wait : e.g. Future._get()_
 * Unsafe data access : e.g. ReentrantLock._lock()_
 * Exception Bubbles : e.g. try...catch...finally
 * Synchronization blocks : e.g. synchronized{ }
-* Enveloppe Allocation (GC Pressure) : e.g. new Enveloppe<T>(event)
+* Wrapper Allocation (GC Pressure) : e.g. new Wrapper<T>(event)
 
-Being non-blocking matters, especially when messaging scale relatively becomes important (10k msg/s, 100k msg/s 1M...).
-There is some theory behind (see http://en.wikipedia.org/wiki/Amdahl%27s_law[Amdahl's Law]),
- but let's first call for some good sense. Let's say you use a pure https://docs.oracle.com/javase/tutorial/essential/concurrency/executors.html[Executor] approach.
+Being non-blocking matters--especially when scaling message-passing becomes critical (10k msg/s, 100k msg/s 1M...). There is some theory behind this (see http://en.wikipedia.org/wiki/Amdahl%27s_law[Amdahl's Law]), but we get bored and distracted easily, so let's first appeal to common sense.
+
+ Let's say you use a pure https://docs.oracle.com/javase/tutorial/essential/concurrency/executors.html[Executor] approach:
 
 [source,java]
 ----
@@ -39,37 +37,36 @@ private ExecutorService  threadPool = Executors.newFixedThreadPool(8);
 
 final List<T> batches = new ArrayList<T>();
 
-Callable<T> t = new Callable<T>() // <1>
-{
-   public T run()
-   {
-        synchronized(batches){ // <2>
-	        T result = callDatabase(msg); // <3>
-          batches.add(result);
-          return result;
+Callable<T> t = new Callable<T>() { // <1>
+
+    public T run() {
+        synchronized(batches) { // <2>
+            T result = callDatabase(msg); // <3>
+            batches.add(result);
+            return result;
         }
-   }
+    }
 };
 
 Future<T> f = threadPool.submit(t); // <4>
 T result = f.get() // <5>
 ----
-1> Allocate Callable, might lead to GC pressure
-2> Synchronization will force stop-and-check for every threads
-3> Potentially runs relatively slower than producer execution rate
-4> Use a Queue based system to pass the task to the target thread
-5> Block on callDatabase reply
+1> Allocate Callable--might lead to GC pressure.
+2> Synchronization will force stop-and-check for every thread.
+3> Potentially consumes slower than producer produces.
+4> Use a ThreadPool to pass the task to the target thread--definitely produces GC pressure via FutureTask.
+5> Block until callDatabase() replies.
 
-In this simple example we want to demonstrate it is not going to scale-up as expected:
+In this simple example, it's easy to point out why scale-up is very limited:
 
-* Allocating objects might cause *GC pauses* especially if the tasks are there to stay long
-** GC Pause will cause overall degradation of performances
-* The Queue comes *unbounded* by default and because of the slower database call, tasks will pile up
-** It's not considered as a Memory Leak but still its side effects are nasty: more work for the JVM GC scan, risk to loose important chunks of data...
-** In addition, classic Linked Queues also generate memory pressure by allocating Nodes
-* Finally the vicious circle kicks-in when *blocking replies* are used
-** Blocking replies will cause producer slow-down. In the end the flow becomes relatively synchronous since we have to wait for each reply before submitting more tasks.
-** Any callDatabase Exception will be passed in an uncontrolled fashion to the producer, negating any fault-tolerance normally offered by the thread boundary.
+* Allocating objects might cause *GC pauses*, especially if the tasks stick around too long.
+** GC Pause will cause degrade performance globally.
+* A Queue in *unbounded* by default. Because of the slower database call, tasks will pile up.
+** It's not really a Memory Leak, but the side effects are just as nasty: more objects to scan during GC pauses; risk of losing important bits of data; etc...
+** Classic Linked Queues generate memory pressure by allocating Nodes. Lots of them.
+* A vicious cycle kicks-in when *blocking replies* are used.
+** Blocking replies will cause producer slow-down. In practice, the flow becomes basically *synchronous* since we have to wait for each reply before submitting more tasks.
+** Any callDatabase Exception will be passed in an uncontrolled fashion to the producer, negating any fault-tolerance normally available by segregation work on a Thread boundary.
 
 Non-blocking is hard to achieve, and especially now in a world of distributed systems, fashionly called MicroService Architecture
 for the common hackernews/cloud reader. Reactor makes little compromises over JVM performances and tries to leverage the best patterns around
