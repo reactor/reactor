@@ -130,9 +130,53 @@ image::images/rs.png[The Reactive Streams Contract, width=500]
 We have worked with the standard since the inception of Reactor 2 and progressed in our journey until the *1.0.0* was about to release.
 It is now available on _Maven Central_ and other popular mirrors. You will also find it as a *transitive dependency to reactor-core*.
 
+*TBD Summary of RS*
 
 [[rx]]
 === Reactive Extensions
 
 Reactive Extensions, or more commonly https://msdn.microsoft.com/en-gb/data/gg577609.aspx[Rx],
 are a set of well-defined Functional APIs extending the Observable pattern to an epic scale.
+
+*TBD Summary of Rx*
+
+Reactor 2 provides a <<streams.adoc#streams,specific module>> implementing a subset of the documented Extensions and on a very few occasion adapting the name
+to match the behavior.
+
+.Main differences between Rx and Reactor Streams
+[cols="3*", options="header"]
+|===
+
+|rx
+|reactor-stream
+|Comment
+
+|Observable
+|reactor.rx.Stream
+|Reflect the implementation of the Reactive Stream Publisher
+
+|Operator
+|reactor.rx.action.Action
+|Reflect the implementation of the Reactive Stream Processor
+
+|Observable with 1 data at most
+|reactor.rx.Promise
+|Type a unique result, reflect the implementation of the Reactive Stream Processor and provides for optional asynchronous dispatching.
+
+|Factory API (just, from, merge....)
+|reactor.rx.Streams
+|Aligned with a core data-focused subset, return Stream
+
+|Functional API (map, filter, take....)
+|reactor.rx.Stream
+|Aligned with a core data-focused subset, return Stream
+
+|Schedulers
+|reactor.core.Dispatcher, org.reactivestreams.Processor
+|Reactor Streams compute operations with unbounded shared Dispatchers or bounded Processors
+
+|Observable.observeOn()
+|Stream.dispatchOn()
+|Just an adapted naming for the dispatcher argument
+
+|===
