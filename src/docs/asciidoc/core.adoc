@@ -4,6 +4,11 @@
 "You should never do your asynchronous work alone."
 -- Stephane Maldini, After writing Reactor 2
 
+----
+
+
+----
+
 .Head first with a Groovy example of some Core work
 [source,groovy]
 ----
@@ -32,10 +37,28 @@ Environment.terminate()
 .How Doge can use Reactor-Core
 image::images/core-overview.png[Core Overview, width=500]
 
+*Reactor Core* has the following artefacts:
+
+****
+* *Common IO & functional types*, some directly backported from Java 8 Functional Interfaces
+** Function, Supplier, Consumer, Predicate, BiConsumer, BiFunction
+** Tuples
+** Resource, Pausable, Timer
+** Buffer, Codec and a handful of predifined Codecs
+* *Environment* context
+* *Dispatcher* contract and a handful of predefined Dispatchers
+* Predefined *Reactive Streams Processor*
+****
+
+
+Alone, reactor-core can already be used as a drop-in replacement for another Message-Passing strategy, to schedule timed tasks or to organize your code in small functional blocks implementing the Java 8 backport interfaces.
+Such breakdown allows to play more nicely with other Reactive libraries especially removing the burden of understanding the RingBuffer for the impatient developer.
 
 [[core-functional]]
 == Functional Artefacts
-Using Functional interfaces to organize your Reactor code.
+Functional reusable blocks are core and mostly a required artefact to use as soon as you get into Reactor. footnoteref:[disclaimer,Unless you only want to use the Core Processor which are mostly standalone at this stage. We also plan to align Dispatcher with Core Processors overtime.]
+
+
 
 [[core-dispatchers]]
 == Environment and Dispatchers
