@@ -4,7 +4,7 @@
 In this section, we're going to discover the reason de vivre of Reactor and the standards that have been implemented.
 
 [[start]]
-=== What is Reactor and how it could help you ?
+=== What is Reactor ?
 
 So you came to have a look at Reactor, maybe typing some keywords in your favorite search engine like _Reactive_,
 _Spring+Reactive_, _Asynchronous+Java_ or just _What the heck is Reactor_.

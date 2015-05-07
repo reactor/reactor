@@ -1,5 +1,5 @@
 [[bus]]
-== Routing data with the Event Bus.
+== Routing data
 
 [[bus-publish-subscribe]]
 == Publish/Subscribe
