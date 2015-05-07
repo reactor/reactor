@@ -64,7 +64,7 @@ public class HashWheelTimer implements Timer {
 	 * default wheel size.
 	 */
 	public HashWheelTimer() {
-		this(100, DEFAULT_WHEEL_SIZE, new SleepWait());
+		this(50, DEFAULT_WHEEL_SIZE, new SleepWait());
 	}
 
 	/**

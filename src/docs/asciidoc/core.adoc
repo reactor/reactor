@@ -146,7 +146,7 @@ Then injecting the blocks in a Stream pipeline or dispatching their execution be
 The functional building blocks in place, we can start playing asynchronously with them. First stop is bringing us to the Dispatcher section.
 
 Before we can start any Dispatcher, we want to make sure we create them efficiently. Usually Dispatchers are expensive to create as they will
-pre-allocate a segment of memory to hold the dispatched signals, the famous runtime vs startup trade-off introduce in the preface.
+pre-allocate a segment of memory to hold the dispatched signals, the famous runtime vs startup trade-off introduced in the preface.
 A specific shared context named *Environment* has been introduced to manage these various dispatchers, thus avoiding inapproriate creations.
 
 Environments are created and terminated by the reactor user (or by the extension library if available, e.g. '@Spring').
@@ -154,13 +154,11 @@ They automatically read a configuration file located in https://github.com/react
 
 [TIP]
 Properties file can be tuned at runtime by providing under the classpath location 'META-INF/reactor' a desired new properties configuration.
-There switching from the default configuration at runtime is achieved by passing the followying Environment Variable: 'reactor.profiles.active'.
----
+
+.There switching from the default configuration at runtime is achieved by passing the followying Environment Variable: 'reactor.profiles.active'.
+----
 java - jar reactor-app.jar -Dreactor.profiles.active=turbo
----
-
-
-
+----
 
 [TIP]
 It's best to try maintaining a single Environment alive for a given JVM application. Use of _Environment.initializeIfEmpty()_ will be prefered most of the time.
@@ -172,6 +170,43 @@ The Dispatcher contract offers a strongly typed way to pass a signal with its Da
 This way we fix a first issue faced by classic Executors, the error isolation. In effect instead of interrupting the assigned resource,
 the Error Consumer will be invoked. If none has been provided it will try to find an existing Environment and use its assigned _errorJournalConsumer_.
 
+.Using a synchronous and a multi-threaded dispatcher like in this https://github.com/reactor/reactor/blob/master/reactor-core/src/test/groovy/reactor/core/dispatch/DispatcherSpec.groovy[Groovy Spock test]:
+[source,groovy]
+----
+import reactor.core.dispatch.*
+
+//...
+
+given:
+			def sameThread = new SynchronousDispatcher()
+			def diffThread = new ThreadPoolExecutorDispatcher(1, 128)
+			def currentThread = Thread.currentThread()
+			Thread taskThread = null
+
+			def consumer = { ev ->
+				taskThread = Thread.currentThread()
+			}
+
+			def errorConsumer = { error ->
+      	error.printStackTrace()
+      }
+
+when: "a task is submitted"
+			sameThread.dispatch('test', consumer, errorConsumer)
+
+then: "the task thread should be the current thread"
+			currentThread == taskThread
+
+when: "a task is submitted to the thread pool dispatcher"
+			def latch = new CountDownLatch(1)
+			diffThread.dispatch('test', { ev -> consumer(ev); latch.countDown() }, errorConsumer)
+
+			latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
+
+then: "the task thread should be different when the current thread"
+			taskThread != currentThread
+----
+
 [WARNING]
 Like them they will miss a feature that we will add along the 2.x release line: Reactive Streams protocol.
 They are ones of the few leftovers in Reactor that are not directly tied to the Reactive Streams standard directly. However,
@@ -181,6 +216,69 @@ Essentially that means a user can directly hit them until they eventually and te
 
 === Timers
 
+.A simple timer creation as seen in one of our https://github.com/reactor/reactor/blob/master/reactor-core/src/test/groovy/reactor/fn/timer/HashWheelTimerYieldingStrategy.groovy[Groovy Spock test]:
+[source,groovy]
+----
+import reactor.fn.timer.HashWheelTimer
+
+//...
+
+given: "a new timer"
+    def timer = new HashWheelTimer(10, 8, new HashWheelTimer.YieldingWait())
+    def latch = new CountDownLatch(10)
+
+when: "a task is submitted"
+    timer.schedule(
+            { Long now -> latch.countDown() } as Consumer<Long>,
+            period,
+            TimeUnit.MILLISECONDS,
+            period
+    )
+
+then: "the latch was counted down"
+    latch.await(1, TimeUnit.SECONDS)
+    timer.cancel()
+----
+
 [[core-codecs]]
 == Codecs and Buffer
 Working with Codecs and Buffer to marshall/unmarshall bytes efficiently.
+
+.A simple Buffer manipulation as seen in one of our https://github.com/reactor/reactor/blob/master/reactor-core/src/test/groovy/reactor/io/buffer/BufferSpec.groovy[Groovy Spock test]:
+[source,groovy]
+----
+import reactor.io.buffer.Buffer
+
+//...
+
+given: "an empty Buffer and a full Buffer"
+		def buff = new Buffer()
+		def fullBuff = Buffer.wrap("Hello World!")
+
+when: "a Buffer is appended"
+		buff.append(fullBuff)
+
+then: "the Buffer was added"
+		buff.position() == 12
+		buff.flip().asString() == "Hello World!"
+----
+
+.Using one of the predefined Codecs as verified in this https://github.com/reactor/reactor/blob/master/reactor-core/src/test/groovy/reactor/io/codec/json/JsonCodecSpec.groovy[Groovy Spock test]:
+[source,groovy]
+----
+import reactor.io.json.JsonCodec
+
+//...
+
+given: 'A JSON codec'
+		JsonCodec<Map<String, Object>, Object> codec = new JsonCodec<Map<String, Object>, Object>(Map);
+
+when: 'The decoder is passed some JSON'
+		Map<String, Object> decoded;
+		Function<Buffer, Map<String, Object>> decoder = codec.decoder({ decoded = it} as Consumer<Map<String, Object>>)
+		decoder.apply(Buffer.wrap("{\"a\": \"alpha\"}"));
+
+then: 'The decoded map has the expected entries'
+		decoded.size() == 1
+		decoded['a'] == 'alpha'
+----
