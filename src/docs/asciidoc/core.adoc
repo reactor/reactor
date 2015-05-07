@@ -208,7 +208,7 @@ then: "the task thread should be different when the current thread"
 ----
 
 [WARNING]
-Like them they will miss a feature that we will add along the 2.x release line: Reactive Streams protocol.
+Like the Executor they will miss a feature that we will add along the 2.x release line: Reactive Streams protocol.
 They are ones of the few leftovers in Reactor that are not directly tied to the Reactive Streams standard directly. However,
 they can be combined with the Reactor Stream to quickly fix that as we will explore in the <<streams.adoc#streams, Stream Section>>.
 Essentially that means a user can directly hit them until they eventually and temporarely block since the capacity might be bounded by most Dispatcher implementations.
