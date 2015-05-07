@@ -108,12 +108,12 @@ The Reactor codebase is divided into several submodules to help you pick the one
 
 Following are some examples of how one might mix-and-match reactive technologies and Reactor modules to achieve your asynchronous goals:
 
-* RxJavaReactiveStreams + RxJava + Reactor-Core : Combine rich composition with efficient asynchronous IO Processor
-* RxJavaReactiveStreams + RxJava + Reactor-Net (Core/Stream) : Compose input data with RxJava and gate with Async IO drivers.
 * Spring XD + Reactor-Net (Core/Stream) : Use Reactor as a Sink/Source IO driver.
-* Grails + Reactor-Stream (Core) : Use Promise for background Processing.
+* Grails | Spring + Reactor-Stream (Core) : Use Stream and Promise for background Processing.
 * Spring Data + Reactor-Bus (Core) : Emit Database Events (Save/Delete/...).
 * Spring Integration Java DSL + Reactor Stream (Core) : Microbatch MessageChannel from Spring Integration.
+* RxJavaReactiveStreams + RxJava + Reactor-Core : Combine rich composition with efficient asynchronous IO Processor
+* RxJavaReactiveStreams + RxJava + Reactor-Net (Core/Stream) : Compose input data with RxJava and gate with Async IO drivers.
 
 .A *quick* overview of how Reactor modules depend on one another
 image::images/overview.png[Architecture Overview, width=500]
