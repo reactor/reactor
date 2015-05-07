@@ -58,8 +58,10 @@ Such breakdown allows to play more nicely with other Reactive libraries especial
 == Functional Artefacts
 Functional reusable blocks are core and mostly a required artefact to use as soon as you get into Reactor. footnoteref:[disclaimer,Unless you only want to use the Core Processor which are mostly standalone at this stage. We also plan to align Dispatcher with Core Processors overtime.]
 So what's cool about Functional Programming ? One of the core ideas is to start treating executable code as a data like another. footnotref:[disclaimer, Some will challenge that over-simplified vision but let's stay pragmatic over here :)
-To some extent it is akin to the concept of Closures or Anonymous Functions, where business logic can be decided by the original caller avoid loads of imperative IF/SWITCH blocks.
-The very difference with the quoted patterns is that every Functional component gives the explicit intent of its general role:
+To some extent it is akin to the concept of Closures or Anonymous Functions, where business logic can be decided by the original caller.
+It also avoids loads of imperative IF/SWITCH blocks and makes a clear separation of concerns: each block achieves one purpose and doesn't need to share anything.
+
+Every Functional component gives the explicit intent of its general mission:
 
 * https://github.com/reactor/reactor/blob/master/reactor-core/src/main/java/reactor/fn/Consumer.java[Consumer]: simple callback - fire-and-forget
 * https://github.com/reactor/reactor/blob/master/reactor-core/src/main/java/reactor/fn/BiConsumer.java[BiConsumer]: simple callback with two arguments (often used in sequence comparaisons, e.g. previous and next arguments)
