@@ -4,6 +4,7 @@ Stephane Maldini; Jon Brisbin;
 ifndef::host-github[:ext-relative: {outfilesuffix}]
 {appversion}
 :doctype: book
+:icons: font
 
 include::gettingstarted.adoc[]
 
