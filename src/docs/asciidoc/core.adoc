@@ -56,7 +56,7 @@ Such breakdown allows to play more nicely with other Reactive libraries especial
 
 [[core-functional]]
 == Functional Artefacts
-Functional reusable blocks are core and mostly a required artefact to use as soon as you get into Reactor. footnoteref:[disclaimer,Unless you only want to use the Core Processor which are mostly standalone at this stage. We also plan to align Dispatcher with Core Processors overtime.]
+Functional reusable blocks are core and mostly a required artefact to use as soon as you get into Reactor. footnoteref:[disclaimer,Unless you only want to use the Core Processor which are mostly standalone at this stage. We plan to align Dispatcher with Core Processors overtime.]
 So what's cool about Functional Programming ? One of the core ideas is to start treating executable code as a data like another. footnotref:[disclaimer, Some will challenge that over-simplified vision but let's stay pragmatic over here :)
 To some extent it is akin to the concept of Closures or Anonymous Functions, where business logic can be decided by the original caller.
 It also avoids loads of imperative IF/SWITCH blocks and makes a clear separation of concerns: each block achieves one purpose and doesn't need to share anything.
@@ -143,7 +143,41 @@ Then injecting the blocks in a Stream pipeline or dispatching their execution be
 [[core-dispatchers]]
 == Environment and Dispatchers
 
-The functional building blocks in place, we can start playing asynchronously with them.
+The functional building blocks in place, we can start playing asynchronously with them. First stop is bringing us to the Dispatcher section.
+
+Before we can start any Dispatcher, we want to make sure we create them efficiently. Usually Dispatchers are expensive to create as they will
+pre-allocate a segment of memory to hold the dispatched signals, the famous runtime vs startup trade-off introduce in the preface.
+A specific shared context named *Environment* has been introduced to manage these various dispatchers, thus avoiding inapproriate creations.
+
+Environments are created and terminated by the reactor user (or by the extension library if available, e.g. '@Spring').
+They automatically read a configuration file located in https://github.com/reactor/reactor/blob/master/reactor-core/src/main/resources/META-INF/reactor/reactor-environment.properties[META_INF/reactor/reactor-environment.properties].
+
+[TIP]
+Properties file can be tuned at runtime by providing under the classpath location 'META-INF/reactor' a desired new properties configuration.
+There switching from the default configuration at runtime is achieved by passing the followying Environment Variable: 'reactor.profiles.active'.
+---
+java - jar reactor-app.jar -Dreactor.profiles.active=turbo
+---
+
+
+
+
+[TIP]
+It's best to try maintaining a single Environment alive for a given JVM application. Use of _Environment.initializeIfEmpty()_ will be prefered most of the time.
+
+Dispatchers are there since Reactor 1, they abstract away the mean of message-passing in a common contract similar to the Java Executor.
+In fact they do extend Executor!
+
+The Dispatcher contract offers a strongly typed way to pass a signal with its Data and Error *Consumers* executed (a)synchronously.
+This way we fix a first issue faced by classic Executors, the error isolation. In effect instead of interrupting the assigned resource,
+the Error Consumer will be invoked. If none has been provided it will try to find an existing Environment and use its assigned _errorJournalConsumer_.
+
+[WARNING]
+Like them they will miss a feature that we will add along the 2.x release line: Reactive Streams protocol.
+They are ones of the few leftovers in Reactor that are not directly tied to the Reactive Streams standard directly. However,
+they can be combined with the Reactor Stream to quickly fix that as we will explore in the <<streams.adoc#streams, Stream Section>>.
+Essentially that means a user can directly hit them until they eventually and temporarely block since the capacity might be bounded by most Dispatcher implementations.
+
 
 === Timers
 
