@@ -35,12 +35,7 @@ include::net-e2e.adoc[]
 == Spring Support
 include::spring.adoc[]
 
-[[reactor-groovy]]
-== Groovy Support
 include::groovy.adoc[]
-
-[[reactor-meltdown]]
-== Clojure Support - Meltdown
 include::clojure.adoc[]
 
 [[reactor-samples]]

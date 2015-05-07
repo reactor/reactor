@@ -147,7 +147,7 @@ It provides a powerful functional API and ports mostly all the concept over from
 
 Reactor 2 provides a <<streams.adoc#streams,specific module>> implementing a subset of the documented Extensions and on a very few occasion adapting the name
 to match our specific behavior. This focused approach around data-centric issues (microbatching, composition...) is depending on
-Reactor <<core.adoc#core-functional,Functional>> units, <<core.adoc#core-dispatchers,Dispatchers>> and the <<gettingstarted.adoc#reactivestreams>> contract.
+Reactor <<core.adoc#core-functional,Functional>> units, <<core.adoc#core-dispatchers,Dispatchers>> and the <<gettingstarted.adoc#reactivestreams, Reactive Streams>> contract.
 We encourage users who need the full flavor of Reactive Extensions to try out RxJava and https://github.com/ReactiveX/RxJavaReactiveStreams[bridge with us].
 In the end the user can benefit from powerful asynchronous and IO capacities provided by Reactor while composing with the complete RxJava ecosystem.
 

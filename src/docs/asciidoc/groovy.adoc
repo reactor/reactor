@@ -1,1 +1,1 @@
-=== Groovy extensions to Reactor.
+== Groovy extensions to Reactor.
