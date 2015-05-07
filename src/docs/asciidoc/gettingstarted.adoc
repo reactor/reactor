@@ -116,6 +116,20 @@ Reactor is http://www.apache.org/licenses/LICENSE-2.0.html[Apache 2.0 licensed] 
 .The main modules present in Reactor 2
 image::images/modules.png[Module Organization, width=500]
 
+Reactor comes with different jars in the hope you pick the ones that suit your needs.
+However some will transitively depend on lower level modules, commonly *core*, sometimes *streams* and *bus*.
+Some examples combining them:
+
+* RxJavaReactiveStreams + RxJava + Reactor-Core : Combine rich composition with efficient asynchronous IO Processor
+* RxJavaReactiveStreams + RxJava + Reactor-Net (Core/Stream) : Compose input data with RxJava and gate with Async IO drivers.
+* Spring XD + Reactor-Net (Core/Stream) : Use Reactor as a Sink/Source IO driver.
+* Grails + Reactor-Stream (Core) : Use Promise for background Processing.
+* Spring Data + Reactor-Bus (Core) : Emits Database Events (Save/Delete/...).
+* Spring Integration Java DSL + Reactor Stream (Core) : Microbatch MessageChannel from Spring Integration.
+
+.A *quick* insight into how modules use each other
+image::images/overview.png[Architecture Overview, width=500]
+
 [[reactivestreams]]
 === Reactive Streams
 
@@ -129,7 +143,57 @@ it successfully passed the TCK for the implementing classes, which fortunately w
 .The Reactive Streams Contract
 image::images/rs.png[The Reactive Streams Contract, width=500]
 
-*TBD Summary of RS*
+.The Reactive Streams Interfaces
+****
+* https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Publisher.java[org.reactivestreams.Pubslisher]: A source of data (from 0 to N signals where N can be unlimited). It optionally provides for 2 terminal events: error and completion.
+* https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Subscriber.java[org.reactivestreams.Subscriber]: A consumer of a data sequence (from 0 to N signals where N can be unlimited). It receives a subscription on initialization to _request_ how many data it wants to process next. The other callbacks interact with the data sequence signals: next (new message) and the optional completion/error.
+* https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Subscription.java[org.reactivestreams.Subscription]: A small tracker passed on initialization to the Subscriber. It controls how many data we are ready to consume and when do we want to stop consuming (cancel).
+* https://github.com/reactive-streams/reactive-streams-jvm/blob/master/api/src/main/java/org/reactivestreams/Processor.java[org.reactivestreams.Processor]: A marker for components that are both Subscriber and Publisher!
+****
+
+.The Reactive Streams publishing protocol
+image::images/signals.png[The Publishing Sequence, width=500]
+
+.There are two ways to request data from a Publisher, through the passed Subscription:
+****
+* *Unbounded*: On Subscribe, just call _Subscription#request(Long.MAX_VALUE)_.
+* *Bounded*: On Subscribe, keep a reference to Subscription and hit its _request(long)_ method when the Subscriber is ready to process data.
+** Typically, Subscribers will request an initial set of data, or even 1 data on Subscribe
+** Then after onNext has been deemed successful (e.g. after Commit, Flush etc...), request more data
+** It is encouraged to use a determined number of requests. Try avoiding overlapping requests, e.g. requesting 10 more data every next signal.
+****
+
+.What are the artifacts that Reactor directly use so far:
+[cols="4*", options="header"]
+|===
+
+|Reactive Streams
+|Reactor Module(s)
+|Implementation(s)
+|Description
+
+|org.reactivestreams.Processor
+|reactor-core, reactor-stream
+|reactor.core.processor.\*, reactor.rx.\*
+|In Core, we offer backpressure-ready RingBuffer*Processor and more, in Stream we have a full set of Operations and Broadcasters.
+
+|org.reactivestreams.Publisher
+|reactor-core, reactor-bus, reactor-stream, reactor-net
+|reactor.core.processor.\*, reactor.rx.stream.\*, reactor.rx.action.\*, reactor.io.net.\*
+|In Core, processors implement Publisher. In Bus we publish an unbounded emission of routed events. In Stream, our Stream extensions directly implement Publisher. In Net, Channels are implements Publisher to consume incoming data, we also provide publishers for flush and close callbacks.
+
+|org.reactivestreams.Subscriber
+|reactor-core, reactor-bus, reactor-stream, reactor-net
+|reactor.core.processor.\*, reactor.bus.EventBus.\*, reactor.rx.action.\*, reactor.io.net.impl.\*
+|In Core, our processor implement Subscriber. In Bus, we expose bus capacities with unbounded Publisher/Subscriber. In Stream, actions are Subscribers computing specific callbacks. In Net, our IO layer implements subscribers to handle writes, closes and flushes.
+
+|org.reactivestreams.Subscription
+|reactor-stream, reactor-net
+|reactor.rx.subscription.\*, reactor.io.net.impl.\*
+|In Stream, we offer optimized PushSubscriptions and buffering-ready ReactiveSubscription. In Net, our Async IO reader-side use custom Subscriptions to implement backpressure.
+
+
+|===
 
 We have worked with the standard since the inception of Reactor 2 and progressed in our journey until the *1.0.0* was about to release.
 It is now available on _Maven Central_ and other popular mirrors. You will also find it as a *transitive dependency to reactor-core*.
