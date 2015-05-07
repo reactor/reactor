@@ -7,19 +7,17 @@ Reactor is a foundational library for building demanding, realtime *Data-Streami
 [[start]]
 === What is Reactor ?
 
-So you came to have a look at Reactor. Maybe you typed some keywords in your favorite search engine like _Reactive_,
-_Spring+Reactive_, _Asynchronous+Java_ or just _What the heck is Reactor?_.
-
-In a nutshell Reactor is a lightweight, foundational library for the JVM that helps your service or application to _efficiently_ and _asynchronously_ pass messages.
+So you came to have a look at Reactor. Maybe you typed some keywords into your favorite search engine like _Reactive_,
+_Spring+Reactive_, _Asynchronous+Java_ or just _What the heck is Reactor?_. In a nutshell Reactor is a lightweight, foundational library for the JVM that helps your service or application to _efficiently_ and _asynchronously_ pass messages.
 
 .What do you mean by "efficiently"?
 ****
 * Little to no *memory* garbage created just to pass a message from A to B.
 * Handle *overflow* when consumers are slower at processing messages than the producer is at producing them.
-* Provide for *asynchronous flow* without blocking if at all possible.
+* Provide for *asynchronous flow*--without blocking--if at all possible.
 ****
 
-From empirical studies (mostly _#rage_ and _#drunk_ tweets), we know that asynchronous programming is hard--especially when a platform like the JVM offers so many options. Reactor aims to be truly non-blocking for a majority of use cases and we offer an API that is measurably more efficient than relying on low-level primitives in the JDK's _java.util.concurrent_ utilties. Reactor provides alternatives to (and discourages the use of):
+From empirical studies (mostly _#rage_ and _#drunk_ tweets), we know that asynchronous programming is hard--especially when a platform like the JVM offers so many options. Reactor aims to be truly non-blocking for a majority of use cases and we offer an API that is measurably more efficient than relying on low-level primitives from the JDK's _java.util.concurrent_ library. Reactor provides alternatives to (and discourages the use of):
 
 * Blocking wait : e.g. Future._get()_
 * Unsafe data access : e.g. ReentrantLock._lock()_
@@ -29,7 +27,7 @@ From empirical studies (mostly _#rage_ and _#drunk_ tweets), we know that asynch
 
 Being non-blocking matters--especially when scaling message-passing becomes critical (10k msg/s, 100k msg/s 1M...). There is some theory behind this (see http://en.wikipedia.org/wiki/Amdahl%27s_law[Amdahl's Law]), but we get bored and distracted easily, so let's first appeal to common sense.
 
- Let's say you use a pure https://docs.oracle.com/javase/tutorial/essential/concurrency/executors.html[Executor] approach:
+Let's say you use a pure https://docs.oracle.com/javase/tutorial/essential/concurrency/executors.html[Executor] approach:
 
 [source,java]
 ----
@@ -60,20 +58,19 @@ T result = f.get() // <5>
 In this simple example, it's easy to point out why scale-up is very limited:
 
 * Allocating objects might cause *GC pauses*, especially if the tasks stick around too long.
-** GC Pause will cause degrade performance globally.
-* A Queue in *unbounded* by default. Because of the slower database call, tasks will pile up.
-** It's not really a Memory Leak, but the side effects are just as nasty: more objects to scan during GC pauses; risk of losing important bits of data; etc...
+** Every GC Pause will degrade performance globally.
+* A Queue is *unbounded* by default. Because of the database call, tasks will pile up.
+** A backlog is not really a Memory Leak but the side effects are just as nasty: more objects to scan during GC pauses; risk of losing important bits of data; etc...
 ** Classic Linked Queues generate memory pressure by allocating Nodes. Lots of them.
 * A vicious cycle kicks-in when *blocking replies* are used.
 ** Blocking replies will cause producer slow-down. In practice, the flow becomes basically *synchronous* since we have to wait for each reply before submitting more tasks.
-** Any callDatabase Exception will be passed in an uncontrolled fashion to the producer, negating any fault-tolerance normally available by segregation work on a Thread boundary.
+** Any Exception thrown during the conversation with the datastore will be passed in an uncontrolled fashion to the producer, negating any fault-tolerance normally available by segregating work around a Thread boundary.
 
-Non-blocking is hard to achieve, and especially now in a world of distributed systems, fashionly called MicroService Architecture
-for the common hackernews/cloud reader. Reactor makes little compromises over JVM performances and tries to leverage the best patterns around
-to make the developper task looks not like a mathematical thesis. We have accepted the fact that nothing travels faster than light, and
-latency is a real-world concern every system might have to deal with at some point.
+Being fully and truly non-blocking is hard to achieve--especially in a world of distributed systems which have fashionable monikers like *Micro-Service Architectures*. Reactor, however, makes few compromises and tries to leverage the best patterns available so the developer doesn't have to feel like they're writing a mathematical thesis rather than an asynchronous nanoservice.
 
-.We offer a framework that lets you mitigate latency nasty side-effects in your application, and we do it in a minimal overhead fashion:
+Nothing travels faster than light (besides gossip and viral cat videos) and latency is a real-world concern every system has to deal with at some point. To that end, Reactor:
+
+.Offers a framework that helps you mitigate nasty latency-induced side-effects in your application and we do it with minimal overhead:
 ****
 * Leveraging some smart structures, we traded-off the *allocation issue* at runtime with pre-allocation at startup-time.
 * Our main message-passing structures come *bounded* so we don't pile up tasks infinitely.
