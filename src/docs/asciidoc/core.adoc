@@ -4,6 +4,29 @@
 "You should never do your asynchronous work alone."
 -- Stephane Maldini, After writing Reactor 2
 
+.A quick Groovy example of some Core work
+[source,groovy]
+----
+//Initialize context and get default dispatcher
+Environment.initialize()
+
+//RingBufferDispatcher with 8192 slots by default
+def dispatcher = Environment.sharedDispatcher()
+
+//Create a callback
+Consumer<Integer> c = { data ->
+        println "some data arrived: $data"
+}
+
+//Create an error callback
+Consumer<Throwable> errorHandler = { it.printStackTrace }
+
+//Dispatch data asynchronously
+r.dispatch(1234, c, errorHandler)
+
+Environment.terminate()
+----
+
 [[core-functional]]
 == Functional Artefacts
 Using Functional interfaces to organize your Reactor code.
