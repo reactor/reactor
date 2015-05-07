@@ -27,6 +27,12 @@ r.dispatch(1234, c, errorHandler)
 Environment.terminate()
 ----
 
+== Core Overview
+
+.How Doge can use Reactor-Core
+image::images/core-overview.png[Core Overview, width=500]
+
+
 [[core-functional]]
 == Functional Artefacts
 Using Functional interfaces to organize your Reactor code.
