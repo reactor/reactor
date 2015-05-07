@@ -4,7 +4,7 @@
 "You should never do your asynchronous work alone."
 -- Stephane Maldini, After writing Reactor 2
 
-.A quick Groovy example of some Core work
+.Head first with a Groovy example of some Core work
 [source,groovy]
 ----
 //Initialize context and get default dispatcher

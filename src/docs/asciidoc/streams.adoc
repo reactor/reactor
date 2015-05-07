@@ -1,7 +1,8 @@
+"Nope, you shall not use Future.get(), ever."
+-- Stephane Maldini, with a Banking Sector Customer
+
 [[streams]]
-ifndef::env-github[]
 == Coordinating (a)synchronous tasks with Streams and Promises
-endif::[]
 
 [[streams-basics]]
 == Streams Basics
