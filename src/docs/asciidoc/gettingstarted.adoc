@@ -117,7 +117,18 @@ image::images/modules.png[Module Organization, width=500]
 [[reactivestreams]]
 === Reactive Streams
 
-http://www.reactive-streams.org[Reactive Streams] is a new standard, adopted by different vendors and tech industries including Oracle with a target to include the specification into Java 9 and onwards.
+http://www.reactive-streams.org[Reactive Streams] is a new standard, adopted by different vendors and tech industrials including Oracle with a target to include the specification into Java 9 and onwards.
+
+The aim of the standard is to provide (a)synchronous data sequences with a flow-control mechanism. The specification is fairly light and first targets the JVM.
+It comes with 4 Java Interfaces, a TCK and a handful of examples. It is quite straightforward to implement the 4 interfaces for the need,
+but the meat of the project is actually the behaviors verified by the TCK. A provider like Reactor is qualified _Reactive Streams Ready_ when
+it successfully passed the TCK for the implementing classes, which fortunately we do.
+
+.The Reactive Streams Contract
+image::images/rs.png[The Reactive Streams Contract, width=500]
+
+We have worked with the standard since the inception of Reactor 2 and progressed in our journey until the *1.0.0* was about to release.
+It is now available on _Maven Central_ and other popular mirrors. You will also find it as a *transitive dependency to reactor-core*.
 
 
 [[rx]]
