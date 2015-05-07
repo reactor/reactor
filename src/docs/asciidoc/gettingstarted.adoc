@@ -10,11 +10,13 @@ So you came to have a look at Reactor, maybe typing some keywords in your favori
 _Spring+Reactive_, _Asynchronous+Java_ or just _What the heck is Reactor_.
 
 In a nutshell Reactor is a lightweight JVM foundation that deals with *asynchronous* message-passing _efficiently_.
-What means efficiency here is down to a few factors:
 
-* How do you deal with memory garbage generated just to pass a message from A to B ?
-* How do you handle overflow when a consumer is temporarely or permanentely slower than your producing resource ?
-* How do you control the asynchronous flow without using blocking producing resources ?
+.What means efficiency here is down to a few factors:
+****
+* How do you deal with *memory* garbage generated just to pass a message from A to B ?
+* How do you handle *overflow* when a consumer is temporarely or permanentely slower than your producing resource ?
+* How do you control the *asynchronous flow* without using blocking producing resources ?
+****
 
 From empiric studies (mostly rage tweets), we know that asynchronous programming is hard,
 especially when a platform like the JVM offers so many options.
@@ -59,27 +61,29 @@ T result = f.get() // <5>
 
 In this simple example we want to demonstrate it is not going to scale-up as expected:
 
-* Allocating objects might cause GC pauses especially if the tasks are there to stay long
+* Allocating objects might cause *GC pauses* especially if the tasks are there to stay long
 ** GC Pause will cause overall degradation of performances
-* The Queue comes unbounded by default and because of the slower database call, tasks will pile up
+* The Queue comes *unbounded* by default and because of the slower database call, tasks will pile up
 ** It's not considered as a Memory Leak but still its side effects are nasty: more work for the JVM GC scan, risk to loose important chunks of data...
 ** In addition, classic Linked Queues also generate memory pressure by allocating Nodes
-* Finally the vicious circle kicks-in when blocking replies are used
+* Finally the vicious circle kicks-in when *blocking replies* are used
 ** Blocking replies will cause producer slow-down. In the end the flow becomes relatively synchronous since we have to wait for each reply before submitting more tasks.
 ** Any callDatabase Exception will be passed in an uncontrolled fashion to the producer, negating any fault-tolerance normally offered by the thread boundary.
 
 Non-blocking is hard to achieve, and especially now in a world of distributed systems, fashionly called MicroService Architecture
-for the common hackernews/cloud reader. Reactor makes little compromises over performances and tries to leverage the best patterns around
+for the common hackernews/cloud reader. Reactor makes little compromises over JVM performances and tries to leverage the best patterns around
 to make the developper task looks not like a mathematical thesis. We have accepted the fact that nothing travels faster than light, and
-latency is a real-world concern every system might have to deal with at some point. We offer a framework that lets you mitigate latency
-nasty side-effects in your application, and we do it in a minimal overhead fashion.
+latency is a real-world concern every system might have to deal with at some point.
 
-* Leveraging some smart structures, we traded-off the allocation issue at runtime with pre-allocation at startup-time.
-* Our main message-passing structures come bounded so we don't pile up tasks infinitely.
-* Using popular patterns such as Reactive and Event-Driven Architectures, we offer non-blocking end-to-end flows including replies.
-* Implementing the new Reactive Streams Standard, we made bounded structures efficient by not requesting more than their current capacity
-* We applied these concepts to IPC and provide non-blocking IO drivers that understand flow-control
-* We expose a Functional API to help developers organizing their code in a side-effect free way. Understand by side-effect you can determine where you are thread-safe and fault-tolerant.
+.We offer a framework that lets you mitigate latency nasty side-effects in your application, and we do it in a minimal overhead fashion:
+****
+* Leveraging some smart structures, we traded-off the *allocation issue* at runtime with pre-allocation at startup-time.
+* Our main message-passing structures come *bounded* so we don't pile up tasks infinitely.
+* Using popular patterns such as *Reactive and Event-Driven Architectures*, we offer *non-blocking end-to-end flows* including replies.
+* Implementing the new Reactive Streams Standard, we made bounded structures *efficient* by not requesting more than their current capacity
+* We applied these concepts to IPC and provide *non-blocking IO drivers* that understand flow-control
+* We expose a Functional API to help developers organizing their code in a *side-effect free* way. Understand by side-effect you can determine where you are thread-safe and fault-tolerant.
+****
 
 === About the Project
 
@@ -112,11 +116,12 @@ image::images/modules.png[Module Organization, width=500]
 
 [[reactivestreams]]
 === Reactive Streams
+
 http://www.reactive-streams.org[Reactive Streams] is a new standard, adopted by different vendors and tech industries including Oracle with a target to include the specification into Java 9 and onwards.
+
 
 [[rx]]
 === Reactive Extensions
-What are Reactive Extensions and why Reactor `Streams` derive from them ?
 
 Reactive Extensions, or more commonly https://msdn.microsoft.com/en-gb/data/gg577609.aspx[Rx],
 are a set of well-defined Functional APIs extending the Observable pattern to an epic scale.
