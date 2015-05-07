@@ -70,7 +70,11 @@ Every Functional component gives the explicit intent of its general mission:
 * https://github.com/reactor/reactor/blob/master/reactor-core/src/main/java/reactor/fn/Supplier.java[Supplier]: factory logic - polling
 * https://github.com/reactor/reactor/blob/master/reactor-core/src/main/java/reactor/fn/Predicate.java[Predicate]: testing logic - filtering
 
-.The good news about wrapping executable instructions within Functional artefacts is that you can reuse them like *Lego Blocks*.
+[IMPORTANT]
+We consider Publisher and Subscriber interfaces also *functional blocks*, dare we say _Reactive Functional Blocks_.
+Nevertheless they are the basic components used everywhere around in Reactor and Beyond. Stream API will usually accept *reactor.fn* arguments to create on your behalf the appropriate Subscribers.
+
+.The good news about wrapping executable instructions within Functional artefacts is that you can reuse them like *Lego Bricks*.
 [source,java]
 ----
 Consumer<String> consumer = new Consumer<String>(){
@@ -132,10 +136,16 @@ biConsumer.accept(
 [NOTE]
 Tuples involve a bit more allocation, and that's why the common use cases of comparison or keyed signals are handled with Bi**** artifacts directly.
 
+[TIP]
+A good practice when using an IoC container such as Spring is to leverage the http://docs.spring.io/spring/docs/current/spring-framework-reference/html/beans.html#beans-java[Java Configuration] feature to return stateless Functional Beans.
+Then injecting the blocks in a Stream pipeline or dispatching their execution becomes quite elegant.
 
 [[core-dispatchers]]
 == Environment and Dispatchers
-Using Environment and Dispatchers to compute or schedule (a)synchronous tasks.
+
+The functional building blocks in place, we can start playing asynchronously with them.
+
+=== Timers
 
 [[core-codecs]]
 == Codecs and Buffer
