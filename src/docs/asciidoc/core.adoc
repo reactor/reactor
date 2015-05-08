@@ -280,7 +280,8 @@ a|No Tail Recursion support
 Blocking
 
 |TailRecurse
-|tailRecurse() or TailRecurseDispatcher.
+|tailRecurse() or TailRecurse
+Dispatcher.
 INSTANCE
 |Synchronous Reentrant Dispatcher that enqueue dispatches when currently dispatching.
 a|Upstream and Consumer executions are colocated
@@ -310,7 +311,8 @@ Unbounded by default
 
 Doesn't support ordering
 
-|TraceableDelegating
+|Traceable
+Delegating
 |N/A
 |Decorate an existing dispatcher with TRACE level logs.
 a|Dispatch tapping
@@ -321,7 +323,7 @@ Runs slower than the delegated dispatcher alone
 
 |===
 
-.RingBufferDispatching at a given time T
+.RingBufferDispatcher at a given time T
 image::images/rbd2.png[Ring Buffer message passing, width=500,align="center"]
 
 

@@ -3,13 +3,17 @@ ifndef::env-github[]
 == Computing asynchronous tasks with back-pressure support
 endif::[]
 
-== RingBuffer Processor
+== RingBuffer Processors
 Using the Disruptor RingBuffer-based Reactive Streams Processor for über high throughput.
 
 [[core-rbp]]
 === RingBufferProcessor
 
 Reactor's link:/docs/api/index.html?reactor/core/processor/RingBufferProcessor.html[RingBufferProcessor] component is essentially a https://github.com/LMAX-Exchange/disruptor[Disruptor RingBuffer] adapted to the Reactive Streams API. Its purpose is to provide as close to bare-metal efficiency as possible. It is intended for situations where you need to dispatch tasks onto another thread with extremely low overhead and extremely high throughput and manage backpressure in your workflow.
+
+.RingBufferProcessor at a given time T, with 2 Subscribers, all consuming the same sequence, but delta consuming rate is allowed until the ring buffer is full.
+This will happen when blue cube is colliding with its next clockwise yellow cube.
+image::images/RBP.png[Ring Buffer message passing, width=500,align="center"]
 
 To create a `RingBufferProcessor`, you use static `create` helper methods.
 
@@ -51,6 +55,10 @@ Each thread is receiving all values passed into the `Processor` and each thread 
 === RingBufferWorkProcessor
 
 Unlike the standard `RingBufferProcessor`, which broadcasts its values to all consumers, the `RingBufferWorkProcessor` partitions the incoming values based on the number of consumers. Values come into the `Processor` and are sent to the various threads (because each consumer has its own thread) in a round-robin fashion, while still using the internal `RingBuffer` to efficiently manage the publication of values by providing backpressure to the producer when appropriate.
+
+.RingBufferWorkProcessor at a given time T, with 2 Subscribers, each consuming unique sequence (availabilty FIFO), delta consuming rate is allowed until the ring buffer is full.
+This will happen when blue cube is colliding with its next clockwise yellow cube.
+image::images/RBWP.png[Ring Buffer message passing, width=500,align="center"]
 
 To use the `RingBufferWorkProcessor`, the only thing you have to change from the above code sample is the reference to the static `create` method. You'll use the one on the `RingBufferWorkProcessor` class itself instead. The rest of the code remains identical.
 
