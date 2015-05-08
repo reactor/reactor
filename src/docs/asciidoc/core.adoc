@@ -330,18 +330,20 @@ Runs slower than the delegated dispatcher alone
 .RingBufferDispatcher at a given time T
 image::images/rbd2.png[Ring Buffer message passing, width=500, align="center", link="images/rbd2.png"]
 
+=== DispatcherSupplier
 
 === Timers
 
 .A simple timer creation as seen in one of our https://github.com/reactor/reactor/blob/master/reactor-core/src/test/groovy/reactor/fn/timer/HashWheelTimerYieldingStrategy.groovy[Groovy Spock test]:
 [source,groovy]
 ----
-import reactor.fn.timer.HashWheelTimer
+import reactor.fn.timer.Timer
 
 //...
 
 given: "a new timer"
-    def timer = new HashWheelTimer(10, 8, new HashWheelTimer.YieldingWait())
+    Environment.initializeIfEmpty()
+    Timer timer = Environment.timer()
     def latch = new CountDownLatch(10)
 
 when: "a task is submitted"
@@ -355,6 +357,7 @@ when: "a task is submitted"
 then: "the latch was counted down"
     latch.await(1, TimeUnit.SECONDS)
     timer.cancel()
+    Environment.terminate()
 ----
 
 [[core-codecs]]

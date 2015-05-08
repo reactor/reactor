@@ -282,5 +282,3 @@ Streams.from(ids)
 assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
 ----
 
-TODO: example of using a `Stream` as a work queue.
-
