@@ -185,33 +185,33 @@ import reactor.core.dispatch.*
 //...
 
 given:
-			def sameThread = new SynchronousDispatcher()
-			def diffThread = new ThreadPoolExecutorDispatcher(1, 128)
-			def currentThread = Thread.currentThread()
-			Thread taskThread = null
+  def sameThread = new SynchronousDispatcher()
+  def diffThread = new ThreadPoolExecutorDispatcher(1, 128)
+  def currentThread = Thread.currentThread()
+  Thread taskThread = null
 
-			def consumer = { ev ->
-				taskThread = Thread.currentThread()
-			}
+  def consumer = { ev ->
+    taskThread = Thread.currentThread()
+  }
 
-			def errorConsumer = { error ->
-      	error.printStackTrace()
-      }
+  def errorConsumer = { error ->
+    error.printStackTrace()
+  }
 
 when: "a task is submitted"
-			sameThread.dispatch('test', consumer, errorConsumer)
+  sameThread.dispatch('test', consumer, errorConsumer)
 
 then: "the task thread should be the current thread"
-			currentThread == taskThread
+  currentThread == taskThread
 
 when: "a task is submitted to the thread pool dispatcher"
-			def latch = new CountDownLatch(1)
-			diffThread.dispatch('test', { ev -> consumer(ev); latch.countDown() }, errorConsumer)
+  def latch = new CountDownLatch(1)
+  diffThread.dispatch('test', { ev -> consumer(ev); latch.countDown() }, errorConsumer)
 
-			latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
+  latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
 
 then: "the task thread should be different when the current thread"
-			taskThread != currentThread
+  taskThread != currentThread
 ----
 
 [WARNING]
@@ -388,11 +388,11 @@ import reactor.io.json.JsonCodec
 //...
 
 given: 'A JSON codec'
-		JsonCodec<Map<String, Object>, Object> codec = new JsonCodec<Map<String, Object>, Object>(Map);
+		def codec = new JsonCodec<Map<String, Object>, Object>(Map);
 
 when: 'The decoder is passed some JSON'
 		Map<String, Object> decoded;
-		Function<Buffer, Map<String, Object>> decoder = codec.decoder({ decoded = it} as Consumer<Map<String, Object>>)
+		Function<Buffer, Map<String, Object>> decoder = codec.decoder{ decoded = it }
 		decoder.apply(Buffer.wrap("{\"a\": \"alpha\"}"));
 
 then: 'The decoded map has the expected entries'
