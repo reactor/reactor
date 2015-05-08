@@ -1,6 +1,9 @@
 [[bus]]
 == Routing data
 
+.How Doge can use Reactor-Bus
+image::images/bus-overview.png[Stream Overview, width=500, align="center"]
+
 [[bus-publish-subscribe]]
 == Publish/Subscribe
 Using an `EventBus` to publish and respond to events using Publish/Subscribe.
