@@ -109,6 +109,11 @@ It might not sound like a striking revolution at first, however this basic minds
 our mission to make asynchronous code sane and composable. The Dispatchers will use Consumer for their typed Data and Error callbacks.
 The Reactor Streams module will use all these artifacts for greater good as well.
 
+[TIP]
+A good practice when using an IoC container such as Spring is to leverage the http://docs.spring.io/spring/docs/current/spring-framework-reference/html/beans.html#beans-java[Java Configuration] feature to return stateless Functional Beans.
+Then injecting the blocks in a Stream pipeline or dispatching their execution becomes quite elegant.
+
+
 You might have noticed these interfaces are strongly typed with Generic support and a small fixed number of argument.
 So how do you pass more than 1 or 2 arguments ? The answer is in one class : *Tuple*.
 Tuples are like typed CSV lines in a single object instance, you want them in functional programming to keep both the type safety and a variable number of arguments.
@@ -135,10 +140,6 @@ biConsumer.accept(
 
 [NOTE]
 Tuples involve a bit more allocation, and that's why the common use cases of comparison or keyed signals are handled with Bi**** artifacts directly.
-
-[TIP]
-A good practice when using an IoC container such as Spring is to leverage the http://docs.spring.io/spring/docs/current/spring-framework-reference/html/beans.html#beans-java[Java Configuration] feature to return stateless Functional Beans.
-Then injecting the blocks in a Stream pipeline or dispatching their execution becomes quite elegant.
 
 [[core-dispatchers]]
 == Environment and Dispatchers
