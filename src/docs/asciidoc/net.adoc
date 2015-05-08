@@ -6,13 +6,15 @@ endif::[]
 === Overview
 How is Reactor Net module working ?
 
+.How Doge can use Reactor-Net
+image::images/net-overview.png[Stream Overview, width=500, align="center"]
+
 [NOTE]
 ---
 Reactive IPC
 ---
 
 === Channels
-How is Reactor Net module working ?
 
 === Channel Handlers
 

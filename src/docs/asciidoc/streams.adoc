@@ -4,6 +4,10 @@
 [[streams]]
 == Coordinating (a)synchronous tasks with Streams and Promises
 
+.How Doge can use Reactor-Stream
+image::images/streams-overview.png[Stream Overview, width=500, align="center"]
+
+
 [[streams-basics]]
 == Streams Basics
 Using a `Stream` or a `Promise` and the Reactive Streams standard to compose pipelines.

@@ -35,7 +35,7 @@ Reactor's link:/docs/api/index.html?reactor/core/processor/RingBufferProcessor.h
 
 "I use RingBufferProcessor to compute various output remote calls asynchronously: AMQP, SSD storage and an In-Memory store,
 the variable latency is totally eaten by the Processor and our Million-Message-Per-Sec Datasource never blocks !"
--- An happy Reactor user, Use Case for RingBufferProcessor
+-- Happy Reactor user, Use Case for RingBufferProcessor
 
 
 .RingBufferProcessor at a given time T, with 2 Subscribers, all consuming the same sequence, but delta consuming rate is allowed until the ring buffer is full. This will happen when blue cube is colliding with its next clockwise yellow cube.
@@ -83,7 +83,7 @@ Each thread is receiving all values passed into the `Processor` and each thread 
 Unlike the standard `RingBufferProcessor`, which broadcasts its values to all consumers, the `RingBufferWorkProcessor` partitions the incoming values based on the number of consumers. Values come into the `Processor` and are sent to the various threads (because each consumer has its own thread) in a round-robin fashion, while still using the internal `RingBuffer` to efficiently manage the publication of values by providing backpressure to the producer when appropriate.
 
 "We implemented a RingBufferWorkProcessor to scale-up and load-balance various HTTP microservices calls. I might be wrong but it looks like its faster than light (!) and the GC pressure is totally under control."
--- An happy Reactor user, Use Case for RingBufferProcessor
+-- Happy Reactor user, Use Case for RingBufferWorkProcessor
 
 
 .RingBufferWorkProcessor at a given time T, with 2 Subscribers, each consuming unique sequence (availabilty FIFO), delta consuming rate is allowed until the ring buffer is full. This will happen when blue cube is colliding with its next clockwise yellow cube.
