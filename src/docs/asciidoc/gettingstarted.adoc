@@ -168,7 +168,7 @@ image::images/signals.png[The Publishing Sequence, width=500, align="center"]
 |Publisher
 |reactor-core, reactor-bus, reactor-stream, reactor-net
 |reactor.core.processor.\*, reactor.rx.stream.*, reactor.rx.action.\*, reactor.io.net.*
-|In Core, processors implement Publisher. In Bus we publish an unbounded emission of routed events. In Stream, our Stream extensions directly implement Publisher. In Net, Channels are implements Publisher to consume incoming data, we also provide publishers for flush and close callbacks.
+|In Core, processors implement Publisher. In Bus we publish an unbounded emission of routed events. In Stream, our Stream extensions directly implement Publisher. In Net, Channels implement Publisher to consume incoming data, we also provide publishers for flush and close callbacks.
 
 |Subscriber
 |reactor-core, reactor-bus, reactor-stream, reactor-net
