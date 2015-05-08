@@ -102,7 +102,7 @@ Reactor is http://www.apache.org/licenses/LICENSE-2.0.html[Apache 2.0 licensed] 
 [[architecture]]
 === Architecture Overview
 .The main modules present in Reactor 2.0
-image::images/modules.png[Module Organization, width=500]
+image::images/modules.png[Module Organization, width=500, align="center"]
 
 The Reactor codebase is divided into several submodules to help you pick the ones that suit your needs while not burdening you with functionality you don't need.
 
@@ -116,7 +116,7 @@ Following are some examples of how one might mix-and-match reactive technologies
 * RxJavaReactiveStreams + RxJava + Reactor-Net (Core/Stream) : Compose input data with RxJava and gate with Async IO drivers.
 
 .A *quick* overview of how Reactor modules depend on one another
-image::images/overview.png[Architecture Overview, width=500]
+image::images/overview.png[Architecture Overview, width=500, align="center"]
 
 [[reactivestreams]]
 === Reactive Streams
@@ -129,7 +129,7 @@ but the meat of the project is actually the behaviors verified by the TCK. A pro
 it successfully passed the TCK for the implementing classes, which fortunately we did.
 
 .The Reactive Streams Contract
-image::images/rs.png[The Reactive Streams Contract, width=500]
+image::images/rs.png[The Reactive Streams Contract, width=500, align="center"]
 
 .The Reactive Streams Interfaces
 ****
@@ -140,7 +140,7 @@ image::images/rs.png[The Reactive Streams Contract, width=500]
 ****
 
 .The Reactive Streams publishing protocol
-image::images/signals.png[The Publishing Sequence, width=500]
+image::images/signals.png[The Publishing Sequence, width=500, align="center"]
 
 .There are two ways to request data from a Publisher, through the passed Subscription:
 ****

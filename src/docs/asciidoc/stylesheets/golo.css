@@ -675,3 +675,5 @@ body { background: url('../images/golo/body-bg.png?1370460826') #fdfaf7 repeat; 
 table.tableblock.grid-all { -webkit-border-radius: 0; border-radius: 0; }
 
 #footer { background-color: #23160c; }
+
+.imageblock .title { text-align: center; }

@@ -35,7 +35,7 @@ Environment.terminate()
 == Core Overview
 
 .How Doge can use Reactor-Core
-image::images/core-overview.png[Core Overview, width=500]
+image::images/core-overview.png[Core Overview, width=500, align="center"]
 
 *Reactor Core* has the following artefacts:
 
@@ -170,6 +170,9 @@ The Dispatcher contract offers a strongly typed way to pass a signal with its Da
 This way we fix a first issue faced by classic Executors, the error isolation. In effect instead of interrupting the assigned resource,
 the Error Consumer will be invoked. If none has been provided it will try to find an existing Environment and use its assigned _errorJournalConsumer_.
 
+A second unique feature offered by the asynchronous Dispatcher is to allow for reentrant dispatching by using a _Tail Recurse_ strategy.
+Tail Recursion is used when dispatch detects the dispatcher classLoader has been assigned to the running thread and if so, enqueue the task to be executed when the current consumer returns.
+
 .Using a synchronous and a multi-threaded dispatcher like in this https://github.com/reactor/reactor/blob/master/reactor-core/src/test/groovy/reactor/core/dispatch/DispatcherSpec.groovy[Groovy Spock test]:
 [source,groovy]
 ----
@@ -212,6 +215,114 @@ Like the Executor they will miss a feature that we will add along the 2.x releas
 They are ones of the few leftovers in Reactor that are not directly tied to the Reactive Streams standard directly. However,
 they can be combined with the Reactor Stream to quickly fix that as we will explore in the <<streams.adoc#streams, Stream Section>>.
 Essentially that means a user can directly hit them until they eventually and temporarely block since the capacity might be bounded by most Dispatcher implementations.
+
+.An introduction to the Dispatcher family
+[cols="5*", options="header, autowidth"]
+|===
+
+|Dispatcher
+|From Environment
+|Description
+|Strengths
+|Weaknesses
+
+|*RingBuffer*
+|sharedDispatcher()
+|https://lmax-exchange.github.io/disruptor/[An LMAX Disruptor] RingBuffer based Dispatcher.
+a|Small latency peaks tolerated
+
+Fastest Async Dispatcher, 10-15M+ dispatch/sec on commodity hardware
+
+Support ordering
+
+a|'Spin' Loop when getting the next slot on full capcity
+
+Single Threaded, no concurrent dispatch
+
+|*Mpsc*
+|sharedDispatcher() if Unsafe not available
+|Alternative optimized message-passing structure.
+a|Latency peaks tolerated
+
+5-10M+ dispatch/sec on commodity hardware
+
+Support ordering
+
+a|Unbounded and possibly using as much available heap memory as possible
+
+Single Threaded, no concurrent dispatch
+
+|*WorkQueue*
+|dispatcher("workQueue")
+|https://lmax-exchange.github.io/disruptor/[An LMAX Disruptor] RingBuffer based Dispatcher.
+a|Latency Peak tolerated for a limited time
+
+Fastest Multi-Threaded Dispatcher, 5-10M+ dispatch/sec on commodity hardware
+
+a|'Spin' Loop when getting the next slot on full capcity
+
+Concurrent dispatch
+
+Doesn't support ordering
+
+|*Synchronous*
+|dispatcher("sync") or SynchronousDispatcher.
+INSTANCE
+|Runs on the current thread.
+a|Upstream and Consumer executions are colocated
+
+Useful for Test support
+
+Support ordering if the reentrant dispatch is on the current thread
+
+a|No Tail Recursion support
+
+Blocking
+
+|TailRecurse
+|tailRecurse() or TailRecurseDispatcher.
+INSTANCE
+|Synchronous Reentrant Dispatcher that enqueue dispatches when currently dispatching.
+a|Upstream and Consumer executions are colocated
+
+Reduce execution stack, greatly expanded by functional call chains
+
+a|Unbounded Tail Recurse depth
+
+Blocking
+
+Support ordering (Thread Stealing)
+
+
+|ThreadPoolExecutor
+|newDispatcher(int, int, DispatcherType.
+THREAD_POOL_EXECUTOR)
+|Use underlying ThreadPoolExecutor message-passing
+a|Multi-Threaded
+
+Blocking Consumers, permanent latency tolerated
+
+1-5M+ dispatch/sec on commodity hardware
+
+a|Concurrent run on a given consumer executed twice or more
+
+Unbounded by default
+
+Doesn't support ordering
+
+|TraceableDelegating
+|N/A
+|Decorate an existing dispatcher with TRACE level logs.
+a|Dispatch tapping
+
+Runs slower than the delegated dispatcher alone
+
+|Log overhead (runtime, disk)
+
+|===
+
+.RingBufferDispatching at a given time T
+image::images/rbd2.png[Ring Buffer message passing, width=500,align="center"]
 
 
 === Timers
