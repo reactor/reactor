@@ -6,6 +6,10 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :doctype: book
 :icons: font
 
+++++
+include::nav.html[]
+++++
+
 include::gettingstarted.adoc[]
 
 [[reactor-core]]
