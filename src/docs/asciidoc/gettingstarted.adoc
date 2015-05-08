@@ -121,7 +121,7 @@ image::images/overview.png[Architecture Overview, width=500, align="center"]
 [[reactivestreams]]
 === Reactive Streams
 
-http://www.reactive-streams.org[Reactive Streams] is a new standard, adopted by different vendors and tech industrials including Oracle with a target to include the specification into Java 9 and onwards.
+http://www.reactive-streams.org[Reactive Streams] is a new standard, adopted by different vendors and tech industrials including Netflix, Oracle, Pivotal or Typesafe with a target to include the specification into Java 9 and onwards.
 
 The aim of the standard is to provide (a)synchronous data sequences with a flow-control mechanism. The specification is fairly light and first targets the JVM.
 It comes with 4 Java Interfaces, a TCK and a handful of examples. It is quite straightforward to implement the 4 interfaces for the need,
