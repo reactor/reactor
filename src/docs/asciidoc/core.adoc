@@ -4,10 +4,6 @@
 "You should never do your asynchronous work alone."
 -- Stephane Maldini, After writing Reactor 2
 
-----
-
-
-----
 
 .Head first with a Groovy example of some Core work
 [source,groovy]

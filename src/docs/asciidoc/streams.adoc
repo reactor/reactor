@@ -8,7 +8,7 @@
 == Streams Basics
 Using a `Stream` or a `Promise` and the Reactive Streams standard to compose pipelines.
 
-It's not an overstatement to say that `Stream` is the Reactor library's _raison d'être_. It is an incredibly useful and flexible component. It's flexible enough to be used to just compose asynchronous actions together like RxJava's `Observable`. But it's powerful enough it can function as an asynchronous work queue that forks and joins arbitrary compositions or other Reactive Streams components coming from one of the other implementors of the standard.footnoteref:[reactive-streams-implementors, Currently http://akka.io[Akka Streams], http://ratpack.io[Ratpack], and https://github.com/ReactiveX/RxJava[RxJava]]
+It is an incredibly useful and flexible component. It's flexible enough to be used to just compose asynchronous actions together like RxJava's `Observable`. But it's powerful enough it can function as an asynchronous work queue that forks and joins arbitrary compositions or other Reactive Streams components coming from one of the other implementors of the standard.footnoteref:[reactive-streams-implementors, Currently http://akka.io[Akka Streams], http://ratpack.io[Ratpack], and https://github.com/ReactiveX/RxJava[RxJava]]
 
 There are basically two rough categories of streams: a "hot" `Stream` and a "cold" `Stream`. A "hot" `Stream` is unbounded and capable of accepting input data like a sink. A "cold" `Stream` is bounded and generally created from a fixed collection of data like a `List` or other `Iterable`.
 
@@ -150,6 +150,9 @@ The story behind Stream/Promise threading.
 [[streams-microbatching]]
 == MicroBatching
 Using a `Stream` as a `MicroBatching` strategy to aggregate small payloads.
+
+=== Into a simple List
+=== Into anything - Windowing
 
 [[streams-backpressure]]
 == Backpressure and Overflow
