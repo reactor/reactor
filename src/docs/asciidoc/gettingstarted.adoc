@@ -2,7 +2,7 @@
 == *Introducing Reactor*
 
 [quote, Preface, TL;DR]
-Reactor is a foundational library for building demanding, realtime *Data-Streaming* applications and micro, nano, and pico-services that must exhibit *Low-Latency* and be *Fault-Tolerance*.
+Reactor is a foundational library for building demanding, realtime *Data-Streaming* applications and micro, nano, or pico-services that must exhibit *Low-Latency* and be *Fault-Tolerance*.
 
 [[start]]
 === What is Reactor ?
