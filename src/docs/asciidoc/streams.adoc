@@ -18,7 +18,7 @@ There are basically two rough categories of streams: a "hot" `Stream` and a "col
 
 [NOTE]
 ====
-Reactor uses an `Environment` to keep sets of `Dispatcher` instances around for shared use in a given JVM (and classloader). An `Environment` instance can be created and passed around in an application to avoid classloading segregation issues or the static helpers can be used. Throughout the examples on this site, we'll use the static helpers and encourage you to do likewise. To do that, you'll need to initialize the static `Environment` somewhere in your application.
+As seen <<core.adoc#core-dispatchers, previously>>, Reactor uses an `Environment` to keep sets of `Dispatcher` instances around for shared use in a given JVM (and classloader). An `Environment` instance can be created and passed around in an application to avoid classloading segregation issues or the static helpers can be used. Throughout the examples on this site, we'll use the static helpers and encourage you to do likewise. To do that, you'll need to initialize the static `Environment` somewhere in your application.
 
 [source,java]
 ----
@@ -79,8 +79,6 @@ sink.onNext("Hello World!"); // <4>
 Since Reactor implements the Reactive Streams standard, it's important to understand how each of the steps in a pipeline communicate with one another. If you're not sure what that means, then be sure to read the https://github.com/reactive-streams/reactive-streams/blob/v1.0.0.M3/README.md[Reactive Streams explanation] to understand what it means to "produce demand" and what a `Subscription` and a `Subscriber` are. Without that foundation, some of the following explanations might be confusing.
 ====
 
-
-For the win.
 
 === Setting Capacity
 
@@ -156,7 +154,64 @@ The story behind Stream/Promise threading.
 Using a `Stream` as a `MicroBatching` strategy to aggregate small payloads.
 
 === Into a simple List
+
+[source,java]
+----
+long timeout = 100;
+final int batchsize = 4;
+int parallelStreams = 16;
+CountDownLatch latch = new CountDownLatch(1);
+
+final Broadcaster<Integer> streamBatcher = Broadcaster.<Integer>create(env);
+streamBatcher
+  .buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
+  .partition(parallelStreams)
+  .consume(innerStream ->
+    innerStream
+    .dispatchOn(env.getCachedDispatcher())
+    .when(Exception.class, Throwable::printStackTrace)
+    .consume(i -> latch.countDown()));
+
+
+streamBatcher.onNext(12);
+streamBatcher.onNext(123);
+streamBatcher.onNext(42);
+streamBatcher.onNext(666);
+
+boolean finished = latch.await(2, TimeUnit.SECONDS);
+if (!finished)
+  throw new RuntimeException(streamBatcher.debug().toString());
+else {
+  System.out.println(streamBatcher.debug().toString());
+  assertEquals("Must have correct latch number : " + latch.getCount(), latch.getCount(), 0);
+}
+----
+
 === Into anything - Windowing
+
+
+[source,java]
+----
+Stream<Integer> sensorDataStream =
+Streams.from(createTestDataset(1000))
+
+CountDownLatch endLatch = new CountDownLatch(1000 / 100);
+
+Control controls = sensorDataStream
+  .window(100)
+  .consume(batchedStream -> {
+    System.out.println("New window starting");
+    batchedStream
+      .reduce(Integer.MAX_VALUE, (acc, next) -> Math.min(acc, next))
+      .finallyDo(o -> endLatch.countDown())
+      .consume(i -> System.out.println("Minimum " + i));
+  });
+
+endLatch.await(10, TimeUnit.SECONDS);
+System.out.println(controls.debug());
+
+Assert.assertEquals(0, endLatch.getCount());
+----
 
 [[streams-backpressure]]
 == Backpressure and Overflow
@@ -190,6 +245,42 @@ Using a `Stream` to compute metrics and any inline stateful processing.
 Partition a `Stream` for concurrent, parallel work.
 
 An important aspect of the functional composition approach to reactive programming is that work can be broken up into discreet chunks and scheduled to run on arbitrary Dispatchers. This means you can easily compose a flow of work that starts with an input value, executes work on another thread, and then passes through subsequent transformation steps once the result is available. This is one of the more common usage patterns with Reactor.
+
+
+[source,java]
+----
+List<String> ids = Arrays.asList("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
+
+DispatcherSupplier supplier1 = Environment.newCachedDispatchers(2, "pool1");
+DispatcherSupplier supplier2 = Environment.newCachedDispatchers(5, "pool2");
+
+CountDownLatch latch = new CountDownLatch(10);
+
+Streams.from(ids)
+  .dispatchOn(Environment.sharedDispatcher())
+  .partition(2)
+  .flatMap(stream -> stream
+    .dispatchOn(supplier1.get())
+    .map(s -> s + " " + Thread.currentThread().toString())
+  )
+  .map(t -> {
+    System.out.println("First partition: "+Thread.currentThread() + ", worker=" + t);
+    return t;
+  })
+  .partition(5)
+  .flatMap(stream -> stream
+    .dispatchOn(supplier2.get())
+    .map(s -> s + " " + Thread.currentThread().toString())
+  )
+  .dispatchOn(Environment.sharedDispatcher())
+  .consume(t -> {
+    System.out.println("Second partition: "+Thread.currentThread() + ", worker=" + t);
+    latch.countDown();
+  });
+
+
+assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
+----
 
 TODO: example of using a `Stream` as a work queue.
 
