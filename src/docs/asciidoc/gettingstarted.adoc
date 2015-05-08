@@ -142,13 +142,13 @@ image::images/rs.png[The Reactive Streams Contract, width=500, align="center"]
 .The Reactive Streams publishing protocol
 image::images/signals.png[The Publishing Sequence, width=500, align="center"]
 
-.There are two ways to request data from a Publisher, through the passed Subscription:
+.There are two ways to request data to a Publisher from a Subscriber, through the passed Subscription:
 ****
 * *Unbounded*: On Subscribe, just call _Subscription#request(Long.MAX_VALUE)_.
 * *Bounded*: On Subscribe, keep a reference to Subscription and hit its _request(long)_ method when the Subscriber is ready to process data.
 ** Typically, Subscribers will request an initial set of data, or even 1 data on Subscribe
 ** Then after onNext has been deemed successful (e.g. after Commit, Flush etc...), request more data
-** It is encouraged to use a determined number of requests. Try avoiding overlapping requests, e.g. requesting 10 more data every next signal.
+** It is encouraged to use a linear number of requests. Try avoiding overlapping requests, e.g. requesting 10 more data every next signal.
 ****
 
 .What are the artifacts that Reactor directly use so far:
