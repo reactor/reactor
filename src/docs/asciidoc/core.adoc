@@ -31,7 +31,7 @@ Environment.terminate()
 == Core Overview
 
 .How Doge can use Reactor-Core
-image::images/core-overview.png[Core Overview, width=500, align="center"]
+image::images/core-overview.png[Core Overview, width=500, align="center", link="images/core-overview.png"]
 
 *Reactor Core* has the following artefacts:
 
@@ -328,7 +328,7 @@ Runs slower than the delegated dispatcher alone
 |===
 
 .RingBufferDispatcher at a given time T
-image::images/rbd2.png[Ring Buffer message passing, width=500,align="center"]
+image::images/rbd2.png[Ring Buffer message passing, width=500, align="center", link="images/rbd2.png"]
 
 
 === Timers

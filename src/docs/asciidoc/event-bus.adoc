@@ -2,7 +2,7 @@
 == Routing data
 
 .How Doge can use Reactor-Bus
-image::images/bus-overview.png[Stream Overview, width=500, align="center"]
+image::images/bus-overview.png[Stream Overview, width=500, align="center", link="images/bus-overview.png"]
 
 [[bus-publish-subscribe]]
 == Publish/Subscribe

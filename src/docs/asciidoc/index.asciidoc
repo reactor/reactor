@@ -6,7 +6,7 @@ ifndef::host-github[:ext-relative: {outfilesuffix}]
 :doctype: book
 :icons: font
 
-ifndef::backend-docbook[]
+ifdef::backend-html5[]
 ++++
 include::nav.html[]
 ++++

@@ -7,7 +7,7 @@ endif::[]
 How is Reactor Net module working ?
 
 .How Doge can use Reactor-Net
-image::images/net-overview.png[Stream Overview, width=500, align="center"]
+image::images/net-overview.png[Stream Overview, width=500, align="center", link="images/net-overview.png"]
 
 [NOTE]
 ---
