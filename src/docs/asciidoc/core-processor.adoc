@@ -26,7 +26,21 @@ This decision must be taken at creation time in order to use the right coordinat
 We expect to increase our collection of Core Processors over the 2.x release line.
 
 == RingBuffer Processors
-Using the Disruptor RingBuffer-based Reactive Streams Processor for über high throughput.
+RingBuffer-based Reactive Streams Processors are good for a bunch of #awesome reasons:
+
+* Über high throughput
+* Replay from the latest not consumed data
+** If no Subscriber is listening, data won't be lost (unlike `Broadcaster` from Reactor-Stream).
+** If a Subscriber cancels during processing, signal will be safely replayed, it actually works nicely with the RingBufferWorkProcessor
+* Smart back-pressure, it allows for a bounded size anytime and the subscribers have the responsibility to consume and request more data
+* Propagated back-pressure, since it's a Processor, it can be subscribed to pass the information along
+* Multi-threaded inbound/outbound Processor capabilities
+
+[discrete]
+=== Actually RingBuffer*Processor are like typed `MicroMessageBroker` !
+
+Their only drawbacks is they might be costly at runtime to create and they can't be shared as easily as its cousin `RingBufferDispatcher`.
+That makes them suited for High-Throughput Pre-defined Data Pipelines.
 
 [[core-rbp]]
 === RingBufferProcessor
@@ -105,4 +119,7 @@ Thread[test-3,5,main] data=2
 Thread[test-1,5,main] data=1
 ----
 
-Reactor's `Processor` components can be used to create extremely efficient, low-latency work pools into which you can safely dump 10's of millions of events per second (assuming your business logic can handle that volume). When the slots are full and all consumers are busy, the `Processor` will produce backpressure on the upstream components in the usual RingBuffer way.
+[IMPORTANT]
+RingBufferWorkProcessor can replay cancelled signals, detecting `CancelException` from the terminating subscriber. It will be the only case where a signal will
+actually be played eventually once more with another Subscriber. *We guarantee at-least-once delivery for any events*.
+If you are familiar with semantic you might now say "Wait, this RingBufferWorkProcessor works like a Message Broker?", and the answer is yes.

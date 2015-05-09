@@ -18,6 +18,7 @@ include::gettingstarted.adoc[]
 = *reactor-core*
 include::core.adoc[]
 include::core-processor.adoc[]
+include::core-codec.adoc[]
 
 [[reactor-stream]]
 = *reactor-stream*
