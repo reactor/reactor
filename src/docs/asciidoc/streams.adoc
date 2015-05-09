@@ -43,6 +43,28 @@ Streams.from(aListOfString)
 image::images/streams-overview.png[Stream Overview, width=650, align="center", link="images/streams-overview.png"]
 
 
+*Reactor Streams* has the following artefacts:
+
+****
+* Static *Factories*, the one-stop-shops to create the related components
+** `Streams` for `Stream` creation from well-defined data sources (iterable, nothing, future, Publisher...)
+** `BiStreams` for key-value `Stream<Tuple2>` processing (reduceByKey...)
+** `IOStreams` for <<streams.adoc#streams-persistent, Persisting>> and <<core-codec#core-codecs, Decoding>> `Streams`
+** `Promises` for single-data-only `Promise`
+* `Stream` and its direct implementations
+** Contains *reactive extensions* and other composition API
+** The extensions are usually created with the factories (`Streams.from(Iterable)` -> IterableStream, `Streams.from(Future)` -> FutureStream...)
+* `Promise` with a specific https://promisesaplus.com[A+ flavored] API
+** Can be transformed back to Stream with `Promise.stream()`
+* `Action` and its direct implementations of every operation provided by the `Stream` following the *Reactive Streams Processor* specification
+** They are not created directly in general, but with the Stream API (`Stream.map()` -> MapAction, `Stream.filter()` -> FilterAction...)
+* `Broadcaster`, the publish/subscribe interfaces for dynamic data dispatch
+** Unlike <<core-processor#core-processor,Core Processors>>, they will usually not bother buffering data if there is no subscriber attached
+** However the `BehaviorBroadcaster` can replay the latest signal to the new Subscribers
+****
+
+
+
 [[streams-basics]]
 == Streams Basics
 Reactor offers `Stream` or `Promise` based on the Reactive Streams standard to compose pipelines.
@@ -270,6 +292,11 @@ Using a `Stream` or a `Promise` to deal with remote `MicroService` latency.
 [[streams-errors]]
 == Error Handling
 Using a `Stream` to build fault tolerant pipelines.
+
+[[streams-persistent]]
+== Persisting Stream Data
+Combining multiple Reactive Streams data `Publishers` in an controlled fashion.
+
 
 [[streams-analytics]]
 == Analytics
