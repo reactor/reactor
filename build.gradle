@@ -454,9 +454,6 @@ project('reactor-logback') {
   dependencies {
     compile(files(project(":reactor-core").disruptorRepackJar))
     compile project(':reactor-core')
-    compile (project(':reactor-bus')){
-      transitive = false
-    }
 
     compile "ch.qos.logback:logback-classic:$logbackVersion",
         "net.openhft:chronicle:$openHftChronicleVersion",

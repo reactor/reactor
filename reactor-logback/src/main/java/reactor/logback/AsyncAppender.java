@@ -21,36 +21,38 @@ import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.LogbackException;
 import ch.qos.logback.core.filter.Filter;
 import ch.qos.logback.core.spi.*;
-import reactor.bus.batcher.Operation;
-import reactor.bus.batcher.OperationBatcher;
-import reactor.bus.batcher.spec.OperationBatcherSpec;
-import reactor.fn.Consumer;
-import reactor.fn.Supplier;
+import org.reactivestreams.Processor;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.processor.RingBufferProcessor;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.bus.batcher.OperationBatcher} internally
+ * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.core.processor.RingBufferProcessor}
+ * internally
  * to queue events to a single-writer thread. This implementation doesn't do any actually appending itself, it just
  * delegates to a "real" appender but it uses the efficient queueing mechanism of the {@literal RingBuffer} to do so.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class AsyncAppender
 		extends ContextAwareBase
 		implements Appender<ILoggingEvent>,
-		           AppenderAttachable<ILoggingEvent> {
+		AppenderAttachable<ILoggingEvent>,
+		Subscriber<ILoggingEvent> {
 
 	private final AppenderAttachableImpl<ILoggingEvent>    aai      = new AppenderAttachableImpl<ILoggingEvent>();
 	private final FilterAttachableImpl<ILoggingEvent>      fai      = new FilterAttachableImpl<ILoggingEvent>();
 	private final AtomicReference<Appender<ILoggingEvent>> delegate = new AtomicReference<Appender<ILoggingEvent>>();
 
-	private String                     name;
-	private OperationBatcher<LogEvent> processor;
+	private String                        name;
+	private Processor<ILoggingEvent, ILoggingEvent> processor;
 
-	private long    backlog           = 1024 * 1024;
+	private int     backlog           = 1024 * 1024;
 	private boolean includeCallerData = false;
 	private boolean started           = false;
 
@@ -58,7 +60,7 @@ public class AsyncAppender
 		return backlog;
 	}
 
-	public void setBacklog(long backlog) {
+	public void setBacklog(int backlog) {
 		this.backlog = backlog;
 	}
 
@@ -105,44 +107,49 @@ public class AsyncAppender
 	public void start() {
 		startDelegateAppender();
 
-		processor = new OperationBatcherSpec<LogEvent>()
-				.dataSupplier(new Supplier<LogEvent>() {
-					@Override
-					public LogEvent get() {
-						return new LogEvent();
-					}
-				})
-				.multiThreadedProducer()
-				.dataBufferSize((int) backlog)
-				.when(Throwable.class, new Consumer<Throwable>() {
-					@Override
-					public void accept(Throwable throwable) {
-						addError(throwable.getMessage(), throwable);
-					}
-				})
-				.consume(new Consumer<LogEvent>() {
-					@Override
-					public void accept(LogEvent evt) {
-						loggingEventDequeued(evt.event);
-					}
-				})
-				.get();
+		processor = RingBufferProcessor.share("logger", backlog, false);
+		processor.subscribe(this);
+	}
 
+	@Override
+	public void onSubscribe(Subscription s) {
 		try {
 			doStart();
 		} catch (Throwable t) {
 			addError(t.getMessage(), t);
 		} finally {
 			started = true;
+			s.request(Long.MAX_VALUE);
+		}
+	}
+
+	@Override
+	public void onNext(ILoggingEvent iLoggingEvent) {
+		aai.appendLoopOnAppenders(iLoggingEvent);
+	}
+
+	@Override
+	public void onError(Throwable t) {
+		addError(t.getMessage(), t);
+	}
+
+	@Override
+	public void onComplete() {
+		try {
+			doStop();
+		} catch (Throwable t) {
+			addError(t.getMessage(), t);
+		} finally {
+			started = false;
 		}
 	}
 
 	private void startDelegateAppender() {
 		Appender<ILoggingEvent> delegateAppender = delegate.get();
-    if (null != delegateAppender && !delegateAppender.isStarted()) {
-      delegateAppender.start();
-    }
-  }
+		if (null != delegateAppender && !delegateAppender.isStarted()) {
+			delegateAppender.start();
+		}
+	}
 
 	@Override
 	public void stop() {
@@ -151,15 +158,7 @@ public class AsyncAppender
 		}
 		aai.detachAndStopAllAppenders();
 
-		processor.shutdown();
-
-		try {
-			doStop();
-		} catch (Throwable t) {
-			addError(t.getMessage(), t);
-		} finally {
-			started = false;
-		}
+		processor.onComplete();
 	}
 
 	@Override
@@ -233,18 +232,8 @@ public class AsyncAppender
 
 	protected void queueLoggingEvent(ILoggingEvent evt) {
 		if (null != delegate.get()) {
-			Operation<LogEvent> op = processor.prepare();
-			op.get().event = evt;
-			op.commit();
+			processor.onNext(evt);
 		}
-	}
-
-	protected void loggingEventDequeued(ILoggingEvent evt) {
-		aai.appendLoopOnAppenders(evt);
-	}
-
-	private static class LogEvent {
-		ILoggingEvent event;
 	}
 
 }
