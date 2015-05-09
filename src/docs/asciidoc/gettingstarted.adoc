@@ -116,7 +116,7 @@ Following are some examples of how one might mix-and-match reactive technologies
 * RxJavaReactiveStreams + RxJava + Reactor-Net (Core/Stream) : Compose input data with RxJava and gate with Async IO drivers.
 
 .A *quick* overview of how Reactor modules depend on one another
-image::images/overview.png[Architecture Overview, width=500, align="center", link="images/overview.png"]
+image::images/overview.png[Architecture Overview, width=650, align="center", link="images/overview.png"]
 
 [[reactivestreams]]
 === Reactive Streams
@@ -140,7 +140,7 @@ image::images/rs.png[The Reactive Streams Contract, width=500, align="center"]
 ****
 
 .The Reactive Streams publishing protocol
-image::images/signals.png[The Publishing Sequence, width=500, align="center"]
+image::images/signals.png[The Publishing Sequence, width=400, align="center"]
 
 .There are two ways to request data to a Publisher from a Subscriber, through the passed Subscription:
 ****

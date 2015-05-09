@@ -40,7 +40,7 @@ Streams.from(aListOfString)
 == Coordinating tasks with Streams and Promises
 
 .How Doge can use Reactor-Stream
-image::images/streams-overview.png[Stream Overview, width=500, align="center", link="images/streams-overview.png"]
+image::images/streams-overview.png[Stream Overview, width=650, align="center", link="images/streams-overview.png"]
 
 
 [[streams-basics]]

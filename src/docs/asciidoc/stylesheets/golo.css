@@ -677,3 +677,11 @@ table.tableblock.grid-all { -webkit-border-radius: 0; border-radius: 0; }
 #footer { background-color: #23160c; }
 
 .imageblock .title { text-align: center; }
+
+#content h1.sect0 {
+  font-size: 48px;
+}
+
+#toc>ul>li>a {
+  font-size: large;
+}

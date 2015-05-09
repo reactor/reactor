@@ -1,13 +1,77 @@
-ifndef::env-github[]
-== Going beyond the JVM: Asynchronous TCP, UDP and HTTP
-endif::[]
+== Asynchronous TCP, UDP and HTTP
+
+"Nothing travels faster than the speed of light, with the possible exception of bad news, which obeys its own special laws."
+-- Douglas Noel Adams, Mostly Harmless (1992)
+
+.Head first with a Java 8 example of some Net work
+[source,java]
+----
+import reactor.io.net.NetStreams;
+import reactor.io.net.tcp.TcpServer;
+import reactor.io.net.tcp.TcpClient;
+
+//...
+
+CountDownLatch latch = new CountDownLatch(10);
+
+TcpServer<Buffer, Buffer> server = NetStreams.tcpServer(port);
+TcpClient<Buffer, Buffer> client = NetStreams.tcpClient("localhost", port);
+
+final JsonCodec<Pojo, Pojo> codec = new JsonCodec<Pojo, Pojo>(Pojo.class);
+
+//the client/server are prepared
+server.start( input ->
+
+	//for each connection echo any incoming data
+
+	//return the write confirm publisher from writeWith
+	// >>> close when the write confirm completed
+
+	input.writeWith(
+
+		//read incoming data
+		input
+			.decode(codec) //transform Buffer into Pojo
+			.log("serve")
+			.map(codec)    //transform Pojo into Buffer
+			.capacity(5l)  //auto-flush every 5 elements
+	)
+).await();
+
+client.start( input -> {
+
+	//read 10 replies and close
+	input
+		.take(10)
+		.decode(codec)
+		.log("receive")
+		.consume( data -> latch.countDown() );
+
+	//write data
+	input.writeWith(
+		Streams.range(1, 10)
+			.map( it -> new Pojo("test" + it) )
+			.log("send")
+			.map(codec)
+	);
+
+	//keep-alive, until 10 data have been read
+	return Streams.never();
+
+}).await();
+
+latch.await(10, TimeUnit.SECONDS);
+
+client.shutdown().await();
+server.shutdown().await();
+----
 
 [[net-overview]]
 === Overview
 How is Reactor Net module working ?
 
 .How Doge can use Reactor-Net
-image::images/net-overview.png[Stream Overview, width=500, align="center", link="images/net-overview.png"]
+image::images/net-overview.png[Net Overview, width=650, align="center", link="images/net-overview.png"]
 
 [NOTE]
 ---

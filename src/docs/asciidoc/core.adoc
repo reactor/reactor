@@ -28,10 +28,45 @@ r.dispatch(1234, c, errorHandler)
 Environment.terminate()
 ----
 
+.A second taster, the Reactive Streams way
+[source,groovy]
+----
+//standalone async processor
+def processor = RingBufferProcessor.<Integer>create()
+
+//send data, will be kept safe until a subscriber attaches to the processor
+processor.onNext(1234)
+processor.onNext(5678)
+
+//consume integer data
+processor.subscribe(new Subscriber<Integer>(){
+
+  void onSubscribe(Subscription s){
+    //unbounded subscriber
+    s.request Long.MAX
+  }
+
+  void onNext(Integer data){
+    println data
+  }
+
+  void onError(Throwable err){
+    err.printStackTrace()
+  }
+
+  void onComplete(){
+    println 'done!'
+  }
+}
+
+//Shutdown internal thread and call complete
+processor.onComplete()
+----
+
 == Core Overview
 
 .How Doge can use Reactor-Core
-image::images/core-overview.png[Core Overview, width=500, align="center", link="images/core-overview.png"]
+image::images/core-overview.png[Core Overview, width=650, align="center", link="images/core-overview.png"]
 
 *Reactor Core* has the following artefacts:
 
