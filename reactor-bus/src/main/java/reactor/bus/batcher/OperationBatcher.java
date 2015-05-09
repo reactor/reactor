@@ -23,7 +23,6 @@ import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.batch.BatchConsumer;
-import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
@@ -56,6 +55,7 @@ import java.util.concurrent.Executors;
  * @author Jon Brisbin
  * @see <a href="https://github.com/LMAX-Exchange/disruptor">https://github.com/LMAX-Exchange/disruptor</a>
  */
+@Deprecated
 public class OperationBatcher<T> implements Supplier<Operation<T>> {
 
 	private final int                      opsBufferSize;

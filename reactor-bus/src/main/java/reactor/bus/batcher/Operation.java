@@ -31,6 +31,7 @@ import reactor.fn.Supplier;
  *
  * @author Jon Brisbin
  */
+@Deprecated
 public abstract class Operation<T> implements Supplier<T> {
 
 	protected volatile Long id;
