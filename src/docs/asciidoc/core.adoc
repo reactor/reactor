@@ -162,6 +162,25 @@ Properties file can be tuned at runtime by providing under the classpath locatio
 java - jar reactor-app.jar -Dreactor.profiles.active=turbo
 ----
 
+.Starting and Terminating the Environment
+[source,java]
+----
+Environment env = Environment.initialize();
+
+//Current registered environment is the same than the one initialized
+Assert.isTrue(Environment.get() == env);
+
+//Find a dispatcher named "shared"
+Dispatcher d  = Environment.dispatcher("shared");
+
+//get the Timer bound to this environment
+Timer timer = Environment.timer();
+
+//Shutdown registered Dispatchers and Timers that might run non-daemon threads
+Environment.terminate();
+//An option could be to register a shutdownHook to automatically invoke terminate.
+----
+
 [TIP]
 It's best to try maintaining a single Environment alive for a given JVM application. Use of _Environment.initializeIfEmpty()_ will be prefered most of the time.
 
@@ -332,7 +351,54 @@ image::images/rbd2.png[Ring Buffer message passing, width=500, align="center", l
 
 === DispatcherSupplier
 
+You may have noticed some Dispatchers are single-threaded, especially the `RingBufferDispatcher` and `MpscDispatcher`.
+Going further, refering to the Reactive Stream specification, the Subscriber/Processor implementation should not allow for
+concurrent notifications. This impacts Reactor `Streams` in particular, and trying to use `Stream.dispatchOn(Dispatcher)` with a
+Dispatcher that leaves the door open to concurrent signals will fail explicitely.
+
+There is however a way to workaround that limitation by using pools of Dispatcher or *DispatcherSupplier*. In effect, as a `Supplier` factory, the indirection offered by
+`Supplier.get()` to retrieve a Dispatcher allow for interesting pooling strategy : RoundRobin, Least-Used...
+
+`Environment` offers static helpers to create, and eventually register against the current active `Environment` pools of Dispatchers:
+groups of RoundRobin returned Dispatchers. Once ready, suppliers will provide for a controlled number of Dispatchers.
+
+.As usual with Dispatchers, `Environment` is the one-stop shop to manage them:
+[source,java]
+----
+Environment.initialize();
+//....
+
+//Create an anonymous pool of 2 dispatchers with automatic default settings (same type than default dispatcher, default backlog size...)
+DispatcherSupplier supplier = Environment.newCachedDispatchers(2);
+
+Dispatcher d1 = supplier.get();
+Dispatcher d2 = supplier.get();
+Dispatcher d3 = supplier.get();
+Dispatcher d4 = supplier.get();
+
+Assert.isTrue( d1 == d3  && d2 == d4);
+supplier.shutdown();
+
+//Create and register a new pool of 3 dispatchers
+DispatcherSupplier supplier1 = Environment.newCachedDispatchers(3, "myPool");
+DispatcherSupplier supplier2 = Environment.cachedDispatchers("myPool");
+
+Assert.isTrue( supplier1 == supplier2 );
+supplier1.shutdown();
+----
+
 === Timers
+
+Dispatchers compute incoming tasks as soon as possible. Timers however come with periodic and one-time scheduling API.
+Reactor Core offers an `HashWheelTimer` by default and it is automatically bound to any new Environment.
+HashWheelTimers are perfect for dealing with massive concurrent in-memory scheduled tasks, it's a powerful alternative to Java `TaskScheduler`.
+
+[WARNING]
+While it is suited for windowing (mini tasks periods under the minute order of magnitude), it is not a resilient scheduler since all tasks are lost when the application shutdowns.
+
+[TIP]
+Timers will receive some attention along the next releases, e.g. we would love to add persisting/shared scheduling support with Redis.
+Please voice your opinion or propose any contribution here!
 
 .A simple timer creation as seen in one of our https://github.com/reactor/reactor/blob/master/reactor-core/src/test/groovy/reactor/fn/timer/HashWheelTimerYieldingStrategy.groovy[Groovy Spock test]:
 [source,groovy]
@@ -350,8 +416,7 @@ when: "a task is submitted"
     timer.schedule(
             { Long now -> latch.countDown() } as Consumer<Long>,
             period,
-            TimeUnit.MILLISECONDS,
-            period
+            TimeUnit.MILLISECONDS
     )
 
 then: "the latch was counted down"

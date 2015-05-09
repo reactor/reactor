@@ -833,16 +833,14 @@ public class StreamTests extends AbstractReactorTest {
 	 */
 	@Test
 	public void testParallelWithJava8StreamsInput() throws InterruptedException {
-		DispatcherSupplier supplier = Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new
-				BlockingWaitStrategy());
+		DispatcherSupplier supplier =
+				Environment.createDispatcherFactory("test-p", 2, 2048, null, ProducerType.MULTI, new BlockingWaitStrategy());
 
 		int max = ThreadLocalRandom.current().nextInt(100, 300);
 		CountDownLatch countDownLatch = new CountDownLatch(max + 1);
 
 		Stream<Long> worker = Streams.range(0, max).dispatchOn(env);
-
-		Control tail =
-				worker.partition(2).consume(s ->
+		worker.partition(2).consume(s ->
 								s
 										.dispatchOn(supplier.get())
 										.map(v -> v)
@@ -850,7 +848,6 @@ public class StreamTests extends AbstractReactorTest {
 				);
 
 		countDownLatch.await(10, TimeUnit.SECONDS);
-		//System.out.println(tail.debug());
 		Assert.assertEquals(0, countDownLatch.getCount());
 	}
 
