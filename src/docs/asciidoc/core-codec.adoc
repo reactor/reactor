@@ -61,7 +61,7 @@ Some `Codec` will be requiring the appropriate extra dependency in the classpath
 `Codec` works in two ways, first it implements `Function` to encode anything directly and return the encoded data, usually under the form of Buffer.
 This is great but it does *only work with stateless Codecs*, the alternative is to use the returned encoding function from `Codec.encoder()`.
 
-.Use Codec.encoder() vs Codec.apply(Source)
+.Codec.encoder() vs Codec.apply(Source)
 ****
 * `Codec.encoder()` returns a unique encoding function that should not be shared between different Threads.
 * `Codec.apply()` directly encodes (and save an encoder allocation), but the Codec itself should be shared between Threads in that case
@@ -72,10 +72,11 @@ This is great but it does *only work with stateless Codecs*, the alternative is 
 
 `Codec` can also decode data into from source type, usually Buffer for most of the Codec implementations. To decode a source data, we must
 retrieve a decoding function from `Codec.decoder()`. Unlike in the encoding side, there isn't any apply shortcut as the method is already overloaded for the encoding purpose.
+Like the encoding side, the decoding function should not be shared between Threads.
 
 There are two forms of `Codec.decoder()` functions, one will simply return the decoded data where `Codec.decoder(Consumer)` will call the passed consumer on each decoding event.
 
-.Use of Codec.decoder() vs Codec.decoder(Consumer)
+.Codec.decoder() vs Codec.decoder(Consumer)
 ****
 * `Codec.decoder()` is a blocking decoding function, it will return directly the decoded data from the passed source.
 * `Codec.decoder(Consumer)` can be used for non-blocking decoding, it will return nothing (null) and only invoke the passed Consumer once decoded. It can be combined with any asynchronous facility.

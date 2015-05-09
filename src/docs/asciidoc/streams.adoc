@@ -1,8 +1,43 @@
 "Nope, you shall not use Future.get(), ever."
 -- Stephane Maldini, with a Banking Sector Customer
 
+.Head first with a Java 8 example of some Stream work
+[source,java]
+----
+import static reactor.Environment.*;
+import reactor.rx.Streams;
+import reactor.rx.BiStreams;
+
+//...
+
+Environment.initialize()
+
+//find the top 10 words used in a list of String
+Streams.from(aListOfString)
+  .dispatchOn(sharedDispatcher())
+  .flatMap(sentence ->
+    Streams
+      .from(sentence.split(" "))
+      .dispatchOn(cachedDispatcher())
+      .filter(word -> !word.trim().isEmpty())
+      .observe(word -> doSomething(word))
+  )
+  .map(word -> Tuple.of(word, 1))
+  .window(1, TimeUnit.SECONDS)
+  .flatMap(words ->
+    BiStreams.reduceByKey(words, (prev, next) -> prev + next)
+      .sort((wordWithCountA, wordWithCountB) -> -wordWithCountA.t2.compareTo(wordWithCountB.t2))
+      .take(10)
+      .finallyDo(event -> LOG.info("---- window complete! ----"))
+  )
+  .consume(
+    wordWithCount -> LOG.info(wordWithCount.t1 + ": " + wordWithCount.t2),
+    error -> LOG.error("", error)
+  );
+----
+
 [[streams]]
-== Coordinating (a)synchronous tasks with Streams and Promises
+== Coordinating tasks with Streams and Promises
 
 .How Doge can use Reactor-Stream
 image::images/streams-overview.png[Stream Overview, width=500, align="center", link="images/streams-overview.png"]
@@ -10,7 +45,7 @@ image::images/streams-overview.png[Stream Overview, width=500, align="center", l
 
 [[streams-basics]]
 == Streams Basics
-Using a `Stream` or a `Promise` and the Reactive Streams standard to compose pipelines.
+Reactor offers `Stream` or `Promise` based on the Reactive Streams standard to compose pipelines.
 
 It is an incredibly useful and flexible component. It's flexible enough to be used to just compose asynchronous actions together like RxJava's `Observable`. But it's powerful enough it can function as an asynchronous work queue that forks and joins arbitrary compositions or other Reactive Streams components coming from one of the other implementors of the standard.footnoteref:[reactive-streams-implementors, Currently http://akka.io[Akka Streams], http://ratpack.io[Ratpack], and https://github.com/ReactiveX/RxJava[RxJava]]
 
