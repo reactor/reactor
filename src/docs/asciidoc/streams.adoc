@@ -103,6 +103,25 @@ Sometimes it's also a case for expanding an existing *Reactive Stream Publisher*
 
 Extending existing Reactor `Stream` like we do with `IterableStream`, `SingleValueStream` etc is also an incentive option to create a `Publisher` ready source (Stream implements it) injected with Reactor API.
 
+[IMPORTANT]
+====
+Streams and Promises are relatively inexpensive, our microbenchmark suite succeeds into creating more than 150M/s on commodity hardware.
+Most of the Streams stick to the *Share-Nothing* pattern, only creating new immutable objects when required.
+
+Every operation will return a new instance:
+[source, java]
+----
+Streams<A> stream = Streams.just(a);
+Streams<B> transformedStream = stream.map(transformationToB);
+
+Assert.isTrue(transformationStream != stream);
+stream.subscribe(subscriber1); //subscriber1 will see the data A unaltered
+transformedStream.subscribe(subscriber2); //subscriber2 will see the data B after transformation from A.
+
+//Note theat these two subscribers will materialize independant stream pipelines, a process we also call lifting
+----
+====
+
 ==== From Cold Data Sources
 
 You can create a `Stream` from a variety of sources, including an `Iterable` of known values, a single value to use as the basis for a flow of tasks, another `Stream`, or even a `Publisher` from another Reactive Streams implementation. The latter is extremely useful, for example, to connect a Ratpack WebSocket connection, which is also a Reactive Streams `Publisher`, to your application's internal Reactor `Stream`.
@@ -110,7 +129,7 @@ You can create a `Stream` from a variety of sources, including an `Iterable` of 
 .Streams.just()
 [source,java]
 ----
-Stream<String> st = Streams.just("Hello World!"); // <1>
+Stream<String> st = Streams.just("Hello ", "World", "!"); // <1>
 
 st.dispatchOn(Environment.cachedDispatcher()) // <2>
   .map(String::toUpperCase) // <3>
@@ -129,7 +148,7 @@ Cold Data Sources will be replayed from start for every fresh Subscriber passed 
 |===
 
 |Factory method
-|Type
+|Data Type
 |Role
 
 |Streams.<T>empty()
@@ -185,28 +204,68 @@ Cold Data Sources will be replayed from start for every fresh Subscriber passed 
 [[streams-reactivestreams]]
 ==== From Existing Reactive Publishers
 
+Existing Reactive Streams `Publishers` can very well be from other implementations, including the user ones, or from Reactor itself.
+
+The use cases incude:
+****
+* <<streams.adoc#streams-combine, Combinatory API>> to coordinate various data sources.
+* Lazy resource access, reading a Data Source on subscribe or on request, e.g. _Remote HTTP calls_.
+* Data-oriented operations such as Key/Value `Tuples Streams`, `Persistent Streams` or Decoding.
+* Plain Publisher decoration with `Stream API`
+****
+
+.Streams.concat() and Streams.wrap() in action
+[source,java]
+----
+Processor<String,String> processor = RingBufferProcessor.create();
+
+Stream<String> st1 = Streams.just("Hello "); // <1>
+Stream<String> st2 = Streams.just("World "); // <1>
+Stream<String> st3 = Streams.wrap(processor); // <2>
+
+Streams.concat(st1, st2, st3) // <3>
+  .reduce( (prev, next) -> prev + next ) // <4>
+  .consume(s -> System.out.printf("%s greeting = %s%n", Thread.currentThread(), s)); // <5>
+
+processor.onNext("!");
+processor.onComplete();
+----
+<1> Create a `Stream` from a known value.
+<2> Decorate the core processor with `Stream` API. Note that `Streams.concat()` would have accepted the processor directly as a valid Publisher argument.
+<3> Concat the 3 upstream sources (all st1, then all st2, then all st3).
+<4> Accumulate the input 2 by 2 and emit the result on upstream completion, after the last complete from st3.
+<5> Produce demand on the pipeline, which means "start processing now".
+
 .Creating from available Reactive Streams Publishers
-[cols="3*", options="header, autowidth"]
+[cols="2,1,6", options="header"]
 |===
-|Streams
-|create
-|
 
-|Streams
-|wrap
-|
+|Factory method
+|Data Type
+|Role
 
-|Streams
-|defer
-|
+|Streams.create(Publisher<T>)
+|T
+|Only subscribe to the passed `Publisher` when the first `Subscription.request(N)` hits the returned `Stream`.
+Therefore it supports malformed Publishers that do not invoke `Subscriber.onSubscribe(Subscription)` as required per specification.
 
-|Streams
-|switchOnNext
-|
+|Streams.wrap( Publisher<T> )
+|T
+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol *(onSubscribe > onNext* > (onError | onComplete)?*).
 
-|Streams
-|concat
-|
+|Streams.defer( Supplier<Publisher<T>> )
+|T
+|A lazy Publisher access using the level of indirection provided by `Supplier.get()` everytime `Stream.subscribe(Subscriber)` is called.
+
+|Streams.switchOnNext( Publisher<Publisher<T>> )
+|T
+|A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
+It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
+
+|Streams.concat( Publisher<T>, Publisher<T>?*7 ),
+Streams.concat( Publisher<Publisher<T>> )
+|T
+|If a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>.
 
 |Streams
 |merge
@@ -260,6 +319,49 @@ Cold Data Sources will be replayed from start for every fresh Subscriber passed 
 
 ===== Custom Reactive Publishers
 
+.Streams.create and Streams.defer in action
+[source,java]
+----
+final Streams<String> stream1 = Streams.create(sub -> {
+
+  sub.onSubscribe(new Subscription(){ // <1>
+    void request(long demand){
+      if(demand == 2L){
+        sub.onNext(1);
+        sub.onNext(2);
+        sub.onComplete();
+      }
+    }
+
+    void cancel(){
+      System.out.println("Cancelled!");
+    }
+  });
+});
+
+final Streams<String> stream2 = Streams.create(sub -> {
+  sub.onNext(3); // <2>
+  sub.onNext(4);
+  sub.onComplete();
+});
+
+final AtomicInteger counterSubscribe = new AtomicInteger();
+
+Streams<String> deferred = Streams.defer( () -> {
+  if(counterSubscriber.incrementAndGet() == 1){ // <3>
+    return stream1;
+  }else{
+    return stream2;
+  }
+});
+
+deferred
+  .consume(s -> System.out.printf("%s greeting = %s%n", Thread.currentThread(), s)); // <4>
+----
+<1> Create a `Stream` from a custom valid `Publisher` which first calls `onSubscribe(Subscription)`.
+<2> Create a `Stream` from a custom malformed `Publisher which skips `onSubscribe(Subscription)` and immediately calls `onNext(T)`.
+<3> Create a `DeferredStream` that will alternate source Publisher<T> on each `Stream.subscribe` call, evaluating the total number of Subscribers,
+
 ==== From Hot Data Sources
 
 If you are dealing with an unbounded stream of data items like what would be common with a web application that accepts user input via a REST interface, you probably want to use the "hot" variety of `Stream` in Reactor, which we call a link:/docs/api/index.html?reactor/rx/stream/Broadcaster.html[Broadcaster].
@@ -282,37 +384,50 @@ sink.onNext("Hello World!"); // <4>
 <4> Publish a value into the pipeline, which will cause the tasks to be invoked.
 
 [IMPORTANT]
-Hot Data Sources will never be replayed (with an exception for `BehaviorBroadcaster` last emitted element). Subscribers will only see data from the moment T they have been passed to `Stream.subscribe(Subscriber)`.
+Hot Data Sources will never be replayed. Subscribers will only see data from the moment T they have been passed to `Stream.subscribe(Subscriber)`.
+An exception applies for `BehaviorBroadcaster` (last emitted element is replayed); `Streams.timer()` and `Streams.period()` will also maintain a unique timed cursors but will still ignore backpressure.
 
 .Creating undetermined Streams with Broadcaster and Promises
-[cols="2*", options="header, autowidth"]
+[cols="3*", options="header, autowidth"]
 |===
 
 |Factory
+|Type
 |Role
 
 |Streams.timer(delay, unit?, timer?)
-|Emit a single `onNext(0L)` then `onComplete()` once the delay is elapsed. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
+|Long
+|Start a Timer on `Stream.subscribe(Subscriber)` call and emit a single `onNext(0L)` then `onComplete()` once the delay is elapsed. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
+`Subscription.request(long)` will be ignore as no backpressure can apply to a scheduled emission.
 
 |Streams.period(period, unit, timer?)
-|Emit  of N `onNext(Long)`
+|Long
+|Start a Timer on `Stream.subscribe(Subscriber)` call and every period of time emit `onNext(N)` where N is an incremented counter starting from 0. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
+`Subscription.request(long)` will be ignore as no backpressure can apply to a scheduled emission.
+
+|Streams.<T>switchOnNext()
+|Publisher<T>, T
+|An `Action` which for the record is also a `Processor`. The `onNext(Publisher<T>)` signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
+ It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 
 |Broadcaster.create()
+|T
 |
 
 |SerializedBroadcaster.create()
+|T
 |
 
 |BehaviorBroadcaster.create()
+|T
 |
 
 |BehaviorBroadcaster.first()
+|T
 |
 
-|Promises.prepare
-|
-
-|Promises.ready
+|Promises.prepare, Promises.ready
+|T
 |
 
 |===
@@ -376,19 +491,62 @@ st.filter(s -> s.startsWith("Hello")) // <1>
 
 ==== Transformation
 
+.Stream.map(Function<T,V>)
+[source,java]
+----
+Streams
+  .range(1, 100) // <1>
+  .map(number -> ""+number) // <2>
+  .subscribe(new DefaultSubscriber<String>(){ // <3>
+    void onSubscribe(Subscription sub){
+      sub.request(100);
+    }
+
+    void onNext(String s){
+      System.out.println(s);
+    }
+  });
+----
+
 ==== (A)Sync Transformation: FlatMap
 
+.Stream.take(long)
+[source,java]
+----
+Streams
+  .range(1, 100) // <1>
+  .take(50)
+  .consume(
+    System.out::println,
+    Throwable::printStackTrace,
+    avoid -> System.out.println("--complete--")
+  );
+----
+
 ==== Limits
+
+.Stream.take(long)
+[source,java]
+----
+Streams
+  .range(1, 100) // <1>
+  .take(50)
+  .consume(
+    System.out::println,
+    Throwable::printStackTrace,
+    avoid -> System.out.println("--complete--")
+  );
+----
 
 ==== Blocking
 
 [[streams-multithreading]]
 == Understanding the threading model
-The story behind Stream/Promise threading.
+TODO The story behind Stream/Promise threading.
 
 [[streams-microbatching]]
 == MicroBatching
-Using a `Stream` as a `MicroBatching` strategy to aggregate small payloads.
+TODO Using a `Stream` as a `MicroBatching` strategy to aggregate small payloads.
 
 === Into a simple List
 
@@ -452,15 +610,15 @@ Assert.assertEquals(0, endLatch.getCount());
 
 [[streams-backpressure]]
 == Backpressure and Overflow
-Using a `Stream` and Reactive Streams standard to control, back-off or overflow massive data throughput.
+TODO Using a `Stream` and Reactive Streams standard to control, back-off or overflow massive data throughput.
 
 [[streams-combine]]
 == Combinatory Operations
-  Combining multiple Reactive Streams data `Publishers` in an controlled fashion.
+TODO Combining multiple Reactive Streams data `Publishers` in an controlled fashion.
 
 [[streams-microservice]]
 == MicroServices
-Using a `Stream` or a `Promise` to deal with remote `MicroService` latency.
+TODO Using a `Stream` or a `Promise` to deal with remote `MicroService` latency.
 
 [[streams-microservice-start]]
 === Creating Non-Blocking Services
