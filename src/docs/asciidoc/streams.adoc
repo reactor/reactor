@@ -454,17 +454,19 @@ This is an interface with user-code to request or cancel a pipeline without bein
 .Wiring up 2 pipelines
 [source, java]
 ----
-import static reactor.Environment.*
+import static reactor.Environment.*;
 import reactor.rx.Streams;
 import reactor.rx.Stream;
 //...
 
 Stream<String> stream = Streams.just("a","b","c","d","e","f","g","h");
-Streams<Long> actionChain1 = stream.map(String::toUpperCase).filter(w -> w.equals("c")); // has not yet subscribed
-Streams<Long> actionChain2 = stream.dispatchOn(sharedDispatcher()).take(5).count(); // has not yet subscribed
 
-actionChain1.consume(System.out::println); //a unique unicasted pipeline (which is just+subscriber in that case) will play A to subscriber1
-Control c = actionChain2.consume(System.out::println); //a unique unicasted chain of Stream is created for this consumer1, replay A
+//prepare two unique pipelines
+Streams<Long> actionChain1 = stream.map(String::toUpperCase).filter(w -> w.equals("c"));
+Streams<Long> actionChain2 = stream.dispatchOn(sharedDispatcher()).take(5).count();
+
+actionChain1.consume(System.out::println); //start chain1
+Control c = actionChain2.consume(System.out::println); //start chain2
 //...
 c.cancel(); //force this consumer to stop receiving data
 ----
