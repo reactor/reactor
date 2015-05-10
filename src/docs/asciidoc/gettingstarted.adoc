@@ -68,16 +68,16 @@ In this simple example, it's easy to point out why scale-up is very limited:
 
 Being fully and truly non-blocking is hard to achieve--especially in a world of distributed systems which have fashionable monikers like *Micro-Service Architectures*. Reactor, however, makes few compromises and tries to leverage the best patterns available so the developer doesn't have to feel like they're writing a mathematical thesis rather than an asynchronous nanoservice.
 
-Nothing travels faster than light (besides gossip and viral cat videos) and latency is a real-world concern every system has to deal with at some point. To that end, Reactor:
+Nothing travels faster than light (besides gossip and viral cat videos) and latency is a real-world concern every system has to deal with at some point. To that end:
 
-.Offers a framework that helps you mitigate nasty latency-induced side-effects in your application and do it with minimal overhead by:
+.Reactor offers a framework that helps you mitigate nasty latency-induced side-effects in your application and do it with minimal overhead by:
 ****
 * Leveraging some smart structures, we traded-off the *allocation issue* at runtime with pre-allocation at startup-time;
 * Main message-passing structures come *bounded* so we don't pile up tasks infinitely;
 * Using popular patterns such as *Reactive and Event-Driven Architectures*, we offer *non-blocking end-to-end flows* including replies;
 * Implementing the new <<gettingstarted.adoc#reactivestreams,Reactive Streams>> Standard, to make bounded structures *efficient* by not requesting more than their current capacity;
 * Applied these concepts to <<net.adoc#net-overview,IPC>> and provide *non-blocking IO drivers* that understand flow-control;
-* Wxpose a Functional API to help developers organize their code in a *side-effect free* way, which helps you determine where you are thread-safe and fault-tolerant.
+* Expose a Functional API to help developers organize their code in a *side-effect free* way, which helps you determine where you are thread-safe and fault-tolerant.
 ****
 
 === About the Project

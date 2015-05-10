@@ -85,6 +85,9 @@ image::images/core-overview.png[Core Overview, width=650, align="center", link="
 Alone, reactor-core can already be used as a drop-in replacement for another Message-Passing strategy, to schedule timed tasks or to organize your code in small functional blocks implementing the Java 8 backport interfaces.
 Such breakdown allows to play more nicely with other Reactive libraries especially removing the burden of understanding the RingBuffer for the impatient developer.
 
+[NOTE]
+Reactor-Core implicitely _shadows_ LMAX Disruptor, so it won't appear nor collide with an existing Disruptor dependency
+
 [[core-functional]]
 == Functional Artefacts
 Functional reusable blocks are core and mostly a required artefact to use as soon as you get into Reactor. footnoteref:[disclaimer,Unless you only want to use the Core Processor which are mostly standalone at this stage. We plan to align Dispatcher with Core Processors overtime.]

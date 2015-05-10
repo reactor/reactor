@@ -1,5 +1,5 @@
 [[clojure]]
-== Reactor on Clojure with Meltdown
+== Clojure support
 
 [quote, README, project page]
 Meltdown is a Clojure interface to Reactor, an asynchronous programming, event passing and stream processing toolkit for the JVM.

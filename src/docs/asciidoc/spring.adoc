@@ -16,4 +16,4 @@ TODO:
 === Spring Integration Java DSL
 
 [[spring-xd]]
-=== Reactor with Spring XD
+== Reactor with Spring XD
