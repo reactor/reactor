@@ -388,7 +388,7 @@ sink.onNext("Hello World!"); // <4>
 Hot Data Sources will never be replayed. Subscribers will only see data from the moment T they have been passed to `Stream.subscribe(Subscriber)`.
 An exception applies for `BehaviorBroadcaster` (last emitted element is replayed); `Streams.timer()` and `Streams.period()` will also maintain a unique timed cursors but will still ignore backpressure.
 
-.Creating undetermined Streams with Broadcaster and Promises
+.Creating undetermined Streams
 [cols="3*", options="header, autowidth"]
 |===
 
@@ -424,6 +424,11 @@ An exception applies for `BehaviorBroadcaster` (last emitted element is replayed
 |
 
 |BehaviorBroadcaster.first()
+|T
+|
+
+
+|Streams.wrap(Processor<? ,T>)
 |T
 |
 
@@ -624,13 +629,63 @@ Streams
 
 ==== Blocking
 
+.Waiting for a Stream or Promise
+[cols="2,6", options="header"]
+|===
+
+|Functional API or Factory method
+|Role
+
+|Stream.await()
+|
+
+|Stream.toList() and Promise.await(), Promise.get()
+|
+
+|Stream.next() and Promise.await(), Promise.get()
+|
+
+|Stream.toBlockingQueue()
+|
+
+|Wiring up Synchronous Streams
+|
+
+|===
 [[streams-multithreading]]
 == Understanding the threading model
-TODO The story behind Stream/Promise threading.
+
+.Jumping between threads
+[cols="2,6", options="header"]
+|===
+
+|Functional API or Factory method
+|Role
+
+|Stream.subscribeOn()
+|
+
+|Stream.dispatchOn()
+|
+
+|Stream.process(Processor)
+
+|===
 
 [[streams-microbatching]]
 == MicroBatching
 TODO Using a `Stream` as a `MicroBatching` strategy to aggregate small payloads.
+
+|Functional API or Factory method
+|Role
+
+|Stream.buffer()
+|
+
+|Stream.window()
+|
+
+|===
 
 === Into a simple List
 
