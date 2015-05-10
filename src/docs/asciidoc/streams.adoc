@@ -124,7 +124,7 @@ transformedStream.subscribe(subscriber2); //subscriber2 will see the data B afte
 
 ==== From Cold Data Sources
 
-You can create a `Stream` from a variety of sources, including an `Iterable` of known values, a single value to use as the basis for a flow of tasks, another `Stream`, or even a `Publisher` from another Reactive Streams implementation. The latter is extremely useful, for example, to connect a Ratpack WebSocket connection, which is also a Reactive Streams `Publisher`, to your application's internal Reactor `Stream`.
+You can create a `Stream` from a variety of sources, including an `Iterable` of known values, a single value to use as the basis for a flow of tasks, or even from blocking structures such as `Future` of `Supplier`.
 
 .Streams.just()
 [source,java]
@@ -138,7 +138,7 @@ st.dispatchOn(Environment.cachedDispatcher()) // <2>
 <1> Create a `Stream` from a known value but do not assign a default `Dispatcher`.
 <2> `.dispatchOn(Dispatcher)` tells the `Stream` which thread to execute tasks on. Use this to move execution from one thread to another.
 <3> Transform the input using a commonly-found convention: the map() method.
-<4> Produce demand on the pipeline, which means "start processing now".
+<4> Produce demand on the pipeline, which means "start processing now". It's an optimize shortcut for `subscribe(Subscriber)` where the Subscriber just requests Long.MAX_VALUE by default.
 
 [IMPORTANT]
 Cold Data Sources will be replayed from start for every fresh Subscriber passed to `Stream.subscribe(Subscriber)`, and therefore duplicate consuming is possible.
@@ -251,7 +251,7 @@ Therefore it supports malformed Publishers that do not invoke `Subscriber.onSubs
 
 |Streams.wrap( Publisher<T> )
 |T
-|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol *(onSubscribe > onNext* > (onError | onComplete)?*).
+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol *(onSubscribe > onNext* > (onError \| onComplete)?*).
 
 |Streams.defer( Supplier<Publisher<T>> )
 |T
@@ -315,6 +315,7 @@ Streams.concat( Publisher<Publisher<T>> )
 |Promises
 |multiWhen
 |
+
 |===
 
 ===== Custom Reactive Publishers
@@ -432,6 +433,85 @@ An exception applies for `BehaviorBroadcaster` (last emitted element is replayed
 
 |===
 
+[[wireup]]
+=== Wiring a Stream up
+
+Streams operations minor a few exceptions (terminal actions and `broadcast()`) will never directly subscribe. Instead they will lazily prepare for subscribe.
+This is usually called *lift* in Functional programming.
+
+That basically means the Reactor Stream user will explicitely call `Stream.subscribe(Subscriber)` or alternative *terminal* actions such as `Stream.consume(Consumer)` to materialize all the registered operations.
+Before that, `Actions` don't really exist, we use `Stream.lift(Supplier)` to defer the creation of these Actions until `Stream.subscribe(Subscriber)` is explicitely called.
+
+[IMPORTANT]
+Usually the terminal actions return a `Control` object instead of `Stream`.
+This is an interface with user-code to request or cancel a pipeline without being inside a `Subscriber` context or implementing the full `Subscriber` contract.
+
+.Terminating a Stream pipeline
+[source, java]
+----
+Streams<A> stream = Streams.just(a);
+Streams<B> transformedStream = stream.map(transformationToB); // has not yet subscribed
+
+Assert.isTrue(transformationStream != stream);
+stream.subscribe(subscriber1); //a unique unicasted pipeline (which is just+subscriber in that case) will play A to subscriber1
+
+Control c = transformedStream.consume(consumer1); //a unique unicasted chain of Stream is created for this consumer1, replay A
+//...
+c.cancel(); //force this consumer to stop receiving data
+----
+
+.Operations considered terminal and explicitely subscribing
+[cols="2,6", options="header"]
+|===
+
+|Stream<T> method
+|Role
+
+|Stream.subscribe(Subscriber)
+|
+
+|Stream.consume(Consumer), Stream.consumeOn(Consumer)
+|
+
+|Stream.consumeLater()
+|
+
+|Stream.tap()
+|Create a *terminal action* unbounded `Tap` that will be dynamically updated everytime a new `onNext(T)` is signalled.
+
+
+|Stream.batchConsume, Stream.batchConsumeOn
+|
+
+|Stream.adaptiveConsume, Stream.adaptiveConsumeOn
+|
+
+|Stream.next()
+|
+
+|Stream.toList()
+|
+
+|Stream.toBlockingQueue()
+|
+
+|cache()
+|Turn any Stream into a *Cold* Stream, able to replay all the sequence of signals indivudally for each Subscriber.
+Due to the unbounded nature of the action, consider to use with small sequences.
+
+|broadcast()
+|Turn Any Stream into a *Hot* Stream. This will prevent pipeline duplication by immediately subscribing and ready to publish the signal to N Subscribers downstream.
+The demand will be aggregated fro all child Subscribers.
+
+|broadcastOn(Environment, Dispatcher)
+|Similar to broadcast() but allows for custom `Dispatcher` to be added in the mix, eventually dispatching asynchronously if the dispatcher allows so.
+
+|broadcastTo(Subscriber)
+|An alternative to `Stream.subscribe` which allows method chaining since the returned instance is the same than the passed argument.
+
+
+|===
+
 === Setting Capacity
 
 The Reactive Streams standard encourages application developers to set reasonable limits on in-flight data. This prevents components from becoming innudated with more data than they can handle, which causes unpredictable problems throughput an application. One of the core concepts of Reactive Streams is that of "backpressure", or the ability for a pipeline to communicate to upstream components that it can only handle a fixed number of items at a time. A useful term to describe this process of queueing and requesting small chunks of a large volume of data is "microbatching".
@@ -454,6 +534,8 @@ st.capacity(256) // <1>
 === Functional Composition
 
 Similar to many other functional libraries, Reactor provides a number of useful methods for composing functions on a `Stream`. You can passively observe values, transform them from one kind to another, filter out values you don't want, buffer values until a size or time trigger is tripped, and many other useful operations.
+
+These operations are called `Actions`, and they will not <<streams.adoc#wireup,wire up the `Stream` directly>>. They are available on any `Stream` instance, which means <<streams.adoc#streams-basic,you should have one by this stage>>.
 
 ==== Observe
 
@@ -612,15 +694,112 @@ Assert.assertEquals(0, endLatch.getCount());
 
 [[streams-backpressure]]
 == Backpressure and Overflow
-TODO Using a `Stream` and Reactive Streams standard to control, back-off or overflow massive data throughput.
+
+
+.Controlling the volume of in-flight data
+[cols="2,6", options="header"]
+|===
+
+|Functional API or Factory method
+|Role
+
+|Stream.subscribe(Subscriber)
+|
+
+|Stream.adaptiveConsume(), Stream.batchConsume()
+|
+
+|Stream.onOverflowBuffer()
+|
+
+|Stream.onOverflowDrop()
+|
+
+|Stream.sample(), Stream.sampleFirst()
+|
+
+|Stream.throttle()
+|
+
+|Stream.capacity()
+|
+
+|Stream.process( RingBuffer*Processor )
+|
+
+|Stream.filter(), take(), takeWhile()...
+|All limit operations can be used to proactively limit the volume of a Stream.
+
+|Stream.buffer(), reduce(), count()...
+|All aggregating and metrics operations can be used to proactively limit the volume of a Stream.
+
+|===
 
 [[streams-combine]]
 == Combinatory Operations
 TODO Combining multiple Reactive Streams data `Publishers` in an controlled fashion.
 
+.Combining Data Sources
+[cols="2,6", options="header"]
+|===
+
+|Functional API or Factory method
+|Role
+
+|Stream.flatMap
+|
+
+|Streams.switchOnNext( Publisher<Publisher<T>> )
+|A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
+It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
+
+|Streams.concat( Publisher<T>, Publisher<T>?*7 ),
+Streams.concat( Publisher<Publisher<T>> ),
+Stream.concatWith(Publisher),
+Stream.startWith(Publisher)
+|If a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>.
+
+|Streams.merge, Stream.mergeWith
+|
+
+|Streams.combineLatest
+|
+
+|Streams.zip, Stream.zipWith,
+|
+
+|Streams.join, Stream.joinWith
+|
+
+|===
+
 [[streams-microservice]]
 == MicroServices
+
 TODO Using a `Stream` or a `Promise` to deal with remote `MicroService` latency.
+
+.Reading remote resources
+[cols="2,6", options="header"]
+|===
+
+|Functional API or Factory method
+|Role
+
+|Stream.create(Publisher), Stream.defer(Supplier), Stream.wrap(Publisher), Stream.generate(Supplier)
+|
+
+|Stream.timeout()
+|
+
+|Stream.take()
+|
+
+|Stream.flatMap
+|
+
+|Stream.subscribeOn(), Stream.dispatchOn()
+
+|===
 
 [[streams-microservice-start]]
 === Creating Non-Blocking Services
@@ -633,14 +812,105 @@ TODO Using a `Stream` or a `Promise` to deal with remote `MicroService` latency.
 == Error Handling
 Using a `Stream` to build fault tolerant pipelines.
 
+
+.Handling errors
+[cols="2,6", options="header"]
+|===
+
+|Functional API or Factory method
+|Role
+
+|Stream.when(Class<Throwable>, Consumer<Throwable>)
+|
+
+|Stream.materialize()
+|
+
+|Stream.recover()
+|
+
+|Stream.observeError()
+|
+
+|Stream.onErrorReturn()
+|
+
+|Stream.onErrorResume()
+|
+
+|Stream.retry()
+|
+
+|Stream.oberveError()
+|
+
+|Stream.ignoreErrors()
+|
+
+|*throw* CancelException
+|
+
+|===
+
 [[streams-persistent]]
 == Persisting Stream Data
 Combining multiple Reactive Streams data `Publishers` in an controlled fashion.
 
+.Persisting signals safely
+[cols="2,6", options="header"]
+|===
+
+|Functional API or Factory method
+|Role
+
+|Stream.onOverflowBuffer()
+|
+
+|IOStreams.persistentMapReader()
+|
+
+|IOStreams.persistentMap()
+|
+
+|===
 
 [[streams-analytics]]
 == Analytics
 Using a `Stream` to compute metrics and any inline stateful processing.
+
+.Operations useful for metrics and other stateful accumulation.
+[cols="2,6", options="header"]
+|===
+
+|Functional API or Factory method
+|Role
+
+|Stream.count()
+|
+
+|Stream.scan()
+|
+
+|Stream.reduce()
+|
+
+|BiStreams.reduceByKey()
+|
+
+|BiStreams.scanByKey()
+|
+
+|Stream.timestamp()
+|
+
+|Stream.elapsed()
+|
+
+|Stream.materialize()
+|
+
+
+|===
 
 [[streams-partition]]
 == Partitioning
@@ -684,65 +954,41 @@ Streams.from(ids)
 assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
 ----
 
+.Grouping operations
+[cols="2,6", options="header"]
+|===
+
+|Functional API or Factory method
+|Role
+
+|Stream.groupBy()
+|
+
+|Stream.partition()
+|
+
+|Stream.process(XXXWorkProcessor)
+|
+
+|===
+
+
 [[streams-notrx]]
-== Beyond Rx
+== Other API beyond Rx
 
-In addition to implement directly the Reactive Streams, some `Stream` methods differ or are simply not documented by Reactive Extensions.
+In addition to implementing directly the Reactive Streams, some more `Stream` methods not covered differ or are simply not documented by Reactive Extensions.
 
-
-.Creating from available Reactive Streams Publishers
+.Other methods uncovered in the previous use cases.
 [cols="2,6", options="header"]
 |===
 
 |Stream method
 |Role
 
-|when
-|
-
 |after
 |
 
-|broadcast
-|
-
-|broadcastOn
-|
-
-|broadcastTo
-|
-
-|tap
-|
-
 |process
-|
-
-|consumeLater
-|
-
-|consume
-|
-
-|consumeOn
-|
-
-|batchConsume
-|
-
-|adaptiveConsume
-|
-
-|batchConsumeOn
-|
-
-|adaptiveConsumeOn
-|
-
-|dispatchOn
-|
-
-|cache
 |
 
 |log
@@ -754,49 +1000,16 @@ In addition to implement directly the Reactive Streams, some `Stream` methods di
 |observeCancel
 |
 
-|ignoreError
-|
-
-|flatMap
-|
-
-|fanIn
-|
-
-|capacity
-|
-
-|onOverflowBuffer
-|
-
-|onOverflowDrop
-|
-
-|recover
-|
-
 |split
 |
 
 |sort
 |
 
-|partition
-|
-
 |requestWhen
 |
 
 |combine
-|
-
-|next
-|
-
-|toList
-|
-
-|toBlockingQueue
 |
 
 |keepAlive
