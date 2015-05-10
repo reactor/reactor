@@ -676,6 +676,8 @@ Streams
 == MicroBatching
 TODO Using a `Stream` as a `MicroBatching` strategy to aggregate small payloads.
 
+.Chunk processing with Stream
+|===
 |Functional API or Factory method
 |Role
 
