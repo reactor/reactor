@@ -709,12 +709,7 @@ CountDownLatch latch = new CountDownLatch(1);
 final Broadcaster<Integer> streamBatcher = Broadcaster.<Integer>create(env);
 streamBatcher
   .buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
-  .partition(parallelStreams)
-  .consume(innerStream ->
-    innerStream
-    .dispatchOn(env.getCachedDispatcher())
-    .when(Exception.class, Throwable::printStackTrace)
-    .consume(i -> latch.countDown()));
+  .consume(i -> latch.countDown()));
 
 
 streamBatcher.onNext(12);
@@ -736,16 +731,17 @@ else {
 
 [source,java]
 ----
-Stream<Integer> sensorDataStream =
-Streams.from(createTestDataset(1000))
+//create a list of 1000 numbers and prepare a Stream to read it
+Stream<Integer> sensorDataStream = Streams.from(createTestDataset(1000));
 
+//wait for all windows of 100 to finish
 CountDownLatch endLatch = new CountDownLatch(1000 / 100);
 
 Control controls = sensorDataStream
   .window(100)
-  .consume(batchedStream -> {
+  .consume(window -> {
     System.out.println("New window starting");
-    batchedStream
+    window
       .reduce(Integer.MAX_VALUE, (acc, next) -> Math.min(acc, next))
       .finallyDo(o -> endLatch.countDown())
       .consume(i -> System.out.println("Minimum " + i));
@@ -1078,5 +1074,8 @@ In addition to implementing directly the Reactive Streams, some more `Stream` me
 |
 
 |keepAlive
+|
+
+|Action.debug(), StreamsUtils.debug(Stream)
 |
 |===
