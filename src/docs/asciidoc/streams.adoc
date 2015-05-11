@@ -251,7 +251,7 @@ Therefore it supports malformed Publishers that do not invoke `Subscriber.onSubs
 
 |Streams.wrap( Publisher<T> )
 |T
-|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol *(onSubscribe > onNext* > (onError \| onComplete)?*).
+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol *(onSubscribe > onNext\* > (onError \| onComplete)?*).
 
 |Streams.defer( Supplier<Publisher<T>> )
 |T
