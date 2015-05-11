@@ -447,6 +447,8 @@ This is usually called *lift* in Functional programming.
 That basically means the Reactor Stream user will explicitely call `Stream.subscribe(Subscriber)` or alternative *terminal* actions such as `Stream.consume(Consumer)` to materialize all the registered operations.
 Before that, `Actions` don't really exist, we use `Stream.lift(Supplier)` to defer the creation of these Actions until `Stream.subscribe(Subscriber)` is explicitely called.
 
+Once everything is wired, each action maintains an upstream `Subscription` and a downstream `Subscription` and the Reactive Streams contract applies all along the pipeline.
+
 [IMPORTANT]
 Usually the terminal actions return a `Control` object instead of `Stream`.
 This is an interface with user-code to request or cancel a pipeline without being inside a `Subscriber` context or implementing the full `Subscriber` contract.
@@ -474,8 +476,34 @@ c.cancel(); //force this consumer to stop receiving data
 .After Wiring
 image::images/wiringup.png[The 2 Pipelines wired, width=650, align="center", link="images/wiringup.png"]
 
+For *Fan-Out* between subscribers from a unified pipeline, `Stream.process(Processor)`, `Stream.broadcast()`, `Stream.broadcastOn()` and `Stream.broadcastTo()` can be used.
 
-.Operations considered terminal and explicitely subscribing
+.Sharing an upstream pipeline and wiring up 2 downstream pipelines
+[source, java]
+----
+import static reactor.Environment.*;
+import reactor.rx.Streams;
+import reactor.rx.Stream;
+//...
+
+Stream<String> stream = Streams.just("a","b","c","d","e","f","g","h");
+
+//prepare a shared pipeline
+Stream<String> sharedStream = actionChain1.broadcast();
+
+//prepare two unique pipelines
+Streams<Long> actionChain1 = sharedStream.map(String::toUpperCase).filter(w -> w.equals("c"));
+Streams<Long> actionChain2 = sharedStream.take(5).count();
+
+actionChain1.consume(System.out::println); //start chain1
+actionChain2.consume(System.out::println); //start chain2
+----
+
+.After Wiring a Shared Stream
+image::images/broadcast.png[The 3 Pipelines wired, width=650, align="center", link="images/broadcast.png"]
+
+
+.Operations considered terminal or explicitely subscribing
 [cols="2,6", options="header"]
 |===
 
@@ -520,6 +548,9 @@ The demand will be aggregated fro all child Subscribers.
 
 |broadcastTo(Subscriber)
 |An alternative to `Stream.subscribe` which allows method chaining since the returned instance is the same than the passed argument.
+
+|process(Processor)
+|
 
 
 |===
