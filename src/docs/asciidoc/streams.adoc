@@ -95,7 +95,7 @@ static {
 ----
 ====
 
-=== Creating Streams and Promises
+== Creating Streams and Promises
 
 This is where you start if you are the owner of the data-source and want to just make it Reactive with direct access to various _Reactive Extensions_ and _Reactive Streams_ capacities.
 
@@ -122,7 +122,7 @@ transformedStream.subscribe(subscriber2); //subscriber2 will see the data B afte
 ----
 ====
 
-==== From Cold Data Sources
+=== From Cold Data Sources
 
 You can create a `Stream` from a variety of sources, including an `Iterable` of known values, a single value to use as the basis for a flow of tasks, or even from blocking structures such as `Future` of `Supplier`.
 
@@ -202,7 +202,7 @@ Cold Data Sources will be replayed from start for every fresh Subscriber passed 
 |===
 
 [[streams-reactivestreams]]
-==== From Existing Reactive Publishers
+=== From Existing Reactive Publishers
 
 Existing Reactive Streams `Publishers` can very well be from other implementations, including the user ones, or from Reactor itself.
 
@@ -244,81 +244,92 @@ processor.onComplete();
 |Data Type
 |Role
 
-|Streams.create(Publisher<T>)
+|Streams.create(*Publisher<T>*)
 |T
 |Only subscribe to the passed `Publisher` when the first `Subscription.request(N)` hits the returned `Stream`.
 Therefore it supports malformed Publishers that do not invoke `Subscriber.onSubscribe(Subscription)` as required per specification.
 
-|Streams.wrap( Publisher<T> )
+|Streams.wrap(*Publisher<T>*)
 |T
 |A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol *(onSubscribe > onNext\* > (onError \| onComplete)?*).
 
-|Streams.defer( Supplier<Publisher<T>> )
+|Streams.defer(*Supplier<Publisher<T>>*)
 |T
 |A lazy Publisher access using the level of indirection provided by `Supplier.get()` everytime `Stream.subscribe(Subscriber)` is called.
 
-|Streams.switchOnNext( Publisher<Publisher<T>> )
+|Streams.switchOnNext(*Publisher<Publisher<T>>*)
 |T
 |A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
 It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 
-|Streams.concat( Publisher<T>, Publisher<T>?*7 ),
-Streams.concat( Publisher<Publisher<T>> )
+|Streams.concat(*Publisher<T>*, _Publisher<T>*_),
+Streams.concat(*Publisher<Publisher<T>>*)
 |T
-|If a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>.
+|If a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>. As the name suggests its useful to http://rxmarbles.com/#concat[concat various datasources] and keep ordering right.
 
-|Streams
-|merge
-|
+|Streams.merge(*Publisher<T>, Publisher<T>*, Publisher<T>*),
+Streams.merge(*Publisher<Publisher<T>>*)
+|T
+|http://rxmarbles.com/#merge[Accept multiple sources] and *interleave* their respective sequence. Order won't be preserved like with `concat`. Demand from a Subscriber will be splitted between various source with a minimum of 1 by upstream to make sure everyone has a chance to send something.
 
-|Streams
-|combineLatest
-|
+|Streams.combineLatest(*Publisher<T1>, Publisher<T2>*, _Publisher<T3-N>\*_, *Function<Tuple2-N, C>*)
+|C
+|http://rxmarbles.com/#combineLatest[Combine most recent emitted elements] from the passed sources using the given `Function` aggregating function.
 
-|Streams
-|zip
-|
+|Streams.combineLatest(*Publisher<T1>, Publisher<T2>,* _Publisher<T3-N>\*_, *Function<Tuple2-N, C>*)
+|C
+|http://rxmarbles.com/#zip[Combine most recent emitted elements once], everytime every source has emitted a signal, apply the given `Function` and clear the temporary aggregate. Effectively it's a flexible _join_ mechanism for multiple different type of sources.
 
-|Streams
-|join
-|
+|Streams.join(*Publisher<T>, Publisher<T>*, _Publisher<T>*>_)
+|List<T>
+|A shortcut for zip that only aggregate each complete aggregate in a List matching the order of the passed argument sources.
 
-|Streams
-|await
-|
+|Streams.await(*Publisher<?>*, _long, unit, boolean_)
+|void
+|Block the calling thread until the passed `Publisher` `onComplete` the waiting internal `Subscriber`. Optional arguments to tune the timeout and the need to request data as well can be passed. It will throw an exception if the final state is `onError` instead.
 
-|IOStreams
-|persistentMapReader
-|
+|IOStreams.<K,V>persistentMap(*String*, _deleteOnExit_)
+|V
+|<<streams.adoc#streams-persistent, A simple shortcut over ChronicleStream constructors>>, a disk-based log appender/tailer. The name argument must match an existing persistent queue under /tmp/persistent-queue\[name\].
 
+|IOStreams.<K,V>persistentMapReader(*String*)
+|V
+|<<streams.adoc#streams-persistent, A simple shortcut over ChronicleReaderStream constructors>>, a disk-based log tailer. The name argument must match an existing persistent queue under /tmp/persistent-queue\[name\].
 
-|IOStreams
-|decode
-|
+|IOStreams.decode(*Codec<SRC, IN, ?>, Publisher<SRC>*)
+|IN
+|Use <<core.adoc#core-codecs, Codec decoder>> to decode the passed source data type into *IN* type.
 
-|BiStreams
-|reduceByKeyOn
-|
+|BiStreams.reduceByKey(*Publisher<Tuple2<KEY,VALUE>>*, _Map<KEY,VALUE>, Publisher<MapStream.Signal<KEY, VALUE>>_, *BiFunction<VALUE, VALUE, VALUE>*)
+|Tuple2<KEY,VALUE>
+|A key-value operation that accumulates computed results for each 2 sequential `onNext(VALUE)` passed to the `BiFunction` argument. The result will be released `onComplete()` only. The options allow to use an existing map store and listen for its events.
 
-|BiStreams
-|scanByKey
-|
+|BiStreams.scanByKey(*Publisher<Tuple2<KEY,VALUE>>*, _Map<KEY,VALUE>, Publisher<MapStream.Signal<KEY, VALUE>>_, *BiFunction<VALUE, VALUE, VALUE>*)
+|Tuple2<KEY,VALUE>
+|A key-value operation that accumulates computed results for each 2 sequential `onNext(VALUE)` passed to the `BiFunction` argument. The result will be released every time just after it has been stored.  The options allow to use an existing map store and listen for its events.
 
-|Promises
-|when
-|
+|Promises.when(*Promise<T1>, Promise<T2>*, _Promise<T3-N>*_)
+|TupleN<T1,T2,*?>
+|Join all unique results from `Promises` and provide for the new `Promise` with the aggregated `Tuple`.
 
-|Promises
-|any
-|
+|Promises.any(*Promise<T>, Promise<T>*, _Promise<T>*_)
+|T
+|Pick the first signal available among the passed promises and `onNext(T)` the returned `Promise` with this result.
 
-|Promises
-|multiWhen
-|
+|Promises.multiWhen(*Promise<T>, Promise<T>*, _Promise<T>*_)
+|List<T>
+|Join all unique results from `Promises` and provide for the new `Promise` with the aggregated `List`. The difference with the `when` alternative is that the type of promises must match.
 
 |===
 
-===== Custom Reactive Publishers
+=== From Custom Reactive Publishers
+
+Over time, the Reactor user will become more familiar with the *Reactive Streams*. That's the perfect moment to start custom reactive data-sources!
+Usually the implementor would have to respect the specification and verify his work with the *reactive-streams-tck* dependency.
+Respecting the contract requires a *Subscription* and a call to *onSubscribe* + a *request(long)* before sending any data.
+
+However Reactor allows some flexibility to only deal with the message passing part and will automatically provide the buffering *Subscription* transparently,
+the difference is demonstrated in the code sample below.
 
 .Streams.create and Streams.defer in action
 [source,java]
@@ -363,7 +374,21 @@ deferred
 <2> Create a `Stream` from a custom malformed `Publisher which skips `onSubscribe(Subscription)` and immediately calls `onNext(T)`.
 <3> Create a `DeferredStream` that will alternate source Publisher<T> on each `Stream.subscribe` call, evaluating the total number of Subscribers,
 
-==== From Hot Data Sources
+Where to go from here ? Well there are tons of use cases that can benefit from a custom Publisher:
+
+****
+* Reactive Facade to convert any IO call with a matching demand and compose: HTTP calls (read N times), SQL queries (select max N), File reads (read N lines)...
+* Async Facade to convert any hot data callback into a composable API: AMQP Consumer, Spring MessageChannel endpoint...
+****
+
+Reactor offers some done-deal facilities to avoid boilerplate checking you would have to do without extending exsiting Stream or `PushSubscription`
+
+* Extending `PushSubscription` instead of implementing directly `Subscription` to benefit from terminal state (PushSubscription.isComplete())
+* Extending `Stream` instead of implementing directly `Publisher` to benefit from composition API
+
+A good place to start thinking the reactive stream way is the <<recipes.adoc#recipe-filestream,sample File Stream>>.
+
+=== From Hot Data Sources
 
 If you are dealing with an unbounded stream of data items like what would be common with a web application that accepts user input via a REST interface, you probably want to use the "hot" variety of `Stream` in Reactor, which we call a link:/docs/api/index.html?reactor/rx/stream/Broadcaster.html[Broadcaster].
 
@@ -476,7 +501,8 @@ c.cancel(); //force this consumer to stop receiving data
 .After Wiring
 image::images/wiringup.png[The 2 Pipelines wired, width=650, align="center", link="images/wiringup.png"]
 
-For *Fan-Out* between subscribers from a unified pipeline, `Stream.process(Processor)`, `Stream.broadcast()`, `Stream.broadcastOn()` and `Stream.broadcastTo()` can be used.
+==== Publish/Subscribe
+For *Fan-Out* to subscribers from a unified pipeline, `Stream.process(Processor)`, `Stream.broadcast()`, `Stream.broadcastOn()` and `Stream.broadcastTo()` can be used.
 
 .Sharing an upstream pipeline and wiring up 2 downstream pipelines
 [source, java]
@@ -489,7 +515,7 @@ import reactor.rx.Stream;
 Stream<String> stream = Streams.just("a","b","c","d","e","f","g","h");
 
 //prepare a shared pipeline
-Stream<String> sharedStream = actionChain1.broadcast();
+Stream<String> sharedStream = actionChain1.observe(System.out::println).broadcast();
 
 //prepare two unique pipelines
 Streams<Long> actionChain1 = sharedStream.map(String::toUpperCase).filter(w -> w.equals("c"));

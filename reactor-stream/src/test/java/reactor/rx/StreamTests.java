@@ -18,6 +18,7 @@ package reactor.rx;
 
 import org.hamcrest.Matcher;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -41,7 +42,9 @@ import reactor.rx.action.Action;
 import reactor.rx.action.Control;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.BarrierStream;
+import reactor.rx.subscription.PushSubscription;
 
+import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -700,8 +703,8 @@ public class StreamTests extends AbstractReactorTest {
 						.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
 						.consume(items -> {
 							batchesDistribution.compute(items.size(),
-							                            (key,
-							                             value) -> value == null ? 1 : value + 1);
+									(key,
+									 value) -> value == null ? 1 : value + 1);
 							items.forEach(item -> latch.countDown());
 						}));
 
@@ -737,16 +740,16 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<Integer> s = Streams.just("2222")
 				.map(Integer::parseInt)
 				.flatMap(l ->
-						         Streams.<Integer>merge(
-								         globalFeed,
-								         Streams.just(1111, l, 3333, 4444, 5555, 6666)
-						         )
-						                .log("merged")
-						                .dispatchOn(env)
-						                .log("dispatched")
-						                .observeSubscribe(x -> afterSubscribe.countDown())
-						                .filter(nearbyLoc -> 3333 >= nearbyLoc)
-						                .filter(nearbyLoc -> 2222 <= nearbyLoc)
+								Streams.<Integer>merge(
+										globalFeed,
+										Streams.just(1111, l, 3333, 4444, 5555, 6666)
+								)
+										.log("merged")
+										.dispatchOn(env)
+										.log("dispatched")
+										.observeSubscribe(x -> afterSubscribe.countDown())
+										.filter(nearbyLoc -> 3333 >= nearbyLoc)
+										.filter(nearbyLoc -> 2222 <= nearbyLoc)
 
 				);
 
@@ -841,11 +844,11 @@ public class StreamTests extends AbstractReactorTest {
 
 		Stream<Long> worker = Streams.range(0, max).dispatchOn(env);
 		worker.partition(2).consume(s ->
-								s
-										.dispatchOn(supplier.get())
-										.map(v -> v)
-										.consume(v -> countDownLatch.countDown())
-				);
+						s
+								.dispatchOn(supplier.get())
+								.map(v -> v)
+								.consume(v -> countDownLatch.countDown())
+		);
 
 		countDownLatch.await(10, TimeUnit.SECONDS);
 		Assert.assertEquals(0, countDownLatch.getCount());
@@ -859,11 +862,11 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<Integer> worker = Streams.from(tasks).dispatchOn(env);
 
 		Control tail = worker.partition(2).consume(s ->
-				                                           s
-						                                           .dispatchOn(env.getCachedDispatcher())
-						                                           .map(v -> v)
-						                                           .consume(v -> countDownLatch.countDown(),
-						                                                    Throwable::printStackTrace)
+						s
+								.dispatchOn(env.getCachedDispatcher())
+								.map(v -> v)
+								.consume(v -> countDownLatch.countDown(),
+										Throwable::printStackTrace)
 		);
 
 		countDownLatch.await(5, TimeUnit.SECONDS);
@@ -871,6 +874,83 @@ public class StreamTests extends AbstractReactorTest {
 			System.out.println(tail.debug());
 		}
 		Assert.assertEquals(0, countDownLatch.getCount());
+	}
+
+
+	@Test
+	@Ignore
+	public void testCustomFileStream() throws InterruptedException {
+
+		Stream<String> fileStream = new Stream<String>() {
+			@Override
+			public void subscribe(final Subscriber<? super String> subscriber) {
+				final File file = new File("settings.gradle");
+
+				try {
+					final BufferedReader is = new BufferedReader(new FileReader(file));
+
+					subscriber.onSubscribe(new PushSubscription<String>(this, subscriber) {
+
+						@Override
+						protected void onRequest(long n) {
+							long requestCursor = 0l;
+							System.out.println(n);
+							try {
+								String line;
+								while (requestCursor++ < n || n == Long.MAX_VALUE) {
+									line = is.readLine();
+									if(line != null) {
+										onNext(line);
+									} else {
+										onComplete();
+										return;
+									}
+								}
+							} catch (IOException e) {
+								onError(e);
+							}
+						}
+					});
+
+				} catch (FileNotFoundException e) {
+					Streams.<String, FileNotFoundException>fail(e)
+							.subscribe(subscriber);
+				}
+			}
+		};
+
+		fileStream
+				.subscribe(new Subscriber<String>() {
+					final long chunkSize = 4;
+
+					Subscription subscription;
+					long cursor = 0;
+
+					@Override
+					public void onSubscribe(Subscription s) {
+						subscription = s;
+						s.request(chunkSize);
+					}
+
+					@Override
+					public void onNext(String s) {
+						System.out.println(s);
+						if(++cursor == chunkSize){
+							cursor = 0;
+							subscription.request(chunkSize);
+						}
+					}
+
+					@Override
+					public void onError(Throwable t) {
+						t.printStackTrace();
+					}
+
+					@Override
+					public void onComplete() {
+						System.out.println("## EOF ##");
+					}
+				});
 	}
 
 	@Test
@@ -984,7 +1064,7 @@ public class StreamTests extends AbstractReactorTest {
 								.map(s -> s + " " + Thread.currentThread().toString())
 				)
 				.map(t -> {
-					System.out.println("First partition: "+Thread.currentThread() + ", worker=" + t);
+					System.out.println("First partition: " + Thread.currentThread() + ", worker=" + t);
 					return t;
 				})
 						// Also tried to do another dispatch but with no success.
@@ -1000,7 +1080,7 @@ public class StreamTests extends AbstractReactorTest {
 						// worker threads should be funneled into the same, specific thread
 						// https://groups.google.com/forum/#!msg/reactor-framework/JO0hGftOaZs/20IhESjPQI0J
 				.consume(t -> {
-					System.out.println("Second partition: "+Thread.currentThread() + ", worker=" + t);
+					System.out.println("Second partition: " + Thread.currentThread() + ", worker=" + t);
 					latch.countDown();
 				});
 
@@ -1028,10 +1108,10 @@ public class StreamTests extends AbstractReactorTest {
 		}));
 
 		Streams.just("Hello World!")
-		       .map(barrierStream.wrap((Function<String, String>) String::toUpperCase))
-		       .consume(s -> {
-			       latch2.countDown();
-		       });
+				.map(barrierStream.wrap((Function<String, String>) String::toUpperCase))
+				.consume(s -> {
+					latch2.countDown();
+				});
 
 		barrierStream.consume(vals -> {
 			try {
