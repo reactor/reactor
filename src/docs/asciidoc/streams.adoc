@@ -594,11 +594,16 @@ To limit the amount of data in-flight in a `Stream`, use the link:/docs/api/reac
 ----
 Stream<String> st;
 
-st.capacity(256) // <1>
+st
+  .dispatchOn(sharedDispatcher())
+  .capacity(256) // <1>
   .consume(s -> service.doWork(s)); // <2>
 ----
 <1> Limit the amount of data in-flight to no more than 256 elements at a time.
 <2> Produce demand upstream by requesting the next 256 elements of data.
+
+[WARNING]
+`capacity` will not affect `consume` actions if the current Stream dispatcher set with `dispatchOn` early on is a `SynchronousDispatcher.INSTANCE` (default if unset).
 
 === Functional Composition
 
