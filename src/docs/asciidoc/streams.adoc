@@ -386,7 +386,7 @@ Reactor offers some done-deal facilities to avoid boilerplate checking you would
 * Extending `PushSubscription` instead of implementing directly `Subscription` to benefit from terminal state (PushSubscription.isComplete())
 * Extending `Stream` instead of implementing directly `Publisher` to benefit from composition API
 
-A good place to start thinking the reactive stream way is the <<recipes.adoc#recipe-filestream,sample File Stream>>.
+A good place to start feeling the reactive streams way is to simply look at a more ellaborated back-pressure ready <<recipes.adoc#recipe-filestream, File Stream>>.
 
 === From Hot Data Sources
 

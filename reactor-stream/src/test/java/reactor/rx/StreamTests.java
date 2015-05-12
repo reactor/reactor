@@ -929,37 +929,13 @@ public class StreamTests extends AbstractReactorTest {
 		};
 
 		fileStream
-				.subscribe(new Subscriber<String>() {
-					final long chunkSize = 4;
-
-					Subscription subscription;
-					long cursor = 0;
-
-					@Override
-					public void onSubscribe(Subscription s) {
-						subscription = s;
-						s.request(chunkSize);
-					}
-
-					@Override
-					public void onNext(String s) {
-						System.out.println(s);
-						if(++cursor == chunkSize){
-							cursor = 0;
-							subscription.request(chunkSize);
-						}
-					}
-
-					@Override
-					public void onError(Throwable t) {
-						t.printStackTrace();
-					}
-
-					@Override
-					public void onComplete() {
-						System.out.println("## EOF ##");
-					}
-				});
+				.capacity(4L)
+				.consumeOn(
+						Environment.sharedDispatcher(),
+						System.out::println,
+						Throwable::printStackTrace,
+						nothing -> System.out.println("## EOF ##")
+				);
 	}
 
 	@Test

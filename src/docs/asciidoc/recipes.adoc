@@ -4,86 +4,78 @@
 .Build a lazy file read Publisher matching the Subscriber request and reuse Reactor Stream base machinery like PushSubscription
 [source, java, indent=2]
 ----
-Stream<String> fileStream = new Stream<String>() {
+Stream<String> fileStream = new Stream<String>() { // <1>
 	@Override
 	public void subscribe(final Subscriber<? super String> subscriber) {
-		final File file = new File("settings.gradle");
+		final File file = new File("settings.gradle"); // <2>
 
 		try {
-			final BufferedReader is = new BufferedReader(new FileReader(file));
-			subscriber.onSubscribe(new PushSubscription<String>(this, subscriber) {
+			final BufferedReader is = new BufferedReader(new FileReader(file)); // <2>
+
+			subscriber.onSubscribe(new PushSubscription<String>(this, subscriber) { // <3>
 
 				@Override
-				protected void onRequest(long n) {
+				protected void onRequest(long n) { // <4>
 					long requestCursor = 0l;
 					try {
 						String line;
-						while ((requestCursor++ < n || n == Long.MAX_VALUE)
-											&& !isComplete()) {
+						while ((requestCursor++ < n || n == Long.MAX_VALUE) // <5>
+								&& !isComplete()) { // <6>
 							line = is.readLine();
 							if(line != null) {
 								onNext(line);
 							} else {
-								is.close();
-								onComplete();
+								is.close(); // <7>
+								onComplete(); // <8>
 								return;
 							}
 						}
 					} catch (IOException e) {
-						onError(e);
+						onError(e);  // <9>
 					}
 				}
 
 				@Override
 				public void cancel() {
 					try {
-						is.close();
+						is.close(); // <10>
+						super.cancel();
 					} catch (IOException e) {
-						onError(e);
+						onError(e); // <9>
 					}
 				}
 			});
 
 		} catch (FileNotFoundException e) {
 			Streams.<String, FileNotFoundException>fail(e)
-				.subscribe(subscriber);
+				.subscribe(subscriber); // <11>
 		}
 	}
 };
 
 fileStream
-	.subscribe(new Subscriber<String>() {
-		final long chunkSize = 4;
+	.capacity(4L) // <12>
+	.consumeOn( // <13>
+		Environment.sharedDispatcher(),
+		System.out::println,
+		Throwable::printStackTrace,
+		nothing -> System.out.println("## EOF ##")
+);
 
-		Subscription subscription;
-		long cursor = 0;
-
-		@Override
-		public void onSubscribe(Subscription s) {
-			subscription = s;
-			s.request(chunkSize);
-		}
-
-		@Override
-		public void onNext(String s) {
-			System.out.println(s);
-			if(++cursor == chunkSize){
-				cursor = 0;
-				subscription.request(chunkSize);
-			}
-		}
-
-		@Override
-		public void onError(Throwable t) {
-			t.printStackTrace();
-		}
-
-		@Override
-		public void onComplete() {
-			System.out.println("## EOF ##");
-		}
-});
 ----
+<1> Implement a `Stream` instead of `Publisher` to direcly inherit the _Composition API_ without involving later `Streams.wrap(Publisher)`. Less allocation dude!
+<2> Open a `File` cursor and reader by Subscriber to allow for replayability: It's a `Cold Stream`.
+<3> Implement a `PushSubscription` instead of Subscription (both are obviously valid).
+<4> Override `PushSubscription.onRequest(n)` in order to benefit from *state checking*.
+<5> Match the number of read lines with the demand and ignore the demand if special Long.MAX_VALUE escaping number is passed.
+<6> Check before each possible `onNext()` if the Stream is not *terminated*.
+<7> Close the file after all lines have been read.
+<8> Call `PushSubscription.onComplete()` which set the state of the `Subscription` to *terminated*, ignoring further terminal signal if any. It then delegates to the `Subscriber.onComplete()`.
+<9> Call `PushSubscription.onError(e)` which set the state of the `Subscription` to *terminated*, ignoring further terminal signal if any. It then delegates to the `Subscriber.onError(e)`.
+<10> Close the file if the subscriber is not interested any more in the content (large file...). Calling the parent `cancel` is a good idea to change the `Subscription` state to *terminated*.
+<11> Create a failed `Stream` that only `onSubscribe()` the pass subscriber and `onError(e)`.
+<12> `capacity` will hint downstream operations (`consumeOn` here) to chunk requests 4 by 4.
+<13> `consumeOn` takes an extra argument to run the requests on a dispatcher in addition to the 3 possible `Consumer` reacting to each type of signal.
 
 === Building Efficient Data Pipelines
 
