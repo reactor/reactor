@@ -2,7 +2,7 @@
 === Building a simple File Stream
 
 .Build a lazy file read Publisher matching the Subscriber request and reuse Reactor Stream base machinery like PushSubscription
-[source, java, options="indent=2"]
+[source, java, indent=2]
 ----
 Stream<String> fileStream = new Stream<String>() {
 	@Override
@@ -16,7 +16,6 @@ Stream<String> fileStream = new Stream<String>() {
 				@Override
 				protected void onRequest(long n) {
 					long requestCursor = 0l;
-					System.out.println(n);
 					try {
 						String line;
 						while ((requestCursor++ < n || n == Long.MAX_VALUE)
