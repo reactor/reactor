@@ -894,7 +894,6 @@ public class StreamTests extends AbstractReactorTest {
 						@Override
 						protected void onRequest(long n) {
 							long requestCursor = 0l;
-							System.out.println(n);
 							try {
 								String line;
 								while (requestCursor++ < n || n == Long.MAX_VALUE) {
@@ -902,10 +901,20 @@ public class StreamTests extends AbstractReactorTest {
 									if(line != null) {
 										onNext(line);
 									} else {
+										is.close();
 										onComplete();
 										return;
 									}
 								}
+							} catch (IOException e) {
+								onError(e);
+							}
+						}
+
+						@Override
+						public void cancel() {
+							try {
+								is.close();
 							} catch (IOException e) {
 								onError(e);
 							}

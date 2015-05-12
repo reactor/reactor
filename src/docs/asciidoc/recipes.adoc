@@ -24,10 +24,20 @@ Stream<String> fileStream = new Stream<String>() {
 							if(line != null) {
 								onNext(line);
 							} else {
+								is.close();
 								onComplete();
 								return;
 							}
 						}
+					} catch (IOException e) {
+						onError(e);
+					}
+				}
+
+				@Override
+				public void cancel() {
+					try {
+						is.close();
 					} catch (IOException e) {
 						onError(e);
 					}
