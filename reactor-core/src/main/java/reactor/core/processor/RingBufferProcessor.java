@@ -528,7 +528,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 
 		this.recentSequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
 		this.barrier = ringBuffer.newBarrier();
-		ringBuffer.addGatingSequences(recentSequence);
+		//ringBuffer.addGatingSequences(recentSequence);
 	}
 
 	@Override
@@ -778,7 +778,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 								throw AlertException.INSTANCE;
 							}
 						}
-						processor.recentSequence.compareAndSet(sequence.get(), availableSequence);
+						//processor.recentSequence.compareAndSet(sequence.get(), availableSequence);
 						sequence.set(availableSequence);
 					} catch (final TimeoutException e) {
 						//IGNORE
