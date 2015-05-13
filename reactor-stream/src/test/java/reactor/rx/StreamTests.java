@@ -20,7 +20,6 @@ import org.hamcrest.Matcher;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -883,10 +882,6 @@ public class StreamTests extends AbstractReactorTest {
 	@Ignore
 	public void testCustomFileStream() throws InterruptedException {
 
-		Processor<String, String> broad = RingBufferProcessor.create();
-		broad.onNext("test");
-		Streams.wrap(broad).consume(System.out::println);
-		Thread.sleep(5000);
 
 		Stream<String> fileStream = new Stream<String>() {
 			@Override
@@ -901,6 +896,7 @@ public class StreamTests extends AbstractReactorTest {
 						@Override
 						protected void onRequest(long n) {
 							long requestCursor = 0l;
+							System.out.println("requesting");
 							try {
 								String line;
 								while (requestCursor++ < n || n == Long.MAX_VALUE) {
@@ -936,9 +932,9 @@ public class StreamTests extends AbstractReactorTest {
 		};
 
 		fileStream
+				.process(RingBufferProcessor.create())
 				.capacity(4L)
-				.consumeOn(
-						Environment.sharedDispatcher(),
+				.consume(
 						System.out::println,
 						Throwable::printStackTrace,
 						nothing -> System.out.println("## EOF ##")
