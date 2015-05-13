@@ -598,11 +598,11 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 	private final class RingBufferSubscription implements Subscription {
 		private final Sequence              pendingRequest;
 		private final Subscriber<? super E> subscriber;
-		private final EventProcessor        eventProcessor;
+		private final BatchSignalProcessor<E>   eventProcessor;
 
 		public RingBufferSubscription(Sequence pendingRequest,
 		                              Subscriber<? super E> subscriber,
-		                              EventProcessor eventProcessor) {
+		                              BatchSignalProcessor<E> eventProcessor) {
 			this.subscriber = subscriber;
 			this.eventProcessor = eventProcessor;
 			this.pendingRequest = pendingRequest;
@@ -621,8 +621,9 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 			}
 
 			//buffered data in producer unpublished
-			final long currentSequence = eventProcessor.getSequence().get();
+			final long currentSequence = eventProcessor.nextSequence;
 			final long cursor = ringBuffer.getCursor();
+			recentSequence.compareAndSet(currentSequence - n, ringBuffer.getMinimumGatingSequence());
 
 			//if the current subscriber sequence behind ringBuffer cursor, count the distance from the next slot to the end
 			final long buffered = currentSequence < cursor - 1l
@@ -636,14 +637,14 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 			}
 
 			final long toRequest;
-			if (buffered > 0l && n != Long.MAX_VALUE) {
-				toRequest = (n - buffered) <= 0l ? n : n - buffered;
+			if (buffered > 0l) {
+				toRequest = (n - buffered) <= 0l ? 0 : n - buffered;
 			} else {
 				toRequest = n;
 			}
 
-			Subscription parent = upstreamSubscription;
 			if (toRequest > 0l) {
+				Subscription parent = upstreamSubscription;
 				if (parent != null) {
 					parent.request(toRequest);
 				}
@@ -689,6 +690,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 		private final Subscriber<? super T>  subscriber;
 
 		private Subscription subscription;
+		long nextSequence = -1l;
 
 		/**
 		 * Construct a {@link com.lmax.disruptor.EventProcessor} that will automatically track the progress by updating
@@ -740,7 +742,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 			subscriber.onSubscribe(subscription);
 
 			MutableSignal<T> event = null;
-			long nextSequence = sequence.get() + 1L;
+			nextSequence = sequence.get() + 1L;
 			try {
 				while (true) {
 					try {
@@ -782,7 +784,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 						sequence.set(availableSequence);
 					} catch (final TimeoutException e) {
 						//IGNORE
-					} catch (final AlertException ex) {
+					} catch (final AlertException | CancelException ex) {
 						if (!running.get()) {
 							break;
 						} else {
