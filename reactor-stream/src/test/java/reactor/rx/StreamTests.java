@@ -20,6 +20,7 @@ import org.hamcrest.Matcher;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -33,6 +34,7 @@ import reactor.bus.selector.Selectors;
 import reactor.core.Dispatcher;
 import reactor.core.DispatcherSupplier;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.support.Tap;
@@ -880,6 +882,11 @@ public class StreamTests extends AbstractReactorTest {
 	@Test
 	@Ignore
 	public void testCustomFileStream() throws InterruptedException {
+
+		Processor<String, String> broad = RingBufferProcessor.create();
+		broad.onNext("test");
+		Streams.wrap(broad).consume(System.out::println);
+		Thread.sleep(5000);
 
 		Stream<String> fileStream = new Stream<String>() {
 			@Override

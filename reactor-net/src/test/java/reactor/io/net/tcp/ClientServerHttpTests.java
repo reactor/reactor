@@ -271,7 +271,6 @@ public class ClientServerHttpTests {
 	private Promise<List<String>> getClientDataPromise() throws Exception {
 		HttpClient<String, String> httpClient = NetStreams.httpClient(t ->
 						t.codec(StandardCodecs.STRING_CODEC).connect("localhost", httpServer.getListenAddress().getPort())
-								.dispatcher(Environment.sharedDispatcher())
 		);
 
 		return httpClient.get("/data" )

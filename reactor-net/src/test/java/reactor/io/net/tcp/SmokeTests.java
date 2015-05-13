@@ -131,7 +131,7 @@ public class SmokeTests {
 	public static void main(String... args) throws Exception {
 		SmokeTests smokeTests = new SmokeTests();
 		smokeTests.port = 8080;
-		smokeTests.codec = new GpdistCodec();
+		smokeTests.codec = new DummyCodec();
 		smokeTests.loadEnv();
 
 		System.out.println("Starting on " + smokeTests.httpServer.getListenAddress());
@@ -519,7 +519,7 @@ public class SmokeTests {
 
 	}
 
-	public class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
+	public static class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
 
 		@SuppressWarnings("resource")
 		@Override

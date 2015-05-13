@@ -159,43 +159,43 @@ Cold Data Sources will be replayed from start for every fresh Subscriber passed 
 |T
 |Never emit anything. Useful for keep-alive behaviors.
 
-|Streams.<T>fail(Throwable)
+|Streams.<T, Throwable>fail(*Throwable*)
 |T
 |Only emit `onError(Throwable)`.
 
-|Streams.from(Future<T>)
+|Streams.from(*Future<T>*)
 |T
 |Block the `Subscription.request(long)` on the passed `Future.get()` that might emit `onNext(T)` and `onComplete()` otherwise `onError(Throwable)` for any exception.
 
-|Streams.from(T[])
+|Streams.from(*T[]*)
 |T
 |Emit N `onNext(T)` elements everytime `Subscription.request(N)` is invoked. If N == Long.MAX_VALUE, emit everything. Once all the array has been read, emit `onComplete()`.
 
-|Streams.from(Iterable<T>)
+|Streams.from(*Iterable<T>*)
 |T
 |Emit N `onNext(T)` elements everytime `Subscription.request(N)` is invoked. If N == Long.MAX_VALUE, emit everything. Once all the array has been read, emit `onComplete()`.
 
-|Streams.range(long, long?)
+|Streams.range(*long*, _long_)
 |Long
 |Emit a sequence of N `onNext(Long)` everytime `Subscription.request(N)` is invoked. If N == Long.MAX_VALUE, emit everything. Once the inclusive upper bound been read, emit `onComplete()`.
 
-|Streams.just(T, T?, T?, T?, T?, T?, T?, T?)
+|Streams.just(T, _T, T, T, T, T, T, T_)
 |T
 |An optimization over `Streams.from(Iterable)` that just behaves similarly. Also useful to emit Iterable, Array or Future without colliding with the Streams.from() signatures.
 
-|Streams.generate(Supplier<T>)
+|Streams.generate(*Supplier<T>*)
 |T
 |Emit `onNext(T)` from the producing `Supplier.get()` factory everytime `Subscription.request(N)` is called. The demand N is ignored as only one data is emitted. When a null value is returned, emit `onComplete()`.
 
-|Promises.syncTask(Supplier<T>), Promises.task(?, Supplier<T>)
+|Promises.syncTask(Supplier<T>), Promises.task(, Supplier<T>)
 |T
 |Emit a single `onNext(T)` and `onComplete()` from the producing `Supplier.get()` on the first `Subscription.request(N)` received. The demand N is ignored.
 
-|Promises.success(T)
+|Promises.success(*T*)
 |T
 |Emit `onNext(T)` and `onComplete()` whenever a `Subscriber` is provided to `Promise.subscribe(Subscriber)`.
 
-|Promises.error(Throwable)
+|Promises.<T>error(*Throwable*)
 |T
 |Emit `onError(Throwable)` whenever a `Subscriber` is subscribed is provided to `Promise.subscribe(Subscriber)`.
 
@@ -251,7 +251,7 @@ Therefore it supports malformed Publishers that do not invoke `Subscriber.onSubs
 
 |Streams.wrap(*Publisher<T>*)
 |T
-|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol *(onSubscribe > onNext\* > (onError \| onComplete)?*).
+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol *(onSubscribe > onNext\* > (onError \| onComplete)*).
 
 |Streams.defer(*Supplier<Publisher<T>>*)
 |T
@@ -284,7 +284,7 @@ Streams.merge(*Publisher<Publisher<T>>*)
 |List<T>
 |A shortcut for zip that only aggregate each complete aggregate in a List matching the order of the passed argument sources.
 
-|Streams.await(*Publisher<?>*, _long, unit, boolean_)
+|Streams.await(*Publisher<>*, _long, unit, boolean_)
 |void
 |Block the calling thread until the passed `Publisher` `onComplete` the waiting internal `Subscriber`. Optional arguments to tune the timeout and the need to request data as well can be passed. It will throw an exception if the final state is `onError` instead.
 
@@ -394,6 +394,9 @@ If you are dealing with an unbounded stream of data items like what would be com
 
 To use it, you simply declare a pipeline of composable, functional tasks on the `Broadcaster` and later call link:/docs/api/reactor/rx/stream/Broadcaster.html#onNext-O-[`Broadcaster.onNext(T)`] to publish values into the pipeline.
 
+[NOTE]
+`Broadcaster` are valid `Processor` and `Consumer`. It's possible to `onSubscribe` a Broadcaster as it's also possible to use it as a `Consumer` delegating `Consumer.accept(T)` to `Broadcaster.onNext(T)`.
+
 .Broadcaster.create()
 [source,java]
 ----
@@ -413,55 +416,82 @@ sink.onNext("Hello World!"); // <4>
 Hot Data Sources will never be replayed. Subscribers will only see data from the moment T they have been passed to `Stream.subscribe(Subscriber)`.
 An exception applies for `BehaviorBroadcaster` (last emitted element is replayed); `Streams.timer()` and `Streams.period()` will also maintain a unique timed cursors but will still ignore backpressure.
 
+[IMPORTANT]
+Subscribers will see new data N flowing through a Broadcaster every T+I^N^ *only* after they have subscribed at time T.
+
 .Creating undetermined Streams
-[cols="3*", options="header, autowidth"]
+[cols="4*", options="header, autowidth"]
 |===
 
 |Factory
-|Type
+|Input
+|Output
 |Role
 
-|Streams.timer(delay, unit?, timer?)
+|Streams.timer(*delay*, _unit, timer_)
+|N/A
 |Long
 |Start a Timer on `Stream.subscribe(Subscriber)` call and emit a single `onNext(0L)` then `onComplete()` once the delay is elapsed. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
-`Subscription.request(long)` will be ignore as no backpressure can apply to a scheduled emission.
+`Subscription.request(long)` will be ignored as no backpressure can automatically apply to a scheduled emission.
 
-|Streams.period(period, unit, timer?)
+|Streams.period(*period*, _unit, timer_)
+|N/A
 |Long
 |Start a Timer on `Stream.subscribe(Subscriber)` call and every period of time emit `onNext(N)` where N is an incremented counter starting from 0. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
-`Subscription.request(long)` will be ignore as no backpressure can apply to a scheduled emission.
+`Subscription.request(long)` will be ignored as no backpressure can automatically apply to a scheduled emission.
 
 |Streams.<T>switchOnNext()
-|Publisher<T>, T
+|Publisher<T>
+|T
 |An `Action` which for the record is also a `Processor`. The `onNext(Publisher<T>)` signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
  It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 
-|Broadcaster.create()
+|Broadcaster.<T>create(_Environment, Dispatcher_)
 |T
-|
-
-|SerializedBroadcaster.create()
 |T
-|
+|Create a _hot_ bridge between any context allowed to call `onSubscribe`, `onNext`, `onComplete` or `onError` and a composable sequence of these signals under a `Stream`. If no subscriber are actively registered, next signals might trigger a `CancelException`. The optional `Dispatcher` and `Environment` arguments define how to run each signal. Finally, a Broadcaster can be subscribed anytime to a `Publisher`, like a `Stream`.
 
-|BehaviorBroadcaster.create()
+|SerializedBroadcaster.create(_Environment, Dispatcher_)
 |T
-|
-
-|BehaviorBroadcaster.first()
 |T
-|
+|Similar to `Broadcaster.create()` but adds support for concurrent `onNext` from parallel contexts possibly calling the same broadcaster `onXXX` methods.
 
-
-|Streams.wrap(Processor<?,T>)
+|BehaviorBroadcaster.create(_Environment, Dispatcher_)
 |T
-|
-
-|Promises.prepare, Promises.ready
 |T
-|
+|Simlar to `Broadcaster.create()` but always replays the last data signal if any *and* the last terminal signal (`onComplete()`, `onError(Throwable)`) to the new Subscribers.
+
+|BehaviorBroadcaster.first(*T*, _Environment, Dispatcher_)
+|T
+|T
+|Similar to BehaviorBroadcaster but starts with a default value T.
+
+
+|Streams.wrap(*Processor<I, O>*)
+|I
+|O
+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<O>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol *(onSubscribe > onNext\* > (onError \| onComplete)*).
+
+
+|Promises.<T>prepare(*Environment, Dispatcher*), Promises.ready()
+|T
+|T
+|Prepare a `Promise` ready to be called *once only* by any external context through `onNext`. Since it's a stateful container holding the result of the fulfilled promise, new subscribers will immediately run on the current thread.
 
 |===
+
+
+[TIP]
+====
+For Asynchronous broadcasting, always consider a <<core-processor.adoc#core-processor,Core Processor>> alternative to a `Broadcaster`:
+****
+* A Broadcaster will trigger a http://projectreactor.io/docs/api/reactor/core/processor/CancelException.html[CancelException] if there is no subscribers. A Core `RingBuffer*Processor` will always deliver the missed data to the first subscriber.
+* Default Synchronous dispatcher and some other that can be assigned to a broadcaster might not support concurrent `onNext`. Use `RingBuffer*Processor.share()` an alternative thread-safe concurrent `onNext`.
+* RingBuffer*Processor supports replaying an event cancelled in-flight by a downstream subscriber if it's still running under the processor thread. A Broadcaster won't support replaying.
+* RingBuffer*Processor are faster than their alternative Broadcaster with a RingBufferDispatcher
+* RingBufferWorkProcessor supports scaling-up along with the number of attached subscribers.
+****
+====
 
 [[wireup]]
 === Wiring a Stream up
