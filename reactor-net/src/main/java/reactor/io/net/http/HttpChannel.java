@@ -35,6 +35,8 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  */
 public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
+	public static final String HTTPS_SCHEME = "https";
+
 	private volatile int statusAndHeadersSent = 0;
 	private HeaderResolver<String> paramsResolver;
 

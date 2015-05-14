@@ -896,7 +896,7 @@ public class StreamTests extends AbstractReactorTest {
 						@Override
 						protected void onRequest(long n) {
 							long requestCursor = 0l;
-							System.out.println("requesting");
+							System.out.println("requesting "+n);
 							try {
 								String line;
 								while (requestCursor++ < n || n == Long.MAX_VALUE) {
@@ -905,7 +905,7 @@ public class StreamTests extends AbstractReactorTest {
 										onNext(line);
 									} else {
 										is.close();
-										onComplete();
+										terminated = 1;
 										return;
 									}
 								}
@@ -931,14 +931,26 @@ public class StreamTests extends AbstractReactorTest {
 			}
 		};
 
-		fileStream
-				.process(RingBufferProcessor.create())
-				.capacity(4L)
+		Stream<String> processor = fileStream
+				.process(RingBufferProcessor.create());
+
+		processor
+				.capacity(3L)
 				.consume(
 						System.out::println,
 						Throwable::printStackTrace,
 						nothing -> System.out.println("## EOF ##")
 				);
+
+		Thread.sleep(3000);
+		processor
+				.capacity(3L)
+				.consume(
+						System.out::println,
+						Throwable::printStackTrace,
+						nothing -> System.out.println("## EOF ##")
+				);
+		Thread.sleep(3000);
 	}
 
 	@Test

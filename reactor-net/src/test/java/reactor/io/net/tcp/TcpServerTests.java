@@ -605,6 +605,23 @@ public class TcpServerTests {
 		assertThat("countDownLatch counted down", countDownLatch.await(5, TimeUnit.SECONDS));
 	}
 
+	@Test
+	@Ignore
+	public void proxyTest() throws Exception {
+		HttpServer<Buffer, Buffer> server = NetStreams.httpServer();
+		server.get("/search/{search}", requestIn ->
+			NetStreams.httpClient()
+				.get("https://www.google.co.uk/?q=" + requestIn.param("search"))
+				.flatMap(repliesOut ->
+							requestIn
+									.writeWith(repliesOut)
+			)
+		);
+		server.start().await();
+		//System.in.read();
+		Thread.sleep(1000000);
+	}
+
 	private class HttpRequestWriter implements Runnable {
 		private final int port;
 

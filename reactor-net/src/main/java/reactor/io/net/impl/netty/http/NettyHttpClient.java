@@ -19,6 +19,7 @@ package reactor.io.net.impl.netty.http;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
@@ -47,7 +48,6 @@ import reactor.rx.Streams;
 
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.URL;
 
 /**
  * A Netty-based {@code TcpClient}.
@@ -61,10 +61,10 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 
 	private final static Logger log = LoggerFactory.getLogger(NettyHttpClient.class);
 
-	private final NettyTcpClient<IN, OUT> client;
+	private final NettyTcpClient<IN, OUT>            client;
 	private final Promise<NettyHttpChannel<IN, OUT>> reply;
 
-	private String lastURL = "http://localhost:8080";
+	private URI lastURI = null;
 
 	/**
 	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code
@@ -99,8 +99,19 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 				codec
 		) {
 			@Override
-			protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, Object
+			protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel
 					nativeChannel) {
+
+				URI currentURI = lastURI;
+				try {
+					if (currentURI.getScheme() != null
+							&& currentURI.getScheme().toLowerCase().equals(HttpChannel.HTTPS_SCHEME)) {
+						addSecureHandler(nativeChannel);
+					}
+				} catch (Exception e) {
+					nativeChannel.pipeline().fireExceptionCaught(e);
+				}
+
 				NettyHttpClient.this.bindChannel(handler, nativeChannel);
 			}
 
@@ -108,9 +119,16 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 			public InetSocketAddress getConnectAddress() {
 				if (connectAddress != null) return connectAddress;
 				try {
-					URL url = new URL(lastURL);
-					String host = url.getHost();
-					int port = url.getPort();
+					URI url = lastURI;
+					String host = url != null ? url.getHost() : "localhost";
+					int port = url != null ? url.getPort() : -1;
+					if (port == -1) {
+						if (url != null && url.getScheme() != null && url.getScheme().toLowerCase().equals(HttpChannel.HTTPS_SCHEME)) {
+							port = 443;
+						} else {
+							port = 80;
+						}
+					}
 					return new InetSocketAddress(host, port);
 				} catch (Exception e) {
 					throw new IllegalArgumentException(e);
@@ -133,8 +151,9 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	}
 
 	@Override
-	protected Stream<Tuple2<InetSocketAddress, Integer>> doStart(final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler,
-	                                                     final Reconnect reconnect) {
+	protected Stream<Tuple2<InetSocketAddress, Integer>> doStart(final ReactorChannelHandler<IN, OUT, HttpChannel<IN,
+			OUT>> handler,
+	                                                             final Reconnect reconnect) {
 		return client.start(new ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>>() {
 			@Override
 			public Publisher<Void> apply(ChannelStream<IN, OUT> inoutChannelStream) {
@@ -148,31 +167,41 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	public Promise<? extends HttpChannel<IN, OUT>> request(final Method method, final String url,
 	                                                       final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
 			                                                       handler) {
-		lastURL = url;
-		Assert.isTrue(method != null && url != null);
+		final URI currentURI;
+		try{
+			Assert.isTrue(method != null && url != null);
+			currentURI = new URI(url);
+			lastURI = currentURI;
+		}catch(Exception e){
+			return Promises.error(e);
+		}
+
 		start(new ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>() {
 			@Override
 			public Publisher<Void> apply(HttpChannel<IN, OUT> inoutHttpChannel) {
-				final NettyHttpChannel<IN, OUT> ch = ((NettyHttpChannel<IN, OUT>) inoutHttpChannel);
+				try {
+					final NettyHttpChannel<IN, OUT> ch = ((NettyHttpChannel<IN, OUT>) inoutHttpChannel);
+					ch.getNettyRequest()
+							.setUri(currentURI.getPath() + (currentURI.getQuery() == null ? "" : "?" + currentURI.getQuery()))
+							.setMethod(new HttpMethod(method.getName()))
+							.headers()
+								.add(HttpHeaders.Names.HOST, currentURI.getHost())
+								.add(HttpHeaders.Names.ACCEPT, "*/*");
 
-				ch.getNettyRequest()
-						.setUri(URI.create(url).getPath())
-						.setMethod(new HttpMethod(method.getName()));
-
-				if (handler != null) {
-					try {
+					if (handler != null) {
 						Publisher<Void> p = handler.apply(ch);
 						reply.onNext(ch);
 						return p;
-					}catch (Throwable t){
-						reply.onError(t);
-						return Promises.error(t);
+					} else {
+						reply.onNext(ch);
+						return Streams.never();
 					}
-				}else{
-					reply.onNext(ch);
-					return Streams.never();
+				} catch (Throwable t) {
+					reply.onError(t);
+					return Promises.error(t);
 				}
 			}
+
 		});
 		return reply;
 	}

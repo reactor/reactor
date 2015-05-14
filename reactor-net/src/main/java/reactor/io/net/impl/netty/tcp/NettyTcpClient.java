@@ -173,12 +173,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				ch.config().setConnectTimeoutMillis(getOptions().timeout());
 
 				if (null != getSslOptions()) {
-					SSLEngine ssl = new SSLEngineSupplier(getSslOptions(), true).get();
-					if (log.isDebugEnabled()) {
-						log.debug("SSL enabled using keystore {}",
-								(null != getSslOptions().keystoreFile() ? getSslOptions().keystoreFile() : "<DEFAULT>"));
-					}
-					ch.pipeline().addLast(new SslHandler(ssl));
+					addSecureHandler(ch);
 				} else {
 					ch.config().setAutoRead(false);
 				}
@@ -190,6 +185,15 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				bindChannel(targetHandler, ch);
 			}
 		});
+	}
+
+	protected void addSecureHandler(SocketChannel ch) throws Exception {
+		SSLEngine ssl = new SSLEngineSupplier(getSslOptions(), true).get();
+		if (log.isDebugEnabled()) {
+			log.debug("SSL enabled using keystore {}",
+					(null != getSslOptions() && null != getSslOptions().keystoreFile() ? getSslOptions().keystoreFile() : "<DEFAULT>"));
+		}
+		ch.pipeline().addLast(new SslHandler(ssl));
 	}
 
 	@Override
@@ -224,18 +228,17 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		return promise;
 	}
 
-	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, Object nativeChannel) {
-		SocketChannel ch = (SocketChannel) nativeChannel;
+	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel nativeChannel) {
 
 		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
 				getDefaultEnvironment(),
 				getDefaultCodec(),
 				getDefaultPrefetchSize(),
 				getDefaultDispatcher(),
-				ch
+				nativeChannel
 		);
 
-		ChannelPipeline pipeline = ch.pipeline();
+		ChannelPipeline pipeline = nativeChannel.pipeline();
 		if (log.isDebugEnabled()) {
 			pipeline.addLast(new LoggingHandler(NettyTcpClient.class));
 		}

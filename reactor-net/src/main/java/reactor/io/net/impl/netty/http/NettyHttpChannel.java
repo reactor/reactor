@@ -16,7 +16,7 @@
 
 package reactor.io.net.impl.netty.http;
 
-import io.netty.channel.Channel;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.*;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -169,8 +169,9 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	}
 
 	@Override
-	public Channel delegate() {
-		return tcpStream.delegate();
+	@SuppressWarnings("unchecked")
+	public SocketChannel delegate() {
+		return (SocketChannel)tcpStream.delegate();
 	}
 
 	@Override
