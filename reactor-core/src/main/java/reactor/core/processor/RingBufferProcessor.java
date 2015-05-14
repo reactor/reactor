@@ -648,7 +648,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 
 			final long toRequest;
 			if (buffered > 0l) {
-				toRequest = (n - buffered) < 0l ? n : n - buffered;
+				toRequest = (n - buffered) < 0l ? 0 : n - buffered;
 			} else {
 				toRequest = n;
 			}
