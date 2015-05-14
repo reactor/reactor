@@ -16,7 +16,6 @@
 
 package reactor.io.net;
 
-import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
 import reactor.io.net.http.HttpSelector;
 import reactor.io.net.http.model.Method;
@@ -39,7 +38,7 @@ public abstract class NetSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static Selector http(String uri, Protocol protocol, Method method) {
+	public static HttpSelector http(String uri, Protocol protocol, Method method) {
 		if (null == uri) {
 			return null;
 		}
@@ -58,7 +57,7 @@ public abstract class NetSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static Selector get(String uri) {
+	public static HttpSelector get(String uri) {
 		return http(uri, null, Method.GET);
 	}
 
@@ -74,7 +73,7 @@ public abstract class NetSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static Selector post(String uri) {
+	public static HttpSelector post(String uri) {
 		return http(uri, null, Method.POST);
 	}
 
@@ -90,7 +89,7 @@ public abstract class NetSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static Selector put(String uri) {
+	public static HttpSelector put(String uri) {
 		return http(uri, null, Method.PUT);
 	}
 
@@ -106,8 +105,23 @@ public abstract class NetSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static Selector delete(String uri) {
+	public static HttpSelector delete(String uri) {
 		return http(uri, null, Method.DELETE);
 	}
 
+	/**
+	 * An alias for {@link reactor.io.net.NetSelectors#http}.
+	 * <p>
+	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
+	 * <p>
+	 * This will listen for WebSocket Method.
+	 *
+	 * @param uri The string to compile into a URI template and use for matching
+	 * @return The new {@link reactor.bus.selector.UriPathSelector}.
+	 * @see reactor.bus.selector.UriPathTemplate
+	 * @see reactor.bus.selector.UriPathSelector
+	 */
+	public static HttpSelector ws(String uri) {
+		return http(uri, null, Method.WS);
+	}
 }

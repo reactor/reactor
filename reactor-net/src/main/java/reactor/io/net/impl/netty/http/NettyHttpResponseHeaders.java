@@ -175,6 +175,11 @@ public class NettyHttpResponseHeaders implements ResponseHeaders {
 	}
 
 	@Override
+	public boolean isKeepAlive(){
+		return HttpHeaders.isKeepAlive(this.nettyResponse);
+	}
+
+	@Override
 	public ResponseHeaders keepAlive(boolean keepAlive) {
 		HttpHeaders.setKeepAlive(this.nettyResponse, keepAlive);
 		return this;

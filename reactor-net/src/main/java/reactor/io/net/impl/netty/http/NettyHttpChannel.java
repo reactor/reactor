@@ -46,7 +46,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 		super(tcpStream.getEnvironment(), tcpStream.getCapacity(), tcpStream.getDispatcher());
 		this.tcpStream = tcpStream;
 		this.nettyRequest = request;
-		this.nettyResponse = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK);
+		this.nettyResponse = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.OK);
 		this.headers = new NettyHttpHeaders(request);
 		this.responseHeaders = new NettyHttpResponseHeaders(this.nettyResponse);
 
@@ -138,7 +138,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	public HttpChannel<IN, OUT> transfer(Transfer transfer) {
 		switch (transfer) {
 			case EVENT_STREAM:
-				throw new IllegalStateException("Transfer " + Transfer.EVENT_STREAM + " is not supported yet");
+				this.responseHeader(ResponseHeaders.CONTENT_TYPE, "text/event-stream");
 			case CHUNKED:
 				Assert.isTrue(Protocol.HTTP_1_1.equals(protocol()));
 				this.responseHeader(ResponseHeaders.TRANSFER_ENCODING, "chunked");
@@ -192,4 +192,14 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 		return HEADERS_SENT.compareAndSet(this, 0, 1);
 	}
 
+	@Override
+	public boolean isKeepAlive() {
+		return headers.isKeepAlive();
+	}
+
+	@Override
+	public HttpChannel<IN, OUT> keepAlive(boolean keepAlive) {
+		responseHeaders.keepAlive(keepAlive);
+		return this;
+	}
 }

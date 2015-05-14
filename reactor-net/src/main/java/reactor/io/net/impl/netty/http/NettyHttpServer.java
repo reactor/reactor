@@ -18,10 +18,7 @@ package reactor.io.net.impl.netty.http;
 
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.*;
 import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -75,7 +72,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 				codec){
 
 			@Override
-			protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, Object nativeChannel) {
+			protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel nativeChannel) {
 				NettyHttpServer.this.bindChannel(handler, nativeChannel);
 			}
 		};
@@ -128,27 +125,32 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 		return server.shutdown();
 	}
 
-	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, Object nativeChannel) {
-		SocketChannel ch = (SocketChannel) nativeChannel;
+	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel nativeChannel) {
 
 		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
 				getDefaultEnvironment(),
 				getDefaultCodec(),
 				getDefaultPrefetchSize(),
 				getDefaultDispatcher(),
-				ch
+				nativeChannel
 		);
 
 
-		ChannelPipeline pipeline = ch.pipeline();
+		ChannelPipeline pipeline = nativeChannel.pipeline();
 
 		if(log.isDebugEnabled()){
 			pipeline.addLast(new LoggingHandler(NettyHttpServer.class));
 		}
 
 		pipeline
-				.addLast(new HttpServerCodec())
-				.addLast(new NettyHttpServerHandler<IN, OUT>(handler, netChannel));
+				.addLast(new HttpServerCodec());
+
+		if(hasWebsocketEndpoints()){
+			pipeline.addLast(new HttpObjectAggregator(65536));
+		}else {
+			pipeline
+					.addLast(new NettyHttpServerHandler<IN, OUT>(handler, netChannel));
+		}
 
 	}
 }

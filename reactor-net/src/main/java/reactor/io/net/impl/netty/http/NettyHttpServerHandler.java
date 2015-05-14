@@ -30,6 +30,7 @@ import org.reactivestreams.Subscription;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.http.model.Status;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
@@ -89,7 +90,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 						if(log.isDebugEnabled()){
 							log.debug("Close Http Response ");
 						}
-						ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(ChannelFutureListener.CLOSE);
+						writeLast(ctx);
 						//ctx.channel().close();
 						/*
 						ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(new ChannelFutureListener() {
@@ -123,10 +124,20 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		}
 		if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
-			if (channelSubscription != null && DefaultLastHttpContent.class.equals(msg.getClass())) {
-				channelSubscription.onComplete();
-				channelSubscription = null;
-			}
+		}
+		postRead(ctx, msg);
+	}
+
+	protected void postRead(ChannelHandlerContext ctx, Object msg){
+		if (channelSubscription != null && DefaultLastHttpContent.class.equals(msg.getClass())) {
+			channelSubscription.onComplete();
+			channelSubscription = null;
+		}
+	}
+	protected void writeLast(ChannelHandlerContext ctx){
+		ChannelFuture f = ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+	if (!request.isKeepAlive() || request.responseStatus() != Status.OK) {
+			f.addListener(ChannelFutureListener.CLOSE);
 		}
 	}
 

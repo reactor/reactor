@@ -51,6 +51,8 @@ public interface WritableHeaders<T> {
 
 	public T keepAlive(boolean keepAlive);
 
+	public boolean isKeepAlive();
+
 	public T transferEncodingChunked();
 
 }

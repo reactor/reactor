@@ -212,7 +212,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 
 	private URI parseURL(Method method, String url) throws Exception{
 		if(!url.startsWith(HttpChannel.HTTP_SCHEME) && !url.startsWith(HttpChannel.WS_SCHEME)){
-			final String parsedUrl = method.equals(Method.WS) ? HttpChannel.WS_SCHEME : HttpChannel.HTTP_SCHEME + "://";
+			final String parsedUrl = (method.equals(Method.WS) ? HttpChannel.WS_SCHEME : HttpChannel.HTTP_SCHEME) + "://";
 			if(url.startsWith("/")){
 				return new URI(parsedUrl
 						+ (lastURI != null && lastURI.getHost() != null ? lastURI.getHost() : "localhost")

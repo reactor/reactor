@@ -189,18 +189,17 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		return d;
 	}
 
-	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, Object nativeChannel) {
-		SocketChannel ch = (SocketChannel)nativeChannel;
+	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel nativeChannel) {
 
 		NettyChannelStream<IN ,OUT> netChannel = new NettyChannelStream<IN, OUT>(
 				getDefaultEnvironment(),
 				getDefaultCodec(),
 				getDefaultPrefetchSize(),
 				getDefaultDispatcher(),
-				ch
+				nativeChannel
 		);
 
-		ChannelPipeline pipeline = ch.pipeline();
+		ChannelPipeline pipeline = nativeChannel.pipeline();
 
 		if(log.isDebugEnabled()){
 			pipeline.addLast(new LoggingHandler(NettyTcpServer.class));

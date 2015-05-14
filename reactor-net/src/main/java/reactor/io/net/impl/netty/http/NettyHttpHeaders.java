@@ -122,6 +122,11 @@ public class NettyHttpHeaders implements HttpHeaders {
 	}
 
 	@Override
+	public boolean isKeepAlive() {
+		return io.netty.handler.codec.http.HttpHeaders.isKeepAlive(nettyRequest);
+	}
+
+	@Override
 	public HttpHeaders transferEncodingChunked() {
 		return this;
 	}

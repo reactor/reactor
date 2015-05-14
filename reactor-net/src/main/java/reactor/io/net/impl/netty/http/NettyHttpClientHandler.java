@@ -59,6 +59,8 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 						new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")
 				);
 
+		request.keepAlive(true);
+
 		handler.apply(request)
 				.subscribe(new DefaultSubscriber<Void>() {
 					@Override

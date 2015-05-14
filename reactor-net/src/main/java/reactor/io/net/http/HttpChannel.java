@@ -101,6 +101,20 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 		return this;
 	}
 
+	/**
+	 * Is the request keepAlive
+	 * @return is keep alive
+	 */
+	public abstract boolean isKeepAlive();
+
+
+	/**
+	 * set the request keepAlive if true otherwise remove the existing connection keep alive header
+	 * @return is keep alive
+	 */
+	public abstract HttpChannel<IN, OUT> keepAlive(boolean keepAlive);
+
+
 	protected abstract void doHeader(String name, String value);
 
 	/**
@@ -210,6 +224,16 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	protected abstract void doAddResponseHeader(String name, String value);
 
+
+
+	/**
+	 * @return the Transfer setting SSE for this http connection (e.g. event-stream)
+	 */
+	public HttpChannel<IN, OUT>  sse(){
+		return transfer(Transfer.EVENT_STREAM);
+	}
+
+
 	/**
 	 * @return the Transfer setting for this http connection (e.g. event-stream)
 	 */
@@ -224,5 +248,6 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * @return this
 	 */
 	public abstract HttpChannel<IN, OUT> transfer(Transfer transfer);
+
 
 }

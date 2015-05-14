@@ -45,7 +45,11 @@ import java.util.List;
 public abstract class HttpServer<IN, OUT>
 		extends ReactorPeer<IN, OUT, HttpChannel<IN, OUT>> {
 
+	public static final Selector<HttpChannel> WS_SELECTOR = NetSelectors.ws(null);
+
 	protected final Registry<ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> routedWriters;
+
+	private boolean hasWebsocketEndpoints = false;
 
 	protected HttpServer(Environment env, Dispatcher dispatcher, Codec<Buffer, IN, OUT> codec) {
 		super(env, dispatcher, codec);
@@ -79,7 +83,7 @@ public abstract class HttpServer<IN, OUT>
 	 */
 	@SuppressWarnings("unchecked")
 	public HttpServer<IN, OUT> route(
-			final Selector condition,
+			final Selector<HttpChannel> condition,
 			final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> serviceFunction) {
 
 		routedWriters.register(condition, serviceFunction);
@@ -137,6 +141,25 @@ public abstract class HttpServer<IN, OUT>
 		return this;
 	}
 
+
+	/**
+	 * Listen for WebSocket on the passed path to be used as a routing condition. Incoming connections will query the internal registry
+	 *  to invoke the matching handlers.
+	 *
+	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
+	 *
+	 * @param path The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param handler an handler to invoke for the given condition
+	 *
+	 * @return {@code this}
+	 */
+	public final HttpServer<IN, OUT> ws(String path,
+	                                     final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
+		route(NetSelectors.ws(path), handler);
+		hasWebsocketEndpoints = true;
+		return this;
+	}
+
 	/**
 	 * Listen for HTTP DELETE on the passed path to be used as a routing condition. Incoming connections will query the internal registry
 	 *  to invoke the matching handlers.
@@ -152,6 +175,10 @@ public abstract class HttpServer<IN, OUT>
 	                                        final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		route(NetSelectors.delete(path), handler);
 		return this;
+	}
+
+	protected final boolean hasWebsocketEndpoints(){
+		return hasWebsocketEndpoints;
 	}
 
 	protected Iterable<? extends Publisher<Void>> routeChannel(final HttpChannel<IN, OUT> ch) {
