@@ -611,7 +611,7 @@ public class TcpServerTests {
 		HttpServer<Buffer, Buffer> server = NetStreams.httpServer();
 		server.get("/search/{search}", requestIn ->
 			NetStreams.httpClient()
-				.get("https://www.google.co.uk/?q=" + requestIn.param("search"))
+				.get("foaas.herokuapp.com/life/" + requestIn.param("search"))
 				.flatMap(repliesOut ->
 							requestIn
 									.writeWith(repliesOut)

@@ -120,7 +120,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 				if (connectAddress != null) return connectAddress;
 				try {
 					URI url = lastURI;
-					String host = url != null ? url.getHost() : "localhost";
+					String host = url != null && url.getHost() != null ? url.getHost() : "localhost";
 					int port = url != null ? url.getPort() : -1;
 					if (port == -1) {
 						if (url != null && url.getScheme() != null && url.getScheme().toLowerCase().equals(HttpChannel.HTTPS_SCHEME)) {
@@ -170,7 +170,11 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		final URI currentURI;
 		try{
 			Assert.isTrue(method != null && url != null);
-			currentURI = new URI(url);
+			if(!url.startsWith(HttpChannel.HTTP_SCHEME)){
+				currentURI = new URI(HttpChannel.HTTP_SCHEME+"://"+url);
+			}else{
+				currentURI = new URI(url);
+			}
 			lastURI = currentURI;
 		}catch(Exception e){
 			return Promises.error(e);
