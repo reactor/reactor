@@ -171,7 +171,13 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		try{
 			Assert.isTrue(method != null && url != null);
 			if(!url.startsWith(HttpChannel.HTTP_SCHEME)){
-				currentURI = new URI(HttpChannel.HTTP_SCHEME+"://"+url);
+				if(url.startsWith("/")){
+					currentURI = new URI(HttpChannel.HTTP_SCHEME + "://"
+							+ (lastURI != null && lastURI.getHost() != null ? lastURI.getHost() : "localhost")
+							+ url);
+				}else {
+					currentURI = new URI(HttpChannel.HTTP_SCHEME + "://" + url);
+				}
 			}else{
 				currentURI = new URI(url);
 			}
