@@ -45,7 +45,7 @@ public interface Bus<T> {
 	 * @param consumer The {@literal Consumer} to be triggered
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 */
-	<V extends T> Registration<Consumer<? extends T>> on(final Selector selector,
+	<V extends T> Registration<Object, Consumer<? extends T>> on(final Selector selector,
 	                                              final Consumer<V> consumer);
 
 

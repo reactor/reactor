@@ -34,7 +34,7 @@ import java.util.*;
 /**
  * @author Jon Brisbin
  */
-public class JsonPathSelector extends ObjectSelector<JsonPath> {
+public class JsonPathSelector extends ObjectSelector<Object, JsonPath> {
 
 	// Only need one of these
 	private static ObjectMapper MAPPER = new ObjectMapper();

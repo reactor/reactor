@@ -28,7 +28,7 @@ import static reactor.bus.selector.Selectors.$
  */
 class RegistrySpec extends Specification {
 
-  def "Registry tracks Registrations"(Registry<String> regs) {
+  def "Registry tracks Registrations"(Registry<?, String> regs) {
 
     given: "simple Registrations"
       regs.register $("Hello"), "World!"
@@ -47,8 +47,8 @@ class RegistrySpec extends Specification {
       !regs.select("Hello")
 
     where:
-      regs << [new CachingRegistry<String>(true, true, null),
-               new SimpleCachingRegistry<String>(true, true, null)]
+      regs << [new CachingRegistry<?, String>(true, true, null),
+               new SimpleCachingRegistry<?, String>(true, true, null)]
 
   }
 

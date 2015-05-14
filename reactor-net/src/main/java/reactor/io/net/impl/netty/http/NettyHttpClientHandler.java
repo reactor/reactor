@@ -133,7 +133,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		return ctx.writeAndFlush(request.getNettyRequest());
 	}
 
-	protected void writeLast(ChannelHandlerContext ctx){
+	protected void writeLast(final ChannelHandlerContext ctx){
 		ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {

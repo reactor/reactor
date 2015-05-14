@@ -23,25 +23,25 @@ import reactor.fn.Pausable;
 /**
  * @author Jon Brisbin
  */
-public class CachableRegistration<T> implements Registration<T> {
+public class CachableRegistration<K, V> implements Registration<K, V> {
 
-	private static final Selector NO_MATCH = new ObjectSelector<Void>(null) {
+	private static final Selector<Void> NO_MATCH = new ObjectSelector<Void, Void>(null) {
 		@Override
-		public boolean matches(Object key) {
+		public boolean matches(Void key) {
 			return false;
 		}
 	};
 
-	private final Selector selector;
-	private final T        object;
-	private final Runnable onCancel;
-	private final boolean  lifecycle;
+	private final Selector<K> selector;
+	private final V           object;
+	private final Runnable    onCancel;
+	private final boolean     lifecycle;
 
 	private volatile boolean cancelled      = false;
 	private volatile boolean cancelAfterUse = false;
 	private volatile boolean paused         = false;
 
-	public CachableRegistration(Selector selector, T object, Runnable onCancel) {
+	public CachableRegistration(Selector<K> selector, V object, Runnable onCancel) {
 		this.selector = selector;
 		this.object = object;
 		this.onCancel = onCancel;
@@ -49,17 +49,18 @@ public class CachableRegistration<T> implements Registration<T> {
 	}
 
 	@Override
-	public Selector getSelector() {
-		return (!cancelled ? selector : NO_MATCH);
+	@SuppressWarnings("unchecked")
+	public Selector<K> getSelector() {
+		return (!cancelled ? selector : (Selector<K>)NO_MATCH);
 	}
 
 	@Override
-	public T getObject() {
+	public V getObject() {
 		return (!cancelled && !paused ? object : null);
 	}
 
 	@Override
-	public Registration<T> cancelAfterUse() {
+	public Registration<K, V> cancelAfterUse() {
 		this.cancelAfterUse = true;
 		return this;
 	}
@@ -70,7 +71,7 @@ public class CachableRegistration<T> implements Registration<T> {
 	}
 
 	@Override
-	public Registration<T> cancel() {
+	public Registration<K, V> cancel() {
 		if (!cancelled) {
 			if (null != onCancel) {
 				onCancel.run();
@@ -89,7 +90,7 @@ public class CachableRegistration<T> implements Registration<T> {
 	}
 
 	@Override
-	public Registration<T> pause() {
+	public Registration<K, V> pause() {
 		this.paused = true;
 		if (lifecycle) {
 			((Pausable) object).pause();
@@ -103,7 +104,7 @@ public class CachableRegistration<T> implements Registration<T> {
 	}
 
 	@Override
-	public Registration<T> resume() {
+	public Registration<K, V> resume() {
 		paused = false;
 		if (lifecycle) {
 			((Pausable) object).resume();

@@ -23,7 +23,7 @@ import reactor.fn.Predicate;
  *
  * @author Jon Brisbin
  */
-public class PredicateSelector extends ObjectSelector<Predicate<Object>> {
+public class PredicateSelector extends ObjectSelector<Object, Predicate<Object>> {
 
 	public PredicateSelector(Predicate<Object> object) {
 		super(object);

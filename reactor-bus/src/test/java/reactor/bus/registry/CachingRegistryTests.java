@@ -31,7 +31,7 @@ import static org.junit.Assert.assertEquals;
 public final class CachingRegistryTests {
 
 	private final AtomicInteger    cacheMisses     = new AtomicInteger();
-	private final Registry<Object> cachingRegistry = new CacheMissCountingCachingRegistry<Object>(cacheMisses);
+	private final Registry<Object, Object> cachingRegistry = new CacheMissCountingCachingRegistry<Object>(cacheMisses);
 
 	@Test
 	public void registrationsWithTheSameSelectorAreOrderedByInsertionOrder() {
@@ -44,9 +44,9 @@ public final class CachingRegistryTests {
 		this.cachingRegistry.register(selector, "charlie");
 		this.cachingRegistry.register(selector, "delta");
 
-		Iterable<Registration<? extends Object>> registrations = this.cachingRegistry.select(key);
+		Iterable<Registration<Object, ? extends Object>> registrations = this.cachingRegistry.select(key);
 		List<Object> objects = new ArrayList<Object>();
-		for (Registration<? extends Object> registration : registrations) {
+		for (Registration<?, ? extends Object> registration : registrations) {
 			if (null != registration) {
 				objects.add(registration.getObject());
 			}
@@ -140,7 +140,7 @@ public final class CachingRegistryTests {
 		this.cachingRegistry.register(s1, "pseudo-consumer-1");
 
 		// notify1
-		List<Registration<?>> registrations = this.cachingRegistry.select("test");
+		List<Registration<Object, ?>> registrations = this.cachingRegistry.select("test");
 
 		assertEquals("number of consumers incorrect", 1, registrations.size());
 
@@ -175,7 +175,7 @@ public final class CachingRegistryTests {
 		}*/
 	}
 
-	private static final class CacheMissCountingCachingRegistry<T> extends CachingRegistry<T> {
+	private static final class CacheMissCountingCachingRegistry<T> extends CachingRegistry<Object, T> {
 		private final AtomicInteger cacheMisses;
 
 		public CacheMissCountingCachingRegistry(AtomicInteger cacheMisses) {

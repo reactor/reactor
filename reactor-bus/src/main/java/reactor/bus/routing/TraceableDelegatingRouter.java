@@ -42,7 +42,7 @@ public class TraceableDelegatingRouter implements Router {
 	@Override
 	public <E extends Event<?>> void route(Object key,
 	                  E event,
-	                  List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+	                  List<Registration<Object, ? extends Consumer<? extends Event<?>>>> consumers,
 	                  Consumer<E> completionConsumer,
 	                  Consumer<Throwable> errorConsumer) {
 		if(log.isTraceEnabled()) {

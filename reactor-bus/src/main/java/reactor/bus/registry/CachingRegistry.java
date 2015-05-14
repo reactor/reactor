@@ -34,34 +34,35 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * id.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class CachingRegistry<T> implements Registry<T> {
+public class CachingRegistry<K, V> implements Registry<K, V> {
 
 	private final NewThreadLocalRegsFn newThreadLocalRegsFn = new NewThreadLocalRegsFn();
 
 	private final boolean                                                                        useCache;
 	private final boolean                                                                        cacheNotFound;
-	private final Consumer<Object>                                                               onNotFound;
-	private final MultiReaderFastList<Registration<? extends T>>                                 registrations;
-	private final ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<? extends T>>>> threadLocalCache;
+	private final Consumer<K>                                                               onNotFound;
+	private final MultiReaderFastList<Registration<K, ? extends V>>                                 registrations;
+	private final ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<K, ? extends V>>>> threadLocalCache;
 
-	 CachingRegistry(boolean useCache, boolean cacheNotFound, Consumer<Object> onNotFound) {
+	 CachingRegistry(boolean useCache, boolean cacheNotFound, Consumer<K> onNotFound) {
 		this.useCache = useCache;
 		this.cacheNotFound = cacheNotFound;
 		this.onNotFound = onNotFound;
 		this.registrations = MultiReaderFastList.newList();
-		this.threadLocalCache = new ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<? extends T>>>>();
+		this.threadLocalCache = new ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<K, ? extends V>>>>();
 	}
 
 	@Override
-	public Registration<T> register(Selector sel, T obj) {
+	public Registration<K, V> register(Selector<K> sel, V obj) {
 		RemoveRegistration removeFn = new RemoveRegistration();
-		final Registration<T> reg = new CachableRegistration<>(sel, obj, removeFn);
+		final Registration<K, V> reg = new CachableRegistration<>(sel, obj, removeFn);
 		removeFn.reg = reg;
 
-		registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<? extends T>>>() {
+		registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<K, ? extends V>>>() {
 			@Override
-			public void value(MutableList<Registration<? extends T>> regs) {
+			public void value(MutableList<Registration<K, ? extends V>> regs) {
 				regs.add(reg);
 			}
 		});
@@ -74,13 +75,13 @@ public class CachingRegistry<T> implements Registry<T> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public boolean unregister(final Object key) {
+	public boolean unregister(final K key) {
 		final AtomicBoolean modified = new AtomicBoolean(false);
-		registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<? extends T>>>() {
+		registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<K, ? extends V>>>() {
 			@Override
-			public void value(final MutableList<Registration<? extends T>> regs) {
-				Iterator<Registration<? extends T>> registrationIterator = regs.iterator();
-				Registration<? extends T> reg;
+			public void value(final MutableList<Registration<K, ? extends V>> regs) {
+				Iterator<Registration<K, ? extends V>> registrationIterator = regs.iterator();
+				Registration<K, ? extends V> reg;
 				while (registrationIterator.hasNext()) {
 					reg = registrationIterator.next();
 					if (reg.getSelector().matches(key)) {
@@ -97,13 +98,12 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public List<Registration<? extends T>> select(Object key) {
+	public List<Registration<K, ? extends V>> select(K key) {
 		// use a thread-local cache
-		UnifiedMap<Object, List<Registration<? extends T>>> allRegs = threadLocalRegs();
+		UnifiedMap<Object, List<Registration<K, ? extends V>>> allRegs = threadLocalRegs();
 
 		// maybe pull Registrations from cache for this key
-		List<Registration<? extends T>> selectedRegs = null;
+		List<Registration<K, ? extends V>> selectedRegs = null;
 		if (useCache && (null != (selectedRegs = allRegs.get(key)))) {
 			return selectedRegs;
 		}
@@ -113,7 +113,7 @@ public class CachingRegistry<T> implements Registry<T> {
 		selectedRegs = FastList.newList();
 
 		// find Registrations based on Selector
-		for (Registration<? extends T> reg : this) {
+		for (Registration<K, ? extends V> reg : this) {
 			if (reg.getSelector().matches(key)) {
 				selectedRegs.add(reg);
 			}
@@ -138,16 +138,16 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
-	public Iterator<Registration<? extends T>> iterator() {
+	public Iterator<Registration<K, ? extends V>> iterator() {
 		return FastList.newList(registrations).iterator();
 	}
 
 	protected void cacheMiss(Object key) {
 	}
 
-	private UnifiedMap<Object, List<Registration<? extends T>>> threadLocalRegs() {
+	private UnifiedMap<Object, List<Registration<K, ? extends V>>> threadLocalRegs() {
 		Long threadId = Thread.currentThread().getId();
-		UnifiedMap<Object, List<Registration<? extends T>>> regs;
+		UnifiedMap<Object, List<Registration<K, ? extends V>>> regs;
 		if (null == (regs = threadLocalCache.get(threadId))) {
 			regs = threadLocalCache.computeIfAbsent(threadId, newThreadLocalRegsFn);
 		}
@@ -155,13 +155,13 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	private final class RemoveRegistration implements Runnable {
-		Registration<? extends T> reg;
+		Registration<K, ? extends V> reg;
 
 		@Override
 		public void run() {
-			registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<? extends T>>>() {
+			registrations.withWriteLockAndDelegate(new Procedure<MutableList<Registration<K, ? extends V>>>() {
 				@Override
-				public void value(MutableList<Registration<? extends T>> regs) {
+				public void value(MutableList<Registration<K, ? extends V>> regs) {
 					regs.remove(reg);
 					threadLocalCache.clear();
 				}
@@ -170,9 +170,9 @@ public class CachingRegistry<T> implements Registry<T> {
 	}
 
 	private final class NewThreadLocalRegsFn
-			implements ConcurrentHashMapV8.Fun<Long, UnifiedMap<Object, List<Registration<? extends T>>>> {
+			implements ConcurrentHashMapV8.Fun<Long, UnifiedMap<Object, List<Registration<K, ? extends V>>>> {
 		@Override
-		public UnifiedMap<Object, List<Registration<? extends T>>> apply(Long aLong) {
+		public UnifiedMap<Object, List<Registration<K, ? extends V>>> apply(Long aLong) {
 			return UnifiedMap.newMap();
 		}
 	}

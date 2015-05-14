@@ -23,27 +23,28 @@ import reactor.fn.Pausable;
  * A {@code Registration} represents an object that has been {@link Registry#register(Selector,
  * Object) registered} with a {@link Registry}.
  *
- * @param <T> The type of object that is registered
+ * @param <K> The type of object that is matched by selectors
+ * @param <V> The type of object that is registered
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
  *
  */
-public interface Registration<T> extends Pausable {
+public interface Registration<K, V> extends Pausable {
 
 	/**
 	 * The {@link reactor.bus.selector.Selector} that was used when the registration was made.
 	 *
 	 * @return the registration's selector
 	 */
-	Selector getSelector();
+	Selector<K> getSelector();
 
 	/**
 	 * The object that was registered
 	 *
 	 * @return the registered object
 	 */
-	T getObject();
+	V getObject();
 
 	/**
 	 * Cancel this {@link Registration} after it has been selected and used. {@link
@@ -52,7 +53,7 @@ public interface Registration<T> extends Pausable {
 	 *
 	 * @return {@literal this}
 	 */
-	Registration<T> cancelAfterUse();
+	Registration<K, V> cancelAfterUse();
 
 	/**
 	 * Whether to cancel this {@link Registration} after use or not.
@@ -68,7 +69,7 @@ public interface Registration<T> extends Pausable {
 	 * @return {@literal this}
 	 */
 	@Override
-	Registration<T> cancel();
+	Registration<K, V> cancel();
 
 	/**
 	 * Has this been cancelled?
@@ -84,7 +85,7 @@ public interface Registration<T> extends Pausable {
 	 * @return {@literal this}
 	 */
 	@Override
-	Registration<T> pause();
+	Registration<K, V> pause();
 
 	/**
 	 * Whether this {@literal Registration} has been paused or not.
@@ -99,6 +100,6 @@ public interface Registration<T> extends Pausable {
 	 * @return {@literal this}
 	 */
 	@Override
-	Registration<T> resume();
+	Registration<K, V> resume();
 
 }

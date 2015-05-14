@@ -47,7 +47,7 @@ public abstract class HttpServer<IN, OUT>
 
 	public static final Selector<HttpChannel> WS_SELECTOR = NetSelectors.ws(null);
 
-	protected final Registry<ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> routedWriters;
+	protected final Registry<HttpChannel, ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> routedWriters;
 
 	private boolean hasWebsocketEndpoints = false;
 
@@ -182,13 +182,13 @@ public abstract class HttpServer<IN, OUT>
 	}
 
 	protected Iterable<? extends Publisher<Void>> routeChannel(final HttpChannel<IN, OUT> ch) {
-		final List<Registration<? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
+		final List<Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
 				selected = routedWriters.select(ch);
 
 		return new Iterable<Publisher<Void>>() {
 			@Override
 			public Iterator<Publisher<Void>> iterator() {
-				final Iterator<Registration<? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
+				final Iterator<Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
 						iterator = selected.iterator();
 
 				return new Iterator<Publisher<Void>>() {
@@ -206,7 +206,7 @@ public abstract class HttpServer<IN, OUT>
 					@Override
 					@SuppressWarnings("unchecked")
 					public Publisher<Void> next() {
-						Registration<? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> next = iterator.next();
+						Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> next = iterator.next();
 						if (next != null) {
 							ch.paramsResolver(next.getSelector().getHeaderResolver());
 							return next.getObject().apply(ch);

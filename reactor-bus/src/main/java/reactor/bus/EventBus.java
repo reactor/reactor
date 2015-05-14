@@ -69,7 +69,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	);
 
 	private final Dispatcher                             dispatcher;
-	private final Registry<Consumer<? extends Event<?>>> consumerRegistry;
+	private final Registry<Object, Consumer<? extends Event<?>>> consumerRegistry;
 	private final Router                                 router;
 	private final Consumer<Throwable>                    dispatchErrorHandler;
 	private final Consumer<Throwable>                    uncaughtErrorHandler;
@@ -175,7 +175,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	                @Nullable Router router,
 	                @Nullable Consumer<Throwable> dispatchErrorHandler,
 	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
-		this(Registries.<Consumer<? extends Event<?>>>create(),
+		this(Registries.<Object, Consumer<? extends Event<?>>>create(),
 				dispatcher,
 				router,
 				dispatchErrorHandler,
@@ -195,7 +195,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * @param consumerRegistry The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
 	 *                         Consumer}.
 	 */
-	public EventBus(@Nonnull Registry<Consumer<? extends Event<?>>> consumerRegistry,
+	public EventBus(@Nonnull Registry<Object, Consumer<? extends Event<?>>> consumerRegistry,
 	                @Nullable Dispatcher dispatcher,
 	                @Nullable Router router,
 	                @Nullable Consumer<Throwable> dispatchErrorHandler,
@@ -257,7 +257,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 *
 	 * @return The {@link Registry} in use.
 	 */
-	public Registry<Consumer<? extends Event<?>>> getConsumerRegistry() {
+	public Registry<?, Consumer<? extends Event<?>>> getConsumerRegistry() {
 		return consumerRegistry;
 	}
 
@@ -289,10 +289,10 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 	@Override
 	public boolean respondsToKey(Object key) {
-		List<Registration<? extends Consumer<? extends Event<?>>>> registrations = consumerRegistry.select(key);
+		List<Registration<Object, ? extends Consumer<? extends Event<?>>>> registrations = consumerRegistry.select(key);
 		if (registrations.isEmpty()) return false;
 
-		for (Registration<?> reg : registrations) {
+		for (Registration<?, ?> reg : registrations) {
 			if (!reg.isCancelled()) {
 				return true;
 			}
@@ -301,7 +301,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	}
 
 	@Override
-	public <T extends Event<?>> Registration<Consumer<? extends Event<?>>> on(final Selector selector,
+	public <T extends Event<?>> Registration<Object, Consumer<? extends Event<?>>> on(final Selector selector,
 	                                                         final Consumer<T> consumer) {
 		Assert.notNull(selector, "Selector cannot be null.");
 		Assert.notNull(consumer, "Consumer cannot be null.");
@@ -430,7 +430,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * @param fn  The transformative {@link reactor.fn.Function} to call to receive an {@link Event}
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 */
-	public <T extends Event<?>, V> Registration<Consumer<? extends Event<?>>> receive(Selector sel, Function<T, V> fn) {
+	public <T extends Event<?>, V> Registration<?, Consumer<? extends Event<?>>> receive(Selector sel, Function<T, V> fn) {
 		return on(sel, new ReplyToConsumer<>(fn));
 	}
 
@@ -555,14 +555,14 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 */
 	public <T> Consumer<Event<T>> prepare(final Object key) {
 		return new Consumer<Event<T>>() {
-			final List<Registration<? extends Consumer<? extends Event<?>>>> regs = consumerRegistry.select(key);
+			final List<Registration<Object, ? extends Consumer<? extends Event<?>>>> regs = consumerRegistry.select(key);
 			final int size = regs.size();
 
 			@Override
 			public void accept(Event<T> ev) {
 				for (int i = 0; i < size; i++) {
-					Registration<? extends Consumer<Event<T>>> reg =
-							(Registration<? extends Consumer<Event<T>>>) regs.get(i);
+					Registration<Object, ? extends Consumer<Event<T>>> reg =
+							(Registration<Object, ? extends Consumer<Event<T>>>) regs.get(i);
 					ev.setKey(key);
 					dispatcher.dispatch(ev, reg.getObject(), dispatchErrorHandler);
 				}

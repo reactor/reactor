@@ -68,8 +68,8 @@ public abstract class Selectors {
 	 *
 	 * @see ObjectSelector
 	 */
-	public static <T> Selector object(T obj) {
-		return new ObjectSelector<T>(obj);
+	public static <T> Selector<T> object(T obj) {
+		return new ObjectSelector<T, T>(obj);
 	}
 
 	/**
@@ -84,7 +84,7 @@ public abstract class Selectors {
 	 *
 	 * @see ObjectSelector
 	 */
-	public static <T> Selector $(T obj) {
+	public static <T> Selector<T> $(T obj) {
 		return object(obj);
 	}
 

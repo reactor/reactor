@@ -19,7 +19,8 @@ package reactor.bus.registry;
 import reactor.fn.Consumer;
 
 /**
- * Created by jbrisbin on 1/27/15.
+ * @author jbrisbin on 1/27/15.
+ * @author smaldini
  */
 public abstract class Registries {
 
@@ -36,15 +37,15 @@ public abstract class Registries {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Registry<T> create() {
+	public static <K, V> Registry<K, V> create() {
 		return create(true, true, null);
 	}
 
-	public static <T> Registry<T> create(boolean useCache, boolean cacheNotFound, Consumer<Object> onNotFound) {
+	public static <K, V> Registry<K, V> create(boolean useCache, boolean cacheNotFound, Consumer<K> onNotFound) {
 		if (GS_COLLECTIONS_AVAILABLE) {
-			return new reactor.bus.registry.CachingRegistry<T>(useCache, cacheNotFound, onNotFound);
+			return new reactor.bus.registry.CachingRegistry<K, V>(useCache, cacheNotFound, onNotFound);
 		} else {
-			return new reactor.bus.registry.SimpleCachingRegistry<T>(useCache, cacheNotFound, onNotFound);
+			return new reactor.bus.registry.SimpleCachingRegistry<K, V>(useCache, cacheNotFound, onNotFound);
 		}
 	}
 

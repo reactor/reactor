@@ -29,35 +29,37 @@ import java.util.List;
  * due to its reliance on the gs-collections library. Not designed for high throughput but for use on things like
  * handheld devices, where the synchronized nature of the registry won't affect performance much.
  */
-public class SimpleCachingRegistry<T> implements Registry<T> {
+public class SimpleCachingRegistry<K, V> implements Registry<K, V> {
 
-	private final ConcurrentHashMapV8<Object, List<Registration<? extends T>>>   cache         = new ConcurrentHashMapV8<Object, List<Registration<? extends T>>>();
-	private final ConcurrentHashMapV8<Selector, List<Registration<? extends T>>> registrations = new ConcurrentHashMapV8<Selector, List<Registration<? extends T>>>();
+	private final ConcurrentHashMapV8<Object, List<Registration<K, ? extends V>>>      cache         = new
+			ConcurrentHashMapV8<>();
+	private final ConcurrentHashMapV8<Selector<K>, List<Registration<K, ? extends V>>> registrations = new
+			ConcurrentHashMapV8<>();
 
-	private final boolean          useCache;
-	private final boolean          cacheNotFound;
-	private final Consumer<Object> onNotFound;
+	private final boolean     useCache;
+	private final boolean     cacheNotFound;
+	private final Consumer<K> onNotFound;
 
-	SimpleCachingRegistry(boolean useCache, boolean cacheNotFound, Consumer<Object> onNotFound) {
+	SimpleCachingRegistry(boolean useCache, boolean cacheNotFound, Consumer<K> onNotFound) {
 		this.useCache = useCache;
 		this.cacheNotFound = cacheNotFound;
 		this.onNotFound = onNotFound;
 	}
 
 	@Override
-	public synchronized Registration<T> register(final Selector sel, T obj) {
-		List<Registration<? extends T>> regs;
+	public synchronized Registration<K, V> register(final Selector<K> sel, V obj) {
+		List<Registration<K, ? extends V>> regs;
 		if (null == (regs = registrations.get(sel))) {
 			regs = registrations.computeIfAbsent(sel,
-			                                     new ConcurrentHashMapV8.Fun<Selector, List<Registration<? extends T>>>() {
-				                                     @Override
-				                                     public List<Registration<? extends T>> apply(Selector selector) {
-					                                     return new ArrayList<Registration<? extends T>>();
-				                                     }
-			                                     });
+					new ConcurrentHashMapV8.Fun<Selector<K>, List<Registration<K, ? extends V>>>() {
+						@Override
+						public List<Registration<K, ? extends V>> apply(Selector<K> selector) {
+							return new ArrayList<Registration<K, ? extends V>>();
+						}
+					});
 		}
 
-		Registration<T> reg = new CachableRegistration<>(sel, obj, new Runnable() {
+		Registration<K, V> reg = new CachableRegistration<>(sel, obj, new Runnable() {
 			@Override
 			public void run() {
 				registrations.remove(sel);
@@ -88,16 +90,16 @@ public class SimpleCachingRegistry<T> implements Registry<T> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public synchronized List<Registration<? extends T>> select(final Object key) {
-		List<Registration<? extends T>> selectedRegs;
+	public synchronized List<Registration<K, ? extends V>> select(final K key) {
+		List<Registration<K, ? extends V>> selectedRegs;
 		if (null != (selectedRegs = cache.get(key))) {
 			return selectedRegs;
 		}
 
-		final List<Registration<? extends T>> regs = new ArrayList<Registration<? extends T>>();
-		registrations.forEach(new ConcurrentHashMapV8.BiAction<Selector, List<Registration<? extends T>>>() {
+		final List<Registration<K, ? extends V>> regs = new ArrayList<Registration<K, ? extends V>>();
+		registrations.forEach(new ConcurrentHashMapV8.BiAction<Selector<K>, List<Registration<K, ? extends V>>>() {
 			@Override
-			public void apply(Selector selector, List<Registration<? extends T>> registrations) {
+			public void apply(Selector<K> selector, List<Registration<K, ? extends V>> registrations) {
 				if (selector.matches(key)) {
 					regs.addAll(registrations);
 				}
@@ -121,11 +123,11 @@ public class SimpleCachingRegistry<T> implements Registry<T> {
 	}
 
 	@Override
-	public synchronized Iterator<Registration<? extends T>> iterator() {
-		final List<Registration<? extends T>> regs = new ArrayList<Registration<? extends T>>();
-		registrations.forEach(new ConcurrentHashMapV8.BiAction<Selector, List<Registration<? extends T>>>() {
+	public synchronized Iterator<Registration<K, ? extends V>> iterator() {
+		final List<Registration<K, ? extends V>> regs = new ArrayList<Registration<K, ? extends V>>();
+		registrations.forEach(new ConcurrentHashMapV8.BiAction<Selector<K>, List<Registration<K, ? extends V>>>() {
 			@Override
-			public void apply(Selector selector, List<Registration<? extends T>> registrations) {
+			public void apply(Selector<K> selector, List<Registration<K, ? extends V>> registrations) {
 				regs.addAll(registrations);
 			}
 		});

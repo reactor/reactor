@@ -71,7 +71,7 @@ public final class BusPublisher<T> implements Publisher<T> {
 
 		subscriber.onSubscribe(new Subscription() {
 
-			final Registration<Consumer<? extends T>> registration = observable.on(selector, new Consumer<T>() {
+			final Registration<Object, Consumer<? extends T>> registration = observable.on(selector, new Consumer<T>() {
 				@Override
 				public void accept(T event) {
 					subscriber.onNext(event);

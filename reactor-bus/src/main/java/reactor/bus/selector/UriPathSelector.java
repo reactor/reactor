@@ -27,7 +27,7 @@ import java.util.Map;
  *
  * @see UriPathTemplate
  */
-public class UriPathSelector extends ObjectSelector<UriPathTemplate> {
+public class UriPathSelector extends ObjectSelector<Object, UriPathTemplate> {
 
 	private final HeaderResolver headerResolver = new HeaderResolver() {
 		@Nullable

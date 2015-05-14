@@ -50,7 +50,7 @@ import java.util.List;
  */
 public class ZeroMQ<T> {
 
-	private final static Registry<String> SOCKET_TYPES = Registries.create();
+	private final static Registry<Integer, String> SOCKET_TYPES = Registries.create();
 
 	static {
 		for (Field f : ZMQ.class.getDeclaredFields()) {
@@ -91,7 +91,7 @@ public class ZeroMQ<T> {
 	}
 
 	public static String findSocketTypeName(final int socketType) {
-		List<Registration<? extends String>> registrations = SOCKET_TYPES.select(socketType);
+		List<Registration<Integer, ? extends String>> registrations = SOCKET_TYPES.select(socketType);
 		if(registrations.isEmpty()){
 			return "";
 		}else{

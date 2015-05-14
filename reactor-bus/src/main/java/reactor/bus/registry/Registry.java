@@ -24,13 +24,14 @@ import java.util.List;
  * Implementations of this interface manage a registry of objects that works sort of like a Map, except Registries don't
  * use simple keys, they use {@link reactor.bus.selector.Selector}s to map their objects.
  *
- * @param <T> the type of objects that can be registered
+ * @param <K> the type of objects that can be matched
+ * @param <V> the type of objects that can be registered
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public interface Registry<T> extends Iterable<Registration<? extends T>> {
+public interface Registry<K, V> extends Iterable<Registration<K, ? extends V>> {
 
 	/**
 	 * Assign the given {@link reactor.bus.selector.Selector} with the given object.
@@ -39,7 +40,7 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * @param obj The object to assign.
 	 * @return {@literal this}
 	 */
-	Registration<T> register(Selector sel, T obj);
+	Registration<K, V> register(Selector<K> sel, V obj);
 
 	/**
 	 * Remove any objects matching this {@code key}. This will unregister <b>all</b> objects matching the given
@@ -48,7 +49,7 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * @param key The key to be matched by the Selectors
 	 * @return {@literal true} if any objects were unassigned, {@literal false} otherwise.
 	 */
-	boolean unregister(Object key);
+	boolean unregister(K key);
 
 	/**
 	 * Select {@link Registration}s whose {@link Selector} {@link Selector#matches(Object)} the given {@code key}.
@@ -56,7 +57,7 @@ public interface Registry<T> extends Iterable<Registration<? extends T>> {
 	 * @param key The key for the Selectors to match
 	 * @return A {@link List} of {@link Registration}s whose {@link Selector} matches the given key.
 	 */
-	List<Registration<? extends T>> select(Object key);
+	List<Registration<K, ? extends V>> select(K key);
 
 	/**
 	 * Clear the {@link Registry}, resetting its state and calling {@link Registration#cancel()} for any active {@link

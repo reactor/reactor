@@ -24,7 +24,7 @@ package reactor.bus.selector;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public class ClassSelector extends ObjectSelector<Class<?>> {
+public class ClassSelector extends ObjectSelector<Object, Class<?>> {
 
 	/**
 	 * Creates a new ClassSelector that will match keys that are the same as, or are a

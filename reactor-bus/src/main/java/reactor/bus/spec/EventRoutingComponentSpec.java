@@ -53,7 +53,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	private Filter                eventFilter;
 	private Consumer<Throwable>   dispatchErrorHandler;
 	private Consumer<Throwable>   uncaughtErrorHandler;
-	private Registry<Consumer<? extends Event<?>>> consumerRegistry;
+	private Registry<Object, Consumer<? extends Event<?>>> consumerRegistry;
 	private boolean traceEventPath = false;
 
 
@@ -180,7 +180,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 *
 	 * @return {@code this}
 	 */
-	public SPEC consumerRegistry(Registry<Consumer<? extends Event<?>>> consumerRegistry) {
+	public SPEC consumerRegistry(Registry<Object, Consumer<? extends Event<?>>> consumerRegistry) {
 		this.consumerRegistry = consumerRegistry;
 		return (SPEC) this;
 	}

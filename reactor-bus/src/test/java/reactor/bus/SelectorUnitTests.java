@@ -128,7 +128,7 @@ public class SelectorUnitTests {
 
 	private void runTest(String type, Function<Integer, Tuple2<Selector, Object>> fn) {
 		final AtomicLong counter = new AtomicLong(selectors * iterations);
-		Registry<Consumer<?>> registry = Registries.create();
+		Registry<Object, Consumer<?>> registry = Registries.create();
 
 		Consumer<?> countDown = new Consumer<Object>() {
 			@Override
@@ -150,7 +150,7 @@ public class SelectorUnitTests {
 		long start = System.currentTimeMillis();
 		for(int i = 0; i < selectors * iterations; i++) {
 			int j = i % selectors;
-			for(Registration<? extends Consumer<?>> reg : registry.select(keys[j])) {
+			for(Registration<?, ? extends Consumer<?>> reg : registry.select(keys[j])) {
 				reg.getObject().accept(null);
 			}
 		}

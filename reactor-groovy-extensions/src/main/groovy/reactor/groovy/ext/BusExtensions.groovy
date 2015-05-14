@@ -45,14 +45,14 @@ class BusExtensions {
   /**
    * Closure converters
    */
-  static <T> Registration<Consumer<T>> react(EventBus selfType,
-                                             Selector selector,
+  static <K, T> Registration<K, Consumer<T>> react(EventBus selfType,
+                                             Selector<K> selector,
                                              @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST)
                                              @ClosureParams(FirstParam.FirstGenericType) Closure handler) {
     selfType.on selector, new ClosureEventConsumer<T>(handler)
   }
 
-  static <T> Registration<Consumer<T>> react(EventBus selfType,
+  static <T> Registration<String, Consumer<T>> react(EventBus selfType,
                                              String selector,
                                              @DelegatesTo(value = ClosureEventConsumer.ReplyDecorator, strategy = Closure.DELEGATE_FIRST)
                                              @ClosureParams(FirstParam.FirstGenericType) Closure handler) {

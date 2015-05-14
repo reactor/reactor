@@ -63,7 +63,7 @@ import java.util.Map;
  *
  * @author Jon Brisbin
  */
-public class UriSelector extends ObjectSelector<URI> {
+public class UriSelector extends ObjectSelector<Object, URI> {
 
 	private static final UriHeaderResolver URI_HEADER_RESOLVER = new UriHeaderResolver();
 

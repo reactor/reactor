@@ -18,10 +18,10 @@ import java.util.List;
  */
 public class StreamRouter extends ConsumerFilteringRouter {
 
-	private final Registry<Processor<Event<?>, Event<?>>> processorRegistry;
+	private final Registry<Object, Processor<Event<?>, Event<?>>> processorRegistry;
 
 	public StreamRouter(Filter filter,
-	                    Registry<Processor<Event<?>, Event<?>>> processorRegistry) {
+	                    Registry<Object, Processor<Event<?>, Event<?>>> processorRegistry) {
 		super(filter);
 		this.processorRegistry = processorRegistry;
 	}
@@ -29,12 +29,12 @@ public class StreamRouter extends ConsumerFilteringRouter {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <E extends Event<?>> void route(final Object key, final E event,
-	                      final List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+	                      final List<Registration<Object, ? extends Consumer<? extends Event<?>>>> consumers,
 	                      final Consumer<E> completionConsumer,
 	                      final Consumer<Throwable> errorConsumer) {
 
 		Processor<Event<?>, Event<?>> processor;
-		for (Registration<? extends Processor<Event<?>, Event<?>>> registration : processorRegistry.select(key)){
+		for (Registration<Object, ? extends Processor<Event<?>, Event<?>>> registration : processorRegistry.select(key)){
 			processor = registration.getObject();
 			processor.onNext(event);
 			processor.subscribe(new Subscriber<Event<?>>() {

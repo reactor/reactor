@@ -73,7 +73,7 @@ public class EventTimer implements Timer {
 
 	private static final Logger LOG = LoggerFactory.getLogger(EventTimer.class);
 
-	private final Registry<Consumer<Long>> tasks = Registries.create(true, false, null);
+	private final Registry<Long, Consumer<Long>> tasks = Registries.create(true, false, null);
 	private final int    resolution;
 	private final Thread loop;
 
@@ -115,7 +115,7 @@ public class EventTimer implements Timer {
 					public void run() {
 						while (!Thread.currentThread().isInterrupted()) {
 							long now = now(resolution);
-							for (Registration<? extends Consumer<Long>> reg : tasks.select(now)) {
+							for (Registration<Long, ? extends Consumer<Long>> reg : tasks.select(now)) {
 								try {
 									if (reg.isCancelled() || reg.isPaused()) {
 										continue;
@@ -150,7 +150,7 @@ public class EventTimer implements Timer {
 	}
 
 	@Override
-	public Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
+	public Registration<Long, ? extends Consumer<Long>> schedule(Consumer<Long> consumer,
 	                                                       long period,
 	                                                       TimeUnit timeUnit,
 	                                                       long delayInMilliseconds) {
@@ -165,14 +165,14 @@ public class EventTimer implements Timer {
 	}
 
 	@Override
-	public Registration<? extends Consumer<Long>> schedule(Consumer<Long> consumer,
+	public Registration<Long, ? extends Consumer<Long>> schedule(Consumer<Long> consumer,
 	                                                       long period,
 	                                                       TimeUnit timeUnit) {
 		return schedule(consumer, period, timeUnit, 0);
 	}
 
 	@Override
-	public Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer,
+	public Registration<Long, ? extends Consumer<Long>> submit(Consumer<Long> consumer,
 	                                                     long delay,
 	                                                     TimeUnit timeUnit) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
@@ -184,7 +184,7 @@ public class EventTimer implements Timer {
 	}
 
 	@Override
-	public Registration<? extends Consumer<Long>> submit(Consumer<Long> consumer) {
+	public Registration<Long, ? extends Consumer<Long>> submit(Consumer<Long> consumer) {
 		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
 	}
 

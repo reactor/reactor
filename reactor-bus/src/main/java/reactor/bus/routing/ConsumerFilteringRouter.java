@@ -55,15 +55,15 @@ public class ConsumerFilteringRouter implements Router {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <E extends Event<?>> void route(Object key, E event,
-	                      List<Registration<? extends Consumer<? extends Event<?>>>> consumers,
+	                      List<Registration<Object, ? extends Consumer<? extends Event<?>>>> consumers,
 	                      Consumer<E> completionConsumer,
 	                      Consumer<Throwable> errorConsumer) {
 		if (null != consumers && !consumers.isEmpty()) {
-			List<Registration<? extends Consumer<? extends Event<?>>>> regs = filter.filter(consumers, key);
+			List<Registration<Object, ? extends Consumer<? extends Event<?>>>> regs = filter.filter(consumers, key);
 			int size = regs.size();
 			// old-school for loop is much more efficient than using an iterator
 			for (int i = 0; i < size; i++) {
-				Registration<? extends Consumer<? extends Event<?>>> reg = regs.get(i);
+				Registration<Object, ? extends Consumer<? extends Event<?>>> reg = regs.get(i);
 
 				if (null == reg || reg.isCancelled() || reg.isPaused()) {
 					continue;

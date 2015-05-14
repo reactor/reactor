@@ -22,6 +22,8 @@ import reactor.fn.Predicate;
  * {@link Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)}
  * methods of the internal object to determine a match.
  *
+ * @param <K>
+ * 		The type of object held by the selector
  * @param <T>
  * 		The type of object held by the selector
  *
@@ -29,7 +31,7 @@ import reactor.fn.Predicate;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public class ObjectSelector<T> implements Selector, Predicate<T> {
+public class ObjectSelector<K, T> implements Selector<K>, Predicate<K> {
 
 	private final Object monitor = new Object();
 	private final T object;
@@ -54,8 +56,8 @@ public class ObjectSelector<T> implements Selector, Predicate<T> {
 	 *
 	 * @return The new {@link Selector}.
 	 */
-	public static <T> Selector objectSelector(T obj) {
-		return new ObjectSelector<T>(obj);
+	public static <T> Selector<T> objectSelector(T obj) {
+		return new ObjectSelector<T, T>(obj);
 	}
 
 	@Override
@@ -64,7 +66,7 @@ public class ObjectSelector<T> implements Selector, Predicate<T> {
 	}
 
 	@Override
-	public boolean matches(Object key) {
+	public boolean matches(K key) {
 		return !(null == object && null != key) && (object != null && object.equals(key));
 	}
 
@@ -74,13 +76,13 @@ public class ObjectSelector<T> implements Selector, Predicate<T> {
 	}
 
 	@Override
-	public boolean test(T t) {
+	public boolean test(K t) {
 		return matches(t);
 	}
 
 	@Override
 	protected Object clone() throws CloneNotSupportedException {
-		return new ObjectSelector<T>(object);
+		return new ObjectSelector<K, T>(object);
 	}
 
 	@Override

@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
  * @author Jon Brisbin
  * @author Andy Wilkinson
  */
-public class RegexSelector extends ObjectSelector<Pattern> {
+public class RegexSelector extends ObjectSelector<Object, Pattern> {
 
 	private final HeaderResolver headerResolver = new HeaderResolver() {
 		@Nullable

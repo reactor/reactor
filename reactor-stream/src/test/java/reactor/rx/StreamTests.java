@@ -935,7 +935,7 @@ public class StreamTests extends AbstractReactorTest {
 				.process(RingBufferProcessor.create());
 
 		processor
-				.capacity(3L)
+				.capacity(5L)
 				.consume(
 						System.out::println,
 						Throwable::printStackTrace,
@@ -950,7 +950,7 @@ public class StreamTests extends AbstractReactorTest {
 						Throwable::printStackTrace,
 						nothing -> System.out.println("## EOF ##")
 				);
-		Thread.sleep(3000);
+		Thread.sleep(300);
 	}
 
 	@Test
