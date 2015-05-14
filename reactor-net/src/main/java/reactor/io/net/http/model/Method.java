@@ -36,6 +36,7 @@ public class Method {
 	public static final Method CONNECT = new Method("CONNECT");
 	public static final Method BEFORE  = new Method("BEFORE");
 	public static final Method AFTER   = new Method("AFTER");
+	public static final Method WS      = new Method("WS");
 
 	private final String name;
 

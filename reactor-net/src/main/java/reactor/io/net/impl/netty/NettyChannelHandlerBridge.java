@@ -48,7 +48,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	protected static final Logger log = LoggerFactory.getLogger(NettyChannelHandlerBridge.class);
 
 	protected final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler;
-	private final   NettyChannelStream<IN, OUT>                            channelStream;
+	protected final   NettyChannelStream<IN, OUT>                            channelStream;
 
 	protected PushSubscription<IN> channelSubscription;
 	private   ByteBuf              remainder;

@@ -64,7 +64,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 					@Override
 					public void onSubscribe(final Subscription s) {
 						if (request.checkHeader()) {
-							ctx.writeAndFlush(request.getNettyRequest()).addListener(new ChannelFutureListener() {
+							writeFirst(ctx).addListener(new ChannelFutureListener() {
 								@Override
 								public void operationComplete(ChannelFuture future) throws Exception {
 									if (future.isSuccess()) {
@@ -95,7 +95,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 					@Override
 					public void onComplete() {
 						if (channelSubscription == null) {
-							ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(ChannelFutureListener.CLOSE);
+							writeLast(ctx);
 						} else {
 							ctx.flush();
 						}
@@ -111,16 +111,33 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 				request.setNettyResponse((HttpResponse) msg);
 			}
 			if(FullHttpResponse.class.isAssignableFrom(messageClass)){
-				ctx.channel().close();
+				postRead(ctx, msg);
 			}
 		} else if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
-			if (LastHttpContent.class.isAssignableFrom(messageClass)) {
-				ctx.channel().close();
-			}
+			postRead(ctx, msg);
 		} else {
 			super.channelRead(ctx, msg);
 		}
+	}
+
+	protected void postRead(ChannelHandlerContext ctx, Object msg){
+		if (LastHttpContent.class.isAssignableFrom(msg.getClass())) {
+			ctx.channel().close();
+		}
+	}
+
+	protected ChannelFuture writeFirst(ChannelHandlerContext ctx){
+		return ctx.writeAndFlush(request.getNettyRequest());
+	}
+
+	protected void writeLast(ChannelHandlerContext ctx){
+		ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				ctx.fireChannelInactive();
+			}
+		});
 	}
 
 	@Override

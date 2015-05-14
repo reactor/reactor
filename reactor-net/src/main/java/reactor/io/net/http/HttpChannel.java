@@ -35,6 +35,8 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  */
 public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
+	public static final String WS_SCHEME = "ws";
+	public static final String WSS_SCHEME = "wss";
 	public static final String HTTP_SCHEME = "http";
 	public static final String HTTPS_SCHEME = "https";
 

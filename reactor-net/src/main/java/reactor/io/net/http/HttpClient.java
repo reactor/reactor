@@ -130,6 +130,31 @@ public abstract class HttpClient<IN, OUT>
 		return request(Method.DELETE, url, null);
 	}
 
+	/**
+	 * WebSocket to the passed URL.
+	 *
+	 * @param url the target remote URL
+	 *
+	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 */
+	public final Promise<? extends HttpChannel<IN, OUT>> ws(String url) {
+		return request(Method.WS, url, null);
+	}
+
+	/**
+	 * WebSocket to the passed URL. When connection has been made, the passed handler is invoked and can be used to build
+	 *  precisely the request and write data to it.
+	 *
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
+	 *
+	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 */
+	public final Promise<? extends HttpChannel<IN, OUT>> ws(String url,
+	                                                         final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
+			                                                         handler) {
+		return request(Method.WS, url, handler);
+	}
 
 	/**
 	 * Use the passed HTTP method to send to the given URL.

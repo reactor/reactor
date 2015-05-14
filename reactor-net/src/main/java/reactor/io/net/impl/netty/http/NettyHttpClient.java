@@ -18,9 +18,9 @@ package reactor.io.net.impl.netty.http;
 
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.http.HttpClientCodec;
-import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.websocketx.WebSocketClientHandshakerFactory;
+import io.netty.handler.codec.http.websocketx.WebSocketVersion;
 import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -105,7 +105,8 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 				URI currentURI = lastURI;
 				try {
 					if (currentURI.getScheme() != null
-							&& currentURI.getScheme().toLowerCase().equals(HttpChannel.HTTPS_SCHEME)) {
+							&& (currentURI.getScheme().toLowerCase().equals(HttpChannel.HTTPS_SCHEME) ||
+							currentURI.getScheme().toLowerCase().equals(HttpChannel.WSS_SCHEME))) {
 						addSecureHandler(nativeChannel);
 					}
 				} catch (Exception e) {
@@ -123,7 +124,10 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 					String host = url != null && url.getHost() != null ? url.getHost() : "localhost";
 					int port = url != null ? url.getPort() : -1;
 					if (port == -1) {
-						if (url != null && url.getScheme() != null && url.getScheme().toLowerCase().equals(HttpChannel.HTTPS_SCHEME)) {
+						if (url != null && url.getScheme() != null && (
+								url.getScheme().toLowerCase().equals(HttpChannel.HTTPS_SCHEME) ||
+										url.getScheme().toLowerCase().equals(HttpChannel.WSS_SCHEME)
+						)) {
 							port = 443;
 						} else {
 							port = 80;
@@ -170,17 +174,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		final URI currentURI;
 		try{
 			Assert.isTrue(method != null && url != null);
-			if(!url.startsWith(HttpChannel.HTTP_SCHEME)){
-				if(url.startsWith("/")){
-					currentURI = new URI(HttpChannel.HTTP_SCHEME + "://"
-							+ (lastURI != null && lastURI.getHost() != null ? lastURI.getHost() : "localhost")
-							+ url);
-				}else {
-					currentURI = new URI(HttpChannel.HTTP_SCHEME + "://" + url);
-				}
-			}else{
-				currentURI = new URI(url);
-			}
+			currentURI = parseURL(method, url);
 			lastURI = currentURI;
 		}catch(Exception e){
 			return Promises.error(e);
@@ -204,7 +198,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 						return p;
 					} else {
 						reply.onNext(ch);
-						return Streams.never();
+						return Streams.empty();
 					}
 				} catch (Throwable t) {
 					reply.onError(t);
@@ -214,6 +208,21 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 
 		});
 		return reply;
+	}
+
+	private URI parseURL(Method method, String url) throws Exception{
+		if(!url.startsWith(HttpChannel.HTTP_SCHEME) && !url.startsWith(HttpChannel.WS_SCHEME)){
+			final String parsedUrl = method.equals(Method.WS) ? HttpChannel.WS_SCHEME : HttpChannel.HTTP_SCHEME + "://";
+			if(url.startsWith("/")){
+				return new URI(parsedUrl
+						+ (lastURI != null && lastURI.getHost() != null ? lastURI.getHost() : "localhost")
+						+ url);
+			}else {
+				return new URI(parsedUrl + url);
+			}
+		}else{
+			return new URI(url);
+		}
 	}
 
 	@Override
@@ -237,8 +246,25 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		if (log.isDebugEnabled()) {
 			pipeline.addLast(new LoggingHandler(NettyHttpClient.class));
 		}
+
 		pipeline
-				.addLast(new HttpClientCodec())
-				.addLast(new NettyHttpClientHandler<IN, OUT>(handler, netChannel));
+				.addLast(new HttpClientCodec());
+
+		URI currentURI = lastURI;
+		if(currentURI.getScheme() != null &&
+				currentURI.getScheme().toLowerCase().startsWith(HttpChannel.WS_SCHEME)){
+			pipeline
+					.addLast(new HttpObjectAggregator(8192))
+					.addLast(
+							new NettyHttpWSClientHandler<IN, OUT>(
+									handler,
+									netChannel,
+									WebSocketClientHandshakerFactory.newHandshaker(
+											lastURI, WebSocketVersion.V13, null, false, new DefaultHttpHeaders()))
+					);
+		}else {
+			pipeline
+					.addLast(new NettyHttpClientHandler<IN, OUT>(handler, netChannel));
+		}
 	}
 }

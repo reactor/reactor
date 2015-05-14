@@ -622,6 +622,23 @@ public class TcpServerTests {
 		Thread.sleep(1000000);
 	}
 
+	@Test
+	@Ignore
+	public void wsTest() throws Exception {
+		HttpServer<Buffer, Buffer> server = NetStreams.httpServer();
+		server.get("/search/{search}", requestIn ->
+			NetStreams.httpClient()
+				.ws("ws://localhost:3000")
+				.flatMap(repliesOut ->
+							requestIn
+									.writeWith(repliesOut.capacity(1))
+			)
+		);
+		server.start().await();
+		//System.in.read();
+		Thread.sleep(1000000);
+	}
+
 	private class HttpRequestWriter implements Runnable {
 		private final int port;
 
