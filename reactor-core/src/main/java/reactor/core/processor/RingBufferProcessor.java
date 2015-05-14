@@ -545,17 +545,28 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 					pendingRequest,
 					subscriber
 			);
-			//bind eventProcessor sequence to observe the ringBuffer
-			ringBuffer.addGatingSequences(signalProcessor.getSequence());
 
-			//set eventProcessor sequence to ringbuffer index
-			signalProcessor.getSequence().set(recentSequence.get());
+			//bind eventProcessor sequence to observe the ringBuffer
+
+			//if only active subscriber, replay missed data
+			if(incrementSubscribers()) {
+				ringBuffer.addGatingSequences(signalProcessor.getSequence());
+
+				//set eventProcessor sequence to minimum index (replay)
+				signalProcessor.getSequence().set(recentSequence.get());
+			}else{
+				//otherwise only listen to new data
+				//set eventProcessor sequence to ringbuffer index
+				signalProcessor.getSequence().set(ringBuffer.getCursor());
+				signalProcessor.nextSequence = signalProcessor.getSequence().get();
+
+				ringBuffer.addGatingSequences(signalProcessor.getSequence());
+			}
 
 			//prepare the subscriber subscription to this processor
 			signalProcessor.setSubscription(new RingBufferSubscription(pendingRequest, subscriber, signalProcessor));
 
 			//start the subscriber thread
-			incrementSubscribers();
 			executor.execute(signalProcessor);
 
 		} catch (Throwable t) {
@@ -623,10 +634,9 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 			//buffered data in producer unpublished
 			final long currentSequence = eventProcessor.nextSequence;
 			final long cursor = ringBuffer.getCursor();
-			recentSequence.compareAndSet(currentSequence - n, ringBuffer.getMinimumGatingSequence());
 
 			//if the current subscriber sequence behind ringBuffer cursor, count the distance from the next slot to the end
-			final long buffered = currentSequence < cursor - 1l
+			final long buffered = currentSequence < cursor
 					? cursor - (currentSequence == Sequencer.INITIAL_CURSOR_VALUE
 					? currentSequence + 1l
 					: currentSequence)
@@ -638,7 +648,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 
 			final long toRequest;
 			if (buffered > 0l) {
-				toRequest = (n - buffered) <= 0l ? 0 : n - buffered;
+				toRequest = (n - buffered) < 0l ? n : n - buffered;
 			} else {
 				toRequest = n;
 			}
