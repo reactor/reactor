@@ -17,6 +17,7 @@
 package reactor.groovy.ext
 
 import groovy.transform.CompileStatic
+import org.reactivestreams.Processor
 import org.reactivestreams.Publisher
 import org.reactivestreams.Subscriber
 import reactor.fn.BiFunction
@@ -29,7 +30,6 @@ import reactor.rx.BiStreams
 import reactor.rx.IOStreams
 import reactor.rx.Promise
 import reactor.rx.Stream
-import reactor.rx.action.Action
 import reactor.rx.action.Control
 
 /**
@@ -101,12 +101,9 @@ class StreamExtensions {
   }
 
   //Consuming
-  static <T> Action<?, T> leftShift(final Action<?, T> selfType, final T value) {
+  static <T, P extends Processor<?, T>> P leftShift(final P selfType, final T value) {
     selfType.onNext(value)
-  }
-
-  static <T> Promise<T> leftShift(final Promise<T> selfType, final T value) {
-    selfType.onNext value
+    selfType
   }
 
 }
