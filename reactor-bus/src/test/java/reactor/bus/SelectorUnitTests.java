@@ -126,6 +126,7 @@ public class SelectorUnitTests {
 		});
 	}
 
+	@SuppressWarnings("unchecked")
 	private void runTest(String type, Function<Integer, Tuple2<Selector, Object>> fn) {
 		final AtomicLong counter = new AtomicLong(selectors * iterations);
 		Registry<Object, Consumer<?>> registry = Registries.create();
@@ -137,12 +138,12 @@ public class SelectorUnitTests {
 			}
 		};
 
-		Selector[] sels = new Selector[selectors];
+		Selector<Object>[] sels = new Selector[selectors];
 		Object[] keys = new Object[selectors];
 
 		for(int i = 0; i < selectors; i++) {
 			Tuple2<Selector, Object> tup = fn.apply(i);
-			sels[i] = tup.getT1();
+			sels[i] = (Selector)tup.getT1();
 			keys[i] = tup.getT2();
 			registry.register(sels[i], countDown);
 		}

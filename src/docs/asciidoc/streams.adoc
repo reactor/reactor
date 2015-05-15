@@ -730,7 +730,7 @@ Streams
 
 If you want to actively transform data as it passes through the pipeline, then use `.map(Function)` and other `reactor.rx.action.transformation` actions.
 The most popular transforming action is link:/docs/api/reactor/rx/Stream.html#map-reactor.fn.Function-[.map(Function<? super I, ? extends O>)].
-A few other `Actions` depend on transforming data, especially <<streams.adoc#streams-combinatory,Combinatory operations>> like `flatMap` or `concatMap`.
+A few other `Actions` depend on transforming data, especially <<streams.adoc#streams-combine,Combinatory operations>> like `flatMap` or `concatMap`.
 
 .Stream.map(Function<T,V>)
 [source,java]
