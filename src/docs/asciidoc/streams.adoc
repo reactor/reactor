@@ -816,9 +816,9 @@ result.onSuccess(System.out::println) // <3>
 == Understanding the threading model
 
 So `Stream` are `Publisher` which chain execution with `Action` or `Processor` and terminate with a `Subscriber` or a terminal `Action`.
-One common purpose for *Reactive Streams* and *Reactive Extensions* is to be non-opinionated on the thread thanks to the signal callbacks.
-Streams are all about `it will be executed at some point between now and some time T`. Non concurrent signals may also preserve `Subscriber` from concurrency access (share-nothing).
-However signals and requests can run on 2 asymmetric threads which `Actions` take care of.
+One common purpose for *Reactive Streams* and *Reactive Extensions* is to be non-opinionated about threading behavior *thanks to the signal callbacks*.
+Streams are all about *it will be executed at some point between now and some time T*. Non concurrent signals may also preserve `Subscriber` from concurrency access (share-nothing),
+however signals and requests can run on 2 asymmetric threads.
 
 By default the `Stream` is assigned with a `SynchronousDispatcher` and will inform its immediate child `Actions` via `Stream.getDispatcher()`.
 
