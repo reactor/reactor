@@ -560,7 +560,7 @@ image::images/broadcast.png[The 3 Pipelines wired, width=650, align="center", li
 
 
 .Operations considered terminal or explicitely subscribing
-[cols="2,6", options="header"]
+[cols="2, 1 ,6", options="header"]
 |===
 
 |Stream<T> method
