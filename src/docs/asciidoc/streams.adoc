@@ -560,7 +560,7 @@ image::images/broadcast.png[The 3 Pipelines wired, width=650, align="center", li
 
 
 .Operations considered terminal or explicitely subscribing
-[cols="2, 1 ,6", options="header"]
+[cols="1,1,6", options="header"]
 |===
 
 |Stream<T> method
@@ -620,7 +620,7 @@ The demand will be aggregated from all child Subscribers.
 
 |process(*Processor<T, O>*)
 |Stream<O>
-|
+|Similar to broadcast() but accept any given `Processor<T, O>`. A perfect place to introduce <<core-processor.adoc#core-processor, Core Processors>> !
 
 
 |===
@@ -767,20 +767,26 @@ Streams
 ----
 <1> Transform any incoming number into a range of 1-N number merged back and executed on the given Dispatcher.
 
-==== Blocking
+==== Blocking and Promises
+
+Blocking is considered anti-pattern to *Reactor* but we do offer appropriate API (Ah AH!) for coordination purposes with legacy operations and for test support.
+
+Promise API offers a range of *stateful actions* inspecting first the current state *ready|error|complete* and if fulfilled, immediately calls the invoked action.
 
 .Stream.toList()
 [source,java]
 ----
-Streams
+Promise<List<Long>> result = Streams
   .range(1, 100)
-  .flatMap(number -> Streams.range(1, number).subscribeOn(Environment.cachedDispatcher()) ) // <1>
-  .consume(
-    System.out::println, <2>
-    Throwable::printStackTrace,
-    avoid -> System.out.println("--complete--")
-  );
+  .subscribeOn(Environment.cachedDispatcher())
+  .toList(); // <1>
+
+System.out.println(result.await()); // <2>
+result.onSuccess(System.out::println) // <3>
 ----
+<1> Consume all the sequence on the dispatcher thread given in `subscribeOn(Dispatcher)` operation.
+<2> Block (default 30 Seconds) until `onComplete()` and print the only 'onNext(List<Long>), of if `onError(e)` wrap as RuntimeException and raise it.
+<3> Since the promise is already fulfilled, `System.out.println()` will run immediately on the current context.
 
 .Waiting for a Stream or Promise
 [cols="2,6", options="header"]
@@ -789,24 +795,27 @@ Streams
 |Functional API or Factory method
 |Role
 
-|Stream.await()
-|
+|Streams.await(Publisher<?>)
+|Block until the passed Publisher `onComplete()` or `onError(e)`, bubbling up the eventual exception.
 
-|Stream.toList() and Promise.await(), Promise.get()
-|
+|Stream.next() + Promise.await(), Promise.get()...
+|Capture in a Promise the immediate next signal only and `onComplete()` if the signal was a data. `get()` can be used to touch but not wait on the promise to fulfill.
 
-|Stream.next() and Promise.await(), Promise.get()
-|
+|Stream.toList() + Promise.await(), Promise.get()...
+|Similar to `next()` but capture the full sequence in a List<T> to fulfill the `Promise<List<T>>` returned.
 
 |Stream.toBlockingQueue()
-|
+|Subscribe to the `Stream` and return an iterable blocking `Queue<T>` accumulating all `onNext` signals. `CompletableBlockingQueue.isTerminated()` can be used as a condition to exit a blocking `poll()` loop.
 
 |Wiring up Synchronous Streams
-|
+|It's not specific to any API but if the current Stream is dispatched on a `SynchronousDispatcher`, it is actually blocking when a *terminal* action is starting, such as `consume()`.
 
 |===
+
 [[streams-multithreading]]
 == Understanding the threading model
+
+
 
 .Jumping between threads
 [cols="2,6", options="header"]
@@ -1195,16 +1204,7 @@ In addition to implementing directly the Reactive Streams, some more `Stream` me
 |after
 |
 
-|process
-|
-
 |log
-|
-
-|observeSubscribe
-|
-
-|observeCancel
 |
 
 |split
@@ -1223,5 +1223,5 @@ In addition to implementing directly the Reactive Streams, some more `Stream` me
 |
 
 |Action.debug(), StreamsUtils.debug(Stream)
-|
+|A quick
 |===
