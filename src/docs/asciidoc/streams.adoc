@@ -965,26 +965,32 @@ else {
 }
 ----
 
-.Chunk processing with Stream buffer:
+.Chunk processing with Stream buffers (returning Stream<List<T>>):
 [cols="2,6", options="header"]
 |===
-|Functional API
+|Stream<T> API
 |Role
 
-|buffer(size)
-|
+|buffer(_int_)
+|Aggregate until `onComplete()` or the given `int` argument is reached which starts over a new aggregation.
 
-|buffer(Publisher<?> bucketOpening, Supplier<? extends Publisher<?>>)
-|
+|buffer(*Publisher<?>*, _Supplier<? extends Publisher<?>>_)
+|Aggregate until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
 
-|buffer(Supplier<? extends Publisher<?>> boundarySupplier)
-|
+|buffer(*Supplier<? extends Publisher<?>>*)
+|Aggregate until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will ends the linked aggregation and starts a new one immediately. 
 
-|buffer(int maxSize, int skip)
-|
+|buffer(*int, int*)
+|Aggregate until `onComplete()` or the given second *skip* `int` argument is reached which starts over a new aggregation. The first *size* `int` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
 
-|buffer(long timespan, long timeshift, TimeUnit unit, Timer time)
-|
+|buffer(*long*, TimeUnit, Timer_)
+|Aggregate until `onComplete()` or the elpased *period* `long` argument is reached which starts over a new aggregation. 
+
+|buffer(*long, long*, TimeUnit, Timer_)
+|Aggregate until `onComplete()` or the given second *timeshift* `long` argument is reached. The first *timespan* `long` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
+
+|buffer(*int, long*, _long, TimeUnit, Timer_)
+|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It accumulates until the given *size* has been reached or the *timespan* elapsed.
 
 |===
 
@@ -1015,26 +1021,32 @@ System.out.println(controls.debug());
 Assert.assertEquals(0, endLatch.getCount());
 ----
 
-.Chunk processing with Stream window:
+.Chunk processing with Stream (returning Stream<Stream<T>>):
 [cols="2,6", options="header"]
 |===
-|Functional API
+|Stream<T> API
 |Role
 
-|window(size)
-|
+|window(_int_)
+|Forward to a generated `Stream<T>` until `onComplete()` or the given `int` argument is reached which starts over a new `Stream`.
 
-|window(Publisher<?> bucketOpening, Supplier<? extends Publisher<?>>)
-|
+|window(*Publisher<?>*, _Supplier<? extends Publisher<?>>_)
+|Forward to a generated `Stream<T>` until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will ends the linked aggregation. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<Stream<T>>`.
 
-|window(Supplier<? extends Publisher<?>> boundarySupplier)
-|
+|window(*Supplier<? extends Publisher<?>>*)
+|Forward to a generated `Stream<T>`  until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked `Stream<T>` and starts a new one immediately. 
 
-|window(int maxSize, int skip)
-|
+|window(*int, int*)
+|Forward to a generated `Stream<T>`  until `onComplete()` or the given second *skip* `int` argument is reached which starts over a new `Stream<T>`. The first *size* `int` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint sequence can be emitted to the child `Subscriber<Stream<T>>`.
 
-|window(long timespan, long timeshift, TimeUnit unit, Timer time)
-|
+|window(*long*, TimeUnit, Timer_)
+|Forward to a generated `Stream<T>`  until `onComplete()` or the elpased *period* `long` argument is reached which starts over a new `Stream<T>`. 
+
+|window(*long, long*, TimeUnit, Timer_)
+|Forward to a generated `Stream<T>`  until `onComplete()` or the given second *timeshift* `long` argument is reached. The first *timespan* `long` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint sequence can be emitted to the child `Subscriber<Stream<T>>`.
+
+|window(*int, long*, _long, TimeUnit, Timer_)
+|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It forwards to a generated `Stream<T>` until the given *size* has been reached or the *timespan* elapsed.
 
 |===
 
