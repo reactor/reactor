@@ -124,7 +124,7 @@ public class StringCodec extends Codec<Buffer, String, String> {
 		}
 	}
 
-	private class StringEncoder implements Function<String, Buffer> {
+	public final class StringEncoder implements Function<String, Buffer> {
 		private final CharsetEncoder encoder = charset.newEncoder();
 
 		@Override

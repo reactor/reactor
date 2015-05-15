@@ -22,12 +22,10 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
-import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
-import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
-import io.netty.handler.codec.http.websocketx.WebSocketClientHandshaker;
+import io.netty.handler.codec.http.websocketx.*;
 import io.netty.util.ReferenceCountUtil;
 import reactor.io.buffer.Buffer;
+import reactor.io.codec.StringCodec;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.impl.netty.NettyChannelStream;
@@ -39,17 +37,31 @@ public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN
 
 	private final WebSocketClientHandshaker handshaker;
 
+	private final boolean plainText;
+
 	public NettyHttpWSClientHandler(
 			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
 			NettyChannelStream<IN, OUT> tcpStream,
 			WebSocketClientHandshaker handshaker) {
 		super(handler, tcpStream);
 		this.handshaker = handshaker;
+
+		this.plainText = tcpStream.getEncoder() instanceof StringCodec.StringEncoder;
 	}
 
 	@Override
 	protected ChannelFuture writeFirst(ChannelHandlerContext ctx) {
-		return handshaker.handshake(ctx.channel());
+		return ctx.newSucceededFuture();
+	}
+
+	@Override
+	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
+		handshaker.handshake(ctx.channel()).addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) throws Exception {
+				ctx.read();
+			}
+		});
 	}
 
 	@Override
@@ -68,7 +80,9 @@ public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN
 		Class<?> messageClass = msg.getClass();
 		if (!handshaker.isHandshakeComplete()) {
 			handshaker.finishHandshake(ctx.channel(), (FullHttpResponse) msg);
+			NettyHttpWSClientHandler.super.channelActive(ctx);
 			super.channelRead(ctx, msg);
+			return;
 		}
 
 		if (TextWebSocketFrame.class.isAssignableFrom(messageClass)) {
@@ -88,14 +102,18 @@ public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN
 		} else if (CloseWebSocketFrame.class.isAssignableFrom(messageClass)) {
 			ctx.close();
 		} else {
-			super.channelRead(ctx, msg);
+			doRead(ctx, ((WebSocketFrame)msg).content());
 		}
 	}
 
 	@Override
 	protected ChannelFuture doOnWrite(Object data, ChannelHandlerContext ctx) {
 		if (data.getClass().equals(Buffer.class)) {
-			return ctx.write(new BinaryWebSocketFrame(convertBufferToByteBuff(ctx, (Buffer) data)));
+			if(!plainText) {
+				return ctx.write(new BinaryWebSocketFrame(convertBufferToByteBuff(ctx, (Buffer) data)));
+			}else{
+				return ctx.write(new TextWebSocketFrame(convertBufferToByteBuff(ctx, (Buffer) data)));
+			}
 		} else {
 			return ctx.write(data);
 		}

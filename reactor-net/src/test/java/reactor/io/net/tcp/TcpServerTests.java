@@ -628,10 +628,12 @@ public class TcpServerTests {
 		HttpServer<Buffer, Buffer> server = NetStreams.httpServer();
 		server.get("/search/{search}", requestIn ->
 			NetStreams.httpClient()
-				.ws("ws://localhost:3000")
+				.ws("ws://localhost:3000", requestOut ->
+										requestOut.writeWith(Streams.just(Buffer.wrap("ping")))
+				)
 				.flatMap(repliesOut ->
 							requestIn
-									.writeWith(repliesOut.capacity(1))
+									.writeWith(repliesOut.capacity(100))
 			)
 		);
 		server.start().await();

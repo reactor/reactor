@@ -48,7 +48,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	protected static final Logger log = LoggerFactory.getLogger(NettyChannelHandlerBridge.class);
 
 	protected final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler;
-	protected final   NettyChannelStream<IN, OUT>                            channelStream;
+	protected final NettyChannelStream<IN, OUT>                            channelStream;
 
 	protected PushSubscription<IN> channelSubscription;
 	private   ByteBuf              remainder;
@@ -165,8 +165,12 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+		doRead(ctx, msg);
+	}
+
+	@SuppressWarnings("unchecked")
+	protected final void doRead(ChannelHandlerContext ctx, Object msg) {
 		try {
 			if (null == channelSubscription || msg == Unpooled.EMPTY_BUFFER) {
 				ReferenceCountUtil.release(msg);
@@ -258,14 +262,14 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 	protected ChannelFuture doOnWrite(Object data, ChannelHandlerContext ctx) {
 		if (data.getClass().equals(Buffer.class)) {
-			return ctx.channel().write(convertBufferToByteBuff(ctx, (Buffer)data));
+			return ctx.channel().write(convertBufferToByteBuff(ctx, (Buffer) data));
 		} else if (Unpooled.EMPTY_BUFFER != data) {
 			return ctx.channel().write(data);
 		}
 		return null;
 	}
 
-	protected static ByteBuf convertBufferToByteBuff(ChannelHandlerContext ctx, Buffer data){
+	protected static ByteBuf convertBufferToByteBuff(ChannelHandlerContext ctx, Buffer data) {
 		ByteBuf buff = ctx.alloc().buffer(data.remaining());
 		return buff.writeBytes(data.byteBuffer());
 	}
@@ -497,5 +501,13 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		public void accept(Void aVoid) {
 			subscription = null;
 		}
+	}
+
+	public ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> getHandler() {
+		return handler;
+	}
+
+	public NettyChannelStream<IN, OUT> getChannelStream() {
+		return channelStream;
 	}
 }

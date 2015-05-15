@@ -28,6 +28,7 @@ import reactor.io.codec.Codec;
 import reactor.io.net.NetSelectors;
 import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.ReactorPeer;
+import reactor.io.net.http.model.HttpHeaders;
 import reactor.rx.Promise;
 
 import java.net.InetSocketAddress;
@@ -44,8 +45,6 @@ import java.util.List;
  */
 public abstract class HttpServer<IN, OUT>
 		extends ReactorPeer<IN, OUT, HttpChannel<IN, OUT>> {
-
-	public static final Selector<HttpChannel> WS_SELECTOR = NetSelectors.ws(null);
 
 	protected final Registry<HttpChannel, ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> routedWriters;
 
@@ -155,7 +154,7 @@ public abstract class HttpServer<IN, OUT>
 	 */
 	public final HttpServer<IN, OUT> ws(String path,
 	                                     final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(NetSelectors.ws(path), handler);
+		route(NetSelectors.get(path), handler);
 		hasWebsocketEndpoints = true;
 		return this;
 	}
@@ -177,6 +176,8 @@ public abstract class HttpServer<IN, OUT>
 		return this;
 	}
 
+	protected abstract void onWebsocket(HttpChannel<IN, OUT> next);
+
 	protected final boolean hasWebsocketEndpoints(){
 		return hasWebsocketEndpoints;
 	}
@@ -184,6 +185,11 @@ public abstract class HttpServer<IN, OUT>
 	protected Iterable<? extends Publisher<Void>> routeChannel(final HttpChannel<IN, OUT> ch) {
 		final List<Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
 				selected = routedWriters.select(ch);
+
+		String connection = ch.headers().get(HttpHeaders.CONNECTION);
+		if(connection != null && connection.equals(HttpHeaders.UPGRADE)){
+			onWebsocket(ch);
+		}
 
 		return new Iterable<Publisher<Void>>() {
 			@Override

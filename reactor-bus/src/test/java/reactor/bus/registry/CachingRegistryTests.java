@@ -199,7 +199,7 @@ public final class CachingRegistryTests {
 		}
 	}
 
-	static class MySelector extends ObjectSelector<Subscription> {
+	static class MySelector extends ObjectSelector<Object, Subscription> {
 		public MySelector(Subscription subscription) {
 			super(subscription);
 		}

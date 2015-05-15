@@ -27,6 +27,7 @@ import org.reactivestreams.Subscription;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.http.model.Method;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
@@ -40,7 +41,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 	private final NettyChannelStream<IN, OUT> tcpStream;
 	private final Buffer                      body;
-	private       NettyHttpChannel<IN, OUT>   request;
+	protected        NettyHttpChannel<IN, OUT>   request;
 
 	public NettyHttpClientHandler(
 			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
@@ -96,11 +97,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 					@Override
 					public void onComplete() {
-						if (channelSubscription == null) {
-							writeLast(ctx);
-						} else {
-							ctx.flush();
-						}
+						writeLast(ctx);
 					}
 				});
 	}
@@ -134,12 +131,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	}
 
 	protected void writeLast(final ChannelHandlerContext ctx){
-		ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				ctx.fireChannelInactive();
-			}
-		});
+		ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
 	}
 
 	@Override
@@ -154,7 +146,12 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 	@Override
 	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last, final ChannelPromise promise) {
+		if (request.method() == Method.WS){
+			return;
+		}
+
 		ByteBuffer byteBuffer = body.flip().byteBuffer();
+
 		if (request.checkHeader()) {
 			HttpRequest req = new DefaultFullHttpRequest(
 					request.getNettyRequest().getProtocolVersion(),
@@ -180,7 +177,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 					}
 				}
 			});
-		} else {
+		} else  {
 			ctx.write(new DefaultHttpContent(byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled
 					.EMPTY_BUFFER));
 		}

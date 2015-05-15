@@ -53,6 +53,18 @@ public class HttpSelector implements Selector<HttpChannel> {
 		return uriPathSelector != null ? uriPathSelector.getHeaderResolver() : null;
 	}
 
+	public Protocol getProtocol() {
+		return protocol;
+	}
+
+	public Method getMethod() {
+		return method;
+	}
+
+	public UriPathSelector getUriPathSelector() {
+		return uriPathSelector;
+	}
+
 	@Override
 	public boolean matches(HttpChannel key) {
 	return (protocol == null || protocol.equals(key.protocol()))

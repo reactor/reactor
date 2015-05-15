@@ -30,7 +30,6 @@ import org.reactivestreams.Subscription;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
-import reactor.io.net.http.model.Status;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
@@ -43,7 +42,7 @@ import reactor.rx.action.support.DefaultSubscriber;
 public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<IN, OUT> {
 
 	private final NettyChannelStream<IN, OUT> tcpStream;
-	private       NettyHttpChannel<IN, OUT>   request;
+	protected       NettyHttpChannel<IN, OUT>   request;
 
 	public NettyHttpServerHandler(
 			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
@@ -107,7 +106,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 			};
 
 			if (request.checkHeader()) {
-				ctx.writeAndFlush(request.getNettyResponse()).addListener(new ChannelFutureListener() {
+				writeFirst(ctx).addListener(new ChannelFutureListener() {
 					@Override
 					public void operationComplete(ChannelFuture future) throws Exception {
 						if (future.isSuccess()) {
@@ -135,10 +134,11 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		}
 	}
 	protected void writeLast(ChannelHandlerContext ctx){
-		ChannelFuture f = ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
-	if (!request.isKeepAlive() || request.responseStatus() != Status.OK) {
-			f.addListener(ChannelFutureListener.CLOSE);
-		}
+		ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(ChannelFutureListener.CLOSE);
+	}
+
+	protected ChannelFuture writeFirst(ChannelHandlerContext ctx){
+		return ctx.writeAndFlush(request.getNettyResponse());
 	}
 
 	@Override
@@ -150,4 +150,12 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		}
 	}
 
+	NettyHttpServerHandler<IN, OUT> withWebsocketSupport(String url, String protocols){
+		//prevent further header to be sent for handshaking
+		if(!request.checkHeader()){
+			log.error("Cannot enable websocket if headers have already been sent");
+			return this;
+		}
+		return new NettyHttpWSServerHandler<>(url, protocols, this);
+	}
 }

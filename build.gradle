@@ -223,7 +223,6 @@ project('reactor-core') {
     jarjar("com.googlecode.jarjar:jarjar:1.3")
 
     // High-speed Dispatching
-    compile "com.lmax:disruptor:$disruptorVersion@jar"
     disruptor "com.lmax:disruptor:$disruptorVersion@jar"
     compile(files(disruptorRepackJar))
 

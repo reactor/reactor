@@ -53,7 +53,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 	private static final Logger log = LoggerFactory.getLogger(NettyHttpServer.class);
 
-	protected final TcpServer<IN, OUT>                 server;
+	protected final TcpServer<IN, OUT> server;
 
 	protected NettyHttpServer(final Environment env,
 	                          final Dispatcher dispatcher,
@@ -69,10 +69,11 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 				listenAddress,
 				options,
 				sslOptions,
-				codec){
+				codec) {
 
 			@Override
-			protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel nativeChannel) {
+			protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel
+					nativeChannel) {
 				NettyHttpServer.this.bindChannel(handler, nativeChannel);
 			}
 		};
@@ -84,21 +85,21 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	}
 
 	@Override
-	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler){
+	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		return server.start(new ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>>() {
 			@Override
 			public Publisher<Void> apply(ChannelStream<IN, OUT> ch) {
-				NettyHttpChannel<IN, OUT> request = (NettyHttpChannel<IN, OUT>)ch;
+				NettyHttpChannel<IN, OUT> request = (NettyHttpChannel<IN, OUT>) ch;
 
-				if(handler != null){
+				if (handler != null) {
 					handler.apply(request);
 				}
 
 				Iterable<? extends Publisher<Void>> handlers = routeChannel(request);
 
 				//404
-				if(handlers == null){
-					if(request.checkHeader()) {
+				if (handlers == null) {
+					if (request.checkHeader()) {
 						request.delegate().writeAndFlush(
 								new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND));
 					}
@@ -121,11 +122,22 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	}
 
 	@Override
+	protected void onWebsocket(HttpChannel<IN, OUT> next) {
+		ChannelPipeline pipeline = ((SocketChannel) next.delegate()).pipeline();
+		pipeline.addLast(
+				pipeline.remove(NettyHttpServerHandler.class)
+				.withWebsocketSupport(next.uri(), null)
+		);
+
+	}
+
+	@Override
 	protected final Promise<Void> doShutdown() {
 		return server.shutdown();
 	}
 
-	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel nativeChannel) {
+	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel
+			nativeChannel) {
 
 		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
 				getDefaultEnvironment(),
@@ -138,19 +150,19 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 		ChannelPipeline pipeline = nativeChannel.pipeline();
 
-		if(log.isDebugEnabled()){
+		if (log.isDebugEnabled()) {
 			pipeline.addLast(new LoggingHandler(NettyHttpServer.class));
 		}
 
 		pipeline
 				.addLast(new HttpServerCodec());
 
-		if(hasWebsocketEndpoints()){
+		if (hasWebsocketEndpoints()) {
 			pipeline.addLast(new HttpObjectAggregator(65536));
-		}else {
-			pipeline
-					.addLast(new NettyHttpServerHandler<IN, OUT>(handler, netChannel));
 		}
+
+		pipeline
+				.addLast(new NettyHttpServerHandler<IN, OUT>(handler, netChannel));
 
 	}
 }
