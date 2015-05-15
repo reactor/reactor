@@ -650,7 +650,7 @@ st
 `capacity` will not affect `consume` actions if the current Stream dispatcher set with `dispatchOn` early on is a `SynchronousDispatcher.INSTANCE` (default if unset).
 
 [TIP]
-We encourage the *Reactor User* to study the benefit of setting capacity and actually computing dynamic demand with `Stream.adaptiveConsume` or a custom `Subscriber`.
+We encourage the *Reactor Users* to study the benefit of setting capacity vs computing dynamic demand with `Stream.adaptiveConsume` or a custom `Subscriber`.
 
 === Functional Composition
 
@@ -661,14 +661,15 @@ These operations are called `Actions`, and they will not <<streams.adoc#wireup,w
 
 ****
 * `Actions` are `onSubscribe()` in declarative order (left to right), so `stream.actionA().actionB()` will execute actionA first then actionB.
-** Note `onSubscribe()` runs on the parent `Publisher` thread context.
-* They `subscribe()` in inverse declarative order (right to left). Whenever `subscribe` is excplicitely called at the end of the pipeline, `subscribe()` propagates backward.
-**
+** `onSubscribe()` runs on the parent `Publisher` thread context which can be altered by `subscribeOn(Dispatcher)` for instance.
+* `Actions` `subscribe()` in inverse declarative order (right to left). Whenever `subscribe` is excplicitely called at the end of the pipeline, `subscribe()` propagates backward.
+** `subscribe()` synchronously propagates back which might affect stack size use. If that becomes an issue, use a delegate `Processor` that runs `subscribe()` on a `Environment.tailRecurse()` dispatcher. Then `process()` it at any point of the chain.
 ****
 
 ==== Observe
 
-If you want to passively observe data as it passes through the pipeline, then use the `.observe(Consumer)` methods. To observe values, use link:/docs/api/reactor/rx/Stream.html#observe-reactor.fn.Consumer-[.observe(Consumer<? super T>)]. To observe errors without dealing with them definitively, use link:/docs/api/reactor/rx/Stream.html#observeError-java.lang.Class-reactor.fn.BiConsumer-[.observe(Class<? extends Throwable>, BiConsumer<Object,? extends Throwable>)]. To observe the Reactive Streams complete signal, use link:/docs/api/reactor/rx/Stream.html#observeComplete-reactor.fn.Consumer-[.observeComplete(Consumer<Void>)]. To observe the cancel signal, use link:/docs/api/reactor/rx/Stream.html#observeCancel-reactor.fn.Consumer-[.observeCancel(Consumer<Void>)]. To observe the Reactive Streams subscribe signal, use link:/docs/api/reactor/rx/Stream.html#observeSubscribe-reactor.fn.Consumer-[.observeSubscribe(Consumer<? super Subscription<T>>)].
+If you want to passively observe data as it passes through the pipeline, then use the `.observe(Consumer)` methods and other `reactor.rx.action.passive` actions.
+To observe values, use link:/docs/api/reactor/rx/Stream.html#observe-reactor.fn.Consumer-[.observe(Consumer<? super T>)]. To observe errors without dealing with them definitively, use link:/docs/api/reactor/rx/Stream.html#observeError-java.lang.Class-reactor.fn.BiConsumer-[.observe(Class<? extends Throwable>, BiConsumer<Object,? extends Throwable>)]. To observe the Reactive Streams complete signal, use link:/docs/api/reactor/rx/Stream.html#observeComplete-reactor.fn.Consumer-[.observeComplete(Consumer<Void>)]. To observe the cancel signal, use link:/docs/api/reactor/rx/Stream.html#observeCancel-reactor.fn.Consumer-[.observeCancel(Consumer<Void>)]. To observe the Reactive Streams subscribe signal, use link:/docs/api/reactor/rx/Stream.html#observeSubscribe-reactor.fn.Consumer-[.observeSubscribe(Consumer<? super Subscription<T>>)].
 
 .observe(Consumer<T>)
 [source,java]
@@ -687,7 +688,11 @@ st.observe(s -> LOG.info("Got input [{}] on thread [{}}]", s, Thread.currentThre
 
 ==== Filter
 
-It's possible to filter items passing through a `Stream` so that downstream actions only see the data you want them to see. This is accomplished by using the link:/docs/api/reactor/rx/Stream.html#filter-reactor.fn.Predicate-[`.filter(Predicate<T>)`] method.
+It's possible to filter items passing through a `Stream` so that downstream actions only see the data you want them to see. Filtering actions can be found under `reactor.rx.action.filter` package.
+The most popular one is the link:/docs/api/reactor/rx/Stream.html#filter-reactor.fn.Predicate-[`.filter(Predicate<T>)`] method.
+
+[NOTE]
+Unmatched data will trigger a `Subscription.request(1)` if the stream is actually not unbounded with a previous demand of Long.MAX_VALUE.
 
 .filter(Predicate<T>)
 [source,java]
@@ -700,59 +705,82 @@ st.filter(s -> s.startsWith("Hello")) // <1>
 <1> This will only allow values that start with the string `'Hello'` to pass downstream.
 <2> Produce demand on the pipeline and consume any values.
 
+==== Limits
+
+A specific application of filters is for setting limits to a `Stream`. Limiting actions can be found under `reactor.rx.action.filter` package.
+There are various ways to tell a Stream<T> its boundary in time, in size and/or on a specific condition.
+The most popular one is the link:/docs/api/reactor/rx/Stream.html#take-long-[`.take(long)`] method.
+
+
+.Stream.take(long)
+[source,java]
+----
+Streams
+  .range(1, 100)
+  .take(50) // <1>
+  .consume(
+    System.out::println,
+    Throwable::printStackTrace,
+    avoid -> System.out.println("--complete--")
+  );
+----
+<1> Only take the 50 first elements then cancel upstream and complete downstream.
+
 ==== Transformation
 
+If you want to actively transform data as it passes through the pipeline, then use `.map(Function)` and other `reactor.rx.action.transformation` actions.
+The most popular transforming action is link:/docs/api/reactor/rx/Stream.html#map-reactor.fn.Function-[.map(Function<? super I, ? extends O>)].
+A few other `Actions` depend on transforming data, especially <<streams.adoc#streams-combinatory,Combinatory operations>> like `flatMap` or `concatMap`.
 
 .Stream.map(Function<T,V>)
 [source,java]
 ----
 Streams
-  .range(1, 100) // <1>
-  .map(number -> ""+number) // <2>
-  .subscribe(new DefaultSubscriber<String>(){ // <3>
-    void onSubscribe(Subscription sub){
-      sub.request(100);
-    }
-
-    void onNext(String s){
-      System.out.println(s);
-    }
-  });
+  .range(1, 100)
+  .map(number -> ""+number) // <1>
+  .consume(System.out::println);
 ----
+<1> Transform each Long into a String.
 
-==== (A)Sync Transformation: FlatMap
+==== (A)Sync Transformation: FlatMap, ConcatMap, SwitchMap
 
-.Stream.take(long)
+If you want to execute a distinct pipeline `Stream<V>` or `Publisher<V>` given an actual input data, you can use combinatory actions such as `.flatMap(Function)` and other `reactor.rx.action.combination` actions.
+
+To transform values into distinct `Publisher<V>` possibly asynchronous, use link:/docs/api/reactor/rx/Stream.html#map-reactor.fn.Function-[.flatMap(Function<? super I, ? extends Publisher<? extends O>)].
+The returned `Publisher<V>` will then be *merged* back to the main flow signaling `onNext(V)`. They are properly removed from the merging action whey they complete.
+The difference between flatMap, concatMap and switchOnMap is the *merging strategy*, respectively *Interleave*, *Fully Sequential* and *Partially Sequential* (interrupted by `onNext(Publisher<T>)`).
+
+[IMPORTANT]
+The downstream request is splitted (minimum 1 by merged Publisher)
+
+.Stream.flatMap(Function)
 [source,java]
 ----
 Streams
-  .range(1, 100) // <1>
-  .take(50)
+  .range(1, 100)
+  .flatMap(number -> Streams.range(1, number).subscribeOn(Environment.cachedDispatcher()) ) // <1>
   .consume(
-    System.out::println,
+    System.out::println, <2>
     Throwable::printStackTrace,
     avoid -> System.out.println("--complete--")
   );
 ----
-
-
-
-==== Limits
-
-.Stream.take(long)
-[source,java]
-----
-Streams
-  .range(1, 100) // <1>
-  .take(50)
-  .consume(
-    System.out::println,
-    Throwable::printStackTrace,
-    avoid -> System.out.println("--complete--")
-  );
-----
+<1> Transform any incoming number into a range of 1-N number merged back and executed on the given Dispatcher.
 
 ==== Blocking
+
+.Stream.toList()
+[source,java]
+----
+Streams
+  .range(1, 100)
+  .flatMap(number -> Streams.range(1, number).subscribeOn(Environment.cachedDispatcher()) ) // <1>
+  .consume(
+    System.out::println, <2>
+    Throwable::printStackTrace,
+    avoid -> System.out.println("--complete--")
+  );
+----
 
 .Waiting for a Stream or Promise
 [cols="2,6", options="header"]

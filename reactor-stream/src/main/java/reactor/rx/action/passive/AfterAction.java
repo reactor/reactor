@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx.action.control;
+package reactor.rx.action.passive;
 
 import reactor.rx.action.Action;
 
