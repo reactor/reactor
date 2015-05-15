@@ -815,11 +815,39 @@ result.onSuccess(System.out::println) // <3>
 [[streams-multithreading]]
 == Understanding the threading model
 
+.Jumping between threads with an unbounded demand
+[source,java]
+----
+Promise<List<Long>> result = Streams
+  .range(1, 100)
+  .subscribeOn(Environment.cachedDispatcher()) // <1>
+  .dispatchOn(Environment.sharedDispatcher()) // <2>
+  .consume(); // <3>
+----
+<1> Assign an `onSubscribe` cached dispatcher.
+<2> Assign a signal *onNext, onError, onComplete* dispatcher.
+<3> Consume the `Stream` *onSubscribe* with `Subscription.request(Long.MAX)`
+
 .subscribeOn and dispatchOn/process with an unbounded Subscriber
-image::images/longMaxThreading.png[Unbounded threading, width=400, align="center", link="images/longMaxThreading.png"]
+image::images/longMaxThreading.png[Unbounded threading, width=600, align="center", link="images/longMaxThreading.png"]
+
+.Jumping between thread with a bounded demand 1
+[source,java]
+----
+Promise<List<Long>> result = Streams
+  .range(1, 100)
+  .subscribeOn(Environment.cachedDispatcher()) // <1>
+  .dispatchOn(Environment.sharedDispatcher()) // <2>
+  .capacity(1); // <3>
+  .consume(); // <4>
+----
+<1> Assign an `onSubscribe` cached dispatcher.
+<2> Assign a signal *onNext, onError, onComplete* dispatcher.
+<3> Assign a `Stream` capacity to 1 so the downstream action adapts
+<4> Consume the `Stream` *onSubscribe* with `Subscription.request(1)` and after every 1 *onNext*.
 
 .subscribeOn and dispatchOn/process with an bounded (demand N < Long.MAX) Subscriber
-image::images/nThreading.png[Bounded threading, width=400, align="center", link="images/nThreading.png"]
+image::images/nThreading.png[Bounded threading, width=600, align="center", link="images/nThreading.png"]
 
 .Jumping between threads
 [cols="2,6", options="header"]
@@ -835,6 +863,7 @@ image::images/nThreading.png[Bounded threading, width=400, align="center", link=
 |
 
 |Stream.process(Processor)
+|
 
 |===
 
