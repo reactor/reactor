@@ -564,48 +564,62 @@ image::images/broadcast.png[The 3 Pipelines wired, width=650, align="center", li
 |===
 
 |Stream<T> method
+|Return Type
 |Role
 
-|Stream.subscribe(Subscriber)
-|
+|subscribe(*Subscriber<T>*), +subscribeOn
+|void
+|Subscribe the passed *Subscriber<T>* and therefore materialize any pending upstream wired up lazily (the implicit *lift* for non terminal operation). Note a Subscriber must request data if it expects some. The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the subscriber.
 
-|Stream.consume(Consumer), Stream.consumeOn(Consumer)
-|
+|consume(_Consumer<T>,Consumer<T>,Consumer<T>_), _consumeOn_
+|Control
+|Call `subscribe` with a `TerminalCallbackAction` which interact with each passed optional `Consumer` every time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is Long.MAX_VALUE by default for unbounded consuming.  The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the consumers. Returns a Control argument to eventually cancel the materialized `Stream` if necessary.
 
-|Stream.consumeLater()
-|
+|consumeLater()
+|Control
+|Similar to `consume` but does not fire an initial `Subscription.request(long)`. The returned `Control` can be used to `request(long)` anytime.
 
-|Stream.tap()
-|Create a *terminal action* unbounded `Tap` that will be dynamically updated everytime a new `onNext(T)` is signalled.
+|tap()
+|TapAndControls
+|Similar to `consume` but return a `TapAndControls` that will be dynamically updated everytime a new `onNext(T)` is signalled and cancelled anytime.
 
 
-|Stream.batchConsume, Stream.batchConsumeOn
-|
+|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*) _batchConsumeOn_
+|Control
+|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
 
-|Stream.adaptiveConsume, Stream.adaptiveConsumeOn
-|
+|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), _adaptiveConsumeOn_
+|Control
+|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.
 
-|Stream.next()
-|
+|next()
+|Promise<T>
+|Return a `Promise<T>` that is actively subscribing to the `Stream`, materializing it, and requesting a single data before unregistering. The immediate next signal `onNext(T)`, `onComplete()` or `onError(Throwable)` will fulfill the promise.
 
-|Stream.toList()
-|
+|toList()
+|Promise<List<T>>
+|Similar to `next()` but will wait until all sequence has been produced (`onComplete()`) and pass the accumulated `onNext(T)` in a single `List<T>` fulfilling the returned promise.
 
 |Stream.toBlockingQueue()
-|
+|CompletableBlockingQueue<T>
+|Subscribe to the `Stream` and return an iterable blocking `Queue<T>` accumulating all `onNext` signals. `CompletableBlockingQueue.isTerminated()` can be used as a condition to exit a blocking `poll()` loop.
 
 |cache()
+|Stream<T>
 |Turn any Stream into a *Cold* Stream, able to replay all the sequence of signals indivudally for each Subscriber.
 Due to the unbounded nature of the action, consider to use with small sequences.
 
 |broadcast(), broadcastOn(Environment, Dispatcher)
-|Turn Any Stream into a *Hot* Stream. This will prevent pipeline duplication by immediately subscribing and ready to publish the signal to N Subscribers downstream.
-The demand will be aggregated fro all child Subscribers.
+|Stream<T>
+|Turn Any Stream into a *Hot* Stream. This will prevent pipeline duplication by immediately materializing the `Stream` and be ready to publish the signal to N Subscribers downstream.
+The demand will be aggregated from all child Subscribers.
 
-|broadcastTo(Subscriber)
+|broadcastTo(*Subscriber<T>*)
+|Subscriber<T>
 |An alternative to `Stream.subscribe` which allows method chaining since the returned instance is the same than the passed argument.
 
-|process(Processor)
+|process(*Processor<T, O>*)
+|Stream<O>
 |
 
 
@@ -635,6 +649,9 @@ st
 [WARNING]
 `capacity` will not affect `consume` actions if the current Stream dispatcher set with `dispatchOn` early on is a `SynchronousDispatcher.INSTANCE` (default if unset).
 
+[TIP]
+We encourage the *Reactor User* to study the benefit of setting capacity and actually computing dynamic demand with `Stream.adaptiveConsume` or a custom `Subscriber`.
+
 === Functional Composition
 
 Similar to many other functional libraries, Reactor provides a number of useful methods for composing functions on a `Stream`. You can passively observe values, transform them from one kind to another, filter out values you don't want, buffer values until a size or time trigger is tripped, and many other useful operations.
@@ -643,7 +660,7 @@ These operations are called `Actions`, and they will not <<streams.adoc#wireup,w
 
 ==== Observe
 
-If you want to passively observe data as it passes through the pipeline, then use the `.observe(Consumer)` methods. To observe values, use link:/docs/api/reactor/rx/Stream.html#observe-reactor.fn.Consumer-[`.observe(Consumer<? super T>)`]. To observe errors without dealing with them definitively, use link:/docs/api/reactor/rx/Stream.html#observeError-java.lang.Class-reactor.fn.BiConsumer-[`.observe(Class<? extends Throwable>, BiConsumer<Object,? extends Throwable>)`]. To observe the Reactive Streams complete signal, use link:/docs/api/reactor/rx/Stream.html#observeComplete-reactor.fn.Consumer-[`.observeComplete(Consumer<Void>)`]. To observe the cancel signal, use link:/docs/api/reactor/rx/Stream.html#observeCancel-reactor.fn.Consumer-[`.observeCancel(Consumer<Void>)`]. To observe the Reactive Streams subscribe signal, use link:/docs/api/reactor/rx/Stream.html#observeSubscribe-reactor.fn.Consumer-[`.observeSubscribe(Consumer<? super Subscription<T>>)`].
+If you want to passively observe data as it passes through the pipeline, then use the `.observe(Consumer)` methods. To observe values, use link:/docs/api/reactor/rx/Stream.html#observe-reactor.fn.Consumer-[.observe(Consumer<? super T>)]. To observe errors without dealing with them definitively, use link:/docs/api/reactor/rx/Stream.html#observeError-java.lang.Class-reactor.fn.BiConsumer-[.observe(Class<? extends Throwable>, BiConsumer<Object,? extends Throwable>)]. To observe the Reactive Streams complete signal, use link:/docs/api/reactor/rx/Stream.html#observeComplete-reactor.fn.Consumer-[.observeComplete(Consumer<Void>)]. To observe the cancel signal, use link:/docs/api/reactor/rx/Stream.html#observeCancel-reactor.fn.Consumer-[.observeCancel(Consumer<Void>)]. To observe the Reactive Streams subscribe signal, use link:/docs/api/reactor/rx/Stream.html#observeSubscribe-reactor.fn.Consumer-[.observeSubscribe(Consumer<? super Subscription<T>>)].
 
 .observe(Consumer<T>)
 [source,java]
