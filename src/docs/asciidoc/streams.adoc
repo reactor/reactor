@@ -573,7 +573,7 @@ image::images/broadcast.png[The 3 Pipelines wired, width=650, align="center", li
 
 |consume(_Consumer<T>,Consumer<T>,Consumer<T>_), _consumeOn_
 |Control
-|Call `subscribe` with a `TerminalCallbackAction` which interact with each passed optional `Consumer` every time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is Long.MAX_VALUE by default for unbounded consuming.  The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the consumers. Returns a Control argument to eventually cancel the materialized `Stream` if necessary.
+|Call `subscribe` with a `ConsumerAction` which interact with each passed optional `Consumer` every time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is Long.MAX_VALUE by default for unbounded consuming.  The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the consumers. Returns a Control argument to eventually cancel the materialized `Stream` if necessary.
 
 |consumeLater()
 |Control
@@ -656,7 +656,15 @@ We encourage the *Reactor User* to study the benefit of setting capacity and act
 
 Similar to many other functional libraries, Reactor provides a number of useful methods for composing functions on a `Stream`. You can passively observe values, transform them from one kind to another, filter out values you don't want, buffer values until a size or time trigger is tripped, and many other useful operations.
 
+[IMPORTANT]
 These operations are called `Actions`, and they will not <<streams.adoc#wireup,wire up the `Stream` directly>>. They are available on any `Stream` instance, which means <<streams.adoc#streams-basic,you should have one by this stage>>.
+
+****
+* `Actions` are `onSubscribe()` in declarative order (left to right), so `stream.actionA().actionB()` will execute actionA first then actionB.
+** Note `onSubscribe()` runs on the parent `Publisher` thread context.
+* They `subscribe()` in inverse declarative order (right to left). Whenever `subscribe` is excplicitely called at the end of the pipeline, `subscribe()` propagates backward.
+**
+****
 
 ==== Observe
 
@@ -693,6 +701,7 @@ st.filter(s -> s.startsWith("Hello")) // <1>
 <2> Produce demand on the pipeline and consume any values.
 
 ==== Transformation
+
 
 .Stream.map(Function<T,V>)
 [source,java]

@@ -27,7 +27,7 @@ import java.util.Map;
  *
  * @see UriPathTemplate
  */
-public class UriPathSelector extends ObjectSelector<Object, UriPathTemplate> {
+public class UriPathSelector extends ObjectSelector<String, UriPathTemplate> {
 
 	private final HeaderResolver headerResolver = new HeaderResolver() {
 		@Nullable
@@ -64,12 +64,7 @@ public class UriPathSelector extends ObjectSelector<Object, UriPathTemplate> {
 	}
 
 	@Override
-	public boolean matches(Object key) {
-		if (!(key instanceof String)) {
-			return false;
-		}
-
-		String path = (String) key;
+	public boolean matches(String path) {
 		return getObject().matches(path);
 	}
 

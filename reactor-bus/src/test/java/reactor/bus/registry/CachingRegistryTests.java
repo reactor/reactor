@@ -36,7 +36,7 @@ public final class CachingRegistryTests {
 	@Test
 	public void registrationsWithTheSameSelectorAreOrderedByInsertionOrder() {
 		String key = "selector";
-		Selector selector = Selectors.$(key);
+		Selector<Object> selector = Selectors.$(key);
 
 		this.cachingRegistry.register(selector, "echo");
 		this.cachingRegistry.register(selector, "bravo");
@@ -56,9 +56,10 @@ public final class CachingRegistryTests {
 	}
 
 	@Test
+	@SuppressWarnings("unchecked")
 	public void nonEmptyResultsAreCached() {
 		String key = "/**/selector";
-		Selector selector = Selectors.uri(key);
+		Selector<Object> selector = Selectors.uri(key);
 
 		this.cachingRegistry.register(selector, "alpha");
 
@@ -88,7 +89,7 @@ public final class CachingRegistryTests {
 	@Test
 	public void cacheIsRefreshedWhenANewRegistrationWithTheSameSelectorIsMade() {
 		String key = "selector";
-		Selector selector = Selectors.$(key);
+		Selector<Object> selector = Selectors.$(key);
 
 		this.cachingRegistry.register(selector, "alpha");
 
@@ -108,7 +109,7 @@ public final class CachingRegistryTests {
 	//@Test
 	public void cacheIsRefreshedWhenANewRegistrationWithADifferentSelectorIsMade() {
 		String key1 = "selector";
-		Selector selector1 = Selectors.$(key1);
+		Selector<Object> selector1 = Selectors.$(key1);
 
 		this.cachingRegistry.register(selector1, "alpha");
 
@@ -118,7 +119,7 @@ public final class CachingRegistryTests {
 		assertEquals(1, this.cacheMisses.get());
 
 		String key2 = "selector2";
-		Selector selector2 = Selectors.$(key2);
+		Selector<Object> selector2 = Selectors.$(key2);
 
 		this.cachingRegistry.register(selector2, "bravo");
 
@@ -134,7 +135,7 @@ public final class CachingRegistryTests {
 	public void invokeConsumersWithCustomSelector() {
 
 		Subscription sub1 = new Subscription("client1", "test");
-		Selector s1 = new MySelector(sub1);
+		Selector<Object> s1 = new MySelector(sub1);
 
 		// consumer1
 		this.cachingRegistry.register(s1, "pseudo-consumer-1");
@@ -150,12 +151,12 @@ public final class CachingRegistryTests {
 
 		// consumer3
 		Subscription sub2 = new Subscription("client2", "test");
-		Selector s2 = new MySelector(sub2);
+		Selector<Object> s2 = new MySelector(sub2);
 		this.cachingRegistry.register(s2, "pseudo-consumer-3");
 
 		//consumer 4
 		Subscription sub3 = new Subscription("client2", "test2");
-		Selector s3 = new MySelector(sub3);
+		Selector<Object> s3 = new MySelector(sub3);
 		this.cachingRegistry.register(s3, "pseudo-consumer-4");
 
 		//prepopulate and add another consumer
@@ -206,10 +207,7 @@ public final class CachingRegistryTests {
 
 		@Override
 		public boolean matches(Object key) {
-			if (!(key instanceof String)) {
-				return false;
-			}
-
+			if(!(key instanceof String)) return false;
 			return key.equals(getObject().topic);
 		}
 	}
