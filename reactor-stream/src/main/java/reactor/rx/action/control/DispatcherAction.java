@@ -18,6 +18,7 @@ package reactor.rx.action.control;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -41,7 +42,7 @@ public final class DispatcherAction<T> extends Action<T, T> {
 
 	public DispatcherAction(Dispatcher dispatcher, Dispatcher requestDispatcher) {
 		this.dispatcher = dispatcher;
-		this.requestDispatcher = requestDispatcher == SynchronousDispatcher.INSTANCE ? dispatcher : requestDispatcher;
+		this.requestDispatcher = requestDispatcher != SynchronousDispatcher.INSTANCE ? dispatcher : requestDispatcher;
 	}
 
 	@Override
@@ -78,7 +79,13 @@ public final class DispatcherAction<T> extends Action<T, T> {
 			}
 
 			if (toRequest > 0) {
-				requestDispatcher.dispatch(n, upstreamSubscription, null);
+				if(requestDispatcher.inContext()) {
+					requestDispatcher.dispatch(toRequest, upstreamSubscription, null);
+				}else if (requestDispatcher == SynchronousDispatcher.INSTANCE){
+					TailRecurseDispatcher.INSTANCE.dispatch(toRequest, upstreamSubscription, null);
+				}else{
+					upstreamSubscription.request(toRequest);
+				}
 			}
 		} else {
 			if (n == Long.MAX_VALUE || PENDING_UPDATER.addAndGet(this, n) < 0l) {
@@ -171,8 +178,9 @@ public final class DispatcherAction<T> extends Action<T, T> {
 	protected void doNext(T ev) {
 		broadcastNext(ev);
 		long toRequest;
-		if (pendingRequests != Long.MAX_VALUE &&
-				upstreamSubscription.pendingRequestSignals() == 0l &&
+		PushSubscription<T> sub = upstreamSubscription;
+		if (sub != null && pendingRequests != Long.MAX_VALUE &&
+				sub.pendingRequestSignals() == 0l &&
 				(toRequest = PENDING_UPDATER.getAndSet(this, 0l)) > 0l) {
 			requestMore(toRequest);
 		}

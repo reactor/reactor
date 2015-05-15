@@ -184,7 +184,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 			}
 			PushSubscription<T> upstreamSubscription = AdaptiveConsumerAction.this.upstreamSubscription;
 			if(upstreamSubscription != null) {
-				dispatcher.dispatch(n, upstreamSubscription, null);
+				TailRecurseDispatcher.INSTANCE.dispatch(n, upstreamSubscription, null);
 			}
 			if (s != null) {
 				s.request(1l);

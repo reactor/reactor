@@ -68,7 +68,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 
 	@Override
 	public void requestMore(long n) {
-		if(upstreamSubscription != null) upstreamSubscription.accept(n);
+		if(upstreamSubscription != null) upstreamSubscription.request(n);
 	}
 
 	@Override

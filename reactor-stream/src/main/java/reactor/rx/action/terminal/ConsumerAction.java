@@ -18,7 +18,6 @@ package reactor.rx.action.terminal;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
@@ -46,7 +45,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	public ConsumerAction(Dispatcher dispatcher, Consumer<? super T> consumer,
 	                      Consumer<? super Throwable> errorConsumer, Consumer<Void> completeConsumer) {
 		this.consumer = consumer;
-		this.dispatcher = dispatcher == SynchronousDispatcher.INSTANCE ? TailRecurseDispatcher.INSTANCE : dispatcher;
+		this.dispatcher = dispatcher;
 		this.errorConsumer = errorConsumer;
 		this.completeConsumer = completeConsumer;
 
@@ -67,7 +66,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 			if(COUNTED.addAndGet(this, toRequest) < 0l){
 				COUNTED.set(this, Long.MAX_VALUE);
 			}
-			dispatcher.dispatch(toRequest, upstreamSubscription, null);
+			TailRecurseDispatcher.INSTANCE.dispatch(toRequest, upstreamSubscription, null);
 		}else{
 			synchronized (this) {
 				if ((pendingRequests += n) < 0l) {

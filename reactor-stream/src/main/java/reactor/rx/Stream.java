@@ -19,6 +19,7 @@ package reactor.rx;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
@@ -695,17 +696,12 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 			@Override
 			public Dispatcher getDispatcher() {
-				return currentDispatcher;
+				return Stream.this.getDispatcher();
 			}
 
 			@Override
-			public void subscribe(Subscriber<? super O> s) {
-				currentDispatcher.dispatch(s, new Consumer<Subscriber<? super O>>() {
-					@Override
-					public void accept(Subscriber<? super O> subscriber) {
-						Stream.this.subscribe(subscriber);
-					}
-				}, null);
+			public void subscribe(final Subscriber<? super O> subscriber) {
+				Stream.this.subscribe(new SubscribeOn<>(currentDispatcher, subscriber));
 			}
 
 		};
@@ -3021,4 +3017,54 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return getClass().getSimpleName();
 	}
 
+	private static final class SubscribeOn<O> implements Subscriber<O>, Consumer<Subscription>, NonBlocking {
+		private final Subscriber<? super O> subscriber;
+		private final Action<O, ?> action;
+		private final Dispatcher dispatcher;
+
+		public SubscribeOn(Dispatcher dispatcher, Subscriber<? super O> subscriber) {
+			this.dispatcher = dispatcher;
+			this.subscriber = subscriber;
+			if(Action.class.isAssignableFrom(subscriber.getClass())){
+				this.action = (Action<O, ?>)subscriber;
+			}else{
+				this.action = null;
+			}
+		}
+
+		@Override
+		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+			return action != null ? action.isReactivePull(dispatcher, producerCapacity) : true;
+		}
+
+		@Override
+		public long getCapacity() {
+			return action != null ? action.getCapacity() : Long.MAX_VALUE;
+		}
+
+		@Override
+		public void accept(Subscription subscription) {
+			subscriber.onSubscribe(subscription);
+		}
+
+		@Override
+		public void onSubscribe(Subscription s) {
+			dispatcher.dispatch(s, this, null);
+		}
+
+		@Override
+		public void onNext(O o) {
+			subscriber.onNext(o);
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			subscriber.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			subscriber.onComplete();
+		}
+	}
 }

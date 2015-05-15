@@ -49,7 +49,7 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 			public void accept(Long aLong) {
 				if (upstreamSubscription != null) {
 					try {
-						dispatcher.tryDispatch(1l, upstreamSubscription, null);
+						upstreamSubscription.request(1);
 					} catch (InsufficientCapacityException e) {
 						//IGNORE
 					}

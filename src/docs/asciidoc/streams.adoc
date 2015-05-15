@@ -573,7 +573,7 @@ image::images/broadcast.png[The 3 Pipelines wired, width=650, align="center", li
 
 |consume(_Consumer<T>,Consumer<T>,Consumer<T>_), _consumeOn_
 |Control
-|Call `subscribe` with a `ConsumerAction` which interact with each passed optional `Consumer` every time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is Long.MAX_VALUE by default for unbounded consuming.  The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the consumers. Returns a Control argument to eventually cancel the materialized `Stream` if necessary.
+|Call `subscribe` with a `ConsumerAction` which interact with each passed optional `Consumer` every time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is Long.MAX_VALUE by default for unbounded consuming.  The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the consumers. Returns a Control argument to eventually cancel the materialized `Stream` if necessary. Note that `ConsumeAction` take care of unbounded recursion if the `onNext(T)` signal triggers a blocking request.
 
 |consumeLater()
 |Control

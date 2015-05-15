@@ -49,7 +49,7 @@ public class CacheAction<T> extends Action<T, T> {
 				}
 
 				if(upstream != null) {
-					upstreamSubscription.accept(elem);
+					upstreamSubscription.request(elem);
 					return;
 				}
 
@@ -81,7 +81,7 @@ public class CacheAction<T> extends Action<T, T> {
 
 
 				if (toRequest > 0 && upstreamSubscription != null) {
-						upstreamSubscription.accept(toRequest);
+						upstreamSubscription.request(toRequest);
 					}
 			}
 		};

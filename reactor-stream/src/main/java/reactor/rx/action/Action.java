@@ -131,6 +131,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 			boolean isReactiveCapacity = null == asyncSubscriber || asyncSubscriber.isReactivePull(getDispatcher(),
 					capacity);
+
 			final PushSubscription<O> subscription = createSubscription(subscriber,
 					isReactiveCapacity);
 
