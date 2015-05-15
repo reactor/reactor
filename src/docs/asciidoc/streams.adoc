@@ -815,7 +815,11 @@ result.onSuccess(System.out::println) // <3>
 [[streams-multithreading]]
 == Understanding the threading model
 
+.subscribeOn and dispatchOn/process with an unbounded Subscriber
+image::images/longMaxThreading.png[Unbounded threading, width=400, align="center", link="images/longMaxThreading.png"]
 
+.subscribeOn and dispatchOn/process with an bounded (demand N < Long.MAX) Subscriber
+image::images/nThreading.png[Bounded threading, width=400, align="center", link="images/nThreading.png"]
 
 .Jumping between threads
 [cols="2,6", options="header"]
