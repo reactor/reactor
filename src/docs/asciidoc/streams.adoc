@@ -818,7 +818,7 @@ result.onSuccess(System.out::println) // <3>
 .Jumping between threads with an unbounded demand
 [source,java]
 ----
-Promise<List<Long>> result = Streams
+Streams
   .range(1, 100)
   .subscribeOn(Environment.cachedDispatcher()) // <1>
   .dispatchOn(Environment.sharedDispatcher()) // <2>
@@ -834,7 +834,7 @@ image::images/longMaxThreading.png[Unbounded threading, width=600, align="center
 .Jumping between thread with a bounded demand 1
 [source,java]
 ----
-Promise<List<Long>> result = Streams
+Streams
   .range(1, 100)
   .subscribeOn(Environment.cachedDispatcher()) // <1>
   .dispatchOn(Environment.sharedDispatcher()) // <2>
