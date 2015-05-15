@@ -938,6 +938,20 @@ Originally by Peter Norvig: http://norvig.com/21-days.html#answers
 
 === Into Buffers
 
+Collecting grouped sequences of data `T` into lists `List<T>` serves two main purposes:
+
+****
+* Expose a sequence matching the boundary conditions into an `Iterable` structure commonly used by JVM APIs
+* Reduce the volume of `onNext(T)` signals, e.g. `buffer(5)` will transform a sequence of 10 elements into a sequence of 2 lists of 5 elements.
+****
+
+[NOTE]
+Collecting data incurs an overhead in memory and possibly CPU that should be sized appropriately. Small and timed boundaries are advised to avoid any long lasting aggregates.
+
+[WARNING]
+An `Environment` must be initialized if the alias for timed `buffer()` are used without providing the `Timer` argument. If an `Environment` is found, its default `Timer` will be used.
+
+
 [source,java]
 ----
 long timeout = 100;
@@ -996,6 +1010,30 @@ else {
 
 === Into Windows
 
+Forwarding grouped sequences of data `T` into streams `Stream<T>` serves three main purposes:
+
+****
+* Expose a sequence of data `T` to various limited grouped observations and accumulation: metrics, average, flexible aggregate (`Map`, `Tuple`...).
+* Parallelizing grouped sequences combined with `dispatchOn` for each generated `Stream<T>` and merging their results back.
+* Repeat `onComplete()` for individual grouped sequences, e.g. in <<net.adoc#net-overview, Async IO` module to delimit a flush.
+****
+
+
+[NOTE]
+====
+`Stream<T>` windows are slightly less optimized but equivalent aggregating producer than buffer API if combined with the aggregate-all `Stream.buffer()` method:
+
+[source,java]
+----
+stream.buffer(10, 1, TimeUnit.SECONDS);
+
+//equivalent to
+stream.window(10, 1, TimeUnit.SECONDS).flatMap( window -> window.buffer() )
+----
+====
+
+[WARNING]
+An `Environment` must be initialized if the alias for timed `buffer()` are used without providing the `Timer` argument. If an `Environment` is found, its default `Timer` will be used.
 
 [source,java]
 ----
