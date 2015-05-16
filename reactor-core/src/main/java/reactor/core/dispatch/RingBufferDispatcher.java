@@ -176,15 +176,15 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 
 	@Override
 	public void shutdown() {
-		executor.shutdown();
 		disruptor.shutdown();
+		executor.shutdown();
 		super.shutdown();
 	}
 
 	@Override
 	public void forceShutdown() {
-		executor.shutdownNow();
 		disruptor.halt();
+		executor.shutdownNow();
 		super.forceShutdown();
 	}
 
