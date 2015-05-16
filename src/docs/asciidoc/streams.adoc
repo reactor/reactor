@@ -743,6 +743,7 @@ Streams
 ----
 <1> Transform each Long into a String.
 
+[[stream-flatmap]]
 ==== (A)Sync Transformation: FlatMap, ConcatMap, SwitchMap
 
 If you want to execute a distinct pipeline `Stream<V>` or `Publisher<V>` given an actual input data, you can use combinatory actions such as `.flatMap(Function)` and other `reactor.rx.action.combination` actions.
@@ -1096,7 +1097,7 @@ Backpressure is addressed automatically in a bunch of situations with the *React
 
 If the source is *hot* such as a timer or UI events or the `Subscriber` might request `Long.MAX_VALUE` on a large dataset, a strategy must be explicitely picked by the developer to confront the *backpressure*. 
 
-.Reactor provides a set of API to deal with both situations:
+.Reactor provides a set of API to deal with Hot and Cold sequences flow-control:
 ****
 * Uncontrolled sequences (Hot) should be actively addressed
 ** By *reducing* the sequence volume, e.g. "sampling"
@@ -1112,16 +1113,14 @@ A common representation extensively used in *Reactive Extensions* documentations
 
 image::images/marble/marble-101.png[Marble Diagrams, width=650, align="center", link="images/marble/marble-101.png"]
 
-[NOTE]
-====
 *Reactor* will automatically provide for in-memory overflow buffer when the dispatcher or the capacity differs from an action to another. This will not apply to `Core Processors` which handle the overflow in their own way. However dispatchers can be re-used and *Reactor* must limit the number of dispatch where it can, hence why the in-memory buffer are added by `Action` when dispatchers differ. 
 
 [source,java]
 ----
 Streams.just(1,2,3,4,5)
   .buffer(3) // <1>
-  .capacity(2) // <2>
   //onOverflowBuffer()
+  .capacity(2) // <2>
   .consume()
 
 
@@ -1135,7 +1134,30 @@ Streams.just(1,2,3,4,5)
 <2> consume() or any downstream action is set with capacity(2), an implicit onOverflowBuffer() is added
 <3> A first action running on dispatcher1
 <4> A second action running on a different dispatcher2, an implicit onOverflowBuffer() is added
-====
+
+Ultimately the `Subscriber` can request data one by one, limiting the inflight data to 1 all along the pipeline, and requesting once more after each successful `onNext(T)`. The same behavior can be obtained with `capacity(1).consume(...)`.
+
+[source,java]
+----
+Streams.range(1,1000000)
+  .subscribe(new DefaultSubscriber<Long>() // <1>
+    Subscription sub;
+    
+    @Override
+    void onSubscribe(Subscription sub){
+      this.sub = sub;
+      sub.request(1); // <2>
+    }
+
+    @Override
+    void onNext(Long n){
+      httpClient.get("localhost/"+n).onSuccess(rep -> sub.request(1)); // <3>
+    }
+  );
+----
+<1> Use a `DefaultSubscriber` to avoid implementing all `Subscriber` methods.
+<2> Schedule a first demand onSubscribe after keeping a reference to the subscription.
+<3> Use <<net-http.adoc#net-http101, Async HTTP API>> to request more only on successful GET. That will naturally propagate the latency information back to the `RangeStream` `Publisher`. One can imagine than measuring the time difference between 2 requests gives an interesting insight on the processing and IO latency.
 
 .Controlling the volume of in-flight data
 [cols="2,6", options="header"]
@@ -1147,11 +1169,8 @@ Streams.just(1,2,3,4,5)
 |subscribe(*Subscriber<T>*)
 |A custom `Subscriber<T>` will have all the flexibility to request whenever it wishes. Best to size these requests if the `Subscriber` involve some blocking operations.
 
-|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*) _batchConsumeOn_
-|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
-
-|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), _adaptiveConsumeOn_
-|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.  The `AdaptiveConsumerAction` will subscribe to the produced sequence and immiately forwards `onNext(Long)` to the upstream `request(long)`.
+|capacity(*long*)
+|<<streams.adoc#stream-capacity, Set the capacity>> to this `Stream<T>` and all downstream actions.
 
 |onOverflowBuffer(_CompletableQueue_)
 |Create or use the given `CompletableQueue` to store the overflow elements. Overflow occurs when a `Publisher` sends more than actually requested for. Overflow will be drained over the next requests.
@@ -1161,9 +1180,6 @@ Streams.just(1,2,3,4,5)
 |Ignore the overflow elements. Overflow occurs when a `Publisher` sends more than actually requested for. Overflow will be drained over the next requests.
 2+a| image::images/marble/marble-overflowdrop.png[onOverflowDrop(), width=500, align="center", link="images/marble/marble-overflowdrop.png"]
 
-|_All_ sample(_arguments_), sampleFirst(_arguments_)
-|Reduce the volume of a `Stream<T>` by selecting the last (or the first) `onNext(T)` signal matching the given conditions. These condition can be timed, sized, timed or sized, and interactive (event-driven).
-
 |throttle(*long*)
 |Delay downstream `request(long)` and periodically decrement the accumulated demand one by one to request upstream.
 2+a| image::images/marble/marble-throttle.png[throttle(delay), width=500, align="center", link="images/marble/marble-throttle.png"]
@@ -1172,23 +1188,52 @@ Streams.just(1,2,3,4,5)
 |Pass any downstream `request(long)` to `Stream<Long>` sequence of requests that can be altered and returned under any form of `Publisher<Long>`. The `RequestWhenAction` will subscribe to the produced sequence and immiately forwards `onNext(Long)` to the upstream `request(long)`. It behaves similarly to `adaptiveConsume` but can be inserted at any point of the `Stream` pipeline.
 2+a| image::images/marble/marble-requestwhen.png[requestWhen(requestMapper), width=500, align="center", link="images/marble/marble-requestwhen.png"]
 
-|capacity(*long*)
-|<<streams.adoc#stream-capacity, Set the capacity>> to this `Stream<T>` and all downstream actions.
+|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*) _batchConsumeOn_
+|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
+
+|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), _adaptiveConsumeOn_
+|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.  The `AdaptiveConsumerAction` will subscribe to the produced sequence and immiately forwards `onNext(Long)` to the upstream `request(long)`.
 
 |process(*Processor<T, ?>*)
 |Any `Processor` can also take care of transforming the demand, buffer or whatever. It is worth checking the behavior of the given `Processor`.
 
-|filter(_arguments_), take(_arguments_), takeWhile(_arguments_)...
+|_All_ filter(_arguments_), take(_arguments_), takeWhile(_arguments_)...
 |All limit operations can be used to proactively limit the volume of a `Stream`.
 
-|Stream.buffer(_arguments_), reduce(_arguments_), count(_arguments_)...
+|buffer(_arguments_), reduce(_arguments_), count(_arguments_)...
 |All aggregating and metrics operations can be used to proactively limit the volume of a `Stream`.
+
+|_All_ sample(_arguments_), sampleFirst(_arguments_)
+|Reduce the volume of a `Stream<T>` by selecting the last (or the first) `onNext(T)` signal matching the given conditions. These condition can be timed, sized, timed or sized, and interactive (event-driven).
+
+|zip(_arguments_), zipWith(_arguments_)
+|Reduce the volume of N `Stream<T>` to the least signal producing zipped `Publisher`. The aggregated signal from each `Publisher` can be used to produce a distinct value from the N most recent upstream `onNext(T)`.
 
 |===
 
 [[streams-combine]]
 == Combinatory Operations
-TODO Combining multiple Reactive Streams data `Publishers` in an controlled fashion.
+
+Combining `Publisher` allows for coordination between multiple eventually *concurrent sequences* of data.
+They also serve the purpose of <<streams.adoc#stream-flatmap,asynchronous transformations>>, since the resulting sequences will be merged.
+
+[IMPORTANT]
+The downstream request is splitted (minimum 1 by merged `Publisher`).
+
+.Stream.zipWith(Function)
+[source,java]
+----
+Streams
+  .range(1, 100)
+  .zipWith( Streams.generate(() -> System.currentTimeMillis() ), tuple -> tuple ) // <1>
+  .consume(
+    tuple -> System.out.println("number: "+tuple.getT1()+" time: "+tuple.getT2()) , // <2>
+    Throwable::printStackTrace,
+    avoid -> System.out.println("--complete--")
+  );
+----
+<1> "Zip" or aggregate the most recent signal from `RangeStream` and the passed `SupplierStream` providing current time
+<2> "Zip" produces tuples of data from each zipped `Publisher` in the declarative order (left to right, _stream1.zipWith(stream2)_).
 
 .Combining Data Sources
 [cols="2,6", options="header"]
