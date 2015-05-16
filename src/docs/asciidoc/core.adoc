@@ -314,7 +314,7 @@ a|Unbounded and possibly using as much available heap memory as possible
 Single Threaded, no concurrent dispatch
 
 |*WorkQueue*
-|dispatcher("workQueue")
+|workDispatcher()
 |https://lmax-exchange.github.io/disruptor/[An LMAX Disruptor] RingBuffer based Dispatcher.
 a|Latency Peak tolerated for a limited time
 
