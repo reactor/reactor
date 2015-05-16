@@ -1096,8 +1096,41 @@ Backpressure is addressed automatically in a bunch of situations with the *React
 
 If the source is *hot* such as a timer or UI events or the `Subscriber` might request `Long.MAX_VALUE` on a large dataset, a strategy must be explicitely picked by the developer to confront the *backpressure*. 
 
-*Reactor* provides a set of API to deal with both situations.
+.Reactor provides a set of API to deal with both situations:
+****
+* Uncontrolled sequences (Hot) should be actively addressed
+** By *reducing* the sequence volume, e.g. "sampling"
+** By *ignoring* data when the demand is not met
+** By *buffering* data when the demand is not met
+* Controlled sequences (Cold) should be passively addressed
+** By *lowering demand* from the `Subscriber` or at any point of the `Stream`
+** By *gapping demand* with delayed requests
+****
 
+[NOTE]
+====
+*Reactor* will automatically provide for in-memory overflow buffer when the dispatcher or the capacity differs from an action to another. This will not apply to `Core Processors` which handle the overflow in their own way. However dispatchers can be re-used and *Reactor* must limit the number of dispatch where it can, hence why the in-memory buffer are added by `Action` when dispatchers differ. 
+
+[source,java]
+----
+Streams.just(1,2,3,4,5)
+  .buffer(3) // <1>
+  .capacity(2) // <2>
+  //onOverflowBuffer()
+  .consume()
+
+
+Streams.just(1,2,3,4,5)
+  .dispatchOn(dispatcher1) // <3>
+  //onOverflowBuffer()
+  .dispatchOn(dispatcher2) // <4>  
+  .consume()  
+----
+<1> The buffer operation set capacity(3)
+<2> consume() or any downstream action is set with capacity(2), an implicit onOverflowBuffer() is added
+<3> A first action running on dispatcher1
+<4> A second action running on a different dispatcher2, an implicit onOverflowBuffer() is added
+====
 
 .Controlling the volume of in-flight data
 [cols="2,6", options="header"]
@@ -1115,7 +1148,7 @@ If the source is *hot* such as a timer or UI events or the `Subscriber` might re
 
 |adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), _adaptiveConsumeOn_
 |Control
-|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.
+|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.  The `AdaptiveConsumerAction` will subscribe to the produced sequence and immiately forwards `onNext(Long)` to the upstream `request(long)`.
 
 |onOverflowBuffer(_CompletableQueue_)
 |Create or use the given `CompletableQueue` to store the overflow elements. Overflow occurs when a `Publisher` sends more than actually requested for. Overflow will be drained over the next requests.
@@ -1123,23 +1156,26 @@ If the source is *hot* such as a timer or UI events or the `Subscriber` might re
 |onOverflowDrop()
 |Ignore the overflow elements. Overflow occurs when a `Publisher` sends more than actually requested for. Overflow will be drained over the next requests.
 
-|_All_ sample(), sampleFirst()
+|_All_ sample(_arguments_), sampleFirst(_arguments_)
 |Reduce the volume of a `Stream<T>` by selecting the last (or the first) `onNext(T)` signal matching the given conditions. These condition can be timed, sized, timed or sized, and interactive (event-driven).
 
-|throttle(long)
-|Delay downstream `request(long)` 
+|throttle(*long*)
+|Delay downstream `request(long)` and periodically decrement the accumulated demand one by one to request upstream.
 
-|Stream.capacity(long)
+|requestWhen(*Function<Stream<Long>, Publisher<Long>>*)
+|Pass any downstream `request(long)` to `Stream<Long>` sequence of requests that can be altered and returned under any form of `Publisher<Long>`. The `RequestWhenAction` will subscribe to the produced sequence and immiately forwards `onNext(Long)` to the upstream `request(long)`. It behaves similarly to `adaptiveConsume` but can be inserted at any point of the `Stream` pipeline.
+
+|capacity(*long*)
 |<<streams.adoc#stream-capacity, Set the capacity>> to this `Stream<T>` and all downstream actions.
 
-|Stream.process( RingBuffer*Processor )
-|
+|process(*Processor<T, ?>*)
+|Any `Processor` can also take care of transforming the demand, buffer or whatever. It is worth checking the behavior of the given `Processor`.
 
-|Stream.filter(), take(), takeWhile()...
-|All limit operations can be used to proactively limit the volume of a Stream.
+|filter(_arguments_), take(_arguments_), takeWhile(_arguments_)...
+|All limit operations can be used to proactively limit the volume of a `Stream`.
 
-|Stream.buffer(), reduce(), count()...
-|All aggregating and metrics operations can be used to proactively limit the volume of a Stream.
+|Stream.buffer(_arguments_), reduce(_arguments_), count(_arguments_)...
+|All aggregating and metrics operations can be used to proactively limit the volume of a `Stream`.
 
 |===
 
@@ -1403,9 +1439,6 @@ In addition to implementing directly the Reactive Streams, some more `Stream` me
 |
 
 |sort
-|
-
-|requestWhen
 |
 
 |combine
