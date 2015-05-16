@@ -625,6 +625,7 @@ The demand will be aggregated from all child Subscribers.
 
 |===
 
+[[stream-capacity]]
 === Setting Capacity
 
 The Reactive Streams standard encourages application developers to set reasonable limits on in-flight data. This prevents components from becoming innudated with more data than they can handle, which causes unpredictable problems throughput an application. One of the core concepts of Reactive Streams is that of "backpressure", or the ability for a pipeline to communicate to upstream components that it can only handle a fixed number of items at a time. A useful term to describe this process of queueing and requesting small chunks of a large volume of data is "microbatching".
@@ -942,14 +943,14 @@ Collecting grouped sequences of data `T` into lists `List<T>` serves two main pu
 
 ****
 * Expose a sequence matching the boundary conditions into an `Iterable` structure commonly used by JVM APIs
-* Reduce the volume of `onNext(T)` signals, e.g. `buffer(5)` will transform a sequence of 10 elements into a sequence of 2 lists of 5 elements.
+* Reduce the volume of `onNext(T)` signals, e.g. `buffer(5)` will transform a sequence of 10 elements into a sequence of 2 lists (of 5 elements).
 ****
 
 [NOTE]
 Collecting data incurs an overhead in memory and possibly CPU that should be sized appropriately. Small and timed boundaries are advised to avoid any long lasting aggregates.
 
 [WARNING]
-An `Environment` must be initialized if the alias for timed `buffer()` are used without providing the `Timer` argument. If an `Environment` is found, its default `Timer` will be used.
+An `Environment` must be initialized if the timed `buffer()` signatures are used without providing the `Timer` argument.
 
 
 [source,java]
@@ -1091,21 +1092,32 @@ Assert.assertEquals(0, endLatch.getCount());
 [[streams-backpressure]]
 == Backpressure and Overflow
 
+Backpressure is addressed automatically in a bunch of situations with the *Reactive Streams* contract. If a `Subscriber` doesn't request more than it can actually process (request different from `Long.MAX_VALUE`), the upstream source can avoid sending more data. That only works with cold data `Publisher` which can stop-read anytime the mapped source: _How much read from a socket, How much rows from a SQL query, how much lines from a File, how much elements from an Iterable_...
+
+If the source is *hot* such as a timer or UI events or the `Subscriber` might request `Long.MAX_VALUE` on a large dataset, a strategy must be explicitely picked by the developer to confront the *backpressure*. 
+
+*Reactor* provides a set of API to deal with both situations.
+
 
 .Controlling the volume of in-flight data
 [cols="2,6", options="header"]
 |===
 
-|Functional API or Factory method
+|Stream<T>
 |Role
 
-|Stream.subscribe(Subscriber)
-|
+|subscribe(*Subscriber<T>*)
+|A custom `Subscriber<T>` will have all the flexibility to request whenever it wishes. Best to size these requests if the `Subscriber` involve some blocking operations.
 
-|Stream.adaptiveConsume(), Stream.batchConsume()
-|
+|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*) _batchConsumeOn_
+|Control
+|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
 
-|Stream.onOverflowBuffer()
+|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), _adaptiveConsumeOn_
+|Control
+|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.
+
+|onOverflowBuffer(_CompletableBlockingQueue_)
 |
 
 |Stream.onOverflowDrop()
@@ -1117,8 +1129,8 @@ Assert.assertEquals(0, endLatch.getCount());
 |Stream.throttle()
 |
 
-|Stream.capacity()
-|
+|Stream.capacity(long)
+|<<streams.adoc#stream-capacity, Set the capacity>> to this `Stream<T>` and all downstream actions.
 
 |Stream.process( RingBuffer*Processor )
 |
@@ -1149,7 +1161,7 @@ TODO Combining multiple Reactive Streams data `Publishers` in an controlled fash
 |A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
 It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 
-|Streams.concat(Publisher<T>,Publisher<T>?*7),
+|Streams.concat(*Publisher<T>,Publisher<T>?* x7),
 Streams.concat(Publisher<Publisher<T>>),
 Stream.concatWith(Publisher),
 Stream.startWith(Publisher)

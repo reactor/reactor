@@ -186,9 +186,11 @@ public abstract class HttpServer<IN, OUT>
 		final List<Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
 				selected = routedWriters.select(ch);
 
-		String connection = ch.headers().get(HttpHeaders.CONNECTION);
-		if(connection != null && connection.equals(HttpHeaders.UPGRADE)){
-			onWebsocket(ch);
+		if(hasWebsocketEndpoints) {
+			String connection = ch.headers().get(HttpHeaders.CONNECTION);
+			if (connection != null && connection.equals(HttpHeaders.UPGRADE)) {
+				onWebsocket(ch);
+			}
 		}
 
 		return new Iterable<Publisher<Void>>() {
