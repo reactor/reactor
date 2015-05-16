@@ -1117,17 +1117,17 @@ If the source is *hot* such as a timer or UI events or the `Subscriber` might re
 |Control
 |Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.
 
-|onOverflowBuffer(_CompletableBlockingQueue_)
-|
+|onOverflowBuffer(_CompletableQueue_)
+|Create or use the given `CompletableQueue` to store the overflow elements. Overflow occurs when a `Publisher` sends more than actually requested for. Overflow will be drained over the next requests.
 
-|Stream.onOverflowDrop()
-|
+|onOverflowDrop()
+|Ignore the overflow elements. Overflow occurs when a `Publisher` sends more than actually requested for. Overflow will be drained over the next requests.
 
-|Stream.sample(), Stream.sampleFirst()
-|
+|_All_ sample(), sampleFirst()
+|Reduce the volume of a `Stream<T>` by selecting the last (or the first) `onNext(T)` signal matching the given conditions. These condition can be timed, sized, timed or sized, and interactive (event-driven).
 
-|Stream.throttle()
-|
+|throttle(long)
+|Delay downstream `request(long)` 
 
 |Stream.capacity(long)
 |<<streams.adoc#stream-capacity, Set the capacity>> to this `Stream<T>` and all downstream actions.
