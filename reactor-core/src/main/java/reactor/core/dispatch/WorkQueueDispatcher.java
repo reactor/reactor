@@ -123,11 +123,11 @@ public final class WorkQueueDispatcher extends MultiThreadDispatcher implements 
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
-		shutdown();
 		try {
+			disruptor.shutdown(timeout, timeUnit);
+			super.shutdown();
 			executor.awaitTermination(timeout, timeUnit);
-			disruptor.shutdown();
-		} catch (InterruptedException e) {
+		} catch (Exception e) {
 			return false;
 		}
 		return true;
@@ -135,15 +135,15 @@ public final class WorkQueueDispatcher extends MultiThreadDispatcher implements 
 
 	@Override
 	public void shutdown() {
-		disruptor.shutdown();
 		executor.shutdown();
+		disruptor.shutdown();
 		super.shutdown();
 	}
 
 	@Override
 	public void forceShutdown() {
-		disruptor.halt();
 		executor.shutdownNow();
+		disruptor.halt();
 		super.forceShutdown();
 	}
 

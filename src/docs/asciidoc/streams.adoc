@@ -1233,7 +1233,7 @@ h|zip(_arguments_), zipWith(_arguments_)
 == Combinatory Operations
 
 Combining `Publisher` allows for coordination between multiple eventually *concurrent sequences* of data.
-They also serve the purpose of <<streams.adoc#stream-flatmap,asynchronous transformations>>, since the resulting sequences will be merged.
+They also serve the purpose of <<streams.adoc#stream-flatmap,asynchronous transformations>>, with the resulting sequences being merged.
 
 [IMPORTANT]
 The downstream request is splitted (minimum 1 by merged `Publisher`).
@@ -1261,21 +1261,25 @@ h|Functional API or Factory method
 
 |
 
-h|Stream.flatMap
+h|Stream.flatMap(Function<T, Publisher<V>>)
 ^.^|
 
 h|Streams.switchOnNext(Publisher<Publisher<T>>)
 ^.^|A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
 It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 
-h|Streams.concat(*Publisher<T>,Publisher<T>?* x7),
+h|Streams.concat(Publisher<T>, _Publisher<T> x7_),
 Streams.concat(Publisher<Publisher<T>>),
 Stream.concatWith(Publisher),
 Stream.startWith(Publisher)
 ^.^|If a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>.
 
-h|Streams.merge, Stream.mergeWith
+h|Streams.merge(Publisher<T>, _Publisher<T> x7_),
+Streams.merge(Publisher<Publisher<T>>), 
+Stream.mergeWith(Publisher<T>), 
+Stream.merge()
 ^.^|
+
 
 h|Streams.combineLatest
 ^.^|

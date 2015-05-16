@@ -162,13 +162,15 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		boolean alive = alive();
-		shutdown();
+		executor.shutdown();
 		try {
+			disruptor.shutdown(timeout, timeUnit);
+			super.shutdown();
 			executor.awaitTermination(timeout, timeUnit);
 			if (alive) {
 				disruptor.shutdown();
 			}
-		} catch (InterruptedException e) {
+		} catch (Exception e) {
 			return false;
 		}
 		return true;
@@ -176,15 +178,15 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 
 	@Override
 	public void shutdown() {
-		disruptor.shutdown();
 		executor.shutdown();
+		disruptor.shutdown();
 		super.shutdown();
 	}
 
 	@Override
 	public void forceShutdown() {
-		disruptor.halt();
 		executor.shutdownNow();
+		disruptor.halt();
 		super.forceShutdown();
 	}
 
