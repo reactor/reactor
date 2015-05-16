@@ -3021,6 +3021,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		private final Action<O, ?> action;
 		private final Dispatcher dispatcher;
 
+		@SuppressWarnings("unchecked")
 		public SubscribeOn(Dispatcher dispatcher, Subscriber<? super O> subscriber) {
 			this.dispatcher = dispatcher;
 			this.subscriber = subscriber;
