@@ -1335,7 +1335,44 @@ Stream.joinWith(Publisher<T>)
 [[streams-microservice]]
 == MicroServices
 
-A `Publisher` like a `Stream` or a `Promise` are ideal to confront `MicroService` latency and failover. To improve the situation with better error isolation and non-blocking service calls, code has to be designed with these two constraints in mind. Part of the migration story to reactive architecture is to work step by step with quick wins with few adjustements, test and iterate to the next step.
+The notion of http://martinfowler.com/articles/microservices.html[MicroService] has been an increasingly popular term over the last years. Simply put, we code software components with a focused purpose to encourage _isolation_, _adapted scaling_ and _reuse_. In fact it has been over 30 years we use them:
+
+.An example of microservices in Unix
+----
+history | grep password
+----
+
+Even within the boundaries of the application, we can find the similar concept of functional granularity:
+
+.An example of microservices in _imperative_ Java code
+[source, java]
+----
+User rick = userService.get("Rick");
+User morty = userService.get("Morty");
+List<Mission> assigned = missionService.findAllByUserAndUser(rick, morty);
+----
+
+Of course the application has been widely popular within distributed systems and http://12factor.net[cloud-ready architectures]. When the function is isolated enough, it will depend on N other ones for : Data access, subroutine calls over network, posting into message bus, querying an HTTP REST endpoint etc. This is where troubles begin: *the execution flow is crossing multiple context boundaries*. Relatively latency and failure will start to scale up as the system grows in volume and access.
+
+At this point we can decide to _scale-out_, after all platforms such as http://www.cloudfoundry.org[CloudFoundry] allow for elastic scaling of JVM apps and beyond. But looking at our CPU and memory use, it didn't seem particularly under pressure. Of course it was not, each remote call was just blocking the whole service and preventing concurrent user requests to kick in: They are just parked in some thread pool queue. In the meantime the active request was happily seating for a few milliseconds or more waiting for a remote HTTP call socket to actually write, a delay we call *latency* here.
+
+The same applies to errors, we can make applications more resilient (fallbacks, timeouts, retries...) individually first and not rely on _scaling out_. The classic hope is that a replicate microservice will pick up the requests when a load-balancer will detect the failure:
+
+----
+Load Balancer: "are you dead ?"
+30 sec later
+Load Balancer: "are you dead ?"
+30 sec later
+Load Balancer: "you're dead !"
+MicroService "I'am alive !"
+----
+
+[discrete]
+==== In a Distributed System, coordination pulls a very long string of issues you wish you have never faced.
+
+A `Publisher` like a `Stream` or a `Promise` is ideal to confront *MicroServices* latency and errors. To improve the situation with better error isolation and non-blocking service calls, code has to be designed with these two constraints in mind. To put on your side the best chances for a successful migration story to a Reactive Architecture, you might prefer to work step by step with quick wins and a few adjustements, test and iterate to the next step.
+
+In this section we're going to cover the basics to create a reactive facade gating each costly remote call, build functional services and make them latency-ready.
 
 .Becoming Reactive with Reactor in 3 steps:
 ****
@@ -1350,6 +1387,46 @@ A `Publisher` like a `Stream` or a `Promise` are ideal to confront `MicroService
 ** Optimize IO operations with Microbatching
 ****
 
+.Common Actions at play when reading remote resources
+|===
+
+h|Functional API or Factory method
+^.^|Role
+
+|
+
+h|Streams.create(Publisher), Streams.defer(Supplier), Streams.wrap(Publisher), Streams.generate(Supplier)
+^.^|Protecting resource access with a `Publisher` is encouraged. A few <<streams.adoc#streams-basics, Stream factories>> will be particularly useful. The point of creating a `Publisher` is to only `onNext(T)` when the data is ready such as in an IO callback. The read should be triggered by a `Subscriber` request if possible to implement a form of backpressure.
+
+h|Stream.timeout(_arguments_)
+^.^|Accessing an external resource, especially remote, should always be limited in time to become more resilient to external conditions such as network partitions. Timeout operations can fallback to another `Publisher` for alternative  service call or just `onError(TimeoutException)`. The timer resets each time a fresh `onNext(T)` is observed.
+
+h|Stream.take(_arguments_)
+^.^|Similar to `timeout()`, a need to scope in size an external resource is a common one. It's also useful to fully trigger a pipeline including `onComplete()` processing.
+
+h|Stream.flatMap(Function<T,Publisher<V>)
+^.^|An <<streams.adoc#stream-flatmap,Async transformation>> that produces a `Publisher<V>` eventully using the passed data `T`, the ideal place to hook in a call to another service before resuming the current processing.
+
+The sequence of produced `Publisher<V>` will flow in the `Subscriber` into a sequence of `V` by _safely_ subscribing in parallel. 
+
+h|Stream.subscribeOn(Dispatcher), Stream.dispatchOn(Dispatcher), _Core Processors_
+a|<<streams.adoc#streams-multithreading,Threading control>> is strategic:
+
+****
+* Slow MicroService, low volume or low throughput, e.g. HTTP GET -> `subscribeOn(workQueueDispatcher())` to scale-up concurrent service calls.
+* Fast MicroService, high volume or high throughput, e.g. Message Bus -> `dispatchOn(sharedDispatcher())` or `RingBufferXXXProcessor.create()` to scale up message-dispatching.
+****
+
+|===
+
+[[streams-microservice-start]]
+=== Creating Non-Blocking Services
+
+The first step is to isolate the microservice access. Instead of returning a type `T` or `Future<T>`, we will now start using `Publisher<T>` and specifically `Stream<T>` or `Promise<T>`. The immediate benefit is we don't need to worry anymore about error handling and threading (yet): Errors are propagated in `onError` calls (no bubble up), threading might be tuned later for instance using `dispatchOn`. The additional bonus is we get to make our code more _functional_. It also works nice with Java 8 Lambdas! The target will be to reduce control brackets noise (if, for, while...) and limit more the need for sharing context. Ultimately our target design will encourage streaming over polling large datasets : functions will apply to a sequence, result by result, avoiding loop duplication.
+
+[IMPORTANT]
+We prefer to use the implementation artefacts and not `Publisher<T>` to get compile-time access to all the *Reactor Stream* API, unless we want to be API agnostic (a possible case for library developers). `Streams.wrap(Publisher<T>)` will do the trick anyway to convert such generic return type into a proper `Stream<T>`.
+
 .Evolving to reactive microservices, part 1, error isolation and non-blocking
 [cols="1,1"]
 |===
@@ -1361,6 +1438,7 @@ a|
 ----
 public class UserService{
   //...
+
   public User get(String name) throws Exception {
     Result r = userDB.findByName(name);
     return convert(r);
@@ -1392,6 +1470,7 @@ a|
 ----
 public class UserService{
   //...
+
   public Promise<User> get(final String name) {
     return Promises
       .task( () -> userDB.findByName(name))
@@ -1412,49 +1491,15 @@ public class UserService{
         .filter(User::isAdmin)
         .flatMap(user -> all());
   }
-
 }
 ----
 |===
 
-.Reading remote resources
-|===
-
-h|Functional API or Factory method
-^.^|Role
-
-|
-
-h|Streams.create(Publisher), Streams.defer(Supplier), Streams.wrap(Publisher), Streams.generate(Supplier)
-^.^|Protecting resource access with a `Publisher` is encouraged. A few <<streams.adoc#streams-basics, Stream factories>> will be particularly useful. The point of creating a `Publisher` is to only `onNext(T)` when the data is ready such as in an IO callback. The read should be triggered by a `Subscriber` request if possible to implement a form of backpressure.
-
-h|Stream.timeout(_arguments_)
-^.^|Accessing an external resource, especially remote, should always be limited in time to become more resilient to external conditions such as network partitions. Timeout operations can fallback to another `Publisher` for alternative  service call or just `onError(TimeoutException)`. The timer resets each time a fresh `onNext(T)` is observed.
-
-h|Stream.take(_arguments_)
-^.^|Similar to `timeout()`, a need to scope in size an external resource is a common need especially to fully trigger a pipeline including `onComplete()` processing.
-
-h|Stream.flatMap(Function<T,Publisher<V>)
-^.^|An <<streams.adoc#stream-flatmap,Async transformation>> and typed shortcut for `map(Function<T, Publisher<V>>).merge()`. 
-
-The mapping part produces a `Publisher<V>` eventully using the passed data `T`, a common pattern used in <<streams.adoc#streams-microservice, MicroService architecture>>. 
-
-The merging part transforms the sequence of produced `Publisher<V>` into a sequence of `V` by _safely_ subscribing in parallel to all of them. There is no ordering guaranteed, it is *interleaved* sequence of `V`.
-
-h|Stream.subscribeOn(Dispatcher), Stream.dispatchOn(Dispatcher), _Core Processors_
-a|<<streams.adoc#streams-multithreading,Threading control>> is strategic:
-
-****
-* Slow MicroService, low volume or low throughput, e.g. HTTP GET -> `subscribeOn(workQueueDispatcher())` to scale-up concurrent service calls.
-* Fast MicroService, high volume or high throughput, e.g. Message Bus -> `dispatchOn(sharedDispatcher())` or `RingBufferXXXProcessor.create()` to scale up message-dispatching.
-****
-
-|===
-
-[[streams-microservice-start]]
-=== Creating Non-Blocking Services
 [[streams-microservice-compose]]
 === Composing multiple Services Calls
+
+
+
 [[streams-microservice-share]]
 === Choosing the right (multi)threading strategy
 
