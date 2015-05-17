@@ -52,7 +52,7 @@ public class FlowControlAction<O> extends Action<O, O> {
 				@Override
 				public void onRequest(long elements) {
 					super.onRequest(elements);
-					requestUpstream(capacity, buffer.isComplete(), elements);
+					requestUpstream(capacity, buffer.isComplete(), capacity);
 				}
 			};
 		} else {
@@ -60,7 +60,7 @@ public class FlowControlAction<O> extends Action<O, O> {
 				@Override
 				public void request(long elements) {
 					super.request(elements);
-					requestUpstream(capacity, isComplete(), elements);
+					requestUpstream(capacity, isComplete(), capacity);
 				}
 			};
 		}
