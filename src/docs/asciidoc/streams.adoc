@@ -1343,10 +1343,60 @@ Stream.joinWith(Publisher<T>)
 
 TODO Using a `Stream` or a `Promise` to deal with remote `MicroService` latency.
 
+.Evolving to reactive microservices
+[cols="1,1"]
+|===
+^.^h|The Not So Much Win
+^.^h|The Win 
+a|
+
 [source,java]
 ----
+public class UserService{
+  //...
+  public User get(String name) throws Exception {
+    Result r = userDB.findByName(name);
+    return convert(r);
+  }
 
+  public Future<List<User>> all() throws Exception {    
+    final CompletableFuture<Result> f = 
+      new CompletableFuture<Result>();
+
+    userDB.findAll().onResult( r ->
+      f.complete(convertToList(r));
+    );
+    r.on
+    return f;
+  }
+
+}
 ----
+
+a|
+
+[source,java]
+----
+public class UserService{
+  //...
+  public Promise<User> get(final String name) {
+    return Promises
+      .task( () -> userDB.findByName(name))
+      .map(this::convert)
+      .subscribeOn(workDispatcher());
+  }
+
+  public Stream<User> all()  {    
+    return Streams
+      .defer(() -> Streams.from(userDB.findAll()))
+      .map(this::convert)
+      .dispatchOn(cachedDispatcher());
+      .subscribeOn(workDispatcher());
+  }
+
+}
+----
+|===
 
 .Reading remote resources
 |===
@@ -1373,7 +1423,7 @@ The mapping part produces a `Publisher<V>` eventully using the passed data `T`, 
 The merging part transforms the sequence of produced `Publisher<V>` into a sequence of `V` by _safely_ subscribing in parallel to all of them. There is no ordering guaranteed, it is *interleaved* sequence of `V`.
 
 h|Stream.subscribeOn(Dispatcher), Stream.dispatchOn(Dispatcher), _Core Processors_
-^.^a|<<streams.adoc#streams-multithreading,Threading control>> is strategic:
+a|<<streams.adoc#streams-multithreading,Threading control>> is strategic:
 
 ****
 * Slow MicroService, low volume or low throughput, e.g. HTTP GET -> `subscribeOn(workQueueDispatcher())` to scale-up concurrent service calls.
@@ -1546,7 +1596,7 @@ h|Stream<T> API
 |Output Type
 2+^.^|Role
 
-|
+2+|
 
 h|groupBy(Function<T,K>)
 |GroupedStream<K,T>
@@ -1583,7 +1633,7 @@ h|Stream<T> API
 |Output Type
 3+^.^|Role
 
-|
+3+|
 
 h|after()
 |T
@@ -1600,15 +1650,15 @@ h|split
 |T
 3+^.^|Blocking transformation from `Iterable<T>` to as many `onNext(T)` as available.
 
-|sort(_int_, Comparator<T>)
+h|sort(_int_, Comparator<T>)
 |T
 |T
 3+^.^|Accept up to the given size into an in memory `PriorityQueue`, apply the `Comparator<T>` to sort, and emit all its pending `onNext(T)` signals.
 
-|combine()
+h|combine()
 |I
 |O
-3+^.^|Scan for the most ancient parent or `Action`, from right to left. As a result, it will create a new `Processor` with the input `onXXXX` signals dispatched to the old action and the output `subscribe` delegated to the current action.
+3+a|Scan for the most ancient parent or `Action`, from right to left. As a result, it will create a new `Processor` with the input `onXXXX` signals dispatched to the old action and the output `subscribe` delegated to the current action.
 
 Example: 
 
@@ -1624,7 +1674,7 @@ Action<Integer, String> processor = stream
   processor.onNext(3);
 ----
 
-|keepAlive()
+h|keepAlive()
 |T
 |T
 3+^.^|Prevent any `Subscription.cancel()` to propagate from the `Subscriber`.
