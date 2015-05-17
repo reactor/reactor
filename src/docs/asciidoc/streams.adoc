@@ -266,25 +266,27 @@ h|Streams.switchOnNext(*Publisher<Publisher<T>>*)
 2+^.^|A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
 It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 
-h|Streams.concat(*Publisher<T>*, _Publisher<T>*_),
+h|Streams.concat(*Publisher<T>*, _Publisher<T>*_)
+
 Streams.concat(*Publisher<Publisher<T>>*)
 |T
 2+^.^|If a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>. As the name suggests its useful to http://rxmarbles.com/#concat[concat various datasources] and keep ordering right.
 
-h|Streams.merge(*Publisher<T>, Publisher<T>*, Publisher<T>*),
+h|Streams.merge(*Publisher<T>, Publisher<T>*, Publisher<T>*)
+
 Streams.merge(*Publisher<Publisher<T>>*)
 |T
 2+^.^|http://rxmarbles.com/#merge[Accept multiple sources] and *interleave* their respective sequence. Order won't be preserved like with `concat`. Demand from a Subscriber will be splitted between various source with a minimum of 1 by upstream to make sure everyone has a chance to send something.
 
-h|Streams.combineLatest(*Publisher<T1>, Publisher<T2>*, _Publisher<T3-N>\*_, *Function<Tuple2-N, C>*)
+h|Streams.combineLatest(*Publisher<T1>, Publisher<T2>*, _Publisher<T3-N> x6_, *Function<Tuple2-N, C>*)
 |C
 2+^.^|http://rxmarbles.com/#combineLatest[Combine most recent emitted elements] from the passed sources using the given `Function` aggregating function.
 
-h|Streams.combineLatest(*Publisher<T1>, Publisher<T2>,* _Publisher<T3-N>\*_, *Function<Tuple2-N, C>*)
+h|Streams.combineLatest(*Publisher<T1>, Publisher<T2>,* _Publisher<T3-N> x6_, *Function<Tuple2-N, C>*)
 |C
 2+^.^|http://rxmarbles.com/#zip[Combine most recent emitted elements once], everytime every source has emitted a signal, apply the given `Function` and clear the temporary aggregate. Effectively it's a flexible _join_ mechanism for multiple different type of sources.
 
-h|Streams.join(*Publisher<T>, Publisher<T>*, _Publisher<T>*>_)
+h|Streams.join(*Publisher<T>, Publisher<T>*, _Publisher<T> x6_)
 |List<T>
 2+^.^|A shortcut for zip that only aggregate each complete aggregate in a List matching the order of the passed argument sources.
 
@@ -312,15 +314,15 @@ h|BiStreams.scanByKey(*Publisher<Tuple2<KEY,VALUE>>*, _Map<KEY,VALUE>, Publisher
 |Tuple2<KEY,VALUE>
 2+^.^|A key-value operation that accumulates computed results for each 2 sequential `onNext(VALUE)` passed to the `BiFunction` argument. The result will be released every time just after it has been stored.  The options allow to use an existing map store and listen for its events.
 
-h|Promises.when(*Promise<T1>, Promise<T2>*, _Promise<T3-N>*_)
+h|Promises.when(*Promise<T1>, Promise<T2>*, _Promise<T3-N> x6_)
 |TupleN<T1,T2,\*?>
 2+^.^|Join all unique results from `Promises` and provide for the new `Promise` with the aggregated `Tuple`.
 
-h|Promises.any(*Promise<T>, Promise<T>*, _Promise<T>*_)
+h|Promises.any(*Promise<T>, Promise<T>*, _Promise<T> x6_)
 |T
 2+^.^|Pick the first signal available among the passed promises and `onNext(T)` the returned `Promise` with this result.
 
-h|Promises.multiWhen(*Promise<T>, Promise<T>*, _Promise<T>*_)
+h|Promises.multiWhen(*Promise<T>, Promise<T>*, _Promise<T> x6_)
 |List<T>
 2+^.^|Join all unique results from `Promises` and provide for the new `Promise` with the aggregated `List`. The difference with the `when` alternative is that the type of promises must match.
 
@@ -481,7 +483,9 @@ h|Streams.wrap(*Processor<I, O>*)
 onSubscribe > onNext\* > (onError \| onComplete)
 
 
-h|Promises.<T>prepare(*Environment, Dispatcher*), Promises.ready()
+h|Promises.<T>prepare(*Environment, Dispatcher*)
+
+Promises.ready()
 |T
 |T
 3+^.^|Prepare a `Promise` ready to be called *once only* by any external context through `onNext`. Since it's a stateful container holding the result of the fulfilled promise, new subscribers will immediately run on the current thread.
@@ -577,11 +581,15 @@ h|Stream<T> method
 
 2+^.^|
 
-h|subscribe(*Subscriber<T>*), +subscribeOn
+h|subscribe(*Subscriber<T>*)
+
+_subscribeOn_
 |void
 2+^.^|Subscribe the passed *Subscriber<T>* and therefore materialize any pending upstream wired up lazily (the implicit *lift* for non terminal operation). Note a Subscriber must request data if it expects some. The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the subscriber.
 
-h|consume(_Consumer<T>,Consumer<T>,Consumer<T>_), _consumeOn_
+h|consume(_Consumer<T>,Consumer<T>,Consumer<T>_)
+
+_consumeOn_
 |Control
 2+^.^|Call `subscribe` with a `ConsumerAction` which interact with each passed optional `Consumer` every time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is Long.MAX_VALUE by default for unbounded consuming.  The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the consumers. Returns a Control argument to eventually cancel the materialized `Stream` if necessary. Note that `ConsumeAction` take care of unbounded recursion if the `onNext(T)` signal triggers a blocking request.
 
@@ -594,11 +602,15 @@ h|tap()
 2+^.^|Similar to `consume` but return a `TapAndControls` that will be dynamically updated everytime a new `onNext(T)` is signalled and cancelled anytime.
 
 
-h|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*) _batchConsumeOn_
+h|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*)
+
+_batchConsumeOn_
 |Control
 2+^.^|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
 
-h|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), _adaptiveConsumeOn_
+h|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*)
+
+_adaptiveConsumeOn_
 |Control
 2+^.^|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.
 
@@ -619,7 +631,9 @@ h|cache()
 2+^.^|Turn any Stream into a *Cold* Stream, able to replay all the sequence of signals indivudally for each Subscriber.
 Due to the unbounded nature of the action, consider to use with small sequences.
 
-h|broadcast(), broadcastOn(Environment, Dispatcher)
+h|broadcast()
+
+broadcastOn(Environment, Dispatcher)
 |Stream<T>
 2+^.^|Turn Any Stream into a *Hot* Stream. This will prevent pipeline duplication by immediately materializing the `Stream` and be ready to publish the signal to N Subscribers downstream.
 The demand will be aggregated from all child Subscribers.
@@ -811,10 +825,14 @@ h|Functional API or Factory method
 h|Streams.await(Publisher<?>)
 ^.^|Block until the passed Publisher `onComplete()` or `onError(e)`, bubbling up the eventual exception.
 
-h|Stream.next() + Promise.await(), Promise.get()...
+h|Stream.next() 
+
+_with_ Promise.await(), Promise.get()...
 ^.^|Capture in a Promise the immediate next signal only and `onComplete()` if the signal was a data. `get()` can be used to touch but not wait on the promise to fulfill.
 
-h|Stream.toList() + Promise.await(), Promise.get()...
+h|Stream.toList()
+
+_with_ Promise.await(), Promise.get()...
 ^.^|Similar to `next()` but capture the full sequence in a List<T> to fulfill the `Promise<List<T>>` returned.
 
 h|Stream.toBlockingQueue()
@@ -1206,10 +1224,14 @@ h|requestWhen(*Function<Stream<Long>, Publisher<Long>>*)
 
 image::images/marble/marble-requestwhen.png[requestWhen(requestMapper), width=500, align="center", link="images/marble/marble-requestwhen.png"]
 
-h|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*) _batchConsumeOn_
+h|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*) 
+
+_batchConsumeOn_
 ^.^|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
 
-h|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), _adaptiveConsumeOn_
+h|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), 
+
+_adaptiveConsumeOn_
 ^.^|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.  The `AdaptiveConsumerAction` will subscribe to the produced sequence and immiately forwards `onNext(Long)` to the upstream `request(long)`.
 
 h|process(*Processor<T, ?>*)
@@ -1235,8 +1257,12 @@ h|zip(_arguments_), zipWith(_arguments_)
 Combining `Publisher` allows for coordination between multiple eventually *concurrent sequences* of data.
 They also serve the purpose of <<streams.adoc#stream-flatmap,asynchronous transformations>>, with the resulting sequences being merged.
 
-[IMPORTANT]
-The downstream request is splitted (minimum 1 by merged `Publisher`).
+Coordinating in a non-blocking way will free the developer from using `Future.get()` or `Promise.await()`, a perillous task when it comes to more than 1 signal. Being non-blocking means the distinct pipelines won't wait on anything else than `Subscriber` demand. The `Subscriber` requests will be splitted, with a minimum request of 1 by merged `Publisher`.
+
+Merging actions are modeled in `FanInAction` and take care of concurrency signaling with a *thread-stealing* `SerializedSubscriber` proxy to the delegate `Subscriber`. It will verify on each signal if a thread is already running the delegate `Subscriber`, thus rescheduling the new signal. The signal will then be polled when the busy thread exits `Subscriber` code, possibly running the signal in a different thread than originally produced on.
+
+[WARNING]
+<<streams.adoc#streams-backpressure,Reducing the demand volume>> before using `flatMap` might be a good or a bad idea. In effect it doesn't deserve the merging action to subscribe to many parallel `Publisher` if it can't actually process them all. However it limiting the parallel `Publisher` size might also not give a chance to faster `Publisher` pending a request to be delivered. The request will only come after the current `Publishers` terminate.
 
 .Stream.zipWith(Function)
 [source,java]
@@ -1253,7 +1279,7 @@ Streams
 <1> "Zip" or aggregate the most recent signal from `RangeStream` and the passed `SupplierStream` providing current time
 <2> "Zip" produces tuples of data from each zipped `Publisher` in the declarative order (left to right, _stream1.zipWith(stream2)_).
 
-.Combining Data Sourcesdd
+.Combining Data Sources
 |===
 
 h|Functional API or Factory method
@@ -1262,33 +1288,53 @@ h|Functional API or Factory method
 |
 
 h|Stream.flatMap(Function<T, Publisher<V>>)
-^.^|
+^.^|An <<streams.adoc#stream-flatmap,Async transformation>> is a typed shortcut for `map(Function<T, Publisher<V>>).merge()`. 
+
+The mapping part produces a `Publisher<V>` eventully using the passed data `T`, a common pattern used in <<streams.adoc#streams-microservice, MicroService architecture>>. 
+
+The merging part transforms the sequence of produced `Publisher<V>` into a sequence of `V` by _safely_ subscribing in parallel to all of them. There is no ordering guaranteed, it is *interleaved* sequence of `V`. All merged `Publisher<T>` must complete before the `Subscriber<T>` can complete.
 
 h|Streams.switchOnNext(Publisher<Publisher<T>>)
 ^.^|A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
 It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
+All merged `Publisher<T>` must complete before the `Subscriber<T>` can complete.
 
-h|Streams.concat(Publisher<T>, _Publisher<T> x7_),
-Streams.concat(Publisher<Publisher<T>>),
-Stream.concatWith(Publisher),
-Stream.startWith(Publisher)
-^.^|If a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>.
+h|Streams.merge(Publisher<T>, _Publisher<T> x7_)
 
-h|Streams.merge(Publisher<T>, _Publisher<T> x7_),
-Streams.merge(Publisher<Publisher<T>>), 
-Stream.mergeWith(Publisher<T>), 
+Streams.merge(Publisher<Publisher<T>>)
+
+Stream.mergeWith(Publisher<T>)
+
 Stream.merge()
-^.^|
+^.^|Transform upstream sequence of `Publisher<T>` into a sequence of `T` by _safely_ subscribing in parallel to all of them. There is no ordering guaranteed, it is *interleaved* sequence of `T`. If the arguments are directly `Publisher<T>` like in `Stream.mergeWith(Publisher<T>)` or `Streams.merge(Publisher<T>, Publisher<T>)`, the `MergeAction` will subscribe to them directly and size more efficiently (known number of parallel upstreams). All merged `Publisher<T>` must complete before the `Subscriber<T>` can complete.
 
+h|Streams.concat(Publisher<T>, _Publisher<T> x7_)
 
-h|Streams.combineLatest
-^.^|
+Streams.concat(Publisher<Publisher<T>>)
 
-h|Streams.zip, Stream.zipWith,
-^.^|
+Stream.concatWith(Publisher)
 
-h|Streams.join, Stream.joinWith
-^.^|
+Stream.startWith(Publisher)
+^.^|Similar to `merge()` actions but if a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>. The sequences will be subscribed in declarative order, from left to right, e.g. `stream1.concatWith(stream2)` or with the argument given in `stream2.startWith(stream1)`.
+
+h|Streams.combineLatest(Publisher<T>, _Publisher<T> x7_, Function<Tuple,V>)
+
+Streams.combineLatest(Publisher<Publisher<T>>, Function<Tuple,V>)
+^.^|Combine the most recent `onNext(T)` signal from each distinct `Publisher<T>`. Each signal combines until a future `onNext(T)` from its source `Publisher<T>` replaces it. *After* all `Publisher<T>` have emitted at least one signal, the given combinator function will accept all recent signals and produce the desired combined object. If any `Publisher<T>` completes, the downstream `Subscriber<T>` will complete.
+
+h|Streams.zip(Publisher<T>, _Publisher<T> x7_, Function<Tuple,V>)
+
+Streams.zip(Publisher<Publisher<T>>, Function<Tuple,V>)
+
+Stream.zipWith(Publisher<T>, Function<Tuple2,V>)
+^.^|Combine the most recent `onNext(T)` signal from each distinct `Publisher<T>`. Each signal combines only once. *Everytime* all `Publisher<T>` have emitted one signal, the given zipper function will receive them and produce the desired zipped object. If any `Publisher<T>` completes, the downstream `Subscriber<T>` will complete.
+
+h|Streams.join(Publisher<T>, _Publisher<T> x7_)
+
+Streams.join(Publisher<Publisher<T>>)
+
+Stream.joinWith(Publisher<T>)
+^.^|A shortcut for `zip` with a predefined zipper function transforming each most recent `Tuple` into a `List<?>`.
 
 |===
 
@@ -1315,7 +1361,11 @@ h|Stream.take()
 ^.^|
 
 h|Stream.flatMap
-^.^|
+^.^|An <<streams.adoc#stream-flatmap,Async transformation>> and typed shortcut for `map(Function<T, Publisher<V>>).merge()`. 
+
+The mapping part produces a `Publisher<V>` eventully using the passed data `T`, a common pattern used in <<streams.adoc#streams-microservice, MicroService architecture>>. 
+
+The merging part transforms the sequence of produced `Publisher<V>` into a sequence of `V` by _safely_ subscribing in parallel to all of them. There is no ordering guaranteed, it is *interleaved* sequence of `V`.
 
 h|Stream.subscribeOn(), Stream.dispatchOn()
 ^.^|

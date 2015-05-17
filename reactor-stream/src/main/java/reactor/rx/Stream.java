@@ -3034,7 +3034,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 		@Override
 		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
-			return action != null ? action.isReactivePull(dispatcher, producerCapacity) : true;
+			return action == null || action.isReactivePull(dispatcher, producerCapacity);
 		}
 
 		@Override
