@@ -987,7 +987,6 @@ An `Environment` must be initialized if the timed `buffer()` signatures are used
 ----
 long timeout = 100;
 final int batchsize = 4;
-int parallelStreams = 16;
 CountDownLatch latch = new CountDownLatch(1);
 
 final Broadcaster<Integer> streamBatcher = Broadcaster.<Integer>create(env);
@@ -998,16 +997,11 @@ streamBatcher
 
 streamBatcher.onNext(12);
 streamBatcher.onNext(123);
+Thread.sleep(200)
 streamBatcher.onNext(42);
 streamBatcher.onNext(666);
 
-boolean finished = latch.await(2, TimeUnit.SECONDS);
-if (!finished)
-  throw new RuntimeException(streamBatcher.debug().toString());
-else {
-  System.out.println(streamBatcher.debug().toString());
-  assertEquals("Must have correct latch number : " + latch.getCount(), latch.getCount(), 0);
-}
+latch.await(2, TimeUnit.SECONDS);
 ----
 
 .Chunk processing with Stream buffers (returning Stream<List<T>>):
@@ -1065,7 +1059,7 @@ stream.window(10, 1, TimeUnit.SECONDS).flatMap( window -> window.buffer() )
 ====
 
 [WARNING]
-An `Environment` must be initialized if the alias for timed `buffer()` are used without providing the `Timer` argument. If an `Environment` is found, its default `Timer` will be used.
+An `Environment` must be initialized if the alias for timed `window()` are used without providing the `Timer` argument.
 
 [source,java]
 ----
@@ -1341,9 +1335,22 @@ Stream.joinWith(Publisher<T>)
 [[streams-microservice]]
 == MicroServices
 
-TODO Using a `Stream` or a `Promise` to deal with remote `MicroService` latency.
+A `Publisher` like a `Stream` or a `Promise` are ideal to confront `MicroService` latency and failover. To improve the situation with better error isolation and non-blocking service calls, code has to be designed with these two constraints in mind. Part of the migration story to reactive architecture is to work step by step with quick wins with few adjustements, test and iterate to the next step.
 
-.Evolving to reactive microservices
+.Becoming Reactive with Reactor in 3 steps:
+****
+. Transform target service calls into _unbounded_ `Stream` or `Promise` return types
+** Asynchronous switch for Blocking -> Non Blocking conversion
+** Error isolation
+. Compose services with the *Reactor Stream* API
+** Blocking -> Non Blocking coordination
+** Parallelize Blocking calls
+. Evolve transformed services to backpressure ready `Stream`
+** Chunk processing/reading with bounded access
+** Optimize IO operations with Microbatching
+****
+
+.Evolving to reactive microservices, part 1, error isolation and non-blocking
 [cols="1,1"]
 |===
 ^.^h|The Not So Much Win
@@ -1366,10 +1373,16 @@ public class UserService{
     userDB.findAll().onResult( r ->
       f.complete(convertToList(r));
     );
-    r.on
     return f;
   }
 
+   public Future<List<User>> all() throws Exception {    
+    User user = get(name);
+    if(user == null \|\| !user.isAdmin()){
+        return CompletedFuture.completedFuture(null);
+    }
+    return all();
+  }
 }
 ----
 
@@ -1392,6 +1405,12 @@ public class UserService{
       .map(this::convert)
       .dispatchOn(cachedDispatcher());
       .subscribeOn(workDispatcher());
+  }
+
+  public Stream<User> filteredFind(String name){
+      return get(name)
+        .filter(User::isAdmin)
+        .flatMap(user -> all());
   }
 
 }
@@ -1643,7 +1662,7 @@ h|after()
 h|log(_String_)
 |T
 |T
-3+^.^|Use SL4J and the given category to log each signal.
+3+^.^|Use SLF4J and the given category to log each signal.
 
 h|split
 |Iterable<T>

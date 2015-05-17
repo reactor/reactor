@@ -88,7 +88,19 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 	 * @return the produced {@link Environment}
 	 */
 	public static Environment initialize() {
-		return assign(new Environment());
+		return assign(new Environment()).assignErrorJournal();
+	}
+
+	/**
+	 * Create and assign a context environment bound to the current classloader.
+	 * Capture all uncaught exception in the passed errorConsumer
+	 *
+	 * @param errorConsumer the callback for uncaught exceptions
+	 *
+	 * @return the produced {@link Environment}
+	 */
+	public static Environment initialize(Consumer<Throwable> errorConsumer) {
+		return assign(new Environment()).assignErrorJournal(errorConsumer);
 	}
 
 	/**

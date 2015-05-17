@@ -46,11 +46,9 @@ import reactor.rx.stream.BarrierStream;
 import reactor.rx.subscription.PushSubscription;
 
 import java.io.*;
+import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -1088,6 +1086,59 @@ public class StreamTests extends AbstractReactorTest {
 		assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
 	}
 
+	/**
+	 * This test case demonstrates a silent failure of
+	 * {@link Streams#period(long)} when a resolution is specified that is less
+	 * than the backing {@link Timer} class.
+	 *
+	 * @throws InterruptedException
+	 *             - on failure.
+	 * @throws TimeoutException
+	 *             - on failure.
+	 *
+	 * by @masterav10 : https://github.com/reactor/reactor/issues/469
+	 */
+	@Test
+	@Ignore
+	public void endLessTimer() throws InterruptedException, TimeoutException
+	{
+		int tasks = 50;
+		long delayMS = 20; // XXX: Fails when less than 100
+		Phaser barrier = new Phaser(tasks + 1);
+
+		List<Long> times = new ArrayList<>();
+
+		// long localTime = System.currentTimeMillis(); for java 7
+		long localTime = Instant.now().toEpochMilli();
+		long elapsed = System.nanoTime();
+
+		Control ctrl = Streams
+				.period(delayMS, TimeUnit.MILLISECONDS)
+				.map((signal) -> {
+					return TimeUnit.NANOSECONDS.toMillis(System.nanoTime()
+							- elapsed);
+				}).observe((elapsedMillis) -> {
+					times.add(localTime + elapsedMillis);
+					barrier.arrive();
+				}).consume();
+
+		barrier.awaitAdvanceInterruptibly(barrier.arrive(), tasks * delayMS
+				+ 1000, TimeUnit.MILLISECONDS);
+		ctrl.cancel();
+
+		Assert.assertEquals(tasks, times.size());
+
+		for (int i = 1; i < times.size(); i++)
+		{
+			Long prev = times.get(i - 1);
+			Long time = times.get(i);
+
+			Assert.assertTrue(prev > 0);
+			Assert.assertTrue(time > 0);
+			Assert.assertTrue("was " + (time - prev), time - prev <= delayMS);
+		}
+	}
+
 	@Test
 	public void barrierStreamWaitsForAllDelegatesToBeInvoked() throws Exception {
 		Environment.initializeIfEmpty().assignErrorJournal();
@@ -1178,6 +1229,7 @@ public class StreamTests extends AbstractReactorTest {
 		}
 
 	}
+
 
 
 }
