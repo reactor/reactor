@@ -1449,7 +1449,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(150).log('beforeBuffer').buffer(350l, 450l, TimeUnit.MILLISECONDS).log('afterBuffer').toList()
+			res = numbers.throttle(150).log('beforeBuffer').buffer(300l, 500l, TimeUnit.MILLISECONDS).log('afterBuffer').toList()
 
 		then:
 			'the collected lists are available'
