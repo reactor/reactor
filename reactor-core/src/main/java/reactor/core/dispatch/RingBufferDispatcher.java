@@ -25,6 +25,7 @@ import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.Disruptor;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -161,18 +162,57 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 
 	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
-		boolean alive = alive();
-		executor.shutdown();
-		try {
-			disruptor.shutdown(timeout, timeUnit);
-			super.shutdown();
-			executor.awaitTermination(timeout, timeUnit);
-			if (alive) {
-				disruptor.shutdown();
-			}
-		} catch (Exception e) {
+		if (!alive()) {
 			return false;
 		}
+		super.shutdown();
+
+		long start = System.nanoTime();
+		long timeoutNano = timeUnit.toNanos(timeout);
+
+		try {
+			disruptor.shutdown(timeout, timeUnit);
+		} catch (TimeoutException e) {
+			return false;
+		}
+
+		// This is a work-around for a case when BatchEventProcessor job is scheduled onto executor by disruptor
+		// after disruptor.shutdown(...) has been called. As a result the executor becomes occupied with a job and
+		// is never terminated
+		final CountDownLatch latch = new CountDownLatch(1);
+		executor.execute(new Runnable() {
+			@Override
+			public void run() {
+				// to make sure BatchEventProcessor job won't be executed after the current task completes
+				executor.shutdown();
+				latch.countDown();
+			}
+		});
+
+		try {
+			while (!latch.await(1, TimeUnit.MILLISECONDS)) {
+				long now = System.nanoTime();
+				timeoutNano -= (now - start);
+				start = now;
+
+				if (timeoutNano <= 0) {
+					return false;
+				}
+
+				disruptor.shutdown(timeoutNano, TimeUnit.NANOSECONDS);
+            }
+		} catch (InterruptedException | TimeoutException e) {
+			return false;
+		}
+
+		try {
+			timeoutNano -= (System.nanoTime() - start);
+
+			executor.awaitTermination(timeoutNano, TimeUnit.NANOSECONDS);
+		} catch (InterruptedException e) {
+			return false;
+		}
+
 		return true;
 	}
 
