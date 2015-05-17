@@ -1262,7 +1262,7 @@ Coordinating in a non-blocking way will free the developer from using `Future.ge
 Merging actions are modeled in `FanInAction` and take care of concurrency signaling with a *thread-stealing* `SerializedSubscriber` proxy to the delegate `Subscriber`. It will verify on each signal if a thread is already running the delegate `Subscriber`, thus rescheduling the new signal. The signal will then be polled when the busy thread exits `Subscriber` code, possibly running the signal in a different thread than originally produced on.
 
 [WARNING]
-<<streams.adoc#streams-backpressure,Reducing the demand volume>> before using `flatMap` might be a good or a bad idea. In effect it doesn't deserve the merging action to subscribe to many parallel `Publisher` if it can't actually process them all. However it limiting the parallel `Publisher` size might also not give a chance to faster `Publisher` pending a request to be delivered. The request will only come after the current `Publishers` terminate.
+<<streams.adoc#streams-backpressure,Reducing the demand volume>> before using `flatMap` might be a good or a bad idea. In effect it doesn't deserve the merging action to subscribe to many parallel `Publisher` if it can't actually process them all. However it limiting the parallel `Publisher` size might also not give a chance to faster `Publisher` pending a request to be delivered. 
 
 .Stream.zipWith(Function)
 [source,java]
@@ -1343,6 +1343,11 @@ Stream.joinWith(Publisher<T>)
 
 TODO Using a `Stream` or a `Promise` to deal with remote `MicroService` latency.
 
+[source,java]
+----
+
+----
+
 .Reading remote resources
 |===
 
@@ -1352,23 +1357,28 @@ h|Functional API or Factory method
 |
 
 h|Streams.create(Publisher), Streams.defer(Supplier), Streams.wrap(Publisher), Streams.generate(Supplier)
-^.^|
+^.^|Protecting resource access with a `Publisher` is encouraged. A few <<streams.adoc#streams-basics, Stream factories>> will be particularly useful. The point of creating a `Publisher` is to only `onNext(T)` when the data is ready such as in an IO callback. The read should be triggered by a `Subscriber` request if possible to implement a form of backpressure.
 
-h|Stream.timeout()
-^.^|
+h|Stream.timeout(_arguments_)
+^.^|Accessing an external resource, especially remote, should always be limited in time to become more resilient to external conditions such as network partitions. Timeout operations can fallback to another `Publisher` for alternative  service call or just `onError(TimeoutException)`. The timer resets each time a fresh `onNext(T)` is observed.
 
-h|Stream.take()
-^.^|
+h|Stream.take(_arguments_)
+^.^|Similar to `timeout()`, a need to scope in size an external resource is a common need especially to fully trigger a pipeline including `onComplete()` processing.
 
-h|Stream.flatMap
+h|Stream.flatMap(Function<T,Publisher<V>)
 ^.^|An <<streams.adoc#stream-flatmap,Async transformation>> and typed shortcut for `map(Function<T, Publisher<V>>).merge()`. 
 
 The mapping part produces a `Publisher<V>` eventully using the passed data `T`, a common pattern used in <<streams.adoc#streams-microservice, MicroService architecture>>. 
 
 The merging part transforms the sequence of produced `Publisher<V>` into a sequence of `V` by _safely_ subscribing in parallel to all of them. There is no ordering guaranteed, it is *interleaved* sequence of `V`.
 
-h|Stream.subscribeOn(), Stream.dispatchOn()
-^.^|
+h|Stream.subscribeOn(Dispatcher), Stream.dispatchOn(Dispatcher), _Core Processors_
+^.^a|<<streams.adoc#streams-multithreading,Threading control>> is strategic:
+
+****
+* Slow MicroService, low volume or low throughput, e.g. HTTP GET -> `subscribeOn(workQueueDispatcher())` to scale-up concurrent service calls.
+* Fast MicroService, high volume or high throughput, e.g. Message Bus -> `dispatchOn(sharedDispatcher())` or `RingBufferXXXProcessor.create()` to scale up message-dispatching.
+****
 
 |===
 
@@ -1436,7 +1446,7 @@ h|Functional API or Factory method
 
 |
 
-h|Stream.onOverflowBuffer()
+h|Stream.onOverflowBuffer(CompletableQueue)
 ^.^|
 
 h|IOStreams.persistentMapReader()
@@ -1529,26 +1539,32 @@ assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
 ----
 
 .Grouping operations
+[cols="6,1"]
 |===
 
 h|Stream<T> API
-^.^|Role
+|Output Type
+2+^.^|Role
 
 |
 
-h|groupBy()
-^.^|
+h|groupBy(Function<T,K>)
+|GroupedStream<K,T>
+2+^.^|
 
-h|partition()
-^.^|
+h|partition(int)
+|GroupedStream<K,T>
+2+^.^|
 
 
 h|_All_ window(_arguments_)
-^.^|
+|Stream<T>
+2+^.^|<<streams.adoc#streams-microbatching, Windows>> are actually for cutting partitions over time, size or coordinated with external signals.
 
 
 h|process(XXXWorkProcessor)
-^.^|
+|T
+2+^.^|Since a RingBufferWorkProcessor distributes the signals to each subscribe, it is an efficient alternative to `partition()` when its just about scaling-up, not routing.
 
 |===
 
@@ -1559,30 +1575,59 @@ h|process(XXXWorkProcessor)
 In addition to implementing directly the Reactive Streams, some more `Stream` methods not covered differ or are simply not documented by Reactive Extensions.
 
 .Other methods uncovered in the previous use cases.
+[cols="6,1,1"]
 |===
 
 h|Stream<T> API
-^.^|Role
+|Input Type
+|Output Type
+3+^.^|Role
 
 |
 
-h|after
-^.^|
+h|after()
+|T
+|Void
+3+^.^|Only consume `onComplete()` and `onError(Throwable)` signals. 
 
-h|log
-^.^|
+h|log(_String_)
+|T
+|T
+3+^.^|Use SL4J and the given category to log each signal.
 
 h|split
-^.^|
+|Iterable<T>
+|T
+3+^.^|Blocking transformation from `Iterable<T>` to as many `onNext(T)` as available.
 
-|sort
-^.^|
+|sort(_int_, Comparator<T>)
+|T
+|T
+3+^.^|Accept up to the given size into an in memory `PriorityQueue`, apply the `Comparator<T>` to sort, and emit all its pending `onNext(T)` signals.
 
-|combine
-^.^|
+|combine()
+|I
+|O
+3+^.^|Scan for the most ancient parent or `Action`, from right to left. As a result, it will create a new `Processor` with the input `onXXXX` signals dispatched to the old action and the output `subscribe` delegated to the current action.
 
-|keepAlive
-^.^|
+Example: 
+
+[source,java]
+----
+Action<Integer, String> processor = stream
+  .filter( i -> i<2 )
+  .map(Object::toString)
+  .combine();
+
+  processor.consume(System.out::println);
+  processor.onNext(1);
+  processor.onNext(3);
+----
+
+|keepAlive()
+|T
+|T
+3+^.^|Prevent any `Subscription.cancel()` to propagate from the `Subscriber`.
 
 |Action.debug(), StreamsUtils.debug(Stream)
 |A quick
