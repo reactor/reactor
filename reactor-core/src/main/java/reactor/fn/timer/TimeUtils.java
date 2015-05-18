@@ -16,6 +16,7 @@
 
 package reactor.fn.timer;
 
+import reactor.core.support.ReactorFatalException;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.TimeUnit;
@@ -54,6 +55,15 @@ public abstract class TimeUtils {
 			setTimer(new HashWheelTimer(DEFAULT_RESOLUTION));
 		}
 		return timer;
+	}
+
+	public static void checkResolution(long time, long resolution) {
+		if (time % resolution != 0) {
+			throw ReactorFatalException.create(new IllegalArgumentException(
+					"Period must be a multiple of Timer resolution (e.g. period % resolution == 0 ). " +
+					"Resolution for this Timer is: " + resolution + "ms"
+			));
+		}
 	}
 
 }

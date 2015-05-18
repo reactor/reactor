@@ -18,7 +18,6 @@ package reactor.fn.timer;
 
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.ReactorFatalException;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.jarjar.com.lmax.disruptor.EventFactory;
@@ -203,11 +202,7 @@ public class HashWheelTimer implements Timer {
 	private TimerPausable schedule(long recurringTimeout,
 	                                                             long firstDelay,
 	                                                             Consumer<Long> consumer) {
-		if(recurringTimeout < resolution){
-		              throw ReactorFatalException.create(new IllegalArgumentException(
-				              "Cannot schedule tasks for amount of time less than timer precision.")
-		              );
-		}
+		TimeUtils.checkResolution(recurringTimeout, resolution);
 
 		long offset = recurringTimeout / resolution;
 		long rounds = offset / wheel.getBufferSize();
