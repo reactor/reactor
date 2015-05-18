@@ -749,7 +749,11 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E> {
 				return;
 			}
 
-			subscriber.onSubscribe(subscription);
+			try {
+				subscriber.onSubscribe(subscription);
+			}catch (Throwable t){
+				subscriber.onError(t);
+			}
 
 			MutableSignal<T> event = null;
 			nextSequence = sequence.get() + 1L;

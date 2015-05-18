@@ -17,6 +17,7 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.core.support.Exceptions;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 
@@ -45,8 +46,9 @@ public class DeferredStream<T> extends Stream<T> {
 	public void subscribe(final Subscriber<? super T> subscriber) {
 		try{
 			sourceFactory.get().subscribe(subscriber);
-		}catch (Throwable t){
-			subscriber.onError(t);
+		}catch (Throwable throwable){
+			Exceptions.throwIfFatal(throwable);
+			subscriber.onError(throwable);
 		}
 	}
 }

@@ -16,6 +16,7 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.support.Exceptions;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 
@@ -41,7 +42,7 @@ import reactor.rx.subscription.PushSubscription;
  * 1
  * complete
  * }
- </pre>
+ * </pre>
  *
  * @author Stephane Maldini
  */
@@ -58,20 +59,25 @@ public final class SingleValueStream<T> extends Stream<T> {
 
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
-		subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
-			boolean terminado = false;
+		try {
+			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
+				boolean terminado = false;
 
-			@Override
-			public void request(long elements) {
-				if (terminado) return;
+				@Override
+				public void request(long elements) {
+					if (terminado) return;
 
-				terminado = true;
-				if (value != null) {
-					onNext(value);
+					terminado = true;
+					if (value != null) {
+						onNext(value);
+					}
+					onComplete();
 				}
-				onComplete();
-			}
-		});
+			});
+		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
+			subscriber.onError(throwable);
+		}
 	}
 
 	@Override

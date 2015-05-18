@@ -83,7 +83,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 
 			onRequest(n);
 		} catch (Throwable t) {
-			subscriber.onError(t);
+			onError(t);
 		}
 
 	}

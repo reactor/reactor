@@ -3,6 +3,7 @@ package reactor.rx.stream;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -121,7 +122,12 @@ public class BarrierStream extends Stream<List<Object>> {
 				}
 			}
 		};
-		s.onSubscribe(downstream);
+		try {
+			s.onSubscribe(downstream);
+		}catch (Throwable throwable){
+			Exceptions.throwIfFatal(throwable);
+			s.onError(throwable);
+		}
 	}
 
 	private void addResult(int idx, Object obj) {

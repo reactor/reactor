@@ -21,6 +21,7 @@ import net.openhft.chronicle.ChronicleQueueBuilder;
 import net.openhft.chronicle.ExcerptTailer;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Subscriber;
+import reactor.core.support.Exceptions;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -114,7 +115,12 @@ public class ChronicleReaderStream<K, V> extends MapStream<K, V> {
 	@Override
 	public void subscribe(Subscriber<? super MapStream.Signal<K, V>> s) {
 		CONSUMER_UPDATER.incrementAndGet(this);
-		s.onSubscribe(new ChronicleSubscription(this, s));
+		try {
+			s.onSubscribe(new ChronicleSubscription(this, s));
+		}catch(Throwable t){
+			Exceptions.throwIfFatal(t);
+			s.onError(t);
+		}
 	}
 
 	class ChronicleSubscription extends PushSubscription<MapStream.Signal<K, V>> {

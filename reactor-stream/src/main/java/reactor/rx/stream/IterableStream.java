@@ -16,6 +16,7 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.support.Exceptions;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 
@@ -58,26 +59,31 @@ public final class IterableStream<T> extends Stream<T> {
 
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
-		if (defaultValues != null) {
-			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
-				final Iterator<? extends T> iterator = defaultValues.iterator();
+		try {
+			if (defaultValues != null) {
+				subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
+					final Iterator<? extends T> iterator = defaultValues.iterator();
 
-				@Override
-				public void request(long elements) {
-					long i = 0;
-					while (i < elements && iterator.hasNext()) {
-						if(isComplete()) return;
-						onNext(iterator.next());
-						i++;
-					}
+					@Override
+					public void request(long elements) {
+						long i = 0;
+						while (i < elements && iterator.hasNext()) {
+							if (isComplete()) return;
+							onNext(iterator.next());
+							i++;
+						}
 
-					if (!iterator.hasNext()) {
-						onComplete();
+						if (!iterator.hasNext()) {
+							onComplete();
+						}
 					}
-				}
-			});
-		} else {
-			subscriber.onComplete();
+				});
+			} else {
+				subscriber.onComplete();
+			}
+		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
+			subscriber.onError(throwable);
 		}
 	}
 

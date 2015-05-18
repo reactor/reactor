@@ -26,6 +26,7 @@ import reactor.bus.selector.Selector;
 import reactor.core.processor.CancelException;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.ReactorFatalException;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 
@@ -156,8 +157,11 @@ public class EventTimer implements Timer {
 	                                                       long delayInMilliseconds) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long milliPeriod = TimeUnit.MILLISECONDS.convert(period, timeUnit);
-		Assert.isTrue(milliPeriod % resolution == 0,
-				"Period must be a multiple of timer resolution (e.g. period % resolution == 0 )");
+		if(milliPeriod % resolution != 0){
+			throw ReactorFatalException.create(new IllegalArgumentException(
+					"Period must be a multiple of timer resolution (e.g. period % resolution == 0 )")
+			);
+		}
 		return tasks.register(
 				new PeriodSelector(milliPeriod, delayInMilliseconds, resolution),
 				consumer

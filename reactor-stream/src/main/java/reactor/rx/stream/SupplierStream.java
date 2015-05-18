@@ -17,6 +17,7 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.Dispatcher;
+import reactor.core.support.Exceptions;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
@@ -51,21 +52,26 @@ public final class SupplierStream<T> extends Stream<T> {
 
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
-		if (supplier != null) {
-			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
+		try {
+			if (supplier != null) {
+				subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
 
-				@Override
-				public void request(long elements) {
-					try {
-						supplyValue(subscriber);
-					} catch (Throwable throwable) {
-						subscriber.onError(throwable);
+					@Override
+					public void request(long elements) {
+						try {
+							supplyValue(subscriber);
+						} catch (Throwable throwable) {
+							subscriber.onError(throwable);
+						}
 					}
-				}
-			});
+				});
 
-		} else {
-			subscriber.onComplete();
+			} else {
+				subscriber.onComplete();
+			}
+		}catch (Throwable throwable){
+			Exceptions.throwIfFatal(throwable);
+			subscriber.onError(throwable);
 		}
 	}
 

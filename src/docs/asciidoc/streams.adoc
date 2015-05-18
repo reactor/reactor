@@ -1457,9 +1457,10 @@ public class UserService{
    public Future<List<User>> all() throws Exception {    
     User user = get(name);
     if(user == null \|\| !user.isAdmin()){
-        return CompletedFuture.completedFuture(null);
+      return CompletedFuture.completedFuture(null);
+    } else {
+      return all();
     }
-    return all();
   }
 }
 ----

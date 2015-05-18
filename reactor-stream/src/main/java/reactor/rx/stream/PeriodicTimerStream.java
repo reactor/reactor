@@ -16,6 +16,7 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
@@ -35,19 +36,20 @@ import java.util.concurrent.TimeUnit;
  * <pre>
  * {@code
  * Streams.timer(1, 2).consume(
- *log::info,
- *log::error,
+ * log::info,
+ * log::error,
  * (-> log.info("complete"))
  * )
  * }
  * </pre>
- *
+ * <p>
  * Will log:
  * <pre>{@code
  * 0
  * complete
  * }
  * </pre>
+ *
  * @author Stephane Maldini
  */
 public final class PeriodicTimerStream extends Stream<Long> {
@@ -66,10 +68,15 @@ public final class PeriodicTimerStream extends Stream<Long> {
 
 	@Override
 	public void subscribe(final Subscriber<? super Long> subscriber) {
-		subscriber.onSubscribe(new TimerSubscription(this, subscriber));
+		try {
+			subscriber.onSubscribe(new TimerSubscription(this, subscriber));
+		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
+			subscriber.onError(throwable);
+		}
 	}
 
-	private class TimerSubscription extends PushSubscription<Long>{
+	private class TimerSubscription extends PushSubscription<Long> {
 
 		long counter = 0l;
 		final Pausable registration = timer.schedule(new Consumer<Long>() {

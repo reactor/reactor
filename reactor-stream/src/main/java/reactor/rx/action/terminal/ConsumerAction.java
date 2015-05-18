@@ -19,6 +19,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -105,6 +106,8 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 		cancel();
 		if (errorConsumer != null) {
 			errorConsumer.accept(ev);
+		}else{
+			Exceptions.throwIfFatal(ev);
 		}
 		super.doError(ev);
 	}

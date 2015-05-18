@@ -144,8 +144,9 @@ public abstract class Action<I, O> extends Stream<O>
 
 			subscribeWithSubscription(subscriber, subscription);
 
-		} catch (Exception e) {
-			subscriber.onError(e);
+		}catch (Throwable throwable){
+			Exceptions.throwIfFatal(throwable);
+			subscriber.onError(throwable);
 		}
 	}
 
@@ -170,6 +171,7 @@ public abstract class Action<I, O> extends Stream<O>
 			doOnSubscribe(subscription);
 			doStart();
 		} catch (Throwable t) {
+			Exceptions.throwIfFatal(t);
 			doError(t);
 		}
 	}

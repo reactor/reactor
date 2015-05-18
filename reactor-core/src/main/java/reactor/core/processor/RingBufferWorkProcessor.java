@@ -709,7 +709,11 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
 
 			processor.incrementSubscribers();
 
-			subscriber.onSubscribe(subscription);
+			try {
+				subscriber.onSubscribe(subscription);
+			}catch (Throwable t){
+				subscriber.onError(t);
+			}
 
 
 			boolean processedSequence = true;

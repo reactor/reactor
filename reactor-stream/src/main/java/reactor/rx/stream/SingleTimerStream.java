@@ -16,6 +16,7 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
@@ -27,7 +28,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * A Stream that emits {@link 0} after an initial delay and then complete
  * <p>
- * The SingleTimerStream will manage dedicated timers for new subscriber assigned via {@link this#subscribe(org.reactivestreams.Subscriber)}.
+ * The SingleTimerStream will manage dedicated timers for new subscriber assigned via
+ * {@link this#subscribe(org.reactivestreams.Subscriber)}.
  * <p>
  * Create such stream with the provided factory, E.g.:
  * <pre>
@@ -63,7 +65,12 @@ public final class SingleTimerStream extends Stream<Long> {
 
 	@Override
 	public void subscribe(final Subscriber<? super Long> subscriber) {
-		subscriber.onSubscribe(new TimerSubscription(this, subscriber));
+		try {
+			subscriber.onSubscribe(new TimerSubscription(this, subscriber));
+		}catch (Throwable throwable){
+			Exceptions.throwIfFatal(throwable);
+			subscriber.onError(throwable);
+		}
 	}
 
 	private class TimerSubscription extends PushSubscription<Long>{

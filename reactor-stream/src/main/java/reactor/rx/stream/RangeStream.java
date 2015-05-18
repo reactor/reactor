@@ -16,11 +16,13 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.support.Exceptions;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 
 /**
- * A Stream that emits N {@link java.lang.Long} from the inclusive start value defined to the inclusive end and then complete.
+ * A Stream that emits N {@link java.lang.Long} from the inclusive start value defined to the inclusive end and then
+ * complete.
  * <p>
  * Since the stream retains the boundaries in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)}
  * will replay all the range. This is a "Cold" stream.
@@ -43,8 +45,9 @@ import reactor.rx.subscription.PushSubscription;
  * 3
  * 4
  * complete
- *}
+ * }
  * </pre>
+ *
  * @author Stephane Maldini
  */
 public final class RangeStream extends Stream<Long> {
@@ -59,39 +62,44 @@ public final class RangeStream extends Stream<Long> {
 
 	@Override
 	public void subscribe(Subscriber<? super Long> subscriber) {
-		if (start <= end) {
-			subscriber.onSubscribe(new PushSubscription<Long>(this, subscriber) {
-				Long cursor = start;
+		try {
+			if (start <= end) {
+				subscriber.onSubscribe(new PushSubscription<Long>(this, subscriber) {
+					Long cursor = start;
 
-				@Override
-				public void request(long elements) {
+					@Override
+					public void request(long elements) {
 
-					long l = 0;
-					while (l < elements && cursor <= end) {
-						if(isComplete()) return;
-						onNext(cursor++);
-						l++;
+						long l = 0;
+						while (l < elements && cursor <= end) {
+							if (isComplete()) return;
+							onNext(cursor++);
+							l++;
+						}
+						if (cursor > end) {
+							onComplete();
+						}
 					}
-					if (cursor > end) {
-						onComplete();
-					}
-				}
 
-				@Override
-				public String toString() {
-					return "{" +
-							"cursor=" + cursor +""+ (end > 0 ? "[" + 100*(cursor-1)/end + "%]" : "") +
-							", start="+start+", end="+end+"}";
-				}
-			});
-		} else {
-			subscriber.onComplete();
+					@Override
+					public String toString() {
+						return "{" +
+								"cursor=" + cursor + "" + (end > 0 ? "[" + 100 * (cursor - 1) / end + "%]" : "") +
+								", start=" + start + ", end=" + end + "}";
+					}
+				});
+			} else {
+				subscriber.onComplete();
+			}
+		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
+			subscriber.onError(throwable);
 		}
 	}
 
 
 	@Override
 	public String toString() {
-		return super.toString() + " [" + start + " to "+end+"]" ;
+		return super.toString() + " [" + start + " to " + end + "]";
 	}
 }

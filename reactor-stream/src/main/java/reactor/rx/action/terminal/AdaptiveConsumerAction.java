@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
+import reactor.core.support.Exceptions;
 import reactor.core.support.NonBlocking;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -196,6 +197,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 			if (s != null) {
 				s.cancel();
 			}
+			Exceptions.throwIfFatal(t);
 		}
 
 		@Override

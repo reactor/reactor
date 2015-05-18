@@ -16,6 +16,7 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.support.Exceptions;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.ReactiveSubscription;
@@ -26,15 +27,16 @@ import java.util.concurrent.TimeUnit;
 /**
  * A Stream that emits a result of a {@link java.util.concurrent.Future} and then complete.
  * <p>
- * Since the stream retains the future reference in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)}
+ * Since the stream retains the future reference in a final field, any
+ * {@link this#subscribe(org.reactivestreams.Subscriber)}
  * will replay the {@link java.util.concurrent.Future#get()}
  * <p>
  * Create such stream with the provided factory, E.g.:
  * <pre>
  * {@code
  * Streams.just(someFuture).consume(
- *log::info,
- *log::error,
+ * log::info,
+ * log::error,
  * (-> log.info("complete"))
  * )
  * }
@@ -72,23 +74,28 @@ public final class FutureStream<T> extends Stream<T> {
 
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
-		subscriber.onSubscribe(new ReactiveSubscription<T>(this, subscriber) {
+		try {
+			subscriber.onSubscribe(new ReactiveSubscription<T>(this, subscriber) {
 
-			@Override
-			public void request(long elements) {
-				Action.checkRequest(elements);
-				if (isComplete()) return;
+				@Override
+				public void request(long elements) {
+					Action.checkRequest(elements);
+					if (isComplete()) return;
 
-				try {
-					T result = unit == null ? future.get() : future.get(time, unit);
+					try {
+						T result = unit == null ? future.get() : future.get(time, unit);
 
-					subscriber.onNext(result);
-					onComplete();
+						subscriber.onNext(result);
+						onComplete();
 
-				} catch (Throwable e) {
-					onError(e);
+					} catch (Throwable e) {
+						onError(e);
+					}
 				}
-			}
-		});
+			});
+		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
+			subscriber.onError(throwable);
+		}
 	}
 }

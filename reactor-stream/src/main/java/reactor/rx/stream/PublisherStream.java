@@ -18,6 +18,7 @@ package reactor.rx.stream;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.Exceptions;
 import reactor.rx.Stream;
 import reactor.rx.subscription.ReactiveSubscription;
 
@@ -45,51 +46,56 @@ public class PublisherStream<T> extends Stream<T> {
 
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
-		subscriber.onSubscribe(new ReactiveSubscription<T>(PublisherStream.this, subscriber) {
+		try {
+			subscriber.onSubscribe(new ReactiveSubscription<T>(PublisherStream.this, subscriber) {
 
-			private boolean started = false;
-			private ReactiveSubscription<T> thiz = this;
-			private Subscription subscription;
+				private boolean started = false;
+				private ReactiveSubscription<T> thiz = this;
+				private Subscription subscription;
 
-			@Override
-			protected void onRequest(long elements) {
-				super.onRequest(elements);
+				@Override
+				protected void onRequest(long elements) {
+					super.onRequest(elements);
 
-				if (!started) {
-					started = true;
-					source.subscribe(new Subscriber<T>() {
-						@Override
-						public void onSubscribe(Subscription s) {
-							subscription = s;
-						}
+					if (!started) {
+						started = true;
+						source.subscribe(new Subscriber<T>() {
+							@Override
+							public void onSubscribe(Subscription s) {
+								subscription = s;
+							}
 
-						@Override
-						public void onNext(T t) {
-							thiz.onNext(t);
-						}
+							@Override
+							public void onNext(T t) {
+								thiz.onNext(t);
+							}
 
-						@Override
-						public void onError(Throwable t) {
-							thiz.onError(t);
-						}
+							@Override
+							public void onError(Throwable t) {
+								thiz.onError(t);
+							}
 
-						@Override
-						public void onComplete() {
-							thiz.onComplete();
-						}
-					});
-				}else if(subscription != null){
-					subscription.request(elements);
+							@Override
+							public void onComplete() {
+								thiz.onComplete();
+							}
+						});
+					} else if (subscription != null) {
+						subscription.request(elements);
+					}
 				}
-			}
 
-			@Override
-			public void cancel() {
-				super.cancel();
-				if(subscription != null){
-					subscription.cancel();
+				@Override
+				public void cancel() {
+					super.cancel();
+					if (subscription != null) {
+						subscription.cancel();
+					}
 				}
-			}
-		});
+			});
+		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
+			subscriber.onError(throwable);
+		}
 	}
 }

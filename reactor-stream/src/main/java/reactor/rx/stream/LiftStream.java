@@ -18,6 +18,7 @@ package reactor.rx.stream;
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.support.Exceptions;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
@@ -80,6 +81,7 @@ public class LiftStream<O, V> extends Stream<V> {
 			producer.subscribe(action);
 
 		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
 			s.onError(throwable);
 		}
 	}
