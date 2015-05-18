@@ -111,8 +111,8 @@ Most of the Streams stick to the *Share-Nothing* pattern, only creating new immu
 Every operation will return a new instance:
 [source, java]
 ----
-Streams<A> stream = Streams.just(a);
-Streams<B> transformedStream = stream.map(transformationToB);
+Stream<A> stream = Streams.just(a);
+Stream<B> transformedStream = stream.map(transformationToB);
 
 Assert.isTrue(transformationStream != stream);
 stream.subscribe(subscriber1); //subscriber1 will see the data A unaltered
@@ -344,7 +344,7 @@ the difference is demonstrated in the code sample below.
 .Streams.create and Streams.defer in action
 [source,java]
 ----
-final Streams<String> stream1 = Streams.create(sub -> {
+final Stream<String> stream1 = Streams.create(sub -> {
 
   sub.onSubscribe(new Subscription(){ // <1>
     void request(long demand){
@@ -361,7 +361,7 @@ final Streams<String> stream1 = Streams.create(sub -> {
   });
 });
 
-final Streams<String> stream2 = Streams.create(sub -> {
+final Stream<String> stream2 = Streams.create(sub -> {
   sub.onNext(3); // <2>
   sub.onNext(4);
   sub.onComplete();
@@ -369,7 +369,7 @@ final Streams<String> stream2 = Streams.create(sub -> {
 
 final AtomicInteger counterSubscribe = new AtomicInteger();
 
-Streams<String> deferred = Streams.defer( () -> {
+Stream<String> deferred = Streams.defer( () -> {
   if(counterSubscriber.incrementAndGet() == 1){ // <3>
     return stream1;
   }else{
@@ -387,7 +387,7 @@ deferred
 .Streams.createWith, an alternative to create() minus some boilerplate
 [source,java]
 ----
-final Streams<String> stream = Streams.createWith(
+final Stream<String> stream = Streams.createWith(
   (demand, sub) -> { // <1>
     int prefix = sub.context(); // <2>
     if(demand == 2L && !sub.isCancelled()){
@@ -558,8 +558,8 @@ import reactor.rx.Stream;
 Stream<String> stream = Streams.just("a","b","c","d","e","f","g","h");
 
 //prepare two unique pipelines
-Streams<Long> actionChain1 = stream.map(String::toUpperCase).filter(w -> w.equals("c"));
-Streams<Long> actionChain2 = stream.dispatchOn(sharedDispatcher()).take(5).count();
+Stream<Long> actionChain1 = stream.map(String::toUpperCase).filter(w -> w.equals("c"));
+Stream<Long> actionChain2 = stream.dispatchOn(sharedDispatcher()).take(5).count();
 
 actionChain1.consume(System.out::println); //start chain1
 Control c = actionChain2.consume(System.out::println); //start chain2
@@ -587,8 +587,8 @@ Stream<String> stream = Streams.just("a","b","c","d","e","f","g","h");
 Stream<String> sharedStream = actionChain1.observe(System.out::println).broadcast();
 
 //prepare two unique pipelines
-Streams<Long> actionChain1 = sharedStream.map(String::toUpperCase).filter(w -> w.equals("c"));
-Streams<Long> actionChain2 = sharedStream.take(5).count();
+Stream<Long> actionChain1 = sharedStream.map(String::toUpperCase).filter(w -> w.equals("c"));
+Stream<Long> actionChain2 = sharedStream.take(5).count();
 
 actionChain1.consume(System.out::println); //start chain1
 actionChain2.consume(System.out::println); //start chain2
@@ -820,6 +820,7 @@ Streams
 ----
 <1> Transform any incoming number into a range of 1-N number merged back and executed on the given Dispatcher.
 
+[[streams-blocking]]
 ==== Blocking and Promises
 
 Blocking is considered anti-pattern to *Reactor* but we do offer appropriate API (Ah AH!) for coordination purposes with legacy operations and for test support.
@@ -1454,7 +1455,7 @@ The first step is to isolate the microservice access. Instead of returning a typ
 [IMPORTANT]
 We prefer to use the implementation artefacts and not `Publisher<T>` to get compile-time access to all the *Reactor Stream* API, unless we want to be API agnostic (a possible case for library developers). `Streams.wrap(Publisher<T>)` will do the trick anyway to convert such generic return type into a proper `Stream<T>`.
 
-.Evolving to reactive microservices, part 1, error isolation and non-blocking
+.Evolving to reactive microservices, part 1, error isolation and non-blocking in some UserService
 [cols="1,1"]
 |===
 ^.^h|The Not So Much Win
@@ -1463,30 +1464,28 @@ a|
 
 [source,java]
 ----
-public class UserService{
-  //...
+//...
 
-  public User get(String name) 
-  throws Exception {
-    Result r = userDB.findByName(name);
-    return convert(r);
-  }
+public User get(String name) 
+throws Exception {
+  Result r = userDB.findByName(name);
+  return convert(r);
+}
 
-  public List<User> allFriends(User user) 
-  throws Exception {    
-    ResultSet rs = userDB.findAllFriends(user);
-    return convertToList(r);
-  }
+public List<User> allFriends(User user) 
+throws Exception {    
+  ResultSet rs = userDB.findAllFriends(user);
+  return convertToList(r);
+}
 
-  public Future<List<User>> filteredFind(String name) 
-  throws Exception {    
-    User user = get(name);
-    if(user == null \|\| !user.isAdmin()){
-      return CompletedFuture.completedFuture(null);
-    } else {
-      //could be in an async thread if wanted
-      return CompletedFuture.completedFuture(allFriends(user));
-    }
+public Future<List<User>> filteredFind(String name) 
+throws Exception {    
+  User user = get(name);
+  if(user == null \|\| !user.isAdmin()){
+    return CompletedFuture.completedFuture(null);
+  } else {
+    //could be in an async thread if wanted
+    return CompletedFuture.completedFuture(allFriends(user));
   }
 }
 ----
@@ -1495,34 +1494,32 @@ a|
 
 [source,java]
 ----
-public class UserService{
-  //...
+//...
 
-  public Promise<User> get(final String name) {
-    return Promises
-      .task( () -> userDB.findByName(name))
-      .timeout(3, TimeUnit.Seconds)
-      .map(this::convert)
-      .subscribeOn(workDispatcher());
-  }
+public Promise<User> get(final String name) {
+  return Promises
+    .task( () -> userDB.findByName(name))
+    .timeout(3, TimeUnit.Seconds)
+    .map(this::convert)
+    .subscribeOn(workDispatcher());
+}
 
-  public Stream<User> allFriends(final User user)  {    
-    return Streams
-      .defer(() -> 
-        Streams.just(userDB.findAllFriends(user)))
-      .timeout(3, TimeUnit.Seconds)
-      .map(this::convertToList)
-      .flatMap(Streams::from)
-      .dispatchOn(cachedDispatcher());
-      .subscribeOn(workDispatcher());
-  }
+public Stream<User> allFriends(final User user)  {    
+  return Streams
+    .defer(() -> 
+      Streams.just(userDB.findAllFriends(user)))
+    .timeout(3, TimeUnit.Seconds)
+    .map(this::convertToList)
+    .flatMap(Streams::from)
+    .dispatchOn(cachedDispatcher());
+    .subscribeOn(workDispatcher());
+}
 
-  public Stream<User> filteredFind(String name){
-      return get(name)
-        .stream()
-        .filter(User::isAdmin)        
-        .flatMap(this::allFriends);
-  }
+public Stream<User> filteredFind(String name){
+    return get(name)
+      .stream()
+      .filter(User::isAdmin)        
+      .flatMap(this::allFriends);
 }
 ----
 2+^.^h|The Result
@@ -1556,7 +1553,11 @@ public class UserService{
 [[streams-microservice-compose]]
 === Composing multiple Services Calls
 
-.Evolving to reactive microservices, part 2, parallel requests and resiliency
+In this second step, we will expand our thinking to the consuming aspect. In a transition phase, keep in mind that `Stream` can be <<streams.adoc#streams-blocking, blocked using operators>>.
+
+There are two issues to address in target: robustness (network partition tolerance etc) and avoiding to wait for a service before processing another:
+
+.Evolving to reactive microservices, part 2, parallel requests and resiliency in some RickAndMortyService
 [cols="1,1"]
 |===
 ^.^h|The Not So Much Win
@@ -1574,9 +1575,10 @@ while(tries < 3){
     Future<List<User>> mortyFriends = 
       userService.fitleredFind("Morty");
 
-    return rickFriends.get(3, TimeUnit.SECONDS)
+    System.out.println(
+      rickFriends.get(3, TimeUnit.SECONDS)
       .addAll(
-        mortyFriends.get(3, TimeUnit.SECONDS)
+        mortyFriends.get(3, TimeUnit.SECONDS))
     );    
 
   }catch(Exception e){    
@@ -1599,7 +1601,8 @@ return Streams.merge(
   errors
   .zipWith(Streams.range(1,3), t -> t.getT2())  
   .flatMap( tries -> Streams.timer(tries) )
-);
+)
+.consume(System.out::println);
 ----
 2+^.^h|The Result
 2+a|
@@ -1618,8 +1621,93 @@ return Streams.merge(
 |===
 
 
-[[streams-microservice-share]]
-=== Choosing the right (multi)threading strategy
+[[streams-microservice-backpressure]]
+=== Supporting Reactive Backpressure
+
+In this last step, we pay a visit to the _UserService.allFriends_ query which is right now polling entire datasets from Database.
+
+.Evolving to reactive microservices, part 3, backpressure in UserService.allFriends
+[cols="1,1"]
+|===
+^.^h|The Win
+^.^h|The Epic Win 
+a|
+
+[source,java]
+----
+return Streams
+  .defer(() -> 
+    Streams.just(userDB.findAllFriends(user)))
+  .timeout(3, TimeUnit.Seconds)
+  .map(this::convertToList)
+  .flatMap(Streams::from)
+  .dispatchOn(cachedDispatcher());
+  .subscribeOn(workDispatcher());
+
+//Consuming in RickAndMortyService 
+//looks like  
+stream
+  .buffer()
+  .consume(System.out::println);
+----
+
+a|
+
+[source,java]
+----
+return Streams
+  .createWith(
+    (demand, sub) -> {
+      ResultSet rs = sub.context();
+      long cursor = 0l;
+      
+      while(rs.hasNext() 
+        && cursor++ < demand
+        && !sub.isCancelled()){
+        
+        sub.onNext(rs.next());
+      }
+
+      if(!rs.hasNext()){
+        sub.onComplete();
+      }
+    },
+    sub -> userDB.findAllFriends(user),
+    resultSet -> resultSet.close()
+  )
+  .timeout(3, TimeUnit.Seconds)
+  .map(this::convert)
+  .dispatchOn(cachedDispatcher());
+  .subscribeOn(workDispatcher());
+
+//Consuming in RickAndMortyService 
+//looks like  
+stream
+  .buffer(5, 200, TimeUnit.MILLISECONDS)
+  .consume(System.out::println);
+
+----
+2+^.^h|The Result
+2+a|
+
+****
+* Yes its more verbose...
+* ...But now we stream result by result from the query (could have used pagination with SQL limits as well).
+* `Streams.createWith` is a `PublisherFactory` which intercepts requests, start and stop.
+** The request consumer gives precisely how many elements a subscriber is ready to receive.
+** The request consumer receives a `SubscriberWithContext` delegating to the real `Subscriber`, it gives access to shared context and cancel status.
+** We send at most as many individual _Result_ as demanded
+** We complete when the query read is fully processed
+* Since the data is individual now, convertToList is unecessary, replaced with convert
+* The Consuming aspect can start using tools such as `capacity(long)` or `buffer(int)` to batch consume the request 5 by 5.
+** As a result the flow will be perceived faster because we don't print after every rows have been read
+** We add a time limit to the batch since it might not match with the size
+****
+
+[NOTE]
+It's important to balance the use of stateful `Iterable<T>` like `List<T>` vs individual streaming `T`. A `List` might incur at some point more latency since we take more time to create it. It's also not playing that well in favor of resiliency since it's a whole batch we can loose if fatal error occurs. Finally, streaming `T` data makes sizing demand more predictible because we can score individual signals instead of batches of signals.
+
+|===
 
 [[streams-errors]]
 == Error Handling
