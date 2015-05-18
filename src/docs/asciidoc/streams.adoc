@@ -153,51 +153,51 @@ Cold Data Sources will be replayed from start for every fresh Subscriber passed 
 
 |Streams.<T>empty()
 |T
-2+^.^|Only emit `onComplete()` once *requested by its Subscriber*.
+2+|Only emit `onComplete()` once *requested by its Subscriber*.
 
 |Streams.<T>never()
 |T
-2+^.^|Never emit anything. Useful for keep-alive behaviors.
+2+|Never emit anything. Useful for keep-alive behaviors.
 
 |Streams.<T, Throwable>fail(*Throwable*)
 |T
-2+^.^|Only emit `onError(Throwable)`.
+2+|Only emit `onError(Throwable)`.
 
 |Streams.from(*Future<T>*)
 |T
-2+^.^|Block the `Subscription.request(long)` on the passed `Future.get()` that might emit `onNext(T)` and `onComplete()` otherwise `onError(Throwable)` for any exception.
+2+|Block the `Subscription.request(long)` on the passed `Future.get()` that might emit `onNext(T)` and `onComplete()` otherwise `onError(Throwable)` for any exception.
 
 |Streams.from(*T[]*)
 |T
-2+^.^|Emit N `onNext(T)` elements everytime `Subscription.request(N)` is invoked. If N == Long.MAX_VALUE, emit everything. Once all the array has been read, emit `onComplete()`.
+2+|Emit N `onNext(T)` elements everytime `Subscription.request(N)` is invoked. If N == Long.MAX_VALUE, emit everything. Once all the array has been read, emit `onComplete()`.
 
 |Streams.from(*Iterable<T>*)
 |T
-2+^.^|Emit N `onNext(T)` elements everytime `Subscription.request(N)` is invoked. If N == Long.MAX_VALUE, emit everything. Once all the array has been read, emit `onComplete()`.
+2+|Emit N `onNext(T)` elements everytime `Subscription.request(N)` is invoked. If N == Long.MAX_VALUE, emit everything. Once all the array has been read, emit `onComplete()`.
 
 |Streams.range(*long*, _long_)
 |Long
-2+^.^|Emit a sequence of N `onNext(Long)` everytime `Subscription.request(N)` is invoked. If N == Long.MAX_VALUE, emit everything. Once the inclusive upper bound been read, emit `onComplete()`.
+2+|Emit a sequence of N `onNext(Long)` everytime `Subscription.request(N)` is invoked. If N == Long.MAX_VALUE, emit everything. Once the inclusive upper bound been read, emit `onComplete()`.
 
 |Streams.just(T, _T, T, T, T, T, T, T_)
 |T
-2+^.^|An optimization over `Streams.from(Iterable)` that just behaves similarly. Also useful to emit Iterable, Array or Future without colliding with the Streams.from() signatures.
+2+|An optimization over `Streams.from(Iterable)` that just behaves similarly. Also useful to emit Iterable, Array or Future without colliding with the Streams.from() signatures.
 
 |Streams.generate(*Supplier<T>*)
 |T
-2+^.^|Emit `onNext(T)` from the producing `Supplier.get()` factory everytime `Subscription.request(N)` is called. The demand N is ignored as only one data is emitted. When a null value is returned, emit `onComplete()`.
+2+|Emit `onNext(T)` from the producing `Supplier.get()` factory everytime `Subscription.request(N)` is called. The demand N is ignored as only one data is emitted. When a null value is returned, emit `onComplete()`.
 
 |Promises.syncTask(Supplier<T>), Promises.task(, Supplier<T>)
 |T
-2+^.^|Emit a single `onNext(T)` and `onComplete()` from the producing `Supplier.get()` on the first `Subscription.request(N)` received. The demand N is ignored.
+2+|Emit a single `onNext(T)` and `onComplete()` from the producing `Supplier.get()` on the first `Subscription.request(N)` received. The demand N is ignored.
 
 |Promises.success(*T*)
 |T
-2+^.^|Emit `onNext(T)` and `onComplete()` whenever a `Subscriber` is provided to `Promise.subscribe(Subscriber)`.
+2+|Emit `onNext(T)` and `onComplete()` whenever a `Subscriber` is provided to `Promise.subscribe(Subscriber)`.
 
 |Promises.<T>error(*Throwable*)
 |T
-2+^.^|Emit `onError(Throwable)` whenever a `Subscriber` is subscribed is provided to `Promise.subscribe(Subscriber)`.
+2+|Emit `onError(Throwable)` whenever a `Subscriber` is subscribed is provided to `Promise.subscribe(Subscriber)`.
 
 |===
 
@@ -242,89 +242,93 @@ processor.onComplete();
 
 h|Factory method
 |Data Type
-2+^.^|Role
+2+|Role
 
 2+|
 
 h|Streams.create(*Publisher<T>*)
 |T
-2+^.^|Only subscribe to the passed `Publisher` when the first `Subscription.request(N)` hits the returned `Stream`.
+2+|Only subscribe to the passed `Publisher` when the first `Subscription.request(N)` hits the returned `Stream`.
 Therefore it supports malformed Publishers that do not invoke `Subscriber.onSubscribe(Subscription)` as required per specification.
 
 h|Streams.wrap(*Publisher<T>*)
 |T
-2+^.^|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol:
+2+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol:
 
 onSubscribe > onNext\* > (onError \| onComplete)
 
 h|Streams.defer(*Supplier<Publisher<T>>*)
 |T
-2+^.^|A lazy Publisher access using the level of indirection provided by `Supplier.get()` everytime `Stream.subscribe(Subscriber)` is called.
+2+|A lazy Publisher access using the level of indirection provided by `Supplier.get()` everytime `Stream.subscribe(Subscriber)` is called.
+
+h|Streams.createWith(*BiConsumer<Long,SubscriberWithContext<T, C>*, _Function<Subscriber<T>,C>, Consumer<C>_)
+|T
+2+|A Stream generator with explicit callbacks for each `Subscriber` request, start and stop events. similar to `Streams.create(Publisher)` minus the boilerplate for common use.
 
 h|Streams.switchOnNext(*Publisher<Publisher<T>>*)
 |T
-2+^.^|A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
+2+|A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
 It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 
 h|Streams.concat(*Publisher<T>*, _Publisher<T>*_)
 
 Streams.concat(*Publisher<Publisher<T>>*)
 |T
-2+^.^|If a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>. As the name suggests its useful to http://rxmarbles.com/#concat[concat various datasources] and keep ordering right.
+2+|If a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>. As the name suggests its useful to http://rxmarbles.com/#concat[concat various datasources] and keep ordering right.
 
 h|Streams.merge(*Publisher<T>, Publisher<T>*, Publisher<T>*)
 
 Streams.merge(*Publisher<Publisher<T>>*)
 |T
-2+^.^|http://rxmarbles.com/#merge[Accept multiple sources] and *interleave* their respective sequence. Order won't be preserved like with `concat`. Demand from a Subscriber will be splitted between various source with a minimum of 1 by upstream to make sure everyone has a chance to send something.
+2+|http://rxmarbles.com/#merge[Accept multiple sources] and *interleave* their respective sequence. Order won't be preserved like with `concat`. Demand from a Subscriber will be splitted between various source with a minimum of 1 by upstream to make sure everyone has a chance to send something.
 
 h|Streams.combineLatest(*Publisher<T1>, Publisher<T2>*, _Publisher<T3-N> x6_, *Function<Tuple2-N, C>*)
 |C
-2+^.^|http://rxmarbles.com/#combineLatest[Combine most recent emitted elements] from the passed sources using the given `Function` aggregating function.
+2+|http://rxmarbles.com/#combineLatest[Combine most recent emitted elements] from the passed sources using the given `Function` aggregating function.
 
 h|Streams.combineLatest(*Publisher<T1>, Publisher<T2>,* _Publisher<T3-N> x6_, *Function<Tuple2-N, C>*)
 |C
-2+^.^|http://rxmarbles.com/#zip[Combine most recent emitted elements once], everytime every source has emitted a signal, apply the given `Function` and clear the temporary aggregate. Effectively it's a flexible _join_ mechanism for multiple different type of sources.
+2+|http://rxmarbles.com/#zip[Combine most recent emitted elements once], everytime every source has emitted a signal, apply the given `Function` and clear the temporary aggregate. Effectively it's a flexible _join_ mechanism for multiple different type of sources.
 
 h|Streams.join(*Publisher<T>, Publisher<T>*, _Publisher<T> x6_)
 |List<T>
-2+^.^|A shortcut for zip that only aggregate each complete aggregate in a List matching the order of the passed argument sources.
+2+|A shortcut for zip that only aggregate each complete aggregate in a List matching the order of the passed argument sources.
 
 h|Streams.await(*Publisher<>*, _long, unit, boolean_)
 |void
-2+^.^|Block the calling thread until the passed `Publisher` `onComplete` the waiting internal `Subscriber`. Optional arguments to tune the timeout and the need to request data as well can be passed. It will throw an exception if the final state is `onError` instead.
+2+|Block the calling thread until the passed `Publisher` `onComplete` the waiting internal `Subscriber`. Optional arguments to tune the timeout and the need to request data as well can be passed. It will throw an exception if the final state is `onError` instead.
 
 h|IOStreams.<K,V>persistentMap(*String*, _deleteOnExit_)
 |V
-2+^.^|<<streams.adoc#streams-persistent, A simple shortcut over ChronicleStream constructors>>, a disk-based log appender/tailer. The name argument must match an existing persistent queue under /tmp/persistent-queue\[name\].
+2+|<<streams.adoc#streams-persistent, A simple shortcut over ChronicleStream constructors>>, a disk-based log appender/tailer. The name argument must match an existing persistent queue under /tmp/persistent-queue\[name\].
 
 h|IOStreams.<K,V>persistentMapReader(*String*)
 |V
-2+^.^|<<streams.adoc#streams-persistent, A simple shortcut over ChronicleReaderStream constructors>>, a disk-based log tailer. The name argument must match an existing persistent queue under /tmp/persistent-queue\[name\].
+2+|<<streams.adoc#streams-persistent, A simple shortcut over ChronicleReaderStream constructors>>, a disk-based log tailer. The name argument must match an existing persistent queue under /tmp/persistent-queue\[name\].
 
 h|IOStreams.decode(*Codec<SRC, IN, ?>, Publisher<SRC>*)
 |IN
-2+^.^|Use <<core.adoc#core-codecs, Codec decoder>> to decode the passed source data type into *IN* type.
+2+|Use <<core.adoc#core-codecs, Codec decoder>> to decode the passed source data type into *IN* type.
 
 h|BiStreams.reduceByKey(*Publisher<Tuple2<KEY,VALUE>>*, _Map<KEY,VALUE>, Publisher<MapStream.Signal<KEY, VALUE>>_, *BiFunction<VALUE, VALUE, VALUE>*)
 |Tuple2<KEY,VALUE>
-2+^.^|A key-value operation that accumulates computed results for each 2 sequential `onNext(VALUE)` passed to the `BiFunction` argument. The result will be released `onComplete()` only. The options allow to use an existing map store and listen for its events.
+2+|A key-value operation that accumulates computed results for each 2 sequential `onNext(VALUE)` passed to the `BiFunction` argument. The result will be released `onComplete()` only. The options allow to use an existing map store and listen for its events.
 
 h|BiStreams.scanByKey(*Publisher<Tuple2<KEY,VALUE>>*, _Map<KEY,VALUE>, Publisher<MapStream.Signal<KEY, VALUE>>_, *BiFunction<VALUE, VALUE, VALUE>*)
 |Tuple2<KEY,VALUE>
-2+^.^|A key-value operation that accumulates computed results for each 2 sequential `onNext(VALUE)` passed to the `BiFunction` argument. The result will be released every time just after it has been stored.  The options allow to use an existing map store and listen for its events.
+2+|A key-value operation that accumulates computed results for each 2 sequential `onNext(VALUE)` passed to the `BiFunction` argument. The result will be released every time just after it has been stored.  The options allow to use an existing map store and listen for its events.
 
 h|Promises.when(*Promise<T1>, Promise<T2>*, _Promise<T3-N> x6_)
 |TupleN<T1,T2,\*?>
-2+^.^|Join all unique results from `Promises` and provide for the new `Promise` with the aggregated `Tuple`.
+2+|Join all unique results from `Promises` and provide for the new `Promise` with the aggregated `Tuple`.
 
 h|Promises.any(*Promise<T>, Promise<T>*, _Promise<T> x6_)
 |T
-2+^.^|Pick the first signal available among the passed promises and `onNext(T)` the returned `Promise` with this result.
+2+|Pick the first signal available among the passed promises and `onNext(T)` the returned `Promise` with this result.
 
 h|Promises.multiWhen(*Promise<T>, Promise<T>*, _Promise<T> x6_)
 |List<T>
-2+^.^|Join all unique results from `Promises` and provide for the new `Promise` with the aggregated `List`. The difference with the `when` alternative is that the type of promises must match.
+2+|Join all unique results from `Promises` and provide for the new `Promise` with the aggregated `List`. The difference with the `when` alternative is that the type of promises must match.
 
 |===
 
@@ -374,11 +378,34 @@ Streams<String> deferred = Streams.defer( () -> {
 });
 
 deferred
-  .consume(s -> System.out.printf("%s greeting = %s%n", Thread.currentThread(), s)); // <4>
+  .consume(s -> System.out.printf("%s greeting = %s%n", Thread.currentThread(), s));
 ----
 <1> Create a `Stream` from a custom valid `Publisher` which first calls `onSubscribe(Subscription)`.
 <2> Create a `Stream` from a custom malformed `Publisher which skips `onSubscribe(Subscription)` and immediately calls `onNext(T)`.
 <3> Create a `DeferredStream` that will alternate source Publisher<T> on each `Stream.subscribe` call, evaluating the total number of Subscribers,
+
+.Streams.createWith, an alternative to create() minus some boilerplate
+[source,java]
+----
+final Streams<String> stream = Streams.createWith(
+  (demand, sub) -> { // <1>
+    int prefix = sub.context(); // <2>
+    if(demand == 2L && !sub.isCancelled()){
+      sub.onNext(1);
+      sub.onNext(2);
+      sub.onComplete();
+  }, 
+  sub -> 0, // <3>
+  sub -> System.out.println("Cancelled!") // <4>
+);
+
+stream
+  .consume(s -> System.out.printf("%s greeting = %s%n", Thread.currentThread(), s)); // <4>
+----
+<1> Attach a request consumer reacting on `Subscriber` requests and passing the demand and the requesting subscriber.
+<2> The _sub_ argument is actually a `SubscriberWithContext` possibly assigned with some initial state shared by all request callbacks.
+<3> Executed once on start, this is also where we initialize the shared context optionnally, every request callbacks will receive 0 from `context()`
+<4> Executed once on any Termination event : *cancel()*, *onComplete()* or *onError(e)*.
 
 Where to go from here ? Well there are tons of use cases that can benefit from a custom Publisher:
 
@@ -432,53 +459,53 @@ Subscribers will see new data N flowing through a Broadcaster every T+I^N^ *only
 h|Factory
 |Input
 |Output
-3+^.^|Role
+3+|Role
 
-3+^.^|
+3+|
 
 h|Streams.timer(*delay*, _unit, timer_)
 |N/A
 |Long
-3+^.^|Start a Timer on `Stream.subscribe(Subscriber)` call and emit a single `onNext(0L)` then `onComplete()` once the delay is elapsed. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
+3+|Start a Timer on `Stream.subscribe(Subscriber)` call and emit a single `onNext(0L)` then `onComplete()` once the delay is elapsed. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
 `Subscription.request(long)` will be ignored as no backpressure can automatically apply to a scheduled emission.
 
 h|Streams.period(*period*, _unit, timer_)
 |N/A
 |Long
-3+^.^|Start a Timer on `Stream.subscribe(Subscriber)` call and every period of time emit `onNext(N)` where N is an incremented counter starting from 0. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
+3+|Start a Timer on `Stream.subscribe(Subscriber)` call and every period of time emit `onNext(N)` where N is an incremented counter starting from 0. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
 `Subscription.request(long)` will be ignored as no backpressure can automatically apply to a scheduled emission.
 
 h|Streams.<T>switchOnNext()
 |Publisher<T>
 |T
-3+^.^|An `Action` which for the record is also a `Processor`. The `onNext(Publisher<T>)` signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
+3+|An `Action` which for the record is also a `Processor`. The `onNext(Publisher<T>)` signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
  It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 
 h|Broadcaster.<T>create(_Environment, Dispatcher_)
 |T
 |T
-3+^.^|Create a _hot_ bridge between any context allowed to call `onSubscribe`, `onNext`, `onComplete` or `onError` and a composable sequence of these signals under a `Stream`. If no subscriber are actively registered, next signals might trigger a `CancelException`. The optional `Dispatcher` and `Environment` arguments define how to run each signal. Finally, a Broadcaster can be subscribed anytime to a `Publisher`, like a `Stream`.
+3+|Create a _hot_ bridge between any context allowed to call `onSubscribe`, `onNext`, `onComplete` or `onError` and a composable sequence of these signals under a `Stream`. If no subscriber are actively registered, next signals might trigger a `CancelException`. The optional `Dispatcher` and `Environment` arguments define how to run each signal. Finally, a Broadcaster can be subscribed anytime to a `Publisher`, like a `Stream`.
 
 h|SerializedBroadcaster.create(_Environment, Dispatcher_)
 |T
 |T
-3+^.^|Similar to `Broadcaster.create()` but adds support for concurrent `onNext` from parallel contexts possibly calling the same broadcaster `onXXX` methods.
+3+|Similar to `Broadcaster.create()` but adds support for concurrent `onNext` from parallel contexts possibly calling the same broadcaster `onXXX` methods.
 
 h|BehaviorBroadcaster.create(_Environment, Dispatcher_)
 |T
 |T
-3+^.^|Simlar to `Broadcaster.create()` but always replays the last data signal if any *and* the last terminal signal (`onComplete()`, `onError(Throwable)`) to the new Subscribers.
+3+|Simlar to `Broadcaster.create()` but always replays the last data signal if any *and* the last terminal signal (`onComplete()`, `onError(Throwable)`) to the new Subscribers.
 
 h|BehaviorBroadcaster.first(*T*, _Environment, Dispatcher_)
 |T
 |T
-3+^.^|Similar to BehaviorBroadcaster but starts with a default value T.
+3+|Similar to BehaviorBroadcaster but starts with a default value T.
 
 
 h|Streams.wrap(*Processor<I, O>*)
 |I
 |O
-3+^.^|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<O>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol:
+3+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<O>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol:
 
 onSubscribe > onNext\* > (onError \| onComplete)
 
@@ -488,7 +515,7 @@ h|Promises.<T>prepare(*Environment, Dispatcher*)
 Promises.ready()
 |T
 |T
-3+^.^|Prepare a `Promise` ready to be called *once only* by any external context through `onNext`. Since it's a stateful container holding the result of the fulfilled promise, new subscribers will immediately run on the current thread.
+3+|Prepare a `Promise` ready to be called *once only* by any external context through `onNext`. Since it's a stateful container holding the result of the fulfilled promise, new subscribers will immediately run on the current thread.
 
 |===
 
@@ -577,74 +604,74 @@ image::images/broadcast.png[The 3 Pipelines wired, width=650, align="center", li
 
 h|Stream<T> method
 |Return Type
-2+^.^|Role
+2+|Role
 
-2+^.^|
+2+|
 
 h|subscribe(*Subscriber<T>*)
 
 _subscribeOn_
 |void
-2+^.^|Subscribe the passed *Subscriber<T>* and therefore materialize any pending upstream wired up lazily (the implicit *lift* for non terminal operation). Note a Subscriber must request data if it expects some. The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the subscriber.
+2+|Subscribe the passed *Subscriber<T>* and therefore materialize any pending upstream wired up lazily (the implicit *lift* for non terminal operation). Note a Subscriber must request data if it expects some. The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the subscriber.
 
 h|consume(_Consumer<T>,Consumer<T>,Consumer<T>_)
 
 _consumeOn_
 |Control
-2+^.^|Call `subscribe` with a `ConsumerAction` which interact with each passed optional `Consumer` every time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is Long.MAX_VALUE by default for unbounded consuming.  The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the consumers. Returns a Control argument to eventually cancel the materialized `Stream` if necessary. Note that `ConsumeAction` take care of unbounded recursion if the `onNext(T)` signal triggers a blocking request.
+2+|Call `subscribe` with a `ConsumerAction` which interact with each passed optional `Consumer` every time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is Long.MAX_VALUE by default for unbounded consuming.  The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the consumers. Returns a Control argument to eventually cancel the materialized `Stream` if necessary. Note that `ConsumeAction` take care of unbounded recursion if the `onNext(T)` signal triggers a blocking request.
 
 h|consumeLater()
 |Control
-2+^.^|Similar to `consume` but does not fire an initial `Subscription.request(long)`. The returned `Control` can be used to `request(long)` anytime.
+2+|Similar to `consume` but does not fire an initial `Subscription.request(long)`. The returned `Control` can be used to `request(long)` anytime.
 
 h|tap()
 |TapAndControls
-2+^.^|Similar to `consume` but return a `TapAndControls` that will be dynamically updated everytime a new `onNext(T)` is signalled and cancelled anytime.
+2+|Similar to `consume` but return a `TapAndControls` that will be dynamically updated everytime a new `onNext(T)` is signalled and cancelled anytime.
 
 
 h|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*)
 
 _batchConsumeOn_
 |Control
-2+^.^|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
+2+|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
 
 h|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*)
 
 _adaptiveConsumeOn_
 |Control
-2+^.^|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.
+2+|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.
 
 h|next()
 |Promise<T>
-2+^.^|Return a `Promise<T>` that is actively subscribing to the `Stream`, materializing it, and requesting a single data before unregistering. The immediate next signal `onNext(T)`, `onComplete()` or `onError(Throwable)` will fulfill the promise.
+2+|Return a `Promise<T>` that is actively subscribing to the `Stream`, materializing it, and requesting a single data before unregistering. The immediate next signal `onNext(T)`, `onComplete()` or `onError(Throwable)` will fulfill the promise.
 
 h|toList()
 |Promise<List<T>>
-2+^.^|Similar to `next()` but will wait until all sequence has been produced (`onComplete()`) and pass the accumulated `onNext(T)` in a single `List<T>` fulfilling the returned promise.
+2+|Similar to `next()` but will wait until all sequence has been produced (`onComplete()`) and pass the accumulated `onNext(T)` in a single `List<T>` fulfilling the returned promise.
 
 h|Stream.toBlockingQueue()
 |CompletableBlockingQueue<T>
-2+^.^|Subscribe to the `Stream` and return an iterable blocking `Queue<T>` accumulating all `onNext` signals. `CompletableBlockingQueue.isTerminated()` can be used as a condition to exit a blocking `poll()` loop.
+2+|Subscribe to the `Stream` and return an iterable blocking `Queue<T>` accumulating all `onNext` signals. `CompletableBlockingQueue.isTerminated()` can be used as a condition to exit a blocking `poll()` loop.
 
 h|cache()
 |Stream<T>
-2+^.^|Turn any Stream into a *Cold* Stream, able to replay all the sequence of signals indivudally for each Subscriber.
+2+|Turn any Stream into a *Cold* Stream, able to replay all the sequence of signals indivudally for each Subscriber.
 Due to the unbounded nature of the action, consider to use with small sequences.
 
 h|broadcast()
 
 broadcastOn(Environment, Dispatcher)
 |Stream<T>
-2+^.^|Turn Any Stream into a *Hot* Stream. This will prevent pipeline duplication by immediately materializing the `Stream` and be ready to publish the signal to N Subscribers downstream.
+2+|Turn Any Stream into a *Hot* Stream. This will prevent pipeline duplication by immediately materializing the `Stream` and be ready to publish the signal to N Subscribers downstream.
 The demand will be aggregated from all child Subscribers.
 
 h|broadcastTo(*Subscriber<T>*)
 |Subscriber<T>
-2+^.^|An alternative to `Stream.subscribe` which allows method chaining since the returned instance is the same than the passed argument.
+2+|An alternative to `Stream.subscribe` which allows method chaining since the returned instance is the same than the passed argument.
 
 h|process(*Processor<T, O>*)
 |Stream<O>
-2+^.^|Similar to broadcast() but accept any given `Processor<T, O>`. A perfect place to introduce <<core-processor.adoc#core-processor, Core Processors>> !
+2+|Similar to broadcast() but accept any given `Processor<T, O>`. A perfect place to introduce <<core-processor.adoc#core-processor, Core Processors>> !
 
 
 |===
@@ -823,23 +850,23 @@ h|Functional API or Factory method
 |
 
 h|Streams.await(Publisher<?>)
-^.^|Block until the passed Publisher `onComplete()` or `onError(e)`, bubbling up the eventual exception.
+|Block until the passed Publisher `onComplete()` or `onError(e)`, bubbling up the eventual exception.
 
 h|Stream.next() 
 
 _with_ Promise.await(), Promise.get()...
-^.^|Capture in a Promise the immediate next signal only and `onComplete()` if the signal was a data. `get()` can be used to touch but not wait on the promise to fulfill.
+|Capture in a Promise the immediate next signal only and `onComplete()` if the signal was a data. `get()` can be used to touch but not wait on the promise to fulfill.
 
 h|Stream.toList()
 
 _with_ Promise.await(), Promise.get()...
-^.^|Similar to `next()` but capture the full sequence in a List<T> to fulfill the `Promise<List<T>>` returned.
+|Similar to `next()` but capture the full sequence in a List<T> to fulfill the `Promise<List<T>>` returned.
 
 h|Stream.toBlockingQueue()
-^.^|Subscribe to the `Stream` and return an iterable blocking `Queue<T>` accumulating all `onNext` signals. `CompletableBlockingQueue.isTerminated()` can be used as a condition to exit a blocking `poll()` loop.
+|Subscribe to the `Stream` and return an iterable blocking `Queue<T>` accumulating all `onNext` signals. `CompletableBlockingQueue.isTerminated()` can be used as a condition to exit a blocking `poll()` loop.
 
 h|Wiring up Synchronous Streams
-^.^|It's not specific to any API but if the current Stream is dispatched on a `SynchronousDispatcher`, it is actually blocking when a *terminal* action is starting, such as `consume()`.
+|It's not specific to any API but if the current Stream is dispatched on a `SynchronousDispatcher`, it is actually blocking when a *terminal* action is starting, such as `consume()`.
 
 |===
 
@@ -1012,25 +1039,25 @@ h|Stream<T> API
 |
 
 h|buffer(_int_)
-^.^|Aggregate until `onComplete()` or the given `int` argument is reached which starts over a new aggregation.
+|Aggregate until `onComplete()` or the given `int` argument is reached which starts over a new aggregation.
 
 h|buffer(*Publisher<?>*, _Supplier<? extends Publisher<?>>_)
-^.^|Aggregate until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
+|Aggregate until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
 
 h|buffer(*Supplier<? extends Publisher<?>>*)
-^.^|Aggregate until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will ends the linked aggregation and starts a new one immediately. 
+|Aggregate until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will ends the linked aggregation and starts a new one immediately. 
 
 h|buffer(*int, int*)
-^.^|Aggregate until `onComplete()` or the given second *skip* `int` argument is reached which starts over a new aggregation. The first *size* `int` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
+|Aggregate until `onComplete()` or the given second *skip* `int` argument is reached which starts over a new aggregation. The first *size* `int` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
 
 h|buffer(*long*, TimeUnit, Timer_)
-^.^|Aggregate until `onComplete()` or the elpased *period* `long` argument is reached which starts over a new aggregation. 
+|Aggregate until `onComplete()` or the elpased *period* `long` argument is reached which starts over a new aggregation. 
 
 h|buffer(*long, long*, TimeUnit, Timer_)
-^.^|Aggregate until `onComplete()` or the given second *timeshift* `long` argument is reached. The first *timespan* `long` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
+|Aggregate until `onComplete()` or the given second *timeshift* `long` argument is reached. The first *timespan* `long` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
 
 h|buffer(*int, long*, _TimeUnit, Timer_)
-^.^|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It accumulates until the given *size* has been reached or the *timespan* elapsed.
+|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It accumulates until the given *size* has been reached or the *timespan* elapsed.
 
 |===
 
@@ -1093,25 +1120,25 @@ h|Stream<T> API
 |
 
 h|window(_int_)
-^.^|Forward to a generated `Stream<T>` until `onComplete()` or the given `int` argument is reached which starts over a new `Stream`.
+|Forward to a generated `Stream<T>` until `onComplete()` or the given `int` argument is reached which starts over a new `Stream`.
 
 h|window(*Publisher<?>*, _Supplier<? extends Publisher<?>>_)
-^.^|Forward to a generated `Stream<T>` until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will ends the linked aggregation. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<Stream<T>>`.
+|Forward to a generated `Stream<T>` until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will ends the linked aggregation. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<Stream<T>>`.
 
 h|window(*Supplier<? extends Publisher<?>>*)
-^.^|Forward to a generated `Stream<T>`  until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked `Stream<T>` and starts a new one immediately. 
+|Forward to a generated `Stream<T>`  until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked `Stream<T>` and starts a new one immediately. 
 
 h|window(*int, int*)
-^.^|Forward to a generated `Stream<T>`  until `onComplete()` or the given second *skip* `int` argument is reached which starts over a new `Stream<T>`. The first *size* `int` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint sequence can be emitted to the child `Subscriber<Stream<T>>`.
+|Forward to a generated `Stream<T>`  until `onComplete()` or the given second *skip* `int` argument is reached which starts over a new `Stream<T>`. The first *size* `int` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint sequence can be emitted to the child `Subscriber<Stream<T>>`.
 
 h|window(*long*, TimeUnit, Timer_)
-^.^|Forward to a generated `Stream<T>`  until `onComplete()` or the elpased *period* `long` argument is reached which starts over a new `Stream<T>`. 
+|Forward to a generated `Stream<T>`  until `onComplete()` or the elpased *period* `long` argument is reached which starts over a new `Stream<T>`. 
 
 h|window(*long, long*, TimeUnit, Timer_)
-^.^|Forward to a generated `Stream<T>`  until `onComplete()` or the given second *timeshift* `long` argument is reached. The first *timespan* `long` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint sequence can be emitted to the child `Subscriber<Stream<T>>`.
+|Forward to a generated `Stream<T>`  until `onComplete()` or the given second *timeshift* `long` argument is reached. The first *timespan* `long` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint sequence can be emitted to the child `Subscriber<Stream<T>>`.
 
 h|window(*int, long*, _TimeUnit, Timer_)
-^.^|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It forwards to a generated `Stream<T>` until the given *size* has been reached or the *timespan* elapsed.
+|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It forwards to a generated `Stream<T>` until the given *size* has been reached or the *timespan* elapsed.
 
 |===
 
@@ -1188,15 +1215,15 @@ Streams.range(1,1000000)
 |===
 
 h|Stream<T>
-^.^|Role
+|Role
 
 |
 
 h|subscribe(*Subscriber<T>*)
-^.^|A custom `Subscriber<T>` will have all the flexibility to request whenever it wishes. Best to size these requests if the `Subscriber` involve some blocking operations.
+|A custom `Subscriber<T>` will have all the flexibility to request whenever it wishes. Best to size these requests if the `Subscriber` involve some blocking operations.
 
 h|capacity(*long*)
-^.^|<<streams.adoc#stream-capacity, Set the capacity>> to this `Stream<T>` and all downstream actions.
+|<<streams.adoc#stream-capacity, Set the capacity>> to this `Stream<T>` and all downstream actions.
 
 h|onOverflowBuffer(_CompletableQueue_)
 ^.^a|Create or use the given `CompletableQueue` to store the overflow elements. Overflow occurs when a `Publisher` sends more than actually requested for. Overflow will be drained over the next requests.
@@ -1221,27 +1248,27 @@ image::images/marble/marble-requestwhen.png[requestWhen(requestMapper), width=50
 h|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*) 
 
 _batchConsumeOn_
-^.^|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
+|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
 
 h|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), 
 
 _adaptiveConsumeOn_
-^.^|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.  The `AdaptiveConsumerAction` will subscribe to the produced sequence and immiately forwards `onNext(Long)` to the upstream `request(long)`.
+|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.  The `AdaptiveConsumerAction` will subscribe to the produced sequence and immiately forwards `onNext(Long)` to the upstream `request(long)`.
 
 h|process(*Processor<T, ?>*)
-^.^|Any `Processor` can also take care of transforming the demand, buffer or whatever. It is worth checking the behavior of the given `Processor`.
+|Any `Processor` can also take care of transforming the demand, buffer or whatever. It is worth checking the behavior of the given `Processor`.
 
 h|_All_ filter(_arguments_), take(_arguments_), takeWhile(_arguments_)...
-^.^|All limit operations can be used to proactively limit the volume of a `Stream`.
+|All limit operations can be used to proactively limit the volume of a `Stream`.
 
 h|buffer(_arguments_), reduce(_arguments_), count(_arguments_)...
-^.^|All aggregating and metrics operations can be used to proactively limit the volume of a `Stream`.
+|All aggregating and metrics operations can be used to proactively limit the volume of a `Stream`.
 
 h|_All_ sample(_arguments_), sampleFirst(_arguments_)
-^.^|Reduce the volume of a `Stream<T>` by selecting the last (or the first) `onNext(T)` signal matching the given conditions. These condition can be timed, sized, timed or sized, and interactive (event-driven).
+|Reduce the volume of a `Stream<T>` by selecting the last (or the first) `onNext(T)` signal matching the given conditions. These condition can be timed, sized, timed or sized, and interactive (event-driven).
 
 h|zip(_arguments_), zipWith(_arguments_)
-^.^|Reduce the volume of N `Stream<T>` to the least signal producing zipped `Publisher`. The aggregated signal from each `Publisher` can be used to produce a distinct value from the N most recent upstream `onNext(T)`.
+|Reduce the volume of N `Stream<T>` to the least signal producing zipped `Publisher`. The aggregated signal from each `Publisher` can be used to produce a distinct value from the N most recent upstream `onNext(T)`.
 
 |===
 
@@ -1277,19 +1304,19 @@ Streams
 |===
 
 h|Functional API or Factory method
-^.^|Role
+|Role
 
 |
 
 h|Stream.flatMap(Function<T, Publisher<V>>)
-^.^|An <<streams.adoc#stream-flatmap,Async transformation>> is a typed shortcut for `map(Function<T, Publisher<V>>).merge()`. 
+|An <<streams.adoc#stream-flatmap,Async transformation>> is a typed shortcut for `map(Function<T, Publisher<V>>).merge()`. 
 
 The mapping part produces a `Publisher<V>` eventully using the passed data `T`, a common pattern used in <<streams.adoc#streams-microservice, MicroService architecture>>. 
 
 The merging part transforms the sequence of produced `Publisher<V>` into a sequence of `V` by _safely_ subscribing in parallel to all of them. There is no ordering guaranteed, it is *interleaved* sequence of `V`. All merged `Publisher<T>` must complete before the `Subscriber<T>` can complete.
 
 h|Streams.switchOnNext(Publisher<Publisher<T>>)
-^.^|A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
+|A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
 It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 All merged `Publisher<T>` must complete before the `Subscriber<T>` can complete.
 
@@ -1300,7 +1327,7 @@ Streams.merge(Publisher<Publisher<T>>)
 Stream.mergeWith(Publisher<T>)
 
 Stream.merge()
-^.^|Transform upstream sequence of `Publisher<T>` into a sequence of `T` by _safely_ subscribing in parallel to all of them. There is no ordering guaranteed, it is *interleaved* sequence of `T`. If the arguments are directly `Publisher<T>` like in `Stream.mergeWith(Publisher<T>)` or `Streams.merge(Publisher<T>, Publisher<T>)`, the `MergeAction` will subscribe to them directly and size more efficiently (known number of parallel upstreams). All merged `Publisher<T>` must complete before the `Subscriber<T>` can complete.
+|Transform upstream sequence of `Publisher<T>` into a sequence of `T` by _safely_ subscribing in parallel to all of them. There is no ordering guaranteed, it is *interleaved* sequence of `T`. If the arguments are directly `Publisher<T>` like in `Stream.mergeWith(Publisher<T>)` or `Streams.merge(Publisher<T>, Publisher<T>)`, the `MergeAction` will subscribe to them directly and size more efficiently (known number of parallel upstreams). All merged `Publisher<T>` must complete before the `Subscriber<T>` can complete.
 
 h|Streams.concat(Publisher<T>, _Publisher<T> x7_)
 
@@ -1309,26 +1336,26 @@ Streams.concat(Publisher<Publisher<T>>)
 Stream.concatWith(Publisher)
 
 Stream.startWith(Publisher)
-^.^|Similar to `merge()` actions but if a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>. The sequences will be subscribed in declarative order, from left to right, e.g. `stream1.concatWith(stream2)` or with the argument given in `stream2.startWith(stream1)`.
+|Similar to `merge()` actions but if a Publisher<T> is already emitting, wait for it to `onComplete()` before draining the next pending Publisher<T>. The sequences will be subscribed in declarative order, from left to right, e.g. `stream1.concatWith(stream2)` or with the argument given in `stream2.startWith(stream1)`.
 
 h|Streams.combineLatest(Publisher<T>, _Publisher<T> x7_, Function<Tuple,V>)
 
 Streams.combineLatest(Publisher<Publisher<T>>, Function<Tuple,V>)
-^.^|Combine the most recent `onNext(T)` signal from each distinct `Publisher<T>`. Each signal combines until a future `onNext(T)` from its source `Publisher<T>` replaces it. *After* all `Publisher<T>` have emitted at least one signal, the given combinator function will accept all recent signals and produce the desired combined object. If any `Publisher<T>` completes, the downstream `Subscriber<T>` will complete.
+|Combine the most recent `onNext(T)` signal from each distinct `Publisher<T>`. Each signal combines until a future `onNext(T)` from its source `Publisher<T>` replaces it. *After* all `Publisher<T>` have emitted at least one signal, the given combinator function will accept all recent signals and produce the desired combined object. If any `Publisher<T>` completes, the downstream `Subscriber<T>` will complete.
 
 h|Streams.zip(Publisher<T>, _Publisher<T> x7_, Function<Tuple,V>)
 
 Streams.zip(Publisher<Publisher<T>>, Function<Tuple,V>)
 
 Stream.zipWith(Publisher<T>, Function<Tuple2,V>)
-^.^|Combine the most recent `onNext(T)` signal from each distinct `Publisher<T>`. Each signal combines only once. *Everytime* all `Publisher<T>` have emitted one signal, the given zipper function will receive them and produce the desired zipped object. If any `Publisher<T>` completes, the downstream `Subscriber<T>` will complete.
+|Combine the most recent `onNext(T)` signal from each distinct `Publisher<T>`. Each signal combines only once. *Everytime* all `Publisher<T>` have emitted one signal, the given zipper function will receive them and produce the desired zipped object. If any `Publisher<T>` completes, the downstream `Subscriber<T>` will complete.
 
 h|Streams.join(Publisher<T>, _Publisher<T> x7_)
 
 Streams.join(Publisher<Publisher<T>>)
 
 Stream.joinWith(Publisher<T>)
-^.^|A shortcut for `zip` with a predefined zipper function transforming each most recent `Tuple` into a `List<?>`.
+|A shortcut for `zip` with a predefined zipper function transforming each most recent `Tuple` into a `List<?>`.
 
 |===
 
@@ -1391,21 +1418,21 @@ In this section we're going to cover the basics to create a reactive facade gati
 |===
 
 h|Functional API or Factory method
-^.^|Role
+|Role
 
 |
 
 h|Streams.create(Publisher), Streams.defer(Supplier), Streams.wrap(Publisher), Streams.generate(Supplier)
-^.^|Protecting resource access with a `Publisher` is encouraged. A few <<streams.adoc#streams-basics, Stream factories>> will be particularly useful. The point of creating a `Publisher` is to only `onNext(T)` when the data is ready such as in an IO callback. The read should be triggered by a `Subscriber` request if possible to implement a form of backpressure.
+|Protecting resource access with a `Publisher` is encouraged. A few <<streams.adoc#streams-basics, Stream factories>> will be particularly useful. The point of creating a `Publisher` is to only `onNext(T)` when the data is ready such as in an IO callback. The read should be triggered by a `Subscriber` request if possible to implement a form of backpressure.
 
 h|Stream.timeout(_arguments_)
-^.^|Accessing an external resource, especially remote, should always be limited in time to become more resilient to external conditions such as network partitions. Timeout operations can fallback to another `Publisher` for alternative  service call or just `onError(TimeoutException)`. The timer resets each time a fresh `onNext(T)` is observed.
+|Accessing an external resource, especially remote, should always be limited in time to become more resilient to external conditions such as network partitions. Timeout operations can fallback to another `Publisher` for alternative  service call or just `onError(TimeoutException)`. The timer resets each time a fresh `onNext(T)` is observed.
 
 h|Stream.take(_arguments_)
-^.^|Similar to `timeout()`, a need to scope in size an external resource is a common one. It's also useful to fully trigger a pipeline including `onComplete()` processing.
+|Similar to `timeout()`, a need to scope in size an external resource is a common one. It's also useful to fully trigger a pipeline including `onComplete()` processing.
 
 h|Stream.flatMap(Function<T,Publisher<V>)
-^.^|An <<streams.adoc#stream-flatmap,Async transformation>> that produces a `Publisher<V>` eventully using the passed data `T`, the ideal place to hook in a call to another service before resuming the current processing.
+|An <<streams.adoc#stream-flatmap,Async transformation>> that produces a `Publisher<V>` eventully using the passed data `T`, the ideal place to hook in a call to another service before resuming the current processing.
 
 The sequence of produced `Publisher<V>` will flow in the `Subscriber` into a sequence of `V` by _safely_ subscribing in parallel. 
 
@@ -1439,27 +1466,26 @@ a|
 public class UserService{
   //...
 
-  public User get(String name) throws Exception {
+  public User get(String name) 
+  throws Exception {
     Result r = userDB.findByName(name);
     return convert(r);
   }
 
-  public Future<List<User>> all() throws Exception {    
-    final CompletableFuture<Result> f = 
-      new CompletableFuture<Result>();
-
-    userDB.findAll().onResult( r ->
-      f.complete(convertToList(r));
-    );
-    return f;
+  public List<User> allFriends(User user) 
+  throws Exception {    
+    ResultSet rs = userDB.findAllFriends(user);
+    return convertToList(r);
   }
 
-   public Future<List<User>> all() throws Exception {    
+  public Future<List<User>> filteredFind(String name) 
+  throws Exception {    
     User user = get(name);
     if(user == null \|\| !user.isAdmin()){
       return CompletedFuture.completedFuture(null);
     } else {
-      return all();
+      //could be in an async thread if wanted
+      return CompletedFuture.completedFuture(allFriends(user));
     }
   }
 }
@@ -1475,30 +1501,121 @@ public class UserService{
   public Promise<User> get(final String name) {
     return Promises
       .task( () -> userDB.findByName(name))
+      .timeout(3, TimeUnit.Seconds)
       .map(this::convert)
       .subscribeOn(workDispatcher());
   }
 
-  public Stream<User> all()  {    
+  public Stream<User> allFriends(final User user)  {    
     return Streams
-      .defer(() -> Streams.from(userDB.findAll()))
-      .map(this::convert)
+      .defer(() -> 
+        Streams.just(userDB.findAllFriends(user)))
+      .timeout(3, TimeUnit.Seconds)
+      .map(this::convertToList)
+      .flatMap(Streams::from)
       .dispatchOn(cachedDispatcher());
       .subscribeOn(workDispatcher());
   }
 
   public Stream<User> filteredFind(String name){
       return get(name)
-        .filter(User::isAdmin)
-        .flatMap(user -> all());
+        .stream()
+        .filter(User::isAdmin)        
+        .flatMap(this::allFriends);
   }
 }
 ----
+2+^.^h|The Result
+2+a|
+
+****
+* In *all query methods*:
+** No more *throws Exception*, its all passed in the pipeline
+** No more control logic, we use predefined operators such as map or filter
+** Only return `Publisher` (Stream or Promise)
+** Limit blocking queries in time with timeout (can be used later for retrying, fallback etc)
+** Use a pooled workDispatcher thread On Subscribe
+* In *get(name)*:
+** Use of typed *single data* Publisher, or `Promise`.
+** On Subscribe, call the *task* callback
+* In *allFriends(user)*:
+** Use `defer()` to invoke the DB query on the *onSubscribe* thread, lazily
+** No backpressure strategy yet and we read all the results in one blocking (but async) call
+** We convert returned list into a data stream in FlatMap
+** Dispatch each signal on an async dispatcher so downstream processing doesn't negatively impact the read
+* In *filteredFind(name)*:
+** We convert a `Promise` from first get to a Stream with `stream()`
+** We only call allFriends() sub-stream if there is a valid user
+** The returned Stream<User> resume on the first allFriend() signal
+****
+
 |===
+
+
 
 [[streams-microservice-compose]]
 === Composing multiple Services Calls
 
+.Evolving to reactive microservices, part 2, parallel requests and resiliency
+[cols="1,1"]
+|===
+^.^h|The Not So Much Win
+^.^h|The Win 
+a|
+
+[source,java]
+----
+int tries = 0;
+while(tries < 3){
+  try{
+    Future<List<User>> rickFriends = 
+      userService.fitleredFind("Rick");
+
+    Future<List<User>> mortyFriends = 
+      userService.fitleredFind("Morty");
+
+    return rickFriends.get(3, TimeUnit.SECONDS)
+      .addAll(
+        mortyFriends.get(3, TimeUnit.SECONDS)
+    );    
+
+  }catch(Exception e){    
+    if(tries++ >= 3) throw e;
+    Thread.sleep(tries*1000);
+  }  
+}
+----
+
+a|
+
+[source,java]
+----
+return Streams.merge(
+  userService.filteredFind("Rick"),
+  userService.filteredFind("Morty")
+)
+.buffer()
+.retryWhen( errors -> 
+  errors
+  .zipWith(Streams.range(1,3), t -> t.getT2())  
+  .flatMap( tries -> Streams.timer(tries) )
+);
+----
+2+^.^h|The Result
+2+a|
+
+****
+* `Streams.merge()` is a non-blocking coordinating operation mixing the two queries in one
+* `buffer()` will aggregate all results until completion or error (which we timed previously)
+* `retryWhen(Function<Stream<Throwable>, Publisher<?>>` will keep re-subscribing if an error is propagated
+** `zipWith` will combine errors with a number of tries up to 3 times
+** `zipWith` only return the number of tries from the tuple
+** `flatMap` + `Streams.timer(long)` convert each try into a delayed signal (seconds by default)
+** Each time a signal is sent by this returned `Publisher`, cancel and subscribe again, until a `onComplete` or `onError` is sent.
+** `flatMap` only completes if the internal timer AND the upstream have completed, so after the range of 3 or after errors sequence itself terminates.
+****
+
+|===
 
 
 [[streams-microservice-share]]
@@ -1513,39 +1630,39 @@ Using a `Stream` to build fault tolerant pipelines.
 |===
 
 h|Functional API or Factory method
-^.^|Role
+|Role
 
 |
 
 h|Stream.when(Class<Throwable>, Consumer<Throwable>)
-^.^|
+|
 
 h|Stream.materialize()
-^.^|
+|
 
 h|Stream.recover()
-^.^|
+|
 
 h|Stream.observeError()
-^.^|
+|
 
 h|Stream.onErrorReturn()
-^.^|
+|
 
 h|Stream.onErrorResume()
-^.^|
+|
 
 h|Stream.retry()
-^.^|
+|
 
 h|Stream.oberveError()
-^.^|
+|
 
 h|Stream.ignoreErrors()
-^.^|
+|
 
 h|*throw* CancelException
-^.^|
+|
 
 |===
 
@@ -1557,18 +1674,18 @@ Combining multiple Reactive Streams data `Publishers` in an controlled fashion.
 |===
 
 h|Functional API or Factory method
-^.^|Role
+|Role
 
 |
 
 h|Stream.onOverflowBuffer(CompletableQueue)
-^.^|
+|
 
 h|IOStreams.persistentMapReader()
-^.^|
+|
 
 h|IOStreams.persistentMap()
-^.^|
+|
 
 |===
 
@@ -1580,33 +1697,33 @@ Using a `Stream` to compute metrics and any inline stateful processing.
 |===
 
 h|Functional API or Factory method
-^.^|Role
+|Role
 
 |
 
 h|Stream.count()
-^.^|
+|
 
 h|Stream.scan()
-^.^|
+|
 
 h|Stream.reduce()
-^.^|
+|
 
 h|BiStreams.reduceByKey()
-^.^|
+|
 
 h|BiStreams.scanByKey()
-^.^|
+|
 
 h|Stream.timestamp()
-^.^|
+|
 
 h|Stream.elapsed()
-^.^|
+|
 
 h|Stream.materialize()
-^.^|
+|
 
 
 |===
@@ -1659,27 +1776,27 @@ assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
 
 h|Stream<T> API
 |Output Type
-2+^.^|Role
+2+|Role
 
 2+|
 
 h|groupBy(Function<T,K>)
 |GroupedStream<K,T>
-2+^.^|
+2+|
 
 h|partition(int)
 |GroupedStream<K,T>
-2+^.^|
+2+|
 
 
 h|_All_ window(_arguments_)
 |Stream<T>
-2+^.^|<<streams.adoc#streams-microbatching, Windows>> are actually for cutting partitions over time, size or coordinated with external signals.
+2+|<<streams.adoc#streams-microbatching, Windows>> are actually for cutting partitions over time, size or coordinated with external signals.
 
 
 h|process(XXXWorkProcessor)
 |T
-2+^.^|Since a RingBufferWorkProcessor distributes the signals to each subscribe, it is an efficient alternative to `partition()` when its just about scaling-up, not routing.
+2+|Since a RingBufferWorkProcessor distributes the signals to each subscribe, it is an efficient alternative to `partition()` when its just about scaling-up, not routing.
 
 |===
 
@@ -1696,29 +1813,29 @@ In addition to implementing directly the Reactive Streams, some more `Stream` me
 h|Stream<T> API
 |Input Type
 |Output Type
-3+^.^|Role
+3+|Role
 
 3+|
 
 h|after()
 |T
 |Void
-3+^.^|Only consume `onComplete()` and `onError(Throwable)` signals. 
+3+|Only consume `onComplete()` and `onError(Throwable)` signals. 
 
 h|log(_String_)
 |T
 |T
-3+^.^|Use SLF4J and the given category to log each signal.
+3+|Use SLF4J and the given category to log each signal.
 
 h|split
 |Iterable<T>
 |T
-3+^.^|Blocking transformation from `Iterable<T>` to as many `onNext(T)` as available.
+3+|Blocking transformation from `Iterable<T>` to as many `onNext(T)` as available.
 
 h|sort(_int_, Comparator<T>)
 |T
 |T
-3+^.^|Accept up to the given size into an in memory `PriorityQueue`, apply the `Comparator<T>` to sort, and emit all its pending `onNext(T)` signals.
+3+|Accept up to the given size into an in memory `PriorityQueue`, apply the `Comparator<T>` to sort, and emit all its pending `onNext(T)` signals.
 
 h|combine()
 |I
@@ -1742,7 +1859,7 @@ Action<Integer, String> processor = stream
 h|keepAlive()
 |T
 |T
-3+^.^|Prevent any `Subscription.cancel()` to propagate from the `Subscriber`.
+3+|Prevent any `Subscription.cancel()` to propagate from the `Subscriber`.
 
 |Action.debug(), StreamsUtils.debug(Stream)
 |A quick

@@ -110,8 +110,8 @@ public class Streams {
 	 *
 	 * @since 2.0.2
 	 */
-	public static <T> Stream<T> load(BiConsumer<Long, SubscriberWithContext<T, Void>> requestConsumer) {
-		return load(requestConsumer, null, null);
+	public static <T> Stream<T> createWith(BiConsumer<Long, SubscriberWithContext<T, Void>> requestConsumer) {
+		return createWith(requestConsumer, null, null);
 	}
 
 	/**
@@ -126,9 +126,9 @@ public class Streams {
 	 *
 	 * @since 2.0.2
 	 */
-	public static <T, C> Stream<T> load(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+	public static <T, C> Stream<T> createWith(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 	                                         Function<Subscriber<? super T>, C> contextFactory) {
-		return load(requestConsumer, contextFactory, null);
+		return createWith(requestConsumer, contextFactory, null);
 	}
 
 
@@ -146,9 +146,9 @@ public class Streams {
 	 *
 	 * @since 2.0.2
 	 */
-	public static <T, C> Stream<T> load(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
-	                                         Function<Subscriber<? super T>, C> contextFactory,
-	                                         Consumer<C> shutdownConsumer) {
+	public static <T, C> Stream<T> createWith(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+	                                          Function<Subscriber<? super T>, C> contextFactory,
+	                                          Consumer<C> shutdownConsumer) {
 
 		return Streams.wrap(PublisherFactory.create(requestConsumer, contextFactory, shutdownConsumer));
 	}

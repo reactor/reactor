@@ -1833,7 +1833,7 @@ class StreamsSpec extends Specification {
 	def 'Creating Stream from publisher factory'() {
 		given:
 			'a source stream with a given publisher'
-			def s = Streams.load(
+			def s = Streams.createWith(
 					{ long n, SubscriberWithContext<String, Void> sub ->
 						(1..3).each {
 							sub.onNext("test$it")
