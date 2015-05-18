@@ -129,8 +129,6 @@ public final class Exceptions {
 	}
 
 	/**
-	 * Port from RxJava
-	 *
 	 * Throws a particular {@code Throwable} only if it belongs to a set of "fatal" error varieties. These
 	 * varieties are as follows:
 	 * <ul>
@@ -140,10 +138,6 @@ public final class Exceptions {
 	 * <li>{@code ThreadDeath}</li>
 	 * <li>{@code LinkageError}</li>
 	 * </ul>
-	 * This can be useful if you are writing an operator that calls user-supplied code, and you want to
-	 * notify subscribers of errors encountered in that code by calling their {@code onError} methods, but only
-	 * if the errors are not so catastrophic that such a call would be futile, in which case you simply want to
-	 * rethrow the error.
 	 *
 	 * @param t
 	 */

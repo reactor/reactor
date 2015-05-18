@@ -61,8 +61,13 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 	}
 
 	@Override
+	protected void scheduleLater(Task task) {
+		execute(task);
+	}
+
+	@Override
 	protected Task allocateRecursiveTask() {
-		throw new IllegalStateException("MultiThreadDispatchers cannot allocate recursively");
+		return allocateTask();
 	}
 
 	protected Task allocateTask() {
@@ -76,11 +81,6 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 		}else{
 			return allocateTask();
 		}
-	}
-
-	@Override
-	public boolean inContext() {
-		return false;
 	}
 
 	protected class MultiThreadTask extends Task {

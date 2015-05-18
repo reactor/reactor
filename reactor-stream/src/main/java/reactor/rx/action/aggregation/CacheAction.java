@@ -17,6 +17,7 @@ package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.queue.CompletableQueue;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
@@ -119,6 +120,7 @@ public class CacheAction<T> extends Action<T, T> {
 				subscriber.onSubscribe(subscription);
 			}
 		} catch (Exception e) {
+			Exceptions.throwIfFatal(e);
 			subscriber.onError(e);
 		}
 	}

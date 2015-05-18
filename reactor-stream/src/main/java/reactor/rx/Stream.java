@@ -682,28 +682,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Stream} whose requests are running on a different {@link Dispatcher}
 	 */
 	public final Stream<O> subscribeOn(@Nonnull final Dispatcher currentDispatcher) {
-		return new Stream<O>() {
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
-			}
-
-			@Override
-			public Environment getEnvironment() {
-				return Stream.this.getEnvironment();
-			}
-
-			@Override
-			public Dispatcher getDispatcher() {
-				return Stream.this.getDispatcher();
-			}
-
-			@Override
-			public void subscribe(final Subscriber<? super O> subscriber) {
-				Stream.this.subscribe(new SubscribeOn<>(currentDispatcher, subscriber));
-			}
-
-		};
+		return new StreamDispatchedSubscribe<>(this, currentDispatcher);
 	}
 
 	/**
@@ -3049,7 +3028,11 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 		@Override
 		public void onSubscribe(Subscription s) {
-			dispatcher.dispatch(s, this, null);
+			if(dispatcher.inContext()){
+				accept(s);
+			}else{
+				dispatcher.dispatch(s, this, null);
+			}
 		}
 
 		@Override
@@ -3066,5 +3049,41 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		public void onComplete() {
 			subscriber.onComplete();
 		}
+	}
+
+	private final static class StreamDispatchedSubscribe<O> extends Stream<O> implements Consumer<Subscriber<? super O>> {
+		private final Dispatcher currentDispatcher;
+		private final Stream<O> stream;
+
+		public StreamDispatchedSubscribe(Stream<O> stream, Dispatcher currentDispatcher) {
+			this.currentDispatcher = currentDispatcher;
+			this.stream = stream;
+		}
+
+		@Override
+		public void accept(Subscriber<? super O> subscriber) {
+			stream.subscribe(new Stream.SubscribeOn<>(currentDispatcher, subscriber));
+		}
+
+		@Override
+		public long getCapacity() {
+			return stream.getCapacity();
+		}
+
+		@Override
+		public Environment getEnvironment() {
+			return stream.getEnvironment();
+		}
+
+		@Override
+		public Dispatcher getDispatcher() {
+			return stream.getDispatcher();
+		}
+
+		@Override
+		public void subscribe(final Subscriber<? super O> subscriber) {
+			currentDispatcher.dispatch(subscriber, this, null);
+		}
+
 	}
 }

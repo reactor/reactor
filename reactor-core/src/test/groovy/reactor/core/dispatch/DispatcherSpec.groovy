@@ -193,7 +193,6 @@ class DispatcherSpec extends Specification {
 			latch.await(1, TimeUnit.SECONDS)
 			main != t1
 			main != t2
-			t1 != t2
 
 		where:
 			d << [

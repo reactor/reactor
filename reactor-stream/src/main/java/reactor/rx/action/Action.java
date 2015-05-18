@@ -642,6 +642,7 @@ public abstract class Action<I, O> extends Stream<O>
 				}
 			}
 		} catch (Exception e) {
+			Exceptions.throwIfFatal(e);
 			subscriber.onError(e);
 		}
 	}

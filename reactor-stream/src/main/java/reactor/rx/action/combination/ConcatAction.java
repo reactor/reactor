@@ -20,6 +20,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.core.support.Exceptions;
 import reactor.core.support.NonBlocking;
 import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
@@ -119,6 +120,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 				subscription.start();
 			}
 		} catch (Exception e) {
+			Exceptions.throwIfFatal(e);
 			subscriber.onError(e);
 		}
 	}

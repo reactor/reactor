@@ -22,6 +22,7 @@ import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -232,6 +233,7 @@ public class Broadcaster<O> extends Action<O, O> {
 				subscriber.onSubscribe(subscription);
 			}
 		} catch (Exception e) {
+			Exceptions.throwIfFatal(e);
 			subscriber.onError(e);
 		}
 	}

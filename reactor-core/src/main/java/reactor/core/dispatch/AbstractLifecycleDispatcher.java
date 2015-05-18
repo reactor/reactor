@@ -97,6 +97,8 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 
 		if (!isInContext) {
 			execute(task);
+		} else {
+			scheduleLater(task);
 		}
 	}
 
@@ -121,6 +123,8 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 
 		if (!isInContext) {
 			execute(task);
+		} else {
+			scheduleLater(task);
 		}
 	}
 
@@ -132,6 +136,9 @@ public abstract class AbstractLifecycleDispatcher implements Dispatcher {
 				command.run();
 			}
 		}, null);
+	}
+
+	protected void scheduleLater(final Task task){
 	}
 
 	protected Task tryAllocateTask() throws InsufficientCapacityException {

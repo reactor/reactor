@@ -16,13 +16,14 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
+import reactor.core.reactivestreams.PublisherFactory;
 
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -40,7 +41,7 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 
 	@Override
 	public Long createElement(int element) {
-		return (long)element;
+		return (long) element;
 	}
 
 	@Override
@@ -51,59 +52,30 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 	@Override
 	public Publisher<Long> createHelperPublisher(final long elements) {
 		if (elements < 100 && elements > 0) {
-			return new Publisher<Long>() {
-				long cursor = 0;
-				@Override
-				public void subscribe(final Subscriber<? super Long> s) {
-					s.onSubscribe(new Subscription() {
+			return PublisherFactory.create(
+					(n, s) -> {
+						long i = 0l;
+						while (i < n && s.context().get() < elements) {
+							if(s.isCancelled()) return;
 
-						volatile boolean terminated = false;
-
-						@Override
-						public void request(long n) {
-							if(terminated) return;
-							long i = 0l;
-							while(i < n && cursor < elements){
-								if(terminated) {
-									break;
-								}
-								s.onNext(cursor++);
-								i++;
-							}
-							if(cursor == elements){
-								terminated = true;
-								s.onComplete();
-							}
+							s.onNext(s.context().getAndIncrement());
+							i++;
 						}
-
-						@Override
-						public void cancel() {
-							terminated = true;
+						if(s.context().get() == elements){
+							s.onComplete();
 						}
-					});
-				}
-			};
-
+					},
+					s -> new AtomicLong(0L)
+			);
 		} else {
 			final Random random = new Random();
-
-			return s -> s.onSubscribe(new Subscription() {
-				volatile boolean terminated = false;
-
-				@Override
-				public void request(long n) {
-					if(!terminated) {
-						for(long i = 0; i< n; i++) {
+			return PublisherFactory.create(
+					(n, s) -> {
+						for (long i = 0; i < n; i++) {
 							s.onNext(random.nextLong());
 						}
 					}
-				}
-
-				@Override
-				public void cancel() {
-					terminated = true;
-				}
-			});
+			);
 		}
 	}
 

@@ -19,6 +19,7 @@ package reactor.core.support;
  * an exception that should stop producing more data
  *
  * @author Stephane Maldini
+ * @since 2.0.2
  */
 public class ReactorFatalException extends RuntimeException {
 	public static final ReactorFatalException INSTANCE = new ReactorFatalException(null);

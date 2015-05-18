@@ -21,6 +21,7 @@ import reactor.Environment
 import reactor.core.dispatch.SynchronousDispatcher
 import reactor.core.processor.CancelException
 import reactor.core.processor.RingBufferProcessor
+import reactor.core.reactivestreams.SubscriberWithContext
 import reactor.fn.BiFunction
 import reactor.io.buffer.Buffer
 import reactor.io.codec.DelimitedCodec
@@ -1830,6 +1831,33 @@ class StreamsSpec extends Specification {
 	}
 
 	def 'Creating Stream from publisher factory'() {
+		given:
+			'a source stream with a given publisher'
+			def s = Streams.load(
+					{ long n, SubscriberWithContext<String, Void> sub ->
+						(1..3).each {
+							sub.onNext("test$it")
+						}
+						sub.onComplete()
+					},
+					{ println Thread.currentThread().name+' start' },
+					{ println Thread.currentThread().name+' end' }
+			)
+					.log()
+					.subscribeOn(Environment.workDispatcher())
+
+		when:
+			'accept a value'
+			def result = s.toList().await(5, TimeUnit.SECONDS)
+			//println s.debug()
+
+		then:
+			'dispatching works'
+			result == ['test1', 'test2', 'test3']
+	}
+
+
+	def 'Defer Stream from publisher'() {
 		given:
 			'a source stream with a given publisher factory'
 			def i = 0

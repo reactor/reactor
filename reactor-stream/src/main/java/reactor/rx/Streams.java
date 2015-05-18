@@ -22,6 +22,10 @@ import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.reactivestreams.PublisherFactory;
+import reactor.core.reactivestreams.SubscriberWithContext;
+import reactor.fn.BiConsumer;
+import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
@@ -93,6 +97,60 @@ public class Streams {
 			return (Stream<T>)publisher;
 		}
 		return new PublisherStream<T>(publisher);
+	}
+
+
+	/**
+	 * Create a {@link Stream} reacting on requests with the passed {@link BiConsumer}
+	 *
+	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
+	 * @param <T> The type of the data sequence
+	 *
+	 * @return a Stream
+	 *
+	 * @since 2.0.2
+	 */
+	public static <T> Stream<T> load(BiConsumer<Long, SubscriberWithContext<T, Void>> requestConsumer) {
+		return load(requestConsumer, null, null);
+	}
+
+	/**
+	 * Create a {@link Stream} reacting on requests with the passed {@link BiConsumer}
+	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every request calls.
+	 *
+	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
+	 * @param contextFactory A {@link Function} called for every new subscriber returning an immutable context (IO connection...)
+	 * @param <T> The type of the data sequence
+	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 * @return a Stream
+	 *
+	 * @since 2.0.2
+	 */
+	public static <T, C> Stream<T> load(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+	                                         Function<Subscriber<? super T>, C> contextFactory) {
+		return load(requestConsumer, contextFactory, null);
+	}
+
+
+	/**
+	 * Create a {@link Stream} reacting on requests with the passed {@link BiConsumer}.
+	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every request calls.
+	 * The argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel, onComplete, onError).
+	 *
+	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
+	 * @param contextFactory A {@link Function} called once for every new subscriber returning an immutable context (IO connection...)
+	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(), onError()
+	 * @param <T> The type of the data sequence
+	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 *
+	 * @since 2.0.2
+	 */
+	public static <T, C> Stream<T> load(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+	                                         Function<Subscriber<? super T>, C> contextFactory,
+	                                         Consumer<C> shutdownConsumer) {
+
+		return Streams.wrap(PublisherFactory.create(requestConsumer, contextFactory, shutdownConsumer));
 	}
 
 	/**
