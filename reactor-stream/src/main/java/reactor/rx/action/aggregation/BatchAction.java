@@ -76,6 +76,11 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		return new BatchSubscription<T>(subscription, this, batchSize);
 	}
 
+	@Override
+	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		return false;
+	}
+
 	protected void nextCallback(T event) {
 	}
 

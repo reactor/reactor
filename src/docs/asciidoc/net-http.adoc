@@ -6,6 +6,10 @@ Using Reactor's HTTP support to create high-performance HTTP clients and servers
 
 === Routing HTTP
 
+==== SSE
+
+==== WebSocket
+
 === Writing Data
 
 ==== Adding Headers and other Metadata

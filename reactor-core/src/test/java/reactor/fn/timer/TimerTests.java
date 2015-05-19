@@ -59,5 +59,6 @@ public class TimerTests {
 		Assert.assertTrue(registration.isPaused());
 		Assert.assertTrue(time < TimeUnit.MILLISECONDS.toNanos(100));
 		Assert.assertEquals(tasks, count.get());
+		timer.cancel();
 	}
 }

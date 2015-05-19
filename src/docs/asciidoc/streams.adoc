@@ -876,7 +876,6 @@ h|Wiring up Synchronous Streams
 [[streams-multithreading]]
 == Understanding the threading model
 
-So `Stream` are `Publisher` which chain execution with `Action` or `Processor` and terminate with a `Subscriber` or a terminal `Action`.
 One common purpose for *Reactive Streams* and *Reactive Extensions* is to be non-opinionated about threading behavior *thanks to the signal callbacks*.
 Streams are all about *it will be executed at some point between now and some time T*. Non concurrent signals may also preserve `Subscriber` from concurrency access (share-nothing),
 however signals and requests can run on 2 asymmetric threads.
@@ -891,11 +890,9 @@ Various `Streams` factories, the `Broadcaster`, the `Stream.dispatchOn`  and the
 * The `Stream.dispatchOn` action is the only one available under `Stream` that will be dispatching *onError*, *onComplete* and *onNext* signals on the given `Dispatcher`. 
 ** Since an action is a `Processor` it doesn't support concurrent `Dispatcher` such as `WorkQueueDispatcher`.
 ** `request` and `cancel` will run on the dispatcher as well if in its context already. Otherwise it will execute after the current dispatch ends.
-** `Streams.dispatchOn(SynchronousDispatcher)` has no effect
 * The `Stream.subscribeOn` action will be executing *onSubscribe* only on the passed dispatcher.
 ** Since the only time the passed `Dispatcher` is called is *onSubscribe*, any dispatcher can be used including the concurrent ones such as `WorkQueueDispatcher`.
 ** The first `request` might still execute in the *onSubscribe* thread, for instance with `Stream.consume()` actions.
-** `Streams.subscribeOn(SynchronousDispatcher)` has no effect
 * Attaching a `Processor` via `Stream.process` for instance can affect the thread too. The `Processor` such as `RingBufferProcessor` will run the `Subscribers` on its managed threads. 
 ** `request` and `cancel` will run on the processor as well if in its context already.
 ** `RingBufferWorkProcessor` will only dispatch *onNext* signals to one `Subscriber` at most unless it has cancelled in-flight (replay to a new Subscriber).
@@ -1743,35 +1740,32 @@ h|Stream<T> API
 h|when(Class<Throwable>, Consumer<Throwable>)
 |Observe specific exception types (and their hierarchy) coming from `onError(Throwable)`.
 
-h|materialize()
-
- dematerialize()
-
-|Transform upstream signal into `Signal<T>`, and treat them as `onNext(Signal<T>)` signals. The immediate effect: it swallows error and completion signals, so it's an effective way to process errors. Once errors are processed we can still run them by transforming the `Signal<T>` into the Reactive Streams right callback via `dematerialize()`
-
 h|oberveError(Class<Throwable>, BiConsumer<Object,Throwable>)
-|
+|Similar to `when` but allows introspection of the failing `onNext(Object)` if any when the exception originally rose.
 
-h|onErrorReturn(_Class<Throwable_, Publisher<T>)
-|
+h|onErrorReturn(_Class<Throwable_, Function<Throwable,T>)
+|Provide a fallback signal `T` given an exception matching the passed type otherwise any exception. Commonly use in self-healing services.
 
 h|onErrorResume(_Class<Throwable_, Publisher<T>)
-|
+|Provide a fallback sequence of signal `T` given an exception matching the passed type otherwise any exception. Commonly use in self-healing services.
+
+h|materialize() _dematerialize()_
+|Transform upstream signal into `Signal<T>`, and treat them as `onNext(Signal<T>)` signals. The immediate effect: it swallows error and completion signals, so it's an effective way to process errors. Once errors are processed we can still run them by transforming the `Signal<T>` into the Reactive Streams right callback via `dematerialize()`.
 
 h|retry(_int, Predicate<Throwable_)
-|
+|Cancel/Re-Subscribe the parent `Stream` up to the optional _tries_ argument and matching the passed `Predicate` if provided.
 
 h|retryWhen(Function<Stream<Throwable>,Publisher<?>>)
-|
+|Cancel/Re-Subscribe the parent `Stream` when the returned `Publisher` from the passed `Function` emits `onNext(Object)`. The function is called once on subscribe and the generated `Publisher` is subscribed. If the `Publisher` emits `onError(e)` or `onComplete()`, they will be propagated downstream. The `Function` receives a single `Stream` of errors which have occured in any subscribed pipeline. Can be combined with *counting* and *delaying* actions to provide for bounded and exponantial retry strategies.
 
 h|recover(Class<Throwable>, Subscriber<Object>)
-| A `retryWhen()` shortcut to re-subscribe parent Publisher if the `onError(Throwable)` matches the given type. On recovery success, the passed `Subscriber` argument will receive the `onNext(Object)` that was the root signal associated with the exception, if any.
+|A `retryWhen()` shortcut to re-subscribe parent Publisher if the `onError(Throwable)` matches the given type. On recovery success, the passed `Subscriber` argument will receive the `onNext(Object)` that was the root signal associated with the exception, if any.
 
 h|ignoreError(_Predicate<Throwable>_)
 |Transform the matching `onError(Throwable)` signals into `onComplete()`. If no argument has been provided, just transform any error into completion.
 
 h|*throw* CancelException
-|
+|That might be the only time we will mention anything related to exception bubbling up. However throwing `CancelException.INSTANCE` in any `onNext(T)` callback is a simple way to *no-ack* an incoming value and inform colocated (within the same thread stack) Publishers like *Core Processor* they might have to re-schedule this data later.
 
 |===
 
@@ -1835,36 +1829,54 @@ return Streams.merge(
 ----
 
 .Operations useful for metrics and other stateful accumulation.
+[cols="6,1"]
 |===
 
-h|Functional API or Factory method
-|Role
+h|Stream<T> API or Factory method
+|Output Type
+2+|Role
 
-|
+2+|
 
-h|Stream.count()
-|
+h|count()
+|Long
+2+|Produce the total number of observed `onNext(T)` and return the counter `onComplete()`. Useful when combined with timed `windows`.
 
-h|Stream.scan()
-|
+h|scan(BiFunction<T,T>)
+|T
+2+|
 
-h|Stream.reduce()
-|
+h|scan(A, BiFunction<A,T>)
+|A
+2+|
+
+h|reduce(BiFunction<T,T>)
+|T
+2+|
+
+h|reduce(A, BiFunction<A,T>)
+|A
+2+|
 
 h|BiStreams.reduceByKey()
 |
+2+|
 
 h|BiStreams.scanByKey()
 |
+2+|
 
-h|Stream.timestamp()
-|
+h|timestamp()
+|Tuple2<Long,T>
+2+|
 
-h|Stream.elapsed()
-|
+h|elapsed()
+|Tuple2<Long,T>
+2+|
 
-h|Stream.materialize()
-|
+h|materialize() _dematerialize()_
+|Signal<T>
+2+|Transform upstream signal into `Signal<T>`, and treat them as `onNext(Signal<T>)` signals. The immediate effect: it swallows error and completion signals, so it's an effective way to count errors and completions if the `Stream` is using `retry` or `repeat` API. Once completion and errors are processed we can still run them by transforming the `Signal<T>` into the Reactive Streams right callback via `dematerialize()`.
 
 
 |===
