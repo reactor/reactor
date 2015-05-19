@@ -1,3 +1,5 @@
+:prewrap:
+
 "Nope, you shall not use Future.get(), ever."
 -- Stephane Maldini, with a Banking Sector Customer
 
@@ -46,20 +48,19 @@ image::images/streams-overview.png[Stream Overview, width=650, align="center", l
 *Reactor Streams* has the following artefacts:
 
 ****
+* `Stream` and its direct implementations
+** Contains *reactive extensions* and other composition API
+* `Promise` with a specific https://promisesaplus.com[A+ flavored] API
+** Can be transformed back to Stream with `Promise.stream()`
 * Static *Factories*, the one-stop-shops to create the related components
 ** `Streams` for `Stream` creation from well-defined data sources (iterable, nothing, future, Publisher...)
 ** `BiStreams` for key-value `Stream<Tuple2>` processing (reduceByKey...)
 ** `IOStreams` for <<streams.adoc#streams-persistent, Persisting>> and <<core-codec#core-codecs, Decoding>> `Streams`
 ** `Promises` for single-data-only `Promise`
-* `Stream` and its direct implementations
-** Contains *reactive extensions* and other composition API
-** The extensions are usually created with the factories (`Streams.from(Iterable)` -> IterableStream, `Streams.from(Future)` -> FutureStream...)
-* `Promise` with a specific https://promisesaplus.com[A+ flavored] API
-** Can be transformed back to Stream with `Promise.stream()`
 * `Action` and its direct implementations of every operation provided by the `Stream` following the *Reactive Streams Processor* specification
 ** They are not created directly in general, but with the Stream API (`Stream.map()` -> MapAction, `Stream.filter()` -> FilterAction...)
-* `Broadcaster`, the publish/subscribe interfaces for dynamic data dispatch
-** Unlike <<core-processor#core-processor,Core Processors>>, they will usually not bother buffering data if there is no subscriber attached
+* `Broadcaster`, a specific kind of `Action` exposing onXXXX interfaces for dynamic data dispatch
+** Unlike <<core-processor#core-processor,Core Processors>>, they will usually not bother about buffering data if there is no subscriber attached
 ** However the `BehaviorBroadcaster` can replay the latest signal to the new Subscribers
 ****
 
@@ -71,7 +72,7 @@ However the API is quite complete around primitive types and Collections, in fac
 == Streams Basics
 Reactor offers `Stream` or `Promise` based on the Reactive Streams standard to compose statically typed data pipelines.
 
-It is an incredibly useful and flexible component. It's flexible enough to be used to just compose asynchronous actions together like RxJava's `Observable`. But it's powerful enough it can function as an asynchronous work queue that forks and joins arbitrary compositions or other Reactive Streams components coming from one of the other implementors of the standard.footnoteref:[reactive-streams-implementors, including http://akka.io[Akka Streams], http://ratpack.io[Ratpack], and https://github.com/ReactiveX/RxJava[RxJava]]
+It is an incredibly useful and flexible component. It's flexible enough to be used to just compose asynchronous actions together like RxJava's `Observable`. But it's powerful enough it can function as an asynchronous work queue that forks and joins arbitrary compositions or other Reactive Streams components coming from one of the other implementors of the standard.footnoteref:[reactive-streams-implementors, including http://akka.io[Akka Streams], http://ratpack.io[Ratpack], and https://github.com/ReactiveX/RxJava[RxJava]].
 
 .There are basically two rough categories of streams
 ****
@@ -384,6 +385,19 @@ deferred
 <2> Create a `Stream` from a custom malformed `Publisher which skips `onSubscribe(Subscription)` and immediately calls `onNext(T)`.
 <3> Create a `DeferredStream` that will alternate source Publisher<T> on each `Stream.subscribe` call, evaluating the total number of Subscribers,
 
+Where to go from here ? Well there are tons of use cases that can benefit from a custom Publisher:
+
+****
+* Reactive Facade to convert any IO call with a matching demand and compose: HTTP calls (read N times), SQL queries (select max N), File reads (read N lines)...
+* Async Facade to convert any hot data callback into a composable API: AMQP Consumer, Spring MessageChannel endpoint...
+****
+
+Reactor offers some done-deal facilities to avoid boilerplate checking you would have to do without extending exsiting Stream or `PushSubscription`
+
+* Extending `PushSubscription` instead of implementing directly `Subscription` to benefit from terminal state (PushSubscription.isComplete())
+* Using `PublisherFactory.create(args)` or `Streams.createWith(args)` to just use Functional consumers for every lifecycle step (requested, stopped, started).
+* Extending `Stream` instead of implementing directly `Publisher` to benefit from composition API
+
 .Streams.createWith, an alternative to create() minus some boilerplate
 [source,java]
 ----
@@ -406,18 +420,6 @@ stream
 <2> The _sub_ argument is actually a `SubscriberWithContext` possibly assigned with some initial state shared by all request callbacks.
 <3> Executed once on start, this is also where we initialize the shared context optionnally, every request callbacks will receive 0 from `context()`
 <4> Executed once on any Termination event : *cancel()*, *onComplete()* or *onError(e)*.
-
-Where to go from here ? Well there are tons of use cases that can benefit from a custom Publisher:
-
-****
-* Reactive Facade to convert any IO call with a matching demand and compose: HTTP calls (read N times), SQL queries (select max N), File reads (read N lines)...
-* Async Facade to convert any hot data callback into a composable API: AMQP Consumer, Spring MessageChannel endpoint...
-****
-
-Reactor offers some done-deal facilities to avoid boilerplate checking you would have to do without extending exsiting Stream or `PushSubscription`
-
-* Extending `PushSubscription` instead of implementing directly `Subscription` to benefit from terminal state (PushSubscription.isComplete())
-* Extending `Stream` instead of implementing directly `Publisher` to benefit from composition API
 
 A good place to start feeling the reactive streams way is to simply look at a more ellaborated back-pressure ready <<recipes.adoc#recipe-filestream, File Stream>>.
 
@@ -1711,43 +1713,62 @@ It's important to balance the use of stateful `Iterable<T>` like `List<T>` vs in
 
 [[streams-errors]]
 == Error Handling
-Using a `Stream` to build fault tolerant pipelines.
+
+Since error isolation is an important part of the *Reactive* contract, `Stream` API is equipped to build fault tolerant pipelines or service call.
+
+[source,java]
+----
+return Streams.merge(
+  userService.filteredFind("Rick"),
+  userService.filteredFind("Morty")
+)
+.buffer()
+.retryWhen( errors -> 
+  errors
+  .zipWith(Streams.range(1,3), t -> t.getT2())  
+  .flatMap( tries -> Streams.timer(tries) )
+)
+.consume(System.out::println);
+----
 
 
 .Handling errors
 |===
 
-h|Functional API or Factory method
+h|Stream<T> API
 |Role
 
 |
 
-h|Stream.when(Class<Throwable>, Consumer<Throwable>)
+h|when(Class<Throwable>, Consumer<Throwable>)
+|Observe specific exception types (and their hierarchy) coming from `onError(Throwable)`.
+
+h|materialize()
+
+ dematerialize()
+
+|Transform upstream signal into `Signal<T>`, and treat them as `onNext(Signal<T>)` signals. The immediate effect: it swallows error and completion signals, so it's an effective way to process errors. Once errors are processed we can still run them by transforming the `Signal<T>` into the Reactive Streams right callback via `dematerialize()`
+
+h|oberveError(Class<Throwable>, BiConsumer<Object,Throwable>)
 |
 
-h|Stream.materialize()
+h|onErrorReturn(_Class<Throwable_, Publisher<T>)
 |
 
-h|Stream.recover()
+h|onErrorResume(_Class<Throwable_, Publisher<T>)
 |
 
-h|Stream.observeError()
+h|retry(_int, Predicate<Throwable_)
 |
 
-h|Stream.onErrorReturn()
+h|retryWhen(Function<Stream<Throwable>,Publisher<?>>)
 |
 
-h|Stream.onErrorResume()
-|
+h|recover(Class<Throwable>, Subscriber<Object>)
+| A `retryWhen()` shortcut to re-subscribe parent Publisher if the `onError(Throwable)` matches the given type. On recovery success, the passed `Subscriber` argument will receive the `onNext(Object)` that was the root signal associated with the exception, if any.
 
-h|Stream.retry()
-|
-
-h|Stream.oberveError()
-|
-
-h|Stream.ignoreErrors()
-|
+h|ignoreError(_Predicate<Throwable>_)
+|Transform the matching `onError(Throwable)` signals into `onComplete()`. If no argument has been provided, just transform any error into completion.
 
 h|*throw* CancelException
 |
@@ -1756,7 +1777,23 @@ h|*throw* CancelException
 
 [[streams-persistent]]
 == Persisting Stream Data
-Combining multiple Reactive Streams data `Publishers` in an controlled fashion.
+
+Not everything has to be in-memory and `Reactor` has started a story to integrate (optional dependency) with https://github.com/OpenHFT/Chronicle-Queue[Java Chronicle].
+
+[source,java]
+----
+return Streams.merge(
+  userService.filteredFind("Rick"),
+  userService.filteredFind("Morty")
+)
+.buffer()
+.retryWhen( errors -> 
+  errors
+  .zipWith(Streams.range(1,3), t -> t.getT2())  
+  .flatMap( tries -> Streams.timer(tries) )
+)
+.consume(System.out::println);
+----
 
 .Persisting signals safely
 |===
@@ -1779,7 +1816,23 @@ h|IOStreams.persistentMap()
 
 [[streams-analytics]]
 == Analytics
-Using a `Stream` to compute metrics and any inline stateful processing.
+
+Metrics and other stateful operations are fully part of the `Stream` API. Users familiar with `Spark` will recognize some method names in fact. `ScanAction` also offers a popular accumulating functional contract with `reduce()` and `scan()`.
+
+[source,java]
+----
+return Streams.merge(
+  userService.filteredFind("Rick"),
+  userService.filteredFind("Morty")
+)
+.buffer()
+.retryWhen( errors -> 
+  errors
+  .zipWith(Streams.range(1,3), t -> t.getT2())  
+  .flatMap( tries -> Streams.timer(tries) )
+)
+.consume(System.out::println);
+----
 
 .Operations useful for metrics and other stateful accumulation.
 |===
