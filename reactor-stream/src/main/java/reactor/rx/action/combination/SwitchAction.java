@@ -19,11 +19,12 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.processor.CancelException;
 import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.core.support.Exceptions;
 import reactor.core.support.NonBlocking;
 import reactor.rx.action.Action;
-import reactor.rx.action.support.DefaultSubscriber;
+import reactor.rx.broadcast.Broadcaster;
 
 /**
  * @author Stephane Maldini
@@ -31,7 +32,6 @@ import reactor.rx.action.support.DefaultSubscriber;
  */
 public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 
-	private final SerializedSubscriber<T> serialized;
 	private final Dispatcher              dispatcher;
 
 	private long pendingRequests = 0l;
@@ -39,26 +39,6 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 
 	public SwitchAction(Dispatcher dispatcher) {
 		this.dispatcher = dispatcher;
-		if (dispatcher != SynchronousDispatcher.INSTANCE) {
-			serialized = null;
-		} else {
-			serialized = SerializedSubscriber.create(new DefaultSubscriber<T>() {
-				@Override
-				public void onNext(T t) {
-					broadcastNext(t);
-				}
-
-				@Override
-				public void onError(Throwable t) {
-					broadcastError(t);
-				}
-
-				@Override
-				public void onComplete() {
-					broadcastComplete();
-				}
-			});
-		}
 	}
 
 	public SwitchSubscriber getSwitchSubscriber() {
@@ -66,12 +46,57 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 	}
 
 	@Override
+	public void subscribe(Subscriber<? super T> subscriber) {
+		final SwitchSubscriber switcher;
+		final boolean toSubscribe;
+		synchronized (this) {
+			switcher = switchSubscriber;
+			toSubscribe = switcher != null && switcher.s == null;
+		}
+		if(toSubscribe){
+			switcher.publisher.subscribe(switcher);
+		}
+		super.subscribe(SerializedSubscriber.create(subscriber));
+	}
+
+	@Override
+	public void onNext(Publisher<? extends T> ev) {
+		if (ev == null) {
+			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+		}
+
+		try {
+			doNext(ev);
+		} catch (CancelException uae){
+			throw uae;
+		} catch (Throwable cause) {
+			doError(Exceptions.addValueAsLastCause(cause, ev));
+		}
+	}
+
+	@Override
+	public void cancel() {
+		SwitchSubscriber subscriber;
+		synchronized (this) {
+			subscriber = switchSubscriber;
+		}
+		if(subscriber != null){
+			subscriber.cancel();
+		}
+
+		if(upstreamSubscription != Broadcaster.HOT_SUBSCRIPTION){
+			super.cancel();
+		}
+	}
+
+	@Override
 	protected void doNext(Publisher<? extends T> ev) {
 		SwitchSubscriber subscriber, nextSubscriber;
 		synchronized (this) {
-			pendingRequests--;
+			if(switchSubscriber != null && switchSubscriber.publisher == ev) return;
+			if(pendingRequests != Long.MAX_VALUE) pendingRequests--;
 			subscriber = switchSubscriber;
-			switchSubscriber = nextSubscriber= new SwitchSubscriber();
+			switchSubscriber = nextSubscriber= new SwitchSubscriber(ev);
 		}
 
 		if (subscriber != null) {
@@ -128,7 +153,13 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 	}
 
 	public class SwitchSubscriber implements NonBlocking, Subscriber<T>, Subscription {
+		final Publisher<? extends T> publisher;
+
 		Subscription s;
+
+		public SwitchSubscriber(Publisher<? extends T> publisher) {
+			this.publisher = publisher;
+		}
 
 		@Override
 		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
@@ -148,7 +179,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 				pending = pendingRequests;
 			}
 
-			if (pending > 0) {
+			if (pending > 0 && downstreamSubscription != null) {
 				s.request(pending);
 			}
 		}
@@ -160,12 +191,12 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 					pendingRequests--;
 				}
 			}
-			serialized.onNext(t);
+			broadcastNext(t);
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			serialized.onError(t);
+			broadcastError(t);
 		}
 
 		@Override
@@ -176,7 +207,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 
 			cancel();
 			if (upstreamSubscription == null) {
-				serialized.onComplete();
+				broadcastComplete();
 			}
 		}
 
@@ -186,7 +217,9 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 		}
 
 		public void cancel() {
+			Subscription s = this.s;
 			if (s != null) {
+				this.s = null;
 				s.cancel();
 			}
 		}

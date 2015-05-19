@@ -33,6 +33,7 @@ import reactor.fn.tuple.*;
 import reactor.rx.action.Action;
 import reactor.rx.action.combination.*;
 import reactor.rx.action.support.DefaultSubscriber;
+import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.*;
 
 import java.util.ArrayList;
@@ -611,7 +612,9 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Action<Publisher<? extends T>, T> switchOnNext(Dispatcher dispatcher){
-		return new SwitchAction<>(dispatcher);
+		SwitchAction<T> switchAction = new SwitchAction<>(dispatcher);
+		switchAction.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
+		return switchAction;
 	}
 
 	/**

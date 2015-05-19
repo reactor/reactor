@@ -60,7 +60,6 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 		fanInAction.subscribe(subscriber);
 	}
 
-
 	@Override
 	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
 		throw new IllegalAccessError("Should never use dynamicMergeAction own createSubscription");
@@ -72,7 +71,12 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	}
 
 	@Override
-	protected void doNext(Publisher<? extends I> value) {
+	protected void doNext(Publisher<? extends I> ev) {
+		//IGNORE
+	}
+
+	@Override
+	public void onNext(Publisher<? extends I> value) {
 		WIP_UPDATER.incrementAndGet(this);
 		fanInAction.addPublisher(value);
 	}

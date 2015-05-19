@@ -20,6 +20,7 @@ import org.hamcrest.Matcher;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -487,6 +488,56 @@ public class StreamTests extends AbstractReactorTest {
 
 
 	@Test
+	public void failureToleranceTest() throws InterruptedException {
+		final Broadcaster<String> closeCircuit = Broadcaster.create();
+		final Stream<String> openCircuit = Streams.just("Alternative Message");
+
+		final Action<Publisher<? extends String>, String> circuitSwitcher = Streams.switchOnNext();
+
+		final AtomicInteger successes = new AtomicInteger();
+		final AtomicInteger failures = new AtomicInteger();
+
+		final int maxErrors = 3;
+
+		Promise<List<String>> promise =
+				circuitSwitcher
+						.observe(d -> successes.incrementAndGet())
+						.observeStart(s -> {
+							System.out.println("failures: " + failures + " successes:" + successes);
+							if (failures.compareAndSet(maxErrors, 0)) {
+								circuitSwitcher.onNext(openCircuit);
+								Streams.timer(1)
+										.consume(ignore -> circuitSwitcher.onNext(closeCircuit));
+							}
+						})
+						.retryWhen(errors ->
+										errors.observe(error -> failures.incrementAndGet())
+						)
+						.toList();
+
+		circuitSwitcher.onNext(closeCircuit);
+
+		closeCircuit.onNext("test1");
+		closeCircuit.onNext("test2");
+		closeCircuit.onNext("test3");
+		closeCircuit.onError(new Exception("test4"));
+		closeCircuit.onError(new Exception("test5"));
+		closeCircuit.onError(new Exception("test6"));
+		Thread.sleep(1500);
+		closeCircuit.onNext("test7");
+		closeCircuit.onNext("test8");
+		closeCircuit.onComplete();
+		circuitSwitcher.onComplete();
+		System.out.println(promise.await());
+		Assert.assertEquals(promise.get().get(0), "test1");
+		Assert.assertEquals(promise.get().get(1), "test2");
+		Assert.assertEquals(promise.get().get(2), "test3");
+		Assert.assertEquals(promise.get().get(3), "Alternative Message");
+		Assert.assertEquals(promise.get().get(4), "test7");
+		Assert.assertEquals(promise.get().get(5), "test8");
+	}
+
+	@Test
 	public void parallelTests() throws InterruptedException {
 		parallelMapManyTest("shared", 1_000_000);
 		parallelTest("sync", 1_000_000);
@@ -894,12 +945,12 @@ public class StreamTests extends AbstractReactorTest {
 						@Override
 						protected void onRequest(long n) {
 							long requestCursor = 0l;
-							System.out.println("requesting "+n);
+							System.out.println("requesting " + n);
 							try {
 								String line;
 								while (requestCursor++ < n || n == Long.MAX_VALUE) {
 									line = is.readLine();
-									if(line != null) {
+									if (line != null) {
 										onNext(line);
 									} else {
 										is.close();
@@ -1091,17 +1142,14 @@ public class StreamTests extends AbstractReactorTest {
 	 * {@link Streams#period(long)} when a resolution is specified that is less
 	 * than the backing {@link Timer} class.
 	 *
-	 * @throws InterruptedException
-	 *             - on failure.
-	 * @throws TimeoutException
-	 *             - on failure.
-	 *
-	 * by @masterav10 : https://github.com/reactor/reactor/issues/469
+	 * @throws InterruptedException - on failure.
+	 * @throws TimeoutException     - on failure.
+	 *                              <p>
+	 *                              by @masterav10 : https://github.com/reactor/reactor/issues/469
 	 */
 	@Test
 	@Ignore
-	public void endLessTimer() throws InterruptedException, TimeoutException
-	{
+	public void endLessTimer() throws InterruptedException, TimeoutException {
 		int tasks = 50;
 		long delayMS = 20; // XXX: Fails when less than 100
 		Phaser barrier = new Phaser(tasks + 1);
@@ -1128,8 +1176,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Assert.assertEquals(tasks, times.size());
 
-		for (int i = 1; i < times.size(); i++)
-		{
+		for (int i = 1; i < times.size(); i++) {
 			Long prev = times.get(i - 1);
 			Long time = times.get(i);
 
@@ -1229,7 +1276,6 @@ public class StreamTests extends AbstractReactorTest {
 		}
 
 	}
-
 
 
 }

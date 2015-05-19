@@ -23,12 +23,18 @@ package reactor.core.processor;
 public final class CancelException extends RuntimeException {
 	public static final CancelException INSTANCE = new CancelException();
 
+	public static final boolean TRACE_CANCEL = Boolean.parseBoolean(System.getProperty("reactor.trace.cancel", "false"));
+
 	private CancelException() {
 		super("The subscriber has denied dispatching");
 	}
 
+	public static CancelException get() {
+		return TRACE_CANCEL ? new CancelException() : INSTANCE;
+	}
+
 	@Override
 	public synchronized Throwable fillInStackTrace() {
-		return this;
+		return TRACE_CANCEL ? super.fillInStackTrace() : this;
 	}
 }

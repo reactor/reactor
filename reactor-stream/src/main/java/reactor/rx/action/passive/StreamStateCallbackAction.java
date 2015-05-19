@@ -16,6 +16,7 @@
 package reactor.rx.action.passive;
 
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 
@@ -26,11 +27,22 @@ public class StreamStateCallbackAction<T> extends Action<T, T> {
 
 	private final Consumer<? super Subscriber<? super T>> subscribeConsumer;
 	private final Consumer<Void> cancelConsumer;
+	private final Consumer<? super Subscription> onSubscribeConsumer;
 
 	public StreamStateCallbackAction(Consumer<? super Subscriber<? super T>> subscribeConsumer,
-	                                 Consumer<Void> cancelConsumer) {
+	                                 Consumer<Void> cancelConsumer,
+	                                 Consumer<? super Subscription> onSubscribeConsumer) {
 		this.subscribeConsumer = subscribeConsumer;
 		this.cancelConsumer = cancelConsumer;
+		this.onSubscribeConsumer = onSubscribeConsumer;
+	}
+
+	@Override
+	protected void doOnSubscribe(Subscription subscription) {
+		if(onSubscribeConsumer != null){
+			onSubscribeConsumer.accept(subscription);
+		}
+		super.doOnSubscribe(subscription);
 	}
 
 	@Override

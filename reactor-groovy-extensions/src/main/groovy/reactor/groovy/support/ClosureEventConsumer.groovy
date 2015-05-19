@@ -43,7 +43,7 @@ class ClosureEventConsumer<T> implements Consumer<Event<T>> {
 	}
 
 	void cancel() {
-		throw CancelException.INSTANCE
+		throw CancelException.get()
 	}
 
 	@Override

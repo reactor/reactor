@@ -2402,7 +2402,7 @@ class StreamsSpec extends Specification {
 
 		and:
 			'The streams are switched'
-			def switched = myStream.log('lol').switchMap { Streams.range(it, 3) }.log()
+			def switched = myStream.log('lol').switchMap { Streams.range(it, 3) }.log("after-lol")
 			switched.consume(
 					{ println(Thread.currentThread().name + ' ' + it); res << it },                          // onNext
 					{ println("Error: " + it.message) }, // onError

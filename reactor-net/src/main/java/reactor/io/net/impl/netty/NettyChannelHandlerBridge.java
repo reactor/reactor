@@ -382,7 +382,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		@Override
 		public void onNext(final Object w) {
 			if (subscription == null) {
-				throw CancelException.INSTANCE;
+				throw CancelException.get();
 			}
 			try {
 				ChannelFuture cf = doOnWrite(w, ctx);
@@ -460,7 +460,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		@Override
 		public void onNext(Object w) {
 			if (subscription == null) {
-				throw CancelException.INSTANCE;
+				throw CancelException.get();
 			}
 			try {
 				doOnWrite(w, ctx).addListener(writeListener);

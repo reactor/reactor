@@ -195,7 +195,7 @@ public abstract class Action<I, O> extends Stream<O>
 		}
 
 		if (upstreamSubscription == null && downstreamSubscription == null) {
-			throw CancelException.INSTANCE;
+			throw CancelException.get();
 		}
 
 		try {
@@ -260,7 +260,7 @@ public abstract class Action<I, O> extends Stream<O>
 		//log.debug("event [" + ev + "] by: " + getClass().getSimpleName());
 		PushSubscription<O> downstreamSubscription = this.downstreamSubscription;
 		if (downstreamSubscription == null) {
-				throw CancelException.INSTANCE;
+				throw CancelException.get();
 		}
 
 		try {

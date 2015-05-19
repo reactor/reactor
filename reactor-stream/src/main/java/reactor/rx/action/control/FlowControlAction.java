@@ -16,6 +16,7 @@
 package reactor.rx.action.control;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.Dispatcher;
 import reactor.core.queue.CompletableQueue;
 import reactor.fn.Supplier;
 import reactor.rx.action.Action;
@@ -43,6 +44,11 @@ public class FlowControlAction<O> extends Action<O, O> {
 	@Override
 	public void onError(Throwable cause) {
 		doError(cause);
+	}
+
+	@Override
+	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		return false;
 	}
 
 	@Override

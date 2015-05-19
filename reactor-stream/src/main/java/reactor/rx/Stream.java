@@ -824,11 +824,26 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new StreamStateCallbackAction<O>(consumer, null);
+				return new StreamStateCallbackAction<O>(consumer, null, null);
 			}
 		});
 	}
 
+	/**
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe any onSubscribe signal
+	 *
+	 * @param consumer the consumer to invoke on onSubscribe
+	 * @return {@literal a new stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> observeStart(@Nonnull final Consumer<? super Subscription> consumer) {
+		return lift(new Supplier<Action<O, O>>() {
+			@Override
+			public Action<O, O> get() {
+				return new StreamStateCallbackAction<O>(null, null, consumer);
+			}
+		});
+	}
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will observe any cancel signal
 	 *
@@ -840,7 +855,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new StreamStateCallbackAction<O>(null, consumer);
+				return new StreamStateCallbackAction<O>(null, consumer, null);
 			}
 		});
 	}

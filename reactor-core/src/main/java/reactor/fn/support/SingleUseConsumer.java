@@ -81,7 +81,7 @@ public class SingleUseConsumer<T> implements Consumer<T> {
 			} else {
 				doAccept(t);
 			}
-			throw CancelException.INSTANCE;
+			throw CancelException.get();
 		}
 	}
 
