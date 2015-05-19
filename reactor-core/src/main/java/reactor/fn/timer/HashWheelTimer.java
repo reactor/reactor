@@ -221,7 +221,7 @@ public class HashWheelTimer implements Timer {
 	 * @param registration
 	 */
 	private void reschedule(TimerPausable registration) {
-		registration.reset();
+		registration.rounds.set(registration.rescheduleRounds);
 		wheel.get(wheel.getCursor() + registration.getOffset()).add(registration);
 	}
 
