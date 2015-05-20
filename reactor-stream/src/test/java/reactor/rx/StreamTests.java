@@ -496,7 +496,12 @@ public class StreamTests extends AbstractReactorTest {
 		Promise<Long> result = source
 				.throttle(avgTime)
 				.elapsed()
-				.log()
+				.nest()
+				.flatMap(self ->
+								BiStreams.reduceByKey(self, (acc, next) -> acc + next)
+				)
+				.sort((a,b) -> a.t1.compareTo(b.t1))
+				.log("elapsed")
 				.reduce(-1L, (acc, next) ->
 								acc > 0l ? ((next.t1 + acc) / 2) : next.t1
 				)

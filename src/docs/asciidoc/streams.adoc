@@ -1859,19 +1859,51 @@ h|IOStreams.persistentMap()
 
 Metrics and other stateful operations are fully part of the `Stream` API. Users familiar with `Spark` will recognize some method names in fact. `ScanAction` also offers a popular accumulating functional contract with `reduce()` and `scan()`.
 
+.Playing with metrics and key/value data
 [source,java]
 ----
-return Streams.merge(
-  userService.filteredFind("Rick"),
-  userService.filteredFind("Morty")
-)
-.buffer()
-.retryWhen( errors -> 
-  errors
-  .zipWith(Streams.range(1,3), t -> t.getT2())  
-  .flatMap( tries -> Streams.timer(tries) )
-)
-.consume(System.out::println);
+Broadcaster<Integer> source = Broadcaster.<Integer> create(Environment.get());
+long avgTime = 50l;
+
+Promise<Long> result = source
+    .throttle(avgTime) // <1>
+    .elapsed() // <2>
+    .nest() // <3>
+    .flatMap(self ->
+            BiStreams.reduceByKey(self, (prev, next) -> prev + 1) // <4>
+    )
+    .sort((a,b) -> a.t1.compareTo(b.t1)) // <5>
+    .log("elapsed")
+    .reduce(-1L, (acc, next) ->
+            acc > 0l ? ((next.t1 + acc) / 2) : next.t1 // <6>
+    )
+    .next(); // <7>
+
+for (int i = 0; i < 10; i++) {
+  source.onNext(1);
+}
+source.onComplete();
+----
+<1> Slow down incoming `Subscriber` request to one every ~50 milliseconds, polling waiting data one by one.
+<2> Produce a `Tuple2` of *Time delta* and *payload* between 2 signals or between `onSubscribe` and the first signal.
+<3> Make the current `Stream` available with `onNext` so we can compose it with a `flatMap`.
+<4> Accumulate all data until `onComplete()` in internal `Map` keyed with the `Tuple2.t1` and valued by default with `Tuple2.t2`. Next matching keys will provide the previous value and the incoming new `onNext` in the accumulator `BiFunction`. In this case we only increment the initial payload _1_ by key.
+<5> Accumulate all data until `onComplete()` in internal `PriorityQueue` and sort elapsed time _t1_ using the given comparator. After `onComplete()` all data are emitted in order, then complete.
+<6> Accumulate until `onComplete` a moving time average defaulting to the first received time.
+<7> Take the next and only produced average.
+
+.Output
+----
+03:14:42.013 [main] INFO  elapsed - subscribe: ScanAction-{{dispatcher=immediate, max-capacity=infinite}}
+03:14:42.021 [main] INFO  elapsed - onSubscribe: {push}
+03:14:42.022 [main] INFO  elapsed - request: 9223372036854775807
+03:14:42.517 [hash-wheel-timer-run-3] INFO  elapsed - onNext: 44,1
+03:14:42.518 [hash-wheel-timer-run-3] INFO  elapsed - onNext: 48,1
+03:14:42.518 [hash-wheel-timer-run-3] INFO  elapsed - onNext: 49,2
+03:14:42.518 [hash-wheel-timer-run-3] INFO  elapsed - onNext: 50,3
+03:14:42.518 [hash-wheel-timer-run-3] INFO  elapsed - onNext: 51,3
+03:14:42.519 [hash-wheel-timer-run-3] INFO  elapsed - complete: SortAction-{{dispatcher=immediate, max-capacity=2147483647}{push} wrapped={push}}{ batchSize=0/2147483647 [0%]
+03:14:42.520 [hash-wheel-timer-run-3] INFO  elapsed - cancel: SortAction-{{dispatcher=immediate, max-capacity=2147483647}{push} wrapped={push}}{ batchSize=0/2147483647 [0%]
 ----
 
 .Operations useful for metrics and other stateful accumulation.
