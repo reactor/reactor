@@ -1894,7 +1894,7 @@ source.onComplete();
 
 .Output
 ----
-03:14:42.013 [main] INFO  elapsed - subscribe: ScanAction-{{dispatcher=immediate, max-capacity=infinite}}
+03:14:42.013 [main] INFO  elapsed - subscribe: ScanAction
 03:14:42.021 [main] INFO  elapsed - onSubscribe: {push}
 03:14:42.022 [main] INFO  elapsed - request: 9223372036854775807
 03:14:42.517 [hash-wheel-timer-run-3] INFO  elapsed - onNext: 44,1
@@ -1902,8 +1902,8 @@ source.onComplete();
 03:14:42.518 [hash-wheel-timer-run-3] INFO  elapsed - onNext: 49,2
 03:14:42.518 [hash-wheel-timer-run-3] INFO  elapsed - onNext: 50,3
 03:14:42.518 [hash-wheel-timer-run-3] INFO  elapsed - onNext: 51,3
-03:14:42.519 [hash-wheel-timer-run-3] INFO  elapsed - complete: SortAction-{{dispatcher=immediate, max-capacity=2147483647}{push} wrapped={push}}{ batchSize=0/2147483647 [0%]
-03:14:42.520 [hash-wheel-timer-run-3] INFO  elapsed - cancel: SortAction-{{dispatcher=immediate, max-capacity=2147483647}{push} wrapped={push}}{ batchSize=0/2147483647 [0%]
+03:14:42.519 [hash-wheel-timer-run-3] INFO  elapsed - complete: SortAction
+03:14:42.520 [hash-wheel-timer-run-3] INFO  elapsed - cancel: SortAction
 ----
 
 .Operations useful for metrics and other stateful accumulation.
@@ -1968,37 +1968,44 @@ An important aspect of the functional composition approach to reactive programmi
 
 [source,java]
 ----
-List<String> ids = Arrays.asList("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
+DispatcherSupplier supplier1 = Environment.newCachedDispatchers(2, "groupByPool");
+DispatcherSupplier supplier2 = Environment.newCachedDispatchers(5, "partitionPool");
 
-DispatcherSupplier supplier1 = Environment.newCachedDispatchers(2, "pool1");
-DispatcherSupplier supplier2 = Environment.newCachedDispatchers(5, "pool2");
+Streams
+    .range(1, 10)
+    .groupBy(n -> n % 2 == 0) // <1>
+    .flatMap(stream -> stream
+            .dispatchOn(supplier1.get()) // <2>
+            .log("groupBy")
+    )
+    .partition(5) // <3>
+    .flatMap(stream -> stream
+            .dispatchOn(supplier2.get()) // <4>
+            .log("partition")
+    )
+    .dispatchOn(Environment.sharedDispatcher()) // <5>
+    .log("join")
+    .consume();
+----
+<1> Create at most two streams (odd/even) keyed by 0 or 1 and forward the `onNext(T)` to the matching one.
+<2> Add one of the pooled dispatchers for the two emitted `Stream` by previous `GroupByAction`. Effectively this is scaling up a stream by using 2 partitions assigned with their own dispatcher. `FlatMap` will merge the result returned by both partitions, running on one of the two threads, but never concurrently.
+<3> Create 5 Streams and forward `onNext(T)` to them in a round robin fashion
+<4> Use the second dispatcher pool of 5 to assign to the newly generated streams. The returned sequences will be merged.
+<5> Dispatch data on the `Environment.sharedDispatcher()`, so neither the first or the second pool. The 5 threads will then be merged under the `Dispatcher` thread
 
-CountDownLatch latch = new CountDownLatch(10);
-
-Streams.from(ids)
-  .dispatchOn(Environment.sharedDispatcher())
-  .partition(2)
-  .flatMap(stream -> stream
-    .dispatchOn(supplier1.get())
-    .map(s -> s + " " + Thread.currentThread().toString())
-  )
-  .map(t -> {
-    System.out.println("First partition: "+Thread.currentThread() + ", worker=" + t);
-    return t;
-  })
-  .partition(5)
-  .flatMap(stream -> stream
-    .dispatchOn(supplier2.get())
-    .map(s -> s + " " + Thread.currentThread().toString())
-  )
-  .dispatchOn(Environment.sharedDispatcher())
-  .consume(t -> {
-    System.out.println("Second partition: "+Thread.currentThread() + ", worker=" + t);
-    latch.countDown();
-  });
-
-
-assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
+.Output extract
+----
+03:53:42.060 [groupByPool-3] INFO  groupBy - onNext: 4
+03:53:42.060 [partitionPool-8] INFO  partition - onNext: 9
+03:53:42.061 [groupByPool-3] INFO  groupBy - onNext: 6
+03:53:42.061 [partitionPool-8] INFO  partition - onNext: 4
+03:53:42.061 [shared-1] INFO  join - onNext: 9
+03:53:42.061 [groupByPool-3] INFO  groupBy - onNext: 8
+03:53:42.061 [partitionPool-4] INFO  partition - onNext: 6
+03:53:42.061 [shared-1] INFO  join - onNext: 4
+03:53:42.061 [groupByPool-3] INFO  groupBy - onNext: 10
+03:53:42.061 [shared-1] INFO  join - onNext: 6
+03:53:42.061 [groupByPool-3] INFO  groupBy - complete: DispatcherAction
 ----
 
 .Grouping operations

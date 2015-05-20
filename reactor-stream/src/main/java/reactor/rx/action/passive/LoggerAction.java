@@ -41,7 +41,7 @@ public class LoggerAction<T> extends Action<T, T> {
 
 	@Override
 	public void subscribe(Subscriber<? super T> subscriber) {
-		log.info("subscribe: {}-{}", subscriber.getClass().getSimpleName(), subscriber);
+		log.info("subscribe: {}", subscriber.getClass().getSimpleName());
 		super.subscribe(subscriber);
 	}
 
@@ -69,8 +69,7 @@ public class LoggerAction<T> extends Action<T, T> {
 	@Override
 	public void cancel() {
 		if (upstreamSubscription != null && upstreamSubscription.getPublisher() != null) {
-			log.info("cancel: {}-{}", this.upstreamSubscription.getPublisher().getClass().getSimpleName(),
-					this.upstreamSubscription.getPublisher());
+			log.info("cancel: {}", this.upstreamSubscription.getPublisher().getClass().getSimpleName());
 		} else {
 			log.info("cancel");
 		}
@@ -80,8 +79,7 @@ public class LoggerAction<T> extends Action<T, T> {
 	@Override
 	protected void doComplete() {
 		if (upstreamSubscription != null && upstreamSubscription.getPublisher() != null) {
-			log.info("complete: {}-{}", this.upstreamSubscription.getPublisher().getClass().getSimpleName(),
-					this.upstreamSubscription.getPublisher());
+			log.info("complete: {}", this.upstreamSubscription.getPublisher().getClass().getSimpleName());
 		} else {
 			log.info("complete");
 		}
