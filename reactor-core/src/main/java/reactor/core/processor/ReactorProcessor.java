@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  *
  * @author Stephane Maldini
  */
-public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E>, NonBlocking {
+public abstract class ReactorProcessor<IN, OUT> implements Processor<IN, OUT>, Consumer<IN>, NonBlocking {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -49,7 +49,7 @@ public abstract class ReactorProcessor<E> implements Processor<E, E>, Consumer<E
 	}
 
 	@Override
-	public final void accept(E e) {
+	public final void accept(IN e) {
 		onNext(e);
 	}
 

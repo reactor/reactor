@@ -47,7 +47,7 @@ import java.util.concurrent.locks.LockSupport;
  * @param <E> Type of dispatched signal
  * @author Stephane Maldini
  */
-public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E> {
+public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E, E> {
 
 	/**
 	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
