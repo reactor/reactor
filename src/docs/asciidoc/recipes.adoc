@@ -90,11 +90,12 @@ Streams.wrap(fileStream)
 <9> `capacity` will hint downstream operations (`consumeOn` here) to chunk requests 4 by 4.
 <10> `consumeOn` takes an extra argument to run the requests on a dispatcher in addition to the 3 possible `Consumer` reacting to each type of signal.
 
-Obviously there are ways to make that code more efficient, but also do more with less. Let's take a look at Reactor alternative `PublisherFactory` from core module, which is used by `Streams.createWith()` methods from stream module.
+
+.Obviously there are ways to make that code more efficient, but also do more with less. Let's take a look at Reactor alternative `PublisherFactory` from core module, which is used by `Streams.createWith()` methods from stream module.
 
 
 .Build a lazy file read with Streams.createWith (PublisherFactory based) machinery (from 2.0.2+)
-[source, java, indent=2]
+[source, java]
 ----
 Stream<String> fileStream = Streams.createWith( 
 	(n, sub) -> { // <1>

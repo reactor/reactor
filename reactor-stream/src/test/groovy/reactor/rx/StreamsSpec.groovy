@@ -1450,11 +1450,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(150).log('beforeBuffer').buffer(300l, 500l, TimeUnit.MILLISECONDS).log('afterBuffer').toList()
+			res = numbers.throttle(100).log('beforeBuffer').buffer(200l, 300l, TimeUnit.MILLISECONDS).log('afterBuffer').toList()
 
 		then:
 			'the collected lists are available'
-			res.await(5, TimeUnit.SECONDS) == [[4, 5], [7, 8]]
+			res.await(5, TimeUnit.SECONDS) == [[1, 2], [4, 5], [7, 8]]
 	}
 
 
@@ -1526,11 +1526,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(150).window(350l, 450l, TimeUnit.MILLISECONDS).flatMap { it.log('fm').buffer() }.toList()
+			res = numbers.throttle(100).window(200l, 300l, TimeUnit.MILLISECONDS).flatMap { it.log('fm').buffer() }.toList()
 
 		then:
 			'the collected lists are available'
-			res.await() == [[4, 5], [7, 8]]
+			res.await() == [[1, 2], [4, 5], [7, 8]]
 
 	}
 
@@ -1932,7 +1932,7 @@ class StreamsSpec extends Specification {
 		when:
 			'consuming periodic'
 			def i = []
-			Streams.period(0, 1).consume {
+			Streams.period(0, 1).log().consume {
 				i << it
 			}
 			sleep(2500)

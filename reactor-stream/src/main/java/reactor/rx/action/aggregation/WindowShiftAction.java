@@ -15,6 +15,7 @@
  */
 package reactor.rx.action.aggregation;
 
+import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
@@ -81,8 +82,6 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 			this.timeshiftTask = new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {
-					timeshiftRegistration = null;
-
 					if (!isPublishing()) {
 						return;
 					}
@@ -114,14 +113,17 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 	}
 
 	@Override
+	protected void doOnSubscribe(Subscription subscription) {
+		if(timer != null) {
+			timeshiftRegistration = timer.schedule(timeshiftTask,
+					timeshift,
+					unit);
+		}
+	}
+
+	@Override
 	protected void doNext(T value) {
-		if (timer != null) {
-			if(timeshiftRegistration == null) {
-				timeshiftRegistration = timer.submit(timeshiftTask,
-						timeshift,
-						unit);
-			}
-		} else if (index++ % skip == 0) {
+		if (timer == null && index++ % skip == 0) {
 			createWindowStream();
 		}
 		flushCallback(value);

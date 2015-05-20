@@ -182,7 +182,7 @@ public class EventTimer implements Timer {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long ms = TimeUnit.MILLISECONDS.convert(delay, timeUnit);
 		return tasks.register(
-				new PeriodSelector(ms, ms, resolution),
+				new PeriodSelector(0l, ms, resolution),
 				consumer
 		).cancelAfterUse();
 	}

@@ -179,7 +179,7 @@ public class HashWheelTimer implements Timer {
 	                                                          TimeUnit timeUnit) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
-		return schedule(ms, ms, consumer).cancelAfterUse();
+		return schedule(0, ms, consumer).cancelAfterUse();
 	}
 
 	@Override
@@ -202,7 +202,9 @@ public class HashWheelTimer implements Timer {
 	private TimerPausable schedule(long recurringTimeout,
 	                                                             long firstDelay,
 	                                                             Consumer<Long> consumer) {
-		TimeUtils.checkResolution(recurringTimeout, resolution);
+		if(recurringTimeout != 0) {
+			TimeUtils.checkResolution(recurringTimeout, resolution);
+		}
 
 		long offset = recurringTimeout / resolution;
 		long rounds = offset / wheel.getBufferSize();
@@ -211,7 +213,7 @@ public class HashWheelTimer implements Timer {
 		long firstFireRounds = firstFireOffset / wheel.getBufferSize();
 
 		TimerPausable r = new TimerPausable(firstFireRounds, offset, consumer, rounds);
-		wheel.get(wheel.getCursor() + firstFireOffset + 1).add(r);
+		wheel.get(wheel.getCursor() + firstFireOffset + (recurringTimeout != 0 ? 1 : 0)).add(r);
 		return r;
 	}
 

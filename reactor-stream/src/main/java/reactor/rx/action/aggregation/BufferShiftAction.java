@@ -77,8 +77,6 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 			this.timeshiftTask = new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {
-					timeshiftRegistration = null;
-
 					try {
 						if (!isPublishing()) {
 							return;
@@ -116,19 +114,22 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 	}
 
 	@Override
+	protected void doOnSubscribe(Subscription subscription) {
+		if(timer != null) {
+			timeshiftRegistration = timer.schedule(timeshiftTask,
+					timeshift,
+					unit);
+		}
+	}
+
+	@Override
 	protected PushSubscription<T> createTrackingSubscription(Subscription subscription) {
 		return new BatchSubscription<>(subscription, this, skip + batchSize);
 	}
 
 	@Override
 	protected void doNext(T value) {
-		if (timer != null) {
-			if(timeshiftRegistration == null) {
-				timeshiftRegistration = timer.submit(timeshiftTask,
-						timeshift,
-						unit);
-			}
-		} else if (index++ % skip == 0) {
+		if (timer == null && index++ % skip == 0) {
 			buckets.add(batchSize < 2048 ? new ArrayList<T>(batchSize) : new ArrayList<T>());
 		}
 		flushCallback(value);

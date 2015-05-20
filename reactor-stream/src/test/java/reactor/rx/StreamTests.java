@@ -488,6 +488,27 @@ public class StreamTests extends AbstractReactorTest {
 		assertEquals(COUNT, consumerCounter.get());
 	}
 
+	@Test
+	public void analyticsTest() throws Exception{
+		Broadcaster<Integer> source = Broadcaster.<Integer> create(Environment.get());
+		long avgTime = 50l;
+
+		Promise<Long> result = source
+				.throttle(avgTime)
+				.elapsed()
+				.log()
+				.reduce(-1L, (acc, next) ->
+								acc > 0l ? ((next.t1 + acc) / 2) : next.t1
+				)
+				.next();
+
+		for (int i = 0; i < 10; i++) {
+			source.onNext(1);
+		}
+		source.onComplete();
+
+		Assert.assertTrue(result.await() >= avgTime * 0.6);
+	}
 
 	@Test
 	public void konamiCode() throws InterruptedException {
