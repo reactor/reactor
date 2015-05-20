@@ -267,8 +267,10 @@ NetStreams.<String, String>httpServer(spec ->
 				keys.get(8) == KeyEvent.VK_B &&
 				keys.get(9) == KeyEvent.VK_A
 		)
-		.flatMap(isKonami ->
-			channel.writeWith( Streams.just(isKonami ? "Konami!" : "Nah"))
+		.map(isKonami -> isKonami ? "Konami!" : "Nah")
+		.nest()
+		.flatMap(konamis ->
+			channel.writeWith(konamis)
 		);
 	})
 	.start()

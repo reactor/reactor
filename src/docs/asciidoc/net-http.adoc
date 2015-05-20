@@ -8,7 +8,7 @@ Using Reactor's HTTP support to create high-performance HTTP clients and servers
 
 ==== SSE
 
-==== WebSocket
+=== Routing WebSocket
 
 === Writing Data
 
