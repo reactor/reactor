@@ -2,7 +2,10 @@
 === Building a simple File Stream
 
 Let's start with a pure `Publisher` implementation, we'll use Reactor API afterwads to simplify the following example.
-As `Publisher` you will have to take care about a lot of small things that should be tested against the *Reactive Streams* TCK module. The purpose is to understand what *Reactor* can do for you in such situation:
+As `Publisher` you will have to take care about a lot of small things that should be tested against the *Reactive Streams* TCK module. The purpose is to understand what *Reactor* can do for you in such situation to avoid all this machinery. 
+
+[IMPORTANT]
+Theorically *Reactive Streams* won't buy you much in a scenario of File Read blocking consuming, single threaded, over a simple loop doing that. If the _sink_ endpoint is blocking you already have a form of backpressure since it won't read more than it sends. The point of such Reactive File Stream is when in between it and the consumer there is one or more boundaries to cross, a decoupling that can take the form of a queue or a ring buffer. You could envision this scenario where you want to keep reading while the consumer is sending so the next time it asks for data (after sending its previous one), the data *is already in-memory*. A sort of prefetching in other words.
 
 .Build a lazy file read Publisher matching the Subscriber request
 [source, java, indent=2]
@@ -91,13 +94,14 @@ Streams.wrap(fileStream)
 <10> `consumeOn` takes an extra argument to run the requests on a dispatcher in addition to the 3 possible `Consumer` reacting to each type of signal.
 
 
-.Obviously there are ways to make that code more efficient, but also do more with less. Let's take a look at Reactor alternative `PublisherFactory` from core module, which is used by `Streams.createWith()` methods from stream module.
+.Obviously there are ways to make that code more efficient, but also do more with less. Let's take a look at Reactor alternative `PublisherFactory` from core module, which is used by `Streams.createWith()` methods from stream module as well.
 
 
-.Build a lazy file read with Streams.createWith (PublisherFactory based) machinery (from 2.0.2+)
+.Build a lazy file read with Core PublisherFactory§ (from 2.0.2+) and compose with Stream API
 [source, java]
 ----
-Stream<String> fileStream = Streams.createWith( 
+final String filename = "settings.gradle";
+Publisher<String> fileStream = PublisherFactory.create( 
 	(n, sub) -> { // <1>
 		String line;
 		final BufferedReader inputStream = sub.context() // <2>		
@@ -113,14 +117,15 @@ Stream<String> fileStream = Streams.createWith(
 			}								
 		}
 	}, 
-	sub -> new BufferedReader(new FileReader(file)), // <5>
+	sub -> new BufferedReader(new FileReader(filename)), // <5>
 	inputStream -> inputStream.close() // <6>
 };
 
-fileStream
+Streams
+	.wrap(fileStream)
+	.process(RingBufferProcessor.create())
 	.capacity(4L)
-	.consumeOn(
-		Environment.sharedDispatcher(),
+	.consume(
 		System.out::println,
 		Throwable::printStackTrace,
 		nothing -> System.out.println("## EOF ##")
