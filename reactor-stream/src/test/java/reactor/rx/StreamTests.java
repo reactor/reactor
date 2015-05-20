@@ -20,6 +20,7 @@ import org.hamcrest.Matcher;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -46,6 +47,7 @@ import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.BarrierStream;
 import reactor.rx.subscription.PushSubscription;
 
+import java.awt.event.KeyEvent;
 import java.io.*;
 import java.time.Instant;
 import java.util.*;
@@ -488,6 +490,59 @@ public class StreamTests extends AbstractReactorTest {
 
 
 	@Test
+	public void konamiCode() throws InterruptedException {
+		final Processor<Integer, Integer> keyboardStream = RingBufferProcessor.create();
+
+		Promise<List<Boolean>> konamis = Streams
+				.wrap(keyboardStream)
+				.skipWhile(key -> KeyEvent.VK_UP != key)
+				.buffer(10, 1)
+				.map(keys -> keys.size() == 10 &&
+								keys.get(0) == KeyEvent.VK_UP &&
+								keys.get(1) == KeyEvent.VK_UP &&
+								keys.get(2) == KeyEvent.VK_DOWN &&
+								keys.get(3) == KeyEvent.VK_DOWN &&
+								keys.get(4) == KeyEvent.VK_LEFT &&
+								keys.get(5) == KeyEvent.VK_RIGHT &&
+								keys.get(6) == KeyEvent.VK_LEFT &&
+								keys.get(7) == KeyEvent.VK_RIGHT &&
+								keys.get(8) == KeyEvent.VK_B &&
+								keys.get(9) == KeyEvent.VK_A
+				)
+				.toList();
+
+		keyboardStream.onNext(KeyEvent.VK_UP);
+		keyboardStream.onNext(KeyEvent.VK_UP);
+		keyboardStream.onNext(KeyEvent.VK_UP);
+		keyboardStream.onNext(KeyEvent.VK_DOWN);
+		keyboardStream.onNext(KeyEvent.VK_DOWN);
+		keyboardStream.onNext(KeyEvent.VK_LEFT);
+		keyboardStream.onNext(KeyEvent.VK_RIGHT);
+		keyboardStream.onNext(KeyEvent.VK_LEFT);
+		keyboardStream.onNext(KeyEvent.VK_RIGHT);
+		keyboardStream.onNext(KeyEvent.VK_B);
+		keyboardStream.onNext(KeyEvent.VK_A);
+		keyboardStream.onNext(KeyEvent.VK_C);
+		keyboardStream.onComplete();
+
+		System.out.println(konamis.await());
+		Assert.assertTrue(konamis.get().size() == 12);
+		Assert.assertFalse(konamis.get().get(0));
+		Assert.assertTrue(konamis.get().get(1));
+		Assert.assertFalse(konamis.get().get(2));
+		Assert.assertFalse(konamis.get().get(3));
+		Assert.assertFalse(konamis.get().get(4));
+		Assert.assertFalse(konamis.get().get(5));
+		Assert.assertFalse(konamis.get().get(6));
+		Assert.assertFalse(konamis.get().get(7));
+		Assert.assertFalse(konamis.get().get(8));
+		Assert.assertFalse(konamis.get().get(9));
+		Assert.assertFalse(konamis.get().get(10));
+		Assert.assertFalse(konamis.get().get(11));
+	}
+
+
+	@Test
 	public void failureToleranceTest() throws InterruptedException {
 		final Broadcaster<String> closeCircuit = Broadcaster.create();
 		final Stream<String> openCircuit = Streams.just("Alternative Message");
@@ -502,17 +557,17 @@ public class StreamTests extends AbstractReactorTest {
 		Promise<List<String>> promise =
 				circuitSwitcher
 						.observe(d -> successes.incrementAndGet())
+						.when(Throwable.class, error -> failures.incrementAndGet())
 						.observeStart(s -> {
 							System.out.println("failures: " + failures + " successes:" + successes);
 							if (failures.compareAndSet(maxErrors, 0)) {
 								circuitSwitcher.onNext(openCircuit);
+								successes.set(0);
 								Streams.timer(1)
 										.consume(ignore -> circuitSwitcher.onNext(closeCircuit));
 							}
 						})
-						.retryWhen(errors ->
-										errors.observe(error -> failures.incrementAndGet())
-						)
+						.retry()
 						.toList();
 
 		circuitSwitcher.onNext(closeCircuit);
@@ -528,6 +583,7 @@ public class StreamTests extends AbstractReactorTest {
 		closeCircuit.onNext("test8");
 		closeCircuit.onComplete();
 		circuitSwitcher.onComplete();
+
 		System.out.println(promise.await());
 		Assert.assertEquals(promise.get().get(0), "test1");
 		Assert.assertEquals(promise.get().get(1), "test2");

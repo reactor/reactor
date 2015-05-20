@@ -139,6 +139,85 @@ We can use `PublisherFactory`, or <<streams.adoc#streams-basics, Streams factori
 * React on requests
 * Handle shutdown gracefully
 
+[[recipes-circuitbreaker]]
+=== Building a Quick Circuit Breaker
+
+In this other exercise, we will focus more on the composition power in your hands with *Reactor Stream* module. A classic use-case is to build self-healing data pipelines using the http://martinfowler.com/bliki/CircuitBreaker.html[Circuit Breaker Pattern] (maybe soon available in `Stream` API, maybe).
+
+In this scenario, we want to keep alive a `Stream` even if errors might fly in. When a certain number of errors is reached, we want to stop consuming from the main _circuit_, the actual `Stream`. For a short period we will _trip_ the circuit and use a fallback publisher `Stream`. This fallback can actually be any sort of `Publisher`, we will just emit an alternative message. The point is to avoid new access to the failing `Stream` for a while and give it a chance to recover.
+
+.Quick (and dirty) Circuit Breaker test
+[source,java]
+----
+final Broadcaster<String> closeCircuit = Broadcaster.create(); // <1>
+final Stream<String> openCircuit = Streams.just("Alternative Message"); // <2>
+
+final Action<Publisher<? extends String>, String> circuitSwitcher = Streams.switchOnNext(); // <3>
+
+final AtomicInteger successes = new AtomicInteger(); // <4>
+final AtomicInteger failures = new AtomicInteger();
+
+final int maxErrors = 3;
+
+Promise<List<String>> promise = // <5>
+		circuitSwitcher // <6>
+			.observe(d -> successes.incrementAndGet()) // <7>
+			.when(Throwable.class, error -> failures.incrementAndGet())
+			.observeStart(s -> { // <8>
+				
+				System.out.println("failures: " + failures +
+					 " successes:" + successes);
+
+				if (failures.compareAndSet(maxErrors, 0)) { 
+					circuitSwitcher.onNext(openCircuit); // <9>
+					successes.set(0);
+					
+					Streams
+						.timer(1)  // <10>
+						.consume(ignore -> circuitSwitcher.onNext(closeCircuit));
+				}
+			})
+			.retry() // <11>
+			.toList(); // <5>
+
+circuitSwitcher.onNext(closeCircuit); // <12>
+
+closeCircuit.onNext("test1");
+closeCircuit.onNext("test2");
+closeCircuit.onNext("test3");
+closeCircuit.onError(new Exception("test4"));
+closeCircuit.onError(new Exception("test5"));
+closeCircuit.onError(new Exception("test6"));
+Thread.sleep(1500); // <13>
+closeCircuit.onNext("test7");
+closeCircuit.onNext("test8");
+closeCircuit.onComplete();  // <14>
+circuitSwitcher.onComplete();
+
+System.out.println(promise.await());
+Assert.assertEquals(promise.get().get(0), "test1");
+Assert.assertEquals(promise.get().get(1), "test2");
+Assert.assertEquals(promise.get().get(2), "test3");
+Assert.assertEquals(promise.get().get(3), "Alternative Message");
+Assert.assertEquals(promise.get().get(4), "test7");
+Assert.assertEquals(promise.get().get(5), "test8");
+----
+<1> Create the main *hot* `Broadcaster` stream to send data later on.
+<2> Create a simple fallback stream when sh*t hits the fan.
+<3> Create a `SwitchAction` which is a `Processor` accepting new `Publisher` to consume data from.
+<4> Prepare shared counters for successes and failures.
+<5> Return a `Promise` from `Stream.toList()` to convert the `Stream` into an eventual `List`
+<6> Consume data from the circuitSwitcher `Processor` proxy that will be updated depending on the failures number.
+<7> Count success on every valid `onNext(String)` and count errors on every `Throwable` exception
+<8> Monitor `onSubscribe(Subscription)` call which is called after successful stream start.
+<9> If the number of error is _maxErrors_, trip the circuit by changing the current circuitSwitcher data source to the fallback one.
+<10> Re-consume from the main stream in 1 Second by signalling circuitSwitcher with it.
+<11> Keep retrying on any exception, which means Cancel / Re Subscribe. That's why we `observeStart()` as any error will trigger it.
+<12> Start the circuitSwitcher with the main `Stream`
+<13> Artificial wait to leave a chance to the timer to close the circuit,
+<14> Double `onComplete()` the current main stream and the circuitSwitcher itself (otherwise they will hang for the missing `onComplete()`.
+
+
 === Building Efficient Data Pipelines
 
 === Building Non-Blocking MicroServices
@@ -152,3 +231,63 @@ https://github.com/reactor/reactor-quickstart[Quickstart]::
 An example application showing several ways to use basic components in Reactor.
 https://github.com/reactor/reactor-samples[Samples]::
 A simple sample application that demonstrates Reactor functionality in JUnit tests.
+
+[horizontal]
+
+[discrete]
+==== Non Blocking Konami Code
+
+If you made it that far, here a simple non blocking stream to scale up your Konami codes over websocket. Tell me about a reward... Don't forget to add *Netty* in your classpath as long as *reactor-net*.
+
+[source,java]
+----
+final Processor<Integer, Integer> keyboardStream = RingBufferProcessor.create();
+
+NetStreams.<String, String>httpServer(spec -> 
+		spec
+			.codec(StandardCodecs.STRING_CODEC)
+			.listen(3000)
+	)
+	.ws("/", channel -> {
+		System.out.println("Connected a websocket client: " + channel.remoteAddress());
+
+		return Streams
+			.wrap(keyboardStream)
+			.skipWhile(key -> KeyEvent.VK_UP != key)
+			.buffer(10, 1) // <1>
+			.map(keys -> keys.size() == 10 &&
+				keys.get(0) == KeyEvent.VK_UP &&
+				keys.get(1) == KeyEvent.VK_UP &&
+				keys.get(2) == KeyEvent.VK_DOWN &&
+				keys.get(3) == KeyEvent.VK_DOWN &&
+				keys.get(4) == KeyEvent.VK_LEFT &&
+				keys.get(5) == KeyEvent.VK_RIGHT &&
+				keys.get(6) == KeyEvent.VK_LEFT &&
+				keys.get(7) == KeyEvent.VK_RIGHT &&
+				keys.get(8) == KeyEvent.VK_B &&
+				keys.get(9) == KeyEvent.VK_A
+		)
+		.flatMap(isKonami ->
+			channel.writeWith( Streams.just(isKonami ? "Konami!" : "Nah"))
+		);
+	})
+	.start()
+	.await();
+
+keyboardStream.onNext(KeyEvent.VK_RIGHT);
+keyboardStream.onNext(KeyEvent.VK_UP);
+keyboardStream.onNext(KeyEvent.VK_UP);
+keyboardStream.onNext(KeyEvent.VK_DOWN);
+keyboardStream.onNext(KeyEvent.VK_DOWN);
+keyboardStream.onNext(KeyEvent.VK_LEFT);
+keyboardStream.onNext(KeyEvent.VK_RIGHT);
+keyboardStream.onNext(KeyEvent.VK_LEFT);
+keyboardStream.onNext(KeyEvent.VK_RIGHT);
+keyboardStream.onNext(KeyEvent.VK_B);
+keyboardStream.onNext(KeyEvent.VK_A);
+keyboardStream.onNext(KeyEvent.VK_C);
+keyboardStream.onComplete();
+
+System.out.println(konamis.await());
+----
+<1> Note the `buffer(size, skip)` use, we want to evaluate all last 10 keys combinations, 10 by 10. That means we need to create a new list of 10 keys for every key.

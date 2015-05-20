@@ -25,6 +25,7 @@ import reactor.core.convert.StandardConverters;
 import reactor.core.dispatch.*;
 import reactor.core.dispatch.wait.AgileWaitingStrategy;
 import reactor.core.internal.PlatformDependent;
+import reactor.core.processor.CancelException;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.timer.HashWheelTimer;
@@ -690,11 +691,13 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 	 */
 	public Environment assignErrorJournal() {
 		return assignErrorJournal(new Consumer<Throwable>() {
-			Logger log = LoggerFactory.getLogger("reactor-environment");
+			Logger log = LoggerFactory.getLogger("reactor.environment");
 
 			@Override
 			public void accept(Throwable throwable) {
-				log.error("", throwable);
+				if(CancelException.TRACE_CANCEL || !CancelException.class.isAssignableFrom(throwable.getClass())){
+					log.error("", throwable);
+				}
 			}
 		});
 	}
