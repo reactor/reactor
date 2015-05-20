@@ -27,6 +27,7 @@ import org.reactivestreams.Subscription;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.http.HttpException;
 import reactor.io.net.http.model.Method;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
@@ -106,9 +107,13 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		Class<?> messageClass = msg.getClass();
 		if (HttpResponse.class.isAssignableFrom(messageClass)) {
+			HttpResponse response = (HttpResponse) msg;
 			if (request != null) {
-				request.setNettyResponse((HttpResponse) msg);
+				request.setNettyResponse(response);
 			}
+
+			checkResponseCode(ctx, response);
+
 			if(FullHttpResponse.class.isAssignableFrom(messageClass)){
 				postRead(ctx, msg);
 			}
@@ -118,6 +123,19 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		} else {
 			super.channelRead(ctx, msg);
 		}
+	}
+
+	private void checkResponseCode(ChannelHandlerContext ctx, HttpResponse response) throws Exception {
+		boolean discardBody = false;
+
+		int code = response.getStatus().code();
+		if (code == HttpResponseStatus.NOT_FOUND.code()
+				|| code == HttpResponseStatus.BAD_REQUEST.code()) {
+			exceptionCaught(ctx, new HttpException(response.getStatus()));
+			discardBody = true;
+		}
+
+		setDiscardBody(discardBody);
 	}
 
 	protected void postRead(ChannelHandlerContext ctx, Object msg){
