@@ -1193,7 +1193,7 @@ Ultimately the `Subscriber` can request data one by one, limiting the inflight d
 [source,java]
 ----
 Streams.range(1,1000000)
-  .subscribe(new DefaultSubscriber<Long>() // <1>
+  .subscribe(new DefaultSubscriber<Long>(){ // <1>
     Subscription sub;
     
     @Override

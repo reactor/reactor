@@ -345,11 +345,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 		return new Stream<E>() {
 
-			final Dispatcher localSync = new SynchronousDispatcher();
-
 			@Override
 			public Dispatcher getDispatcher(){
-				return localSync;
+				return PROCESSOR_SYNC;
 			}
 
 			@Override
@@ -434,7 +432,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 */
 	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer) {
 		ConsumerAction<O> consumerAction = new ConsumerAction<O>(dispatcher, consumer, null, null);
-		if (dispatcher != getDispatcher() ^ dispatcher != SynchronousDispatcher.INSTANCE) {
+		if (dispatcher != getDispatcher() || PROCESSOR_SYNC == dispatcher) {
 			consumerAction.capacity(getCapacity());
 		}
 		subscribe(consumerAction);
@@ -3101,4 +3099,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		}
 
 	}
+
+	private static final SynchronousDispatcher PROCESSOR_SYNC = new SynchronousDispatcher();
 }
