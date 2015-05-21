@@ -614,13 +614,13 @@ h|subscribe(*Subscriber<T>*)
 
 _subscribeOn_
 |void
-2+|Subscribe the passed *Subscriber<T>* and therefore materialize any pending upstream wired up lazily (the implicit *lift* for non terminal operation). Note a Subscriber must request data if it expects some. The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the subscriber.
+2+|Subscribe the passed *Subscriber<T>* and materialize any pending upstream, wired up lazily (the implicit *lift* for non terminal operation). Note a Subscriber must request data if it expects some. The `dispatchOn` and `subscribeOn` alternatives provide for signalling `onSubscribe` using the passed `Dispatcher`.
 
 h|consume(_Consumer<T>,Consumer<T>,Consumer<T>_)
 
 _consumeOn_
 |Control
-2+|Call `subscribe` with a `ConsumerAction` which interact with each passed optional `Consumer` every time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is Long.MAX_VALUE by default for unbounded consuming.  The `xxxOn` alternatives provide for `Dispatcher` optional argument to run the consumers. Returns a Control argument to eventually cancel the materialized `Stream` if necessary. Note that `ConsumeAction` take care of unbounded recursion if the `onNext(T)` signal triggers a blocking request.
+2+|Call `subscribe` with a `ConsumerAction` which interacts with each passed `Consumer`, each time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is `Long.MAX_VALUE` by default, which results in unbounded consuming. The `subscribeOn` and `consumeOn` alternatives provide for signalling `onSubscribe` using the passed `Dispatcher`. Returns a `Control` component to cancel the materialized `Stream`, if necessary. Note that `ConsumeAction` takes care of unbounded recursion if the `onNext(T)` signal triggers a blocking request.
 
 h|consumeLater()
 |Control
@@ -628,14 +628,14 @@ h|consumeLater()
 
 h|tap()
 |TapAndControls
-2+|Similar to `consume` but return a `TapAndControls` that will be dynamically updated everytime a new `onNext(T)` is signalled and cancelled anytime.
+2+|Similar to `consume` but returns a `TapAndControls` that will be dynamically updated each time a new `onNext(T)` is signalled or cancelled.
 
 
 h|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*)
 
 _batchConsumeOn_
 |Control
-2+|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
+2+|Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand dynamically due to various factors.
 
 h|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*)
 
@@ -649,7 +649,7 @@ h|next()
 
 h|toList()
 |Promise<List<T>>
-2+|Similar to `next()` but will wait until all sequence has been produced (`onComplete()`) and pass the accumulated `onNext(T)` in a single `List<T>` fulfilling the returned promise.
+2+|Similar to `next()` but will wait until the entire sequence has been produced (`onComplete()`) and pass the accumulated `onNext(T)` in a single `List<T>` fulfilling the returned promise.
 
 h|Stream.toBlockingQueue()
 |CompletableBlockingQueue<T>
@@ -657,8 +657,8 @@ h|Stream.toBlockingQueue()
 
 h|cache()
 |Stream<T>
-2+|Turn any Stream into a *Cold* Stream, able to replay all the sequence of signals indivudally for each Subscriber.
-Due to the unbounded nature of the action, consider to use with small sequences.
+2+|Turn any Stream into a *Cold* Stream, able to replay all the sequence of signals individually for each Subscriber.
+Due to the unbounded nature of the action, you should probably use it only with small(ish) sequences.
 
 h|broadcast()
 
@@ -669,7 +669,7 @@ The demand will be aggregated from all child Subscribers.
 
 h|broadcastTo(*Subscriber<T>*)
 |Subscriber<T>
-2+|An alternative to `Stream.subscribe` which allows method chaining since the returned instance is the same than the passed argument.
+2+|An alternative to `Stream.subscribe` which allows method chaining since the returned instance is the same as the passed argument.
 
 h|process(*Processor<T, O>*)
 |Stream<O>
