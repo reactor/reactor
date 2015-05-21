@@ -869,21 +869,21 @@ h|Stream.toBlockingQueue()
 |Subscribe to the `Stream` and return an iterable blocking `Queue<T>` accumulating all `onNext` signals. `CompletableBlockingQueue.isTerminated()` can be used as a condition to exit a blocking `poll()` loop.
 
 h|Wiring up Synchronous Streams
-|It's not specific to any API but if the current Stream is dispatched on a `SynchronousDispatcher`, it is actually blocking when a *terminal* action is starting, such as `consume()`.
+|It's not specific to any API, but if the current Stream is dispatched on a `SynchronousDispatcher`, it is actually blocking when a *terminal* action is starting, such as `consume()`.
 
 |===
 
 [[streams-multithreading]]
 == Understanding the threading model
 
-One common purpose for *Reactive Streams* and *Reactive Extensions* is to be non-opinionated about threading behavior *thanks to the signal callbacks*.
-Streams are all about *it will be executed at some point between now and some time T*. Non concurrent signals may also preserve `Subscriber` from concurrency access (share-nothing),
+One common purpose for *Reactive Streams* and *Reactive Extensions* is to be unopinionated about threading behavior *thanks to the signal callbacks*.
+Streams are all about *it will be executed at some point between now and some time T*. Non-concurrent signals may also preserve `Subscriber` from concurrency access (share-nothing),
 however signals and requests can run on 2 asymmetric threads.
 
 By default the `Stream` is assigned with a `SynchronousDispatcher` and will inform its immediate child `Actions` via `Stream.getDispatcher()`.
 
 [IMPORTANT]
-Various `Streams` factories, the `Broadcaster`, the `Stream.dispatchOn`  and the terminal `xxxOn` methods might alter the default `SynchronousDispatcher`.
+Various `Stream` factories, the `Broadcaster`, the `Stream.dispatchOn`  and the terminal `xxxOn` methods might alter the default `SynchronousDispatcher`.
 
 .It is fundamental to understand the three major thread switchs available in Reactor Stream:
 ****
@@ -899,7 +899,7 @@ Various `Streams` factories, the `Broadcaster`, the `Stream.dispatchOn`  and the
 ****
 
 Since the common contract is to start requesting data *onSubscribe*, `subscribeOn` is an efficient tool to scale-up streams, particulary unbounded ones.
-If a `Subscriber` requests *Long.MAX_VALUE* *onSubscribe*, it will then be the only request executed and it will run on the dispatcher assigned in `subscribeOn`.
+If a `Subscriber` requests *Long.MAX_VALUE* in *onSubscribe*, it will then be the only request executed and it will run on the dispatcher assigned in `subscribeOn`.
 This is the default behaviour for unbounded `Stream.consume` actions.
 
 .Jumping between threads with an unbounded demand
@@ -948,10 +948,9 @@ image::images/nThreading.png[Bounded threading, width=600, align="center", link=
 After one or two reads of the <<streams.adoc#stream-basics,101 Stream crash intro>>, you courageaous hacker are ready for some _quick ROI_.
 In effect dispatching efficiently is far away from the only item to check in the *way of millions messages per sec todo list*.
 
-A common issue in *Distributed Systems* lies into the latency cost over indivudual vs buffered IO writes.
+A common issue in *Distributed Systems* lies in the latency cost over indivudual vs buffered IO writes.
 When such situation arises, *MicroBatching* or _small chunk-processing_ is the action to group individual data operations.
-Behind the term `Micro` hides a more concrete behavior named *In Memory*. Since the Speed of Light is still having a remarked impact in
-Systems as of today, main memory remains cheaper to read than *disk*.
+Behind the term `Micro` hides a more concrete behavior named *In Memory*. Since the Speed of Light is still a limitation of systems today, main memory remains cheaper to read than *disk*.
 
 ====
 Latency Comparison Numbers
