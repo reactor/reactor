@@ -907,8 +907,8 @@ This is the default behaviour for unbounded `Stream.consume` actions.
 ----
 Streams
   .range(1, 100)
-  .subscribeOn(Environment.workDispatcher()) // <1>
   .dispatchOn(Environment.sharedDispatcher()) // <2>
+  .subscribeOn(Environment.workDispatcher()) // <1>
   .consume(); // <3>
 ----
 <1> Assign an *onSubscribe* work queue dispatcher.
@@ -926,12 +926,12 @@ The only request executed possibly running on the dispatcher assigned in `subscr
 ----
 Streams
   .range(1, 100)
-  .subscribeOn(Environment.workDispatcher()) // <1>
   .process(RingBufferProcessor.create()) // <2>
+  .subscribeOn(Environment.workDispatcher()) // <1>
   .capacity(1); // <3>
   .consume(); // <4>
 ----
-<1> Assign an *onSubscribe* work queue dispatcher.
+<1> Assign an *onSubscribe* work queue dispatcher. Note that it is placed after process as the subscribeOn will run on the ringBuffer thread on subscriber and we want to alter it to the work dispatcher.
 <2> Assign an async signal *onNext, onError, onComplete* processor. Similar to `dispatchOn` behavior.
 <3> Assign a `Stream` capacity to 1 so the downstream action adapts
 <4> Consume the `Stream` *onSubscribe* with `Subscription.request(1)` and after every 1 *onNext*.

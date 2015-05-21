@@ -43,7 +43,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	private          long pendingRequests;
 
 
-	public ConsumerAction(Dispatcher dispatcher, Consumer<? super T> consumer,
+	public ConsumerAction(long capacity, Dispatcher dispatcher, Consumer<? super T> consumer,
 	                      Consumer<? super Throwable> errorConsumer, Consumer<Void> completeConsumer) {
 		this.consumer = consumer;
 		this.dispatcher = dispatcher;
@@ -51,7 +51,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 		this.completeConsumer = completeConsumer;
 
 		//TODO define option to choose ?
-		this.capacity = Long.MAX_VALUE;
+		this.capacity = capacity;
 
 
 		if (consumer != null) {

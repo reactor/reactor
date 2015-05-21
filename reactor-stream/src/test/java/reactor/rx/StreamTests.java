@@ -1206,7 +1206,6 @@ public class StreamTests extends AbstractReactorTest {
 		assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
 	}
 
-
 	@Test
 	public void subscribeOnDispatchOn() throws InterruptedException {
 		CountDownLatch latch = new CountDownLatch(100);
@@ -1214,8 +1213,8 @@ public class StreamTests extends AbstractReactorTest {
 		Streams
 				.range(1, 100)
 				.log("testOn")
-				.subscribeOn(Environment.workDispatcher())
 				.process(RingBufferProcessor.create())
+				.subscribeOn(Environment.workDispatcher())
 				.capacity(1)
 				.consume(t -> latch.countDown());
 

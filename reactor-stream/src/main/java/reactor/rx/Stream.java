@@ -431,10 +431,13 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer) {
-		ConsumerAction<O> consumerAction = new ConsumerAction<O>(dispatcher, consumer, null, null);
-		if (dispatcher != getDispatcher() || PROCESSOR_SYNC == dispatcher) {
-			consumerAction.capacity(getCapacity());
-		}
+		ConsumerAction<O> consumerAction = new ConsumerAction<O>(
+				dispatcher != getDispatcher() || PROCESSOR_SYNC == dispatcher ? getCapacity() : Long.MAX_VALUE,
+				dispatcher,
+				consumer,
+				null,
+				null
+		);
 		subscribe(consumerAction);
 		return consumerAction;
 	}
@@ -509,11 +512,12 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	                               Consumer<? super Throwable> errorConsumer,
 	                               Consumer<Void> completeConsumer) {
 		ConsumerAction<O> consumerAction =
-				new ConsumerAction<O>(dispatcher, consumer, errorConsumer, completeConsumer);
-
-		if (getCapacity() != Long.MAX_VALUE) {
-			consumerAction.capacity(getCapacity());
-		}
+				new ConsumerAction<O>(
+						getCapacity(),
+						dispatcher,
+						consumer,
+						errorConsumer,
+						completeConsumer);
 
 		subscribe(consumerAction);
 		return consumerAction;
@@ -2888,7 +2892,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			}
 		};
 
-		ConsumerAction<O> callbackAction = new ConsumerAction<O>(getDispatcher(), new Consumer<O>() {
+		consume(
+				 new Consumer<O>() {
 			@Override
 			public void accept(O o) {
 				try {
@@ -2898,8 +2903,6 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 				}
 			}
 		}, terminalConsumer, terminalConsumer);
-
-		tail.subscribe(callbackAction);
 
 		return blockingQueue;
 	}
@@ -3041,9 +3044,9 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 		@Override
 		public void onSubscribe(Subscription s) {
-			if(dispatcher.inContext()){
+			if( dispatcher.inContext() ){
 				accept(s);
-			}else{
+			} else {
 				dispatcher.dispatch(s, this, null);
 			}
 		}
