@@ -280,23 +280,23 @@ h|Streams.merge(*Publisher<T>, Publisher<T>*, Publisher<T>*)
 
 Streams.merge(*Publisher<Publisher<T>>*)
 |T
-2+|http://rxmarbles.com/#merge[Accept multiple sources] and *interleave* their respective sequence. Order won't be preserved like with `concat`. Demand from a Subscriber will be splitted between various source with a minimum of 1 by upstream to make sure everyone has a chance to send something.
+2+|http://rxmarbles.com/#merge[Accept multiple sources] and *interleave* their respective sequence. Order won't be preserved like with `concat`. Demand from a Subscriber will be split between various sources with a minimum of 1 to make sure everyone has a chance to send something.
 
 h|Streams.combineLatest(*Publisher<T1>, Publisher<T2>*, _Publisher<T3-N> x6_, *Function<Tuple2-N, C>*)
 |C
-2+|http://rxmarbles.com/#combineLatest[Combine most recent emitted elements] from the passed sources using the given `Function` aggregating function.
+2+|http://rxmarbles.com/#combineLatest[Combine most recent emitted elements] from the passed sources using the given aggregating `Function`.
 
 h|Streams.combineLatest(*Publisher<T1>, Publisher<T2>,* _Publisher<T3-N> x6_, *Function<Tuple2-N, C>*)
 |C
-2+|http://rxmarbles.com/#zip[Combine most recent emitted elements once], everytime every source has emitted a signal, apply the given `Function` and clear the temporary aggregate. Effectively it's a flexible _join_ mechanism for multiple different type of sources.
+2+|http://rxmarbles.com/#zip[Combine most recent elements once], every time a source has emitted a signal, apply the given `Function` and clear the temporary aggregate. Effectively it's a flexible _join_ mechanism for multiple types of sources.
 
 h|Streams.join(*Publisher<T>, Publisher<T>*, _Publisher<T> x6_)
 |List<T>
-2+|A shortcut for zip that only aggregate each complete aggregate in a List matching the order of the passed argument sources.
+2+|A shortcut for zip that only aggregates each complete aggregate in a List matching the order of the passed argument sources.
 
 h|Streams.await(*Publisher<>*, _long, unit, boolean_)
 |void
-2+|Block the calling thread until the passed `Publisher` `onComplete` the waiting internal `Subscriber`. Optional arguments to tune the timeout and the need to request data as well can be passed. It will throw an exception if the final state is `onError` instead.
+2+|Block the calling thread until `onComplete` of the passed `Publisher`. Optional arguments to tune the timeout and the need to request data as well can be passed. It will throw an exception if the final state is `onError`.
 
 h|IOStreams.<K,V>persistentMap(*String*, _deleteOnExit_)
 |V
@@ -316,7 +316,7 @@ h|BiStreams.reduceByKey(*Publisher<Tuple2<KEY,VALUE>>*, _Map<KEY,VALUE>, Publish
 
 h|BiStreams.scanByKey(*Publisher<Tuple2<KEY,VALUE>>*, _Map<KEY,VALUE>, Publisher<MapStream.Signal<KEY, VALUE>>_, *BiFunction<VALUE, VALUE, VALUE>*)
 |Tuple2<KEY,VALUE>
-2+|A key-value operation that accumulates computed results for each 2 sequential `onNext(VALUE)` passed to the `BiFunction` argument. The result will be released every time just after it has been stored.  The options allow to use an existing map store and listen for its events.
+2+|A key-value operation that accumulates computed results for each 2 sequential `onNext(VALUE)` passed to the `BiFunction` argument. The result will be released every time just after it has been stored.  The options allow you to use an existing map store and listen for its events.
 
 h|Promises.when(*Promise<T1>, Promise<T2>*, _Promise<T3-N> x6_)
 |TupleN<T1,T2,\*?>
@@ -334,7 +334,7 @@ h|Promises.multiWhen(*Promise<T>, Promise<T>*, _Promise<T> x6_)
 
 === From Custom Reactive Publishers
 
-Over time, the Reactor user will become more familiar with the *Reactive Streams*. That's the perfect moment to start custom reactive data-sources!
+Over time, the Reactor user will become more familiar with *Reactive Streams*. That's the perfect moment to start creating custom reactive data-sources!
 Usually the implementor would have to respect the specification and verify his work with the *reactive-streams-tck* dependency.
 Respecting the contract requires a *Subscription* and a call to *onSubscribe* + a *request(long)* before sending any data.
 
@@ -384,18 +384,18 @@ deferred
 <2> Create a `Stream` from a custom malformed `Publisher which skips `onSubscribe(Subscription)` and immediately calls `onNext(T)`.
 <3> Create a `DeferredStream` that will alternate source Publisher<T> on each `Stream.subscribe` call, evaluating the total number of Subscribers,
 
-Where to go from here ? Well there are tons of use cases that can benefit from a custom Publisher:
+Where to go from here? There are plenty of use cases that can benefit from a custom Publisher:
 
 ****
 * Reactive Facade to convert any IO call with a matching demand and compose: HTTP calls (read N times), SQL queries (select max N), File reads (read N lines)...
 * Async Facade to convert any hot data callback into a composable API: AMQP Consumer, Spring MessageChannel endpoint...
 ****
 
-Reactor offers some done-deal facilities to avoid boilerplate checking you would have to do without extending exsiting Stream or `PushSubscription`
+Reactor offers some reusable components to avoid the boilerplate checking you would have to do without extending exsiting Stream or `PushSubscription`
 
-* Extending `PushSubscription` instead of implementing directly `Subscription` to benefit from terminal state (PushSubscription.isComplete())
-* Using `PublisherFactory.create(args)` or `Streams.createWith(args)` to just use Functional consumers for every lifecycle step (requested, stopped, started).
-* Extending `Stream` instead of implementing directly `Publisher` to benefit from composition API
+* Extending `PushSubscription` instead of implementing `Subscription` directly to benefit from terminal state (PushSubscription.isComplete())
+* Using `PublisherFactory.create(args)` or `Streams.createWith(args)` to use Functional consumers for every lifecycle step (requested, stopped, started).
+* Extending `Stream` instead of implementing `Publisher` directly to benefit from composition API
 
 .Streams.createWith, an alternative to create() minus some boilerplate
 [source,java]
@@ -417,19 +417,19 @@ stream
 ----
 <1> Attach a request consumer reacting on `Subscriber` requests and passing the demand and the requesting subscriber.
 <2> The _sub_ argument is actually a `SubscriberWithContext` possibly assigned with some initial state shared by all request callbacks.
-<3> Executed once on start, this is also where we initialize the shared context optionnally, every request callbacks will receive 0 from `context()`
-<4> Executed once on any Termination event : *cancel()*, *onComplete()* or *onError(e)*.
+<3> Executed once on start, this is also where we initialize the optional shared context; every request callback will receive 0 from `context()`
+<4> Executed once on any terminal event : *cancel()*, *onComplete()* or *onError(e)*.
 
-A good place to start feeling the reactive streams way is to simply look at a more ellaborated back-pressure ready <<recipes.adoc#recipe-filestream, File Stream>>.
+A good place to start coding the reactive streams way is to simply look at a more elaborate, back-pressure ready <<recipes.adoc#recipe-filestream, File Stream>>.
 
 === From Hot Data Sources
 
-If you are dealing with an unbounded stream of data items like what would be common with a web application that accepts user input via a REST interface, you probably want to use the "hot" variety of `Stream` in Reactor, which we call a link:/docs/api/index.html?reactor/rx/stream/Broadcaster.html[Broadcaster].
+If you are dealing with an unbounded stream of data like what would be common with a web application that accepts user input via a REST interface, you probably want to use the "hot" variety of `Stream` in Reactor, which we call a link:/docs/api/index.html?reactor/rx/stream/Broadcaster.html[Broadcaster].
 
 To use it, you simply declare a pipeline of composable, functional tasks on the `Broadcaster` and later call link:/docs/api/reactor/rx/stream/Broadcaster.html#onNext-O-[`Broadcaster.onNext(T)`] to publish values into the pipeline.
 
 [NOTE]
-`Broadcaster` are valid `Processor` and `Consumer`. It's possible to `onSubscribe` a Broadcaster as it's also possible to use it as a `Consumer` delegating `Consumer.accept(T)` to `Broadcaster.onNext(T)`.
+`Broadcaster` is a valid `Processor` and `Consumer`. It's possible to `onSubscribe` a Broadcaster as it's also possible to use it as a `Consumer` delegating `Consumer.accept(T)` to `Broadcaster.onNext(T)`.
 
 .Broadcaster.create()
 [source,java]
@@ -447,13 +447,13 @@ sink.onNext("Hello World!"); // <4>
 <4> Publish a value into the pipeline, which will cause the tasks to be invoked.
 
 [IMPORTANT]
-Hot Data Sources will never be replayed. Subscribers will only see data from the moment T they have been passed to `Stream.subscribe(Subscriber)`.
-An exception applies for `BehaviorBroadcaster` (last emitted element is replayed); `Streams.timer()` and `Streams.period()` will also maintain a unique timed cursors but will still ignore backpressure.
+Hot Data Sources will never be replayed. Subscribers will only see data from the moment they have been passed to `Stream.subscribe(Subscriber)`.
+An exception applies for `BehaviorBroadcaster` (last emitted element is replayed); `Streams.timer()` and `Streams.period()` will also maintain unique timed cursors but will still ignore backpressure.
 
 [IMPORTANT]
 Subscribers will see new data N flowing through a Broadcaster every T+I^N^ *only* after they have subscribed at time T.
 
-.Creating undetermined Streams
+.Creating flexible Streams
 [cols="3,1,1"]
 |===
 
@@ -468,24 +468,24 @@ h|Streams.timer(*delay*, _unit, timer_)
 |N/A
 |Long
 3+|Start a Timer on `Stream.subscribe(Subscriber)` call and emit a single `onNext(0L)` then `onComplete()` once the delay is elapsed. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
-`Subscription.request(long)` will be ignored as no backpressure can automatically apply to a scheduled emission.
+`Subscription.request(long)` will be ignored as no backpressure can apply to a scheduled emission.
 
 h|Streams.period(*period*, _unit, timer_)
 |N/A
 |Long
 3+|Start a Timer on `Stream.subscribe(Subscriber)` call and every period of time emit `onNext(N)` where N is an incremented counter starting from 0. Be sure to pass the optional argument `Timer` if there is no current active `Environment`.
-`Subscription.request(long)` will be ignored as no backpressure can automatically apply to a scheduled emission.
+`Subscription.request(long)` will be ignored as no backpressure can apply to a scheduled emission.
 
 h|Streams.<T>switchOnNext()
 |Publisher<T>
 |T
-3+|An `Action` which for the record is also a `Processor`. The `onNext(Publisher<T>)` signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
+3+|An `Action` which for the record is also a `Processor`. The `onNext(Publisher<T>)` signals will result in downstream `Subscriber<T>` receiving the next Publisher sequence of `onNext(T)`.
  It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 
 h|Broadcaster.<T>create(_Environment, Dispatcher_)
 |T
 |T
-3+|Create a _hot_ bridge between any context allowed to call `onSubscribe`, `onNext`, `onComplete` or `onError` and a composable sequence of these signals under a `Stream`. If no subscriber are actively registered, next signals might trigger a `CancelException`. The optional `Dispatcher` and `Environment` arguments define how to run each signal. Finally, a Broadcaster can be subscribed anytime to a `Publisher`, like a `Stream`.
+3+|Create a _hot_ bridge between any context allowed to call `onSubscribe`, `onNext`, `onComplete` or `onError` and a composable sequence of these signals under a `Stream`. If no subscribers are actively registered, next signals might trigger a `CancelException`. The optional `Dispatcher` and `Environment` arguments define where to emit each signal. Finally, a Broadcaster can be subscribed any time to a `Publisher`, like a `Stream`.
 
 h|SerializedBroadcaster.create(_Environment, Dispatcher_)
 |T
@@ -495,12 +495,12 @@ h|SerializedBroadcaster.create(_Environment, Dispatcher_)
 h|BehaviorBroadcaster.create(_Environment, Dispatcher_)
 |T
 |T
-3+|Simlar to `Broadcaster.create()` but always replays the last data signal if any *and* the last terminal signal (`onComplete()`, `onError(Throwable)`) to the new Subscribers.
+3+|Simlar to `Broadcaster.create()` but always replays the last data signal (if any) *and* the last terminal signal (`onComplete()`, `onError(Throwable)`) to the new Subscribers.
 
 h|BehaviorBroadcaster.first(*T*, _Environment, Dispatcher_)
 |T
 |T
-3+|Similar to BehaviorBroadcaster but starts with a default value T.
+3+|Similar to `BehaviorBroadcaster` but starts with a default value T.
 
 
 h|Streams.wrap(*Processor<I, O>*)
@@ -516,7 +516,7 @@ h|Promises.<T>prepare(*Environment, Dispatcher*)
 Promises.ready()
 |T
 |T
-3+|Prepare a `Promise` ready to be called *once only* by any external context through `onNext`. Since it's a stateful container holding the result of the fulfilled promise, new subscribers will immediately run on the current thread.
+3+|Prepare a `Promise` ready to be called *exactly once* by any external context through `onNext`. Since it's a stateful container holding the result of the fulfilled promise, new subscribers will immediately run on the current thread.
 
 |===
 
@@ -525,29 +525,29 @@ Promises.ready()
 ====
 For Asynchronous broadcasting, always consider a <<core-processor.adoc#core-processor,Core Processor>> alternative to a `Broadcaster`:
 ****
-* A Broadcaster will trigger a http://projectreactor.io/docs/api/reactor/core/processor/CancelException.html[CancelException] if there is no subscribers. A Core `RingBuffer*Processor` will always deliver the missed data to the first subscriber.
-* Default Synchronous dispatcher and some other that can be assigned to a broadcaster might not support concurrent `onNext`. Use `RingBuffer*Processor.share()` an alternative thread-safe concurrent `onNext`.
-* RingBuffer*Processor supports replaying an event cancelled in-flight by a downstream subscriber if it's still running under the processor thread. A Broadcaster won't support replaying.
+* A Broadcaster will trigger a http://projectreactor.io/docs/api/reactor/core/processor/CancelException.html[CancelException] if there are no subscribers. A Core `RingBuffer*Processor` will always deliver buffered data to the first subscriber.
+* Some `Dispatcher` types that can be assigned to a `Broadcaster` might not support concurrent `onNext`. Use `RingBuffer*Processor.share()` for an alternative, thread-safe, concurrent `onNext`.
+* RingBuffer*Processor supports replaying an event cancelled in-flight by a downstream subscriber if it's still running on the processor thread. A Broadcaster won't support replaying.
 * RingBuffer*Processor are faster than their alternative Broadcaster with a RingBufferDispatcher
-* RingBufferWorkProcessor supports scaling-up along with the number of attached subscribers.
-* *Broadcaster might anyway be promoted to Processor in 2.1+ achieving the same thing and removing the need for the Reactor user to struggle picking between Processor and Broadcaster*.
+* RingBufferWorkProcessor supports scaling up with the number of attached subscribers.
+* *Broadcaster might be promoted to a `Processor` in 2.1 anyway, achieving the same thing and removing the need for the Reactor user to struggle picking between `Processor` and `Broadcaster`*.
 ****
 ====
 
 [[wireup]]
-=== Wiring a Stream up
+=== Wiring up a Stream
 
-Streams operations minor a few exceptions (terminal actions and `broadcast()`) will never directly subscribe. Instead they will lazily prepare for subscribe.
+Streams operations--minus a few exceptions like terminal actions and `broadcast()`--will never directly subscribe. Instead they will lazily prepare for subscribe.
 This is usually called *lift* in Functional programming.
 
-That basically means the Reactor Stream user will explicitely call `Stream.subscribe(Subscriber)` or alternative *terminal* actions such as `Stream.consume(Consumer)` to materialize all the registered operations.
-Before that, `Actions` don't really exist, we use `Stream.lift(Supplier)` to defer the creation of these Actions until `Stream.subscribe(Subscriber)` is explicitely called.
+That basically means the Reactor `Stream` user will explicitely call `Stream.subscribe(Subscriber)` or, alternativly, *terminal* actions such as `Stream.consume(Consumer)` to materialize all the registered operations.
+Before that `Actions` don't really exist. We use `Stream.lift(Supplier)` to defer the creation of these Actions until `Stream.subscribe(Subscriber)` is explicitely called.
 
 Once everything is wired, each action maintains an upstream `Subscription` and a downstream `Subscription` and the Reactive Streams contract applies all along the pipeline.
 
 [IMPORTANT]
 Usually the terminal actions return a `Control` object instead of `Stream`.
-This is an interface with user-code to request or cancel a pipeline without being inside a `Subscriber` context or implementing the full `Subscriber` contract.
+This is an component you can use to request or cancel a pipeline without being inside a `Subscriber` context or implementing the full `Subscriber` contract.
 
 .Wiring up 2 pipelines
 [source, java]
