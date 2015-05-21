@@ -1041,33 +1041,33 @@ h|buffer(_int_)
 |Aggregate until `onComplete()` or the given `int` argument is reached which starts over a new aggregation.
 
 h|buffer(*Publisher<?>*, _Supplier<? extends Publisher<?>>_)
-|Aggregate until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
+|Aggregate until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation. That means overlapping (sliding buffers) and disjointed aggregation can be emitted to the child `Subscriber<List<T>>`.
 
 h|buffer(*Supplier<? extends Publisher<?>>*)
-|Aggregate until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will ends the linked aggregation and starts a new one immediately. 
+|Aggregate until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation and start a new one immediately. 
 
 h|buffer(*int, int*)
-|Aggregate until `onComplete()` or the given second *skip* `int` argument is reached which starts over a new aggregation. The first *size* `int` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
+|Aggregate until `onComplete()` or the given *skip* (the second `int` argument) is reached which starts over a new aggregation. The first *size* `int` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed aggregation can be emitted to the child `Subscriber<List<T>>`.
 
 h|buffer(*long*, TimeUnit, Timer_)
-|Aggregate until `onComplete()` or the elpased *period* `long` argument is reached which starts over a new aggregation. 
+|Aggregate until `onComplete()` or the elapsed *period* (the first `long` argument) is reached, which starts over a new aggregation. 
 
 h|buffer(*long, long*, TimeUnit, Timer_)
-|Aggregate until `onComplete()` or the given second *timeshift* `long` argument is reached. The first *timespan* `long` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<List<T>>`.
+|Aggregate until `onComplete()` or the given *timeshift* (the second `long` argument) is reached. The *timespan* (the first `long` argument) will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed aggregation can be emitted to the child `Subscriber<List<T>>`.
 
 h|buffer(*int, long*, _TimeUnit, Timer_)
-|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It accumulates until the given *size* has been reached or the *timespan* elapsed.
+|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It accumulates until the given *size* has been reached or the *timespan* has elapsed.
 
 |===
 
 === Into Windows
 
-Forwarding grouped sequences of data `T` into streams `Stream<T>` serves three main purposes:
+Forwarding grouped sequences of data `T` into a `Stream<T>` serves three main purposes:
 
 ****
 * Expose a sequence of data `T` to various limited grouped observations and accumulation: metrics, average, flexible aggregate (`Map`, `Tuple`...).
 * Parallelizing grouped sequences combined with `dispatchOn` for each generated `Stream<T>` and merging their results back.
-* Repeat `onComplete()` for individual grouped sequences, e.g. in <<net.adoc#net-overview, Async IO` module to delimit a flush.
+* Repeat `onComplete()` for individual grouped sequences, e.g. in <<net.adoc#net-overview,Async IO>> module to delimit a flush.
 ****
 
 
@@ -1122,49 +1122,48 @@ h|window(_int_)
 |Forward to a generated `Stream<T>` until `onComplete()` or the given `int` argument is reached which starts over a new `Stream`.
 
 h|window(*Publisher<?>*, _Supplier<? extends Publisher<?>>_)
-|Forward to a generated `Stream<T>` until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will ends the linked aggregation. That means overlapping (sliding buffers) and disjoint aggregation can be emitted to the child `Subscriber<Stream<T>>`.
+|Forward to a generated `Stream<T>` until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation. That means overlapping (sliding buffers) and disjointed aggregations can be emitted to the child `Subscriber<Stream<T>>`.
 
 h|window(*Supplier<? extends Publisher<?>>*)
-|Forward to a generated `Stream<T>`  until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked `Stream<T>` and starts a new one immediately. 
+|Forward to a generated `Stream<T>`  until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked `Stream<T>` and start a new one immediately. 
 
 h|window(*int, int*)
-|Forward to a generated `Stream<T>`  until `onComplete()` or the given second *skip* `int` argument is reached which starts over a new `Stream<T>`. The first *size* `int` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint sequence can be emitted to the child `Subscriber<Stream<T>>`.
+|Forward to a generated `Stream<T>`  until `onComplete()` or the given *skip* (the second `int` argument) is reached which starts over a new `Stream<T>`. The *size* (the first `int` argument) will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed sequences can be emitted to the child `Subscriber<Stream<T>>`.
 
 h|window(*long*, TimeUnit, Timer_)
-|Forward to a generated `Stream<T>`  until `onComplete()` or the elpased *period* `long` argument is reached which starts over a new `Stream<T>`. 
+|Forward to a generated `Stream<T>` until `onComplete()` or the elpased *period* (the `long` argument) is reached, which starts over a new `Stream<T>`. 
 
 h|window(*long, long*, TimeUnit, Timer_)
-|Forward to a generated `Stream<T>`  until `onComplete()` or the given second *timeshift* `long` argument is reached. The first *timespan* `long` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjoint sequence can be emitted to the child `Subscriber<Stream<T>>`.
+|Forward to a generated `Stream<T>`  until `onComplete()` or the given *timeshift* (the second `long` argument) is reached. The *timespan* (the first `long` argument) will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed sequenced can be emitted to the child `Subscriber<Stream<T>>`.
 
 h|window(*int, long*, _TimeUnit, Timer_)
-|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It forwards to a generated `Stream<T>` until the given *size* has been reached or the *timespan* elapsed.
+|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It forwards to a generated `Stream<T>` until the given *size* has been reached or the *timespan* has elapsed.
 
 |===
 
 [[streams-backpressure]]
 == Backpressure and Overflow
 
-Backpressure is addressed automatically in a bunch of situations with the *Reactive Streams* contract. If a `Subscriber` doesn't request more than it can actually process (request different from `Long.MAX_VALUE`), the upstream source can avoid sending more data. That only works with cold data `Publisher` which can stop-read anytime the mapped source: _How much read from a socket, How much rows from a SQL query, how much lines from a File, how much elements from an Iterable_...
+Backpressure is addressed automatically in many  situations with the *Reactive Streams* contract. If a `Subscriber` doesn't request more than it can actually process (e.g. something other than `Long.MAX_VALUE`), the upstream source can avoid sending too much data. With a "cold" `Publisher` this only works when you can stop reading from source at any time: _How much to read from a socket, How many rows from a SQL query cursor, how many lines from a File, how many elements from an Iterable_...
 
-If the source is *hot* such as a timer or UI events or the `Subscriber` might request `Long.MAX_VALUE` on a large dataset, a strategy must be explicitely picked by the developer to confront the *backpressure*. 
+If the source is *hot*, such as a timer or UI events, or the `Subscriber` might request `Long.MAX_VALUE` on a large dataset, a strategy must be explicitely picked by the developer to deal with *backpressure*. 
 
-.Reactor provides a set of API to deal with Hot and Cold sequences flow-control:
+.Reactor provides a set of APIs to deal with Hot and Cold sequences:
 ****
-* Uncontrolled sequences (Hot) should be actively addressed
+* Uncontrolled sequences (Hot) should be actively managed
 ** By *reducing* the sequence volume, e.g. "sampling"
-** By *ignoring* data when the demand is not met
-** By *buffering* data when the demand is not met
-* Controlled sequences (Cold) should be passively addressed
+** By *ignoring* data when the demand exceeds capacity
+** By *buffering* data when the demand exceeds capacity
+* Controlled sequences (Cold) should be passively managed
 ** By *lowering demand* from the `Subscriber` or at any point of the `Stream`
 ** By *gapping demand* with delayed requests
 ****
 
-A common representation extensively used in *Reactive Extensions* documentations is the *Marble Diagram*. The dual timeline
- helps visualizing when and what is observed in the `Publisher` or `Stream` and in a `Subscriber` like an `Action. We will use these diagrams here to emphasize the demand flow, where usually such diagram details the nature of the transformation like _map_ or _filter_.
+A common example used extensively in the *Reactive Extensions* documentation is the *Marble Diagram*. The dual timeline helps visualize when and what is observed in the `Publisher` or `Stream` and in a `Subscriber` (e.g. an `Action`). We will use these diagrams here to emphasize the demand flow, where usually such a diagram details the nature of the transformation like _map_ or _filter_.
 
 image::images/marble/marble-101.png[Marble Diagrams, width=650, align="center", link="images/marble/marble-101.png"]
 
-*Reactor* will automatically provide for in-memory overflow buffer when the dispatcher or the capacity differs from an action to another. This will not apply to `Core Processors` which handle the overflow in their own way. However dispatchers can be re-used and *Reactor* must limit the number of dispatch where it can, hence why the in-memory buffer are added by `Action` when dispatchers differ. 
+*Reactor* will automatically provide for an in-memory overflow buffer when the dispatcher or the capacity differs from one action to another. This will not apply to `Core Processors`, which handle the overflow in their own way. Dispatchers can be re-used and *Reactor* must limit the number of dispatches where it can, hence the in-memory buffer added by `Action` when dispatchers differ. 
 
 [source,java]
 ----
@@ -1186,7 +1185,7 @@ Streams.just(1,2,3,4,5)
 <3> A first action running on dispatcher1
 <4> A second action running on a different dispatcher2, an implicit onOverflowBuffer() is added
 
-Ultimately the `Subscriber` can request data one by one, limiting the inflight data to 1 all along the pipeline, and requesting once more after each successful `onNext(T)`. The same behavior can be obtained with `capacity(1).consume(...)`.
+Ultimately the `Subscriber` can request data one by one, limiting the in-flight data to one element all along the pipeline and requesting one more after each successful `onNext(T)`. The same behavior can be obtained with `capacity(1).consume(...)`.
 
 [source,java]
 ----
@@ -1207,8 +1206,8 @@ Streams.range(1,1000000)
   );
 ----
 <1> Use a `DefaultSubscriber` to avoid implementing all `Subscriber` methods.
-<2> Schedule a first demand onSubscribe after keeping a reference to the subscription.
-<3> Use <<net-http.adoc#net-http101, Async HTTP API>> to request more only on successful GET. That will naturally propagate the latency information back to the `RangeStream` `Publisher`. One can imagine than measuring the time difference between 2 requests gives an interesting insight on the processing and IO latency.
+<2> Schedule a first demand request after keeping a reference to the subscription.
+<3> Use <<net-http.adoc#net-http101, Async HTTP API>> to request more only on successful GET. That will naturally propagate the latency information back to the `RangeStream` `Publisher`. One can imagine then measuring the time difference between two requests and how that gives an interesting insight into the processing and IO latency.
 
 .Controlling the volume of in-flight data
 |===
