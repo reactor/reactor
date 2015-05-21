@@ -1218,18 +1218,18 @@ h|Stream<T>
 |
 
 h|subscribe(*Subscriber<T>*)
-|A custom `Subscriber<T>` will have all the flexibility to request whenever it wishes. Best to size these requests if the `Subscriber` involve some blocking operations.
+|A custom `Subscriber<T>` will have the flexibility to request whenever it wishes. It's best to change the size these requests if the `Subscriber` uses blocking operations.
 
 h|capacity(*long*)
 |<<streams.adoc#stream-capacity, Set the capacity>> to this `Stream<T>` and all downstream actions.
 
 h|onOverflowBuffer(_CompletableQueue_)
-^.^a|Create or use the given `CompletableQueue` to store the overflow elements. Overflow occurs when a `Publisher` sends more than actually requested for. Overflow will be drained over the next requests.
+^.^a|Create or use the given `CompletableQueue` to store the overflow elements. Overflow occurs when a `Publisher` sends more data than a `Subscriber` has actually requested. Overflow will be drained over the next calls to `request(long)`.
 
 image::images/marble/marble-overflowbuffer.png[onOverflowBuffer(), width=500, align="center", link="images/marble/marble-overflowbuffer.png"]
 
 h|onOverflowDrop()
-^.^a|Ignore the overflow elements. Overflow occurs when a `Publisher` sends more than actually requested for. Overflow will be drained over the next requests.
+^.^a|Ignore the overflowed elements. Overflow occurs when a `Publisher` sends more data than a `Subscriber` has actually requested. Overflow will be drained over the next calls to `request(long)`.
 
 image::images/marble/marble-overflowdrop.png[onOverflowDrop(), width=500, align="center", link="images/marble/marble-overflowdrop.png"]
 
@@ -1239,7 +1239,7 @@ h|throttle(*long*)
 image::images/marble/marble-throttle.png[throttle(delay), width=500, align="center", link="images/marble/marble-throttle.png"]
 
 h|requestWhen(*Function<Stream<Long>, Publisher<Long>>*)
-^.^a|Pass any downstream `request(long)` to `Stream<Long>` sequence of requests that can be altered and returned under any form of `Publisher<Long>`. The `RequestWhenAction` will subscribe to the produced sequence and immiately forwards `onNext(Long)` to the upstream `request(long)`. It behaves similarly to `adaptiveConsume` but can be inserted at any point of the `Stream` pipeline.
+^.^a|Pass any downstream `request(long)` to `Stream<Long>` sequence of requests that can be altered and returned using any form of `Publisher<Long>`. The `RequestWhenAction` will subscribe to the produced sequence and immiately forward `onNext(Long)` to the upstream `request(long)`. It behaves similarly to `adaptiveConsume` but can be inserted at any point in the `Stream` pipeline.
 
 image::images/marble/marble-requestwhen.png[requestWhen(requestMapper), width=500, align="center", link="images/marble/marble-requestwhen.png"]
 
@@ -1251,10 +1251,10 @@ _batchConsumeOn_
 h|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), 
 
 _adaptiveConsumeOn_
-|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.  The `AdaptiveConsumerAction` will subscribe to the produced sequence and immiately forwards `onNext(Long)` to the upstream `request(long)`.
+|Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.  The `AdaptiveConsumerAction` will subscribe to the produced sequence and immediately forwards `onNext(Long)` to the upstream `request(long)`.
 
 h|process(*Processor<T, ?>*)
-|Any `Processor` can also take care of transforming the demand, buffer or whatever. It is worth checking the behavior of the given `Processor`.
+|Any `Processor` can also take care of transforming the demand or buffer. It is worth checking into the behavior of the specific `Processor` implementation in use.
 
 h|_All_ filter(_arguments_), take(_arguments_), takeWhile(_arguments_)...
 |All limit operations can be used to proactively limit the volume of a `Stream`.
@@ -1263,22 +1263,22 @@ h|buffer(_arguments_), reduce(_arguments_), count(_arguments_)...
 |All aggregating and metrics operations can be used to proactively limit the volume of a `Stream`.
 
 h|_All_ sample(_arguments_), sampleFirst(_arguments_)
-|Reduce the volume of a `Stream<T>` by selecting the last (or the first) `onNext(T)` signal matching the given conditions. These condition can be timed, sized, timed or sized, and interactive (event-driven).
+|Reduce the volume of a `Stream<T>` by selecting the last (or the first) `onNext(T)` signals matching the given conditions. These conditions can be timed, sized, timed or sized, and interactive (event-driven).
 
 h|zip(_arguments_), zipWith(_arguments_)
-|Reduce the volume of N `Stream<T>` to the least signal producing zipped `Publisher`. The aggregated signal from each `Publisher` can be used to produce a distinct value from the N most recent upstream `onNext(T)`.
+|Reduce the volume of N `Stream<T>` to the least signals producing zipped `Publisher`. The aggregated signals from each `Publisher` can be used to produce a distinct value from the N most recent upstream `onNext(T)`.
 
 |===
 
 [[streams-combine]]
 == Combinatory Operations
 
-Combining `Publisher` allows for coordination between multiple eventually *concurrent sequences* of data.
+Combining `Publishers` allows for coordination between multiple *concurrent sequences* of data.
 They also serve the purpose of <<streams.adoc#stream-flatmap,asynchronous transformations>>, with the resulting sequences being merged.
 
-Coordinating in a non-blocking way will free the developer from using `Future.get()` or `Promise.await()`, a perillous task when it comes to more than 1 signal. Being non-blocking means the distinct pipelines won't wait on anything else than `Subscriber` demand. The `Subscriber` requests will be splitted, with a minimum request of 1 by merged `Publisher`.
+Coordinating in a non-blocking way will free the developer from using `Future.get()` or `Promise.await()`, a perilous task when it comes to more than one signal. Being non-blocking means that distinct pipelines won't wait on anything other than `Subscriber` demand. The `Subscriber` requests will be split, with a minimum request of one for each merged `Publisher`.
 
-Merging actions are modeled in `FanInAction` and take care of concurrency signaling with a *thread-stealing* `SerializedSubscriber` proxy to the delegate `Subscriber`. It will verify on each signal if a thread is already running the delegate `Subscriber`, thus rescheduling the new signal. The signal will then be polled when the busy thread exits `Subscriber` code, possibly running the signal in a different thread than originally produced on.
+Merging actions are modeled in `FanInAction` and take care of concurrent signaling with a *thread-stealing* `SerializedSubscriber` proxy to the delegate `Subscriber`. For each signal it will verify if the correct thread is already running the delegate `Subscriber` and rescheduling the signal if not. The signal will then be polled when the busy thread exits `Subscriber` code, possibly running the signal in a different thread than originally produced on.
 
 [WARNING]
 <<streams.adoc#streams-backpressure,Reducing the demand volume>> before using `flatMap` might be a good or a bad idea. In effect it doesn't deserve the merging action to subscribe to many parallel `Publisher` if it can't actually process them all. However it limiting the parallel `Publisher` size might also not give a chance to faster `Publisher` pending a request to be delivered. 
