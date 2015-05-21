@@ -681,7 +681,7 @@ h|process(*Processor<T, O>*)
 [[stream-capacity]]
 === Setting Capacity
 
-The Reactive Streams standard encourages application developers to set reasonable limits on in-flight data. This prevents components from becoming innudated with more data than they can handle, which causes unpredictable problems throughput an application. One of the core concepts of Reactive Streams is that of "backpressure", or the ability for a pipeline to communicate to upstream components that it can only handle a fixed number of items at a time. A useful term to describe this process of queueing and requesting small chunks of a large volume of data is "microbatching".
+The Reactive Streams standard encourages application developers to set reasonable limits on in-flight data. This prevents components from becoming innudated with more data than they can handle, which causes unpredictable problems throughput an application. One of the core concepts of Reactive Streams is that of "backpressure", or the ability of a pipeline to communicate to upstream components that it can only handle a fixed number of items at a time. A useful term to describe this process of queueing and requesting small chunks of a large volume of data is "microbatching".
 
 Within a Reactor `Stream`, it's possible to microbatch items to limit the amount of data in-flight at any given time. This has distinct advantages in a number of ways, not the least of which is that it limits expsoure to data loss by preventing the system from accepting more data than it can afford to lose if the system was to crash.
 
@@ -701,10 +701,10 @@ st
 <2> Produce demand upstream by requesting the next 256 elements of data.
 
 [WARNING]
-`capacity` will not affect `consume` actions if the current Stream dispatcher set with `dispatchOn` early on is a `SynchronousDispatcher.INSTANCE` (default if unset).
+`capacity` will not affect `consume` actions if the current Stream dispatcher set with `dispatchOn` is a `SynchronousDispatcher.INSTANCE` (default if unset).
 
 [TIP]
-We encourage the *Reactor Users* to study the benefit of setting capacity vs computing dynamic demand with `Stream.adaptiveConsume` or a custom `Subscriber`.
+We leave as an exercise to the *Reactor User* to study the benefit of setting capacity vs computing dynamic demand with `Stream.adaptiveConsume` or a custom `Subscriber`.
 
 === Functional Composition
 
@@ -742,7 +742,7 @@ st.observe(s -> LOG.info("Got input [{}] on thread [{}}]", s, Thread.currentThre
 
 ==== Filter
 
-It's possible to filter items passing through a `Stream` so that downstream actions only see the data you want them to see. Filtering actions can be found under `reactor.rx.action.filter` package.
+It's possible to filter items passing through a `Stream` so that downstream actions only see the data you want them to see. Filtering actions can be found under the `reactor.rx.action.filter` package.
 The most popular one is the link:/docs/api/reactor/rx/Stream.html#filter-reactor.fn.Predicate-[`.filter(Predicate<T>)`] method.
 
 [NOTE]
@@ -761,7 +761,7 @@ st.filter(s -> s.startsWith("Hello")) // <1>
 
 ==== Limits
 
-A specific application of filters is for setting limits to a `Stream`. Limiting actions can be found under `reactor.rx.action.filter` package.
+A specific application of filters is for setting limits to a `Stream`. Limiting actions can be found under the `reactor.rx.action.filter` package.
 There are various ways to tell a Stream<T> its boundary in time, in size and/or on a specific condition.
 The most popular one is the link:/docs/api/reactor/rx/Stream.html#take-long-[`.take(long)`] method.
 
@@ -801,12 +801,12 @@ Streams
 
 If you want to execute a distinct pipeline `Stream<V>` or `Publisher<V>` given an actual input data, you can use combinatory actions such as `.flatMap(Function)` and other `reactor.rx.action.combination` actions.
 
-To transform values into distinct `Publisher<V>` possibly asynchronous, use link:/docs/api/reactor/rx/Stream.html#map-reactor.fn.Function-[.flatMap(Function<? super I, ? extends Publisher<? extends O>)].
+To transform values into a distinct, possibly asynchronous `Publisher<V>`, use link:/docs/api/reactor/rx/Stream.html#map-reactor.fn.Function-[.flatMap(Function<? super I, ? extends Publisher<? extends O>)].
 The returned `Publisher<V>` will then be *merged* back to the main flow signaling `onNext(V)`. They are properly removed from the merging action whey they complete.
 The difference between flatMap, concatMap and switchOnMap is the *merging strategy*, respectively *Interleave*, *Fully Sequential* and *Partially Sequential* (interrupted by `onNext(Publisher<T>)`).
 
 [IMPORTANT]
-The downstream request is splitted (minimum 1 by merged Publisher)
+The downstream request is split (minimum 1 by merged Publisher)
 
 .Stream.flatMap(Function)
 [source,java]
@@ -825,9 +825,9 @@ Streams
 [[streams-blocking]]
 ==== Blocking and Promises
 
-Blocking is considered anti-pattern to *Reactor* but we do offer appropriate API (Ah AH!) for coordination purposes with legacy operations and for test support.
+Blocking is considered an anti-pattern in *Reactor*. That said, we do offer an appropriate API (Ah AH!) for integration with legacy operations and for testing support.
 
-Promise API offers a range of *stateful actions* inspecting first the current state *ready|error|complete* and if fulfilled, immediately calls the invoked action.
+The Promise API offers a range of *stateful actions* which inspect the current *ready|error|complete* state and, if fulfilled, immediately calls the wired action.
 
 .Stream.toList()
 [source,java]
@@ -840,8 +840,8 @@ Promise<List<Long>> result = Streams
 System.out.println(result.await()); // <2>
 result.onSuccess(System.out::println) // <3>
 ----
-<1> Consume all the sequence on the dispatcher thread given in `subscribeOn(Dispatcher)` operation.
-<2> Block (default 30 Seconds) until `onComplete()` and print the only `onNext(List<Long>)`, of if `onError(e)` wrap as RuntimeException and raise it.
+<1> Consume the entire sequence on the dispatcher thread given in `subscribeOn(Dispatcher)` operation.
+<2> Block (default 30 Seconds) until `onComplete()` and print only `onNext(List<Long>)`; or, if `onError(e)`, wrap as RuntimeException and re-raise.
 <3> Since the promise is already fulfilled, `System.out.println()` will run immediately on the current context.
 
 .Waiting for a Stream or Promise
