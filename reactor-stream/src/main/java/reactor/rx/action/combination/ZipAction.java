@@ -40,7 +40,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	int index = 0;
 	int count = 0;
 
-	Object[] toZip = new Object[2];
+	Object[] toZip = new Object[1];
 
 	@SuppressWarnings("unchecked")
 	public static <TUPLE extends Tuple, V> Function<TUPLE, List<V>> joinZipper() {

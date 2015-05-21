@@ -35,7 +35,7 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 
 	int index = 0;
 
-	Object[] toZip = new Object[2];
+	Object[] toZip = new Object[1];
 
 	public CombineLatestAction(Dispatcher dispatcher,
 	                           Function<TUPLE, ? extends V> accumulator, Iterable<? extends Publisher<? extends O>>
@@ -119,7 +119,7 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 			addPublisher(composable);
 			i++;
 		}
-		return i++;
+		return i;
 	}
 
 	@Override

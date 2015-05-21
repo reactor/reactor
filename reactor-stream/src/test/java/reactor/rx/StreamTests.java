@@ -43,6 +43,7 @@ import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
+import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.BarrierStream;
 import reactor.rx.subscription.PushSubscription;
@@ -1203,6 +1204,52 @@ public class StreamTests extends AbstractReactorTest {
 
 
 		assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
+	}
+
+
+	@Test
+	public void subscribeOnDispatchOn() throws InterruptedException {
+		CountDownLatch latch = new CountDownLatch(100);
+
+		Streams
+				.range(1, 100)
+				.log("testOn")
+				.subscribeOn(Environment.workDispatcher())
+				.process(RingBufferProcessor.create())
+				.capacity(1)
+				.consume(t -> latch.countDown());
+
+
+		assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
+	}
+
+	// Test issue https://github.com/reactor/reactor/issues/474
+	// code by @masterav10
+	@Test
+	public void combineWithOneElement() throws InterruptedException,
+			TimeoutException
+	{
+		AtomicReference<Object> ref = new AtomicReference<>(null);
+
+		Phaser phaser = new Phaser(2);
+
+		Stream<Object> s1 = BehaviorBroadcaster.first(new Object(),
+				Environment.get());
+		Stream<Object> s2 = BehaviorBroadcaster.first(new Object(),
+				Environment.get());
+
+		// The following works:
+		List<Stream<Object>> list = Arrays.asList(s1);
+		// The following fails:
+		// List<Stream<Object>> list = Arrays.asList(s1, s2);
+
+		Streams.combineLatest(list, t -> t).observe(obj -> {
+			ref.set(obj);
+			phaser.arrive();
+		}).consume();
+
+		phaser.awaitAdvanceInterruptibly(phaser.arrive(), 1, TimeUnit.SECONDS);
+		Assert.assertNotNull(ref.get());
 	}
 
 	/**
