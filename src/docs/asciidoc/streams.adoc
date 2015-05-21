@@ -14,7 +14,7 @@ import reactor.rx.BiStreams;
 
 Environment.initialize()
 
-//find the top 10 words used in a list of String
+//find the top 10 words used in a list of Strings
 Streams.from(aListOfString)
   .dispatchOn(sharedDispatcher())
   .flatMap(sentence ->
@@ -45,28 +45,27 @@ Streams.from(aListOfString)
 image::images/streams-overview.png[Stream Overview, width=650, align="center", link="images/streams-overview.png"]
 
 
-*Reactor Streams* has the following artefacts:
+*Reactor Streams* has the following artifacts:
 
 ****
 * `Stream` and its direct implementations
 ** Contains *reactive extensions* and other composition API
 * `Promise` with a specific https://promisesaplus.com[A+ flavored] API
 ** Can be transformed back to Stream with `Promise.stream()`
-* Static *Factories*, the one-stop-shops to create the related components
-** `Streams` for `Stream` creation from well-defined data sources (iterable, nothing, future, Publisher...)
+* Static *Factories*, the one-stop-shops to create related components
+** `Streams` for `Stream` creation from well-defined data sources (Iterable, nothing, Future, Publisher...)
 ** `BiStreams` for key-value `Stream<Tuple2>` processing (reduceByKey...)
 ** `IOStreams` for <<streams.adoc#streams-persistent, Persisting>> and <<core-codec#core-codecs, Decoding>> `Streams`
 ** `Promises` for single-data-only `Promise`
 * `Action` and its direct implementations of every operation provided by the `Stream` following the *Reactive Streams Processor* specification
-** They are not created directly in general, but with the Stream API (`Stream.map()` -> MapAction, `Stream.filter()` -> FilterAction...)
+** Not created directly, but with the Stream API (`Stream.map()` -> MapAction, `Stream.filter()` -> FilterAction...)
 * `Broadcaster`, a specific kind of `Action` exposing onXXXX interfaces for dynamic data dispatch
-** Unlike <<core-processor#core-processor,Core Processors>>, they will usually not bother about buffering data if there is no subscriber attached
-** However the `BehaviorBroadcaster` can replay the latest signal to the new Subscribers
+** Unlike <<core-processor#core-processor,Core Processors>>, they will usually not bother with buffering data if there is no subscriber attached
+** However the `BehaviorBroadcaster` can replay the latest signal to new Subscribers
 ****
 
 [NOTE]
-Do not confuse `reactor.rx.Stream` with the new JDK 8 `java.util.stream.Stream`. The latter does not offer a Reactive Streams based API nor Reactive Extensions.
-However the API is quite complete around primitive types and Collections, in fact it's quite interesting for JDK 8 enabled applications to mix them both.
+Do not confuse `reactor.rx.Stream` with the new JDK 8 `java.util.stream.Stream`. The latter does not offer a Reactive Streams based API nor Reactive Extensions. However, the JDK 8 `Stream` API is quite complete when used with primitive types and Collections. In fact it's quite interesting for JDK 8 enabled applications to mix both JDK and Reactive Streams.
 
 [[streams-basics]]
 == Streams Basics
