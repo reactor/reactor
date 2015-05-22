@@ -22,7 +22,6 @@ public final class RingBufferSubscriberUtils {
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
 		signal.type = MutableSignal.Type.NEXT;
 		signal.value = value;
-		signal.error = null;
 
 		ringBuffer.publish(seqId);
 	}
