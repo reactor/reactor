@@ -582,11 +582,13 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 	@Override
 	public void onError(Throwable t) {
 		RingBufferSubscriberUtils.onError(t, ringBuffer);
+		barrier.alert();
 	}
 
 	@Override
 	public void onComplete() {
 		RingBufferSubscriberUtils.onComplete(ringBuffer);
+		barrier.alert();
 		if (executor.getClass() == SingleUseExecutor.class) {
 			executor.shutdown();
 		}
@@ -627,7 +629,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 				return;
 			}
 
-			if (!eventProcessor.isRunning() || pendingRequest.get() == Long.MAX_VALUE) {
+			if (!eventProcessor.isRunning()) {
 				return;
 			}
 
@@ -755,6 +757,18 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 				subscriber.onError(t);
 			}
 
+			try{
+				//pause until first request
+				while (pendingRequest.get() < 0l) {
+					processor.barrier.checkAlert();
+					LockSupport.parkNanos(1l);
+				}
+			}catch (AlertException ae){
+				//IGNORE
+			}
+
+			final boolean unbounded = pendingRequest.get() == Long.MAX_VALUE;
+
 			MutableSignal<T> event = null;
 			nextSequence = sequence.get() + 1L;
 			try {
@@ -767,7 +781,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 							//if event is Next Signal we need to handle backpressure (pendingRequests)
 							if (event.type == MutableSignal.Type.NEXT) {
 								//if bounded and out of capacity
-								if (pendingRequest.get() != Long.MAX_VALUE && pendingRequest.addAndGet(-1l) < 0l) {
+								if (!unbounded && pendingRequest.addAndGet(-1l) < 0l) {
 									//re-add the retained capacity
 									pendingRequest.incrementAndGet();
 
