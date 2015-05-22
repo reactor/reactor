@@ -73,6 +73,9 @@ How is Reactor Net module working ?
 .How Doge can use Reactor-Net
 image::images/net-overview.png[Net Overview, width=650, align="center", link="images/net-overview.png"]
 
+.Doge trades off CPU for Latency for better responsivity and to leave the service available to his friends
+image::images/net-latency.png[Net Latency, width=650, align="center", link="images/net-latency.png"]
+
 [NOTE]
 ---
 Reactive IPC
