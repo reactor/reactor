@@ -78,13 +78,13 @@ So why should you care about an asynchronous runtime to deal with network operat
 .Doge trades off CPU for Latency for better responsivity and to leave the service available to his friends
 image::images/net-latency.png[Net Latency, width=650, align="center", link="images/net-latency.png"]
 
-Blocking Read or Write become more like a nightmare for concurrent services use over long-living connections such as TCP or WebSocket. A part from network routing component which might timeout a too long connection, little can be done with a blocking socket in the application locking the thread on read or write IO methods.
+Blocking Read or Write become more like a nightmare for concurrent services use over long-living connections such as TCP or WebSocket. Apart from network routing component which might timeout a too long connection, little can be done with a blocking socket in the application locking the thread on read or write IO methods.
 
 Of course there is always the choice to provide for a pool of threads or any _Async Facade_ such as a *Core Processor* to mitigate the blocking read/write contention. The problem is there won't be many of these threads available in a *Reactive* world of non blocking dispatching, so blocking behind 4/8/16 async facades is a limited option. Again the thread pool with a large queue or even many threads won't necessarely solve the situation neither.
 
-.Instead why notinvoking callbacks on different IO operations: _connection, read, write, close..._ ?
+.Instead why not invoking callbacks on different IO operations: _connection, read, write, close..._ ?
 
-*Reactor Net* aims to provide *Asynchronous IO* runtime that supports *Reactive Streams* backpressure and provides for client or server needs over a range of protocols and drivers. Some drivers will not implement every protocol but at least one, *Netty*, implements all current protocols. At the moment, Reactor Net is  *supporting Netty 4.x* and *ZeroMQ* through *jeroMQ 0.3.+* and you must add explicitely one of them in the application classpath.
+*Reactor Net* aims to provide an *Asynchronous IO* runtime that supports *Reactive Streams* backpressure for client or server needs over a range of protocols and drivers. Some drivers will not implement every protocol but at least one, *Netty*, implements all current protocols. At the moment, Reactor Net is  *supporting Netty 4.x* and *ZeroMQ* through *jeroMQ 0.3.+* and you must add explicitely one of them in the application classpath.
 
 
 *Reactor Net* has the following artifacts:
@@ -97,16 +97,16 @@ Of course there is always the choice to provide for a pool of threads or any _As
 * `ReactorPeer` and `ReactorChannelHandler` for common network component (client/server) contract
 ** Provides for `start` and `shutdown` operations
 ** Binds a `ReactorChannelHandler` on `start` to listen to the requesting `ChannelStream`
-** `ReactorChannelHandler` is a function accepting `ChannelStream` requests and returning a `Publisher` for close control
+** `ReactorChannelHandler` is a function accepting `ChannelStream` requests and returning a `Publisher` for connection close management
 * `ReactorClient` for common client contract
 ** Extends `ReactorPeer` to provide a _reconnect_ friendly start operation
 * `NetStreams` and `Spec` to create any client or server
 ** Looks like `Streams`, `BiStreams` and other `Reactor Stream` Factories
-** `NetStreams` factories will accept `Function<Spec,Spec>` called once on creation to customize the configuration of the network component.
-* HTTP/WS/UDP/TCP protocol `ReactorPeer` implementations
-** HttpServer & HttpClient will provide routing extensions
-** DatagramServer will provide multicast extensions
-** TcpServer & TcpClient will provide additional TCP/IP context informations
+** `NetStreams` factories will accept `Function<Spec,Spec>` called *once* on creation to customize the configuration of the network component.
+* *HTTP/WS/UDP/TCP* protocol `ReactorPeer` implementations
+** `HttpServer` & `HttpClient` will provide routing extensions
+** `DatagramServer` will provide multicast extensions
+** `TcpServer` & `TcpClient` will provide additional TCP/IP context informations
 * *Netty* and *ZeroMQ* drivers
 ****
 
