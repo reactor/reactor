@@ -126,6 +126,7 @@ configure(allprojects) { project ->
     include '**/*Spec.*'
     exclude '**/*Abstract*.*'
     exclude '**/RingBufferProcessorTests.*'
+    exclude '**/PublisherFactoryTests.*'
     exclude '**/RingBufferWorkProcessorTests.*'
   }
 
