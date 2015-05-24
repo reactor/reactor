@@ -18,7 +18,6 @@ package reactor.core.processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.processor.util.RingBufferSubscriberUtils;
-import reactor.core.processor.util.SingleUseExecutor;
 import reactor.core.support.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
@@ -47,7 +46,7 @@ import java.util.concurrent.locks.LockSupport;
  * @param <E> Type of dispatched signal
  * @author Stephane Maldini
  */
-public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E, E> {
+public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E, E> {
 
 	/**
 	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
@@ -496,7 +495,6 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E, E> {
 	private final Queue<Sequence> cancelledSequences = new ConcurrentLinkedQueue<>();
 
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
-	private final ExecutorService              executor;
 
 	private RingBufferWorkProcessor(String name,
 	                                ExecutorService executor,
@@ -504,11 +502,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E, E> {
 	                                WaitStrategy waitStrategy,
 	                                boolean share,
 	                                boolean autoCancel) {
-		super(autoCancel);
-
-		this.executor = executor == null
-				? SingleUseExecutor.create(name)
-				: executor;
+		super(name, executor, autoCancel);
 
 		this.ringBuffer = RingBuffer.create(
 				share ? ProducerType.MULTI : ProducerType.SINGLE,
@@ -572,9 +566,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E, E> {
 		for (int i = 0; i < SUBSCRIBER_COUNT.get(this); i++) {
 			RingBufferSubscriberUtils.onComplete(ringBuffer);
 		}
-		if (executor.getClass() == SingleUseExecutor.class) {
-			executor.shutdown();
-		}
+		super.onComplete();
 	}
 
 	@Override
@@ -603,7 +595,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E, E> {
 				return;
 			}
 
-			if (!eventProcessor.isRunning() || eventProcessor.pendingRequest.get() == Long.MAX_VALUE) {
+			if (!eventProcessor.isRunning()) {
 				return;
 			}
 
@@ -721,76 +713,86 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E, E> {
 			long nextSequence = sequence.get();
 			MutableSignal<T> event = null;
 
-
-			if (replay()) {
-				running.set(false);
-				processor.decrementSubscribers();
-				return;
-			}
-
-			barrier.clearAlert();
-
-			while (true) {
-				try {
-					// if previous sequence was processed - fetch the next sequence and set
-					// that we have successfully processed the previous sequence
-					// typically, this will be true
-					// this prevents the sequence getting too far forward if an exception
-					// is thrown from the WorkHandler
-					if (processedSequence) {
-						processedSequence = false;
-						do {
-							nextSequence = processor.workSequence.get() + 1L;
-							sequence.set(nextSequence - 1L);
-						}
-						while (!processor.workSequence.compareAndSet(nextSequence - 1L, nextSequence));
-					}
-
-					if (cachedAvailableSequence >= nextSequence) {
-						event = processor.ringBuffer.get(nextSequence);
-
-						readNextEvent(event);
-
-						//It's an unbounded subscriber or there is enough capacity to process the signal
-						RingBufferSubscriberUtils.routeOnce(event, subscriber);
-
-						processedSequence = true;
-
-					} else {
-						cachedAvailableSequence = barrier.waitFor(nextSequence);
-					}
-
-				} catch (CancelException ce) {
-					if (event != null &&
-							event.type == MutableSignal.Type.NEXT &&
-							event.value != null) {
-						sequence.set(nextSequence - 1L);
-					} else {
-						sequence.set(nextSequence);
-					}
-					processor.cancelledSequences.add(sequence);
-					//barrier.alert();
-					break;
-				} catch (AlertException ex) {
-					if (!running.get()) {
-						sequence.set(nextSequence - 1L);
-						processor.cancelledSequences.add(sequence);
-						break;
-					}
-					barrier.clearAlert();
-					//continue event-loop
-
-				} catch (final Throwable ex) {
-					subscriber.onError(ex);
-					sequence.set(nextSequence);
-					processedSequence = true;
+			try {
+				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
+						pendingRequest, processor.ringBuffer, barrier, subscriber, running
+				)) {
+					processor.ringBuffer.removeGatingSequence(sequence);
+					return;
 				}
+
+				final boolean unbounded = pendingRequest.get() == Long.MAX_VALUE;
+
+				if (replay(unbounded)) {
+					running.set(false);
+					return;
+				}
+
+				barrier.clearAlert();
+
+				while (true) {
+					try {
+						// if previous sequence was processed - fetch the next sequence and set
+						// that we have successfully processed the previous sequence
+						// typically, this will be true
+						// this prevents the sequence getting too far forward if an exception
+						// is thrown from the WorkHandler
+						if (processedSequence) {
+							processedSequence = false;
+							do {
+								nextSequence = processor.workSequence.get() + 1L;
+								sequence.set(nextSequence - 1L);
+							}
+							while (!processor.workSequence.compareAndSet(nextSequence - 1L, nextSequence));
+						}
+
+						if (cachedAvailableSequence >= nextSequence) {
+							event = processor.ringBuffer.get(nextSequence);
+
+							readNextEvent(event, unbounded);
+
+							//It's an unbounded subscriber or there is enough capacity to process the signal
+							RingBufferSubscriberUtils.routeOnce(event, subscriber);
+
+							processedSequence = true;
+
+						} else {
+							cachedAvailableSequence = barrier.waitFor(nextSequence);
+						}
+
+					} catch (CancelException ce) {
+						if (event != null &&
+								event.type == MutableSignal.Type.NEXT &&
+								event.value != null) {
+							sequence.set(nextSequence - 1L);
+						} else {
+							sequence.set(nextSequence);
+						}
+						processor.cancelledSequences.add(sequence);
+						//barrier.alert();
+						break;
+					} catch (AlertException ex) {
+						if (!running.get()) {
+							sequence.set(nextSequence - 1L);
+							processor.cancelledSequences.add(sequence);
+							break;
+						}
+						barrier.clearAlert();
+						//continue event-loop
+
+					} catch (final Throwable ex) {
+						subscriber.onError(ex);
+						sequence.set(nextSequence);
+						processedSequence = true;
+					}
+				}
+			} finally{
+				processor.decrementSubscribers();
+				running.set(false);
 			}
-			processor.decrementSubscribers();
-			running.set(false);
 		}
 
-		private boolean replay() {
+		private boolean replay(final boolean unbounded) {
 			Sequence replayedSequence;
 			MutableSignal<T> signal;
 			while ((replayedSequence = processor.cancelledSequences.poll()) != null) {
@@ -799,7 +801,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E, E> {
 					if(signal.value == null){
 						barrier.waitFor(replayedSequence.get() + 1L);
 					}
-					readNextEvent(signal);
+					readNextEvent(signal, unbounded);
 					RingBufferSubscriberUtils.routeOnce(signal, subscriber);
 					processor.ringBuffer.removeGatingSequence(replayedSequence);
 				} catch (TimeoutException | InterruptedException | AlertException | CancelException ce) {
@@ -811,7 +813,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E, E> {
 			return false;
 		}
 
-		private void readNextEvent(MutableSignal<T> event) throws AlertException {
+		private void readNextEvent(MutableSignal<T> event, final boolean unbounded) throws AlertException {
 			//if event is Next Signal we need to handle backpressure (pendingRequests)
 			if (event.type == MutableSignal.Type.NEXT) {
 				if (event.value == null) {
@@ -819,7 +821,7 @@ public final class RingBufferWorkProcessor<E> extends ReactorProcessor<E, E> {
 				}
 
 				//if bounded and out of capacity
-				if (pendingRequest.get() != Long.MAX_VALUE && pendingRequest.addAndGet(-1l) < 0l) {
+				if (!unbounded && pendingRequest.addAndGet(-1l) < 0l) {
 					//re-add the retained capacity
 					pendingRequest.incrementAndGet();
 

@@ -21,7 +21,6 @@ import reactor.fn.Consumer;
 import reactor.fn.Resource;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 
 /**
  * A {@code Dispatcher} is used to {@link Dispatcher#dispatch(Object, Consumer, Consumer)}
@@ -65,28 +64,10 @@ public interface Dispatcher extends Executor, Resource {
 	                  Consumer<Throwable> errorConsumer) throws InsufficientCapacityException;
 
 
-
-
-	/**
-	 * Instruct the {@code Dispatcher} to create a worker {@link org.reactivestreams.Processor} to handle backpressure reactively.
-	 * Works great combined with {code Stream#dispatchOn} and {@code Broadcaster}. Unlike simple dispatch operations,
-	 * the processor will stop reading new input data when capacity bounded (full backlog), avoid
-	 * active waiting for more slots.
-	 *
-	 * @param <E>                type of the event
-	 * @throws IllegalStateException If the {@code Dispatcher} is not {@link Dispatcher#alive() alive}
-	 */
-	//<E> org.reactivestreams.Processor<E, E> dispatch();
-
 	/**
 	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
 	 */
 	boolean awaitAndShutdown();
-
-	/**
-	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
-	 */
-	boolean awaitAndShutdown(long timeout, TimeUnit timeUnit);
 
 
 	/**

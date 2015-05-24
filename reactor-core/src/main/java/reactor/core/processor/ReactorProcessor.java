@@ -20,6 +20,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.support.NonBlocking;
 import reactor.fn.Consumer;
+import reactor.fn.Resource;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
@@ -28,7 +29,8 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  *
  * @author Stephane Maldini
  */
-public abstract class ReactorProcessor<IN, OUT> implements Processor<IN, OUT>, Consumer<IN>, NonBlocking {
+public abstract class ReactorProcessor<IN, OUT> implements
+		Processor<IN, OUT>, Consumer<IN>, NonBlocking, Resource {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -90,4 +92,6 @@ public abstract class ReactorProcessor<IN, OUT> implements Processor<IN, OUT>, C
 	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
 		return false;
 	}
+
+
 }

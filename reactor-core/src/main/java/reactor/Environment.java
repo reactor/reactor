@@ -36,6 +36,7 @@ import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -851,6 +852,7 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 
 			@Override
 			public void shutdown() {
+				if(terminated) return;
 				for (Dispatcher dispatcher : dispatchers) {
 					if (dispatcher != null) {
 						dispatcher.awaitAndShutdown();
@@ -861,12 +863,29 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 
 			@Override
 			public void forceShutdown() {
+				if(terminated) return;
 				for (Dispatcher dispatcher : dispatchers) {
 					if (dispatcher != null) {
 						dispatcher.forceShutdown();
 					}
 				}
 				terminated = true;
+			}
+
+			@Override
+			public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
+				if(terminated) return true;
+
+				boolean allShutdown = true;
+				for (Dispatcher dispatcher : dispatchers) {
+					if (dispatcher != null) {
+						if(!dispatcher.awaitAndShutdown(timeout, timeUnit)){
+							allShutdown = false;
+						}
+					}
+				}
+				terminated = allShutdown;
+				return true;
 			}
 
 			private int getNextIndex() {

@@ -2,7 +2,11 @@ package reactor.core.processor.util;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.processor.MutableSignal;
-import reactor.jarjar.com.lmax.disruptor.RingBuffer;
+import reactor.core.support.Exceptions;
+import reactor.jarjar.com.lmax.disruptor.*;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * Utility methods to perform common tasks associated with {@link org.reactivestreams.Subscriber} handling when the
@@ -54,15 +58,15 @@ public final class RingBufferSubscriberUtils {
 
 	public static <E> void route(MutableSignal<E> task, Subscriber<? super E> subscriber) {
 		if (task.type == MutableSignal.Type.NEXT && null != task.value) {
-				// most likely case first
-				subscriber.onNext(task.value);
-			} else if (task.type == MutableSignal.Type.COMPLETE) {
-				// second most likely case next
-				subscriber.onComplete();
-			} else if (task.type == MutableSignal.Type.ERROR) {
-				// errors should be relatively infrequent compared to other signals
-				subscriber.onError(task.error);
-			}
+			// most likely case first
+			subscriber.onNext(task.value);
+		} else if (task.type == MutableSignal.Type.COMPLETE) {
+			// second most likely case next
+			subscriber.onComplete();
+		} else if (task.type == MutableSignal.Type.ERROR) {
+			// errors should be relatively infrequent compared to other signals
+			subscriber.onError(task.error);
+		}
 
 	}
 
@@ -81,10 +85,57 @@ public final class RingBufferSubscriberUtils {
 				// errors should be relatively infrequent compared to other signals
 				subscriber.onError(task.error);
 			}
-		}catch(Throwable t){
+		} catch (Throwable t) {
 			task.value = value;
-			throw  t;
+			throw t;
 		}
+	}
+
+	public static <T> boolean waitRequestOrTerminalEvent(
+			Sequence pendingRequest,
+			RingBuffer<MutableSignal<T>> ringBuffer,
+			SequenceBarrier barrier,
+			Subscriber<? super T> subscriber,
+			AtomicBoolean isRunning
+	) {
+		final long waitedSequence = ringBuffer.getCursor() + 1L;
+		try {
+			MutableSignal<T> event = null;
+			while (pendingRequest.get() < 0l) {
+				//pause until first request
+				if (event == null) {
+					barrier.waitFor(waitedSequence);
+					event = ringBuffer.get(waitedSequence);
+
+					if (event.type == MutableSignal.Type.COMPLETE) {
+						try {
+							subscriber.onComplete();
+							return false;
+						} catch (Throwable t) {
+							Exceptions.throwIfFatal(t);
+							subscriber.onError(t);
+							return false;
+						}
+					} else if (event.type == MutableSignal.Type.ERROR) {
+						subscriber.onError(event.error);
+						return false;
+					}
+				}else{
+					barrier.checkAlert();
+				}
+				LockSupport.parkNanos(1l);
+			}
+		} catch (TimeoutException te) {
+			//ignore
+		} catch (AlertException ae) {
+			if (!isRunning.get()) {
+				return false;
+			}
+		} catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
+		}
+
+		return true;
 	}
 
 }

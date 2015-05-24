@@ -24,7 +24,7 @@ import ch.qos.logback.core.spi.*;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.processor.RingBufferProcessor;
+import reactor.core.processor.RingBufferWorkProcessor;
 
 import java.util.Iterator;
 import java.util.List;
@@ -107,7 +107,7 @@ public class AsyncAppender
 	public void start() {
 		startDelegateAppender();
 
-		processor = RingBufferProcessor.share("logger", backlog, false);
+		processor = RingBufferWorkProcessor.share("logger", backlog, false);
 		processor.subscribe(this);
 	}
 

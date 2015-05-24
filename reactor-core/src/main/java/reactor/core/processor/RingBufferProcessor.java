@@ -18,7 +18,6 @@ package reactor.core.processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.processor.util.RingBufferSubscriberUtils;
-import reactor.core.processor.util.SingleUseExecutor;
 import reactor.core.support.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
@@ -54,7 +53,7 @@ import java.util.concurrent.locks.LockSupport;
  * @param <E> Type of dispatched signal
  * @author Stephane Maldini
  */
-public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
+public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E> {
 
 
 	/**
@@ -289,7 +288,8 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> share(boolean autoCancel) {
-		return share(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), autoCancel);
+		return share(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
+				autoCancel);
 	}
 
 	/**
@@ -499,7 +499,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 
 	private final SequenceBarrier              barrier;
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
-	private final ExecutorService              executor;
 	private final Sequence                     recentSequence;
 
 	private RingBufferProcessor(String name,
@@ -508,11 +507,7 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 	                            WaitStrategy waitStrategy,
 	                            boolean shared,
 	                            boolean autoCancel) {
-		super(autoCancel);
-
-		this.executor = executor == null
-				? SingleUseExecutor.create(name)
-				: executor;
+		super(name, executor, autoCancel);
 
 		this.ringBuffer = RingBuffer.create(
 				shared ? ProducerType.MULTI : ProducerType.SINGLE,
@@ -549,12 +544,12 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 			//bind eventProcessor sequence to observe the ringBuffer
 
 			//if only active subscriber, replay missed data
-			if(incrementSubscribers()) {
+			if (incrementSubscribers()) {
 				ringBuffer.addGatingSequences(signalProcessor.getSequence());
 
 				//set eventProcessor sequence to minimum index (replay)
 				signalProcessor.getSequence().set(recentSequence.get());
-			}else{
+			} else {
 				//otherwise only listen to new data
 				//set eventProcessor sequence to ringbuffer index
 				signalProcessor.getSequence().set(ringBuffer.getCursor());
@@ -582,16 +577,12 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 	@Override
 	public void onError(Throwable t) {
 		RingBufferSubscriberUtils.onError(t, ringBuffer);
-		barrier.alert();
 	}
 
 	@Override
 	public void onComplete() {
 		RingBufferSubscriberUtils.onComplete(ringBuffer);
-		barrier.alert();
-		if (executor.getClass() == SingleUseExecutor.class) {
-			executor.shutdown();
-		}
+		super.onComplete();
 	}
 
 	@Override
@@ -599,7 +590,6 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 		return "RingBufferProcessor{" +
 				"barrier=" + barrier +
 				", ringBuffer=" + ringBuffer +
-				", executor=" + executor +
 				'}';
 	}
 
@@ -609,9 +599,9 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 	}
 
 	private final class RingBufferSubscription implements Subscription {
-		private final Sequence              pendingRequest;
-		private final Subscriber<? super E> subscriber;
-		private final BatchSignalProcessor<E>   eventProcessor;
+		private final Sequence                pendingRequest;
+		private final Subscriber<? super E>   subscriber;
+		private final BatchSignalProcessor<E> eventProcessor;
 
 		public RingBufferSubscription(Sequence pendingRequest,
 		                              Subscriber<? super E> subscriber,
@@ -753,25 +743,23 @@ public final class RingBufferProcessor<E> extends ReactorProcessor<E, E> {
 
 			try {
 				subscriber.onSubscribe(subscription);
-			}catch (Throwable t){
+			} catch (Throwable t) {
 				subscriber.onError(t);
 			}
 
-			try{
-				//pause until first request
-				while (pendingRequest.get() < 0l) {
-					processor.barrier.checkAlert();
-					LockSupport.parkNanos(1l);
-				}
-			}catch (AlertException ae){
-				//IGNORE
-			}
-
-			final boolean unbounded = pendingRequest.get() == Long.MAX_VALUE;
-
 			MutableSignal<T> event = null;
 			nextSequence = sequence.get() + 1L;
+
 			try {
+
+				if(!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
+						pendingRequest, processor.ringBuffer, processor.barrier, subscriber, running
+				))
+				{
+					return;
+				}
+
+				final boolean unbounded = pendingRequest.get() == Long.MAX_VALUE;
 				while (true) {
 					try {
 						final long availableSequence = processor.barrier.waitFor(nextSequence);

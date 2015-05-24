@@ -40,7 +40,6 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
 			Throwable {
 		for(int i = 0; i < 100; i++) {
-			System.out.println("test "+i);
 			super.required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError();
 		}
 	}

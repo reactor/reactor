@@ -20,9 +20,12 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.support.Assert;
 import reactor.core.support.Exceptions;
+import reactor.core.support.SpecificationExceptions;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * A Reactive Streams {@link org.reactivestreams.Publisher} factory which callbacks on start, request and shutdown
@@ -49,8 +52,7 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 	 * Create a {@link Publisher} reacting on requests with the passed {@link BiConsumer}
 	 *
 	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
-	 * @param <T> The type of the data sequence
-	 *
+	 * @param <T>             The type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <T> Publisher<T> create(BiConsumer<Long, SubscriberWithContext<T, Void>> requestConsumer) {
@@ -59,12 +61,14 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 
 	/**
 	 * Create a {@link Publisher} reacting on requests with the passed {@link BiConsumer}
-	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every request calls.
+	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every
+	 * request calls.
 	 *
 	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
-	 * @param contextFactory A {@link Function} called for every new subscriber returning an immutable context (IO connection...)
-	 * @param <T> The type of the data sequence
-	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 * @param contextFactory  A {@link Function} called for every new subscriber returning an immutable context (IO
+	 *                         connection...)
+	 * @param <T>             The type of the data sequence
+	 * @param <C>             The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <T, C> Publisher<T> create(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
@@ -75,14 +79,18 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 
 	/**
 	 * Create a {@link Publisher} reacting on requests with the passed {@link BiConsumer}.
-	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every request calls.
-	 * The argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel, onComplete, onError).
+	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every
+	 * request calls.
+	 * The argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel, onComplete,
+	 * onError).
 	 *
-	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
-	 * @param contextFactory A {@link Function} called once for every new subscriber returning an immutable context (IO connection...)
-	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(), onError()
-	 * @param <T> The type of the data sequence
-	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 * @param requestConsumer  A {@link BiConsumer} with left argument request and right argument target subscriber
+	 * @param contextFactory   A {@link Function} called once for every new subscriber returning an immutable context
+	 *                          (IO connection...)
+	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(),
+	 *                          onError()
+	 * @param <T>              The type of the data sequence
+	 * @param <C>              The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <T, C> Publisher<T> create(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
@@ -90,6 +98,62 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 	                                         Consumer<C> shutdownConsumer) {
 
 		return new PublisherFactory<T, C>(requestConsumer, contextFactory, shutdownConsumer);
+	}
+
+
+	/**
+	 * Create a {@link Publisher} reacting on each available {@link Subscriber} read derived with the passed {@link
+	 * Consumer}. If a previous request is still running, avoid recursion and extend the previous request iterations.
+	 *
+	 * @param requestConsumer A {@link Consumer} invoked when available read with the target subscriber
+	 * @param <T>             The type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <T> Publisher<T> forEach(Consumer<SubscriberWithContext<T, Void>> requestConsumer) {
+		return forEach(requestConsumer, null, null);
+	}
+
+	/**
+	 * Create a {@link Publisher} reacting on each available {@link Subscriber} read derived with the passed {@link
+	 * Consumer}. If a previous request is still running, avoid recursion and extend the previous request iterations.
+	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every
+	 * request calls.
+	 *
+	 * @param requestConsumer A {@link Consumer} invoked when available read with the target subscriber
+	 * @param contextFactory  A {@link Function} called for every new subscriber returning an immutable context (IO
+	 *                         connection...)
+	 * @param <T>             The type of the data sequence
+	 * @param <C>             The type of contextual information to be read by the requestConsumer
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <T, C> Publisher<T> forEach(Consumer<SubscriberWithContext<T, C>> requestConsumer,
+	                                          Function<Subscriber<? super T>, C> contextFactory) {
+		return forEach(requestConsumer, contextFactory, null);
+	}
+
+
+	/**
+	 * Create a {@link Publisher} reacting on each available {@link Subscriber} read derived with the passed {@link
+	 * Consumer}. If a previous request is still running, avoid recursion and extend the previous request iterations.
+	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every
+	 * request calls.
+	 * The argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel, onComplete,
+	 * onError).
+	 *
+	 * @param requestConsumer  A {@link Consumer} invoked when available read with the target subscriber
+	 * @param contextFactory   A {@link Function} called once for every new subscriber returning an immutable context
+	 *                          (IO connection...)
+	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(),
+	 *                          onError()
+	 * @param <T>              The type of the data sequence
+	 * @param <C>              The type of contextual information to be read by the requestConsumer
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <T, C> Publisher<T> forEach(final Consumer<SubscriberWithContext<T, C>> requestConsumer,
+	                                          Function<Subscriber<? super T>, C> contextFactory,
+	                                          Consumer<C> shutdownConsumer) {
+		Assert.notNull(requestConsumer, "A data producer must be provided");
+		return create(new ForEachBiConsumer<>(requestConsumer), contextFactory, shutdownConsumer);
 	}
 
 	protected final Function<Subscriber<? super T>, C>            contextFactory;
@@ -134,10 +198,20 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 
 		@Override
 		public void request(long n) {
-			if(isCancelled())
+			if (isCancelled()) {
 				return;
+			}
 
-			requestConsumer.accept(n, this);
+			if (n <= 0) {
+				onError(SpecificationExceptions.spec_3_09_exception(n));
+				return;
+			}
+
+			try {
+				requestConsumer.accept(n, this);
+			} catch (Throwable t) {
+				onError(t);
+			}
 		}
 
 		@Override
@@ -180,6 +254,38 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 		@Override
 		public void onSubscribe(Subscription s) {
 			throw new UnsupportedOperationException(" the delegate subscriber is already subscribed");
+		}
+	}
+
+	private final static class ForEachBiConsumer<T, C> implements BiConsumer<Long, SubscriberWithContext<T, C>> {
+
+		private final Consumer<SubscriberWithContext<T, C>> requestConsumer;
+
+		private volatile long pending = 0L;
+
+		private final static AtomicLongFieldUpdater<ForEachBiConsumer> PENDING_UPDATER =
+				AtomicLongFieldUpdater.newUpdater(ForEachBiConsumer.class, "pending");
+
+		public ForEachBiConsumer(Consumer<SubscriberWithContext<T, C>> requestConsumer) {
+			this.requestConsumer = requestConsumer;
+		}
+
+		@Override
+		public void accept(Long n, SubscriberWithContext<T, C> sub) {
+
+			long demand = n;
+			if(!PENDING_UPDATER.compareAndSet(this, 0L, demand)
+					&& PENDING_UPDATER.addAndGet(this, demand) != demand){
+				return;
+			}
+
+			do {
+				long requestCursor = 0l;
+				while ((requestCursor++ < demand || demand == Long.MAX_VALUE) && !sub.isCancelled()) {
+					requestConsumer.accept(sub);
+				}
+			} while ((demand = PENDING_UPDATER.addAndGet(this, -demand)) > 0L);
+
 		}
 	}
 }

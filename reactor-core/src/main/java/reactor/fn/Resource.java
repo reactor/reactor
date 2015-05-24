@@ -15,6 +15,8 @@
  */
 package reactor.fn;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * A Resource is a component with an active state, generally consuming hardware capacities (memory, cpu, io).
  * The interface does not contract the creation of the resource but the closing methods, a graceful shutdown and an
@@ -37,6 +39,11 @@ public interface Resource {
 	 * it will wait for all the remaining tasks to perform before closing the resource.
 	 */
 	void shutdown();
+
+	/**
+	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
+	 */
+	boolean awaitAndShutdown(long timeout, TimeUnit timeUnit);
 
 	/**
 	 * Shutdown this {@code Resource}, forcibly halting any work currently executing and discarding any tasks that
