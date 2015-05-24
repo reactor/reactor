@@ -60,6 +60,10 @@ public class SSLEngineSupplier implements Supplier<SSLEngine> {
 
 		ssl = ctx.createSSLEngine();
 		ssl.setUseClientMode(client);
+
+		if (!client && null != sslOpts.trustManagers()) {
+			ssl.setNeedClientAuth(true);
+		}
 	}
 
 	@Override
