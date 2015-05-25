@@ -36,9 +36,15 @@ public interface Resource {
 
 	/**
 	 * Shutdown this active {@code Resource} such that it can no longer be used. If the resource carries any work,
-	 * it will wait for all the remaining tasks to perform before closing the resource.
+	 * it will wait (but NOT blocking the caller) for all the remaining tasks to perform before closing the resource.
 	 */
 	void shutdown();
+
+
+	/**
+	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
+	 */
+	boolean awaitAndShutdown();
 
 	/**
 	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.

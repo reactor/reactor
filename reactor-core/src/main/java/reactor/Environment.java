@@ -855,7 +855,7 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 				if(terminated) return;
 				for (Dispatcher dispatcher : dispatchers) {
 					if (dispatcher != null) {
-						dispatcher.awaitAndShutdown();
+						dispatcher.shutdown();
 					}
 				}
 				terminated = true;
@@ -870,6 +870,11 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 					}
 				}
 				terminated = true;
+			}
+
+			@Override
+			public boolean awaitAndShutdown() {
+				return awaitAndShutdown(-1, TimeUnit.SECONDS);
 			}
 
 			@Override

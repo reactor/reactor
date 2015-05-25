@@ -47,53 +47,41 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends ReactorProcessor
 	}
 
 	@Override
+	public boolean awaitAndShutdown() {
+		return awaitAndShutdown(-1, TimeUnit.SECONDS);
+	}
+
+	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
-		try{
-			onComplete();
-
-			if(executor.isShutdown()) return true;
-
-			if(!waitComplete(timeout, timeUnit)){
-				return false;
-			}
-
-			executor.shutdown();
-
-		}catch (Throwable t){
-			Exceptions.throwIfFatal(t);
-			onError(t);
+		try {
+			shutdown();
+			return executor.awaitTermination(timeout, timeUnit);
+		} catch (InterruptedException ie) {
+			Thread.currentThread().interrupt();
 			return false;
 		}
-		return true;
 	}
 
 	@Override
 	public void forceShutdown() {
-		if(executor.isShutdown()) return;
+		if (executor.isShutdown()) return;
 		executor.shutdownNow();
 	}
 
 	@Override
 	public boolean alive() {
-		return executor.isShutdown();
+		return !executor.isTerminated();
 	}
 
 	@Override
 	public void shutdown() {
-		awaitAndShutdown(-1, TimeUnit.MILLISECONDS);
-	}
-
-	protected boolean waitComplete(long timeout, TimeUnit unit) {
-		final long timeOutAt = System.currentTimeMillis() + unit.toMillis(timeout);
-		while (getAvailableCapacity() != getCapacity())
-		{
-			if (timeout >= 0 && System.currentTimeMillis() > timeOutAt)
-			{
-				return false;
-			}
-			// Busy spin
+		try {
+			onComplete();
+			executor.shutdown();
+		} catch (Throwable t) {
+			Exceptions.throwIfFatal(t);
+			onError(t);
 		}
-		return true;
 	}
 
 }

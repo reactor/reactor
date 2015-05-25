@@ -63,13 +63,6 @@ public interface Dispatcher extends Executor, Resource {
 	                  Consumer<E> eventConsumer,
 	                  Consumer<Throwable> errorConsumer) throws InsufficientCapacityException;
 
-
-	/**
-	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
-	 */
-	boolean awaitAndShutdown();
-
-
 	/**
 	 * Request the remaining capacity for the underlying shared state structure.
 	 * E.g. {@link reactor.core.dispatch.RingBufferDispatcher} will return

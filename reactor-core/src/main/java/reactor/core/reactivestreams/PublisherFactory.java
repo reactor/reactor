@@ -273,10 +273,21 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 		@Override
 		public void accept(Long n, SubscriberWithContext<T, C> sub) {
 
-			long demand = n;
-			if(!PENDING_UPDATER.compareAndSet(this, 0L, demand)
-					&& PENDING_UPDATER.addAndGet(this, demand) != demand){
+			if(pending == Long.MAX_VALUE){
 				return;
+			}
+
+			long demand = n;
+			long afterAdd;
+			if(!PENDING_UPDATER.compareAndSet(this, 0L, demand)
+					&& (afterAdd = PENDING_UPDATER.addAndGet(this, demand)) != demand){
+				if(afterAdd < 0L) {
+					if(!PENDING_UPDATER.compareAndSet(this, afterAdd, Long.MAX_VALUE)){
+						return;
+					}
+				}else {
+					return;
+				}
 			}
 
 			do {
