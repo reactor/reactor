@@ -53,11 +53,6 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	protected PushSubscription<IN> channelSubscription;
 	private   ByteBuf              remainder;
 
-	/**
-	 * The body of an HTTP response should be discarded.
-	 */
-	private boolean discardBody = false;
-
 	public NettyChannelHandlerBridge(
 			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, NettyChannelStream<IN, OUT> channelStream
 	) {
@@ -177,7 +172,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	@SuppressWarnings("unchecked")
 	protected final void doRead(ChannelHandlerContext ctx, Object msg) {
 		try {
-			if (null == channelSubscription || msg == Unpooled.EMPTY_BUFFER	|| discardBody) {
+			if (null == channelSubscription || msg == Unpooled.EMPTY_BUFFER) {
 				ReferenceCountUtil.release(msg);
 				return;
 			}
@@ -516,7 +511,4 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		return channelStream;
 	}
 
-	public void setDiscardBody(boolean discardBody) {
-		this.discardBody = discardBody;
-	}
 }

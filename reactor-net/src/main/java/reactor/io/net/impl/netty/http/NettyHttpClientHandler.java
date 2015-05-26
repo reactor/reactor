@@ -44,6 +44,13 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	private final Buffer                      body;
 	protected        NettyHttpChannel<IN, OUT>   request;
 
+
+	/**
+	 * The body of an HTTP response should be discarded.
+	 */
+	private boolean discardBody = false;
+
+
 	public NettyHttpClientHandler(
 			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
 			NettyChannelStream<IN, OUT> tcpStream) {
@@ -120,7 +127,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		} else if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
 			postRead(ctx, msg);
-		} else {
+		} else if(!discardBody){
 			super.channelRead(ctx, msg);
 		}
 	}
@@ -200,5 +207,10 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 					.EMPTY_BUFFER));
 		}
 		body.reset();
+	}
+
+
+	private void setDiscardBody(boolean discardBody) {
+		this.discardBody = discardBody;
 	}
 }

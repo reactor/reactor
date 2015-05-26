@@ -85,7 +85,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 				@Override
 				public void onComplete() {
 					subscription.cancel();
-					if (channelSubscription == null && ctx.channel().isOpen()) {
+					if (ctx.channel().isOpen()) {
 						if(log.isDebugEnabled()){
 							log.debug("Close Http Response ");
 						}
