@@ -295,7 +295,7 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 				while ((requestCursor++ < demand || demand == Long.MAX_VALUE) && !sub.isCancelled()) {
 					requestConsumer.accept(sub);
 				}
-			} while ((demand = PENDING_UPDATER.addAndGet(this, -demand)) > 0L);
+			} while ((demand = PENDING_UPDATER.addAndGet(this, -demand)) > 0L  && !sub.isCancelled());
 
 		}
 	}
