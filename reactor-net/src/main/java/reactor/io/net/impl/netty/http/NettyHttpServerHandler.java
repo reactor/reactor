@@ -17,12 +17,18 @@
 package reactor.io.net.impl.netty.http;
 
 import io.netty.buffer.ByteBufHolder;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpMessage;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -34,6 +40,8 @@ import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
 
+import static io.netty.handler.codec.http.HttpHeaders.is100ContinueExpected;
+
 /**
  * Conversion between Netty types  and Reactor types ({@link NettyHttpChannel} and {@link reactor.io.buffer.Buffer}).
  *
@@ -41,8 +49,11 @@ import reactor.rx.action.support.DefaultSubscriber;
  */
 public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<IN, OUT> {
 
+	private static final FullHttpResponse CONTINUE =
+			new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE, Unpooled.EMPTY_BUFFER);
+
 	private final NettyChannelStream<IN, OUT> tcpStream;
-	protected       NettyHttpChannel<IN, OUT>   request;
+	protected     NettyHttpChannel<IN, OUT>   request;
 
 	public NettyHttpServerHandler(
 			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
@@ -58,10 +69,31 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	}
 
 	@Override
-	public void channelRead(final ChannelHandlerContext ctx, Object msg) throws Exception {
+	public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
 		Class<?> messageClass = msg.getClass();
 		if (request == null && io.netty.handler.codec.http.HttpRequest.class.isAssignableFrom(messageClass)) {
-			request = new NettyHttpChannel<IN, OUT>(tcpStream, (io.netty.handler.codec.http.HttpRequest) msg);
+			request = new NettyHttpChannel<IN, OUT>(tcpStream, (io.netty.handler.codec.http.HttpRequest) msg){
+				@Override
+				public void subscribe(Subscriber<? super IN> subscriber) {
+					// Handle the 'Expect: 100-continue' header if necessary.
+					// TODO: Respond with 413 Request Entity Too Large
+					//   and discard the traffic or close the connection.
+					//       No need to notify the upstream handlers - just log.
+					//       If decoding a response, just throw an exception.
+					if (is100ContinueExpected((HttpMessage) msg)) {
+						ctx.writeAndFlush(CONTINUE).addListener(new ChannelFutureListener() {
+							@Override
+							public void operationComplete(ChannelFuture future) throws Exception {
+								if (!future.isSuccess()) {
+									ctx.fireExceptionCaught(future.cause());
+								}
+							}
+						});
+					}
+
+					super.subscribe(subscriber);
+				}
+			};
 
 			final Publisher<Void> closePublisher = handler.apply(request);
 			final Subscriber<Void> closeSub = new DefaultSubscriber<Void>() {
@@ -86,7 +118,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 				public void onComplete() {
 					subscription.cancel();
 					if (ctx.channel().isOpen()) {
-						if(log.isDebugEnabled()){
+						if (log.isDebugEnabled()) {
 							log.debug("Close Http Response ");
 						}
 						writeLast(ctx);
