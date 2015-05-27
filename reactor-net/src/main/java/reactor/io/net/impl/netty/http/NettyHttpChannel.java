@@ -16,6 +16,9 @@
 
 package reactor.io.net.impl.netty.http;
 
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.*;
 import org.reactivestreams.Publisher;
@@ -28,11 +31,16 @@ import reactor.io.net.impl.netty.NettyChannelStream;
 
 import java.net.InetSocketAddress;
 
+import static io.netty.handler.codec.http.HttpHeaders.is100ContinueExpected;
+
 /**
  * @author Sebastien Deleuze
  * @author Stephane Maldini
  */
 public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
+
+	private static final FullHttpResponse CONTINUE =
+			new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE, Unpooled.EMPTY_BUFFER);
 
 	private final NettyChannelStream<IN, OUT> tcpStream;
 	private final HttpRequest                 nettyRequest;
@@ -64,48 +72,66 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	}
 
 	@Override
-	public void subscribe(Subscriber<? super IN> subscriber) {
-		tcpStream.subscribe(subscriber);
-	}
-
-	// REQUEST contract
-
-
-	@Override
-	public Protocol protocol() {
-		HttpVersion version = this.nettyRequest.getProtocolVersion();
-		if (version.equals(HttpVersion.HTTP_1_0)) {
-			return Protocol.HTTP_1_0;
-		} else if (version.equals(HttpVersion.HTTP_1_1)) {
-			return Protocol.HTTP_1_1;
+	public void subscribe(final Subscriber<? super IN> subscriber) {
+		// Handle the 'Expect: 100-continue' header if necessary.
+		// TODO: Respond with 413 Request Entity Too Large
+		//   and discard the traffic or close the connection.
+		//       No need to notify the upstream handlers - just log.
+		//       If decoding a response, just throw an exception.
+		if (is100ContinueExpected(nettyRequest)) {
+			tcpStream.delegate().writeAndFlush(CONTINUE).addListener(new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					if (!future.isSuccess()) {
+						subscriber.onError(future.cause());
+					} else {
+						tcpStream.subscribe(subscriber);
+					}
+				}
+			});
+		} else {
+			tcpStream.subscribe(subscriber);
 		}
-		throw new IllegalStateException(version.protocolName() + " not supported");
 	}
 
-	@Override
-	protected void doHeader(String name, String value) {
-		this.headers.set(name, value);
-	}
+		// REQUEST contract
 
-	@Override
-	protected void doAddHeader(String name, String value) {
-		this.headers.add(name, value);
-	}
 
-	@Override
-	public String uri() {
-		return this.nettyRequest.getUri();
-	}
+		@Override
+		public Protocol protocol () {
+			HttpVersion version = this.nettyRequest.getProtocolVersion();
+			if (version.equals(HttpVersion.HTTP_1_0)) {
+				return Protocol.HTTP_1_0;
+			} else if (version.equals(HttpVersion.HTTP_1_1)) {
+				return Protocol.HTTP_1_1;
+			}
+			throw new IllegalStateException(version.protocolName() + " not supported");
+		}
 
-	@Override
-	public Method method() {
-		return new Method(this.nettyRequest.getMethod().name());
-	}
+		@Override
+		protected void doHeader (String name, String value){
+			this.headers.set(name, value);
+		}
 
-	@Override
-	public HttpHeaders headers() {
-		return this.headers;
-	}
+		@Override
+		protected void doAddHeader (String name, String value){
+			this.headers.add(name, value);
+		}
+
+		@Override
+		public String uri () {
+			return this.nettyRequest.getUri();
+		}
+
+		@Override
+		public Method method () {
+			return new Method(this.nettyRequest.getMethod().name());
+		}
+
+		@Override
+		public HttpHeaders headers () {
+			return this.headers;
+		}
 
 	public HttpRequest getNettyRequest() {
 		return nettyRequest;
@@ -171,7 +197,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public SocketChannel delegate() {
-		return (SocketChannel)tcpStream.delegate();
+		return (SocketChannel) tcpStream.delegate();
 	}
 
 	@Override
@@ -188,7 +214,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 		this.nettyResponse = nettyResponse;
 	}
 
-	boolean checkHeader(){
+	boolean checkHeader() {
 		return HEADERS_SENT.compareAndSet(this, 0, 1);
 	}
 
