@@ -537,7 +537,7 @@ For Asynchronous broadcasting, always consider a <<core-processor.adoc#core-proc
 [[wireup]]
 === Wiring up a Stream
 
-Streams operations--minus a few exceptions like terminal actions and `broadcast()`--will never directly subscribe. Instead they will lazily prepare for subscribe.
+Streams operations -- except for a few exceptions like terminal actions and `broadcast()` -- will never directly subscribe. Instead they will lazily prepare for subscribe.
 This is usually called *lift* in Functional programming.
 
 That basically means the Reactor `Stream` user will explicitely call `Stream.subscribe(Subscriber)` or, alternativly, *terminal* actions such as `Stream.consume(Consumer)` to materialize all the registered operations.
@@ -560,7 +560,7 @@ import reactor.rx.Stream;
 Stream<String> stream = Streams.just("a","b","c","d","e","f","g","h");
 
 //prepare two unique pipelines
-Stream<Long> actionChain1 = stream.map(String::toUpperCase).filter(w -> w.equals("c"));
+Stream<String> actionChain1 = stream.map(String::toUpperCase).filter(w -> w.equals("C"));
 Stream<Long> actionChain2 = stream.dispatchOn(sharedDispatcher()).take(5).count();
 
 actionChain1.consume(System.out::println); //start chain1
@@ -586,10 +586,10 @@ import reactor.rx.Stream;
 Stream<String> stream = Streams.just("a","b","c","d","e","f","g","h");
 
 //prepare a shared pipeline
-Stream<String> sharedStream = actionChain1.observe(System.out::println).broadcast();
+Stream<String> sharedStream = stream.observe(System.out::println).broadcast();
 
 //prepare two unique pipelines
-Stream<Long> actionChain1 = sharedStream.map(String::toUpperCase).filter(w -> w.equals("c"));
+Stream<String> actionChain1 = sharedStream.map(String::toUpperCase).filter(w -> w.equals("C"));
 Stream<Long> actionChain2 = sharedStream.take(5).count();
 
 actionChain1.consume(System.out::println); //start chain1
@@ -620,7 +620,7 @@ h|consume(_Consumer<T>,Consumer<T>,Consumer<T>_)
 
 _consumeOn_
 |Control
-2+|Call `subscribe` with a `ConsumerAction` which interacts with each passed `Consumer`, each time the interest signal is detected. It will `request(Streams.capacity()` to the received `Subscription`, which is `Long.MAX_VALUE` by default, which results in unbounded consuming. The `subscribeOn` and `consumeOn` alternatives provide for signalling `onSubscribe` using the passed `Dispatcher`. Returns a `Control` component to cancel the materialized `Stream`, if necessary. Note that `ConsumeAction` takes care of unbounded recursion if the `onNext(T)` signal triggers a blocking request.
+2+|Call `subscribe` with a `ConsumerAction` which interacts with each passed `Consumer`, each time the interest signal is detected. It will `request(Streams.capacity())` to the received `Subscription`, which is `Long.MAX_VALUE` by default, which results in unbounded consuming. The `subscribeOn` and `consumeOn` alternatives provide for signalling `onSubscribe` using the passed `Dispatcher`. Returns a `Control` component to cancel the materialized `Stream`, if necessary. Note that `ConsumeAction` takes care of unbounded recursion if the `onNext(T)` signal triggers a blocking request.
 
 h|consumeLater()
 |Control
@@ -1288,7 +1288,7 @@ Merging actions are modeled in `FanInAction` and take care of concurrent signali
 ----
 Streams
   .range(1, 100)
-  .zipWith( Streams.generate(() -> System.currentTimeMillis() ), tuple -> tuple ) // <1>
+  .zipWith( Streams.generate(System::currentTimeMillis), tuple -> tuple ) // <1>
   .consume(
     tuple -> System.out.println("number: "+tuple.getT1()+" time: "+tuple.getT2()) , // <2>
     Throwable::printStackTrace,
