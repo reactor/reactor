@@ -20,6 +20,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.util.ReferenceCountUtil;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -27,12 +28,12 @@ import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.processor.CancelException;
 import reactor.core.support.Exceptions;
+import reactor.core.support.NonBlocking;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.Spec;
-import reactor.rx.Stream;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.subscription.PushSubscription;
 
@@ -234,14 +235,15 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 	@Override
 	public void write(final ChannelHandlerContext ctx, Object msg, final ChannelPromise promise) throws Exception {
-		if (msg instanceof Stream) {
+		if (msg instanceof Publisher) {
 			@SuppressWarnings("unchecked")
-			Stream<?> data = (Stream<?>) msg;
+			Publisher<?> data = (Publisher<?>) msg;
+			final long capacity = msg instanceof NonBlocking ? ((NonBlocking)data).getCapacity() : Long.MAX_VALUE;
 
-			if (data.getCapacity() == Long.MAX_VALUE) {
+			if (capacity == Long.MAX_VALUE) {
 				data.subscribe(new FlushOnTerminateSubscriber(ctx, promise));
 			} else {
-				data.subscribe(new FlushOnCapacitySubscriber(ctx, promise, data.getCapacity()));
+				data.subscribe(new FlushOnCapacitySubscriber(ctx, promise, capacity));
 			}
 		} else {
 			super.write(ctx, msg, promise);
