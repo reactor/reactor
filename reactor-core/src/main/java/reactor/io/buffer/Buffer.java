@@ -44,13 +44,14 @@ import java.util.List;
  * on buffers.
  *
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 @NotThreadSafe
 public class Buffer implements Recyclable,
-                               Comparable<Buffer>,
-                               Iterable<Byte>,
-                               ReadableByteChannel,
-                               WritableByteChannel {
+		Comparable<Buffer>,
+		Iterable<Byte>,
+		ReadableByteChannel,
+		WritableByteChannel {
 
 	/**
 	 * The size, in bytes, of a small buffer. Can be configured using the {@code reactor.io.defaultBufferSize} system
@@ -87,14 +88,12 @@ public class Buffer implements Recyclable,
 	 * Create an {@literal Buffer} that has an internal {@link ByteBuffer} allocated to the given size and optional make
 	 * this buffer fixed-length.
 	 *
-	 * @param atLeast
-	 * 		Allocate this many bytes immediately.
-	 * @param fixed
-	 * 		{@literal true} to make this buffer fixed-length, {@literal false} otherwise.
+	 * @param atLeast Allocate this many bytes immediately.
+	 * @param fixed   {@literal true} to make this buffer fixed-length, {@literal false} otherwise.
 	 */
 	public Buffer(int atLeast, boolean fixed) {
-		if(fixed) {
-			if(atLeast <= MAX_BUFFER_SIZE) {
+		if (fixed) {
+			if (atLeast <= MAX_BUFFER_SIZE) {
 				this.buffer = ByteBuffer.allocate(atLeast);
 			} else {
 				throw new IllegalArgumentException("Requested buffer size exceeds maximum allowed (" + MAX_BUFFER_SIZE + ")");
@@ -109,8 +108,7 @@ public class Buffer implements Recyclable,
 	 * Copy constructor that creates a shallow copy of the given {@literal Buffer} by calling {@link
 	 * java.nio.ByteBuffer#duplicate()} on the underlying {@link ByteBuffer}.
 	 *
-	 * @param bufferToCopy
-	 * 		The {@literal Buffer} to copy.
+	 * @param bufferToCopy The {@literal Buffer} to copy.
 	 */
 	public Buffer(Buffer bufferToCopy) {
 		this.dynamic = bufferToCopy.dynamic;
@@ -120,8 +118,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Create a {@literal Buffer} using the given {@link ByteBuffer} as the inital source.
 	 *
-	 * @param bufferToStartWith
-	 * 		The {@link ByteBuffer} to start with.
+	 * @param bufferToStartWith The {@link ByteBuffer} to start with.
 	 */
 	public Buffer(ByteBuffer bufferToStartWith) {
 		this.dynamic = true;
@@ -132,9 +129,7 @@ public class Buffer implements Recyclable,
 	 * Convenience method to create a new, fixed-length {@literal Buffer} and putting the given byte array into the
 	 * buffer.
 	 *
-	 * @param bytes
-	 * 		The bytes to create a buffer from.
-	 *
+	 * @param bytes The bytes to create a buffer from.
 	 * @return The new {@literal Buffer}.
 	 */
 	@SuppressWarnings("resource")
@@ -148,11 +143,8 @@ public class Buffer implements Recyclable,
 	 * Convenience method to create a new {@literal Buffer} from the given String and optionally specify whether the new
 	 * {@literal Buffer} should be a fixed length or not.
 	 *
-	 * @param str
-	 * 		The String to create a buffer from.
-	 * @param fixed
-	 * 		{@literal true} to create a fixed-length {@literal Buffer}, {@literal false} otherwise.
-	 *
+	 * @param str   The String to create a buffer from.
+	 * @param fixed {@literal true} to create a fixed-length {@literal Buffer}, {@literal false} otherwise.
 	 * @return The new {@literal Buffer}.
 	 */
 	@SuppressWarnings("resource")
@@ -165,9 +157,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Convenience method to create a new, fixed-length {@literal Buffer} from the given String.
 	 *
-	 * @param str
-	 * 		The String to create a buffer from.
-	 *
+	 * @param str The String to create a buffer from.
 	 * @return The new fixed-length {@literal Buffer}.
 	 */
 	public static Buffer wrap(String str) {
@@ -178,13 +168,9 @@ public class Buffer implements Recyclable,
 	 * Very efficient method for parsing an {@link Integer} from the given {@literal Buffer} range. Much faster than
 	 * {@link Integer#parseInt(String)}.
 	 *
-	 * @param b
-	 * 		The {@literal Buffer} to slice.
-	 * @param start
-	 * 		start of the range.
-	 * @param end
-	 * 		end of the range.
-	 *
+	 * @param b     The {@literal Buffer} to slice.
+	 * @param start start of the range.
+	 * @param end   end of the range.
 	 * @return The int value or {@literal null} if the {@literal Buffer} could not be read.
 	 */
 	public static Integer parseInt(Buffer b, int start, int end) {
@@ -204,13 +190,11 @@ public class Buffer implements Recyclable,
 	 * Very efficient method for parsing an {@link Integer} from the given {@literal Buffer}. Much faster than {@link
 	 * Integer#parseInt(String)}.
 	 *
-	 * @param b
-	 * 		The {@literal Buffer} to slice.
-	 *
+	 * @param b The {@literal Buffer} to slice.
 	 * @return The int value or {@literal null} if the {@literal Buffer} could not be read.
 	 */
 	public static Integer parseInt(Buffer b) {
-		if(b.remaining() == 0) {
+		if (b.remaining() == 0) {
 			return null;
 		}
 
@@ -219,8 +203,8 @@ public class Buffer implements Recyclable,
 
 		int num = 0;
 		int dec = 1;
-		for(int i = (b.position + len); i > b.position; ) {
-			char c = (char)b.buffer.get(--i);
+		for (int i = (b.position + len); i > b.position; ) {
+			char c = (char) b.buffer.get(--i);
 			num += Character.getNumericValue(c) * dec;
 			dec *= 10;
 		}
@@ -234,13 +218,9 @@ public class Buffer implements Recyclable,
 	 * Very efficient method for parsing a {@link Long} from the given {@literal Buffer} range. Much faster than {@link
 	 * Long#parseLong(String)}.
 	 *
-	 * @param b
-	 * 		The {@literal Buffer} to slice.
-	 * @param start
-	 * 		start of the range.
-	 * @param end
-	 * 		end of the range.
-	 *
+	 * @param b     The {@literal Buffer} to slice.
+	 * @param start start of the range.
+	 * @param end   end of the range.
 	 * @return The long value or {@literal null} if the {@literal Buffer} could not be read.
 	 */
 	public static Long parseLong(Buffer b, int start, int end) {
@@ -262,13 +242,11 @@ public class Buffer implements Recyclable,
 	 * Very efficient method for parsing a {@link Long} from the given {@literal Buffer}. Much faster than {@link
 	 * Long#parseLong(String)}.
 	 *
-	 * @param b
-	 * 		The {@literal Buffer} to slice.
-	 *
+	 * @param b The {@literal Buffer} to slice.
 	 * @return The long value or {@literal null} if the {@literal Buffer} could not be read.
 	 */
 	public static Long parseLong(Buffer b) {
-		if(b.remaining() == 0) {
+		if (b.remaining() == 0) {
 			return null;
 		}
 		ByteBuffer bb = b.buffer;
@@ -277,8 +255,8 @@ public class Buffer implements Recyclable,
 
 		long num = 0;
 		int dec = 1;
-		for(int i = len; i > 0; ) {
-			char c = (char)bb.get(--i);
+		for (int i = len; i > 0; ) {
+			char c = (char) bb.get(--i);
 			num += Character.getNumericValue(c) * dec;
 			dec *= 10;
 		}
@@ -290,7 +268,7 @@ public class Buffer implements Recyclable,
 
 	@Override
 	public void recycle() {
-		if(null != buffer) {
+		if (null != buffer) {
 			buffer.position(0);
 			position = 0;
 			limit = buffer.capacity();
@@ -319,13 +297,11 @@ public class Buffer implements Recyclable,
 	/**
 	 * Sets this buffer's position.
 	 *
-	 * @param pos
-	 * 		the new position
-	 *
+	 * @param pos the new position
 	 * @return this buffer
 	 */
 	public Buffer position(int pos) {
-		if(null != buffer) {
+		if (null != buffer) {
 			buffer.position(pos);
 		}
 		return this;
@@ -334,13 +310,11 @@ public class Buffer implements Recyclable,
 	/**
 	 * Sets this buffer's limit.
 	 *
-	 * @param limit
-	 * 		the new limit
-	 *
+	 * @param limit the new limit
 	 * @return this buffer
 	 */
 	public Buffer limit(int limit) {
-		if(null != buffer) {
+		if (null != buffer) {
 			buffer.limit(limit);
 		}
 		return this;
@@ -349,21 +323,16 @@ public class Buffer implements Recyclable,
 	/**
 	 * Skips {@code len} bytes.
 	 *
-	 * @param len
-	 * 		the number of bytes to skip
-	 *
+	 * @param len the number of bytes to skip
 	 * @return this buffer
-	 *
-	 * @throws BufferUnderflowException
-	 * 		if the skip exceeds the available bytes
-	 * @throws IllegalArgumentException
-	 * 		if len is negative
+	 * @throws BufferUnderflowException if the skip exceeds the available bytes
+	 * @throws IllegalArgumentException if len is negative
 	 */
 	public Buffer skip(int len) {
-		if(len < 0) {
+		if (len < 0) {
 			throw new IllegalArgumentException("len must >= 0");
 		}
-		if(null != buffer) {
+		if (null != buffer) {
 			int pos = buffer.position();
 			buffer.position(pos + len);
 		}
@@ -405,7 +374,7 @@ public class Buffer implements Recyclable,
 	 * @return {@literal this}
 	 */
 	public Buffer clear() {
-		if(null != buffer) {
+		if (null != buffer) {
 			buffer.position(0);
 			buffer.limit(buffer.capacity());
 		}
@@ -418,7 +387,7 @@ public class Buffer implements Recyclable,
 	 * @return {@literal this}
 	 */
 	public Buffer compact() {
-		if(null != buffer) {
+		if (null != buffer) {
 			buffer.compact();
 		}
 		return this;
@@ -430,7 +399,7 @@ public class Buffer implements Recyclable,
 	 * @return {@literal this}
 	 */
 	public Buffer flip() {
-		if(null != buffer) {
+		if (null != buffer) {
 			buffer.flip();
 		}
 		return this;
@@ -442,7 +411,7 @@ public class Buffer implements Recyclable,
 	 * @return {@literal this}
 	 */
 	public Buffer rewind() {
-		if(null != buffer) {
+		if (null != buffer) {
 			buffer.rewind();
 		}
 		return this;
@@ -451,21 +420,16 @@ public class Buffer implements Recyclable,
 	/**
 	 * Rewinds this buffer by {@code len} bytes.
 	 *
-	 * @param len
-	 * 		The number of bytes the rewind by
-	 *
+	 * @param len The number of bytes the rewind by
 	 * @return this buffer
-	 *
-	 * @throws BufferUnderflowException
-	 * 		if the rewind would move past the start of the buffer
-	 * @throws IllegalArgumentException
-	 * 		if len is negative
+	 * @throws BufferUnderflowException if the rewind would move past the start of the buffer
+	 * @throws IllegalArgumentException if len is negative
 	 */
 	public Buffer rewind(int len) {
-		if(len < 0) {
+		if (len < 0) {
 			throw new IllegalArgumentException("len must >= 0");
 		}
-		if(null != buffer) {
+		if (null != buffer) {
 			int pos = buffer.position();
 			buffer.position(pos - len);
 		}
@@ -488,7 +452,7 @@ public class Buffer implements Recyclable,
 	 * @return the new {@code Buffer}
 	 */
 	public Buffer copy() {
-		if(buffer == null) return new Buffer();
+		if (buffer == null) return new Buffer();
 		snapshot();
 		Buffer b = new Buffer(buffer.remaining(), false);
 		b.append(buffer);
@@ -500,13 +464,11 @@ public class Buffer implements Recyclable,
 	/**
 	 * Prepend the given {@link Buffer} to this {@literal Buffer}.
 	 *
-	 * @param b
-	 * 		The {@link Buffer} to prepend.
-	 *
+	 * @param b The {@link Buffer} to prepend.
 	 * @return {@literal this}
 	 */
 	public Buffer prepend(Buffer b) {
-		if(null == b) {
+		if (null == b) {
 			return this;
 		}
 		return prepend(b.buffer);
@@ -515,13 +477,11 @@ public class Buffer implements Recyclable,
 	/**
 	 * Prepend the given {@link String } to this {@literal Buffer}.
 	 *
-	 * @param s
-	 * 		The {@link String} to prepend.
-	 *
+	 * @param s The {@link String} to prepend.
 	 * @return {@literal this}
 	 */
 	public Buffer prepend(String s) {
-		if(null == s) {
+		if (null == s) {
 			return this;
 		}
 		return prepend(s.getBytes());
@@ -530,9 +490,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Prepend the given {@code byte[]} array to this {@literal Buffer}.
 	 *
-	 * @param bytes
-	 * 		The {@code byte[]} to prepend.
-	 *
+	 * @param bytes The {@code byte[]} to prepend.
 	 * @return {@literal this}
 	 */
 	public Buffer prepend(byte[] bytes) {
@@ -545,13 +503,11 @@ public class Buffer implements Recyclable,
 	/**
 	 * Prepend the given {@link ByteBuffer} to this {@literal Buffer}.
 	 *
-	 * @param b
-	 * 		The {@link ByteBuffer} to prepend.
-	 *
+	 * @param b The {@link ByteBuffer} to prepend.
 	 * @return {@literal this}
 	 */
 	public Buffer prepend(ByteBuffer b) {
-		if(null == b) {
+		if (null == b) {
 			return this;
 		}
 		shift(b.remaining());
@@ -564,9 +520,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Prepend the given {@code byte} to this {@literal Buffer}.
 	 *
-	 * @param b
-	 * 		The {@code byte} to prepend.
-	 *
+	 * @param b The {@code byte} to prepend.
 	 * @return {@literal this}
 	 */
 	public Buffer prepend(byte b) {
@@ -579,9 +533,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Prepend the given {@code char} to this existing {@literal Buffer}.
 	 *
-	 * @param c
-	 * 		The {@code char} to prepend.
-	 *
+	 * @param c The {@code char} to prepend.
 	 * @return {@literal this}
 	 */
 	public Buffer prepend(char c) {
@@ -594,9 +546,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Prepend the given {@code short} to this {@literal Buffer}.
 	 *
-	 * @param s
-	 * 		The {@code short} to prepend.
-	 *
+	 * @param s The {@code short} to prepend.
 	 * @return {@literal this}
 	 */
 	public Buffer prepend(short s) {
@@ -609,9 +559,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Prepend the given {@code int} to this {@literal Buffer}.
 	 *
-	 * @param i
-	 * 		The {@code int} to prepend.
-	 *
+	 * @param i The {@code int} to prepend.
 	 * @return {@literal this}
 	 */
 	public Buffer prepend(int i) {
@@ -624,9 +572,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Prepend the given {@code long} to this {@literal Buffer}.
 	 *
-	 * @param l
-	 * 		The {@code long} to prepend.
-	 *
+	 * @param l The {@code long} to prepend.
 	 * @return {@literal this}
 	 */
 	public Buffer prepend(long l) {
@@ -639,9 +585,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Append the given String to this {@literal Buffer}.
 	 *
-	 * @param s
-	 * 		The String to append.
-	 *
+	 * @param s The String to append.
 	 * @return {@literal this}
 	 */
 	public Buffer append(String s) {
@@ -653,9 +597,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Append the given {@code short} to this {@literal Buffer}.
 	 *
-	 * @param s
-	 * 		The {@code short} to append.
-	 *
+	 * @param s The {@code short} to append.
 	 * @return {@literal this}
 	 */
 	public Buffer append(short s) {
@@ -667,9 +609,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Append the given {@code int} to this {@literal Buffer}.
 	 *
-	 * @param i
-	 * 		The {@code int} to append.
-	 *
+	 * @param i The {@code int} to append.
 	 * @return {@literal this}
 	 */
 	public Buffer append(int i) {
@@ -681,9 +621,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Append the given {@code long} to this {@literal Buffer}.
 	 *
-	 * @param l
-	 * 		The {@code long} to append.
-	 *
+	 * @param l The {@code long} to append.
 	 * @return {@literal this}
 	 */
 	public Buffer append(long l) {
@@ -695,9 +633,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Append the given {@code char} to this {@literal Buffer}.
 	 *
-	 * @param c
-	 * 		The {@code char} to append.
-	 *
+	 * @param c The {@code char} to append.
 	 * @return {@literal this}
 	 */
 	public Buffer append(char c) {
@@ -709,14 +645,12 @@ public class Buffer implements Recyclable,
 	/**
 	 * Append the given {@link ByteBuffer} to this {@literal Buffer}.
 	 *
-	 * @param buffers
-	 * 		The {@link ByteBuffer ByteBuffers} to append.
-	 *
+	 * @param buffers The {@link ByteBuffer ByteBuffers} to append.
 	 * @return {@literal this}
 	 */
 	public Buffer append(ByteBuffer... buffers) {
-		for(ByteBuffer bb : buffers) {
-			if(bb != null) {
+		for (ByteBuffer bb : buffers) {
+			if (bb != null) {
 				ensureCapacity(bb.remaining());
 				buffer.put(bb);
 			}
@@ -727,17 +661,15 @@ public class Buffer implements Recyclable,
 	/**
 	 * Append the given {@link Buffer} to this {@literal Buffer}.
 	 *
-	 * @param buffers
-	 * 		The {@link Buffer Buffers} to append.
-	 *
+	 * @param buffers The {@link Buffer Buffers} to append.
 	 * @return {@literal this}
 	 */
 	public Buffer append(Buffer... buffers) {
-		for(Buffer b : buffers) {
+		for (Buffer b : buffers) {
 			int pos = (null == buffer ? 0 : buffer.position());
 			int len = b.remaining();
 			ensureCapacity(len);
-			if(b.byteBuffer() != null) {
+			if (b.byteBuffer() != null) {
 				buffer.put(b.byteBuffer());
 				buffer.position(pos + len);
 			}
@@ -748,9 +680,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Append the given {@code byte} to this {@literal Buffer}.
 	 *
-	 * @param b
-	 * 		The {@code byte} to append.
-	 *
+	 * @param b The {@code byte} to append.
 	 * @return {@literal this}
 	 */
 	public Buffer append(byte b) {
@@ -762,9 +692,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Append the given {@code byte[]} to this {@literal Buffer}.
 	 *
-	 * @param b
-	 * 		The {@code byte[]} to append.
-	 *
+	 * @param b The {@code byte[]} to append.
 	 * @return {@literal this}
 	 */
 	public Buffer append(byte[] b) {
@@ -778,13 +706,9 @@ public class Buffer implements Recyclable,
 	 * given
 	 * length.
 	 *
-	 * @param b
-	 * 		the bytes to append
-	 * @param start
-	 * 		the index of where to start copying bytes
-	 * @param len
-	 * 		the len of the bytes to copy
-	 *
+	 * @param b     the bytes to append
+	 * @param start the index of where to start copying bytes
+	 * @param len   the len of the bytes to copy
 	 * @return {@literal this}
 	 */
 	public Buffer append(byte[] b, int start, int len) {
@@ -800,7 +724,7 @@ public class Buffer implements Recyclable,
 	 */
 	public byte first() {
 		snapshot();
-		if(this.position > 0) {
+		if (this.position > 0) {
 			buffer.position(0); // got to the 1st position
 		}
 		byte b = buffer.get(); // get the 1st byte
@@ -828,7 +752,7 @@ public class Buffer implements Recyclable,
 	 * @return The next {@code byte}.
 	 */
 	public byte read() {
-		if(null != buffer) {
+		if (null != buffer) {
 			return buffer.get();
 		}
 		throw new BufferUnderflowException();
@@ -837,13 +761,11 @@ public class Buffer implements Recyclable,
 	/**
 	 * Read at least {@code b.length} bytes from the underlying {@link ByteBuffer}.
 	 *
-	 * @param b
-	 * 		The buffer to fill.
-	 *
+	 * @param b The buffer to fill.
 	 * @return {@literal this}
 	 */
 	public Buffer read(byte[] b) {
-		if(null != buffer) {
+		if (null != buffer) {
 			buffer.get(b);
 		}
 		return this;
@@ -855,7 +777,7 @@ public class Buffer implements Recyclable,
 	 * @return The next {@code short}.
 	 */
 	public short readShort() {
-		if(null != buffer) {
+		if (null != buffer) {
 			return buffer.getShort();
 		}
 		throw new BufferUnderflowException();
@@ -867,7 +789,7 @@ public class Buffer implements Recyclable,
 	 * @return The next {@code int}.
 	 */
 	public int readInt() {
-		if(null != buffer) {
+		if (null != buffer) {
 			return buffer.getInt();
 		}
 		throw new BufferUnderflowException();
@@ -879,7 +801,7 @@ public class Buffer implements Recyclable,
 	 * @return The next {@code float}.
 	 */
 	public float readFloat() {
-		if(null != buffer) {
+		if (null != buffer) {
 			return buffer.getFloat();
 		}
 		throw new BufferUnderflowException();
@@ -891,7 +813,7 @@ public class Buffer implements Recyclable,
 	 * @return The next {@code double}.
 	 */
 	public double readDouble() {
-		if(null != buffer) {
+		if (null != buffer) {
 			return buffer.getDouble();
 		}
 		throw new BufferUnderflowException();
@@ -903,7 +825,7 @@ public class Buffer implements Recyclable,
 	 * @return The next {@code long}.
 	 */
 	public long readLong() {
-		if(null != buffer) {
+		if (null != buffer) {
 			return buffer.getLong();
 		}
 		throw new BufferUnderflowException();
@@ -915,7 +837,7 @@ public class Buffer implements Recyclable,
 	 * @return The next {@code char}.
 	 */
 	public char readChar() {
-		if(null != buffer) {
+		if (null != buffer) {
 			return buffer.getChar();
 		}
 		throw new BufferUnderflowException();
@@ -963,7 +885,7 @@ public class Buffer implements Recyclable,
 	@Override
 	public int read(ByteBuffer dst) throws IOException {
 		snapshot();
-		if(dst.remaining() < this.limit) {
+		if (dst.remaining() < this.limit) {
 			buffer.limit(dst.remaining());
 		}
 		int pos = dst.position();
@@ -995,7 +917,7 @@ public class Buffer implements Recyclable,
 	 * @return The contents of this {@literal Buffer} as a String.
 	 */
 	public String asString() {
-		if(null != buffer) {
+		if (null != buffer) {
 			return decode();
 		} else {
 			return null;
@@ -1005,11 +927,8 @@ public class Buffer implements Recyclable,
 	/**
 	 * Slice a portion of this buffer and convert it to a String.
 	 *
-	 * @param start
-	 * 		start of the range.
-	 * @param end
-	 * 		end of the range.
-	 *
+	 * @param start start of the range.
+	 * @param end   end of the range.
 	 * @return The contents of the given range as a String.
 	 */
 	public String substring(int start, int end) {
@@ -1029,7 +948,7 @@ public class Buffer implements Recyclable,
 	 * @return The contents of this buffer as a {@code byte[]}.
 	 */
 	public byte[] asBytes() {
-		if(null != buffer) {
+		if (null != buffer) {
 			snapshot();
 			byte[] b = new byte[buffer.remaining()];
 			buffer.get(b);
@@ -1052,11 +971,8 @@ public class Buffer implements Recyclable,
 	/**
 	 * Create a copy of the given range.
 	 *
-	 * @param start
-	 * 		start of the range.
-	 * @param len
-	 * 		end of the range.
-	 *
+	 * @param start start of the range.
+	 * @param len   end of the range.
 	 * @return A new {@link Buffer}, constructed from the contents of the given range.
 	 */
 	public Buffer slice(int start, int len) {
@@ -1072,9 +988,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Split this buffer on the given delimiter.
 	 *
-	 * @param delimiter
-	 * 		The delimiter on which to split this buffer.
-	 *
+	 * @param delimiter The delimiter on which to split this buffer.
 	 * @return A {@link List} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public List<View> split(int delimiter) {
@@ -1084,11 +998,8 @@ public class Buffer implements Recyclable,
 	/**
 	 * Split this buffer on the given delimiter but save memory by reusing the given {@link List}.
 	 *
-	 * @param views
-	 * 		The list to store {@link View Views} in.
-	 * @param delimiter
-	 * 		The delimiter on which to split this buffer.
-	 *
+	 * @param views     The list to store {@link View Views} in.
+	 * @param delimiter The delimiter on which to split this buffer.
 	 * @return A {@link List} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public List<View> split(List<View> views, int delimiter) {
@@ -1098,11 +1009,8 @@ public class Buffer implements Recyclable,
 	/**
 	 * Split this buffer on the given delimiter and optionally leave the delimiter intact rather than stripping it.
 	 *
-	 * @param delimiter
-	 * 		The delimiter on which to split this buffer.
-	 * @param stripDelimiter
-	 * 		{@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
-	 *
+	 * @param delimiter      The delimiter on which to split this buffer.
+	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
 	 * @return A {@link List} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public List<View> split(int delimiter, boolean stripDelimiter) {
@@ -1113,27 +1021,23 @@ public class Buffer implements Recyclable,
 	 * Split this buffer on the given delimiter, save memory by reusing the given {@link List}, and optionally leave the
 	 * delimiter intact rather than stripping it.
 	 *
-	 * @param views
-	 * 		The list to store {@link View Views} in.
-	 * @param delimiter
-	 * 		The delimiter on which to split this buffer.
-	 * @param stripDelimiter
-	 * 		{@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
-	 *
+	 * @param views          The list to store {@link View Views} in.
+	 * @param delimiter      The delimiter on which to split this buffer.
+	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
 	 * @return A {@link List} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public List<View> split(List<View> views, int delimiter, boolean stripDelimiter) {
 		snapshot();
 
 		int start = this.position;
-		for(byte b : this) {
-			if(b == delimiter) {
+		for (byte b : this) {
+			if (b == delimiter) {
 				int end = stripDelimiter ? buffer.position() - 1 : buffer.position();
 				views.add(createView(start, end));
 				start = end + (stripDelimiter ? 1 : 0);
 			}
 		}
-		if(start != buffer.position()) {
+		if (start != buffer.position()) {
 			buffer.position(start);
 		}
 
@@ -1145,9 +1049,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Split this buffer on the given delimiter and leave the delimiter on the end of each segment.
 	 *
-	 * @param delimiter
-	 * 		the multi-byte delimiter
-	 *
+	 * @param delimiter the multi-byte delimiter
 	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public Iterable<View> split(Buffer delimiter) {
@@ -1158,11 +1060,8 @@ public class Buffer implements Recyclable,
 	 * Split this buffer on the given delimiter. The delimiter is stripped from the end of the segment if {@code
 	 * stripDelimiter} is {@code true}.
 	 *
-	 * @param delimiter
-	 * 		The multi-byte delimiter.
-	 * @param stripDelimiter
-	 * 		{@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
-	 *
+	 * @param delimiter      The multi-byte delimiter.
+	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
 	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public Iterable<View> split(Buffer delimiter, boolean stripDelimiter) {
@@ -1174,43 +1073,39 @@ public class Buffer implements Recyclable,
 	 * stripped from the end of the segment if {@code
 	 * stripDelimiter} is {@code true}.
 	 *
-	 * @param views
-	 * 		The already-allocated List to reuse.
-	 * @param delimiter
-	 * 		The multi-byte delimiter.
-	 * @param stripDelimiter
-	 * 		{@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
-	 *
+	 * @param views          The already-allocated List to reuse.
+	 * @param delimiter      The multi-byte delimiter.
+	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
 	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public Iterable<View> split(List<View> views, Buffer delimiter, boolean stripDelimiter) {
 		snapshot();
 
 		byte[] delimBytes = delimiter.asBytes();
-		if(delimBytes.length == 0) {
+		if (delimBytes.length == 0) {
 			return Collections.emptyList();
 		}
 
 		int start = this.position;
-		for(byte b : this) {
-			if(b != delimBytes[0]) {
+		for (byte b : this) {
+			if (b != delimBytes[0]) {
 				continue;
 			}
 			int end = -1;
-			for(int i = 1; i < delimBytes.length; i++) {
-				if(read() == delimBytes[i]) {
+			for (int i = 1; i < delimBytes.length; i++) {
+				if (read() == delimBytes[i]) {
 					end = stripDelimiter ? buffer.position() - delimBytes.length : buffer.position();
 				} else {
 					end = -1;
 					break;
 				}
 			}
-			if(end > 0) {
+			if (end > 0) {
 				views.add(createView(start, end));
 				start = end + (stripDelimiter ? delimBytes.length : 0);
 			}
 		}
-		if(start != buffer.position()) {
+		if (start != buffer.position()) {
 			buffer.position(start);
 		}
 
@@ -1222,9 +1117,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Search the buffer and find the position of the first occurrence of the given {@code byte}.
 	 *
-	 * @param b
-	 * 		the {@code byte} to search for
-	 *
+	 * @param b the {@code byte} to search for
 	 * @return the position of the char in the buffer or {@code -1} if not found
 	 */
 	public int indexOf(byte b) {
@@ -1235,23 +1128,19 @@ public class Buffer implements Recyclable,
 	 * Search the buffer and find the position of the first occurrence of the given {@code byte} staring at the start
 	 * position and searching until (and including) the end position.
 	 *
-	 * @param b
-	 * 		the {@code byte} to search for
-	 * @param start
-	 * 		the position to start searching
-	 * @param end
-	 * 		the position at which to stop searching
-	 *
+	 * @param b     the {@code byte} to search for
+	 * @param start the position to start searching
+	 * @param end   the position at which to stop searching
 	 * @return the position of the char in the buffer or {@code -1} if not found
 	 */
 	public int indexOf(byte b, int start, int end) {
 		snapshot();
-		if(buffer.position() != start) {
+		if (buffer.position() != start) {
 			buffer.position(start);
 		}
 		int pos = -1;
-		while(buffer.hasRemaining() && buffer.position() < end) {
-			if(buffer.get() == b) {
+		while (buffer.hasRemaining() && buffer.position() < end) {
+			if (buffer.get() == b) {
 				pos = buffer.position();
 				break;
 			}
@@ -1264,7 +1153,6 @@ public class Buffer implements Recyclable,
 	 * Create a {@link View} of the current range of this {@link Buffer}.
 	 *
 	 * @return The view of the buffer
-	 *
 	 * @see #position()
 	 * @see #limit()
 	 */
@@ -1276,11 +1164,8 @@ public class Buffer implements Recyclable,
 	/**
 	 * Create a {@link View} of the given range of this {@literal Buffer}.
 	 *
-	 * @param start
-	 * 		start of the range.
-	 * @param end
-	 * 		end of the range.
-	 *
+	 * @param start start of the range.
+	 * @param end   end of the range.
 	 * @return A new {@link View} object that represents the given range.
 	 */
 	public View createView(int start, int end) {
@@ -1292,14 +1177,12 @@ public class Buffer implements Recyclable,
 	 * Slice this buffer at the given positions. Useful for extracting multiple segments of data from a buffer when the
 	 * exact indices of that data is already known.
 	 *
-	 * @param positions
-	 * 		The start and end positions of the slices.
-	 *
+	 * @param positions The start and end positions of the slices.
 	 * @return A list of {@link View Views} pointing to the slices.
 	 */
 	public List<View> slice(int... positions) {
 		Assert.notNull(positions, "Positions cannot be null.");
-		if(positions.length == 0) {
+		if (positions.length == 0) {
 			return Collections.emptyList();
 		}
 
@@ -1307,7 +1190,7 @@ public class Buffer implements Recyclable,
 
 		List<View> views = new ArrayList<View>();
 		int len = positions.length;
-		for(int i = 0; i < len; i++) {
+		for (int i = 0; i < len; i++) {
 			int start = positions[i];
 			int end = (i + 1 < len ? positions[++i] : this.limit);
 			views.add(createView(start, end));
@@ -1326,6 +1209,16 @@ public class Buffer implements Recyclable,
 		return buffer;
 	}
 
+	/**
+	 * Is this instance a delimiting Buffer
+	 *
+	 * @return true if delimiter
+	 * @since 2.0.4
+	 */
+	public boolean isDelimitingBuffer(){
+		return this == DELIMITING_BUFFER;
+	}
+
 	@Override
 	public String toString() {
 		return (null != buffer ? buffer.toString() : "<EMPTY>");
@@ -1337,16 +1230,16 @@ public class Buffer implements Recyclable,
 	}
 
 	private synchronized void ensureCapacity(int atLeast) {
-		if(null == buffer) {
+		if (null == buffer) {
 			buffer = ByteBuffer.allocate(SMALL_BUFFER_SIZE);
 			return;
 		}
 		int pos = buffer.position();
 		int cap = buffer.capacity();
-		if(dynamic && buffer.remaining() < atLeast) {
-			if(buffer.limit() < cap) {
+		if (dynamic && buffer.remaining() < atLeast) {
+			if (buffer.limit() < cap) {
 				// there's remaining capacity that hasn't been used yet
-				if(pos + atLeast > cap) {
+				if (pos + atLeast > cap) {
 					expand();
 					cap = buffer.capacity();
 				}
@@ -1355,7 +1248,7 @@ public class Buffer implements Recyclable,
 				expand();
 				buffer.limit(buffer.capacity());
 			}
-		} else if(pos + SMALL_BUFFER_SIZE > MAX_BUFFER_SIZE) {
+		} else if (pos + SMALL_BUFFER_SIZE > MAX_BUFFER_SIZE) {
 			throw new BufferOverflowException();
 		}
 	}
@@ -1363,8 +1256,8 @@ public class Buffer implements Recyclable,
 	private void expand() {
 		snapshot();
 		ByteBuffer newBuff = (buffer.isDirect()
-		                      ? ByteBuffer.allocateDirect(buffer.limit() + SMALL_BUFFER_SIZE)
-		                      : ByteBuffer.allocate(buffer.limit() + SMALL_BUFFER_SIZE));
+				? ByteBuffer.allocateDirect(buffer.limit() + SMALL_BUFFER_SIZE)
+				: ByteBuffer.allocate(buffer.limit() + SMALL_BUFFER_SIZE));
 		buffer.flip();
 		newBuff.put(buffer);
 		buffer = newBuff;
@@ -1372,19 +1265,19 @@ public class Buffer implements Recyclable,
 	}
 
 	private String decode() {
-		if(null == decoder) {
+		if (null == decoder) {
 			decoder = UTF8.newDecoder();
 		}
 		snapshot();
 		try {
-			if(null == chars || chars.remaining() < buffer.remaining()) {
+			if (null == chars || chars.remaining() < buffer.remaining()) {
 				chars = CharBuffer.allocate(buffer.remaining());
 			} else {
 				chars.rewind();
 			}
 			decoder.reset();
 			CoderResult cr = decoder.decode(buffer, chars, true);
-			if(cr.isUnderflow()) {
+			if (cr.isUnderflow()) {
 				decoder.flush(chars);
 			}
 			chars.flip();
@@ -1397,7 +1290,7 @@ public class Buffer implements Recyclable,
 
 	private void shift(int right) {
 		ByteBuffer currentBuffer;
-		if(null == buffer) {
+		if (null == buffer) {
 			ensureCapacity(right);
 			currentBuffer = buffer;
 		} else {
@@ -1428,13 +1321,13 @@ public class Buffer implements Recyclable,
 
 		@Override
 		public int read(byte[] b, int off, int len) throws IOException {
-			if(null == buffer || buffer.remaining() == 0) {
+			if (null == buffer || buffer.remaining() == 0) {
 				return -1;
 			}
 			byte[] bytes = asBytes();
 			int bytesLen = bytes.length;
 			System.arraycopy(bytes, 0, b, off, bytesLen);
-			if(len < bytesLen) {
+			if (len < bytesLen) {
 				buffer.position(position + len);
 			}
 			syncPos();
@@ -1443,11 +1336,11 @@ public class Buffer implements Recyclable,
 
 		@Override
 		public long skip(long n) throws IOException {
-			if(n < buffer.remaining()) {
+			if (n < buffer.remaining()) {
 				throw new IOException(new BufferUnderflowException());
 			}
 			int pos = buffer.position();
-			buffer.position((int)(pos + n));
+			buffer.position((int) (pos + n));
 			syncPos();
 			return buffer.position() - pos;
 		}
@@ -1536,5 +1429,11 @@ public class Buffer implements Recyclable,
 			return Buffer.this;
 		}
 	}
+
+	/**
+	 * A delimiting buffer is sent to {@link reactor.io.codec.BufferCodec} and other components to signal the end of a sequence of Buffer.
+	 * @since 2.0.4
+	 */
+	private static final Buffer DELIMITING_BUFFER = new Buffer();
 
 }

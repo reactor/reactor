@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class SerializationCodec<E, IN, OUT> extends Codec<Buffer, IN, OUT> {
+public abstract class SerializationCodec<E, IN, OUT> extends BufferCodec<IN, OUT> {
 
 	private final Logger                 log   = LoggerFactory.getLogger(getClass());
 	private final Map<String, Class<IN>> types = new ConcurrentHashMap<String, Class<IN>>();

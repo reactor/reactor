@@ -28,7 +28,7 @@ import java.io.*;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class JavaSerializationCodec<T> extends Codec<Buffer, T, T> {
+public class JavaSerializationCodec<T> extends BufferCodec<T, T> {
 
 	@Override
 	public Function<Buffer, T> decoder(Consumer<T> next) {

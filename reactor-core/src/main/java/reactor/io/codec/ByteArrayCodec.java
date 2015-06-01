@@ -27,7 +27,7 @@ import reactor.io.buffer.Buffer;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class ByteArrayCodec extends Codec<Buffer, byte[], byte[]> {
+public class ByteArrayCodec extends BufferCodec<byte[], byte[]> {
 
 	@Override
 	public Function<Buffer, byte[]> decoder(final Consumer<byte[]> next) {

@@ -32,7 +32,7 @@ import reactor.io.buffer.Buffer.View;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class DelimitedCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
+public class DelimitedCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 
 	private final Codec<Buffer, IN, OUT> delegate;
 	private final boolean                stripDelimiter;

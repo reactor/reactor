@@ -21,7 +21,6 @@ import reactor.io.codec.Codec;
 import reactor.rx.stream.MapStream;
 import reactor.rx.stream.io.ChronicleReaderStream;
 import reactor.rx.stream.io.ChronicleStream;
-import reactor.rx.stream.io.DecoderStream;
 
 import java.io.IOException;
 
@@ -133,7 +132,7 @@ public class IOStreams extends Streams {
 	 * @return a Stream of decoded values
 	 */
 	public static <SRC, IN> Stream<IN> decode(Codec<SRC, IN, ?> codec, Publisher<? extends SRC> publisher){
-		return new DecoderStream<>(codec, publisher);
+		return Streams.wrap(codec.decode(publisher));
 	}
 
 

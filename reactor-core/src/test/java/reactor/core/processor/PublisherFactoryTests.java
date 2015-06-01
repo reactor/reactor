@@ -31,23 +31,25 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PublisherFactoryTests extends PublisherVerification<Long> {
 
 	public PublisherFactoryTests() {
-		super(new TestEnvironment(2000, true), 3500);
+		super(new TestEnvironment(1000, true), 1500);
 	}
-
 
 
 	@Override
 	public Publisher<Long> createPublisher(long elements) {
-		return PublisherFactory.forEach(
-				(s) -> {
-					long cursor = s.context().getAndIncrement();
-					if (cursor < elements){
-						s.onNext(cursor);
-					}else{
-						s.onComplete();
-					}
-				},
-				s -> new AtomicLong(0L)
+		return PublisherFactory.barrier(
+				PublisherFactory.<Long, AtomicLong>forEach(
+						(s) -> {
+							long cursor = s.context().getAndIncrement();
+							if (cursor < elements) {
+								s.onNext(cursor);
+							} else {
+								s.onComplete();
+							}
+						},
+						s -> new AtomicLong(0L)
+				),
+				(data, sub) -> sub.onNext(data*10)
 		);
 	}
 

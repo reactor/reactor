@@ -24,6 +24,7 @@ import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
+import reactor.io.codec.BufferCodec;
 import reactor.io.codec.Codec;
 
 import java.io.IOException;
@@ -35,7 +36,7 @@ import java.io.IOException;
  * @param <OUT> The type to encode into JSON
  * @author Jon Brisbin
  */
-public class JsonCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
+public class JsonCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 
 	private final Class<IN>    inputType;
 	private final ObjectMapper mapper;
@@ -60,7 +61,7 @@ public class JsonCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 	 */
 	@SuppressWarnings("unchecked")
 	public JsonCodec(Class<IN> inputType, Module customModule) {
-		this(inputType, customModule, DEFAULT_DELIMITER);
+		this(inputType, customModule, Codec.DEFAULT_DELIMITER);
 	}
 
 	/**

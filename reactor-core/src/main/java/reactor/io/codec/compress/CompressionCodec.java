@@ -19,6 +19,7 @@ package reactor.io.codec.compress;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
+import reactor.io.codec.BufferCodec;
 import reactor.io.codec.Codec;
 
 import java.io.*;
@@ -27,7 +28,7 @@ import java.io.*;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class CompressionCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
+public abstract class CompressionCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 
 	private final Codec<Buffer, IN, OUT> delegate;
 

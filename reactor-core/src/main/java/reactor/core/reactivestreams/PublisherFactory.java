@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * @author Stephane Maldini
  * @since 2.0.2
  */
-public class PublisherFactory<T, C> implements Publisher<T> {
+public final class PublisherFactory {
 
 	/**
 	 * Create a {@link Publisher} reacting on requests with the passed {@link BiConsumer}
@@ -66,7 +66,7 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 	 *
 	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
 	 * @param contextFactory  A {@link Function} called for every new subscriber returning an immutable context (IO
-	 *                         connection...)
+	 *                        connection...)
 	 * @param <T>             The type of the data sequence
 	 * @param <C>             The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
@@ -86,9 +86,9 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 	 *
 	 * @param requestConsumer  A {@link BiConsumer} with left argument request and right argument target subscriber
 	 * @param contextFactory   A {@link Function} called once for every new subscriber returning an immutable context
-	 *                          (IO connection...)
+	 *                         (IO connection...)
 	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(),
-	 *                          onError()
+	 *                         onError()
 	 * @param <T>              The type of the data sequence
 	 * @param <C>              The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
@@ -97,7 +97,7 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 	                                         Function<Subscriber<? super T>, C> contextFactory,
 	                                         Consumer<C> shutdownConsumer) {
 
-		return new PublisherFactory<T, C>(requestConsumer, contextFactory, shutdownConsumer);
+		return new ReactorPublisher<T, C>(requestConsumer, contextFactory, shutdownConsumer);
 	}
 
 
@@ -121,7 +121,7 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 	 *
 	 * @param requestConsumer A {@link Consumer} invoked when available read with the target subscriber
 	 * @param contextFactory  A {@link Function} called for every new subscriber returning an immutable context (IO
-	 *                         connection...)
+	 *                        connection...)
 	 * @param <T>             The type of the data sequence
 	 * @param <C>             The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
@@ -142,9 +142,9 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 	 *
 	 * @param requestConsumer  A {@link Consumer} invoked when available read with the target subscriber
 	 * @param contextFactory   A {@link Function} called once for every new subscriber returning an immutable context
-	 *                          (IO connection...)
+	 *                         (IO connection...)
 	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(),
-	 *                          onError()
+	 *                         onError()
 	 * @param <T>              The type of the data sequence
 	 * @param <C>              The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
@@ -156,27 +156,112 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 		return create(new ForEachBiConsumer<>(requestConsumer), contextFactory, shutdownConsumer);
 	}
 
-	protected final Function<Subscriber<? super T>, C>            contextFactory;
-	protected final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
-	protected final Consumer<C>                                   shutdownConsumer;
 
-	protected PublisherFactory(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
-	                           Function<Subscriber<? super T>, C> contextFactory,
-	                           Consumer<C> shutdownConsumer) {
-		Assert.notNull(requestConsumer, "A data producer must be provided");
-		this.requestConsumer = requestConsumer;
-		this.contextFactory = contextFactory;
-		this.shutdownConsumer = shutdownConsumer;
+	/**
+	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
+	 * or not
+	 * the right operand {@link Subscriber}.
+	 *
+	 * @param dataConsumer A {@link BiConsumer} with left argument onNext data and right argument output subscriber
+	 * @param <I>          The source type of the data sequence
+	 * @param <O>          The target type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <I, O> Publisher<O> barrier(Publisher<I> source, BiConsumer<I, Subscriber<? super O>> dataConsumer) {
+		return barrier(source, dataConsumer, null, null);
 	}
 
-	@Override
-	public void subscribe(final Subscriber<? super T> subscriber) {
-		try {
-			final C context = contextFactory != null ? contextFactory.apply(subscriber) : null;
-			subscriber.onSubscribe(new SubscriberProxy<>(subscriber, context, requestConsumer, shutdownConsumer));
-		} catch (Throwable throwable) {
-			Exceptions.throwIfFatal(throwable);
-			subscriber.onError(throwable);
+	/**
+	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
+	 * or not
+	 * the right operand {@link Subscriber}.
+	 *
+	 * @param dataConsumer  A {@link BiConsumer} with left argument onNext data and right argument output subscriber
+	 * @param errorConsumer A {@link BiConsumer} with left argument onError throwable and right argument output sub
+	 * @param <I>           The source type of the data sequence
+	 * @param <O>           The target type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <I, O> Publisher<O> barrier(Publisher<I> source,
+	                                          BiConsumer<I, Subscriber<? super O>> dataConsumer,
+	                                          BiConsumer<Throwable, Subscriber<? super O>> errorConsumer) {
+		return barrier(source, dataConsumer, errorConsumer, null);
+	}
+
+
+	/**
+	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
+	 * or not
+	 * the right operand {@link Subscriber}.
+	 * <p>
+	 * The argument {@code subscriptionHandler} is executed once by new subscriber to generate a context shared by every
+	 * request calls.
+	 *
+	 * @param dataConsumer     A {@link BiConsumer} with left argument onNext data and right argument output subscriber
+	 * @param errorConsumer    A {@link BiConsumer} with left argument onError throwable and right argument output sub
+	 * @param completeConsumer A {@link Consumer} called onComplete with the actual output subscriber
+	 * @param <I>              The source type of the data sequence
+	 * @param <O>              The target type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <I, O> Publisher<O> barrier(Publisher<I> source,
+	                                          final BiConsumer<I, Subscriber<? super O>> dataConsumer,
+	                                          final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer,
+	                                          final Consumer<Subscriber<? super O>> completeConsumer) {
+		return intercept(
+				source,
+				new Function<Subscriber<? super O>, SubscriberBarrier<I, O>>() {
+					@Override
+					public SubscriberBarrier<I, O> apply(final Subscriber<? super O> subscriber) {
+						return new ConsumerSubscriberBarrier<>(subscriber, dataConsumer, errorConsumer, completeConsumer);
+					}
+				}
+		);
+	}
+
+	/**
+	 * Create a {@link Publisher} intercepting all source signals with a {@link SubscriberBarrier} per Subscriber
+	 * provided by the given barrierProvider.
+	 *
+	 * @param source          A {@link Publisher} source delegate
+	 * @param barrierProvider A {@link Function} called once for every new subscriber returning a unique {@link
+	 *                        SubscriberBarrier}
+	 * @param <I>             The type of the data sequence
+	 * @param <O>             The type of contextual information to be read by the requestConsumer
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <I, O> Publisher<O> intercept(Publisher<? extends I> source,
+	                                            Function<Subscriber<? super O>, SubscriberBarrier<I, O>>
+			                                            barrierProvider) {
+		Assert.notNull(source, "A data source must be provided");
+		Assert.notNull(barrierProvider, "A barrier interceptor must be provided");
+		return new ProxyPublisher<>(source, barrierProvider);
+	}
+
+	private static final class ReactorPublisher<T, C> implements Publisher<T> {
+
+		protected final Function<Subscriber<? super T>, C>            contextFactory;
+		protected final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
+		protected final Consumer<C>                                   shutdownConsumer;
+
+		protected ReactorPublisher(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+		                           Function<Subscriber<? super T>, C> contextFactory,
+		                           Consumer<C> shutdownConsumer) {
+			Assert.notNull(requestConsumer, "A data producer must be provided");
+			this.requestConsumer = requestConsumer;
+			this.contextFactory = contextFactory;
+			this.shutdownConsumer = shutdownConsumer;
+		}
+
+		@Override
+		public void subscribe(final Subscriber<? super T> subscriber) {
+			try {
+				final C context = contextFactory != null ? contextFactory.apply(subscriber) : null;
+				subscriber.onSubscribe(new SubscriberProxy<>(subscriber, context, requestConsumer, shutdownConsumer));
+			} catch (Throwable throwable) {
+				Exceptions.throwIfFatal(throwable);
+				subscriber.onError(throwable);
+			}
 		}
 	}
 
@@ -255,6 +340,14 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 		public void onSubscribe(Subscription s) {
 			throw new UnsupportedOperationException(" the delegate subscriber is already subscribed");
 		}
+
+		@Override
+		public String toString() {
+			return context !=  null ? context.toString() : ( "SubscriberProxy{" +
+					"requestConsumer=" + requestConsumer +
+					", shutdownConsumer=" + shutdownConsumer +
+					'}');
+		}
 	}
 
 	private final static class ForEachBiConsumer<T, C> implements BiConsumer<Long, SubscriberWithContext<T, C>> {
@@ -273,19 +366,19 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 		@Override
 		public void accept(Long n, SubscriberWithContext<T, C> sub) {
 
-			if(pending == Long.MAX_VALUE){
+			if (pending == Long.MAX_VALUE) {
 				return;
 			}
 
 			long demand = n;
 			long afterAdd;
-			if(!PENDING_UPDATER.compareAndSet(this, 0L, demand)
-					&& (afterAdd = PENDING_UPDATER.addAndGet(this, demand)) != demand){
-				if(afterAdd < 0L) {
-					if(!PENDING_UPDATER.compareAndSet(this, afterAdd, Long.MAX_VALUE)){
+			if (!PENDING_UPDATER.compareAndSet(this, 0L, demand)
+					&& (afterAdd = PENDING_UPDATER.addAndGet(this, demand)) != demand) {
+				if (afterAdd < 0L) {
+					if (!PENDING_UPDATER.compareAndSet(this, afterAdd, Long.MAX_VALUE)) {
 						return;
 					}
-				}else {
+				} else {
 					return;
 				}
 			}
@@ -295,8 +388,84 @@ public class PublisherFactory<T, C> implements Publisher<T> {
 				while ((requestCursor++ < demand || demand == Long.MAX_VALUE) && !sub.isCancelled()) {
 					requestConsumer.accept(sub);
 				}
-			} while ((demand = PENDING_UPDATER.addAndGet(this, -demand)) > 0L  && !sub.isCancelled());
+			} while ((demand = PENDING_UPDATER.addAndGet(this, -demand)) > 0L && !sub.isCancelled());
 
+		}
+	}
+
+	private final static class ProxyPublisher<I, O> implements Publisher<O> {
+
+		final private Publisher<? extends I>                                   source;
+		final private Function<Subscriber<? super O>, SubscriberBarrier<I, O>> barrierProvider;
+
+		public ProxyPublisher(Publisher<? extends I> source,
+		                      Function<Subscriber<? super O>, SubscriberBarrier<I, O>> barrierProvider) {
+			this.source = source;
+			this.barrierProvider = barrierProvider;
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super O> s) {
+			source.subscribe(barrierProvider.apply(s));
+		}
+
+		@Override
+		public String toString() {
+			return "ProxyPublisher{" +
+					"source=" + source +
+					'}';
+		}
+	}
+
+	private static final class ConsumerSubscriberBarrier<I, O> extends SubscriberBarrier<I, O> {
+		private final BiConsumer<I, Subscriber<? super O>>         dataConsumer;
+		private final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer;
+		private final Consumer<Subscriber<? super O>>              completeConsumer;
+
+		public ConsumerSubscriberBarrier(Subscriber<? super O> subscriber, BiConsumer<I, Subscriber<? super O>>
+				dataConsumer, BiConsumer<Throwable, Subscriber<? super O>> errorConsumer, Consumer<Subscriber<? super O>>
+				                                 completeConsumer) {
+			super(subscriber);
+			this.dataConsumer = dataConsumer;
+			this.errorConsumer = errorConsumer;
+			this.completeConsumer = completeConsumer;
+		}
+
+		@Override
+		protected void doNext(I o) {
+			if (dataConsumer != null) {
+				dataConsumer.accept(o, subscriber);
+			} else {
+				super.doNext(o);
+			}
+		}
+
+		@Override
+		protected void doError(Throwable throwable) {
+			if (errorConsumer != null) {
+				errorConsumer.accept(throwable, subscriber);
+			} else {
+				super.doError(throwable);
+			}
+		}
+
+		@Override
+		protected void doComplete() {
+			if (completeConsumer != null) {
+				completeConsumer.accept(subscriber);
+			} else {
+				super.doComplete();
+			}
+		}
+
+		@Override
+		public String toString() {
+			return "ConsumerSubscriberBarrier{" +
+					"subscriber=" + subscriber +
+					", dataConsumer=" + dataConsumer +
+					", errorConsumer=" + errorConsumer +
+					", completeConsumer=" + completeConsumer +
+					'}';
 		}
 	}
 }

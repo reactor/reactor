@@ -16,6 +16,10 @@
 
 package reactor.io.codec;
 
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import reactor.core.reactivestreams.PublisherFactory;
+import reactor.core.reactivestreams.SubscriberBarrier;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -38,13 +42,13 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 
 	static public final byte DEFAULT_DELIMITER = (byte) '\0';
 
-	protected final Byte               delimiter;
+	protected final Byte delimiter;
 
 	/**
 	 * Create a new Codec set with a \0 delimiter to finish any Buffer encoded value or scan for delimited decoded
 	 * Buffers.
 	 */
-	public Codec() {
+	protected Codec() {
 		this(DEFAULT_DELIMITER);
 	}
 
@@ -52,10 +56,27 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 * A delimiter can be used to trail any decoded buffer or to finalize encoding from any incoming value
 	 *
 	 * @param delimiter delimiter can be left undefined (null) to bypass appending at encode time and scanning at decode
-	 *                   time.
+	 *                  time.
 	 */
-	public Codec(Byte delimiter) {
+	protected Codec(Byte delimiter) {
 		this.delimiter = delimiter;
+	}
+
+	/**
+	 * Provide the caller with a decoder to turn a source object into an instance of the input
+	 * type.
+	 *
+	 * @return The decoded object.
+	 * @since 2.0.4
+	 */
+	public Publisher<IN> decode(final Publisher<? extends SRC> publisherToDecode) {
+		return PublisherFactory.intercept(publisherToDecode,
+				new Function<Subscriber<? super IN>, SubscriberBarrier<SRC, IN>>() {
+					@Override
+					public SubscriberBarrier<SRC, IN> apply(final Subscriber<? super IN> subscriber) {
+						return new DecoderBarrier(subscriber);
+					}
+				});
 	}
 
 	/**
@@ -78,25 +99,43 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	public abstract Function<SRC, IN> decoder(Consumer<IN> next);
 
 	/**
+	 * Provide the caller with an encoder to turn an output sequence into an sequence of the source
+	 * type.
+	 *
+	 * @return The encoded source sequence.
+	 * @since 2.0.4
+	 */
+	public Publisher<SRC> encode(Publisher<? extends OUT> publisherToEncode) {
+		return PublisherFactory.intercept(publisherToEncode,
+				new Function<Subscriber<? super SRC>, SubscriberBarrier<OUT, SRC>>() {
+					@Override
+					public SubscriberBarrier<OUT, SRC> apply(final Subscriber<? super SRC> subscriber) {
+						return new EncoderBarrier(subscriber);
+					}
+				});
+	}
+
+	/**
 	 * Provide the caller with an encoder to turn an output object into an instance of the source
 	 * type.
 	 *
 	 * @return The encoded source object.
 	 */
-	public Function<OUT, SRC> encoder(){
+	public Function<OUT, SRC> encoder() {
 		return this;
 	}
 
 	/**
 	 * Helper method to scan for delimiting byte the codec might benefit from, e.g. JSON codec.
 	 * A DelimitedCodec or alike will obviously not require to make use of that helper as it is already delimiting.
+	 *
 	 * @param decoderCallback
 	 * @param buffer
 	 * @return a value if no callback is supplied and there is only one delimited buffer
 	 */
 	protected IN doDelimitedBufferDecode(Consumer<IN> decoderCallback, Buffer buffer) {
 		//split using the delimiter
-		if(delimiter != null) {
+		if (delimiter != null) {
 			List<Buffer.View> views = buffer.split(delimiter);
 			int viewCount = views.size();
 
@@ -104,19 +143,19 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 
 			for (Buffer.View view : views) {
 				IN in = invokeCallbackOrReturn(decoderCallback, doBufferDecode(view.get()));
-				if(in != null) return in;
+				if (in != null) return in;
 			}
 			return null;
-		}else{
+		} else {
 			return invokeCallbackOrReturn(decoderCallback, doBufferDecode(buffer));
 		}
 	}
 
-	protected static <IN> IN invokeCallbackOrReturn(Consumer<IN> consumer, IN v){
-		if(consumer != null){
+	protected static <IN> IN invokeCallbackOrReturn(Consumer<IN> consumer, IN v) {
+		if (consumer != null) {
 			consumer.accept(v);
 			return null;
-		}else{
+		} else {
 			return v;
 		}
 
@@ -124,6 +163,7 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 
 	/**
 	 * Decode a buffer
+	 *
 	 * @param buffer
 	 * @return
 	 */
@@ -133,15 +173,48 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 
 	/**
 	 * Add a trailing delimiter if defined
+	 *
 	 * @param buffer the buffer to prepend to this codec delimiter if any
 	 * @return the positioned and expanded buffer reference if any delimiter, otherwise the passed buffer
 	 */
-	protected Buffer addDelimiterIfAny(Buffer buffer){
-		if(delimiter != null) {
+	protected Buffer addDelimiterIfAny(Buffer buffer) {
+		if (delimiter != null) {
 			return buffer.append(delimiter).flip();
-		}else{
+		} else {
 			return buffer;
 		}
 	}
 
+	private final class DecoderBarrier extends SubscriberBarrier<SRC, IN> {
+		final Function<SRC, IN> decoder;
+
+		public DecoderBarrier(Subscriber<? super IN> subscriber) {
+			super(subscriber);
+			decoder = decoder(new Consumer<IN>() {
+				@Override
+				public void accept(IN in) {
+					subscriber.onNext(in);
+				}
+			});
+		}
+
+		@Override
+		protected void doNext(SRC src) {
+			decoder.apply(src);
+		}
+	}
+
+	private class EncoderBarrier extends SubscriberBarrier<OUT, SRC> {
+		final private Function<OUT, SRC> encoder;
+
+		public EncoderBarrier(Subscriber<? super SRC> subscriber) {
+			super(subscriber);
+			encoder = encoder();
+		}
+
+		@Override
+		protected void doNext(OUT src) {
+			subscriber.onNext(encoder.apply(src));
+		}
+	}
 }

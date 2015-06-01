@@ -26,6 +26,10 @@ public final class SpecificationExceptions {
 				"(based on object equality)");
 	}
 
+	public static NullPointerException spec_2_13_exception(){
+		return new NullPointerException("Spec 2.13: Signal cannot be null");
+	}
+
 	public static IllegalArgumentException spec_3_09_exception(long elements) {
 		return new IllegalArgumentException("Spec. Rule 3.9 - Cannot request a non strictly positive number: " + elements);
 	}

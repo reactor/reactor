@@ -3,6 +3,7 @@ package reactor.core.processor.util;
 import org.reactivestreams.Subscriber;
 import reactor.core.processor.MutableSignal;
 import reactor.core.support.Exceptions;
+import reactor.core.support.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.*;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -19,7 +20,7 @@ public final class RingBufferSubscriberUtils {
 
 	public static <E> void onNext(E value, RingBuffer<MutableSignal<E>> ringBuffer) {
 		if (value == null) {
-			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
 		final long seqId = ringBuffer.next();
@@ -32,7 +33,7 @@ public final class RingBufferSubscriberUtils {
 
 	public static <E> void onError(Throwable error, RingBuffer<MutableSignal<E>> ringBuffer) {
 		if (error == null) {
-			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
 		final long seqId = ringBuffer.next();

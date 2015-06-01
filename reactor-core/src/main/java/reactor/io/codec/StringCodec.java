@@ -32,7 +32,7 @@ import java.util.List;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class StringCodec extends Codec<Buffer, String, String> {
+public class StringCodec extends BufferCodec<String, String> {
 
 	private final Charset        charset;
 
@@ -89,6 +89,10 @@ public class StringCodec extends Codec<Buffer, String, String> {
 		private StringDecoder(Consumer<String> next) {
 			this.next = next;
 			this.decoder = charset.newDecoder();
+		}
+
+		protected String doBufferDecode(Buffer buffer) {
+			return decode(buffer, decoder);
 		}
 
 		@Override

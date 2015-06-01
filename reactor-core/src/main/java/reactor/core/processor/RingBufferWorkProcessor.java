@@ -59,7 +59,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> create() {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				BlockingWaitStrategy(), true);
+				LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -74,7 +74,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(boolean autoCancel) {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				BlockingWaitStrategy(), autoCancel);
+				LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
@@ -88,7 +88,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service) {
-		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), true);
+		return create(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -104,7 +104,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service, boolean autoCancel) {
-		return create(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), autoCancel);
+		return create(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 
@@ -121,7 +121,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize) {
-		return create(name, bufferSize, new BlockingWaitStrategy(), true);
+		return create(name, bufferSize, new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -138,7 +138,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, boolean autoCancel) {
-		return create(name, bufferSize, new BlockingWaitStrategy(), autoCancel);
+		return create(name, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 
@@ -155,7 +155,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service, int bufferSize) {
-		return create(service, bufferSize, new BlockingWaitStrategy(), true);
+		return create(service, bufferSize, new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -172,7 +172,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service, int bufferSize, boolean autoCancel) {
-		return create(service, bufferSize, new BlockingWaitStrategy(), autoCancel);
+		return create(service, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 
@@ -185,7 +185,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 *
 	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default LiteBlockingWaitStrategy.
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -203,7 +203,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 *
 	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default LiteBlockingWaitStrategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
@@ -222,7 +222,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 *
 	 * @param executor   A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default LiteBlockingWaitStrategy.
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -240,7 +240,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 *
 	 * @param executor   A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default LiteBlockingWaitStrategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
@@ -264,7 +264,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> share() {
 		return share(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				BlockingWaitStrategy(), true);
+				LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -282,7 +282,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(boolean autoCancel) {
 		return share(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				BlockingWaitStrategy(), autoCancel);
+				LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
@@ -296,7 +296,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService service) {
-		return share(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), true);
+		return share(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -315,7 +315,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService service, boolean autoCancel) {
-		return share(service, SMALL_BUFFER_SIZE, new BlockingWaitStrategy(), autoCancel);
+		return share(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 
@@ -335,7 +335,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(String name, int bufferSize) {
-		return share(name, bufferSize, new BlockingWaitStrategy(), true);
+		return share(name, bufferSize, new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -355,7 +355,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(String name, int bufferSize, boolean autoCancel) {
-		return share(name, bufferSize, new BlockingWaitStrategy(), autoCancel);
+		return share(name, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 
@@ -375,7 +375,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService service, int bufferSize) {
-		return share(service, bufferSize, new BlockingWaitStrategy(), true);
+		return share(service, bufferSize, new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -395,7 +395,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService service, int bufferSize, boolean autoCancel) {
-		return share(service, bufferSize, new BlockingWaitStrategy(), autoCancel);
+		return share(service, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 
@@ -411,7 +411,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 *
 	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default LiteBlockingWaitStrategy.
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -432,7 +432,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 *
 	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default LiteBlockingWaitStrategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
@@ -454,7 +454,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 *
 	 * @param executor   A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default LiteBlockingWaitStrategy.
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -475,7 +475,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 *
 	 * @param executor   A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default LiteBlockingWaitStrategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor

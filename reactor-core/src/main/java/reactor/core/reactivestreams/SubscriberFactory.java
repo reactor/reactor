@@ -22,6 +22,7 @@ import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.core.support.Exceptions;
 import reactor.core.support.NonBlocking;
+import reactor.core.support.SpecificationExceptions;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -47,7 +48,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  * @since 2.0.3
  */
-public class SubscriberFactory<T, C> implements Subscriber<T>, NonBlocking, Subscription {
+public final class SubscriberFactory {
 
 	/**
 	 * Create a {@link Subscriber} reacting onSubscribe with the passed {@link Consumer}
@@ -201,7 +202,7 @@ public class SubscriberFactory<T, C> implements Subscriber<T>, NonBlocking, Subs
 	                                          BiConsumer<Throwable, C> errorConsumer,
 	                                          Consumer<C> completeConsumer) {
 
-		return new SubscriberFactory<T, C>(dataConsumer, subscriptionHandler, errorConsumer, completeConsumer);
+		return new ReactorSubscriber<T, C>(dataConsumer, subscriptionHandler, errorConsumer, completeConsumer);
 	}
 
 	private static final Function<Subscription, Void> UNBOUNDED_REQUEST_FUNCTION = new Function<Subscription, Void>() {
@@ -212,124 +213,116 @@ public class SubscriberFactory<T, C> implements Subscriber<T>, NonBlocking, Subs
 		}
 	};
 
-	protected final Function<Subscription, C>                 subscriptionHandler;
-	protected final BiConsumer<T, SubscriptionWithContext<C>> dataConsumer;
-	protected final BiConsumer<Throwable, C>                  errorConsumer;
-	protected final Consumer<C>                               completeConsumer;
+	private static final class ReactorSubscriber<T, C> implements Subscriber<T>, NonBlocking {
 
-	private SubscriptionWithContext<C> subscriptionWithContext;
+		protected final Function<Subscription, C>                 subscriptionHandler;
+		protected final BiConsumer<T, SubscriptionWithContext<C>> dataConsumer;
+		protected final BiConsumer<Throwable, C>                  errorConsumer;
+		protected final Consumer<C>                               completeConsumer;
 
-	protected SubscriberFactory(BiConsumer<T, SubscriptionWithContext<C>> dataConsumer,
-	                            Function<Subscription, C> subscriptionHandler,
-	                            BiConsumer<Throwable, C> errorConsumer,
-	                            Consumer<C> completeConsumer) {
-		Assert.notNull(subscriptionHandler, "A subscription handler must be provided");
-		this.dataConsumer = dataConsumer;
-		this.subscriptionHandler = subscriptionHandler;
-		this.errorConsumer = errorConsumer;
-		this.completeConsumer = completeConsumer;
-	}
+		private SubscriptionWithContext<C> subscriptionWithContext;
 
-	@Override
-	public void onSubscribe(Subscription s) {
-		if (s == null) {
-			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+		protected ReactorSubscriber(BiConsumer<T, SubscriptionWithContext<C>> dataConsumer,
+		                            Function<Subscription, C> subscriptionHandler,
+		                            BiConsumer<Throwable, C> errorConsumer,
+		                            Consumer<C> completeConsumer) {
+			Assert.notNull(subscriptionHandler, "A subscription handler must be provided");
+			this.dataConsumer = dataConsumer;
+			this.subscriptionHandler = subscriptionHandler;
+			this.errorConsumer = errorConsumer;
+			this.completeConsumer = completeConsumer;
 		}
-		try {
-			if (subscriptionWithContext != null) {
-				s.cancel();
-				return;
-			}
 
-			final AtomicLong proxyRequest = new AtomicLong();
-			final C context = subscriptionHandler.apply(new Subscription() {
-				@Override
-				public void request(long n) {
-					if (subscriptionWithContext == null && proxyRequest.get() != Long.MIN_VALUE) {
-						proxyRequest.addAndGet(n);
-					} else {
-						subscriptionWithContext.request(n);
-					}
+		@Override
+		public void onSubscribe(Subscription s) {
+			if (s == null) {
+				throw SpecificationExceptions.spec_2_13_exception();
+			}
+			try {
+				if (subscriptionWithContext != null) {
+					s.cancel();
+					return;
 				}
 
-				@Override
-				public void cancel() {
-					if (subscriptionWithContext == null) {
-						proxyRequest.set(Long.MIN_VALUE);
-					} else {
-						subscriptionWithContext.cancel();
+				final AtomicLong proxyRequest = new AtomicLong();
+				final C context = subscriptionHandler.apply(new Subscription() {
+					@Override
+					public void request(long n) {
+						if (subscriptionWithContext == null && proxyRequest.get() != Long.MIN_VALUE) {
+							proxyRequest.addAndGet(n);
+						} else {
+							subscriptionWithContext.request(n);
+						}
 					}
+
+					@Override
+					public void cancel() {
+						if (subscriptionWithContext == null) {
+							proxyRequest.set(Long.MIN_VALUE);
+						} else {
+							subscriptionWithContext.cancel();
+						}
+					}
+				});
+
+				this.subscriptionWithContext = SubscriptionWithContext.create(s, context);
+				if (proxyRequest.compareAndSet(Long.MIN_VALUE, 0)) {
+					subscriptionWithContext.cancel();
+				} else if (proxyRequest.get() > 0) {
+					subscriptionWithContext.request(proxyRequest.get());
 				}
-			});
-
-			this.subscriptionWithContext = SubscriptionWithContext.create(s, context);
-			if (proxyRequest.compareAndSet(Long.MIN_VALUE, 0)) {
-				subscriptionWithContext.cancel();
-			} else if (proxyRequest.get() > 0) {
-				subscriptionWithContext.request(proxyRequest.get());
+			} catch (Throwable throwable) {
+				Exceptions.throwIfFatal(throwable);
+				onError(throwable);
 			}
-		} catch (Throwable throwable) {
-			Exceptions.throwIfFatal(throwable);
-			onError(throwable);
+
 		}
 
-	}
-
-	@Override
-	public void onNext(T t) {
-		if (t == null) {
-			throw new NullPointerException("Spec 2.13: Signal cannot be null");
-		}
-		if (dataConsumer != null) {
-			try {
-				dataConsumer.accept(t, subscriptionWithContext);
-			} catch (Throwable error) {
-				onError(error);
+		@Override
+		public void onNext(T t) {
+			if (t == null) {
+				throw SpecificationExceptions.spec_2_13_exception();
+			}
+			if (dataConsumer != null) {
+				try {
+					dataConsumer.accept(t, subscriptionWithContext);
+				} catch (Throwable error) {
+					onError(error);
+				}
 			}
 		}
-	}
 
-	@Override
-	public void onError(Throwable t) {
-		if (errorConsumer != null) {
-			errorConsumer.accept(t, subscriptionWithContext != null ? subscriptionWithContext.context : null);
-		} else if (Environment.alive()) {
-			Environment.get().routeError(t);
-		}
-	}
-
-	@Override
-	public void onComplete() {
-		if (completeConsumer != null) {
-			try {
-				completeConsumer.accept(subscriptionWithContext != null ? subscriptionWithContext.context : null);
-			} catch (Throwable t) {
-				onError(t);
+		@Override
+		public void onError(Throwable t) {
+			if ( t  == null){
+				throw SpecificationExceptions.spec_2_13_exception();
+			}
+			if (errorConsumer != null) {
+				errorConsumer.accept(t, subscriptionWithContext != null ? subscriptionWithContext.context : null);
+			} else if (Environment.alive()) {
+				Environment.get().routeError(t);
 			}
 		}
-	}
 
-	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
-		return false;
-	}
-
-	@Override
-	public long getCapacity() {
-		return Long.MAX_VALUE;
-	}
-
-	@Override
-	public void request(long n) {
-		if (subscriptionWithContext != null) {
-
+		@Override
+		public void onComplete() {
+			if (completeConsumer != null) {
+				try {
+					completeConsumer.accept(subscriptionWithContext != null ? subscriptionWithContext.context : null);
+				} catch (Throwable t) {
+					onError(t);
+				}
+			}
 		}
-	}
 
-	@Override
-	public void cancel() {
-		if (subscriptionWithContext != null) {
+		@Override
+		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+			return false;
+		}
 
+		@Override
+		public long getCapacity() {
+			return Long.MAX_VALUE;
 		}
 	}
 }
