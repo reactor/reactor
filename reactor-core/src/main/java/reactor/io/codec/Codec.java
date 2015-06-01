@@ -188,7 +188,7 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	private final class DecoderBarrier extends SubscriberBarrier<SRC, IN> {
 		final Function<SRC, IN> decoder;
 
-		public DecoderBarrier(Subscriber<? super IN> subscriber) {
+		public DecoderBarrier(final Subscriber<? super IN> subscriber) {
 			super(subscriber);
 			decoder = decoder(new Consumer<IN>() {
 				@Override
@@ -207,7 +207,7 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	private class EncoderBarrier extends SubscriberBarrier<OUT, SRC> {
 		final private Function<OUT, SRC> encoder;
 
-		public EncoderBarrier(Subscriber<? super SRC> subscriber) {
+		public EncoderBarrier(final Subscriber<? super SRC> subscriber) {
 			super(subscriber);
 			encoder = encoder();
 		}
