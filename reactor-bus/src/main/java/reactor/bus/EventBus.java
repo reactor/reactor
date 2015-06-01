@@ -257,7 +257,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 *
 	 * @return The {@link Registry} in use.
 	 */
-	public Registry<?, Consumer<? extends Event<?>>> getConsumerRegistry() {
+	public Registry<Object, Consumer<? extends Event<?>>> getConsumerRegistry() {
 		return consumerRegistry;
 	}
 
