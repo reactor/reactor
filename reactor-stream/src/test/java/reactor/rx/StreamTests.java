@@ -836,8 +836,8 @@ public class StreamTests extends AbstractReactorTest {
 						.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
 						.consume(items -> {
 							batchesDistribution.compute(items.size(),
-									(key,
-									 value) -> value == null ? 1 : value + 1);
+							                            (key,
+							                             value) -> value == null ? 1 : value + 1);
 							items.forEach(item -> latch.countDown());
 						}));
 
@@ -873,16 +873,16 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<Integer> s = Streams.just("2222")
 				.map(Integer::parseInt)
 				.flatMap(l ->
-								Streams.<Integer>merge(
-										globalFeed,
-										Streams.just(1111, l, 3333, 4444, 5555, 6666)
-								)
-										.log("merged")
-										.dispatchOn(env)
-										.log("dispatched")
-										.observeSubscribe(x -> afterSubscribe.countDown())
-										.filter(nearbyLoc -> 3333 >= nearbyLoc)
-										.filter(nearbyLoc -> 2222 <= nearbyLoc)
+						         Streams.<Integer>merge(
+								         globalFeed,
+								         Streams.just(1111, l, 3333, 4444, 5555, 6666)
+						         )
+						                .log("merged")
+						                .dispatchOn(env)
+						                .log("dispatched")
+						                .observeSubscribe(x -> afterSubscribe.countDown())
+						                .filter(nearbyLoc -> 3333 >= nearbyLoc)
+						                .filter(nearbyLoc -> 2222 <= nearbyLoc)
 
 				);
 
@@ -999,7 +999,7 @@ public class StreamTests extends AbstractReactorTest {
 								.dispatchOn(env.getCachedDispatcher())
 								.map(v -> v)
 								.consume(v -> countDownLatch.countDown(),
-										Throwable::printStackTrace)
+								         Throwable::printStackTrace)
 		);
 
 		countDownLatch.await(5, TimeUnit.SECONDS);
@@ -1338,6 +1338,24 @@ public class StreamTests extends AbstractReactorTest {
 		assertThat("EventBus Consumer has been invoked", latch1.await(1, TimeUnit.SECONDS), is(true));
 		assertThat("Stream map Function has been invoked", latch2.getCount(), is(0L));
 		assertThat("BarrierStreams has published downstream", latch3.await(1, TimeUnit.SECONDS), is(true));
+	}
+
+	// test issue https://github.com/reactor/reactor/issues/485
+	@Test
+	public void promiseOnErrorHandlesExceptions() throws Exception {
+		Environment.initializeIfEmpty().assignErrorJournal();
+
+		CountDownLatch latch1 = new CountDownLatch(1);
+		CountDownLatch latch2 = new CountDownLatch(1);
+
+		Promises.task(Environment.get(), Environment.sharedDispatcher(), () -> {
+			throw new RuntimeException("Some Exception");
+		}).
+				        onError(t -> latch1.countDown()).
+				        onSuccess(s -> latch2.countDown());
+
+		assertThat("Error latch was counted down", latch1.await(1, TimeUnit.SECONDS), is(true));
+		assertThat("Complete latch was not counted down", latch2.getCount(), is(1L));
 	}
 
 	private static final Function<Integer, Integer> IDENTITY_FUNCTION = new Function<Integer, Integer>() {

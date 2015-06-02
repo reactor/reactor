@@ -16,15 +16,25 @@
 
 package reactor.rx;
 
+import org.reactivestreams.Publisher;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.core.reactivestreams.PublisherFactory;
+import reactor.core.reactivestreams.SubscriberWithContext;
 import reactor.core.support.Assert;
+import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
-import reactor.fn.tuple.*;
+import reactor.fn.tuple.Tuple;
+import reactor.fn.tuple.Tuple2;
+import reactor.fn.tuple.Tuple3;
+import reactor.fn.tuple.Tuple4;
+import reactor.fn.tuple.Tuple5;
+import reactor.fn.tuple.Tuple6;
+import reactor.fn.tuple.Tuple7;
+import reactor.fn.tuple.Tuple8;
 import reactor.rx.action.combination.MergeAction;
-import reactor.rx.stream.SupplierStream;
 
 import java.util.Arrays;
 import java.util.List;
@@ -106,10 +116,17 @@ public final class Promises {
 	 * @return A {@link Promise}.
 	 */
 	public static <T> Promise<T> task(Environment env, Dispatcher dispatcher, Supplier<T> supplier) {
-		SupplierStream<T> supplierStream = new SupplierStream<T>(dispatcher, supplier);
-		Promise<T> promise = new Promise<T>(dispatcher, env);
-		supplierStream.subscribe(promise);
-		return promise;
+		Publisher<T> p = PublisherFactory.forEach(new Consumer<SubscriberWithContext<T, Void>>() {
+			@Override
+			public void accept(SubscriberWithContext<T, Void> sub) {
+				sub.onNext(supplier.get());
+				sub.onComplete();
+			}
+		});
+		return Streams.wrap(p)
+		              .env(env)
+		              .subscribeOn(dispatcher)
+		              .next();
 	}
 
 	/**
