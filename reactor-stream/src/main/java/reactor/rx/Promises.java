@@ -115,7 +115,7 @@ public final class Promises {
 	 * @param <T>        type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> task(Environment env, Dispatcher dispatcher, Supplier<T> supplier) {
+	public static <T> Promise<T> task(Environment env, Dispatcher dispatcher, final Supplier<T> supplier) {
 		Publisher<T> p = PublisherFactory.forEach(new Consumer<SubscriberWithContext<T, Void>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Void> sub) {
