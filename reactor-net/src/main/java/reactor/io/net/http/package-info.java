@@ -15,6 +15,6 @@
  */
 
 /**
- * Components for writing HHTP-based clients and servers using Reactor abstractions.
+ * Components for writing HTTP-based clients and servers using Reactor abstractions.
  */
 package reactor.io.net.http;
