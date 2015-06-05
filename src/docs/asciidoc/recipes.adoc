@@ -33,7 +33,7 @@ Publisher<String> fileStream = new Publisher<String>() { // <1>
 							line = is.readLine();
 							if (line != null) {
 								subscriber.onNext(line);
-							} else 
+							} else {
 								if(terminate()){									
 									subscriber.onComplete(); // <5>
 								}
