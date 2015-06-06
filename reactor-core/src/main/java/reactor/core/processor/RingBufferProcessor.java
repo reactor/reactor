@@ -499,29 +499,50 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, true, autoCancel);
 	}
 
+	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, WaitStrategy strategy, Class<E> valueClazz) {
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, true, valueClazz);
+	}
 
 	private final SequenceBarrier              barrier;
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 	private final Sequence                     recentSequence;
 
 	private RingBufferProcessor(String name,
+								ExecutorService executor,
+								int bufferSize,
+								WaitStrategy waitStrategy,
+								boolean shared,
+								boolean autoCancel) {
+		this(name, executor, bufferSize, waitStrategy, shared, autoCancel, null);
+	}
+
+	private RingBufferProcessor(String name,
 	                            ExecutorService executor,
 	                            int bufferSize,
 	                            WaitStrategy waitStrategy,
 	                            boolean shared,
-	                            boolean autoCancel) {
+	                            boolean autoCancel,
+								final Class<E> valueClazz) {
 		super(name, executor, autoCancel);
 
 		this.ringBuffer = RingBuffer.create(
-		  shared ? ProducerType.MULTI : ProducerType.SINGLE,
-		  new EventFactory<MutableSignal<E>>() {
-			  @Override
-			  public MutableSignal<E> newInstance() {
-				  return new MutableSignal<E>();
-			  }
-		  },
-		  bufferSize,
-		  waitStrategy
+				shared ? ProducerType.MULTI : ProducerType.SINGLE,
+				new EventFactory<MutableSignal<E>>() {
+					@Override
+					public MutableSignal<E> newInstance() {
+						MutableSignal<E> signal = new MutableSignal<>();
+						if (valueClazz != null) {
+							try {
+								signal.value = valueClazz.newInstance();
+							} catch (Exception e) {
+								throw new RuntimeException(e);
+							}
+						}
+						return signal;
+					}
+				},
+				bufferSize,
+				waitStrategy
 		);
 
 		this.recentSequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
@@ -575,6 +596,14 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	@Override
 	public void onNext(E o) {
 		RingBufferSubscriberUtils.onNext(o, ringBuffer);
+	}
+
+	public MutableSignal<E> reserveNext() {
+		return RingBufferSubscriberUtils.prepareNext(ringBuffer);
+	}
+
+	public void publish(MutableSignal<E> signal) {
+		RingBufferSubscriberUtils.publish(ringBuffer, signal);
 	}
 
 	@Override

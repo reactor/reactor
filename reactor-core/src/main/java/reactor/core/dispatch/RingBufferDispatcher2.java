@@ -3,6 +3,7 @@ package reactor.core.dispatch;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
+import reactor.core.processor.MutableSignal;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.Consumer;
 import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
@@ -17,25 +18,13 @@ public class RingBufferDispatcher2 implements Dispatcher {
 
     private final RingBufferProcessor<Task> processor;
 
-    static class Task<E> {
+    public static class Task<E> {
 
         Consumer<E> eventConsumer;
 
         Consumer<Throwable> errorConsumer;
 
         E data;
-
-        public void setData(E data) {
-            this.data = data;
-        }
-
-        public void setEventConsumer(Consumer<E> eventConsumer) {
-            this.eventConsumer = eventConsumer;
-        }
-
-        public void setErrorConsumer(Consumer<Throwable> errorConsumer) {
-            this.errorConsumer = errorConsumer;
-        }
 
     }
 
@@ -50,7 +39,7 @@ public class RingBufferDispatcher2 implements Dispatcher {
             throw new IllegalArgumentException();
         }
 
-        this.processor = RingBufferProcessor.share(name, bufferSize, waitStrategy);
+        this.processor = RingBufferProcessor.share(name, bufferSize, waitStrategy, Task.class);
         this.processor.subscribe(new Subscriber<Task>() {
 
             @Override
@@ -80,12 +69,14 @@ public class RingBufferDispatcher2 implements Dispatcher {
 
     @Override
     public <E> void dispatch(E data, Consumer<E> eventConsumer, Consumer<Throwable> errorConsumer) {
-        Task<E> task = new Task<E>();
-        task.setEventConsumer(eventConsumer);
-        task.setErrorConsumer(errorConsumer);
-        task.setData(data);
+        MutableSignal<Task> signal = processor.reserveNext();
 
-        processor.onNext(task);
+        Task<E> task = signal.value;
+        task.eventConsumer = eventConsumer;
+        task.errorConsumer = errorConsumer;
+        task.data = data;
+
+        processor.publish(signal);
     }
 
     @Override
