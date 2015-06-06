@@ -29,8 +29,20 @@ public final class RingBufferSubscriberUtils {
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
 		signal.type = MutableSignal.Type.NEXT;
 		signal.value = value;
+		signal.seqId = seqId;
 
 		ringBuffer.publish(seqId);
+	}
+
+	public static <E> MutableSignal<E> prepareNext(RingBuffer<MutableSignal<E>> ringBuffer) {
+		final long seqId = ringBuffer.next();
+		final MutableSignal<E> signal = ringBuffer.get(seqId);
+		signal.seqId = seqId;
+		return signal;
+	}
+
+	public static <E> void publish(RingBuffer<MutableSignal<E>> ringBuffer, MutableSignal<E> signal) {
+		ringBuffer.publish(signal.seqId);
 	}
 
 	public static <E> void onError(Throwable error, RingBuffer<MutableSignal<E>> ringBuffer) {
