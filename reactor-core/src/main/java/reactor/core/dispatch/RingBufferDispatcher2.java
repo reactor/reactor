@@ -3,9 +3,10 @@ package reactor.core.dispatch;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.core.processor.MutableSignal;
+import reactor.core.processor.ImmutableSignal;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.Consumer;
+import reactor.fn.Supplier;
 import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
@@ -39,7 +40,13 @@ public class RingBufferDispatcher2 implements Dispatcher {
             throw new IllegalArgumentException();
         }
 
-        this.processor = RingBufferProcessor.share(name, bufferSize, waitStrategy, Task.class);
+        this.processor = RingBufferProcessor.share(name, bufferSize, waitStrategy, new Supplier<Task>() {
+            @Override
+            public Task get() {
+                return new Task();
+            }
+        });
+
         this.processor.subscribe(new Subscriber<Task>() {
 
             @Override
@@ -69,24 +76,31 @@ public class RingBufferDispatcher2 implements Dispatcher {
 
     @Override
     public <E> void dispatch(E data, Consumer<E> eventConsumer, Consumer<Throwable> errorConsumer) {
-        MutableSignal<Task> signal = processor.reserveNext();
+        ImmutableSignal<Task> signal = processor.next();
 
-        Task<E> task = signal.value;
+        Task<E> task = signal.getValue();
+        task.data = data;
         task.eventConsumer = eventConsumer;
         task.errorConsumer = errorConsumer;
-        task.data = data;
 
         processor.publish(signal);
     }
 
     @Override
     public <E> void tryDispatch(E data, Consumer<E> eventConsumer, Consumer<Throwable> errorConsumer) throws InsufficientCapacityException {
+        ImmutableSignal<Task> signal = processor.tryNext();
 
+        Task<E> task = signal.getValue();
+        task.data = data;
+        task.eventConsumer = eventConsumer;
+        task.errorConsumer = errorConsumer;
+
+        processor.publish(signal);
     }
 
     @Override
     public long remainingSlots() {
-        return 0;
+        return processor.remainingCapacity();
     }
 
     @Override
@@ -96,7 +110,7 @@ public class RingBufferDispatcher2 implements Dispatcher {
 
     @Override
     public boolean supportsOrdering() {
-        return false;
+        return true;
     }
 
     @Override
@@ -105,13 +119,18 @@ public class RingBufferDispatcher2 implements Dispatcher {
     }
 
     @Override
-    public void execute(Runnable command) {
-
+    public void execute(final Runnable command) {
+        dispatch(null, new Consumer<Task>() {
+            @Override
+            public void accept(Task task) {
+                command.run();
+            }
+        }, null);
     }
 
     @Override
     public boolean alive() {
-        return false;
+        return processor.alive();
     }
 
     @Override
@@ -121,15 +140,16 @@ public class RingBufferDispatcher2 implements Dispatcher {
 
     @Override
     public boolean awaitAndShutdown() {
-        return false;
+        return processor.awaitAndShutdown();
     }
 
     @Override
     public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
-        return false;
+        return processor.awaitAndShutdown(timeout, timeUnit);
     }
 
     @Override
     public void forceShutdown() {
+        processor.forceShutdown();
     }
 }
