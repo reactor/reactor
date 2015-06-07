@@ -30,11 +30,13 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends AsyncProcessor<I
 
 	protected final ExecutorService executor;
 
+	private final ClassLoader contextClassLoader = new ClassLoader(Thread.currentThread().getContextClassLoader()) {};
+
 	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {
 		super(autoCancel);
 
 		this.executor = executor == null
-				? SingleUseExecutor.create(name)
+				? SingleUseExecutor.create(name, contextClassLoader)
 				: executor;
 	}
 
@@ -82,6 +84,10 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends AsyncProcessor<I
 			Exceptions.throwIfFatal(t);
 			onError(t);
 		}
+	}
+
+	public boolean isInContext() {
+		return Thread.currentThread().getContextClassLoader() == contextClassLoader;
 	}
 
 }
