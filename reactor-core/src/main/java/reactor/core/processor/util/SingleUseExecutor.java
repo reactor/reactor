@@ -29,7 +29,12 @@ public final class SingleUseExecutor implements ExecutorService{
 	final private ExecutorService delegate;
 
 	public static ExecutorService create(String name){
-		return new SingleUseExecutor(Executors.newCachedThreadPool(new NamedDaemonThreadFactory(name, null, null, false)));
+		return create(name, null);
+	}
+
+	public static ExecutorService create(String name, ClassLoader contextClassLoader) {
+		return new SingleUseExecutor(Executors.newCachedThreadPool(
+				new NamedDaemonThreadFactory(name, contextClassLoader, null, false)));
 	}
 
 	public static ExecutorService wrap(ExecutorService delegate){
