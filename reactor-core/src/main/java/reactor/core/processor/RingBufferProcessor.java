@@ -18,10 +18,9 @@ package reactor.core.processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
-import reactor.core.error.CancelException;
-import reactor.core.error.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
@@ -499,8 +498,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, true, autoCancel);
 	}
 
-	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, WaitStrategy strategy, Class<E> valueClazz) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, true, valueClazz);
+	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, WaitStrategy strategy, Supplier<E> supplier) {
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, true, supplier);
 	}
 
 	private final SequenceBarrier              barrier;
@@ -522,7 +521,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	                            WaitStrategy waitStrategy,
 	                            boolean shared,
 	                            boolean autoCancel,
-								final Class<E> valueClazz) {
+								final Supplier<E> supplier) {
 		super(name, executor, autoCancel);
 
 		this.ringBuffer = RingBuffer.create(
@@ -531,12 +530,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 					@Override
 					public MutableSignal<E> newInstance() {
 						MutableSignal<E> signal = new MutableSignal<>();
-						if (valueClazz != null) {
-							try {
-								signal.value = valueClazz.newInstance();
-							} catch (Exception e) {
-								throw new RuntimeException(e);
-							}
+						if (supplier != null) {
+							signal.value = supplier.get();
 						}
 						return signal;
 					}
@@ -598,12 +593,16 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		RingBufferSubscriberUtils.onNext(o, ringBuffer);
 	}
 
-	public MutableSignal<E> reserveNext() {
-		return RingBufferSubscriberUtils.prepareNext(ringBuffer);
+	public ImmutableSignal<E> next() {
+		return RingBufferSubscriberUtils.next(ringBuffer);
 	}
 
-	public void publish(MutableSignal<E> signal) {
-		RingBufferSubscriberUtils.publish(ringBuffer, signal);
+	public ImmutableSignal<E> tryNext() throws reactor.core.dispatch.InsufficientCapacityException {
+		return RingBufferSubscriberUtils.tryNext(ringBuffer);
+	}
+
+	public void publish(ImmutableSignal<E> signal) {
+		RingBufferSubscriberUtils.publish(ringBuffer, (MutableSignal<E>)signal);
 	}
 
 	@Override
@@ -703,6 +702,10 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	@Override
 	public long getCapacity() {
 		return ringBuffer.getBufferSize();
+	}
+
+	public long remainingCapacity() {
+		return ringBuffer.remainingCapacity();
 	}
 
 	/**
