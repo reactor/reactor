@@ -39,7 +39,7 @@ public abstract class UUIDUtils {
 			IS_THREADLOCALRANDOM_AVAILABLE = null != UUIDUtils.class.getClassLoader().loadClass(
 					"java.util.concurrent.ThreadLocalRandom"
 			);
-		} catch(ClassNotFoundException e) {
+		} catch(Throwable t) {
 		}
 
 		byte[] seed = new SecureRandom().generateSeed(8);
