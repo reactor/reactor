@@ -75,8 +75,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	public void addPublisher(Publisher<? extends I> publisher) {
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
-		inlineMerge.pendingRequests = innerSubscriptions.pendingRequestSignals() / (innerSubscriptions.runningComposables
-				+ 1);
+		inlineMerge.pendingRequests = innerSubscriptions.pendingRequestSignals() / (Math.max(innerSubscriptions.runningComposables, 0) + 1);
 		publisher.subscribe(inlineMerge);
 	}
 
