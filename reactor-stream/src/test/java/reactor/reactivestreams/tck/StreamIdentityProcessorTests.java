@@ -107,7 +107,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 */
 		return Broadcaster.<Integer>
 				create(Environment.get())
-				.capacity(bufferSize)
+				//.capacity(bufferSize)
 				.partition(2)
 				.flatMap(stream -> stream
 								.dispatchOn(env, dispatchers.get())
