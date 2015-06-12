@@ -433,8 +433,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 */
 	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer) {
 		ConsumerAction<O> consumerAction = new ConsumerAction<O>(
-				dispatcher != getDispatcher() || PROCESSOR_SYNC == dispatcher ? getCapacity() : Long.MAX_VALUE,
-				//getCapacity(),
+				getCapacity(),
 				dispatcher,
 				consumer,
 				null,
@@ -1339,7 +1338,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 			@Override
 			public Dispatcher getDispatcher() {
-				return PROCESSOR_SYNC;
+				return Stream.this.getDispatcher();
 			}
 
 			@Override

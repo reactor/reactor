@@ -135,6 +135,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		super.doComplete();
 	}
 
+
 	final private class FlushConsumer implements Consumer<T> {
 		@Override
 		public void accept(T n) {

@@ -21,7 +21,6 @@ import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
-import reactor.rx.subscription.PushSubscription;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
@@ -67,30 +66,13 @@ public final class DispatcherAction<T> extends Action<T, T> {
 	@Override
 	public void requestMore(long n) {
 		Action.checkRequest(n);
-		long toRequest = n != Long.MAX_VALUE ? Math.min(capacity, n) : Long.MAX_VALUE;
-		PushSubscription<T> upstreamSubscription = this.upstreamSubscription;
 
-		if (upstreamSubscription != null) {
-			toRequest = toRequest - Math.max(upstreamSubscription.pendingRequestSignals(), 0l);
-			toRequest = toRequest < 0l ? 0l : toRequest;
-
-			if (n == Long.MAX_VALUE || PENDING_UPDATER.addAndGet(this, n - toRequest) < 0l) {
-				PENDING_UPDATER.set(this, Long.MAX_VALUE);
-			}
-
-			if (toRequest > 0) {
-				if(requestDispatcher.inContext()) {
-					requestDispatcher.dispatch(toRequest, upstreamSubscription, null);
-				}else if (requestDispatcher == SynchronousDispatcher.INSTANCE){
-					TailRecurseDispatcher.INSTANCE.dispatch(toRequest, upstreamSubscription, null);
-				}else{
-					upstreamSubscription.request(toRequest);
-				}
-			}
+		if (requestDispatcher.inContext()) {
+			requestDispatcher.dispatch(n, upstreamSubscription, null);
+		} else if (requestDispatcher == SynchronousDispatcher.INSTANCE) {
+			TailRecurseDispatcher.INSTANCE.dispatch(n, upstreamSubscription, null);
 		} else {
-			if (n == Long.MAX_VALUE || PENDING_UPDATER.addAndGet(this, n) < 0l) {
-				PENDING_UPDATER.set(this, Long.MAX_VALUE);
-			}
+			upstreamSubscription.request(n);
 		}
 
 	}
@@ -133,7 +115,7 @@ public final class DispatcherAction<T> extends Action<T, T> {
 
 	@Override
 	public void onNext(T ev) {
-		if(ev == null){
+		if (ev == null) {
 			throw new NullPointerException("Spec 2.13: Signal cannot be null");
 		}
 		if (dispatcher.inContext()) {
@@ -145,7 +127,7 @@ public final class DispatcherAction<T> extends Action<T, T> {
 
 	@Override
 	public void onError(Throwable cause) {
-		if(cause == null){
+		if (cause == null) {
 			throw new NullPointerException("Spec 2.13: Signal cannot be null");
 		}
 		if (dispatcher.inContext()) {
@@ -177,13 +159,6 @@ public final class DispatcherAction<T> extends Action<T, T> {
 	@Override
 	protected void doNext(T ev) {
 		broadcastNext(ev);
-		long toRequest;
-		PushSubscription<T> sub = upstreamSubscription;
-		if (sub != null && pendingRequests != Long.MAX_VALUE &&
-				sub.pendingRequestSignals() == 0l &&
-				(toRequest = PENDING_UPDATER.getAndSet(this, 0l)) > 0l) {
-			requestMore(toRequest);
-		}
 	}
 
 	@Override
