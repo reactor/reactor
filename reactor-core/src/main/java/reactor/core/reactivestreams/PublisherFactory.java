@@ -153,7 +153,7 @@ public final class PublisherFactory {
 	                                          Function<Subscriber<? super T>, C> contextFactory,
 	                                          Consumer<C> shutdownConsumer) {
 		Assert.notNull(requestConsumer, "A data producer must be provided");
-		return create(new ForEachBiConsumer<>(requestConsumer), contextFactory, shutdownConsumer);
+		return new ForEachPublisher<T, C>(requestConsumer, contextFactory, shutdownConsumer);
 	}
 
 
@@ -238,7 +238,7 @@ public final class PublisherFactory {
 		return new ProxyPublisher<>(source, barrierProvider);
 	}
 
-	private static final class ReactorPublisher<T, C> implements Publisher<T> {
+	private static class ReactorPublisher<T, C> implements Publisher<T> {
 
 		protected final Function<Subscriber<? super T>, C>            contextFactory;
 		protected final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
@@ -247,21 +247,43 @@ public final class PublisherFactory {
 		protected ReactorPublisher(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 		                           Function<Subscriber<? super T>, C> contextFactory,
 		                           Consumer<C> shutdownConsumer) {
-			Assert.notNull(requestConsumer, "A data producer must be provided");
 			this.requestConsumer = requestConsumer;
 			this.contextFactory = contextFactory;
 			this.shutdownConsumer = shutdownConsumer;
 		}
 
 		@Override
-		public void subscribe(final Subscriber<? super T> subscriber) {
+		final public void subscribe(final Subscriber<? super T> subscriber) {
 			try {
 				final C context = contextFactory != null ? contextFactory.apply(subscriber) : null;
-				subscriber.onSubscribe(new SubscriberProxy<>(subscriber, context, requestConsumer, shutdownConsumer));
+				subscriber.onSubscribe(createSubscription(subscriber, context));
+			} catch (PrematureCompleteException pce){
+				//IGNORE
 			} catch (Throwable throwable) {
 				Exceptions.throwIfFatal(throwable);
 				subscriber.onError(throwable);
 			}
+		}
+
+		protected Subscription createSubscription(Subscriber<? super T> subscriber, C context){
+			return new SubscriberProxy<>(subscriber, context, requestConsumer, shutdownConsumer);
+		}
+	}
+
+	private static final class ForEachPublisher<T, C> extends ReactorPublisher<T, C>{
+
+		final Consumer<SubscriberWithContext<T, C>> forEachConsumer;
+
+
+		public ForEachPublisher(Consumer<SubscriberWithContext<T, C>> forEachConsumer, Function<Subscriber<? super
+				T>, C> contextFactory, Consumer<C> shutdownConsumer) {
+			super(null, contextFactory, shutdownConsumer);
+			this.forEachConsumer = forEachConsumer;
+		}
+
+		@Override
+		protected Subscription createSubscription(Subscriber<? super T> subscriber, C context) {
+			return new SubscriberProxy<>(subscriber, context, new ForEachBiConsumer<>(forEachConsumer), shutdownConsumer);
 		}
 	}
 
@@ -466,6 +488,18 @@ public final class PublisherFactory {
 					", errorConsumer=" + errorConsumer +
 					", completeConsumer=" + completeConsumer +
 					'}';
+		}
+	}
+
+	public static class PrematureCompleteException extends RuntimeException{
+		static public final PrematureCompleteException INSTANCE = new PrematureCompleteException();
+
+		private PrematureCompleteException() {
+		}
+
+		@Override
+		public synchronized Throwable fillInStackTrace() {
+			return this;
 		}
 	}
 }

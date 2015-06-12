@@ -35,6 +35,7 @@ import reactor.fn.support.Tap;
 import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
+import reactor.io.codec.Codec;
 import reactor.rx.action.Action;
 import reactor.rx.action.CompositeAction;
 import reactor.rx.action.Control;
@@ -341,7 +342,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 			return (Stream<E>)processor;
 		}
 
-		final long capacity = Stream.this.getCapacity();
+		final long capacity = getCapacity();
 
 		return new Stream<E>() {
 
@@ -987,6 +988,68 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 				return new ConcatAction<V>();
 			}
 		});
+	}
+
+	/**
+	 * Transform a sequence of codec source elements into codec input elements through {@link Codec#decode(Publisher)}
+	 *
+	 * @param codec  the unmarshalling codec
+	 * @param <V> the type of the Input codec type translated from the current "source" type sequence <O>
+	 * @return a new {@link Stream} containing the transformed values
+	 */
+	public final <V> Stream<V> decode(final Codec<O, V, ?> codec) {
+		return new Stream<V>() {
+			@Override
+			public void subscribe(Subscriber<? super V> s) {
+				codec.decode(Stream.this).subscribe(s);
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+
+			@Override
+			public Dispatcher getDispatcher() {
+				return Stream.this.getDispatcher();
+			}
+
+			@Override
+			public Environment getEnvironment() {
+				return Stream.this.getEnvironment();
+			}
+		};
+	}
+
+	/**
+	 * Transform a sequence of codec output elements into codec source elements through {@link Codec#encode(Publisher)}
+	 *
+	 * @param codec  the unmarshalling codec
+	 * @param <V> the type of the Source codec type translated from the current "output" sequence <O>
+	 * @return a new {@link Stream} containing the transformed values
+	 */
+	public final <V> Stream<V> encode(final Codec<V, ?, O> codec) {
+		return new Stream<V>() {
+			@Override
+			public void subscribe(Subscriber<? super V> s) {
+				codec.encode(Stream.this).subscribe(s);
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+
+			@Override
+			public Dispatcher getDispatcher() {
+				return Stream.this.getDispatcher();
+			}
+
+			@Override
+			public Environment getEnvironment() {
+				return Stream.this.getEnvironment();
+			}
+		};
 	}
 
 	/**

@@ -27,7 +27,6 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.rx.IOStreams;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 
@@ -149,15 +148,6 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 
 	public final Function<OUT, Buffer> getEncoder() {
 		return encoder;
-	}
-
-	/**
-	 * Convert the current stream data into the decoded type produced by the passed codec
-	 *
-	 * @return the decoded stream
-	 */
-	final public <DECODED> Stream<DECODED> decode(Codec<IN, DECODED, ?> codec) {
-		return IOStreams.decode(codec, this);
 	}
 
 	/**

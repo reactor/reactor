@@ -16,16 +16,19 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.support.Exceptions;
+import reactor.core.reactivestreams.PublisherFactory;
+import reactor.core.reactivestreams.SubscriberWithContext;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.rx.Stream;
-import reactor.rx.subscription.PushSubscription;
+import reactor.rx.Streams;
 
 import java.util.Iterator;
 
 /**
  * A Stream that emits {@link java.lang.Iterable} values one by one and then complete.
  * <p>
- * Since the stream retains the iterable in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)}
+ * Since the stream retains the iterable in a final field, any {@link org.reactivestreams.Subscriber}
  * will replay all the iterable. This is a "Cold" stream.
  * <p>
  * Create such stream with the provided factory, E.g.:
@@ -49,46 +52,40 @@ import java.util.Iterator;
  *
  * @author Stephane Maldini
  */
-public final class IterableStream<T> extends Stream<T> {
+public final class IterableStream<T> {
 
-	final private Iterable<? extends T> defaultValues;
+	/**
+	 * Create an Iterable Stream Publisher
+	 *
+	 * @param defaultValues
+	 * @param <T>
+	 * @return
+	 */
+	public static <T> Stream<T> create(final Iterable<? extends T> defaultValues) {
+		return Streams.wrap(PublisherFactory.forEach(new Consumer<SubscriberWithContext<T, Iterator<? extends T>>>() {
+			@Override
+			public void accept(SubscriberWithContext<T, Iterator<? extends T>> subscriber) {
+				final Iterator<? extends T> iterator = subscriber.context();
+				if (iterator.hasNext()) {
+					subscriber.onNext(iterator.next());
+				} else {
+					subscriber.onComplete();
+					return;
+				}
 
-	public IterableStream(Iterable<? extends T> defaultValues) {
-		this.defaultValues = defaultValues;
-	}
-
-	@Override
-	public void subscribe(final Subscriber<? super T> subscriber) {
-		try {
-			if (defaultValues != null) {
-				subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
-					final Iterator<? extends T> iterator = defaultValues.iterator();
-
-					@Override
-					public void request(long elements) {
-						long i = 0;
-						while (i < elements && iterator.hasNext()) {
-							if (isComplete()) return;
-							onNext(iterator.next());
-							i++;
-						}
-
-						if (!iterator.hasNext()) {
-							onComplete();
-						}
-					}
-				});
-			} else {
-				subscriber.onComplete();
+				if (!iterator.hasNext()) {
+					subscriber.onComplete();
+				}
 			}
-		} catch (Throwable throwable) {
-			Exceptions.throwIfFatal(throwable);
-			subscriber.onError(throwable);
-		}
-	}
-
-	@Override
-	public String toString() {
-		return "iterable=" + defaultValues;
+		}, new Function<Subscriber<? super T>, Iterator<? extends T>>() {
+			@Override
+			public Iterator<? extends T> apply(Subscriber<? super T> subscriber) {
+				if (defaultValues == null) {
+					subscriber.onComplete();
+					throw PublisherFactory.PrematureCompleteException.INSTANCE;
+				}
+				return defaultValues.iterator();
+			}
+		}));
 	}
 }

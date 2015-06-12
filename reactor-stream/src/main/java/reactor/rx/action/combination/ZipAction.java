@@ -54,7 +54,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 	public ZipAction(Dispatcher dispatcher,
 	                 Function<TUPLE, ? extends V> accumulator, Iterable<? extends Publisher<? extends O>>
-			composables) {
+			                 composables) {
 		super(dispatcher, composables);
 		this.accumulator = accumulator;
 	}
@@ -63,7 +63,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	protected void broadcastTuple(boolean isFinishing) {
 		long capacity = this.capacity;
 		if (count >= capacity) {
-
 
 			if (!checkAllFilled()) return;
 
@@ -80,6 +79,9 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 					dispatcher.dispatch(capacity, upstreamSubscription, null);
 				}
 			}
+		}
+		if (isFinishing) {
+			broadcastComplete();
 		}
 	}
 
@@ -112,29 +114,12 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	}
 
 	@Override
-	public void scheduleCompletion() {
-		//let the zip logic complete
-	}
-
-	@Override
 	protected void doComplete() {
 		broadcastTuple(true);
-
-		//can receive multiple queued complete signals
-		super.doComplete();
 	}
 
 	@Override
 	protected InnerSubscriber<O, V> createSubscriber() {
-		int newSize = innerSubscriptions.runningComposables + 1;
-		capacity(newSize);
-
-		if (newSize > toZip.length) {
-			Object[] previousZip = toZip;
-			toZip = new Object[newSize];
-			System.arraycopy(previousZip, 0, toZip, 0, newSize - 1);
-		}
-
 		return new ZipAction.InnerSubscriber<>(this, index++);
 	}
 
@@ -175,12 +160,34 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		public void onSubscribe(Subscription subscription) {
 			setSubscription(new FanInSubscription.InnerSubscription<O, Zippable<O>, InnerSubscriber<O, V>>(subscription,
 					this));
+			int newSize = outerAction.innerSubscriptions.runningComposables;
+			newSize = newSize == 0 ? 1 : newSize;
+			outerAction.capacity(newSize);
+
+			if (newSize > outerAction.toZip.length) {
+				Object[] previousZip = outerAction.toZip;
+				outerAction.toZip = new Object[newSize];
+				System.arraycopy(previousZip, 0, outerAction.toZip, 0, newSize - 1);
+			}
 
 			if (pendingRequests > 0) {
 				request(1);
 			}
 			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();
+			}
+		}
+
+		@Override
+		public void onComplete() {
+			if (TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
+				outerAction.innerSubscriptions.remove(sequenceId);
+				outerAction.status.compareAndSet(RUNNING, COMPLETING);
+				if (0 == FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions)
+				&& outerAction.toZip[index] == null) {
+					outerAction.innerSubscriptions.serialComplete();
+				}
+
 			}
 		}
 
@@ -193,10 +200,19 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		public void onNext(O ev) {
 			if (--pendingRequests > 0) pendingRequests = 0l;
 			//emittedSignals++;
+			long nextCount = outerAction.count + 1;
 			outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
 
-			if(outerAction.toZip[index] != null && outerAction.status.get() == COMPLETING){
-				onComplete();
+			if(outerAction.status.get() == COMPLETING){
+				int nextRunning = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.get(outerAction.innerSubscriptions);
+				if (nextCount == nextRunning
+						&& TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
+					outerAction.innerSubscriptions.remove(sequenceId);
+					nextRunning = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
+					if ( 0 == nextRunning) {
+						outerAction.innerSubscriptions.serialComplete();
+					}
+				}
 			}
 		}
 
@@ -236,7 +252,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			if (pendingRequestSignals == Long.MAX_VALUE) {
 				super.parallelRequest(1);
 			} else {
-				super.request(Math.max(elements, runningComposables));
+				super.request(elements);
 			}
 		}
 	}

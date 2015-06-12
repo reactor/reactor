@@ -234,7 +234,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> from(Iterable<? extends T> values) {
-		return new IterableStream<T>(values);
+		return IterableStream.create(values);
 	}
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed array on subscription request.
@@ -246,7 +246,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> from(T[] values) {
-		return new IterableStream<T>(Arrays.asList(values));
+		return IterableStream.create(Arrays.asList(values));
 	}
 
 
@@ -281,7 +281,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> range(long start, long end) {
-		return new RangeStream(start, end);
+		return RangeStream.create(start, end);
 	}
 
 	/**

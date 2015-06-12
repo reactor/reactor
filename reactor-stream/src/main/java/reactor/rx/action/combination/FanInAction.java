@@ -64,6 +64,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		this.dispatcher = SynchronousDispatcher.INSTANCE == dispatcher ?
 				Environment.tailRecurse() : dispatcher;
 		this.publishers = publishers;
+
 		this.upstreamSubscription = this.innerSubscriptions = createFanInSubscription();
 	}
 
@@ -75,18 +76,14 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	public void addPublisher(Publisher<? extends I> publisher) {
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
-		inlineMerge.pendingRequests = innerSubscriptions.pendingRequestSignals() / (Math.max(innerSubscriptions.runningComposables, 0) + 1);
 		publisher.subscribe(inlineMerge);
 	}
 
 	public void scheduleCompletion() {
 		if (status.compareAndSet(NOT_STARTED, COMPLETING)) {
 			innerSubscriptions.serialComplete();
-		} else {
-			status.set(COMPLETING);
-			if (innerSubscriptions.runningComposables == 0) {
+		} else if(innerSubscriptions.runningComposables == 0 && status.compareAndSet(RUNNING, COMPLETING)) {
 				innerSubscriptions.serialComplete();
-			}
 		}
 	}
 
@@ -211,6 +208,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		void setSubscription(FanInSubscription.InnerSubscription s) {
 			this.s = s;
 			this.sequenceId = outerAction.innerSubscriptions.addSubscription(this);
+			pendingRequests = outerAction.innerSubscriptions.pendingRequestSignals() / (Math.max(outerAction.innerSubscriptions.runningComposables, 1));
 		}
 
 		public void accept(Long pendingRequests) {
@@ -245,15 +243,12 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			//Action.log.debug("event [complete] by: " + this);
 			if (TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
 				if(s != null) s.cancel();
-				outerAction.status.set(COMPLETING);
 				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
 				left = left < 0l ? 0l : left;
 
 				outerAction.innerSubscriptions.remove(sequenceId);
-				if (left == 0) {
-					if (!outerAction.checkDynamicMerge()) {
-						outerAction.innerSubscriptions.serialComplete();
-					}
+				if (left == 0 && !outerAction.checkDynamicMerge()) {
+						outerAction.scheduleCompletion();
 				}
 			}
 

@@ -54,8 +54,6 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 
 		if (res != null) {
 			broadcastNext(res);
-
-
 		}
 	}
 
@@ -87,11 +85,6 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 	}
 
 	@Override
-	public void scheduleCompletion() {
-		//let the zip logic complete
-	}
-
-	@Override
 	protected void doComplete() {
 			//can receive multiple queued complete signals
 			cancel();
@@ -100,15 +93,6 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected InnerSubscriber<O, V> createSubscriber() {
-		int newSize = innerSubscriptions.runningComposables + 1;
-		capacity(newSize);
-
-		if (newSize > toZip.length) {
-			Object[] previousZip = toZip;
-			toZip = new Object[newSize];
-			System.arraycopy(previousZip, 0, toZip, 0, newSize - 1);
-		}
-
 		return new CombineLatestAction.InnerSubscriber<>(this, index++);
 	}
 
@@ -149,6 +133,15 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 		public void onSubscribe(Subscription subscription) {
 			setSubscription(new FanInSubscription.InnerSubscription<O, Zippable<O>, InnerSubscriber<O, V>>(subscription,
 					this));
+			int newSize = outerAction.innerSubscriptions.runningComposables;
+			outerAction.capacity(newSize);
+
+			if (newSize > outerAction.toZip.length) {
+				Object[] previousZip = outerAction.toZip;
+				outerAction.toZip = new Object[newSize];
+				System.arraycopy(previousZip, 0, outerAction.toZip, 0, newSize - 1);
+			}
+
 			if (pendingRequests > 0) {
 				request(pendingRequests);
 			}

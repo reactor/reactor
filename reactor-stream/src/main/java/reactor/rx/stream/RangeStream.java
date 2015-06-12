@@ -16,15 +16,18 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.support.Exceptions;
+import reactor.core.reactivestreams.PublisherFactory;
+import reactor.core.reactivestreams.SubscriberWithContext;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.rx.Stream;
-import reactor.rx.subscription.PushSubscription;
+import reactor.rx.Streams;
 
 /**
  * A Stream that emits N {@link java.lang.Long} from the inclusive start value defined to the inclusive end and then
  * complete.
  * <p>
- * Since the stream retains the boundaries in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)}
+ * Since the stream retains the boundaries in a final field, any {@link org.reactivestreams.Subscriber}
  * will replay all the range. This is a "Cold" stream.
  * <p>
  * Create such stream with the provided factory, E.g.:
@@ -50,56 +53,59 @@ import reactor.rx.subscription.PushSubscription;
  *
  * @author Stephane Maldini
  */
-public final class RangeStream extends Stream<Long> {
+public final class RangeStream {
 
-	private final long start;
-	private final long end;
 
-	public RangeStream(long start, long end) {
-		this.start = start;
-		this.end = end;
+	/**
+	 * Create a Range Stream Publisher
+	 *
+	 * @param min
+	 * @param max
+	 * @return
+	 */
+	public static Stream<Long> create(final long min, final long max) {
+		return Streams.wrap(PublisherFactory.forEach(new Consumer<SubscriberWithContext<Long, Range>>() {
+					@Override
+					public void accept(SubscriberWithContext<Long, Range> subscriber) {
+						Range range = subscriber.context();
+
+						if (range.cursor <= range.end) {
+							subscriber.onNext(range.cursor++);
+						}
+						if (range.cursor > range.end) {
+							subscriber.onComplete();
+						}
+					}
+				}, new Function<Subscriber<? super Long>, Range>() {
+					@Override
+					public Range apply(Subscriber<? super Long> subscriber) {
+						if (max < min) {
+							subscriber.onComplete();
+							throw PublisherFactory.PrematureCompleteException.INSTANCE;
+						}
+						return new Range(min, max);
+					}
+				})
+		);
 	}
 
-	@Override
-	public void subscribe(Subscriber<? super Long> subscriber) {
-		try {
-			if (start <= end) {
-				subscriber.onSubscribe(new PushSubscription<Long>(this, subscriber) {
-					Long cursor = start;
+	private final static class Range {
+		final long start;
+		final long end;
 
-					@Override
-					public void request(long elements) {
+		long cursor;
 
-						long l = 0;
-						while (l < elements && cursor <= end) {
-							if (isComplete()) return;
-							onNext(cursor++);
-							l++;
-						}
-						if (cursor > end) {
-							onComplete();
-						}
-					}
-
-					@Override
-					public String toString() {
-						return "{" +
-								"cursor=" + cursor + "" + (end > 0 ? "[" + 100 * (cursor - 1) / end + "%]" : "") +
-								", start=" + start + ", end=" + end + "}";
-					}
-				});
-			} else {
-				subscriber.onComplete();
-			}
-		} catch (Throwable throwable) {
-			Exceptions.throwIfFatal(throwable);
-			subscriber.onError(throwable);
+		public Range(long start, long end) {
+			this.start = start;
+			this.end = end;
+			cursor = start;
 		}
-	}
 
-
-	@Override
-	public String toString() {
-		return super.toString() + " [" + start + " to " + end + "]";
+		@Override
+		public String toString() {
+			return "{" +
+					"cursor=" + cursor + "" + (end > 0 ? "[" + 100 * (cursor - 1) / end + "%]" : "") +
+					", start=" + start + ", end=" + end + "}";
+		}
 	}
 }

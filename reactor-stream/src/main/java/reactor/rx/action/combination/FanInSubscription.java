@@ -61,7 +61,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 				FanInAction.InnerSubscriber sub;
 				int i;
-				long toRequest = elements != Long.MAX_VALUE && elements / size > 0 ? elements / size : elements;
+				long toRequest = elements != Long.MAX_VALUE  ? elements / size : elements;
 				FanInAction.InnerSubscriber[] subs;
 				int arraySize;
 				synchronized (this) {

@@ -34,6 +34,7 @@ import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
 import reactor.core.Dispatcher;
 import reactor.core.DispatcherSupplier;
+import reactor.core.config.DispatcherType;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.Consumer;
@@ -1222,6 +1223,8 @@ public class StreamTests extends AbstractReactorTest {
 		assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
 	}
 
+
+
 	// Test issue https://github.com/reactor/reactor/issues/474
 	// code by @masterav10
 	@Test
@@ -1409,5 +1412,170 @@ public class StreamTests extends AbstractReactorTest {
 
 	}
 
+
+
+	/**
+	 * Should work with {@link Processor} but it doesn't.
+	 */
+	@Test( timeout = TIMEOUT )
+	public void forkJoinUsingProcessors() throws Exception {
+
+		final Stream< Integer > forkStream = Streams.just( 1, 2, 3 ).log("log-begin");
+
+		final RingBufferProcessor< Integer > computationBroadcaster = RingBufferProcessor.create("computation", BACKLOG) ;
+		final Stream< String > computationStream = Streams
+				.wrap(computationBroadcaster)
+				.map(i -> Integer.toString(i))
+				;
+
+		final RingBufferProcessor< Integer > persistenceBroadcaster = RingBufferProcessor.create("persistence", BACKLOG) ;
+		final Stream< String > persistenceStream = Streams
+				.wrap(persistenceBroadcaster)
+				.map(i -> "done "+i)
+				;
+
+		forkStream.subscribe( computationBroadcaster ) ;
+		forkStream.subscribe( persistenceBroadcaster ) ;
+
+		final Semaphore doneSemaphore = new Semaphore( 0 ) ;
+
+		final Stream< List< String > > joinStream = Streams.join(computationStream.log("log1"), persistenceStream.log("log2")) ;
+
+		// Method chaining doesn't compile.
+		joinStream.log("log-final").consume(
+				list -> println("Joined: ", list),
+				t -> println("Join failed: ", t.getMessage()),
+				Ø -> {
+					println("Join complete.");
+					doneSemaphore.release();
+				}
+		) ;
+
+		doneSemaphore.acquire() ;
+
+	}
+
+	/**
+	 * <pre>
+	 *                 forkStream
+	 *                 /        \      < - - - int
+	 *                v          v
+	 * persistenceStream        computationStream
+	 *                 \        /      < - - - List< String >
+	 *                  v      v
+	 *                 joinStream      < - - - String
+	 *                 splitStream
+	 *             observedSplitStream
+	 * </pre>
+	 */
+	@Test( timeout = TIMEOUT )
+	public void forkJoinUsingDispatchersAndSplit() throws Exception {
+
+		Environment.initializeIfEmpty().assignErrorJournal();;
+		final Broadcaster< Integer > forkBroadcaster = Broadcaster.create(
+				Environment.newDispatcher( "fork", BACKLOG ) ) ;
+
+		final Broadcaster< Integer > computationBroadcaster = Broadcaster.create(Environment.newDispatcher( "computation", BACKLOG )) ;
+		final Stream< List< String > > computationStream = computationBroadcaster
+				.map(i -> {
+					final List<String> list = new ArrayList<>(i);
+					for (int j = 0; j < i; j++) {
+						list.add("i" + j);
+					}
+					return list;
+				})
+				.observe(ls -> println("Computed: ", ls))
+				;
+
+		Dispatcher d1 = Environment.newDispatcher( "persistence", BACKLOG );
+		final Broadcaster< Integer > persistenceBroadcaster = Broadcaster.create() ;
+		final Stream< List< String > > persistenceStream = persistenceBroadcaster
+				.dispatchOn(d1)
+				.observe(i -> println("Persisted: ", i))
+				.map( i -> Collections.singletonList( "done" ) )
+				;
+
+		forkBroadcaster.subscribe( computationBroadcaster ) ;
+		forkBroadcaster.subscribe(persistenceBroadcaster) ;
+
+		Dispatcher d2 = Environment.newDispatcher("join", BACKLOG, 1, DispatcherType.MPSC);
+		final Stream< List< String > > joinStream = Streams
+				.join( computationStream, persistenceStream )
+						// MPSC seems perfect for joining threads.
+				.dispatchOn(d2)
+//        .dispatchOn( Environment.newDispatcher( "join", BACKLOG ) )
+				.map(listOfLists -> listOfLists.get(0))
+				;
+
+		// Chained call doesn't compile.
+		final Stream< String > splitStream = joinStream.flatMap(Streams::from) ;
+
+		final Semaphore doneSemaphore = new Semaphore( 0 ) ;
+
+		// Chained calls don't work.
+		final Stream< String > observedSplitStream = splitStream
+				.observe( s -> println( "observedSplitStream#observe ", s ) )
+				.observeComplete( Ø -> {
+					println( "observedSplitStream#observeComplete" ) ;
+					doneSemaphore.release();
+				} )
+				.observeError(
+						Throwable.class,
+						( Ø, t ) -> println( "observedSplitStream#observeError ", t.getMessage() )
+				)
+				;
+
+		final Promise< List< String > > listPromise = observedSplitStream.toList() ;
+
+
+		forkBroadcaster.onNext(1) ;
+		forkBroadcaster.onNext(2) ;
+		forkBroadcaster.onNext(3) ;
+		forkBroadcaster.onComplete() ;
+
+		doneSemaphore.acquire() ;
+	d1.awaitAndShutdown();
+	d2.awaitAndShutdown();
+		assertEquals(Arrays.asList("i0", "i0", "i1", "i0", "i1", "i2"), listPromise.get()) ;
+	}
+
+
+	@Test
+	@Ignore
+	public void splitBugEventuallyHappens() throws Exception {
+		int successCount = 0 ;
+		try {
+			for( ; ; ) {
+				forkJoinUsingProcessors(); ;
+				println( "**** Success! ****" ) ;
+				successCount ++ ;
+			}
+		} finally {
+			println( "Succeeded " + successCount + " time" + ( successCount <= 1 ? "." : "s." ) ) ;
+		}
+
+	}
+
+
+
+	private static final long TIMEOUT = 10_000 ;
+
+	// Setting it to 1 doesn't help.
+	private static final int BACKLOG = 1024 ;
+
+	static {
+		Environment.initializeIfEmpty() ;
+	}
+
+	private static void println( final Object... fragments ) {
+		final Thread currentThread = Thread.currentThread() ;
+		synchronized( System.out ) {
+			System.out.print( String.format( "[%s] ", currentThread.getName() ) ) ;
+			for( final Object fragment : fragments ) {
+				System.out.print( fragment ) ;
+			}
+			System.out.println() ;
+		}
+	}
 
 }

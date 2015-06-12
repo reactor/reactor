@@ -589,7 +589,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	public String toString() {
 		return "RingBufferProcessor{" +
 				"barrier=" + barrier +
-				", ringBuffer=" + ringBuffer +
+				", remaining=" + ringBuffer.remainingCapacity() +
 				'}';
 	}
 
