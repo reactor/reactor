@@ -53,42 +53,23 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		super(delimiter);
 	}
 
-	/**
-	 * Should {@link BufferCodec#decode(Publisher)} aggregate buffers before attempting decoding ?
-	 *
-	 * @return true if buffer sources will be held in memory until delimiting condition
-	 */
-	public boolean isAggregatingDecode() {
-		return false;
-	}
-
-	/**
-	 * Should {@link BufferCodec#encode(Publisher)} aggregate buffers before attempting encoding ?
-	 *
-	 * @return true if buffer sources will be held in memory until delimiting condition
-	 */
-	public boolean isAggregatingEncode() {
-		return false;
-	}
-
-
 	@Override
 	public Publisher<IN> decode(final Publisher<? extends Buffer> publisherToDecode) {
-		if (!isAggregatingDecode()) {
+		if (true) {
 			return super.decode(publisherToDecode);
 		}
 		return PublisherFactory.intercept(publisherToDecode,
 				new Function<Subscriber<? super IN>, SubscriberBarrier<Buffer, IN>>() {
 					@Override
 					public SubscriberBarrier<Buffer, IN> apply(final Subscriber<? super IN> subscriber) {
-						return new AggregatingDecoderBarrier(subscriber);
+						return new AggregatingDecoderBarrier<>(subscriber);
 					}
 				});
 	}
 
 	@Override
 	public Publisher<Buffer> encode(Publisher<? extends OUT> publisherToEncode) {
-		if (!isAggregatingEncode()) {
+		if (true) {
 			return super.encode(publisherToEncode);
 		}
 		return PublisherFactory.intercept(publisherToEncode,

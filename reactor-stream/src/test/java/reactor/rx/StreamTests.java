@@ -40,6 +40,8 @@ import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.support.Tap;
+import reactor.io.IO;
+import reactor.io.codec.StandardCodecs;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
@@ -47,10 +49,8 @@ import reactor.rx.action.Control;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.BarrierStream;
-import reactor.rx.subscription.PushSubscription;
 
 import java.awt.event.KeyEvent;
-import java.io.*;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -1016,7 +1016,7 @@ public class StreamTests extends AbstractReactorTest {
 	public void testCustomFileStream() throws InterruptedException {
 
 
-		Stream<String> fileStream = new Stream<String>() {
+	/*	Stream<String> fileStream = new Stream<String>() {
 			@Override
 			public void subscribe(final Subscriber<? super String> subscriber) {
 				final File file = new File("settings.gradle");
@@ -1062,7 +1062,9 @@ public class StreamTests extends AbstractReactorTest {
 							.subscribe(subscriber);
 				}
 			}
-		};
+		};*/
+
+		Stream<String> fileStream = Streams.wrap(IO.readFile("settings.gradle", 20)).decode(StandardCodecs.STRING_CODEC);
 
 		Stream<String> processor = fileStream
 				.process(RingBufferProcessor.create());
@@ -1076,14 +1078,14 @@ public class StreamTests extends AbstractReactorTest {
 				);
 
 		Thread.sleep(3000);
-		processor
+	/*	processor
 				.capacity(3L)
 				.consume(
 						System.out::println,
 						Throwable::printStackTrace,
 						nothing -> System.out.println("## EOF ##")
 				);
-		Thread.sleep(300);
+		Thread.sleep(300);*/
 	}
 
 	@Test

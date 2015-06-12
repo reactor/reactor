@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * A public factory to build {@link Stream}, Streams provide for common transformations from a few structures such as
  * Iterable or Future to a Stream, in addition to provide for combinatory operations (merge, switchOnNext...).
- *
+ * <p>
  * <p>
  * Examples of use (In Java8 but would also work with Anonymous classes or Groovy Closures for instance):
  * <pre>
@@ -70,23 +70,30 @@ import java.util.concurrent.atomic.AtomicReference;
  * Streams.merge(environment, inputStream1, inputStream2).map(i -> i*2).consume(System.out::println);
  *
  * }
- *</pre>
+ * </pre>
+ *
  * @author Stephane Maldini
  * @author Jon Brisbin
  */
 public class Streams {
 
-	protected Streams(){}
+	protected Streams() {
+	}
 
 	/**
-	 * Build a custom sequence {@literal Stream} from the passed {@link org.reactivestreams.Publisher} that will be subscribed on the
+	 * Build a custom sequence {@literal Stream} from the passed {@link org.reactivestreams.Publisher} that will be
+	 * subscribed on the
 	 * first
 	 * request from the new subscriber. It means that the passed {@link org.reactivestreams.Subscription#request(long)}
-	 * manually triggered or automatically consumed by {@link reactor.rx.Stream#consume()} operations. The sequence consists
-	 * of a series of calls to the {@link org.reactivestreams.Subscriber} argument: onSubscribe?|onNext*|onError?|onComplete.
-	 * Strict application of this protocol is not enforced, e.g. onSubscribe is not required as a buffering subscription will be created
+	 * manually triggered or automatically consumed by {@link reactor.rx.Stream#consume()} operations. The sequence
+	 * consists
+	 * of a series of calls to the {@link org.reactivestreams.Subscriber} argument:
+	 * onSubscribe?|onNext*|onError?|onComplete.
+	 * Strict application of this protocol is not enforced, e.g. onSubscribe is not required as a buffering subscription
+	 * will be created
 	 * anyway.
-	 * For simply decorating a given Publisher with {@link Stream} API, and thus relying on the publisher to honour the Reactive Streams protocol,
+	 * For simply decorating a given Publisher with {@link Stream} API, and thus relying on the publisher to honour the
+	 * Reactive Streams protocol,
 	 * use the {@link Streams#wrap(Publisher)}
 	 *
 	 * @param publisher the publisher to accept the Stream subscriber
@@ -94,8 +101,8 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> create(Publisher<T> publisher) {
-		if(Stream.class.isAssignableFrom(publisher.getClass())){
-			return (Stream<T>)publisher;
+		if (Stream.class.isAssignableFrom(publisher.getClass())) {
+			return (Stream<T>) publisher;
 		}
 		return new PublisherStream<T>(publisher);
 	}
@@ -105,10 +112,8 @@ public class Streams {
 	 * Create a {@link Stream} reacting on requests with the passed {@link BiConsumer}
 	 *
 	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
-	 * @param <T> The type of the data sequence
-	 *
+	 * @param <T>             The type of the data sequence
 	 * @return a Stream
-	 *
 	 * @since 2.0.2
 	 */
 	public static <T> Stream<T> createWith(BiConsumer<Long, SubscriberWithContext<T, Void>> requestConsumer) {
@@ -117,34 +122,38 @@ public class Streams {
 
 	/**
 	 * Create a {@link Stream} reacting on requests with the passed {@link BiConsumer}
-	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every request calls.
+	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every
+	 * request calls.
 	 *
 	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
-	 * @param contextFactory A {@link Function} called for every new subscriber returning an immutable context (IO connection...)
-	 * @param <T> The type of the data sequence
-	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 * @param contextFactory  A {@link Function} called for every new subscriber returning an immutable context (IO
+	 *                         connection...)
+	 * @param <T>             The type of the data sequence
+	 * @param <C>             The type of contextual information to be read by the requestConsumer
 	 * @return a Stream
-	 *
 	 * @since 2.0.2
 	 */
 	public static <T, C> Stream<T> createWith(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
-	                                         Function<Subscriber<? super T>, C> contextFactory) {
+	                                          Function<Subscriber<? super T>, C> contextFactory) {
 		return createWith(requestConsumer, contextFactory, null);
 	}
 
 
 	/**
 	 * Create a {@link Stream} reacting on requests with the passed {@link BiConsumer}.
-	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every request calls.
-	 * The argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel, onComplete, onError).
+	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every
+	 * request calls.
+	 * The argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel, onComplete,
+	 * onError).
 	 *
-	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
-	 * @param contextFactory A {@link Function} called once for every new subscriber returning an immutable context (IO connection...)
-	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(), onError()
-	 * @param <T> The type of the data sequence
-	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 * @param requestConsumer  A {@link BiConsumer} with left argument request and right argument target subscriber
+	 * @param contextFactory   A {@link Function} called once for every new subscriber returning an immutable context
+	 *                          (IO connection...)
+	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(),
+	 *                          onError()
+	 * @param <T>              The type of the data sequence
+	 * @param <C>              The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
-	 *
 	 * @since 2.0.2
 	 */
 	public static <T, C> Stream<T> createWith(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
@@ -155,34 +164,34 @@ public class Streams {
 	}
 
 	/**
-	 * A simple decoration of the given {@link Publisher} to expose {@link Stream} API and proxy any subscribe call to the publisher.
-	 * The Publisher has to first call onSubscribe and receive a subscription request callback before any onNext call or will risk loosing events.
+	 * A simple decoration of the given {@link Publisher} to expose {@link Stream} API and proxy any subscribe call to
+	 * the publisher.
+	 * The Publisher has to first call onSubscribe and receive a subscription request callback before any onNext call or
+	 * will risk loosing events.
 	 *
 	 * @param publisher the publisher to decorate the Stream subscriber
-	 * @param <T>      the type of values passing through the {@literal Stream}
+	 * @param <T>       the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> wrap(final Publisher<T> publisher) {
-		if(Stream.class.isAssignableFrom(publisher.getClass())){
-			return (Stream<T>)publisher;
+		if (Stream.class.isAssignableFrom(publisher.getClass())) {
+			return (Stream<T>) publisher;
 		}
 		return new Stream<T>() {
 			@Override
 			public void subscribe(Subscriber<? super T> s) {
-				try{
-					publisher.subscribe(s);
-				}catch(Throwable t){
-					s.onError(t);
-				}
+				publisher.subscribe(s);
 			}
 		};
 	}
 
 
 	/**
-	 * Supply a {@link Publisher} everytime subscribe is called on the returned stream. The passed {@link reactor.fn.Supplier}
-	 *  will be invoked and it's up to the developer to choose to return a new instance of a {@link Publisher} or reuse one,
-	 *  effecitvely behaving like {@link reactor.rx.Streams#wrap(Publisher)}.
+	 * Supply a {@link Publisher} everytime subscribe is called on the returned stream. The passed {@link reactor.fn
+	 * .Supplier}
+	 * will be invoked and it's up to the developer to choose to return a new instance of a {@link Publisher} or reuse
+	 * one,
+	 * effecitvely behaving like {@link reactor.rx.Streams#wrap(Publisher)}.
 	 *
 	 * @param supplier the publisher factory to call on subscribe
 	 * @param <T>      the type of values passing through the {@literal Stream}
@@ -236,6 +245,7 @@ public class Streams {
 	public static <T> Stream<T> from(Iterable<? extends T> values) {
 		return IterableStream.create(values);
 	}
+
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed array on subscription request.
 	 * <p>
@@ -436,7 +446,6 @@ public class Streams {
 	}
 
 
-
 	/**
 	 * Build a {@literal Stream} whom data is sourced by the passed element on subscription
 	 * request. After all data is being dispatched, a complete signal will be emitted.
@@ -587,31 +596,33 @@ public class Streams {
 	 */
 	public static <T> Stream<T> generate(Supplier<? extends T> value) {
 		if (value == null) throw new IllegalArgumentException("Supplier must be provided");
-		return new SupplierStream<T>(SynchronousDispatcher.INSTANCE,value);
+		return new SupplierStream<T>(SynchronousDispatcher.INSTANCE, value);
 	}
 
 	/**
-	 * Build a Synchronous {@literal Action} whose data are emitted by the most recent {@link Action#onNext(Object)} signaled publisher.
+	 * Build a Synchronous {@literal Action} whose data are emitted by the most recent {@link Action#onNext(Object)}
+	 * signaled publisher.
 	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
 	 *
-	 * @param <T>              type of the value
+	 * @param <T> type of the value
 	 * @return a {@link Action} accepting publishers and producing inner data T
 	 * @since 2.0
 	 */
-	public static <T> Action<Publisher<? extends T>, T> switchOnNext(){
+	public static <T> Action<Publisher<? extends T>, T> switchOnNext() {
 		return switchOnNext(SynchronousDispatcher.INSTANCE);
 	}
 
 	/**
-	 * Build an {@literal Action} whose data are emitted by the most recent {@link Action#onNext(Object)} signaled publisher.
+	 * Build an {@literal Action} whose data are emitted by the most recent {@link Action#onNext(Object)} signaled
+	 * publisher.
 	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
 	 *
-	 * @param dispatcher       The dispatcher to execute the signals
-	 * @param <T>              type of the value
+	 * @param dispatcher The dispatcher to execute the signals
+	 * @param <T>        type of the value
 	 * @return a {@link Action} accepting publishers and producing inner data T
 	 * @since 2.0
 	 */
-	public static <T> Action<Publisher<? extends T>, T> switchOnNext(Dispatcher dispatcher){
+	public static <T> Action<Publisher<? extends T>, T> switchOnNext(Dispatcher dispatcher) {
 		SwitchAction<T> switchAction = new SwitchAction<>(dispatcher);
 		switchAction.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
 		return switchAction;
@@ -627,7 +638,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> switchOnNext(
-			Publisher<? extends Publisher<? extends T>> mergedPublishers){
+			Publisher<? extends Publisher<? extends T>> mergedPublishers) {
 		return switchOnNext(mergedPublishers, SynchronousDispatcher.INSTANCE);
 	}
 
@@ -645,7 +656,7 @@ public class Streams {
 			Publisher<? extends Publisher<? extends T>> mergedPublishers, Dispatcher dispatcher) {
 		final Action<Publisher<? extends T>, T> mergeAction = new SwitchAction<>(dispatcher);
 
-			mergedPublishers.subscribe(mergeAction);
+		mergedPublishers.subscribe(mergeAction);
 		return mergeAction;
 	}
 
@@ -874,10 +885,10 @@ public class Streams {
 		for (Publisher<? extends T> mergedPublisher : mergedPublishers) {
 			publishers.add(mergedPublisher);
 		}
-		if(publishers.size() == 0){
+		if (publishers.size() == 0) {
 			return empty();
-		}else if(publishers.size() == 1){
-			return wrap((Publisher<T>)publishers.get(0));
+		} else if (publishers.size() == 1) {
+			return wrap((Publisher<T>) publishers.get(0));
 		}
 		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, publishers);
 	}
@@ -1064,250 +1075,260 @@ public class Streams {
 
 
 	/**
-	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from all publishers.
+	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
+	 * all publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
 	public static <T1, T2, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
-	                                        Publisher<? extends T2> source2,
-	                                        Function<Tuple2<T1, T2>, ? extends V> combinator) {
+	                                                  Publisher<? extends T2> source2,
+	                                                  Function<Tuple2<T1, T2>, ? extends V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2), combinator);
 	}
 
 	/**
-	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from all publishers.
+	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
+	 * all publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
-	                                            Publisher<? extends T2> source2,
-	                                            Publisher<? extends T3> source3,
-	                                            Function<Tuple3<T1, T2, T3>,
-			                                            ? extends V> combinator) {
+	                                                      Publisher<? extends T2> source2,
+	                                                      Publisher<? extends T3> source3,
+	                                                      Function<Tuple3<T1, T2, T3>,
+			                                                      ? extends V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3), combinator);
 	}
 
 	/**
-	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from all publishers.
+	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
+	 * all publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <T4>       type of the value from source4
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, T4, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
-	                                                Publisher<? extends T2> source2,
-	                                                Publisher<? extends T3> source3,
-	                                                Publisher<? extends T4> source4,
-	                                                Function<Tuple4<T1, T2, T3, T4>,
-			                                                V> combinator) {
+	                                                          Publisher<? extends T2> source2,
+	                                                          Publisher<? extends T3> source3,
+	                                                          Publisher<? extends T4> source4,
+	                                                          Function<Tuple4<T1, T2, T3, T4>,
+			                                                          V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3, source4), combinator);
 	}
 
 	/**
-	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from all publishers.
+	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
+	 * all publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <T4>       type of the value from source4
+	 * @param <T5>       type of the value from source5
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, T4, T5, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
-	                                                    Publisher<? extends T2> source2,
-	                                                    Publisher<? extends T3> source3,
-	                                                    Publisher<? extends T4> source4,
-	                                                    Publisher<? extends T5> source5,
-	                                                    Function<Tuple5<T1, T2, T3, T4, T5>,
-			                                                    V> combinator) {
+	                                                              Publisher<? extends T2> source2,
+	                                                              Publisher<? extends T3> source3,
+	                                                              Publisher<? extends T4> source4,
+	                                                              Publisher<? extends T5> source5,
+	                                                              Function<Tuple5<T1, T2, T3, T4, T5>,
+			                                                              V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5), combinator);
 	}
 
 	/**
-	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from all publishers.
+	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
+	 * all publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <T6>    type of the value from source6
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <T4>       type of the value from source4
+	 * @param <T5>       type of the value from source5
+	 * @param <T6>       type of the value from source6
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, T4, T5, T6, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
-	                                                        Publisher<? extends T2> source2,
-	                                                        Publisher<? extends T3> source3,
-	                                                        Publisher<? extends T4> source4,
-	                                                        Publisher<? extends T5> source5,
-	                                                        Publisher<? extends T6> source6,
-	                                                        Function<Tuple6<T1, T2, T3, T4, T5, T6>,
-			                                                        V> combinator) {
+	                                                                  Publisher<? extends T2> source2,
+	                                                                  Publisher<? extends T3> source3,
+	                                                                  Publisher<? extends T4> source4,
+	                                                                  Publisher<? extends T5> source5,
+	                                                                  Publisher<? extends T6> source6,
+	                                                                  Function<Tuple6<T1, T2, T3, T4, T5, T6>,
+			                                                                  V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5, source6), combinator);
 	}
 
 	/**
-	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from all publishers.
+	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
+	 * all publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <T6>    type of the value from source6
-	 * @param <T7>    type of the value from source7
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source7    The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <T4>       type of the value from source4
+	 * @param <T5>       type of the value from source5
+	 * @param <T6>       type of the value from source6
+	 * @param <T7>       type of the value from source7
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, T4, T5, T6, T7, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
-	                                                            Publisher<? extends T2> source2,
-	                                                            Publisher<? extends T3> source3,
-	                                                            Publisher<? extends T4> source4,
-	                                                            Publisher<? extends T5> source5,
-	                                                            Publisher<? extends T6> source6,
-	                                                            Publisher<? extends T7> source7,
-	                                                            Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
-			                                                            V> combinator) {
+	                                                                      Publisher<? extends T2> source2,
+	                                                                      Publisher<? extends T3> source3,
+	                                                                      Publisher<? extends T4> source4,
+	                                                                      Publisher<? extends T5> source5,
+	                                                                      Publisher<? extends T6> source6,
+	                                                                      Publisher<? extends T7> source7,
+	                                                                      Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
+			                                                                      V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5, source6, source7),
 				combinator);
 	}
 
 	/**
-	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from all publishers.
+	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
+	 * all publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8 The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <T6>    type of the value from source6
-	 * @param <T7>    type of the value from source7
-	 * @param <T8>    type of the value from source8
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source7    The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source8    The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <T4>       type of the value from source4
+	 * @param <T5>       type of the value from source5
+	 * @param <T6>       type of the value from source6
+	 * @param <T7>       type of the value from source7
+	 * @param <T8>       type of the value from source8
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
 	public static <T1, T2, T3, T4, T5, T6, T7, T8, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
-	                                                                Publisher<? extends T2> source2,
-	                                                                Publisher<? extends T3> source3,
-	                                                                Publisher<? extends T4> source4,
-	                                                                Publisher<? extends T5> source5,
-	                                                                Publisher<? extends T6> source6,
-	                                                                Publisher<? extends T7> source7,
-	                                                                Publisher<? extends T8> source8,
-	                                                                Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
-			                                                                ? extends V> combinator) {
+	                                                                          Publisher<? extends T2> source2,
+	                                                                          Publisher<? extends T3> source3,
+	                                                                          Publisher<? extends T4> source4,
+	                                                                          Publisher<? extends T5> source5,
+	                                                                          Publisher<? extends T6> source6,
+	                                                                          Publisher<? extends T7> source7,
+	                                                                          Publisher<? extends T8> source8,
+	                                                                          Function<Tuple8<T1, T2, T3, T4, T5, T6,
+			                                                                          T7, T8>,
+			                                                                          ? extends V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8),
 				combinator);
 	}
 
 	/**
-	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from all publishers.
+	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
+	 * all publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param sources The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <V>     The produced output after transformation by {@param combinator}
-	 * @param <TUPLE> The type of tuple to use that must match source Publishers type
+	 * @param sources    The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <V>        The produced output after transformation by {@param combinator}
+	 * @param <TUPLE>    The type of tuple to use that must match source Publishers type
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
 	public static <TUPLE extends Tuple, V> Stream<V> combineLatest(Iterable<? extends Publisher<?>> sources,
-	                                                     Function<TUPLE, ? extends V> combinator) {
+	                                                               Function<TUPLE, ? extends V> combinator) {
 		return new CombineLatestAction<>(SynchronousDispatcher.INSTANCE, combinator, sources);
 	}
 
 	/**
-	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from all publishers.
+	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
+	 * all publishers.
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param sources The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <V>     The produced output after transformation by {@param combinator}
-	 * @param <E>     The inner type of {@param source}
+	 * @param sources    The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <V>        The produced output after transformation by {@param combinator}
+	 * @param <E>        The inner type of {@param source}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -1328,13 +1349,13 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -1349,15 +1370,15 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -1374,17 +1395,17 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <T4>       type of the value from source4
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -1402,18 +1423,18 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <T4>       type of the value from source4
+	 * @param <T5>       type of the value from source5
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -1432,21 +1453,21 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <T6>    type of the value from source6
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <T4>       type of the value from source4
+	 * @param <T5>       type of the value from source5
+	 * @param <T6>       type of the value from source6
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -1466,23 +1487,23 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <T6>    type of the value from source6
-	 * @param <T7>    type of the value from source7
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source7    The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <T4>       type of the value from source4
+	 * @param <T5>       type of the value from source5
+	 * @param <T6>       type of the value from source6
+	 * @param <T7>       type of the value from source7
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -1504,25 +1525,25 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8 The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <T1>    type of the value from source1
-	 * @param <T2>    type of the value from source2
-	 * @param <T3>    type of the value from source3
-	 * @param <T4>    type of the value from source4
-	 * @param <T5>    type of the value from source5
-	 * @param <T6>    type of the value from source6
-	 * @param <T7>    type of the value from source7
-	 * @param <T8>    type of the value from source8
-	 * @param <V>     The produced output after transformation by {@param combinator}
+	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3    The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4    The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5    The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6    The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source7    The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source8    The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <T1>       type of the value from source1
+	 * @param <T2>       type of the value from source2
+	 * @param <T3>       type of the value from source3
+	 * @param <T4>       type of the value from source4
+	 * @param <T5>       type of the value from source5
+	 * @param <T6>       type of the value from source6
+	 * @param <T7>       type of the value from source7
+	 * @param <T8>       type of the value from source8
+	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -1544,11 +1565,11 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param sources The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <V>     The produced output after transformation by {@param combinator}
-	 * @param <TUPLE> The type of tuple to use that must match source Publishers type
+	 * @param sources    The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <V>        The produced output after transformation by {@param combinator}
+	 * @param <TUPLE>    The type of tuple to use that must match source Publishers type
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -1562,11 +1583,11 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param sources The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param combinator  The aggregate function that will receive a unique value from each upstream and return the
-	 *                value to signal downstream
-	 * @param <V>     The produced output after transformation by {@param combinator}
-	 * @param <E>     The inner type of {@param source}
+	 * @param sources    The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
+	 *                   value to signal downstream
+	 * @param <V>        The produced output after transformation by {@param combinator}
+	 * @param <E>        The inner type of {@param source}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
@@ -1829,7 +1850,8 @@ public class Streams {
 	 * @param timeout   the maximum wait time in unit
 	 * @param unit      the TimeUnit to use for the timeout
 	 */
-	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit, final boolean request) throws Throwable {
+	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit, final boolean request) throws
+			Throwable {
 		final AtomicReference<Throwable> exception = new AtomicReference<>();
 
 		final CountDownLatch latch = new CountDownLatch(1);
@@ -1839,7 +1861,7 @@ public class Streams {
 			@Override
 			public void onSubscribe(Subscription subscription) {
 				s = subscription;
-				if(request) {
+				if (request) {
 					subscription.request(Long.MAX_VALUE);
 				}
 			}

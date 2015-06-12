@@ -111,7 +111,6 @@ public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Non
 	protected void doRequest(long n) {
 		Subscription s = this.subscription;
 		if (s != null) {
-			this.subscription = null;
 			s.request(n);
 		}
 	}

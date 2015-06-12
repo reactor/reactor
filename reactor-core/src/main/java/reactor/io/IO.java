@@ -86,7 +86,7 @@ public final class IO {
 	 * @return a Publisher of decoded values
 	 */
 	public static Publisher<Buffer> readFile(Path path) {
-		return readFile(path.getParent().toString(), path.getFileName().toString(), -1);
+		return readFile(path.toAbsolutePath().toString(), -1);
 	}
 
 
@@ -99,7 +99,7 @@ public final class IO {
 	 * @return a Publisher of decoded values
 	 */
 	public static Publisher<Buffer> readFile(Path path, int chunkSize) {
-		return readFile(path.getParent().toString(), path.getFileName().toString(), chunkSize);
+		return readFile(path.toAbsolutePath().toString(), chunkSize);
 	}
 
 	/**
@@ -108,8 +108,8 @@ public final class IO {
 	 *
 	 * @return a Publisher of decoded values
 	 */
-	public static Publisher<Buffer> readFile(final String path, final String filename) {
-		return readFile(path, filename, -1);
+	public static Publisher<Buffer> readFile(final String path) {
+		return readFile(path, -1);
 	}
 
 	/**
@@ -118,14 +118,14 @@ public final class IO {
 	 *
 	 * @return a Publisher of decoded values
 	 */
-	public static Publisher<Buffer> readFile(final String path, final String filename, int chunkSize) {
+	public static Publisher<Buffer> readFile(final String path, int chunkSize) {
 		return PublisherFactory.forEach(
 				chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
 				new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {
 					@Override
 					public ReadableByteChannel apply(Subscriber<? super Buffer> subscriber) {
 						try{
-							RandomAccessFile file = new RandomAccessFile(path, filename);
+							RandomAccessFile file = new RandomAccessFile(path, "r");
 							return new FileContext(file);
 						}catch (FileNotFoundException e){
 							throw ReactorFatalException.create(e);
