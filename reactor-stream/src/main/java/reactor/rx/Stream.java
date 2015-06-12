@@ -1339,7 +1339,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 
 			@Override
 			public Dispatcher getDispatcher() {
-				return Stream.this.getDispatcher();
+				return PROCESSOR_SYNC;
 			}
 
 			@Override
@@ -1352,6 +1352,16 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 				return elements;
 			}
 		};
+	}
+
+	/**
+	 * Make this Stream subscribers unbounded
+	 *
+	 * @see #capacity(long)
+	 * @return Stream with capacity set to max
+	 */
+	public final Stream<O> unbounded(){
+		return capacity(Long.MAX_VALUE);
 	}
 
 	/**
