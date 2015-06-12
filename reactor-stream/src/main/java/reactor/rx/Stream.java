@@ -433,7 +433,8 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 */
 	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer) {
 		ConsumerAction<O> consumerAction = new ConsumerAction<O>(
-				getCapacity(),
+				SynchronousDispatcher.INSTANCE != dispatcher && PROCESSOR_SYNC != dispatcher &&
+						dispatcher == getDispatcher() ? Long.MAX_VALUE : getCapacity(),
 				dispatcher,
 				consumer,
 				null,
