@@ -198,7 +198,12 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false, true);
+		return create(name, bufferSize, strategy, null);
+	}
+
+
+	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy, Supplier<E> supplier) {
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false, true, supplier);
 	}
 
 	/**
@@ -258,6 +263,14 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	                                                WaitStrategy strategy,
 	                                                boolean autoCancel) {
 		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, false, autoCancel);
+	}
+
+	public static <E> RingBufferProcessor<E> create(ExecutorService service,
+													int bufferSize,
+													WaitStrategy strategy,
+													boolean autoCancel,
+													Supplier<E> supplier) {
+		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, false, autoCancel, supplier);
 	}
 
 	/**
@@ -602,7 +615,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	}
 
 	public void publish(ImmutableSignal<E> signal) {
-		RingBufferSubscriberUtils.publish(ringBuffer, (MutableSignal<E>)signal);
+		RingBufferSubscriberUtils.publish(ringBuffer, signal);
 	}
 
 	@Override
