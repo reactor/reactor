@@ -1,5 +1,6 @@
 package reactor.core.dispatch;
 
+import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -7,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.alloc.Recyclable;
+import reactor.core.dispatch.wait.WaitingMood;
 import reactor.core.processor.ImmutableSignal;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.support.Assert;
@@ -27,13 +29,15 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  * @author Anatoly Kadyshev
  */
-public class RingBufferDispatcher3 implements Dispatcher {
+public class RingBufferDispatcher3 implements Dispatcher, WaitingMood {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
     private final RingBufferProcessor<Task> processor;
 
     private final TailRecurser tailRecurser;
+
+    private final WaitingMood waitingMood;
 
     protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -96,6 +100,8 @@ public class RingBufferDispatcher3 implements Dispatcher {
                                  ProducerType producerType,
                                  WaitStrategy waitStrategy) {
 
+        this.waitingMood = WaitingMood.class.isAssignableFrom(waitStrategy.getClass()) ? (WaitingMood) waitStrategy : null;
+
         Supplier<Task> taskSupplier = new Supplier<Task>() {
             @Override
             public Task get() {
@@ -116,7 +122,12 @@ public class RingBufferDispatcher3 implements Dispatcher {
             this.processor = RingBufferProcessor.create(name, bufferSize, waitStrategy, taskSupplier);
         }
 
-        this.processor.subscribe(new Subscriber<Task>() {
+        this.processor.subscribe(createSubscriber(uncaughtExceptionHandler));
+    }
+
+    @NotNull
+    private Subscriber<Task> createSubscriber(final Consumer<Throwable> uncaughtExceptionHandler) {
+        return new Subscriber<Task>() {
 
             @Override
             public void onSubscribe(Subscription s) {
@@ -143,7 +154,7 @@ public class RingBufferDispatcher3 implements Dispatcher {
             public void onComplete() {
             }
 
-        });
+        };
     }
 
     @SuppressWarnings("unchecked")
@@ -250,6 +261,30 @@ public class RingBufferDispatcher3 implements Dispatcher {
     @Override
     public void forceShutdown() {
         processor.forceShutdown();
+    }
+
+    @Override
+    public void nervous() {
+        if (waitingMood != null) {
+            execute(new Runnable() {
+                @Override
+                public void run() {
+                    waitingMood.nervous();
+                }
+            });
+        }
+    }
+
+    @Override
+    public void calm() {
+        if (waitingMood != null) {
+            execute(new Runnable() {
+                @Override
+                public void run() {
+                    waitingMood.calm();
+                }
+            });
+        }
     }
 
     static class TailRecurser {
