@@ -13,18 +13,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor;
+package reactor.core.subscriber;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SubscriberFactory;
+import org.reactivestreams.Subscription;
+import reactor.core.error.SpecificationExceptions;
 
 /**
+ * Convenience base class
+ *
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class Subscribers extends SubscriberFactory {
+public class BaseSubscriber<T> implements Subscriber<T> {
+    @Override
+    public void onSubscribe(Subscription s) {
+        if (s == null) {
+            throw SpecificationExceptions.spec_2_13_exception();
+        }
+    }
 
-    public static <T> Subscriber<T> flowControl(Subscriber<T> source){
-        return source;
+    @Override
+    public void onNext(T t) {
+        if (t == null) {
+            throw SpecificationExceptions.spec_2_13_exception();
+        }
+
+    }
+
+    @Override
+    public void onError(Throwable t) {
+        if (t == null) {
+            throw SpecificationExceptions.spec_2_13_exception();
+        }
+    }
+
+    @Override
+    public void onComplete() {
+
     }
 }

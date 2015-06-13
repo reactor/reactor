@@ -34,7 +34,7 @@ import reactor.core.support.Bounded;
  *            <p>
  *            Port from RxJava's SerializedObserver applied to Reactive Stream
  */
-public class SerializedSubscriber<T> implements Subscription, Subscriber<T>, Bounded {
+public class SerializedSubscriber<T> extends BaseSubscriber<T> implements Subscription, Bounded {
 	private final Subscriber<? super T> delegate;
 
 	private boolean emitting   = false;
@@ -93,6 +93,8 @@ public class SerializedSubscriber<T> implements Subscription, Subscriber<T>, Bou
 
 	@Override
 	public void onSubscribe(final Subscription s) {
+		super.onSubscribe(s);
+
 		this.subscription = s;
 		delegate.onSubscribe(this);
 	}
@@ -122,6 +124,8 @@ public class SerializedSubscriber<T> implements Subscription, Subscriber<T>, Bou
 
 	@Override
 	public void onError(final Throwable e) {
+		super.onError(e);
+
 		//TODO throw if fatal ?;
 		FastList list;
 		synchronized (this) {
@@ -148,6 +152,8 @@ public class SerializedSubscriber<T> implements Subscription, Subscriber<T>, Bou
 
 	@Override
 	public void onNext(T t) {
+		super.onNext(t);
+
 		FastList list;
 
 		synchronized (this) {

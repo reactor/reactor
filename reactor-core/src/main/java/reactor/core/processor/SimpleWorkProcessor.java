@@ -15,6 +15,7 @@
  */
 package reactor.core.processor;
 
+import org.reactivestreams.Processor;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.support.NamedDaemonThreadFactory;
@@ -180,6 +181,15 @@ public final class SimpleWorkProcessor<IN, OUT> extends ExecutorPoweredProcessor
 		} else {
 			return allocateTask();
 		}
+	}
+
+	public  static <T> Processor<T, T> create(String name, int bufferSize) {
+	}
+
+
+	@Override
+	public boolean isWork() {
+		return true;
 	}
 
 	@Override

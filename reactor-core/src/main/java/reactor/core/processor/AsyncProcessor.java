@@ -36,6 +36,7 @@ public abstract class AsyncProcessor<IN, OUT> implements
 	private final ClassLoader contextClassLoader;
 
 	protected static final int SMALL_BUFFER_SIZE = 32;
+	protected static final int MEDIUM_BUFFER_SIZE = 8192;
 
 	protected final boolean autoCancel;
 

@@ -213,7 +213,7 @@ public abstract class SubscriberFactory {
 		}
 	};
 
-	private static final class ReactorSubscriber<T, C> implements Subscriber<T>, Bounded {
+	private static final class ReactorSubscriber<T, C> extends BaseSubscriber<T> implements Bounded {
 
 		protected final Function<Subscription, C>                 subscriptionHandler;
 		protected final BiConsumer<T, SubscriptionWithContext<C>> dataConsumer;
@@ -235,9 +235,8 @@ public abstract class SubscriberFactory {
 
 		@Override
 		public void onSubscribe(Subscription s) {
-			if (s == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
-			}
+			super.onSubscribe(s);
+
 			try {
 				if (subscriptionWithContext != null) {
 					s.cancel();
@@ -280,9 +279,8 @@ public abstract class SubscriberFactory {
 
 		@Override
 		public void onNext(T t) {
-			if (t == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
-			}
+			super.onNext(t);
+
 			if (dataConsumer != null) {
 				try {
 					dataConsumer.accept(t, subscriptionWithContext);
@@ -294,9 +292,8 @@ public abstract class SubscriberFactory {
 
 		@Override
 		public void onError(Throwable t) {
-			if ( t  == null){
-				throw SpecificationExceptions.spec_2_13_exception();
-			}
+			super.onError(t);
+
 			if (errorConsumer != null) {
 				errorConsumer.accept(t, subscriptionWithContext != null ? subscriptionWithContext.context() : null);
 			} else {

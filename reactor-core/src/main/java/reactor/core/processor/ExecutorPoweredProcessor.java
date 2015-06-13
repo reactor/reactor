@@ -86,8 +86,9 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends AsyncProcessor<I
 		}
 	}
 
-	public boolean isInContext() {
-		return Thread.currentThread().getContextClassLoader() == contextClassLoader;
-	}
+	/**
+	 * @return true if the attached Subscribers will read exclusive sequences (akin to work-queue pattern)
+	 */
+	public abstract boolean isWork();
 
 }
