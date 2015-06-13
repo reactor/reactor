@@ -1,8 +1,7 @@
 package reactor.core.processor.util;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.dispatch.*;
-import reactor.core.processor.ImmutableSignal;
+import reactor.core.processor.Signal;
 import reactor.core.processor.MutableSignal;
 import reactor.core.support.Exceptions;
 import reactor.core.support.SpecificationExceptions;
@@ -30,12 +29,11 @@ public final class RingBufferSubscriberUtils {
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
 		signal.type = MutableSignal.Type.NEXT;
 		signal.value = value;
-		signal.seqId = seqId;
 
 		ringBuffer.publish(seqId);
 	}
 
-	public static <E> ImmutableSignal<E> next(RingBuffer<MutableSignal<E>> ringBuffer) {
+	public static <E> Signal<E> next(RingBuffer<MutableSignal<E>> ringBuffer) {
 		long seqId = ringBuffer.next();
 		MutableSignal<E> signal = ringBuffer.get(seqId);
 		signal.type = MutableSignal.Type.NEXT;
@@ -43,7 +41,7 @@ public final class RingBufferSubscriberUtils {
 		return signal;
 	}
 
-	public static <E> ImmutableSignal<E> tryNext(RingBuffer<MutableSignal<E>> ringBuffer) throws reactor.core.dispatch.InsufficientCapacityException {
+	public static <E> Signal<E> tryNext(RingBuffer<MutableSignal<E>> ringBuffer) throws reactor.core.dispatch.InsufficientCapacityException {
 		long seqId;
 		try {
 			seqId = ringBuffer.tryNext();
@@ -56,7 +54,7 @@ public final class RingBufferSubscriberUtils {
 		return signal;
 	}
 
-	public static <E> void publish(RingBuffer<MutableSignal<E>> ringBuffer, ImmutableSignal<E> signal) {
+	public static <E> void publish(RingBuffer<MutableSignal<E>> ringBuffer, Signal<E> signal) {
 		ringBuffer.publish(signal.getSeqId());
 	}
 

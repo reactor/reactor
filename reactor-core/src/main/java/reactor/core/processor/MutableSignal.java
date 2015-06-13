@@ -4,7 +4,7 @@ package reactor.core.processor;
  * @author jbrisbin
  * @author smaldini
  */
-public final class MutableSignal<T> implements ImmutableSignal<T> {
+public final class MutableSignal<T> implements Signal<T> {
 
 	public enum Type {
 		NEXT, ERROR, COMPLETE

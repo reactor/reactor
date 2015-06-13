@@ -9,7 +9,7 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.alloc.Recyclable;
 import reactor.core.dispatch.wait.WaitingMood;
-import reactor.core.processor.ImmutableSignal;
+import reactor.core.processor.Signal;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -179,7 +179,7 @@ public class RingBufferDispatcher3 implements Dispatcher, WaitingMood {
         Assert.isTrue(eventConsumer != null, "The signal consumer has not been passed.");
 
         if (!inContext()) {
-            ImmutableSignal<Task> signal = processor.next();
+            Signal<Task> signal = processor.next();
             Task task = signal.getValue();
             task.setData(data)
                     .setEventConsumer(eventConsumer)
@@ -198,7 +198,7 @@ public class RingBufferDispatcher3 implements Dispatcher, WaitingMood {
         Assert.isTrue(alive(), "This Dispatcher has been shut down.");
         Assert.isTrue(eventConsumer != null, "The signal consumer has not been passed.");
 
-        ImmutableSignal<Task> signal = processor.tryNext();
+        Signal<Task> signal = processor.tryNext();
 
         Task task = signal.getValue();
         task.setData(data)

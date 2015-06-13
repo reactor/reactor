@@ -620,22 +620,22 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 	/**
 	 * Returns the next signal from the ring buffer for publishing.
-	 * Value of signal should be modified and the signal should be published via a call {@link #publish(ImmutableSignal)}
+	 * Value of signal should be modified and the signal should be published via a call {@link #publish(Signal)}
 	 *
 	 * @return the next signal
 	 */
-	public ImmutableSignal<E> next() {
+	public Signal<E> next() {
 		return RingBufferSubscriberUtils.next(ringBuffer);
 	}
 
 	/**
 	 * Tries to return the next signal from the ring buffer for publishing.
-	 * Value of signal should be modified and the signal should be published via a call {@link #publish(ImmutableSignal)}
+	 * Value of signal should be modified and the signal should be published via a call {@link #publish(Signal)}
 	 *
 	 * @return the next signal
 	 * @throws reactor.core.dispatch.InsufficientCapacityException when no next signal is available for publishing
 	 */
-	public ImmutableSignal<E> tryNext() throws reactor.core.dispatch.InsufficientCapacityException {
+	public Signal<E> tryNext() throws reactor.core.dispatch.InsufficientCapacityException {
 		return RingBufferSubscriberUtils.tryNext(ringBuffer);
 	}
 
@@ -644,7 +644,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 *
 	 * @param signal signal to be published
 	 */
-	public void publish(ImmutableSignal<E> signal) {
+	public void publish(Signal<E> signal) {
 		RingBufferSubscriberUtils.publish(ringBuffer, signal);
 	}
 
