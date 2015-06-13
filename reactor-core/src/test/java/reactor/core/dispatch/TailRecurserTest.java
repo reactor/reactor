@@ -15,7 +15,7 @@ import static org.junit.Assert.assertThat;
 public class TailRecurserTest {
 
     @Test
-    public void testDefaultTailRecurser() throws Exception {
+    public void testConsumeTasks() throws Exception {
         AtomicInteger nRecursiveTasks = new AtomicInteger(0);
 
         Consumer<RingBufferDispatcher3.Task> taskConsumer = new Consumer<RingBufferDispatcher3.Task>() {
