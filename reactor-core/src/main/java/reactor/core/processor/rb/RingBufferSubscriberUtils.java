@@ -56,8 +56,8 @@ public final class RingBufferSubscriberUtils {
 		return signal;
 	}
 
-	public static <E> void publish(RingBuffer<MutableSignal<E>> ringBuffer, MutableSignal<E> signal) {
-		ringBuffer.publish(signal.seqId);
+	public static <E> void publish(RingBuffer<MutableSignal<E>> ringBuffer, ImmutableSignal<E> signal) {
+		ringBuffer.publish(signal.getSeqId());
 	}
 
 	public static <E> void onError(Throwable error, RingBuffer<MutableSignal<E>> ringBuffer) {
