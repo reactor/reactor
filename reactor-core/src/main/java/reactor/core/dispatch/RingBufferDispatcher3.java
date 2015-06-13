@@ -12,12 +12,21 @@ import reactor.core.processor.RingBufferProcessor;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
+import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
+import reactor.jarjar.com.lmax.disruptor.RingBuffer;
 import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
 import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Implementation of a {@link reactor.core.Dispatcher} that uses a {@link RingBuffer} to queue tasks to execute.
+ *
+ * @author Jon Brisbin
+ * @author Stephane Maldini
+ * @author Anatoly Kadyshev
+ */
 public class RingBufferDispatcher3 implements Dispatcher {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
@@ -26,6 +35,61 @@ public class RingBufferDispatcher3 implements Dispatcher {
 
     private final TailRecurser tailRecurser;
 
+    protected static final int DEFAULT_BUFFER_SIZE = 1024;
+
+    /**
+     * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
+     * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking
+     * wait
+     * strategy}.
+     *
+     * @param name The name of the dispatcher.
+     */
+    public RingBufferDispatcher3(String name) {
+        this(name, DEFAULT_BUFFER_SIZE);
+    }
+
+    /**
+     * Creates a new {@code RingBufferDispatcher} with the given {@code name} and {@param bufferSize},
+     * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking
+     * wait
+     * strategy}.
+     *
+     * @param name       The name of the dispatcher
+     * @param bufferSize The size to configure the ring buffer with
+     */
+    public RingBufferDispatcher3(String name, int bufferSize) {
+        this(name, bufferSize, null);
+    }
+
+    /**
+     * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link RingBuffer} with
+     * {@code bufferSize} slots, configured with a producer type of {@link ProducerType#MULTI MULTI}
+     * and a {@link BlockingWaitStrategy blocking wait. A given @param uncaughtExceptionHandler} will catch anything not
+     * handled e.g. by the owning {@code reactor.bus.EventBus} or {@code reactor.rx.Stream}.
+     *
+     * @param name                     The name of the dispatcher
+     * @param bufferSize               The size to configure the ring buffer with
+     * @param uncaughtExceptionHandler The last resort exception handler
+     */
+    public RingBufferDispatcher3(String name,
+                                int bufferSize,
+                                final Consumer<Throwable> uncaughtExceptionHandler) {
+        this(name, bufferSize, uncaughtExceptionHandler, ProducerType.MULTI, new BlockingWaitStrategy());
+    }
+
+    /**
+     * Creates a new {@literal RingBufferDispatcher} with the given {@code name}. It will use a {@link RingBuffer} with
+     * {@code bufferSize} slots, configured with the given {@code producerType}, {@param uncaughtExceptionHandler}
+     * and {@code waitStrategy}. A null {@param uncaughtExceptionHandler} will make this dispatcher logging such
+     * exceptions.
+     *
+     * @param name                     The name of the dispatcher
+     * @param bufferSize               The size to configure the ring buffer with
+     * @param producerType             The producer type to configure the ring buffer with
+     * @param waitStrategy             The wait strategy to configure the ring buffer with
+     * @param uncaughtExceptionHandler The last resort exception handler
+     */
     public RingBufferDispatcher3(String name,
                                  int bufferSize,
                                  final Consumer<Throwable> uncaughtExceptionHandler,
@@ -71,6 +135,7 @@ public class RingBufferDispatcher3 implements Dispatcher {
                     uncaughtExceptionHandler.accept(t);
                 } else {
                     log.error(t.getMessage(), t);
+                    //TODO: Should we also invoke Environment.get().routeError(t)?
                 }
             }
 
@@ -191,7 +256,7 @@ public class RingBufferDispatcher3 implements Dispatcher {
 
         private final ArrayList<Task> pile;
 
-        private final int pileGrowthDelta;
+        private final int pileSizeIncrement;
 
         private final Supplier<Task> taskSupplier;
 
@@ -201,17 +266,17 @@ public class RingBufferDispatcher3 implements Dispatcher {
 
         TailRecurser(int backlogSize, Supplier<Task> taskSupplier,
                      Consumer<Task> taskConsumer) {
-            this.pileGrowthDelta = backlogSize * 2;
+            this.pileSizeIncrement = backlogSize * 2;
             this.taskSupplier = taskSupplier;
             this.pileConsumer = taskConsumer;
-            this.pile = new ArrayList<Task>(pileGrowthDelta);
+            this.pile = new ArrayList<Task>(pileSizeIncrement);
             ensureEnoughTasks();
         }
 
         private void ensureEnoughTasks() {
             if (next >= pile.size()) {
-                pile.ensureCapacity(pile.size() + pileGrowthDelta);
-                for (int i = 0; i < pileGrowthDelta; i++) {
+                pile.ensureCapacity(pile.size() + pileSizeIncrement);
+                for (int i = 0; i < pileSizeIncrement; i++) {
                     pile.add(taskSupplier.get());
                 }
             }
@@ -228,7 +293,7 @@ public class RingBufferDispatcher3 implements Dispatcher {
                     pileConsumer.accept(pile.get(i));
                 }
 
-                for (int i = next - 1; i >= pileGrowthDelta; i--) {
+                for (int i = next - 1; i >= pileSizeIncrement; i--) {
                     pile.remove(i);
                 }
                 next = 0;
