@@ -12,6 +12,7 @@ import reactor.core.dispatch.wait.WaitingMood;
 import reactor.core.processor.Signal;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.support.Assert;
+import reactor.core.support.StringUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
@@ -44,8 +45,7 @@ public class RingBufferDispatcher3 implements Dispatcher, WaitingMood {
     /**
      * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
      * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking
-     * wait
-     * strategy}.
+     * wait strategy}.
      *
      * @param name The name of the dispatcher.
      */
@@ -56,8 +56,7 @@ public class RingBufferDispatcher3 implements Dispatcher, WaitingMood {
     /**
      * Creates a new {@code RingBufferDispatcher} with the given {@code name} and {@param bufferSize},
      * configured with a producer type of {@link ProducerType#MULTI MULTI} and a {@link BlockingWaitStrategy blocking
-     * wait
-     * strategy}.
+     * wait strategy}.
      *
      * @param name       The name of the dispatcher
      * @param bufferSize The size to configure the ring buffer with
@@ -99,6 +98,9 @@ public class RingBufferDispatcher3 implements Dispatcher, WaitingMood {
                                  final Consumer<Throwable> uncaughtExceptionHandler,
                                  ProducerType producerType,
                                  WaitStrategy waitStrategy) {
+        Assert.isTrue(!StringUtils.isEmpty(name), "name should not be empty");
+        Assert.notNull(producerType, "producerType should be provided");
+        Assert.notNull(waitStrategy, "waitStrategy should be provided");
 
         this.waitingMood = WaitingMood.class.isAssignableFrom(waitStrategy.getClass()) ? (WaitingMood) waitStrategy : null;
 
@@ -181,12 +183,15 @@ public class RingBufferDispatcher3 implements Dispatcher, WaitingMood {
         if (!inContext()) {
             Signal<Task> signal = processor.next();
             Task task = signal.getValue();
+
             task.setData(data)
                     .setEventConsumer(eventConsumer)
                     .setErrorConsumer(errorConsumer);
+
             processor.publish(signal);
         } else {
             Task task = tailRecurser.next();
+
             task.setData(data)
                     .setEventConsumer(eventConsumer)
                     .setErrorConsumer(errorConsumer);
@@ -201,6 +206,7 @@ public class RingBufferDispatcher3 implements Dispatcher, WaitingMood {
         Signal<Task> signal = processor.tryNext();
 
         Task task = signal.getValue();
+
         task.setData(data)
                 .setEventConsumer(eventConsumer)
                 .setErrorConsumer(errorConsumer);
@@ -299,8 +305,7 @@ public class RingBufferDispatcher3 implements Dispatcher, WaitingMood {
 
         private int next = 0;
 
-        TailRecurser(int backlogSize, Supplier<Task> taskSupplier,
-                     Consumer<Task> taskConsumer) {
+        TailRecurser(int backlogSize, Supplier<Task> taskSupplier, Consumer<Task> taskConsumer) {
             this.pileSizeIncrement = backlogSize * 2;
             this.taskSupplier = taskSupplier;
             this.pileConsumer = taskConsumer;
