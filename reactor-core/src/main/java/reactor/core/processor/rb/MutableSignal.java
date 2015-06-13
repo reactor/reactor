@@ -20,4 +20,9 @@ public final class MutableSignal<T> implements ImmutableSignal<T> {
 		return value;
 	}
 
+	@Override
+	public long getSeqId() {
+		return seqId;
+	}
+
 }
