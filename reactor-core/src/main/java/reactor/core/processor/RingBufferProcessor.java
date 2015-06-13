@@ -17,7 +17,6 @@ package reactor.core.processor;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.dispatch.*;
 import reactor.core.processor.util.RingBufferSubscriberUtils;
 import reactor.core.support.SpecificationExceptions;
 import reactor.fn.Supplier;
@@ -201,9 +200,22 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		return create(name, bufferSize, strategy, null);
 	}
 
-
-	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy, Supplier<E> supplier) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false, true, supplier);
+	/**
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy, signal supplier.
+	 * The created processor is not shared and will auto-cancel.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param signalSupplier A supplier of dispatched signals to preallocate in the ring buffer
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy, Supplier<E> signalSupplier) {
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false, true, signalSupplier);
 	}
 
 	/**
@@ -224,7 +236,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	                                                int bufferSize,
 	                                                WaitStrategy strategy,
 	                                                boolean autoCancel) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false, autoCancel);
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false, autoCancel, null);
 	}
 
 	/**
@@ -262,15 +274,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	                                                int bufferSize,
 	                                                WaitStrategy strategy,
 	                                                boolean autoCancel) {
-		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, false, autoCancel);
-	}
-
-	public static <E> RingBufferProcessor<E> create(ExecutorService service,
-													int bufferSize,
-													WaitStrategy strategy,
-													boolean autoCancel,
-													Supplier<E> supplier) {
-		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, false, autoCancel, supplier);
+		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, false, autoCancel, null);
 	}
 
 	/**
@@ -440,7 +444,28 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, WaitStrategy strategy) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, true);
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, true, null);
+	}
+
+	/**
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and signal supplier.
+	 * The created processor will auto-cancel and is shared.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param signalSupplier A supplier of dispatched signals to preallocate in the ring buffer
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, WaitStrategy strategy, Supplier<E> signalSupplier) {
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, true, signalSupplier);
 	}
 
 	/**
@@ -464,7 +489,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	                                               int bufferSize,
 	                                               WaitStrategy strategy,
 	                                               boolean autoCancel) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, autoCancel);
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, autoCancel, null);
 	}
 
 	/**
@@ -508,11 +533,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	                                               int bufferSize,
 	                                               WaitStrategy strategy,
 	                                               boolean autoCancel) {
-		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, true, autoCancel);
-	}
-
-	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, WaitStrategy strategy, Supplier<E> supplier) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, true, supplier);
+		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, true, autoCancel, null);
 	}
 
 	private final SequenceBarrier              barrier;
@@ -520,21 +541,12 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	private final Sequence                     recentSequence;
 
 	private RingBufferProcessor(String name,
-								ExecutorService executor,
-								int bufferSize,
-								WaitStrategy waitStrategy,
-								boolean shared,
-								boolean autoCancel) {
-		this(name, executor, bufferSize, waitStrategy, shared, autoCancel, null);
-	}
-
-	private RingBufferProcessor(String name,
 	                            ExecutorService executor,
 	                            int bufferSize,
 	                            WaitStrategy waitStrategy,
 	                            boolean shared,
 	                            boolean autoCancel,
-								final Supplier<E> supplier) {
+								final Supplier<E> signalSupplier) {
 		super(name, executor, autoCancel);
 
 		this.ringBuffer = RingBuffer.create(
@@ -543,8 +555,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 					@Override
 					public MutableSignal<E> newInstance() {
 						MutableSignal<E> signal = new MutableSignal<>();
-						if (supplier != null) {
-							signal.value = supplier.get();
+						if (signalSupplier != null) {
+							signal.value = signalSupplier.get();
 						}
 						return signal;
 					}
@@ -606,14 +618,32 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		RingBufferSubscriberUtils.onNext(o, ringBuffer);
 	}
 
+	/**
+	 * Returns the next signal from the ring buffer for publishing.
+	 * Value of signal should be modified and the signal should be published via a call {@link #publish(ImmutableSignal)}
+	 *
+	 * @return the next signal
+	 */
 	public ImmutableSignal<E> next() {
 		return RingBufferSubscriberUtils.next(ringBuffer);
 	}
 
+	/**
+	 * Tries to return the next signal from the ring buffer for publishing.
+	 * Value of signal should be modified and the signal should be published via a call {@link #publish(ImmutableSignal)}
+	 *
+	 * @return the next signal
+	 * @throws reactor.core.dispatch.InsufficientCapacityException when no next signal is available for publishing
+	 */
 	public ImmutableSignal<E> tryNext() throws reactor.core.dispatch.InsufficientCapacityException {
 		return RingBufferSubscriberUtils.tryNext(ringBuffer);
 	}
 
+	/**
+	 * Publishes signal previously returned via either {@link #next()} or {@link #tryNext()}
+	 *
+	 * @param signal signal to be published
+	 */
 	public void publish(ImmutableSignal<E> signal) {
 		RingBufferSubscriberUtils.publish(ringBuffer, signal);
 	}
@@ -713,6 +743,11 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		return ringBuffer.getBufferSize();
 	}
 
+	/**
+	 * Get the remaining capacity for the ring buffer
+	 *
+	 * @return number of remaining slots
+	 */
 	public long remainingCapacity() {
 		return ringBuffer.remainingCapacity();
 	}
