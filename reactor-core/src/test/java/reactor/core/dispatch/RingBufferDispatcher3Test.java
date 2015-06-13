@@ -26,11 +26,11 @@ public class RingBufferDispatcher3Test {
         RingBufferDispatcher3 dispatcher = new RingBufferDispatcher3("dispatcher", BUFFER_SIZE, null, ProducerType.MULTI,
                 new BusySpinWaitStrategy());
 
-        assertTasksDispatched(dispatcher);
-        assertTasksDispatched(dispatcher);
+        runTest(dispatcher);
+        runTest(dispatcher);
     }
 
-    private void assertTasksDispatched(final RingBufferDispatcher3 dispatcher) throws InterruptedException {
+    private void runTest(final RingBufferDispatcher3 dispatcher) throws InterruptedException {
         CountDownLatch tasksCountDown = new CountDownLatch(N);
         AtomicBoolean exceptionThrown = new AtomicBoolean();
         dispatcher.dispatch("Hello", new Consumer<String>() {

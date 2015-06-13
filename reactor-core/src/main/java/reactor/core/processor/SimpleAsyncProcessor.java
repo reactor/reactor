@@ -15,6 +15,7 @@
  */
 package reactor.core.processor;
 
+import org.reactivestreams.Processor;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.support.internal.MpscLinkedQueue;
 import reactor.core.support.NamedDaemonThreadFactory;
@@ -103,7 +104,10 @@ public final class SimpleAsyncProcessor<IN, OUT> extends ExecutorPoweredProcesso
 	 *
 	 * @param name The name of the dispatcher.
 	 */
-	public MpscDispatcher(String name) {
+	public Mpsc
+
+
+	Dispatcher(String name) {
 		this(name, DEFAULT_BUFFER_SIZE);
 	}
 
@@ -121,7 +125,8 @@ public final class SimpleAsyncProcessor<IN, OUT> extends ExecutorPoweredProcesso
 
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
 		this.workQueue = MpscLinkedQueue.create();
-		this.capacity = bufferSize;
+		this.capacity = bufferSize
+		;
 		this.executor.execute(new Runnable() {
 			@Override
 			public void run() {
@@ -172,6 +177,9 @@ public final class SimpleAsyncProcessor<IN, OUT> extends ExecutorPoweredProcesso
 		return workQueue.size();
 	}
 
+	public  static <T> Processor<T, T> create(String name, int bufferSize) {
+	}
+
 
 	@Override
 	protected Task tryAllocateTask() throws InsufficientCapacityException {
@@ -180,6 +188,12 @@ public final class SimpleAsyncProcessor<IN, OUT> extends ExecutorPoweredProcesso
 		} else {
 			return allocateTask();
 		}
+	}
+
+
+	@Override
+	public boolean isWork() {
+		return false;
 	}
 
 	@Override

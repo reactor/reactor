@@ -19,8 +19,8 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.processor.rb.MutableSignal;
-import reactor.core.processor.rb.RingBufferSubscriberUtils;
+import reactor.core.support.Signal;
+import reactor.fn.Supplier;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
@@ -54,6 +54,7 @@ import java.util.concurrent.locks.LockSupport;
  *
  * @param <E> Type of dispatched signal
  * @author Stephane Maldini
+ * @author Anatoly Kadyshev
  */
 public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E> {
 
@@ -460,13 +461,12 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 *
 	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
 	 * @param signalSupplier A supplier of dispatched signals to preallocate in the ring buffer
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, WaitStrategy strategy, Supplier<E> signalSupplier) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, true, signalSupplier);
+	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, Supplier<E> signalSupplier) {
+		return new RingBufferProcessor<E>(name, null, bufferSize, new LiteBlockingWaitStrategy(), true, true, signalSupplier);
 	}
 
 	/**
@@ -621,31 +621,20 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 	/**
 	 * Returns the next signal from the ring buffer for publishing.
-	 * Value of signal should be modified and the signal should be published via a call {@link #publish(Signal)}
+	 * Value of signal should be modified and the signal should be published via a call {@link #publish(MutableSignal)}
 	 *
 	 * @return the next signal
 	 */
-	public Signal<E> next() {
+	public MutableSignal<E> next() {
 		return RingBufferSubscriberUtils.next(ringBuffer);
 	}
 
 	/**
-	 * Tries to return the next signal from the ring buffer for publishing.
-	 * Value of signal should be modified and the signal should be published via a call {@link #publish(Signal)}
-	 *
-	 * @return the next signal
-	 * @throws reactor.core.dispatch.InsufficientCapacityException when no next signal is available for publishing
-	 */
-	public Signal<E> tryNext() throws reactor.core.dispatch.InsufficientCapacityException {
-		return RingBufferSubscriberUtils.tryNext(ringBuffer);
-	}
-
-	/**
-	 * Publishes signal previously returned via either {@link #next()} or {@link #tryNext()}
+	 * Publishes signal previously returned via either {@link #next()}}
 	 *
 	 * @param signal signal to be published
 	 */
-	public void publish(Signal<E> signal) {
+	public void publish(MutableSignal<E> signal) {
 		RingBufferSubscriberUtils.publish(ringBuffer, signal);
 	}
 
@@ -658,6 +647,15 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	public void onComplete() {
 		RingBufferSubscriberUtils.onComplete(ringBuffer);
 		super.onComplete();
+	}
+
+	@Override
+	public boolean isWork() {
+		return false;
+	}
+
+	RingBuffer<MutableSignal<E>> ringBuffer(){
+		return ringBuffer;
 	}
 
 	public Publisher<Void> writeWith(final Publisher<? extends E> source) {
@@ -855,7 +853,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 							event = processor.ringBuffer.get(nextSequence);
 
 							//if event is Next Signal we need to handle backpressure (pendingRequests)
-							if (event.type == MutableSignal.Type.NEXT) {
+							if (event.type == Signal.NEXT) {
 								//if bounded and out of capacity
 								if (!unbounded && pendingRequest.addAndGet(-1l) < 0l) {
 									//re-add the retained capacity
@@ -879,7 +877,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 								running.set(false);
 								RingBufferSubscriberUtils.route(event, subscriber);
 								//only alert on error (immediate), complete will be drained as usual with waitFor
-								if (event.type == MutableSignal.Type.ERROR) {
+								if (event.type == Signal.ERROR) {
 									processor.barrier.alert();
 								}
 								throw AlertException.INSTANCE;
@@ -894,7 +892,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 							break;
 						} else {
 							long cursor = processor.barrier.getCursor();
-							if (processor.ringBuffer.get(cursor).type == MutableSignal.Type.ERROR) {
+							if (processor.ringBuffer.get(cursor).type == Signal.ERROR) {
 								sequence.set(cursor);
 								nextSequence = cursor;
 							} else {

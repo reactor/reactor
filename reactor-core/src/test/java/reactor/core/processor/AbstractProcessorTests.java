@@ -73,18 +73,6 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
-		return s -> {
-			s.onSubscribe(new Subscription() {
-				@Override
-				public void request(long n) {
-				}
-
-				@Override
-				public void cancel() {
-				}
-			});
-			s.onError(new Exception("test"));
-
-		};
+		return Publishers.error(new Exception("test"));
 	}
 }

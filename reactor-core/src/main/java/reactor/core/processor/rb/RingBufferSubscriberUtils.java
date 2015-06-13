@@ -28,35 +28,22 @@ public final class RingBufferSubscriberUtils {
 
 		final long seqId = ringBuffer.next();
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
-		signal.type = MutableSignal.Type.NEXT;
+		signal.type = Signal.NEXT;
 		signal.value = value;
 
 		ringBuffer.publish(seqId);
 	}
 
-	public static <E> Signal<E> next(RingBuffer<MutableSignal<E>> ringBuffer) {
+	public static <E> MutableSignal<E> next(RingBuffer<MutableSignal<E>> ringBuffer) {
 		long seqId = ringBuffer.next();
 		MutableSignal<E> signal = ringBuffer.get(seqId);
-		signal.type = MutableSignal.Type.NEXT;
+		signal.type = Signal.NEXT;
 		signal.seqId = seqId;
 		return signal;
 	}
 
-	public static <E> Signal<E> tryNext(RingBuffer<MutableSignal<E>> ringBuffer) throws reactor.core.dispatch.InsufficientCapacityException {
-		long seqId;
-		try {
-			seqId = ringBuffer.tryNext();
-		} catch (InsufficientCapacityException e) {
-			throw reactor.core.dispatch.InsufficientCapacityException.INSTANCE;
-		}
-		MutableSignal<E> signal = ringBuffer.get(seqId);
-		signal.type = MutableSignal.Type.NEXT;
-		signal.seqId = seqId;
-		return signal;
-	}
-
-	public static <E> void publish(RingBuffer<MutableSignal<E>> ringBuffer, Signal<E> signal) {
-		ringBuffer.publish(signal.getSeqId());
+	public static <E> void publish(RingBuffer<MutableSignal<E>> ringBuffer, MutableSignal<E> signal) {
+		ringBuffer.publish(signal.seqId);
 	}
 
 	public static <E> void onError(Throwable error, RingBuffer<MutableSignal<E>> ringBuffer) {
@@ -67,7 +54,7 @@ public final class RingBufferSubscriberUtils {
 		final long seqId = ringBuffer.next();
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
 
-		signal.type = MutableSignal.Type.ERROR;
+		signal.type = Signal.ERROR;
 		signal.value = null;
 		signal.error = error;
 
@@ -78,7 +65,7 @@ public final class RingBufferSubscriberUtils {
 		final long seqId = ringBuffer.next();
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
 
-		signal.type = MutableSignal.Type.COMPLETE;
+		signal.type = Signal.COMPLETE;
 		signal.value = null;
 		signal.error = null;
 
@@ -86,13 +73,13 @@ public final class RingBufferSubscriberUtils {
 	}
 
 	public static <E> void route(MutableSignal<E> task, Subscriber<? super E> subscriber) {
-		if (task.type == MutableSignal.Type.NEXT && null != task.value) {
+		if (task.type == Signal.NEXT && null != task.value) {
 			// most likely case first
 			subscriber.onNext(task.value);
-		} else if (task.type == MutableSignal.Type.COMPLETE) {
+		} else if (task.type == Signal.COMPLETE) {
 			// second most likely case next
 			subscriber.onComplete();
-		} else if (task.type == MutableSignal.Type.ERROR) {
+		} else if (task.type == Signal.ERROR) {
 			// errors should be relatively infrequent compared to other signals
 			subscriber.onError(task.error);
 		}
@@ -104,13 +91,13 @@ public final class RingBufferSubscriberUtils {
 		E value = task.value;
 		task.value = null;
 		try {
-			if (task.type == MutableSignal.Type.NEXT && null != value) {
+			if (task.type == Signal.NEXT && null != value) {
 				// most likely case first
 				subscriber.onNext(value);
-			} else if (task.type == MutableSignal.Type.COMPLETE) {
+			} else if (task.type == Signal.COMPLETE) {
 				// second most likely case next
 				subscriber.onComplete();
-			} else if (task.type == MutableSignal.Type.ERROR) {
+			} else if (task.type == Signal.ERROR) {
 				// errors should be relatively infrequent compared to other signals
 				subscriber.onError(task.error);
 			}
@@ -136,7 +123,7 @@ public final class RingBufferSubscriberUtils {
 					barrier.waitFor(waitedSequence);
 					event = ringBuffer.get(waitedSequence);
 
-					if (event.type == MutableSignal.Type.COMPLETE) {
+					if (event.type == Signal.COMPLETE) {
 						try {
 							subscriber.onComplete();
 							return false;
@@ -145,7 +132,7 @@ public final class RingBufferSubscriberUtils {
 							subscriber.onError(t);
 							return false;
 						}
-					} else if (event.type == MutableSignal.Type.ERROR) {
+					} else if (event.type == Signal.ERROR) {
 						subscriber.onError(event.error);
 						return false;
 					}
@@ -230,7 +217,7 @@ public final class RingBufferSubscriberUtils {
 				long previous = pendingRequest.addAndGet(-1L);
 				if (previous >= 0) {
 					MutableSignal<E> signal = ringBuffer.get(index + (capacity - previous));
-					signal.type = MutableSignal.Type.NEXT;
+					signal.type = Signal.NEXT;
 					signal.value = e;
 					if (previous == 0 && subscription != null) {
 						ringBuffer.publish(index - ((index + capacity) - 1), index);
@@ -254,7 +241,7 @@ public final class RingBufferSubscriberUtils {
 			}
 
 			@Override
-			public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+			public boolean isExposedToOverflow(Bounded upstream) {
 				return false;
 			}
 

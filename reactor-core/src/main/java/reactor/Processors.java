@@ -15,6 +15,8 @@
  */
 package reactor;
 
+import org.reactivestreams.Processor;
+
 /**
  * @author Stephane Maldini
  * @since 2.1
@@ -27,5 +29,10 @@ public final class Processors {
      * @see Runtime#availableProcessors()
      */
     public static final int DEFAULT_POOL_SIZE = Math.min(Runtime.getRuntime().availableProcessors(), 2);
+
+    public <I, O> Processor<I, O> broadcast(Processor<I, O> processor){
+        processor.onSubscribe(Publishers.NOOP_SUBSCRIPTION);
+        return processor;
+    }
 
 }

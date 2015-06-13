@@ -1,28 +1,15 @@
 package reactor.core.processor.rb;
 
+import reactor.core.support.Signal;
+
 /**
- * @author jbrisbin
- * @author smaldini
+ * @author Stephane Maldini
+ * @author Anatoly Kadyshev
  */
-public final class MutableSignal<T> implements Signal<T> {
+public final class MutableSignal<T> {
 
-	public enum Type {
-		NEXT, ERROR, COMPLETE
-	}
-
-	public Type      type     = Type.NEXT;
-	public T         value    = null;
-	public Throwable error    = null;
-	public long      seqId    = -1;
-
-	@Override
-	public T getValue() {
-		return value;
-	}
-
-	@Override
-	public long getSeqId() {
-		return seqId;
-	}
-
+	public Signal    type  = Signal.NEXT;
+	public T         value = null;
+	public Throwable error = null;
+	public long      seqId = -1;
 }

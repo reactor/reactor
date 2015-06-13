@@ -13,18 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor;
-
-import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SubscriberFactory;
+package reactor.core.support;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
  */
-public final class Subscribers extends SubscriberFactory {
-
-    public static <T> Subscriber<T> flowControl(Subscriber<T> source){
-        return source;
-    }
+public enum Signal {
+    NEXT, ERROR, COMPLETE, SUBSCRIPTION
 }
