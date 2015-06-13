@@ -3,7 +3,7 @@ package reactor.core.processor;
 /**
  * @author Anatoly Kadyshev
  */
-public interface ImmutableSignal<T> {
+public interface Signal<T> {
 
     T getValue();
 
