@@ -1015,59 +1015,11 @@ public class StreamTests extends AbstractReactorTest {
 	@Ignore
 	public void testCustomFileStream() throws InterruptedException {
 
-
-	/*	Stream<String> fileStream = new Stream<String>() {
-			@Override
-			public void subscribe(final Subscriber<? super String> subscriber) {
-				final File file = new File("settings.gradle");
-
-				try {
-					final BufferedReader is = new BufferedReader(new FileReader(file));
-
-					subscriber.onSubscribe(new PushSubscription<String>(this, subscriber) {
-
-						@Override
-						protected void onRequest(long n) {
-							long requestCursor = 0l;
-							System.out.println("requesting " + n);
-							try {
-								String line;
-								while (requestCursor++ < n || n == Long.MAX_VALUE) {
-									line = is.readLine();
-									if (line != null) {
-										onNext(line);
-									} else {
-										is.close();
-										terminated = 1;
-										return;
-									}
-								}
-							} catch (IOException e) {
-								onError(e);
-							}
-						}
-
-						@Override
-						public void cancel() {
-							try {
-								is.close();
-							} catch (IOException e) {
-								onError(e);
-							}
-						}
-					});
-
-				} catch (FileNotFoundException e) {
-					Streams.<String, FileNotFoundException>fail(e)
-							.subscribe(subscriber);
-				}
-			}
-		};*/
-
 		Stream<String> fileStream = Streams.wrap(IO.readFile("settings.gradle", 20)).decode(StandardCodecs.STRING_CODEC);
 
 		Stream<String> processor = fileStream
-				.process(RingBufferProcessor.create());
+				.log()
+				.flatMap(Streams::just);
 
 		processor
 				.capacity(5L)

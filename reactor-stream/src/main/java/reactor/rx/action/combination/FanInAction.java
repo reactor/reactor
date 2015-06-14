@@ -150,8 +150,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		//	innerSubscriptions.request(elements);
-		elements = Math.max(this.capacity, elements);
-		super.requestUpstream(capacity, terminated, elements);
+		super.requestUpstream(capacity, terminated, Math.max(this.capacity, elements));
 		if (dynamicMergeAction != null) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
 		}
