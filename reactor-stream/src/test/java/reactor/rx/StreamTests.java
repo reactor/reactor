@@ -37,6 +37,8 @@ import reactor.core.DispatcherSupplier;
 import reactor.core.config.DispatcherType;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.processor.RingBufferProcessor;
+import reactor.core.reactivestreams.PublisherFactory;
+import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.support.Tap;
@@ -51,6 +53,7 @@ import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.BarrierStream;
 
 import java.awt.event.KeyEvent;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.*;
@@ -491,8 +494,8 @@ public class StreamTests extends AbstractReactorTest {
 	}
 
 	@Test
-	public void analyticsTest() throws Exception{
-		Broadcaster<Integer> source = Broadcaster.<Integer> create(Environment.get());
+	public void analyticsTest() throws Exception {
+		Broadcaster<Integer> source = Broadcaster.<Integer>create(Environment.get());
 		long avgTime = 50l;
 
 		Promise<Long> result = source
@@ -502,7 +505,7 @@ public class StreamTests extends AbstractReactorTest {
 				.flatMap(self ->
 								BiStreams.reduceByKey(self, (acc, next) -> acc + next)
 				)
-				.sort((a,b) -> a.t1.compareTo(b.t1))
+				.sort((a, b) -> a.t1.compareTo(b.t1))
 				.log("elapsed")
 				.reduce(-1L, (acc, next) ->
 								acc > 0l ? ((next.t1 + acc) / 2) : next.t1
@@ -837,8 +840,8 @@ public class StreamTests extends AbstractReactorTest {
 						.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
 						.consume(items -> {
 							batchesDistribution.compute(items.size(),
-							                            (key,
-							                             value) -> value == null ? 1 : value + 1);
+									(key,
+									 value) -> value == null ? 1 : value + 1);
 							items.forEach(item -> latch.countDown());
 						}));
 
@@ -874,16 +877,16 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<Integer> s = Streams.just("2222")
 				.map(Integer::parseInt)
 				.flatMap(l ->
-						         Streams.<Integer>merge(
-								         globalFeed,
-								         Streams.just(1111, l, 3333, 4444, 5555, 6666)
-						         )
-						                .log("merged")
-						                .dispatchOn(env)
-						                .log("dispatched")
-						                .observeSubscribe(x -> afterSubscribe.countDown())
-						                .filter(nearbyLoc -> 3333 >= nearbyLoc)
-						                .filter(nearbyLoc -> 2222 <= nearbyLoc)
+								Streams.<Integer>merge(
+										globalFeed,
+										Streams.just(1111, l, 3333, 4444, 5555, 6666)
+								)
+										.log("merged")
+										.dispatchOn(env)
+										.log("dispatched")
+										.observeSubscribe(x -> afterSubscribe.countDown())
+										.filter(nearbyLoc -> 3333 >= nearbyLoc)
+										.filter(nearbyLoc -> 2222 <= nearbyLoc)
 
 				);
 
@@ -1000,7 +1003,7 @@ public class StreamTests extends AbstractReactorTest {
 								.dispatchOn(env.getCachedDispatcher())
 								.map(v -> v)
 								.consume(v -> countDownLatch.countDown(),
-								         Throwable::printStackTrace)
+										Throwable::printStackTrace)
 		);
 
 		countDownLatch.await(5, TimeUnit.SECONDS);
@@ -1008,6 +1011,122 @@ public class StreamTests extends AbstractReactorTest {
 			System.out.println(tail.debug());
 		}
 		Assert.assertEquals(0, countDownLatch.getCount());
+	}
+
+	@Test
+	@Ignore
+	public void testDiamond() throws InterruptedException, IOException {
+		ExecutorService pool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("tee", null, null, true));
+
+		Stream<Point> points = Streams
+				.wrap(PublisherFactory.<Double, Random>forEach(
+						sub -> sub.onNext(sub.context().nextDouble()),
+						sub -> new Random()
+				))
+				.log("points")
+				.requestWhen(requests -> requests.dispatchOn(Environment.cachedDispatcher()))
+				.buffer(2)
+				.map(pairs -> new Point(pairs.get(0), pairs.get(1)))
+				.process(RingBufferProcessor.create(pool, 32)); //.broadcast(); works because no async boundary
+
+		Stream<InnerSample> innerSamples =
+				points
+						.log("inner-1")
+						.filter(Point::isInner)
+						.map(InnerSample::new)
+						.log("inner-2");
+
+		Stream<OuterSample> outerSamples =
+				points
+						.log("outer-1")
+						.filter(p -> !p.isInner())
+						.map(OuterSample::new)
+						.log("outer-2");
+
+		Streams.merge(innerSamples, outerSamples)
+				.dispatchOn(Environment.cachedDispatcher())
+				.scan(new SimulationState(0l, 0l), SimulationState::withNextSample)
+				.log("result")
+				.map(s -> System.out.printf("After %8d samples π is approximated as %.5f", s.totalSamples, s.pi()))
+				.take(10000)
+				.consume();
+
+		System.in.read();
+	}
+
+	private static final class Point {
+		final Double x, y;
+
+		public Point(Double x, Double y) {
+			this.x = x;
+			this.y = y;
+		}
+
+		boolean isInner() {
+			return x * x + y * y < 1.0;
+		}
+
+		@Override
+		public String toString() {
+			return "Point{" +
+					"x=" + x +
+					", y=" + y +
+					'}';
+		}
+	}
+
+	private static class Sample {
+		final Point point;
+
+		public Sample(Point point) {
+			this.point = point;
+		}
+
+		@Override
+		public String toString() {
+			return "Sample{" +
+					"point=" + point +
+					'}';
+		}
+	}
+
+	private static final class InnerSample extends Sample {
+		public InnerSample(Point point) {
+			super(point);
+		}
+	}
+
+	private static final class OuterSample extends Sample {
+		public OuterSample(Point point) {
+			super(point);
+		}
+	}
+
+
+	private static final class SimulationState {
+		final Long totalSamples;
+		final Long inCircle;
+
+		public SimulationState(Long totalSamples, Long inCircle) {
+			this.totalSamples = totalSamples;
+			this.inCircle = inCircle;
+		}
+
+		Double pi() {
+			return (inCircle.doubleValue() / totalSamples) * 4.0;
+		}
+
+		SimulationState withNextSample(Sample sample) {
+			return new SimulationState(totalSamples + 1, sample instanceof InnerSample ? inCircle + 1 : inCircle);
+		}
+
+		@Override
+		public String toString() {
+			return "SimulationState{" +
+					"totalSamples=" + totalSamples +
+					", inCircle=" + inCircle +
+					'}';
+		}
 	}
 
 
@@ -1178,13 +1297,11 @@ public class StreamTests extends AbstractReactorTest {
 	}
 
 
-
 	// Test issue https://github.com/reactor/reactor/issues/474
-	// code by @masterav10
+// code by @masterav10
 	@Test
 	public void combineWithOneElement() throws InterruptedException,
-			TimeoutException
-	{
+			TimeoutException {
 		AtomicReference<Object> ref = new AtomicReference<>(null);
 
 		Phaser phaser = new Phaser(2);
@@ -1308,8 +1425,8 @@ public class StreamTests extends AbstractReactorTest {
 		Promises.task(Environment.get(), Environment.sharedDispatcher(), () -> {
 			throw new RuntimeException("Some Exception");
 		}).
-				        onError(t -> latch1.countDown()).
-				        onSuccess(s -> latch2.countDown());
+				onError(t -> latch1.countDown()).
+				onSuccess(s -> latch2.countDown());
 
 		assertThat("Error latch was counted down", latch1.await(1, TimeUnit.SECONDS), is(true));
 		assertThat("Complete latch was not counted down", latch2.getCount(), is(1L));
@@ -1367,33 +1484,30 @@ public class StreamTests extends AbstractReactorTest {
 	}
 
 
-
 	/**
 	 * Should work with {@link Processor} but it doesn't.
 	 */
-	@Test( timeout = TIMEOUT )
+	@Test(timeout = TIMEOUT)
 	public void forkJoinUsingProcessors() throws Exception {
 
-		final Stream< Integer > forkStream = Streams.just( 1, 2, 3 ).log("log-begin");
+		final Stream<Integer> forkStream = Streams.just(1, 2, 3).log("log-begin");
 
-		final RingBufferProcessor< Integer > computationBroadcaster = RingBufferProcessor.create("computation", BACKLOG) ;
-		final Stream< String > computationStream = Streams
+		final RingBufferProcessor<Integer> computationBroadcaster = RingBufferProcessor.create("computation", BACKLOG);
+		final Stream<String> computationStream = Streams
 				.wrap(computationBroadcaster)
-				.map(i -> Integer.toString(i))
-				;
+				.map(i -> Integer.toString(i));
 
-		final RingBufferProcessor< Integer > persistenceBroadcaster = RingBufferProcessor.create("persistence", BACKLOG) ;
-		final Stream< String > persistenceStream = Streams
+		final RingBufferProcessor<Integer> persistenceBroadcaster = RingBufferProcessor.create("persistence", BACKLOG);
+		final Stream<String> persistenceStream = Streams
 				.wrap(persistenceBroadcaster)
-				.map(i -> "done "+i)
-				;
+				.map(i -> "done " + i);
 
-		forkStream.subscribe( computationBroadcaster ) ;
-		forkStream.subscribe( persistenceBroadcaster ) ;
+		forkStream.subscribe(computationBroadcaster);
+		forkStream.subscribe(persistenceBroadcaster);
 
-		final Semaphore doneSemaphore = new Semaphore( 0 ) ;
+		final Semaphore doneSemaphore = new Semaphore(0);
 
-		final Stream< List< String > > joinStream = Streams.join(computationStream.log("log1"), persistenceStream.log("log2")) ;
+		final Stream<List<String>> joinStream = Streams.join(computationStream.log("log1"), persistenceStream.log("log2"));
 
 		// Method chaining doesn't compile.
 		joinStream.log("log-final").consume(
@@ -1403,9 +1517,9 @@ public class StreamTests extends AbstractReactorTest {
 					println("Join complete.");
 					doneSemaphore.release();
 				}
-		) ;
+		);
 
-		doneSemaphore.acquire() ;
+		doneSemaphore.acquire();
 
 	}
 
@@ -1422,15 +1536,17 @@ public class StreamTests extends AbstractReactorTest {
 	 *             observedSplitStream
 	 * </pre>
 	 */
-	@Test( timeout = TIMEOUT )
+	@Test(timeout = TIMEOUT)
 	public void forkJoinUsingDispatchersAndSplit() throws Exception {
 
-		Environment.initializeIfEmpty().assignErrorJournal();;
-		final Broadcaster< Integer > forkBroadcaster = Broadcaster.create(
-				Environment.newDispatcher( "fork", BACKLOG ) ) ;
+		Environment.initializeIfEmpty().assignErrorJournal();
+		;
+		final Broadcaster<Integer> forkBroadcaster = Broadcaster.create(
+				Environment.newDispatcher("fork", BACKLOG));
 
-		final Broadcaster< Integer > computationBroadcaster = Broadcaster.create(Environment.newDispatcher( "computation", BACKLOG )) ;
-		final Stream< List< String > > computationStream = computationBroadcaster
+		final Broadcaster<Integer> computationBroadcaster = Broadcaster.create(Environment.newDispatcher("computation",
+				BACKLOG));
+		final Stream<List<String>> computationStream = computationBroadcaster
 				.map(i -> {
 					final List<String> list = new ArrayList<>(i);
 					for (int j = 0; j < i; j++) {
@@ -1438,97 +1554,93 @@ public class StreamTests extends AbstractReactorTest {
 					}
 					return list;
 				})
-				.observe(ls -> println("Computed: ", ls))
-				;
+				.observe(ls -> println("Computed: ", ls));
 
-		Dispatcher d1 = Environment.newDispatcher( "persistence", BACKLOG );
-		final Broadcaster< Integer > persistenceBroadcaster = Broadcaster.create() ;
-		final Stream< List< String > > persistenceStream = persistenceBroadcaster
+		Dispatcher d1 = Environment.newDispatcher("persistence", BACKLOG);
+		final Broadcaster<Integer> persistenceBroadcaster = Broadcaster.create();
+		final Stream<List<String>> persistenceStream = persistenceBroadcaster
 				.dispatchOn(d1)
 				.observe(i -> println("Persisted: ", i))
-				.map( i -> Collections.singletonList( "done" ) )
-				;
+				.map(i -> Collections.singletonList("done"));
 
-		forkBroadcaster.subscribe( computationBroadcaster ) ;
-		forkBroadcaster.subscribe(persistenceBroadcaster) ;
+		forkBroadcaster.subscribe(computationBroadcaster);
+		forkBroadcaster.subscribe(persistenceBroadcaster);
 
 		Dispatcher d2 = Environment.newDispatcher("join", BACKLOG, 1, DispatcherType.MPSC);
-		final Stream< List< String > > joinStream = Streams
-				.join( computationStream, persistenceStream )
+		final Stream<List<String>> joinStream = Streams
+				.join(computationStream, persistenceStream)
 						// MPSC seems perfect for joining threads.
 				.dispatchOn(d2)
 //        .dispatchOn( Environment.newDispatcher( "join", BACKLOG ) )
-				.map(listOfLists -> listOfLists.get(0))
-				;
+				.map(listOfLists -> listOfLists.get(0));
 
 		// Chained call doesn't compile.
-		final Stream< String > splitStream = joinStream.flatMap(Streams::from) ;
+		final Stream<String> splitStream = joinStream.flatMap(Streams::from);
 
-		final Semaphore doneSemaphore = new Semaphore( 0 ) ;
+		final Semaphore doneSemaphore = new Semaphore(0);
 
 		// Chained calls don't work.
-		final Stream< String > observedSplitStream = splitStream
-				.observe( s -> println( "observedSplitStream#observe ", s ) )
-				.observeComplete( Ø -> {
-					println( "observedSplitStream#observeComplete" ) ;
+		final Stream<String> observedSplitStream = splitStream
+				.observe(s -> println("observedSplitStream#observe ", s))
+				.observeComplete(Ø -> {
+					println("observedSplitStream#observeComplete");
 					doneSemaphore.release();
-				} )
+				})
 				.observeError(
 						Throwable.class,
-						( Ø, t ) -> println( "observedSplitStream#observeError ", t.getMessage() )
-				)
-				;
+						(Ø, t) -> println("observedSplitStream#observeError ", t.getMessage())
+				);
 
-		final Promise< List< String > > listPromise = observedSplitStream.toList() ;
+		final Promise<List<String>> listPromise = observedSplitStream.toList();
 
 
-		forkBroadcaster.onNext(1) ;
-		forkBroadcaster.onNext(2) ;
-		forkBroadcaster.onNext(3) ;
-		forkBroadcaster.onComplete() ;
+		forkBroadcaster.onNext(1);
+		forkBroadcaster.onNext(2);
+		forkBroadcaster.onNext(3);
+		forkBroadcaster.onComplete();
 
-		doneSemaphore.acquire() ;
-	d1.awaitAndShutdown();
-	d2.awaitAndShutdown();
-		assertEquals(Arrays.asList("i0", "i0", "i1", "i0", "i1", "i2"), listPromise.get()) ;
+		doneSemaphore.acquire();
+		d1.awaitAndShutdown();
+		d2.awaitAndShutdown();
+		assertEquals(Arrays.asList("i0", "i0", "i1", "i0", "i1", "i2"), listPromise.get());
 	}
 
 
 	@Test
 	@Ignore
 	public void splitBugEventuallyHappens() throws Exception {
-		int successCount = 0 ;
+		int successCount = 0;
 		try {
-			for( ; ; ) {
-				forkJoinUsingProcessors(); ;
-				println( "**** Success! ****" ) ;
-				successCount ++ ;
+			for (; ; ) {
+				forkJoinUsingProcessors();
+				;
+				println("**** Success! ****");
+				successCount++;
 			}
 		} finally {
-			println( "Succeeded " + successCount + " time" + ( successCount <= 1 ? "." : "s." ) ) ;
+			println("Succeeded " + successCount + " time" + (successCount <= 1 ? "." : "s."));
 		}
 
 	}
 
 
-
-	private static final long TIMEOUT = 10_000 ;
+	private static final long TIMEOUT = 10_000;
 
 	// Setting it to 1 doesn't help.
-	private static final int BACKLOG = 1024 ;
+	private static final int BACKLOG = 1024;
 
 	static {
-		Environment.initializeIfEmpty() ;
+		Environment.initializeIfEmpty();
 	}
 
-	private static void println( final Object... fragments ) {
-		final Thread currentThread = Thread.currentThread() ;
-		synchronized( System.out ) {
-			System.out.print( String.format( "[%s] ", currentThread.getName() ) ) ;
-			for( final Object fragment : fragments ) {
-				System.out.print( fragment ) ;
+	private static void println(final Object... fragments) {
+		final Thread currentThread = Thread.currentThread();
+		synchronized (System.out) {
+			System.out.print(String.format("[%s] ", currentThread.getName()));
+			for (final Object fragment : fragments) {
+				System.out.print(fragment);
 			}
-			System.out.println() ;
+			System.out.println();
 		}
 	}
 
