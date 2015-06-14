@@ -34,8 +34,8 @@ public class TapAndControls<O> implements Control, Supplier<O>{
 	}
 
 	@Override
-	public void start() {
-		controls.start();
+	public void requestAll() {
+		controls.requestAll();
 	}
 
 	@Override

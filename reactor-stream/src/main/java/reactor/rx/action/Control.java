@@ -35,7 +35,7 @@ public interface Control {
 	/**
 	 * Usually requests Long.MAX_VALUE, which instructs a stream to never end until completed or cancelled.
 	 */
-	void start();
+	void requestAll();
 
 	/**
 	 * Stop consuming signals from upstream. Cancel should not be considered blocking, but usually it happens to be

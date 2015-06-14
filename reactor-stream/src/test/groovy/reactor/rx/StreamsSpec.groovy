@@ -103,7 +103,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the value is retrieved'
-			controls.start()
+			controls.requestAll()
 
 		then:
 			'it is not available'

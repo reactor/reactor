@@ -1024,7 +1024,7 @@ public class StreamTests extends AbstractReactorTest {
 						sub -> new Random()
 				))
 				.log("points")
-				.requestWhen(requests -> requests.dispatchOn(Environment.cachedDispatcher()))
+				//.requestWhen(requests -> requests.dispatchOn(Environment.cachedDispatcher()))
 				.buffer(2)
 				.map(pairs -> new Point(pairs.get(0), pairs.get(1)))
 				.process(RingBufferProcessor.create(pool, 32)); //.broadcast(); works because no async boundary

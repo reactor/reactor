@@ -332,7 +332,7 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	@Override
-	public void start() {
+	public void requestAll() {
 		if (downstreamSubscription == null) {
 			requestMore(Long.MAX_VALUE);
 		}

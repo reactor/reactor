@@ -388,10 +388,15 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return the consuming action
 	 */
 	public Control consume() {
-		Control controls = consume(null);
-		controls.requestMore(Long.MAX_VALUE);
-		return controls;
+		return consume(NOOP);
 	}
+
+	private final static Consumer NOOP = new Consumer() {
+		@Override
+		public void accept(Object o) {
+
+		}
+	};
 
 	/**
 	 * Instruct the action to request upstream subscription if any for N elements.
@@ -679,6 +684,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final void subscribeOn(@Nonnull final Dispatcher currentDispatcher, Subscriber<? super O> sub) {
 		subscribeOn(currentDispatcher).subscribe(sub);
 	}
+
 	/**
 	 * Assign a new Dispatcher to handle upstream request to the returned Stream.
 	 *
