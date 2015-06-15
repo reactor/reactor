@@ -203,7 +203,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 				outerAction.status.compareAndSet(RUNNING, COMPLETING);
 				outerAction.capacity(outerAction.innerSubscriptions.runningComposables);
 				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
-				if (0 == left || emittedSignals == 0 ) {
+				if (0 == left || emittedSignals == 0 || outerAction.count == 0) {
 					outerAction.innerSubscriptions.serialComplete();
 				}
 
@@ -212,7 +212,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 		@Override
 		public void request(long n) {
-			emittedSignals = 0;
 			super.request(1);
 		}
 
