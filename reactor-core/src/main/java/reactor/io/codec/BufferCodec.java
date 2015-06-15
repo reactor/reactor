@@ -62,7 +62,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 				new Function<Subscriber<? super IN>, SubscriberBarrier<Buffer, IN>>() {
 					@Override
 					public SubscriberBarrier<Buffer, IN> apply(final Subscriber<? super IN> subscriber) {
-						return new AggregatingDecoderBarrier<>(subscriber);
+						return new AggregatingDecoderBarrier<IN>(BufferCodec.this, subscriber);
 					}
 				});
 	}
@@ -88,23 +88,56 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		private final static AtomicLongFieldUpdater<AggregatingDecoderBarrier> PENDING_UPDATER =
 				AtomicLongFieldUpdater.newUpdater(AggregatingDecoderBarrier.class, "pendingDemand");
 
-		final Buffer aggregate = new Buffer();
+		final Buffer               aggregate;
+		final Function<Buffer, IN> codec;
+		final Byte                 delimiter;
 
-		public AggregatingDecoderBarrier(Subscriber<? super IN> subscriber) {
+		public AggregatingDecoderBarrier(BufferCodec<IN, ?> codec, Subscriber<? super IN> subscriber) {
 			super(subscriber);
+			this.codec = codec.decoder();
+			this.delimiter = codec.delimiter;
+			if (delimiter != null) {
+				aggregate = null;
+			} else {
+				aggregate = null;
+			}
 		}
 
 		@Override
-		protected void doNext(Buffer src) {
+		protected void doNext(Buffer buffer) {
 			long previous = PENDING_UPDATER.decrementAndGet(this);
+
+			if (aggregate != null) {
+				aggregate.append(buffer);
+				buffer.position(0);
+				//split using the delimiter
+				if (delimiter != null) {
+					int index = buffer.indexOf(delimiter);
+					if (index == -1) {
+						return;
+					}
+
+					int aggregateIndex = aggregate.limit() - buffer.limit() + index;
+					Buffer aggregTmp = aggregate.duplicate();
+					aggregTmp.position(aggregate.position()).flip();
+					for (Buffer.View view : aggregTmp.split(delimiter)) {
+						if(view.getEnd() == aggregTmp.limit()) {
+							return;
+						}
+
+						subscriber.onNext(codec.apply(view.get()));
+					}
+					aggregate.clear();
+				}
+				return;
+			}
+			subscriber.onNext(codec.apply(buffer));
 		}
 
 		@Override
 		protected void doRequest(long n) {
 			long previous = PENDING_UPDATER.getAndAdd(this, n);
-			if(previous == 0L) {
-				super.doRequest(n);
-			}
+			super.doRequest(n);
 		}
 	}
 

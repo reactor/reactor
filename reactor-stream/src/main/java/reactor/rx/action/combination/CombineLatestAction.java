@@ -22,6 +22,8 @@ import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
 import reactor.rx.subscription.PushSubscription;
 
+import java.util.List;
+
 /**
  * @author Stephane Maldini
  * @since 2.0
@@ -38,10 +40,11 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 	Object[] toZip = new Object[1];
 
 	public CombineLatestAction(Dispatcher dispatcher,
-	                           Function<TUPLE, ? extends V> accumulator, Iterable<? extends Publisher<? extends O>>
+	                           Function<TUPLE, ? extends V> accumulator, List<? extends Publisher<? extends O>>
 			composables) {
 		super(dispatcher, composables);
 		this.accumulator = accumulator;
+		this.toZip = new Object[composables != null ? composables.size() : 1];
 	}
 
 	@SuppressWarnings("unchecked")
@@ -142,8 +145,10 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 				System.arraycopy(previousZip, 0, outerAction.toZip, 0, newSize - 1);
 			}
 
-			if (pendingRequests > 0) {
-				request(pendingRequests);
+			long toRequest = pendingRequests;
+			if (toRequest > 0) {
+				pendingRequests = 0;
+				request(toRequest);
 			}
 			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();

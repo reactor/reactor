@@ -1434,6 +1434,6 @@ public class Buffer implements Recyclable,
 	 * A delimiting buffer is sent to {@link reactor.io.codec.BufferCodec} and other components to signal the end of a sequence of Buffer.
 	 * @since 2.0.4
 	 */
-	private static final Buffer DELIMITING_BUFFER = new Buffer();
+	public static final Buffer DELIMITING_BUFFER = new Buffer();
 
 }

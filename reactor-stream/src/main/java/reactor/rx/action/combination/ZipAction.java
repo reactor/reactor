@@ -40,7 +40,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	int index = 0;
 	int count = 0;
 
-	Object[] toZip = new Object[1];
+	Object[] toZip;
 
 	@SuppressWarnings("unchecked")
 	public static <TUPLE extends Tuple, V> Function<TUPLE, List<V>> joinZipper() {
@@ -53,10 +53,23 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	}
 
 	public ZipAction(Dispatcher dispatcher,
-	                 Function<TUPLE, ? extends V> accumulator, Iterable<? extends Publisher<? extends O>>
+	                 Function<TUPLE, ? extends V> accumulator, List<? extends Publisher<? extends O>>
 			                 composables) {
 		super(dispatcher, composables);
 		this.accumulator = accumulator;
+		this.toZip = new Object[composables != null ? composables.size() : 1];
+		capacity(toZip.length);
+	}
+
+	@Override
+	protected void doOnSubscribe(Subscription subscription) {
+		if(status.compareAndSet(NOT_STARTED, RUNNING)){
+			if(publishers != null) {
+				for (Publisher<? extends O> publisher : publishers) {
+					addPublisher(publisher);
+				}
+			}
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -82,6 +95,20 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		}
 		if (isFinishing) {
 			broadcastComplete();
+		}
+	}
+
+	@Override
+	protected void requestUpstream(long capacity, boolean terminated, long elements) {
+		long upstream = innerSubscriptions.runningComposables;
+		upstream = upstream == 0 ? elements : (upstream*elements < 0 ? Long.MAX_VALUE : upstream*elements);
+		if(publishers != null && innerSubscriptions.pendingRequestSignals() > 0){
+			innerSubscriptions.updatePendingRequests(upstream);
+		}else {
+			requestMore(upstream);
+			if (dynamicMergeAction != null) {
+				dynamicMergeAction.requestUpstream(capacity, terminated, elements);
+			}
 		}
 	}
 
@@ -124,16 +151,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 	}
 
 	@Override
-	protected long initUpstreamPublisherAndCapacity() {
-		long i = 0l;
-		for (Publisher<? extends O> composable : publishers) {
-			addPublisher(composable);
-			i++;
-		}
-		return i;
-	}
-
-	@Override
 	public String toString() {
 		String formatted = super.toString();
 		for (int i = 0; i < toZip.length; i++) {
@@ -171,6 +188,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			}
 
 			if (pendingRequests > 0) {
+				pendingRequests = 0;
 				request(1);
 			}
 			if (outerAction.dynamicMergeAction != null) {
@@ -183,8 +201,9 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			if (TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
 				outerAction.innerSubscriptions.remove(sequenceId);
 				outerAction.status.compareAndSet(RUNNING, COMPLETING);
-				if (0 == FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions)
-				&& outerAction.toZip[index] == null) {
+				outerAction.capacity(outerAction.innerSubscriptions.runningComposables);
+				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
+				if (0 == left || emittedSignals == 0 ) {
 					outerAction.innerSubscriptions.serialComplete();
 				}
 
@@ -193,27 +212,27 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 		@Override
 		public void request(long n) {
+			emittedSignals = 0;
 			super.request(1);
 		}
 
 		@Override
 		public void onNext(O ev) {
-			if (--pendingRequests > 0) pendingRequests = 0l;
-			//emittedSignals++;
-			long nextCount = outerAction.count + 1;
-			outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
-
+			if (--pendingRequests < 0) pendingRequests = 0l;
+			emittedSignals = 1;
 			if(outerAction.status.get() == COMPLETING){
-				int nextRunning = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.get(outerAction.innerSubscriptions);
-				if (nextCount == nextRunning
-						&& TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
+				if (TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
 					outerAction.innerSubscriptions.remove(sequenceId);
-					nextRunning = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
-					if ( 0 == nextRunning) {
+					outerAction.capacity(outerAction.innerSubscriptions.runningComposables);
+					long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
+					if (0 == left) {
+						outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
 						outerAction.innerSubscriptions.serialComplete();
+						return;
 					}
 				}
 			}
+			outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
 		}
 
 

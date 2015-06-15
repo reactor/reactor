@@ -154,7 +154,6 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	@SuppressWarnings("unchecked")
 	int addSubscription(final FanInAction.InnerSubscriber s) {
 		if (terminated) return 0;
-		RUNNING_COMPOSABLE_UPDATER.incrementAndGet(this);
 		synchronized (this) {
 			if(leftIndex < subscriptions.size && subscriptions.array[leftIndex] == null){
 				subscriptions.array[leftIndex] = s;

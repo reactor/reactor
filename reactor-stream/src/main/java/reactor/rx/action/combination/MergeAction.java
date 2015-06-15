@@ -60,9 +60,10 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();
 			}
-
-			if(pendingRequests > 0l){
-				request(pendingRequests);
+			long toRequest = pendingRequests;
+			if (toRequest > 0) {
+				pendingRequests = 0;
+				request(toRequest);
 			}
 		}
 

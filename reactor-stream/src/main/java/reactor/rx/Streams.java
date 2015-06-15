@@ -1313,7 +1313,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <TUPLE extends Tuple, V> Stream<V> combineLatest(Iterable<? extends Publisher<?>> sources,
+	public static <TUPLE extends Tuple, V> Stream<V> combineLatest(List<? extends Publisher<?>> sources,
 	                                                               Function<TUPLE, ? extends V> combinator) {
 		return new CombineLatestAction<>(SynchronousDispatcher.INSTANCE, combinator, sources);
 	}
@@ -1573,7 +1573,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <TUPLE extends Tuple, V> Stream<V> zip(Iterable<? extends Publisher<?>> sources,
+	public static <TUPLE extends Tuple, V> Stream<V> zip(List<? extends Publisher<?>> sources,
 	                                                     Function<TUPLE, ? extends V> combinator) {
 		return new ZipAction<>(SynchronousDispatcher.INSTANCE, combinator, sources);
 	}
@@ -1777,7 +1777,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stream<List<T>> join(Iterable<? extends Publisher<? extends T>> sources) {
+	public static <T> Stream<List<T>> join(List<? extends Publisher<? extends T>> sources) {
 		return (Action<T, List<T>>) zip(sources, ZipAction.<TupleN, T>joinZipper());
 	}
 

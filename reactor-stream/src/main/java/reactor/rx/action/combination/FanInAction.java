@@ -27,6 +27,7 @@ import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
@@ -44,8 +45,8 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	final static protected int RUNNING     = 1;
 	final static protected int COMPLETING  = 2;
 
-	final FanInSubscription<I, E, O, SUBSCRIBER>     innerSubscriptions;
-	final Iterable<? extends Publisher<? extends I>> publishers;
+	final FanInSubscription<I, E, O, SUBSCRIBER> innerSubscriptions;
+	final List<? extends Publisher<? extends I>> publishers;
 
 	final AtomicInteger status = new AtomicInteger();
 	final protected Dispatcher dispatcher;
@@ -59,19 +60,22 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	public FanInAction(Dispatcher dispatcher,
-	                   Iterable<? extends Publisher<? extends I>> publishers) {
+	                   List<? extends Publisher<? extends I>> publishers) {
 		super();
 		this.dispatcher = SynchronousDispatcher.INSTANCE == dispatcher ?
 				Environment.tailRecurse() : dispatcher;
 		this.publishers = publishers;
 
 		this.upstreamSubscription = this.innerSubscriptions = createFanInSubscription();
+		if(publishers != null){
+			FanInSubscription.RUNNING_COMPOSABLE_UPDATER.set(innerSubscriptions, publishers.size());
+		}
 	}
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		doOnSubscribe(this.innerSubscriptions);
 		super.subscribe(subscriber);
+		doOnSubscribe(this.innerSubscriptions);
 	}
 
 	public void addPublisher(Publisher<? extends I> publisher) {
@@ -82,8 +86,8 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	public void scheduleCompletion() {
 		if (status.compareAndSet(NOT_STARTED, COMPLETING)) {
 			innerSubscriptions.serialComplete();
-		} else if(innerSubscriptions.runningComposables == 0 && status.compareAndSet(RUNNING, COMPLETING)) {
-				innerSubscriptions.serialComplete();
+		} else if (innerSubscriptions.runningComposables == 0 && status.compareAndSet(RUNNING, COMPLETING)) {
+			innerSubscriptions.serialComplete();
 		}
 	}
 
@@ -104,10 +108,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if (status.compareAndSet(NOT_STARTED, RUNNING)) {
 			innerSubscriptions.maxCapacity(capacity);
 			if (publishers != null) {
-				if (innerSubscriptions.runningComposables > 0) {
-					innerSubscriptions.cancel();
-					return;
-				}
 				capacity(initUpstreamPublisherAndCapacity());
 			}
 		}
@@ -123,7 +123,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		}
 		return maxCapacity;
 	}
-
 
 	protected final boolean checkDynamicMerge() {
 		return dynamicMergeAction != null && dynamicMergeAction.isPublishing();
@@ -150,8 +149,9 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		//	innerSubscriptions.request(elements);
-		elements = capacity != Long.MAX_VALUE ? Math.max(this.capacity, elements) : elements;
-		super.requestUpstream(capacity, terminated, elements);
+		long running = innerSubscriptions.runningComposables;
+		elements = running == 0 ? elements : (running*elements < 0 ? Long.MAX_VALUE : elements*running);
+		requestMore(elements);
 		if (dynamicMergeAction != null) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
 		}
@@ -208,6 +208,9 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		void setSubscription(FanInSubscription.InnerSubscription s) {
 			this.s = s;
 			this.sequenceId = outerAction.innerSubscriptions.addSubscription(this);
+			if(outerAction.publishers == null){
+				FanInSubscription.RUNNING_COMPOSABLE_UPDATER.incrementAndGet(outerAction.innerSubscriptions);
+			}
 			pendingRequests = outerAction.innerSubscriptions.pendingRequestSignals() / (Math.max(outerAction.innerSubscriptions.runningComposables, 1));
 		}
 
@@ -247,6 +250,9 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				left = left < 0l ? 0l : left;
 
 				outerAction.innerSubscriptions.remove(sequenceId);
+				if(pendingRequests > 0){
+					outerAction.requestMore(pendingRequests);
+				}
 				if (left == 0 && !outerAction.checkDynamicMerge()) {
 						outerAction.scheduleCompletion();
 				}

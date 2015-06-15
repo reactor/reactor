@@ -119,10 +119,10 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 								.map(integer -> -integer)
 								.buffer(1024, 200, TimeUnit.MILLISECONDS)
 								.<Integer>split()
-								.flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1) )
+								.flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 				)
 				.dispatchOn(subscriberDispatcher)
-				//.log("end")
+						//.log("end")
 				.when(Throwable.class, Throwable::printStackTrace)
 				.combine();
 	}

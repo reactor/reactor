@@ -79,7 +79,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
 		}
 
-		return sensorOdd;
+		return sensorOdd.log("odd");
 	}
 
 	public Stream<SensorData> sensorEven() {
@@ -91,7 +91,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
 		}
 
-		return sensorEven;
+		return sensorEven.log("even");
 	}
 
 	@Test

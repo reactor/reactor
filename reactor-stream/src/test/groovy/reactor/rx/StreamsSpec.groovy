@@ -869,7 +869,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources are zipped'
-			def zippedStream = Streams.zip(odds.log(), even.log()) { [it.t1, it.t2] }
+			def zippedStream = Streams.zip(odds.log('left'), even.log('right')) { [it.t1, it.t2] }
 			def tap = zippedStream.log().toList()
 			tap.await(3, TimeUnit.SECONDS)
 			println tap.debug()
@@ -3012,8 +3012,7 @@ class StreamsSpec extends Specification {
 
 		when: "data stream is decoded"
 			def res = Streams.just(data1, data2, data3)
-					.nest()
-					.flatMap { IOStreams.decode(codec, it) }
+					.decode(codec)
 					.toList()
 					.await(5, TimeUnit.SECONDS)
 

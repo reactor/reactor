@@ -387,6 +387,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 *
 	 * @return the consuming action
 	 */
+	@SuppressWarnings("unchecked")
 	public Control consume() {
 		return consume(NOOP);
 	}
@@ -2902,7 +2903,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		if (maximum > 0)
 			return take(maximum).buffer().next();
 		else {
-			return buffer().next();
+			return buffer(Integer.MAX_VALUE).next();
 		}
 	}
 

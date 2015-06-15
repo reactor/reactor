@@ -43,7 +43,7 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.support.Tap;
 import reactor.io.IO;
-import reactor.io.codec.StandardCodecs;
+import reactor.io.codec.StringCodec;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
@@ -207,6 +207,7 @@ public class StreamTests extends AbstractReactorTest {
 				Streams.merge(stream1, stream2)
 						//.dispatchOn(env)
 						.capacity(5)
+						.log()
 						.map(STRING_2_INTEGER)
 						.reduce(1, (acc, next) -> acc * next);
 		await(1, s, is(120));
@@ -1134,7 +1135,7 @@ public class StreamTests extends AbstractReactorTest {
 	@Ignore
 	public void testCustomFileStream() throws InterruptedException {
 
-		Stream<String> fileStream = Streams.wrap(IO.readFile("settings.gradle", 20)).decode(StandardCodecs.STRING_CODEC);
+		Stream<String> fileStream = Streams.wrap(IO.readFile("settings.gradle", 20)).decode(new StringCodec((byte)'\n'));
 
 		Stream<String> processor = fileStream
 				.log()
@@ -1554,14 +1555,16 @@ public class StreamTests extends AbstractReactorTest {
 					}
 					return list;
 				})
-				.observe(ls -> println("Computed: ", ls));
+				.observe(ls -> println("Computed: ", ls))
+				.log("computed");;
 
 		Dispatcher d1 = Environment.newDispatcher("persistence", BACKLOG);
 		final Broadcaster<Integer> persistenceBroadcaster = Broadcaster.create();
 		final Stream<List<String>> persistenceStream = persistenceBroadcaster
 				.dispatchOn(d1)
 				.observe(i -> println("Persisted: ", i))
-				.map(i -> Collections.singletonList("done"));
+				.map(i -> Collections.singletonList("done"))
+				.log("persistence");
 
 		forkBroadcaster.subscribe(computationBroadcaster);
 		forkBroadcaster.subscribe(persistenceBroadcaster);
