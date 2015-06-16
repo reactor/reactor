@@ -37,7 +37,7 @@ the same operations are exposed.
 byte delimiter = (byte) ';';
 byte innerDelimiter = (byte) ',';
 
-Buffer buffer = Buffer.wrap("a;b-1,b-2;c;d");
+Buffer buffer = Buffer.wrap("a;b-1,b-2;c;d;");
 
 List<Buffer.View> views = buffer.split(delimiter);
 
@@ -45,11 +45,11 @@ int viewCount = views.size();
 Assert.isTrue(viewCount == 4);
 
 for (Buffer.View view : views) {
-    System.out.println(view.asString()); //prints "a" then "b-1,b-2", then "c" and finally "d"
+    System.out.println(view.get().asString()); //prints "a" then "b-1,b-2", then "c" and finally "d"
 
     if(view.indexOf(innerDelimiter) != -1){
-      for(Buffer.View innerView : view.split(innerDelimiter)){
-        System.out.println(innerView.asString()); //prints "b-1" and "b-2"
+      for(Buffer.View innerView : view.get().split(innerDelimiter)){
+        System.out.println(innerView.get().asString()); //prints "b-1" and "b-2"
       }
     }
 }
