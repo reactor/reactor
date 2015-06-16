@@ -203,7 +203,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 				outerAction.status.compareAndSet(RUNNING, COMPLETING);
 				outerAction.capacity(outerAction.innerSubscriptions.runningComposables);
 				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
-				if (0 == left || emittedSignals == 0 || outerAction.count == 0) {
+				if (0 == left || emittedSignals == 0 || outerAction.count > left) {
 					outerAction.innerSubscriptions.serialComplete();
 				}
 
@@ -222,7 +222,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 			if(outerAction.status.get() == COMPLETING){
 				if (TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
 					outerAction.innerSubscriptions.remove(sequenceId);
-					outerAction.capacity(outerAction.innerSubscriptions.runningComposables);
 					long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
 					if (0 == left) {
 						outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
@@ -282,6 +281,14 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 		public Zippable(int index, O data) {
 			this.index = index;
 			this.data = data;
+		}
+
+		@Override
+		public String toString() {
+			return "Zippable{" +
+					"index=" + index +
+					", data=" + data +
+					'}';
 		}
 	}
 

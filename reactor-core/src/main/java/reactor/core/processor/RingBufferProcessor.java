@@ -623,6 +623,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 				return;
 			}
 
+			if (pendingRequest.addAndGet(n) < 0) {
+				pendingRequest.set(Long.MAX_VALUE);
+			}
 			//buffered data in producer unpublished
 			final long currentSequence = eventProcessor.nextSequence;
 			final long cursor = ringBuffer.getCursor();
@@ -633,10 +636,6 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 					? currentSequence + 1l
 					: currentSequence)
 					: 0l;
-
-			if (pendingRequest.addAndGet(n) < 0) {
-				pendingRequest.set(Long.MAX_VALUE);
-			}
 
 			final long toRequest;
 			if (buffered > 0l) {

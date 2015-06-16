@@ -58,5 +58,4 @@ public class BufferAction<T> extends BatchAction<T, List<T>> {
 		values.clear();
 		broadcastNext(toSend);
 	}
-
 }

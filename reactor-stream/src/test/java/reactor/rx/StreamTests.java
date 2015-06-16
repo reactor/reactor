@@ -1563,7 +1563,7 @@ public class StreamTests extends AbstractReactorTest {
 		final Stream<List<String>> persistenceStream = persistenceBroadcaster
 				.dispatchOn(d1)
 				.observe(i -> println("Persisted: ", i))
-				.map(i -> Collections.singletonList("done"))
+				.map(i -> Collections.singletonList("done"+i))
 				.log("persistence");
 
 		forkBroadcaster.subscribe(computationBroadcaster);
@@ -1575,10 +1575,10 @@ public class StreamTests extends AbstractReactorTest {
 						// MPSC seems perfect for joining threads.
 				.dispatchOn(d2)
 //        .dispatchOn( Environment.newDispatcher( "join", BACKLOG ) )
-				.map(listOfLists -> listOfLists.get(0));
+				.map(listOfLists -> { listOfLists.get(0).addAll(listOfLists.get(1)); return listOfLists.get(0);});
 
 		// Chained call doesn't compile.
-		final Stream<String> splitStream = joinStream.flatMap(Streams::from);
+		final Stream<String> splitStream = joinStream.log("join").flatMap(Streams::from);
 
 		final Semaphore doneSemaphore = new Semaphore(0);
 
@@ -1595,6 +1595,7 @@ public class StreamTests extends AbstractReactorTest {
 				);
 
 		final Promise<List<String>> listPromise = observedSplitStream.toList();
+		System.out.println(listPromise.debug());
 
 
 		forkBroadcaster.onNext(1);
@@ -1602,10 +1603,11 @@ public class StreamTests extends AbstractReactorTest {
 		forkBroadcaster.onNext(3);
 		forkBroadcaster.onComplete();
 
-		doneSemaphore.acquire();
+		listPromise.awaitSuccess(5, TimeUnit.SECONDS);
+		System.out.println(listPromise.debug());
 		d1.awaitAndShutdown();
 		d2.awaitAndShutdown();
-		assertEquals(Arrays.asList("i0", "i0", "i1", "i0", "i1", "i2"), listPromise.get());
+		assertEquals(Arrays.asList("i0", "done1", "i0", "i1", "done2", "i0", "i1", "i2", "done3"), listPromise.get());
 	}
 
 
@@ -1615,7 +1617,7 @@ public class StreamTests extends AbstractReactorTest {
 		int successCount = 0;
 		try {
 			for (; ; ) {
-				forkJoinUsingProcessors();
+				forkJoinUsingDispatchersAndSplit();
 				;
 				println("**** Success! ****");
 				successCount++;
