@@ -281,7 +281,7 @@ public class Buffer implements Recyclable,
 	 *
 	 * @return {@literal true} if this {@literal Buffer} is not fixed-length, {@literal false} otherwise.
 	 */
-	public boolean isDynamic() {
+	public final boolean isDynamic() {
 		return dynamic;
 	}
 
@@ -290,7 +290,7 @@ public class Buffer implements Recyclable,
 	 *
 	 * @return The current position.
 	 */
-	public int position() {
+	public final int position() {
 		return (null == buffer ? 0 : buffer.position());
 	}
 
@@ -666,7 +666,7 @@ public class Buffer implements Recyclable,
 	 */
 	public Buffer append(Buffer... buffers) {
 		for (Buffer b : buffers) {
-			int pos = (null == buffer ? 0 : buffer.position());
+			int pos = position();
 			int len = b.remaining();
 			ensureCapacity(len);
 			if (b.byteBuffer() != null) {

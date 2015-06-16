@@ -184,9 +184,10 @@ public final class IO {
 		public void accept(SubscriberWithContext<Buffer, ReadableByteChannel> sub) {
 			try {
 				ByteBuffer buffer = ByteBuffer.allocate(bufferSize);
-				if (sub.context().read(buffer) > 0) {
+				int read;
+				if ((read = sub.context().read(buffer)) > 0) {
 					buffer.flip();
-					sub.onNext(new Buffer(buffer));
+					sub.onNext(new Buffer(buffer).limit(read));
 				} else {
 					sub.onComplete();
 				}

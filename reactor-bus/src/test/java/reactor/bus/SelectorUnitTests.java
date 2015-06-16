@@ -143,7 +143,7 @@ public class SelectorUnitTests {
 
 		for(int i = 0; i < selectors; i++) {
 			Tuple2<Selector, Object> tup = fn.apply(i);
-			sels[i] = (Selector)tup.getT1();
+			sels[i] = tup.getT1();
 			keys[i] = tup.getT2();
 			registry.register(sels[i], countDown);
 		}
