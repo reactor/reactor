@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jayway.jsonpath.*;
 import com.jayway.jsonpath.spi.json.JsonProvider;
 import com.jayway.jsonpath.spi.mapper.MappingProvider;
+
 import reactor.io.buffer.Buffer;
 
 import java.io.IOException;
@@ -269,6 +270,15 @@ public class JsonPathSelector extends ObjectSelector<Object, JsonPath> {
 				((ArrayNode) obj).set(idx, (JsonNode) value);
 			} else {
 				setProperty(mapper.convertValue(obj, JsonNode.class), key, value);
+			}
+		}
+
+		@Override
+		public Object unwrap(Object object) {
+			if (object instanceof JsonNode) {
+				return unwrap((JsonNode) object);
+			} else {
+				return object;
 			}
 		}
 
