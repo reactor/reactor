@@ -34,7 +34,7 @@ ext {
   nettyVersion = '4.0.27.Final'
   jeromqVersion = '0.3.4'
   jacksonDatabindVersion = '2.5.1'
-  jsonPathVersion = '1.2.0'
+  jsonPathVersion = '2.0.0'
   kryoVersion = '2.24.0'
   protobufVersion = '2.6.1'
   snappyVersion = '1.1.1.6'
