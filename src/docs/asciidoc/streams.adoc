@@ -344,41 +344,48 @@ the difference is demonstrated in the code sample below.
 .Streams.create and Streams.defer in action
 [source,java]
 ----
-final Stream<String> stream1 = Streams.create(sub -> {
-
-  sub.onSubscribe(new Subscription(){ // <1>
-    void request(long demand){
-      if(demand == 2L){
-        sub.onNext(1);
-        sub.onNext(2);
-        sub.onComplete();
+final Stream<String> stream1 = Streams.create(new Publisher<String>() {
+  @Override
+  public void subscribe(Subscriber<? super String> sub) {
+    sub.onSubscribe(new Subscription() { // <1>
+      @Override
+      public void request(long demand) {
+        if(demand == 2L){
+          sub.onNext("1");
+          sub.onNext("2");
+          sub.onComplete();
+        }
       }
-    }
 
-    void cancel(){
-      System.out.println("Cancelled!");
-    }
-  });
+      @Override
+      public void cancel() {
+        System.out.println("Cancelled!");
+      }
+    });
+  }
 });
 
 final Stream<String> stream2 = Streams.create(sub -> {
-  sub.onNext(3); // <2>
-  sub.onNext(4);
+  sub.onNext("3"); // <2>
+  sub.onNext("4");
   sub.onComplete();
 });
 
-final AtomicInteger counterSubscribe = new AtomicInteger();
+final AtomicInteger counterSubscriber = new AtomicInteger();
 
-Stream<String> deferred = Streams.defer( () -> {
-  if(counterSubscriber.incrementAndGet() == 1){ // <3>
+Stream<String> deferred = Streams.defer(() -> {
+  if (counterSubscriber.incrementAndGet() == 1) { // <3>
     return stream1;
-  }else{
-    return stream2;
+  }
+  else {
+     return stream2;
   }
 });
 
 deferred
-  .consume(s -> System.out.printf("%s greeting = %s%n", Thread.currentThread(), s));
+  .consume(s -> System.out.printf("%s First subscription = %s%n", Thread.currentThread(), s));
+deferred
+  .consume(s -> System.out.printf("%s Second subscription = %s%n", Thread.currentThread(), s));
 ----
 <1> Create a `Stream` from a custom valid `Publisher` which first calls `onSubscribe(Subscription)`.
 <2> Create a `Stream` from a custom malformed `Publisher which skips `onSubscribe(Subscription)` and immediately calls `onNext(T)`.
@@ -402,18 +409,18 @@ Reactor offers some reusable components to avoid the boilerplate checking you wo
 ----
 final Stream<String> stream = Streams.createWith(
   (demand, sub) -> { // <1>
-    int prefix = sub.context(); // <2>
-    if(demand == 2L && !sub.isCancelled()){
-      sub.onNext(1);
-      sub.onNext(2);
-      sub.onComplete();
-  }, 
+      sub.context(); // <2>
+      if (demand >= 2L && !sub.isCancelled()) {
+          sub.onNext("1");
+          sub.onNext("2");
+          sub.onComplete();
+      }
+  },
   sub -> 0, // <3>
   sub -> System.out.println("Cancelled!") // <4>
 );
 
-stream
-  .consume(s -> System.out.printf("%s greeting = %s%n", Thread.currentThread(), s)); // <4>
+stream.consume(s -> System.out.printf("%s greeting = %s%n", Thread.currentThread(), s));
 ----
 <1> Attach a request consumer reacting on `Subscriber` requests and passing the demand and the requesting subscriber.
 <2> The _sub_ argument is actually a `SubscriberWithContext` possibly assigned with some initial state shared by all request callbacks.
@@ -681,9 +688,9 @@ h|process(*Processor<T, O>*)
 [[stream-capacity]]
 === Setting Capacity
 
-The Reactive Streams standard encourages application developers to set reasonable limits on in-flight data. This prevents components from becoming innudated with more data than they can handle, which causes unpredictable problems throughput an application. One of the core concepts of Reactive Streams is that of "backpressure", or the ability of a pipeline to communicate to upstream components that it can only handle a fixed number of items at a time. A useful term to describe this process of queueing and requesting small chunks of a large volume of data is "microbatching".
+The Reactive Streams standard encourages application developers to set reasonable limits on in-flight data. This prevents components from becoming inundated with more data than they can handle, which causes unpredictable problems throughout an application. One of the core concepts of Reactive Streams is that of "backpressure", or the ability of a pipeline to communicate to upstream components that it can only handle a fixed number of items at a time. A useful term to describe this process of queueing and requesting small chunks of a large volume of data is "microbatching".
 
-Within a Reactor `Stream`, it's possible to microbatch items to limit the amount of data in-flight at any given time. This has distinct advantages in a number of ways, not the least of which is that it limits expsoure to data loss by preventing the system from accepting more data than it can afford to lose if the system was to crash.
+Within a Reactor `Stream`, it's possible to microbatch items to limit the amount of data in-flight at any given time. This has distinct advantages in a number of ways, not the least of which is that it limits exposure to data loss by preventing the system from accepting more data than it can afford to lose if the system was to crash.
 
 To limit the amount of data in-flight in a `Stream`, use the link:/docs/api/reactor/rx/Stream.html#capacity-long-[`.capacity(long)`] method.
 
@@ -838,7 +845,7 @@ Promise<List<Long>> result = Streams
   .toList(); // <1>
 
 System.out.println(result.await()); // <2>
-result.onSuccess(System.out::println) // <3>
+result.onSuccess(System.out::println); // <3>
 ----
 <1> Consume the entire sequence on the dispatcher thread given in `subscribeOn(Dispatcher)` operation.
 <2> Block (default 30 Seconds) until `onComplete()` and print only `onNext(List<Long>)`; or, if `onError(e)`, wrap as RuntimeException and re-raise.
@@ -945,7 +952,7 @@ image::images/nThreading.png[Bounded threading, width=600, align="center", link=
 "Better trade your unused CPU and Memory for your overused Latency"
 -- Klingon Proverb
 
-After one or two reads of the <<streams.adoc#stream-basics,101 Stream crash intro>>, you courageaous hacker are ready for some _quick ROI_.
+After one or two reads of the <<streams.adoc#streams-basics,101 Stream crash intro>>, you courageous hacker are ready for some _quick ROI_.
 In effect dispatching efficiently is far away from the only item to check in the *way of millions messages per sec todo list*.
 
 A common issue in *Distributed Systems* lies in the latency cost over indivudual vs buffered IO writes.
@@ -1018,12 +1025,12 @@ CountDownLatch latch = new CountDownLatch(1);
 final Broadcaster<Integer> streamBatcher = Broadcaster.<Integer>create(env);
 streamBatcher
   .buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
-  .consume(i -> latch.countDown()));
+  .consume(i -> latch.countDown());
 
 
 streamBatcher.onNext(12);
 streamBatcher.onNext(123);
-Thread.sleep(200)
+Thread.sleep(200);
 streamBatcher.onNext(42);
 streamBatcher.onNext(666);
 
@@ -1688,7 +1695,7 @@ stream
 2+a|
 
 ****
-* Yes its more verbose...
+* Yes it's more verbose...
 * ...But now we stream result by result from the query (could have used pagination with SQL limits as well).
 * `Streams.createWith` is a `PublisherFactory` which intercepts requests, start and stop.
 ** The request consumer gives precisely how many elements a subscriber is ready to receive.
@@ -1702,7 +1709,7 @@ stream
 ****
 
 [NOTE]
-It's important to balance the use of stateful `Iterable<T>` like `List<T>` vs individual streaming `T`. A `List` might incur at some point more latency since we take more time to create it. It's also not playing that well in favor of resiliency since it's a whole batch we can loose if fatal error occurs. Finally, streaming `T` data makes sizing demand more predictible because we can score individual signals instead of batches of signals.
+It's important to balance the use of stateful `Iterable<T>` like `List<T>` vs individual streaming `T`. A `List` might incur at some point more latency since we take more time to create it. It's also not playing that well in favor of resiliency since it's a whole batch we can lose if a fatal error occurs. Finally, streaming `T` data makes sizing demand more predictable because we can score individual signals instead of batches of signals.
 
 |===
 
@@ -1746,7 +1753,7 @@ Broadcaster<String> broadcaster = Broadcaster.create();
 
 Promise<List<String>> promise =
     broadcaster
-        .timeout(1, TimeUnit.SECONDS, Stream.fail(new Exception("another one!"))) // <1>
+        .timeout(1, TimeUnit.SECONDS, Streams.fail(new Exception("another one!"))) // <1>
         .onErrorResumeNext(Streams.just("Alternative Message")) // <2>
         .toList();
 

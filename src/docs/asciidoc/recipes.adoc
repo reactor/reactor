@@ -5,7 +5,7 @@ Let's start with a pure `Publisher` implementation, we'll use Reactor API afterw
 As `Publisher` you will have to take care about a lot of small things that should be tested against the *Reactive Streams* TCK module. The purpose is to understand what *Reactor* can do for you in such situation to avoid all this machinery. 
 
 [IMPORTANT]
-Theorically *Reactive Streams* won't buy you much in a scenario of File Read blocking consuming, single threaded, over a simple loop doing that. If the _sink_ endpoint is blocking you already have a form of backpressure since it won't read more than it sends. The point of such Reactive File Stream is when in between it and the consumer there is one or more boundaries to cross, a decoupling that can take the form of a queue or a ring buffer. You could envision this scenario where you want to keep reading while the consumer is sending so the next time it asks for data (after sending its previous one), the data *is already in-memory*. A sort of prefetching in other words.
+In theory, *Reactive Streams* won't buy you much in a scenario of File Read blocking consuming, single threaded, over a simple loop doing that. If the _sink_ endpoint is blocking you already have a form of backpressure since it won't read more than it sends. The point of such Reactive File Stream is when in between it and the consumer there is one or more boundaries to cross, a decoupling that can take the form of a queue or a ring buffer. You could envision this scenario where you want to keep reading while the consumer is sending so the next time it asks for data (after sending its previous one), the data *is already in-memory*. A sort of prefetching in other words.
 
 .Build a lazy file read Publisher matching the Subscriber request
 [source, java, indent=2]
@@ -29,19 +29,19 @@ Publisher<String> fileStream = new Publisher<String>() { // <1>
 						String line;
 						while ((requestCursor++ < n || n == Long.MAX_VALUE) // <3>
 								&& !terminated.get()) { // <4>
-						
+
 							line = is.readLine();
 							if (line != null) {
 								subscriber.onNext(line);
 							} else {
-								if(terminate()){									
+								if (terminate()) {
 									subscriber.onComplete(); // <5>
 								}
 								return;
 							}
 						}
 					} catch (IOException e) {
-						if (terminate()){
+						if (terminate()) {
 							subscriber.onError(e); // <6>
 						}
 					}
@@ -52,11 +52,11 @@ Publisher<String> fileStream = new Publisher<String>() { // <1>
 					terminate();
 				}
 
-				private boolean terminate(){
-					if(terminated.compareAndSet(false, true)){
+				private boolean terminate() {
+					if (terminated.compareAndSet(false, true)) {
 						try {
-							is.close(); // <7>							
-						} catch(Exception t) {
+							is.close(); // <7>
+						} catch (Exception t) {
 							subscriber.onError(t);
 						}
 						return true;
@@ -107,19 +107,24 @@ Publisher<String> fileStream = PublisherFactory.create(
 		final BufferedReader inputStream = sub.context() // <2>		
 		long requestCursor = 0l;
 		while ((requestCursor++ < n || n == Long.MAX_VALUE) && !sub.isCancelled()) { // <3>
-			
-			line = inputStream.readLine();
-			if (line != null) {
-				sub.onNext(line);
-			} else {
-				sub.onComplete(); // <4>
-				return;
-			}								
+
+			try {
+				line = inputStream.readLine();
+				if (line != null) {
+					sub.onNext(line);
+				} else {
+					sub.onComplete(); // <4>
+					return;
+				}
+			}
+			catch (IOException exc) {
+				sub.onError(exc);
+			}
 		}
 	}, 
 	sub -> new BufferedReader(new FileReader(filename)), // <5>
 	inputStream -> inputStream.close() // <6>
-};
+);
 
 Streams
 	.wrap(fileStream)
@@ -243,7 +248,7 @@ A simple sample application that demonstrates Reactor functionality in JUnit tes
 [discrete]
 ==== Non Blocking Konami Code
 
-If you made it that far, here a simple non blocking stream to scale up your Konami codes over websocket. Tell me about a reward... Don't forget to add *Netty* in your classpath as long as *reactor-net*.
+If you made it that far, here a simple non blocking stream to scale up your Konami codes over websocket. Tell me about a reward... Don't forget to add *Netty* in your classpath along *reactor-net*.
 
 [source,java]
 ----
