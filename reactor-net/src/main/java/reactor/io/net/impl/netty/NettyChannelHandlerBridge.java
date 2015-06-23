@@ -238,7 +238,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		if (msg instanceof Publisher) {
 			@SuppressWarnings("unchecked")
 			Publisher<?> data = (Publisher<?>) msg;
-			final long capacity = msg instanceof NonBlocking ? ((NonBlocking)data).getCapacity() : Long.MAX_VALUE;
+			final long capacity = msg instanceof NonBlocking ? ((NonBlocking) data).getCapacity() : Long.MAX_VALUE;
 
 			if (capacity == Long.MAX_VALUE) {
 				data.subscribe(new FlushOnTerminateSubscriber(ctx, promise));
@@ -465,7 +465,10 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 				throw CancelException.get();
 			}
 			try {
-				doOnWrite(w, ctx).addListener(writeListener);
+				ChannelFuture cf = doOnWrite(w, ctx);
+				if (cf != null) {
+					cf.addListener(writeListener);
+				}
 				if (capacity == 1L) {
 					ctx.flush();
 				} else {
