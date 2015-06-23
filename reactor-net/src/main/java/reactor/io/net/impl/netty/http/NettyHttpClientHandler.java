@@ -186,12 +186,9 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 			if (byteBuffer != null) {
 				HttpHeaders.setContentLength(req, body.limit());
-
-				String header = HttpHeaders.getHeader(request.getNettyRequest(), HttpHeaders.Names.CONTENT_TYPE);
-				if (header != null) {
-					HttpHeaders.setHeader(req, HttpHeaders.Names.CONTENT_TYPE, header);
-				}
 			}
+
+			req.headers().set(request.headers().delegate());
 			ctx.writeAndFlush(req).addListener(new ChannelFutureListener() {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {

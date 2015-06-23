@@ -25,7 +25,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.support.Assert;
 import reactor.io.net.http.HttpChannel;
-import reactor.io.net.http.model.HttpHeaders;
 import reactor.io.net.http.model.*;
 import reactor.io.net.impl.netty.NettyChannelStream;
 
@@ -94,44 +93,44 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 		}
 	}
 
-		// REQUEST contract
+	// REQUEST contract
 
 
-		@Override
-		public Protocol protocol () {
-			HttpVersion version = this.nettyRequest.getProtocolVersion();
-			if (version.equals(HttpVersion.HTTP_1_0)) {
-				return Protocol.HTTP_1_0;
-			} else if (version.equals(HttpVersion.HTTP_1_1)) {
-				return Protocol.HTTP_1_1;
-			}
-			throw new IllegalStateException(version.protocolName() + " not supported");
+	@Override
+	public Protocol protocol() {
+		HttpVersion version = this.nettyRequest.getProtocolVersion();
+		if (version.equals(HttpVersion.HTTP_1_0)) {
+			return Protocol.HTTP_1_0;
+		} else if (version.equals(HttpVersion.HTTP_1_1)) {
+			return Protocol.HTTP_1_1;
 		}
+		throw new IllegalStateException(version.protocolName() + " not supported");
+	}
 
-		@Override
-		protected void doHeader (String name, String value){
-			this.headers.set(name, value);
-		}
+	@Override
+	protected void doHeader(String name, String value) {
+		this.headers.set(name, value);
+	}
 
-		@Override
-		protected void doAddHeader (String name, String value){
-			this.headers.add(name, value);
-		}
+	@Override
+	protected void doAddHeader(String name, String value) {
+		this.headers.add(name, value);
+	}
 
-		@Override
-		public String uri () {
-			return this.nettyRequest.getUri();
-		}
+	@Override
+	public String uri() {
+		return this.nettyRequest.getUri();
+	}
 
-		@Override
-		public Method method () {
-			return new Method(this.nettyRequest.getMethod().name());
-		}
+	@Override
+	public Method method() {
+		return new Method(this.nettyRequest.getMethod().name());
+	}
 
-		@Override
-		public HttpHeaders headers () {
-			return this.headers;
-		}
+	@Override
+	public NettyHttpHeaders headers() {
+		return this.headers;
+	}
 
 	public HttpRequest getNettyRequest() {
 		return nettyRequest;
@@ -176,7 +175,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	}
 
 	@Override
-	public ResponseHeaders responseHeaders() {
+	public NettyHttpResponseHeaders responseHeaders() {
 		return this.responseHeaders;
 	}
 

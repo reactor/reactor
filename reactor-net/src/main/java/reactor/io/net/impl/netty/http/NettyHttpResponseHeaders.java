@@ -41,6 +41,10 @@ public class NettyHttpResponseHeaders implements ResponseHeaders {
 		this.nettyHeaders = nettyResponse.headers();
 	}
 
+	public HttpHeaders delegate(){
+		return nettyHeaders;
+	}
+
 	@Override
 	public boolean contains(String name) {
 		return this.nettyHeaders.contains(name);

@@ -39,6 +39,10 @@ public class NettyHttpHeaders implements HttpHeaders {
 		this.nettyHeaders = nettyRequest.headers();
 	}
 
+	public io.netty.handler.codec.http.HttpHeaders delegate(){
+		return nettyHeaders;
+	}
+
 	@Override
 	public HttpHeaders add(String name, String value) {
 		nettyHeaders.add(name, value);
