@@ -184,11 +184,12 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 					request.getNettyRequest().getUri(),
 					byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled.EMPTY_BUFFER);
 
+			req.headers().add(request.headers().delegate());
+
 			if (byteBuffer != null) {
 				HttpHeaders.setContentLength(req, body.limit());
 			}
 
-			req.headers().set(request.headers().delegate());
 			ctx.writeAndFlush(req).addListener(new ChannelFutureListener() {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
@@ -199,7 +200,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 					}
 				}
 			});
-		} else  {
+		} else {
 			ctx.write(new DefaultHttpContent(byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled
 					.EMPTY_BUFFER));
 		}
