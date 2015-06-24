@@ -211,7 +211,11 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			if(outerAction.publishers == null){
 				FanInSubscription.RUNNING_COMPOSABLE_UPDATER.incrementAndGet(outerAction.innerSubscriptions);
 			}
-			pendingRequests = Math.max(1, outerAction.innerSubscriptions.pendingRequestSignals() / (Math.max(outerAction.innerSubscriptions.runningComposables, 1)));
+			long toRequest = outerAction.innerSubscriptions.pendingRequestSignals();
+			pendingRequests = toRequest / Math.max(outerAction.innerSubscriptions.runningComposables, 1);
+			if(pendingRequests == 0 && toRequest > 0){
+				pendingRequests = 1;
+			}
 		}
 
 		public void accept(Long pendingRequests) {
