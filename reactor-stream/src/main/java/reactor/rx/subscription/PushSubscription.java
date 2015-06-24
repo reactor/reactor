@@ -71,12 +71,12 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	@Override
 	public void request(long n) {
 		try {
-			if(publisher == null) {
+			if (publisher == null) {
 				if (pendingRequestSignals != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, n) < 0)
 					PENDING_UPDATER.set(this, Long.MAX_VALUE);
 			}
 
-			if(terminated == -1L){
+			if (terminated == -1L) {
 				pendingRequestSignals = n;
 				return;
 			}
@@ -96,7 +96,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 		}
 	}
 
-	public boolean terminate(){
+	public boolean terminate() {
 		return TERMINAL_UPDATER.compareAndSet(this, 0, 1);
 	}
 
@@ -107,9 +107,9 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	}
 
 	public void onNext(O ev) {
-	//	if (terminated == 0) {
-			subscriber.onNext(ev);
-	//	}
+		//	if (terminated == 0) {
+		subscriber.onNext(ev);
+		//	}
 	}
 
 	public void onError(Throwable throwable) {
@@ -129,29 +129,33 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	public void updatePendingRequests(long n) {
 		long oldPending;
 		long newPending;
-		do{
+		do {
 			oldPending = pendingRequestSignals;
 			newPending = n == 0l ? 0l : oldPending + n;
-			if(newPending < 0) {
+			if (newPending < 0) {
 				newPending = n > 0 ? Long.MAX_VALUE : 0;
 			}
-		}while(!PENDING_UPDATER.compareAndSet(this, oldPending, newPending));
+		} while (!PENDING_UPDATER.compareAndSet(this, oldPending, newPending));
 	}
 
-	public void start(){
-		if(subscriber != null && terminated == -1L){
+	public void start() {
+		if (subscriber != null && terminated == -1L) {
 			subscriber.onSubscribe(this);
-			if(markAsStarted() && pendingRequestSignals > 0L){
-				onRequest(pendingRequestSignals);
+			long toRequest;
+			synchronized (this) {
+				if (!markAsStarted() || (toRequest = pendingRequestSignals) <= 0L) {
+					return;
+				}
 			}
+			onRequest(toRequest);
 		}
 	}
 
-	public final boolean markAsStarted(){
+	public final boolean markAsStarted() {
 		return TERMINAL_UPDATER.compareAndSet(this, -1, 0);
 	}
 
-	public final boolean markAsDeferredStart(){
+	public final boolean markAsDeferredStart() {
 		return TERMINAL_UPDATER.compareAndSet(this, 0, -1);
 	}
 
@@ -188,7 +192,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	@Override
 	public int hashCode() {
 		int result = subscriber.hashCode();
-		if(publisher != null){
+		if (publisher != null) {
 			result = 31 * result + publisher.hashCode();
 		}
 		return result;
@@ -209,9 +213,10 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 
 	@Override
 	public String toString() {
-		return "{push"+
-				(pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE ? ",pending="+pendingRequestSignals : "")
-				+"}";
+		return "{push" +
+				(pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE ? ",pending=" + pendingRequestSignals :
+						"")
+				+ "}";
 	}
 
 
