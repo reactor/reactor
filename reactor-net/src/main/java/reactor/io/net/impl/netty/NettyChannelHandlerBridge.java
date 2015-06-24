@@ -135,9 +135,11 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 		try {
 			super.channelReadComplete(ctx);
-			if (channelSubscription.pendingRequestSignals() != Long.MAX_VALUE
-					&& channelSubscription.pendingRequestSignals() > 0l) {
-				ctx.read();
+			if (channelSubscription.pendingRequestSignals() != Long.MAX_VALUE){
+				channelSubscription.updatePendingRequests(-1);
+				if(channelSubscription.pendingRequestSignals() > 0l) {
+					ctx.read();
+				}
 			}
 		} catch (Throwable throwable) {
 			if (channelSubscription != null) {
