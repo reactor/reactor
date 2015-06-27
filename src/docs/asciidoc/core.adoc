@@ -23,7 +23,7 @@ Consumer<Integer> c = { data ->
 Consumer<Throwable> errorHandler = { it.printStackTrace }
 
 //Dispatch data asynchronously
-r.dispatch(1234, c, errorHandler)
+dispatcher.dispatch(1234, c, errorHandler)
 
 Environment.terminate()
 ----
