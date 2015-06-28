@@ -1231,33 +1231,28 @@ public class Buffer implements Recyclable,
 
 	private synchronized void ensureCapacity(int atLeast) {
 		if (null == buffer) {
-			buffer = ByteBuffer.allocate(SMALL_BUFFER_SIZE);
+			buffer = ByteBuffer.allocate(Math.max(atLeast, SMALL_BUFFER_SIZE));
 			return;
 		}
 		int pos = buffer.position();
 		int cap = buffer.capacity();
-		if (dynamic && buffer.remaining() < atLeast) {
-			if (buffer.limit() < cap) {
-				// there's remaining capacity that hasn't been used yet
-				if (pos + atLeast > cap) {
-					expand();
-					cap = buffer.capacity();
-				}
-				buffer.limit(Math.min(pos + atLeast, cap));
-			} else {
-				expand();
-				buffer.limit(buffer.capacity());
+		if (dynamic) {
+			int neededCapacity = pos + atLeast;
+			if (neededCapacity > cap) {
+				// There's not enough capacity to handle atLeast
+				expand(neededCapacity - cap);
 			}
+			buffer.limit(Math.max(neededCapacity, buffer.limit()));
 		} else if (pos + SMALL_BUFFER_SIZE > MAX_BUFFER_SIZE) {
 			throw new BufferOverflowException();
 		}
 	}
 
-	private void expand() {
+	private void expand(int expandSize) {
 		snapshot();
 		ByteBuffer newBuff = (buffer.isDirect()
-				? ByteBuffer.allocateDirect(buffer.limit() + SMALL_BUFFER_SIZE)
-				: ByteBuffer.allocate(buffer.limit() + SMALL_BUFFER_SIZE));
+				? ByteBuffer.allocateDirect(buffer.capacity() + expandSize)
+				: ByteBuffer.allocate(buffer.capacity() + expandSize));
 		buffer.flip();
 		newBuff.put(buffer);
 		buffer = newBuff;
