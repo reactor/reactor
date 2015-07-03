@@ -19,6 +19,10 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.reactivestreams.PublisherFactory;
+import reactor.core.reactivestreams.SubscriberFactory;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -36,61 +40,54 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 		//IGNORE since subscribers see distinct data
 	}
 
-	@Override
-	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
-			Throwable {
-		for(int i = 0; i < 100; i++) {
-			super.required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError();
-		}
-	}
 
-	public static void main(String... args){
-		Publisher<Long> pub = s -> s.onSubscribe(new Subscription() {
-			volatile boolean terminated = false;
+	public static void main(String... args) {
+		final RingBufferWorkProcessor<Long> processor = RingBufferWorkProcessor.<Long>create();
 
-			@Override
-			public void request(long n) {
-				if(!terminated) {
-					for(long i = 0; i< n; i++) {
-						s.onNext(i);
+		Publisher<Long> pub = PublisherFactory.forEach(
+				c -> {
+					if (c.context().incrementAndGet() >= 661) {
+						c.onComplete();
+						processor.onComplete();
+					} else {
 						try {
-							Thread.sleep(1000);
-						}catch(InterruptedException ie){
+							Thread.sleep(50);
+						} catch (InterruptedException e) {
+
 						}
+						c.onNext(c.context().get());
+						System.out.println(c.context() + " emit");
 					}
-					terminated = true;
-					s.onComplete();
+				},
+				s -> new AtomicLong()
+		);
+
+		for(int i = 0; i < 2; i++) {
+			processor.subscribe(new Subscriber<Long>() {
+				@Override
+				public void onSubscribe(Subscription s) {
+					s.request(1000);
 				}
-			}
 
-			@Override
-			public void cancel() {
-				terminated = true;
-			}
-		});
+				@Override
+				public void onNext(Long aLong) {
+					System.out.println(Thread.currentThread() + " next " + aLong);
+				}
 
-		Processor<Long, Long> processor = RingBufferWorkProcessor.<Long>create();
-		pub.subscribe(processor);
-		processor.subscribe(new Subscriber<Long>() {
-			@Override
-			public void onSubscribe(Subscription s) {
-				s.request(5);
-			}
+				@Override
+				public void onError(Throwable t) {
 
-			@Override
-			public void onNext(Long aLong) {
-				System.out.println("next "+aLong);
-			}
+				}
 
-			@Override
-			public void onError(Throwable t) {
+				@Override
+				public void onComplete() {
+					System.out.println("finish");
+				}
+			});
+		}
 
-			}
-
-			@Override
-			public void onComplete() {
-				System.out.println("finish");
-			}
-		});
+		processor
+				.writeWith(pub)
+				.subscribe(SubscriberFactory.unbounded());
 	}
 }

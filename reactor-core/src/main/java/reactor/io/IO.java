@@ -23,7 +23,6 @@ import reactor.core.support.ReactorFatalException;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -43,26 +42,26 @@ public final class IO {
 	private IO() {
 	}
 
-
 	/**
-	 * Use the given {@link Codec} to decode any {@code SRC} data published by the {@code publisher} reference.
-	 * Some codec might result into N signals for one SRC data.
+	 * Transform a {@link ReadableByteChannel} into a {@link Publisher} of {@link Buffer} with a max chunk size of
+	 * {@link Buffer.SMALL_BUFFER_SIZE}.
 	 *
-	 * @param codec     the codec decoder is going to be used to scan the incoming {@code SRC} data
-	 * @param publisher The data stream publisher we want to decode
-	 * @return a Publisher of decoded values
+	 * Complete when channel read is negative. The read sequence is unique per subscriber.
+	 *
+	 * @param channel The Readable Channel to publish
+	 * @return a Publisher of Buffer values
 	 */
 	public static Publisher<Buffer> read(final ReadableByteChannel channel) {
 		return read(channel, -1);
 	}
 
 	/**
-	 * Use the given {@link Codec} to decode any {@code SRC} data published by the {@code publisher} reference.
-	 * Some codec might result into N signals for one SRC data.
+	 * Transform a {@link ReadableByteChannel} into a {@link Publisher} of {@link Buffer} with a max chunk size of
+	 * {@code chunkSize}.
+	 * Complete when channel read is negative. The read sequence is unique per subscriber.
 	 *
-	 * @param codec     the codec decoder is going to be used to scan the incoming {@code SRC} data
-	 * @param publisher The data stream publisher we want to decode
-	 * @return a Publisher of decoded values
+	 * @param channel The Readable Channel to publish
+	 * @return a Publisher of Buffer values
 	 */
 	public static Publisher<Buffer> read(final ReadableByteChannel channel, int chunkSize) {
 		return PublisherFactory.forEach(
@@ -78,12 +77,13 @@ public final class IO {
 	}
 
 	/**
-	 * Use the given {@link Codec} to decode any {@code SRC} data published by the {@code publisher} reference.
-	 * Some codec might result into N signals for one SRC data.
+	 * Read bytes as {@link Buffer} from file specified by the {@link Path} argument with a max chunk size of
+	 * {@link Buffer.SMALL_BUFFER_SIZE}.
 	 *
-	 * @param codec     the codec decoder is going to be used to scan the incoming {@code SRC} data
-	 * @param publisher The data stream publisher we want to decode
-	 * @return a Publisher of decoded values
+	 * Complete when channel read is negative. The read sequence is unique per subscriber.
+	 *
+	 * @param path the {@link Path} locating the file to read
+	 * @return a Publisher of Buffer values read from file sequentially
 	 */
 	public static Publisher<Buffer> readFile(Path path) {
 		return readFile(path.toAbsolutePath().toString(), -1);
@@ -91,32 +91,37 @@ public final class IO {
 
 
 	/**
-	 * Use the given {@link Codec} to decode any {@code SRC} data published by the {@code publisher} reference.
-	 * Some codec might result into N signals for one SRC data.
+	 * Read bytes as {@link Buffer} from file specified by the {@link Path} argument with a max {@code chunkSize}
 	 *
-	 * @param codec     the codec decoder is going to be used to scan the incoming {@code SRC} data
-	 * @param publisher The data stream publisher we want to decode
-	 * @return a Publisher of decoded values
+	 * Complete when channel read is negative. The read sequence is unique per subscriber.
+	 *
+	 * @param path the {@link Path} locating the file to read
+	 * @return a Publisher of Buffer values read from file sequentially
 	 */
 	public static Publisher<Buffer> readFile(Path path, int chunkSize) {
 		return readFile(path.toAbsolutePath().toString(), chunkSize);
 	}
 
 	/**
-	 * Use the given {@link Codec} to decode any {@code SRC} data published by the {@code publisher} reference.
-	 * Some codec might result into N signals for one SRC data.
+	 * Read bytes as {@link Buffer} from file specified by the {@link Path} argument with a max chunk size of
+	 * {@link Buffer.SMALL_BUFFER_SIZE}.
 	 *
-	 * @return a Publisher of decoded values
+	 * Complete when channel read is negative. The read sequence is unique per subscriber.
+	 *
+	 * @param path the absolute String path to the read file
+	 * @return a Publisher of Buffer values read from file sequentially
 	 */
 	public static Publisher<Buffer> readFile(final String path) {
 		return readFile(path, -1);
 	}
 
 	/**
-	 * Use the given {@link Codec} to decode any {@code SRC} data published by the {@code publisher} reference.
-	 * Some codec might result into N signals for one SRC data.
+	 * Read bytes as {@link Buffer} from file specified by the {@link Path} argument with a max {@code chunkSize}
 	 *
-	 * @return a Publisher of decoded values
+	 * Complete when channel read is negative. The read sequence is unique per subscriber.
+	 *
+	 * @param path the absolute String path to the read file
+	 * @return a Publisher of Buffer values read from file sequentially
 	 */
 	public static Publisher<Buffer> readFile(final String path, int chunkSize) {
 		return PublisherFactory.forEach(

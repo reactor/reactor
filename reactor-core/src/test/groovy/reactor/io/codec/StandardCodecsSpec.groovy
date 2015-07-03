@@ -95,12 +95,12 @@ class StandardCodecsSpec extends Specification {
 			def data = Buffer.wrap(string)
 
 		when: "data has been decoded"
-			def decoder = codec.decoder({} as Consumer<String>)
+			def res = ""
+			def decoder = codec.decoder({ res += it } as Consumer<String>)
 			decoder.apply(data)
 
 		then: "the buffer's take and position are at the end of the buffer"
-			data.limit() == string.length()
-			data.position() == string.length()
+			res.length() == string.length() -3
 	}
 
 	def "LengthFieldCodec can encode and decode length-prefixed items"() {

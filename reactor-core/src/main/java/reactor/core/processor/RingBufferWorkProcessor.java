@@ -15,6 +15,7 @@
  */
 package reactor.core.processor;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.processor.util.RingBufferSubscriberUtils;
@@ -567,6 +568,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			RingBufferSubscriberUtils.onComplete(ringBuffer);
 		}
 		super.onComplete();
+	}
+
+	public Publisher<Void> writeWith(final Publisher<? extends E> source) {
+		return RingBufferSubscriberUtils.writeWith(source, ringBuffer);
 	}
 
 	@Override

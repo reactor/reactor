@@ -15,6 +15,7 @@
  */
 package reactor.core.processor;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.processor.util.RingBufferSubscriberUtils;
@@ -585,6 +586,10 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		super.onComplete();
 	}
 
+	public Publisher<Void> writeWith(final Publisher<? extends E> source) {
+		return RingBufferSubscriberUtils.writeWith(source, ringBuffer);
+	}
+
 	@Override
 	public String toString() {
 		return "RingBufferProcessor{" +
@@ -751,10 +756,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 			try {
 
-				if(!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
+				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
 						pendingRequest, processor.ringBuffer, processor.barrier, subscriber, running
-				))
-				{
+				)) {
 					return;
 				}
 
