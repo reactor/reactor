@@ -150,8 +150,8 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		//	innerSubscriptions.request(elements);
 		long running = innerSubscriptions.runningComposables;
-		elements = running == 0 ? elements : (running*elements < 0 ? Long.MAX_VALUE : elements*running);
-		requestMore(elements);
+		long toRequest = running == 0 ? elements : (running*elements < 0 ? Long.MAX_VALUE : elements*running);
+		requestMore(toRequest);
 		if (dynamicMergeAction != null) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
 		}
