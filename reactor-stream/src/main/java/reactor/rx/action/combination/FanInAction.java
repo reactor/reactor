@@ -149,9 +149,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		//	innerSubscriptions.request(elements);
-		long running = innerSubscriptions.runningComposables;
-		long toRequest = running == 0 ? elements : (running*elements < 0 ? Long.MAX_VALUE : elements*running);
-		requestMore(toRequest);
+		requestMore(elements);
 		if (dynamicMergeAction != null) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
 		}
@@ -212,7 +210,9 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				FanInSubscription.RUNNING_COMPOSABLE_UPDATER.incrementAndGet(outerAction.innerSubscriptions);
 			}
 			long toRequest = outerAction.innerSubscriptions.pendingRequestSignals();
-			pendingRequests = toRequest / Math.max(outerAction.innerSubscriptions.runningComposables, 1);
+			pendingRequests = toRequest != Long.MAX_VALUE ?
+			  toRequest / Math.max(outerAction.innerSubscriptions.runningComposables, 1) :
+			Long.MAX_VALUE;
 			if(pendingRequests == 0 && toRequest > 0){
 				pendingRequests = 1;
 			}
@@ -249,7 +249,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		public void onComplete() {
 			//Action.log.debug("event [complete] by: " + this);
 			if (TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
-				if(s != null) s.cancel();
+				//if(s != null) s.cancel();
 				long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
 				left = left < 0l ? 0l : left;
 
