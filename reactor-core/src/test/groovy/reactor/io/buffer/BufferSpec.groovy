@@ -46,6 +46,16 @@ class BufferSpec extends Specification {
 		buff.asString() == "Hello World!"
 	}
 
+
+
+	def "A Buffer accepts special characters"() {
+		when: "a Buffer is created from a special char"
+			def buff = Buffer.wrap("\u2026")
+
+		then: "the Buffer contains the String"
+			buff.asString() == "\u2026"
+	}
+
 	def "A fixed-length Buffer can be created from a String"() {
 		given: "a fixed-length Buffer is created"
 		def buff = Buffer.wrap("Hello", true)

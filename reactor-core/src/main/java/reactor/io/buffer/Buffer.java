@@ -149,9 +149,13 @@ public class Buffer implements Recyclable,
 	 */
 	@SuppressWarnings("resource")
 	public static Buffer wrap(String str, boolean fixed) {
-		return new Buffer(str.length(), fixed)
-				.append(str)
-				.flip();
+		if(fixed){
+			return wrap(str.getBytes());
+		}else {
+			return new Buffer(str.length(), false)
+			  .append(str)
+			  .flip();
+		}
 	}
 
 	/**
