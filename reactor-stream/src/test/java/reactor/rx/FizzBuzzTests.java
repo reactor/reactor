@@ -17,8 +17,11 @@ package reactor.rx;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
+import reactor.Environment;
+import reactor.core.processor.RingBufferProcessor;
 import reactor.rx.action.Control;
 
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
@@ -73,4 +76,46 @@ public class FizzBuzzTests extends AbstractReactorTest {
         while(c.isPublishing());
     }
 
+
+    @Test
+    public void indexBugTest() throws InterruptedException {
+        int numOfItems = 20;
+
+        Environment.initializeIfEmpty();
+
+        //this line causes an java.lang.ArrayIndexOutOfBoundsException unless there is a break point in ZipAction.createSubscriber()
+        RingBufferProcessor<String> ring = RingBufferProcessor.create("test", 1024);
+
+        //this line works
+//        Broadcaster<String> ring = Broadcaster.create(Environment.get());
+
+        Stream<String> stream = Streams.wrap(ring);
+
+        Stream<String> stream2 = stream
+          .zipWith(Streams.createWith((d, s) -> {
+              for (int i = 0; i < d; i++) {
+                  s.onNext(System.currentTimeMillis());
+              }
+          }), t -> String.format("%s : %s", t.getT2(), t.getT1()))
+          .observeError(Throwable.class, (o, t) -> {
+              System.err.println(t.toString());
+              t.printStackTrace();
+          });
+
+        Promise<List<String>> p = stream2
+          .observe(System.out::println)
+          .buffer(numOfItems)
+          .next();
+
+        for (int curr = 0; curr < numOfItems; curr++) {
+            if (curr % 5 == 0 && curr % 3 == 0) ring.onNext("FizBuz");
+            else if (curr % 3 == 0) ring.onNext("Fiz");
+            else if (curr % 5 == 0) ring.onNext("Buz");
+            else ring.onNext(String.valueOf(curr));
+        }
+
+        p.await();
+
+    }
 }
+
