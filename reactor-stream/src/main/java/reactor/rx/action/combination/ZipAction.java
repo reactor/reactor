@@ -202,9 +202,12 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
                 outerAction.innerSubscriptions.remove(sequenceId);
                 outerAction.status.compareAndSet(RUNNING, COMPLETING);
                 outerAction.capacity(outerAction.innerSubscriptions.runningComposables);
-                FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions);
 
-                outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, null));
+                if(FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction.innerSubscriptions) == 0){
+                    outerAction.innerSubscriptions.serialComplete();
+                }else{
+                    outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, null));
+                }
             }
         }
 
