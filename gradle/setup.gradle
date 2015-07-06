@@ -96,11 +96,6 @@ def customizePom(def pom, def gradleProject) {
 					name = 'Stephane Maldini'
 					email = 'smaldini@pivotal.io'
 				}
-				developer {
-					id = 'jbrisbin'
-					name = 'Jon Brisbin'
-					email = 'jbrisbin@pivotal.io'
-				}
 			}
 			issueManagement {
 				system = "GitHub Issues"
