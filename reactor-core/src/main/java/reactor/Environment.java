@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.Dispatcher;
 import reactor.core.DispatcherSupplier;
 import reactor.core.config.*;
-import reactor.core.convert.StandardConverters;
 import reactor.core.dispatch.*;
 import reactor.core.dispatch.wait.AgileWaitingStrategy;
 import reactor.core.internal.PlatformDependent;
@@ -493,7 +492,7 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 
 	public static DispatcherSupplier newCachedDispatchers(final int poolsize, String name) {
 		return createDispatcherFactory(name, poolsize, 1024, null, ProducerType.MULTI,
-				new AgileWaitingStrategy());
+		  new AgileWaitingStrategy());
 	}
 
 	public static DispatcherSupplier newFanOutCachedDispatchers(final int poolsize, String name) {
@@ -567,26 +566,37 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 	}
 
 	/**
-	 * Gets the property with the given {@code key}, converting it to the required {@code type} using the {@link
-	 * StandardConverters#CONVERTERS standard converters}. fF the property does not exist {@code defaultValue} will be
+	 * Gets the property with the given {@code key}, converting it to a long.
+	 * If the property does not exist {@code defaultValue} will be
 	 * returned.
 	 *
 	 * @param key          The property key
-	 * @param type         The type to convert the property to
 	 * @param defaultValue The value to return if the property does not exist
 	 * @return The converted value for the property
 	 */
-	@SuppressWarnings("unchecked")
-	public <T> T getProperty(String key, Class<T> type, T defaultValue) {
-		Object val = env.getProperty(key);
+	public long getLongProperty(String key, long defaultValue) {
+		String val = env.getProperty(key);
 		if (null == val) {
 			return defaultValue;
 		}
-		if (!type.isAssignableFrom(val.getClass()) && StandardConverters.CONVERTERS.canConvert(String.class, type)) {
-			return StandardConverters.CONVERTERS.convert(val, type);
-		} else {
-			return (T) val;
+		return Long.parseLong(key);
+	}
+
+	/**
+	 * Gets the property with the given {@code key}, converting it to an integer.
+	 * If the property does not exist {@code defaultValue} will be
+	 * returned.
+	 *
+	 * @param key          The property key
+	 * @param defaultValue The value to return if the property does not exist
+	 * @return The converted value for the property
+	 */
+	public int getIntProperty(String key, int defaultValue) {
+		String val = env.getProperty(key);
+		if (null == val) {
+			return defaultValue;
 		}
+		return Integer.parseInt(val);
 	}
 
 	/**

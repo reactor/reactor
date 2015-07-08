@@ -111,7 +111,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
-			int ioThreadCount = env != null ? env.getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment
+			int ioThreadCount = env != null ? env.getIntProperty("reactor.tcp.ioThreadCount", Environment
 					.PROCESSORS) : Environment.PROCESSORS;
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 		}

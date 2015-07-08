@@ -1808,7 +1808,7 @@ public class Streams {
 	public static void await(Publisher<?> publisher) throws Throwable {
 		long timeout = 30000l;
 		if (Environment.alive()) {
-			timeout = Environment.get().getProperty("reactor.await.defaultTimeout", Long.class, 30000L);
+			timeout = Environment.get().getLongProperty("reactor.await.defaultTimeout", 30000L);
 		}
 		await(publisher, timeout, TimeUnit.MILLISECONDS, true);
 	}

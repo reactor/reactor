@@ -81,9 +81,9 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			this.nettyOptions = null;
 		}
 
-		int selectThreadCount = getDefaultEnvironment().getProperty("reactor.tcp.selectThreadCount", Integer.class,
-				Environment.PROCESSORS / 2);
-		int ioThreadCount = getDefaultEnvironment().getProperty("reactor.tcp.ioThreadCount", Integer.class, Environment
+		int selectThreadCount = getDefaultEnvironment().getIntProperty("reactor.tcp.selectThreadCount",
+		  Environment.PROCESSORS / 2);
+		int ioThreadCount = getDefaultEnvironment().getIntProperty("reactor.tcp.ioThreadCount",  Environment
 				.PROCESSORS);
 
 		this.selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));

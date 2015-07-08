@@ -102,7 +102,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, No
 	public Promise(Dispatcher dispatcher, @Nullable Environment env) {
 		this.dispatcher = dispatcher;
 		this.environment = env;
-		this.defaultTimeout = env != null ? env.getProperty("reactor.await.defaultTimeout", Long.class, 30000L) : 30000L;
+		this.defaultTimeout = env != null ? env.getLongProperty("reactor.await.defaultTimeout",  30000L) : 30000L;
 		this.pendingCondition = lock.newCondition();
 	}
 
