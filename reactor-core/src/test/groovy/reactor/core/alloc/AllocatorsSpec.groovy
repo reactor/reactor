@@ -1,10 +1,10 @@
 package reactor.core.alloc
 
-import reactor.core.support.TypeReference
-import reactor.core.support.TypeUtils
 import reactor.fn.Supplier
 import spock.lang.Specification
 
+import java.lang.reflect.ParameterizedType
+import java.lang.reflect.Type
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -64,7 +64,7 @@ class AllocatorsSpec extends Specification {
 	def "Allocators can be provided by Type"() {
 
 		given: "a generic type"
-			def type = TypeUtils.fromTypeRef(new TypeReference<Generic<String>>() {})
+			def type = fromTypeRef(new TypeReference<Generic<String>>() {})
 			def allocators = [:]
 			allocators[type] = new ReferenceCountingAllocator<Generic<String>>(new Supplier<Generic<String>>() {
 				@Override
@@ -74,7 +74,7 @@ class AllocatorsSpec extends Specification {
 			})
 
 		when: "a pool is requested"
-			def pool = allocators[TypeUtils.fromTypeRef(new TypeReference<Generic<String>>() {})]
+			def pool = allocators[fromTypeRef(new TypeReference<Generic<String>>() {})]
 
 		then: "a pool was returned"
 			pool
@@ -112,4 +112,14 @@ class AllocatorsSpec extends Specification {
 		}
 	}
 
+	static <T> Type fromGenericType(Class<T> type) {
+		return ((ParameterizedType)type.getGenericInterfaces()[0]).getActualTypeArguments()[0];
+	}
+
+	static <T> Type fromTypeRef(TypeReference<T> typeRef) {
+		return fromGenericType(typeRef.getClass());
+	}
+
+	interface TypeReference<T> {
+	}
 }

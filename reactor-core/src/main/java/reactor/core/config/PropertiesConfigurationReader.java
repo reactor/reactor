@@ -19,7 +19,6 @@ package reactor.core.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.core.support.IoUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,170 +36,169 @@ import java.util.regex.Pattern;
  */
 public class PropertiesConfigurationReader implements ConfigurationReader {
 
-	private static final Pattern REACTOR_NAME_PATTERN = Pattern.compile("reactor\\.dispatchers\\.(.+?)\\.type");
+    private static final Pattern REACTOR_NAME_PATTERN = Pattern.compile("reactor\\.dispatchers\\.(.+?)\\.type");
 
-	private static final String FORMAT_DISPATCHER_BACKLOG = "reactor.dispatchers.%s.backlog";
-	private static final String FORMAT_DISPATCHER_SIZE    = "reactor.dispatchers.%s.size";
-	private static final String FORMAT_DISPATCHER_TYPE    = "reactor.dispatchers.%s.type";
-	private static final String FORMAT_RESOURCE_NAME      = "/META-INF/reactor/%s.properties";
+    private static final String FORMAT_DISPATCHER_BACKLOG = "reactor.dispatchers.%s.backlog";
+    private static final String FORMAT_DISPATCHER_SIZE    = "reactor.dispatchers.%s.size";
+    private static final String FORMAT_DISPATCHER_TYPE    = "reactor.dispatchers.%s.type";
+    private static final String FORMAT_RESOURCE_NAME      = "/META-INF/reactor/%s.properties";
 
-	private static final String PROPERTY_PREFIX_REACTOR = "reactor.";
+    private static final String PROPERTY_PREFIX_REACTOR = "reactor.";
 
-	private static final String PROPERTY_NAME_PROFILES_ACTIVE    = "reactor.profiles.active";
-	private static final String PROPERTY_NAME_PROFILES_DEFAULT   = "reactor.profiles.default";
-	private static final String PROPERTY_NAME_DEFAULT_DISPATCHER = "reactor.dispatchers.default";
+    private static final String PROPERTY_NAME_PROFILES_ACTIVE    = "reactor.profiles.active";
+    private static final String PROPERTY_NAME_PROFILES_DEFAULT   = "reactor.profiles.default";
+    private static final String PROPERTY_NAME_DEFAULT_DISPATCHER = "reactor.dispatchers.default";
 
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
-	private final String defaultProfileNameDefault;
+    private final String defaultProfileNameDefault;
 
-	/**
-	 * Creates a new {@code PropertiesConfigurationReader} that, by default, will load its
-	 * configuration from {@code META-INF/reactor/default.properties}.
-	 */
-	public PropertiesConfigurationReader() {
-		this("reactor-environment");
-	}
+    /**
+     * Creates a new {@code PropertiesConfigurationReader} that, by default, will load its
+     * configuration from {@code META-INF/reactor/default.properties}.
+     */
+    public PropertiesConfigurationReader() {
+        this("reactor-environment");
+    }
 
-	public PropertiesConfigurationReader(String defaultProfileNameDefault) {
-		this.defaultProfileNameDefault = defaultProfileNameDefault;
-	}
+    public PropertiesConfigurationReader(String defaultProfileNameDefault) {
+        this.defaultProfileNameDefault = defaultProfileNameDefault;
+    }
 
-	@Override
-	public ReactorConfiguration read() {
-		Properties configuration = new Properties();
+    @Override
+    public ReactorConfiguration read() {
+        Properties configuration = new Properties();
 
-		applyProfile(loadDefaultProfile(), configuration);
+        applyProfile(loadDefaultProfile(), configuration);
 
-		for(Properties activeProfile : loadActiveProfiles()) {
-			applyProfile(activeProfile, configuration);
-		}
+        for (Properties activeProfile : loadActiveProfiles()) {
+            applyProfile(activeProfile, configuration);
+        }
 
-		applySystemProperties(configuration);
+        applySystemProperties(configuration);
 
-		String defaultDispatcherName = configuration.getProperty(PROPERTY_NAME_DEFAULT_DISPATCHER, Environment.SHARED);
+        String defaultDispatcherName = configuration.getProperty(PROPERTY_NAME_DEFAULT_DISPATCHER, Environment.SHARED);
 
-		List<DispatcherConfiguration> dispatcherConfiguration = createDispatcherConfiguration(configuration);
+        List<DispatcherConfiguration> dispatcherConfiguration = createDispatcherConfiguration(configuration);
 
-		return new ReactorConfiguration(dispatcherConfiguration, defaultDispatcherName, configuration);
-	}
+        return new ReactorConfiguration(dispatcherConfiguration, defaultDispatcherName, configuration);
+    }
 
-	private Properties loadDefaultProfile() {
-		String defaultProfileName = System.getProperty(PROPERTY_NAME_PROFILES_DEFAULT, defaultProfileNameDefault);
-		Properties defaultProfile = loadProfile(defaultProfileName);
-		return defaultProfile;
-	}
+    private Properties loadDefaultProfile() {
+        String defaultProfileName = System.getProperty(PROPERTY_NAME_PROFILES_DEFAULT, defaultProfileNameDefault);
+        Properties defaultProfile = loadProfile(defaultProfileName);
+        return defaultProfile;
+    }
 
-	private List<Properties> loadActiveProfiles() {
-		List<Properties> activeProfiles = new ArrayList<Properties>();
-		if(null != System.getProperty(PROPERTY_NAME_PROFILES_ACTIVE)) {
-			String[] profileNames = System.getProperty(PROPERTY_NAME_PROFILES_ACTIVE).split(",");
-			for(String profileName : profileNames) {
-				activeProfiles.add(loadProfile(profileName.trim()));
-			}
-		}
-		return activeProfiles;
-	}
+    private List<Properties> loadActiveProfiles() {
+        List<Properties> activeProfiles = new ArrayList<Properties>();
+        if (null != System.getProperty(PROPERTY_NAME_PROFILES_ACTIVE)) {
+            String[] profileNames = System.getProperty(PROPERTY_NAME_PROFILES_ACTIVE).split(",");
+            for (String profileName : profileNames) {
+                activeProfiles.add(loadProfile(profileName.trim()));
+            }
+        }
+        return activeProfiles;
+    }
 
-	private void applyProfile(Properties profile, Properties configuration) {
-		configuration.putAll(profile);
-	}
+    private void applyProfile(Properties profile, Properties configuration) {
+        configuration.putAll(profile);
+    }
 
-	private void applySystemProperties(Properties configuration) {
-		for(String prop : System.getProperties().stringPropertyNames()) {
-			if(prop.startsWith(PROPERTY_PREFIX_REACTOR)) {
-				configuration.put(prop, System.getProperty(prop));
-			}
-		}
-	}
+    private void applySystemProperties(Properties configuration) {
+        for (String prop : System.getProperties().stringPropertyNames()) {
+            if (prop.startsWith(PROPERTY_PREFIX_REACTOR)) {
+                configuration.put(prop, System.getProperty(prop));
+            }
+        }
+    }
 
-	private List<DispatcherConfiguration> createDispatcherConfiguration(Properties configuration) {
-		List<String> dispatcherNames = getDispatcherNames(configuration);
-		List<DispatcherConfiguration> dispatcherConfigurations = new ArrayList<DispatcherConfiguration>(dispatcherNames
-				                                                                                                .size());
-		for(String dispatcherName : dispatcherNames) {
-			DispatcherType type = getType(dispatcherName, configuration);
-			if(type != null) {
-				dispatcherConfigurations.add(new DispatcherConfiguration(dispatcherName,
-				                                                         type,
-				                                                         getBacklog(dispatcherName,
-				                                                                    configuration),
-				                                                         getSize(dispatcherName, configuration)));
-			}
-		}
-		return dispatcherConfigurations;
-	}
+    private List<DispatcherConfiguration> createDispatcherConfiguration(Properties configuration) {
+        List<String> dispatcherNames = getDispatcherNames(configuration);
+        List<DispatcherConfiguration> dispatcherConfigurations = new ArrayList<DispatcherConfiguration>(dispatcherNames
+          .size());
+        for (String dispatcherName : dispatcherNames) {
+            DispatcherType type = getType(dispatcherName, configuration);
+            if (type != null) {
+                dispatcherConfigurations.add(new DispatcherConfiguration(dispatcherName,
+                  type,
+                  getBacklog(dispatcherName,
+                    configuration),
+                  getSize(dispatcherName, configuration)));
+            }
+        }
+        return dispatcherConfigurations;
+    }
 
-	private List<String> getDispatcherNames(Properties configuration) {
-		List<String> dispatcherNames = new ArrayList<String>();
+    private List<String> getDispatcherNames(Properties configuration) {
+        List<String> dispatcherNames = new ArrayList<String>();
 
-		for(Object propertyName : configuration.keySet()) {
-			Matcher matcher = REACTOR_NAME_PATTERN.matcher((String)propertyName);
-			if(matcher.matches()) {
-				dispatcherNames.add(matcher.group(1));
-			}
-		}
+        for (Object propertyName : configuration.keySet()) {
+            Matcher matcher = REACTOR_NAME_PATTERN.matcher((String) propertyName);
+            if (matcher.matches()) {
+                dispatcherNames.add(matcher.group(1));
+            }
+        }
 
-		return dispatcherNames;
-	}
+        return dispatcherNames;
+    }
 
-	private DispatcherType getType(String dispatcherName, Properties configuration) {
-		String type = configuration.getProperty(String.format(FORMAT_DISPATCHER_TYPE, dispatcherName));
-		if("dispatcherGroup".equals(type)) {
-			return DispatcherType.DISPATCHER_GROUP;
-		} else if("mpsc".equals(type)) {
-			return DispatcherType.MPSC;
-		} else if("ringBuffer".equals(type)) {
-			return DispatcherType.RING_BUFFER;
-		} else if("synchronous".equals(type)) {
-			return DispatcherType.SYNCHRONOUS;
-		} else if("threadPoolExecutor".equals(type)) {
-			return DispatcherType.THREAD_POOL_EXECUTOR;
-		} else if("workQueue".equals(type)) {
-			return DispatcherType.WORK_QUEUE;
-		} else {
-			logger.warn("The type '{}' of Dispatcher '{}' is not recognized", type, dispatcherName);
-			return null;
-		}
-	}
+    private DispatcherType getType(String dispatcherName, Properties configuration) {
+        String type = configuration.getProperty(String.format(FORMAT_DISPATCHER_TYPE, dispatcherName));
+        if ("dispatcherGroup".equals(type)) {
+            return DispatcherType.DISPATCHER_GROUP;
+        } else if ("mpsc".equals(type)) {
+            return DispatcherType.MPSC;
+        } else if ("ringBuffer".equals(type)) {
+            return DispatcherType.RING_BUFFER;
+        } else if ("synchronous".equals(type)) {
+            return DispatcherType.SYNCHRONOUS;
+        } else if ("threadPoolExecutor".equals(type)) {
+            return DispatcherType.THREAD_POOL_EXECUTOR;
+        } else if ("workQueue".equals(type)) {
+            return DispatcherType.WORK_QUEUE;
+        } else {
+            logger.warn("The type '{}' of Dispatcher '{}' is not recognized", type, dispatcherName);
+            return null;
+        }
+    }
 
-	private Integer getBacklog(String dispatcherName, Properties configuration) {
-		return getInteger(String.format(FORMAT_DISPATCHER_BACKLOG, dispatcherName), configuration);
-	}
+    private Integer getBacklog(String dispatcherName, Properties configuration) {
+        return getInteger(String.format(FORMAT_DISPATCHER_BACKLOG, dispatcherName), configuration);
+    }
 
-	private Integer getSize(String dispatcherName, Properties configuration) {
-		return getInteger(String.format(FORMAT_DISPATCHER_SIZE, dispatcherName), configuration);
-	}
+    private Integer getSize(String dispatcherName, Properties configuration) {
+        return getInteger(String.format(FORMAT_DISPATCHER_SIZE, dispatcherName), configuration);
+    }
 
-	private Integer getInteger(String propertyName, Properties configuration) {
-		String property = configuration.getProperty(propertyName);
-		if(property != null) {
-			return Integer.parseInt(property);
-		} else {
-			return null;
-		}
-	}
+    private Integer getInteger(String propertyName, Properties configuration) {
+        String property = configuration.getProperty(propertyName);
+        if (property != null) {
+            return Integer.parseInt(property);
+        } else {
+            return null;
+        }
+    }
 
-	protected Properties loadProfile(String name) {
-		Properties properties = new Properties();
-		InputStream inputStream = getClass().getResourceAsStream(String.format(FORMAT_RESOURCE_NAME, name));
-		if(null != inputStream) {
-			try {
-				properties.load(inputStream);
-			} catch(IOException e) {
-				logger.error("Failed to load properties from '{}' for profile '{}'",
-				             String.format(FORMAT_RESOURCE_NAME, name),
-				             name,
-				             e);
-			} finally {
-				IoUtils.closeQuietly(inputStream);
-			}
-		} else {
-			logger.debug("No properties file found in the classpath at '{}' for profile '{}'", String.format(
-					FORMAT_RESOURCE_NAME,
-					name), name);
-		}
-		return properties;
-	}
+    protected Properties loadProfile(String name) {
+        Properties properties = new Properties();
+
+        try (InputStream inputStream = getClass().getResourceAsStream(String.format(FORMAT_RESOURCE_NAME, name))) {
+            if (null != inputStream) {
+                properties.load(inputStream);
+            } else {
+                logger.debug("No properties file found in the classpath at '{}' for profile '{}'", String.format(
+                  FORMAT_RESOURCE_NAME,
+                  name), name);
+            }
+        } catch (IOException e) {
+            logger.error("Failed to load properties from '{}' for profile '{}'",
+              String.format(FORMAT_RESOURCE_NAME, name),
+              name,
+              e);
+        }
+
+        return properties;
+    }
 
 }

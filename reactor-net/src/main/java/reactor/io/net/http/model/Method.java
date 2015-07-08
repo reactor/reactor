@@ -41,7 +41,7 @@ public class Method {
 	private final String name;
 
 	public Method(String name) {
-		Assert.hasText(name);
+		Assert.isTrue(name != null && name.trim().length() > 0);
 		this.name = name;
 	}
 

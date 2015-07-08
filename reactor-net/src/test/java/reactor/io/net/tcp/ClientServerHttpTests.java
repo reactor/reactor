@@ -22,7 +22,6 @@ import org.junit.Test;
 import org.reactivestreams.Processor;
 import reactor.Environment;
 import reactor.core.processor.RingBufferWorkProcessor;
-import reactor.core.support.StringUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -204,10 +203,10 @@ public class ClientServerHttpTests {
 				}
 			}
 
-			String msg = "Run number " + t + ", total " + total + " dups=" + StringUtils.collectionToCommaDelimitedString(findDuplicates(numbersNoEndsInt));
+			String msg = "Run number " + t + ", total " + total + " dups=" + findDuplicates(numbersNoEndsInt);
 			if (numbersNoEndsInt.size() != count) {
 				Collections.sort(numbersNoEndsInt);
-				System.out.println(StringUtils.collectionToCommaDelimitedString(numbersNoEndsInt));
+				System.out.println(numbersNoEndsInt);
 			}
 			assertThat(msg, numbersNoEndsInt.size(), is(count));
 			assertThat(msg, numbersNoEnds.size(), is(count));

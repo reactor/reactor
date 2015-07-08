@@ -16,8 +16,6 @@
 
 package reactor.fn.tuple;
 
-import reactor.core.support.ObjectUtils;
-
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Arrays;
@@ -103,11 +101,11 @@ public class TupleN extends Tuple8 {
 		if (this.size == 0) {
 			return 0;
 		} else if (this.size == 1) {
-			return ObjectUtils.nullSafeHashCode(this.entries[0]);
+			return this.entries[0] == null ? 0 : this.entries[0].hashCode();
 		} else {
 			int hashCode = 1;
 			for (Object entry: this.entries) {
-				hashCode = hashCode ^ ObjectUtils.nullSafeHashCode(entry);
+				hashCode = hashCode ^ (entry == null ? 0 : entry.hashCode());
 			}
 			return hashCode;
 		}

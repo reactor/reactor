@@ -41,7 +41,6 @@ import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
-import reactor.fn.support.SingleUseConsumer;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -528,7 +527,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 */
 	public <T extends Event<?>> EventBus sendAndReceive(Object key, Event<?> event, Consumer<T> reply) {
 		Selector sel = Selectors.anonymous();
-		on(sel, new SingleUseConsumer<T>(reply)).cancelAfterUse();
+		on(sel, reply).cancelAfterUse();
 		notify(key, event.setReplyTo(sel.getObject()));
 		return this;
 	}

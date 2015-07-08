@@ -24,7 +24,6 @@ import reactor.bus.routing.ConsumerFilteringRouter
 import reactor.core.dispatch.SynchronousDispatcher
 import reactor.fn.Consumer
 import reactor.fn.Functions
-import reactor.fn.support.SingleUseConsumer
 import reactor.rx.Streams
 import reactor.rx.broadcast.SerializedBroadcaster
 import spock.lang.Specification
@@ -352,7 +351,7 @@ class EventBusSpec extends Specification {
 			"a synchronous Reactor and a single-use Consumer"
 			def r = EventBus.config().get()
 			def count = 0
-			r.on($('test'),new SingleUseConsumer(consumer { count++ }))
+			r.on($('test'), consumer { count++ }).cancelAfterUse()
 
 		when:
 			"the consumer is invoked several times"
