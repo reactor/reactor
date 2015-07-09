@@ -16,7 +16,7 @@
 package reactor.rx.action.control;
 
 import reactor.core.Dispatcher;
-import reactor.core.dispatch.InsufficientCapacityException;
+import reactor.core.processor.InsufficientCapacityException;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;

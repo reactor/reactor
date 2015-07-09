@@ -174,12 +174,12 @@ public final class WorkQueueDispatcher extends MultiThreadDispatcher implements 
 	}
 
 	@Override
-	protected Task tryAllocateTask() throws InsufficientCapacityException {
+	protected Task tryAllocateTask() throws reactor.core.processor.InsufficientCapacityException {
 		try {
 			long seqId = ringBuffer.tryNext();
 			return ringBuffer.get(seqId).setSequenceId(seqId);
 		} catch (reactor.jarjar.com.lmax.disruptor.InsufficientCapacityException e) {
-			throw InsufficientCapacityException.INSTANCE;
+			throw reactor.core.processor.InsufficientCapacityException.get();
 		}
 	}
 

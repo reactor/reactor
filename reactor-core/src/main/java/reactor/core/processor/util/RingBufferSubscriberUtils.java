@@ -213,7 +213,7 @@ public final class RingBufferSubscriberUtils {
 						doRequest(capacity);
 					}
 				} else {
-					throw reactor.core.dispatch.InsufficientCapacityException.INSTANCE;
+					throw reactor.core.processor.InsufficientCapacityException.get();
 				}
 			}
 

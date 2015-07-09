@@ -13,33 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.dispatch;
+package reactor.core.processor;
 
 /**
- * <p>Exception thrown when the it is not possible to dispatch an event a {@link reactor.core.Dispatcher}.
- * without it wrapping the consuming sequenes.
- * Used specifically when dispatching with the
- * {@link reactor.core.Dispatcher#tryDispatch(Object, reactor.fn.Consumer, reactor.fn.Consumer)} call.
+ * <p>Exception thrown when the it is not possible to dispatch a signal a {@link reactor.core.Dispatcher}.
+ * due to insufficient capacity.
  *
- * <p>For efficiency this exception will not have a stack trace.
- *
- * original from LMAX Disruptor com.lmax.disruptor.InsufficientCapacityException
- * @author mikeb01
+ * @author Stephane Maldini
  *
  */
 @SuppressWarnings("serial")
 public final class InsufficientCapacityException extends RuntimeException
 {
-	public static final InsufficientCapacityException INSTANCE = new InsufficientCapacityException();
+	private static final InsufficientCapacityException INSTANCE = new InsufficientCapacityException();
+
+	public static final boolean TRACE_NOCAPACITY = Boolean.parseBoolean(System.getProperty("reactor.trace.nocapacity", "false"));
 
 	private InsufficientCapacityException()
 	{
-		// Singleton
+		super("The subscriber is overrun by more signals than expected (bounded queue...)");
+	}
+
+	public static InsufficientCapacityException get() {
+		return TRACE_NOCAPACITY ? new InsufficientCapacityException() : INSTANCE;
 	}
 
 	@Override
-	public synchronized Throwable fillInStackTrace()
-	{
-		return this;
+	public synchronized Throwable fillInStackTrace() {
+		return TRACE_NOCAPACITY ? super.fillInStackTrace() : this;
 	}
 }

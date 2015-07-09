@@ -16,7 +16,7 @@
 
 package reactor.core;
 
-import reactor.core.dispatch.InsufficientCapacityException;
+import reactor.core.processor.InsufficientCapacityException;
 import reactor.fn.Consumer;
 import reactor.fn.Resource;
 

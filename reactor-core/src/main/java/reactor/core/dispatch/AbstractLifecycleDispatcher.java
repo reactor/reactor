@@ -18,6 +18,7 @@ package reactor.core.dispatch;
 
 import reactor.Environment;
 import reactor.core.Dispatcher;
+import reactor.core.processor.InsufficientCapacityException;
 import reactor.core.support.Assert;
 import reactor.core.support.Recyclable;
 import reactor.fn.Consumer;

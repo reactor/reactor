@@ -16,6 +16,7 @@
 
 package reactor.core.dispatch;
 
+import reactor.core.processor.InsufficientCapacityException;
 import reactor.core.queue.internal.MpscLinkedQueue;
 import reactor.core.support.NamedDaemonThreadFactory;
 
@@ -117,7 +118,7 @@ public final class MpscDispatcher extends SingleThreadDispatcher {
 	@Override
 	protected Task tryAllocateTask() throws InsufficientCapacityException {
 		if (workQueue.size() > capacity) {
-			throw InsufficientCapacityException.INSTANCE;
+			throw InsufficientCapacityException.get();
 		} else {
 			return allocateTask();
 		}

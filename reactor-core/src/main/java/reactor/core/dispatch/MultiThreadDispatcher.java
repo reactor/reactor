@@ -16,6 +16,8 @@
 
 package reactor.core.dispatch;
 
+import reactor.core.processor.InsufficientCapacityException;
+
 /**
  * Base implementation for multi-threaded dispatchers
  *

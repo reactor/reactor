@@ -17,7 +17,7 @@ package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.core.dispatch.InsufficientCapacityException;
+import reactor.core.processor.InsufficientCapacityException;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
