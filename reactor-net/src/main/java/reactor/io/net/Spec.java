@@ -22,7 +22,6 @@ import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
-import reactor.fn.Suppliers;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
@@ -42,6 +41,7 @@ import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Specifications used to build client and servers.
@@ -757,8 +757,14 @@ public interface Spec {
 
 		@Override
 		public Reconnect get() {
-			final Supplier<InetSocketAddress> endpoints =
-					Suppliers.roundRobin(addresses.toArray(new InetSocketAddress[]{}));
+			final AtomicInteger count = new AtomicInteger();
+			final int len = addresses.size();
+
+			final Supplier<InetSocketAddress> endpoints = new Supplier<InetSocketAddress>() {
+				@Override public InetSocketAddress get() {
+					return addresses.get(count.getAndIncrement() % len);
+				}
+			};
 
 			return new Reconnect() {
 				public Tuple2<InetSocketAddress, Long> reconnect(InetSocketAddress currentAddress, int attempt) {

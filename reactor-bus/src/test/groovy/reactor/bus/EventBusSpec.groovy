@@ -23,7 +23,6 @@ import reactor.bus.filter.RoundRobinFilter
 import reactor.bus.routing.ConsumerFilteringRouter
 import reactor.core.dispatch.SynchronousDispatcher
 import reactor.fn.Consumer
-import reactor.fn.Functions
 import reactor.rx.Streams
 import reactor.rx.broadcast.SerializedBroadcaster
 import spock.lang.Specification
@@ -313,8 +312,8 @@ class EventBusSpec extends Specification {
 
 		when:
 			"registering few handlers"
-			reactor.on R('t[a-z]st'), Functions.consumer { println 'test1' }
-			reactor.on R('t[a-z]st'), Functions.consumer { println 'test2' }
+			reactor.on R('t[a-z]st'), { println 'test1' }
+			reactor.on R('t[a-z]st'), { println 'test2' }
 
 			reactor.notify "test", Event.wrap("test")
 

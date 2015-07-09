@@ -877,7 +877,12 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return a new fail-proof {@link Stream}
 	 */
 	public Stream<O> ignoreError() {
-		return ignoreError(Predicates.always());
+		return ignoreError(new Predicate<Throwable>() {
+			@Override
+			public boolean test(Throwable o) {
+				return true;
+			}
+		});
 	}
 
 	/**

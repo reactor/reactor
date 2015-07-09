@@ -19,7 +19,6 @@ package reactor.bus
 import reactor.bus.selector.MatchAllSelector
 import reactor.bus.selector.SetMembershipSelector
 import reactor.bus.selector.UriSelector
-import reactor.fn.Functions
 import spock.lang.Ignore
 import spock.lang.Specification
 
@@ -208,10 +207,10 @@ class SelectorSpec extends Specification {
 			def a4 = {
 				called << 4
 			}
-			r.on($('key'), Functions.consumer(a1))
-			r.on($('key'), Functions.consumer(a2))
-			r.on($('key'), Functions.consumer(a3))
-			r.on($('key'), Functions.consumer(a4))
+			r.on($('key'), a1)
+			r.on($('key'), a2)
+			r.on($('key'), a3)
+			r.on($('key'), a4)
 
 		when:
 			"events are triggered"
@@ -244,10 +243,10 @@ class SelectorSpec extends Specification {
 			def a4 = {
 				called << 4
 			}
-			r.on($('test'),Functions.consumer(a1))
-			r.on($('test'),Functions.consumer(a2))
-			r.on($('test'),Functions.consumer(a3))
-			r.on($('test'),Functions.consumer(a4))
+			r.on($('test'), a1)
+			r.on($('test'), a2)
+			r.on($('test'), a3)
+			r.on($('test'), a4)
 
 		when:
 			"events are triggered"
