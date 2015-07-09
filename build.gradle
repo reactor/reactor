@@ -58,11 +58,10 @@ ext {
 buildscript {
   repositories {
     maven { url "http://repo.spring.io/plugins-release" }
-    jcenter()
   }
   dependencies {
     classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.7',
-        'org.springframework.build.gradle:spring-io-plugin:0.0.3.RELEASE',
+        'io.spring.gradle:spring-io-plugin:0.0.4.RELEASE',
         'com.github.jengelman.gradle.plugins:shadow:1.2.0'
   }
 }
@@ -169,8 +168,12 @@ configure(subprojects) { subproject ->
       maven { url 'http://repo.spring.io/libs-snapshot' }
     }
 
-    dependencies {
-      springIoVersions "io.spring.platform:platform-versions:$platformVersion@properties"
+    dependencyManagement {
+      springIoTestRuntime {
+        imports {
+          mavenBom "io.spring.platform:platform-bom:$platformVersion"
+        }
+      }
     }
   }
 }
