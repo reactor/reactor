@@ -18,7 +18,6 @@ package reactor.core.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.dispatch.wait.WaitingMood;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.jarjar.com.lmax.disruptor.*;
@@ -37,13 +36,12 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  * @since 1.1
  */
-public final class WorkQueueDispatcher extends MultiThreadDispatcher implements WaitingMood {
+public final class WorkQueueDispatcher extends MultiThreadDispatcher {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 
 	private final ExecutorService           executor;
 	private final Disruptor<WorkQueueTask>  disruptor;
-	private final WaitingMood               waitingMood;
 	private final RingBuffer<WorkQueueTask> ringBuffer;
 
 	@SuppressWarnings("unchecked")
@@ -62,12 +60,6 @@ public final class WorkQueueDispatcher extends MultiThreadDispatcher implements 
 	                           ProducerType producerType,
 	                           WaitStrategy waitStrategy) {
 		super(poolSize, backlog);
-
-		if (WaitingMood.class.isAssignableFrom(waitStrategy.getClass())) {
-			this.waitingMood = (WaitingMood) waitStrategy;
-		} else {
-			this.waitingMood = null;
-		}
 
 		this.executor = Executors.newFixedThreadPool(
 				poolSize,
@@ -146,20 +138,6 @@ public final class WorkQueueDispatcher extends MultiThreadDispatcher implements 
 		executor.shutdownNow();
 		disruptor.halt();
 		super.forceShutdown();
-	}
-
-	@Override
-	public void nervous() {
-		if (waitingMood != null) {
-			waitingMood.nervous();
-		}
-	}
-
-	@Override
-	public void calm() {
-		if (waitingMood != null) {
-			waitingMood.calm();
-		}
 	}
 
 	@Override
