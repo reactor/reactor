@@ -20,6 +20,7 @@ import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
+import reactor.core.reactivestreams.LogPublisher;
 import reactor.core.reactivestreams.PublisherFactory;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -30,45 +31,49 @@ import java.util.concurrent.atomic.AtomicLong;
 @Test
 public class PublisherFactoryTests extends PublisherVerification<Long> {
 
-	public PublisherFactoryTests() {
-		super(new TestEnvironment(1000, true), 1500);
-	}
+    public PublisherFactoryTests() {
+        super(new TestEnvironment(1000, true), 1500);
+    }
 
 
-	@Override
-	public Publisher<Long> createPublisher(long elements) {
-		return PublisherFactory.barrier(
-				PublisherFactory.<Long, AtomicLong>forEach(
-						(s) -> {
-							long cursor = s.context().getAndIncrement();
-							if (cursor < elements) {
-								s.onNext(cursor);
-							} else {
-								s.onComplete();
-							}
-						},
-						s -> new AtomicLong(0L)
-				),
-				(data, sub) -> sub.onNext(data*10)
-		);
-	}
+    @Override
+    public Publisher<Long> createPublisher(long elements) {
+        return
+          LogPublisher.log(
+            PublisherFactory.barrier(
+              PublisherFactory.<Long, AtomicLong>forEach(
+                (s) -> {
+                    long cursor = s.context().getAndIncrement();
+                    if (cursor < elements) {
+                        s.onNext(cursor);
+                    } else {
+                        s.onComplete();
+                    }
+                },
+                s -> new AtomicLong(0L)
+              ),
+              (data, sub) -> sub.onNext(data * 10)
+            ),
+            "log-test"
+          );
+    }
 
-	@Override
-	public Publisher<Long> createFailedPublisher() {
-		return sub -> {
-			sub.onSubscribe(new Subscription() {
-				@Override
-				public void request(long n) {
+    @Override
+    public Publisher<Long> createFailedPublisher() {
+        return sub -> {
+            sub.onSubscribe(new Subscription() {
+                @Override
+                public void request(long n) {
 
-				}
+                }
 
-				@Override
-				public void cancel() {
+                @Override
+                public void cancel() {
 
-				}
-			});
+                }
+            });
 
-			sub.onError(new Exception("test"));
-		};
-	}
+            sub.onError(new Exception("test"));
+        };
+    }
 }
