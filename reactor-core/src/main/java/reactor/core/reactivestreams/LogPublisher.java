@@ -92,7 +92,7 @@ public final class LogPublisher<IN> implements Publisher<IN> {
         @Override
         protected void doOnSubscribe(Subscription subscription) {
             if(log.isInfoEnabled()){
-                log.info("onSubscribe({})", subscription);
+                log.info("onSubscribe({})", this.subscription);
             }
             super.doOnSubscribe(subscription);
         }

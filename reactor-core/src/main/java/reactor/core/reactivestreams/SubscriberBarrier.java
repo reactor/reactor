@@ -34,7 +34,7 @@ public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Bou
 
 	protected final Subscriber<? super O> subscriber;
 
-	private Subscription subscription;
+	protected Subscription subscription;
 
 	public SubscriberBarrier(Subscriber<? super O> subscriber) {
 		this.subscriber = subscriber;
@@ -101,7 +101,10 @@ public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Bou
 
 	@Override
 	public final void request(long n) {
-		if(n < 0) throw SpecificationExceptions.spec_3_09_exception(n);
+		if(n < 0){
+			doError(SpecificationExceptions.spec_3_09_exception(n));
+			return;
+		}
 		try {
 			doRequest(n);
 		} catch (Throwable throwable) {
