@@ -22,13 +22,13 @@ import reactor.core.Dispatcher;
 import reactor.core.DispatcherSupplier;
 import reactor.core.config.*;
 import reactor.core.dispatch.*;
-import reactor.core.dispatch.wait.AgileWaitingStrategy;
 import reactor.core.internal.PlatformDependent;
 import reactor.core.processor.CancelException;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.timer.HashWheelTimer;
 import reactor.fn.timer.Timer;
+import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.WaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
@@ -492,12 +492,12 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 
 	public static DispatcherSupplier newCachedDispatchers(final int poolsize, String name) {
 		return createDispatcherFactory(name, poolsize, 1024, null, ProducerType.MULTI,
-		  new AgileWaitingStrategy());
+		  new BlockingWaitStrategy());
 	}
 
 	public static DispatcherSupplier newFanOutCachedDispatchers(final int poolsize, String name) {
 		return createDispatcherFactory(name, poolsize, 1024, null, ProducerType.SINGLE,
-				new AgileWaitingStrategy());
+		  new BlockingWaitStrategy());
 	}
 
 	private static ThreadPoolExecutorDispatcher createThreadPoolExecutorDispatcher(DispatcherConfiguration
@@ -526,7 +526,7 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 				backlog,
 				null,
 				ProducerType.MULTI,
-				new AgileWaitingStrategy());
+		        new BlockingWaitStrategy());
 	}
 
 	private static MpscDispatcher createMpscDispatcher(DispatcherConfiguration dispatcherConfiguration) {
@@ -994,7 +994,7 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 								dispatcherConfiguration.getBacklog(),
 								null,
 								ProducerType.MULTI,
-								new AgileWaitingStrategy()
+						        new BlockingWaitStrategy()
 						));
 			}
 		}

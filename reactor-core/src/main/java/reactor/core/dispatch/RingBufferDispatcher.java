@@ -18,7 +18,6 @@ package reactor.core.dispatch;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.dispatch.wait.WaitingMood;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.jarjar.com.lmax.disruptor.*;
@@ -36,13 +35,12 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public final class RingBufferDispatcher extends SingleThreadDispatcher implements WaitingMood {
+public final class RingBufferDispatcher extends SingleThreadDispatcher  {
 
 	private final Logger log = LoggerFactory.getLogger(getClass());
 	private final ExecutorService            executor;
 	private final Disruptor<RingBufferTask>  disruptor;
 	private final RingBuffer<RingBufferTask> ringBuffer;
-	private final WaitingMood                waitingMood;
 
 	/**
 	 * Creates a new {@code RingBufferDispatcher} with the given {@code name}. It will use a RingBuffer with 1024 slots,
@@ -109,13 +107,6 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 	                            ProducerType producerType,
 	                            WaitStrategy waitStrategy) {
 		super(bufferSize);
-
-		if (WaitingMood.class.isAssignableFrom(waitStrategy.getClass())) {
-			this.waitingMood = (WaitingMood) waitStrategy;
-		} else {
-			this.waitingMood = null;
-		}
-
 		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
 		this.disruptor = new Disruptor<RingBufferTask>(
 				new EventFactory<RingBufferTask>() {
@@ -235,30 +226,6 @@ public final class RingBufferDispatcher extends SingleThreadDispatcher implement
 		return ringBuffer.remainingCapacity();
 	}
 
-	@Override
-	public void nervous() {
-		if (waitingMood != null) {
-			execute(new Runnable() {
-				@Override
-				public void run() {
-					waitingMood.nervous();
-				}
-			});
-		}
-	}
-
-	@Override
-	public void calm() {
-		if (waitingMood != null) {
-			execute(new Runnable() {
-				@Override
-				public void run() {
-					waitingMood.calm();
-				}
-			});
-
-		}
-	}
 
 	@Override
 	protected Task tryAllocateTask() throws reactor.core.processor.InsufficientCapacityException {
