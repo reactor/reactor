@@ -5,8 +5,8 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.processor.MutableSignal;
+import reactor.core.support.Bounded;
 import reactor.core.support.Exceptions;
-import reactor.core.support.NonBlocking;
 import reactor.core.support.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.*;
 
@@ -146,8 +146,8 @@ public final class RingBufferSubscriberUtils {
 
 	public static <E> Publisher<Void> writeWith(final Publisher<? extends E> source,
 	                                            final RingBuffer<MutableSignal<E>> ringBuffer) {
-		final NonBlocking nonBlockingSource = NonBlocking.class.isAssignableFrom(source.getClass()) ?
-				(NonBlocking) source :
+		final Bounded nonBlockingSource = Bounded.class.isAssignableFrom(source.getClass()) ?
+				(Bounded) source :
 				null;
 
 		final int capacity =
@@ -174,7 +174,7 @@ public final class RingBufferSubscriberUtils {
 			source.subscribe(new WriteWithSubscriber(s));
 		}
 
-		private class WriteWithSubscriber implements Subscriber<E> , NonBlocking{
+		private class WriteWithSubscriber implements Subscriber<E> , Bounded {
 
 			private final Sequence pendingRequest = new Sequence(0);
 			private final Subscriber<? super Void> s;

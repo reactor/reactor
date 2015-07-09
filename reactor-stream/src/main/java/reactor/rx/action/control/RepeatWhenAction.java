@@ -22,13 +22,12 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.core.support.NonBlocking;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
-import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
@@ -117,7 +116,7 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 		return dispatcher;
 	}
 
-	private class RestartSubscriber implements Subscriber<Object>, NonBlocking {
+	private class RestartSubscriber implements Subscriber<Object>, Bounded {
 		Subscription s;
 
 		@Override

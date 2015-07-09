@@ -21,8 +21,8 @@ import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
+import reactor.core.support.Bounded;
 import reactor.core.support.Exceptions;
-import reactor.core.support.NonBlocking;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -169,7 +169,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 		return super.toString() + "{pending=" + pendingRequests + "}";
 	}
 
-	private class RequestSubscriber implements Subscriber<Long>, NonBlocking {
+	private class RequestSubscriber implements Subscriber<Long>, Bounded {
 		Subscription s;
 
 		@Override

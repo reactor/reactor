@@ -18,8 +18,8 @@ package reactor.core.reactivestreams;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
+import reactor.core.support.Bounded;
 import reactor.core.support.Exceptions;
-import reactor.core.support.NonBlocking;
 import reactor.core.support.SpecificationExceptions;
 
 /**
@@ -30,7 +30,7 @@ import reactor.core.support.SpecificationExceptions;
  * @author Stephane Maldini
  * @since 2.0.4
  */
-public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, NonBlocking {
+public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Bounded {
 
 	protected final Subscriber<? super O> subscriber;
 
@@ -52,14 +52,14 @@ public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Non
 				return;
 			}
 			subscription = s;
-			doSubscribe(this);
+			doOnSubscribe(this);
 		} catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			doError(throwable);
 		}
 	}
 
-	protected void doSubscribe(Subscription subscription) {
+	protected void doOnSubscribe(Subscription subscription) {
 		subscriber.onSubscribe(subscription);
 	}
 
@@ -136,14 +136,14 @@ public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Non
 
 	@Override
 	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
-		return NonBlocking.class.isAssignableFrom(subscriber.getClass())
-				&& ((NonBlocking) subscriber).isReactivePull(dispatcher, producerCapacity);
+		return Bounded.class.isAssignableFrom(subscriber.getClass())
+				&& ((Bounded) subscriber).isReactivePull(dispatcher, producerCapacity);
 	}
 
 	@Override
 	public long getCapacity() {
-		return NonBlocking.class.isAssignableFrom(subscriber.getClass()) ?
-				((NonBlocking) subscriber).getCapacity() :
+		return Bounded.class.isAssignableFrom(subscriber.getClass()) ?
+				((Bounded) subscriber).getCapacity() :
 				Long.MAX_VALUE;
 	}
 }

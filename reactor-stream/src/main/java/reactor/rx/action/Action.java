@@ -26,8 +26,8 @@ import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.processor.CancelException;
 import reactor.core.queue.CompletableLinkedQueue;
 import reactor.core.queue.CompletableQueue;
+import reactor.core.support.Bounded;
 import reactor.core.support.Exceptions;
-import reactor.core.support.NonBlocking;
 import reactor.core.support.Recyclable;
 import reactor.core.support.SpecificationExceptions;
 import reactor.fn.Consumer;
@@ -125,8 +125,8 @@ public abstract class Action<I, O> extends Stream<O>
 	@Override
 	public void subscribe(final Subscriber<? super O> subscriber) {
 		try {
-			final NonBlocking asyncSubscriber = NonBlocking.class.isAssignableFrom(subscriber.getClass()) ?
-					(NonBlocking) subscriber :
+			final Bounded asyncSubscriber = Bounded.class.isAssignableFrom(subscriber.getClass()) ?
+					(Bounded) subscriber :
 					null;
 
 			boolean isReactiveCapacity = null == asyncSubscriber || asyncSubscriber.isReactivePull(getDispatcher(),

@@ -21,8 +21,8 @@ import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
 import reactor.core.processor.CancelException;
 import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.core.support.Bounded;
 import reactor.core.support.Exceptions;
-import reactor.core.support.NonBlocking;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -152,7 +152,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 		return dispatcher;
 	}
 
-	public class SwitchSubscriber implements NonBlocking, Subscriber<T>, Subscription {
+	public class SwitchSubscriber implements Bounded, Subscriber<T>, Subscription {
 		final Publisher<? extends T> publisher;
 
 		Subscription s;

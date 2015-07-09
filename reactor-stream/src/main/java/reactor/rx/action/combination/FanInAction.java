@@ -22,7 +22,7 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.core.support.NonBlocking;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
@@ -177,7 +177,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	protected abstract InnerSubscriber<I, E, O> createSubscriber();
 
-	public abstract static class InnerSubscriber<I, E, O> implements Subscriber<I>, NonBlocking, Consumer<Long> {
+	public abstract static class InnerSubscriber<I, E, O> implements Subscriber<I>, Bounded, Consumer<Long> {
 		final FanInAction<I, E, O, ? extends InnerSubscriber<I, E, O>> outerAction;
 
 		int sequenceId;
