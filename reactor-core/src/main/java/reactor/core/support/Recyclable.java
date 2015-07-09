@@ -14,29 +14,19 @@
  *  limitations under the License.
  */
 
-package reactor.bus.alloc;
-
-import reactor.bus.Event;
-import reactor.fn.Supplier;
+package reactor.core.support;
 
 /**
- * A {@link reactor.fn.Supplier} implementation that instantiates Events
- * based on Event data type.
+ * A simple interface that marks an object as being recyclable.
  *
- * @param <T> type of {@link reactor.bus.Event} data
- * @author Oleksandr Petrov
+ * @author Jon Brisbin
  * @since 1.1
  */
-public class EventFactorySupplier<T> implements Supplier<Event<T>> {
+public interface Recyclable {
 
-  private final Class<T> klass;
+	/**
+	 * Free any internal resources and reset the state of the object to enable reuse.
+	 */
+	void recycle();
 
-  public EventFactorySupplier(Class<T> klass) {
-    this.klass = klass;
-  }
-
-  @Override
-  public Event<T> get() {
-    return new Event<T>(klass);
-  }
 }

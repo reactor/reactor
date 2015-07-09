@@ -1,25 +1,22 @@
 /*
- * Copyright (c) 2011-2014 Pivotal Software, Inc.
+ * Copyright (c) 2011-2015 Pivotal Software Inc, All Rights Reserved.
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-package reactor.bus.alloc;
+package reactor.alloc;
 
 import reactor.bus.Event;
-import reactor.core.alloc.Allocator;
-import reactor.core.alloc.Reference;
-import reactor.core.alloc.ReferenceCountingAllocator;
 
 import java.util.HashMap;
 
@@ -39,7 +36,7 @@ public abstract class EventAllocator {
 
 	/**
 	 * Create a new {@link EventAllocator}, containing pre-created
-	 * {@link reactor.core.alloc.Allocator}s for given {@data class}es.
+	 * {@link reactor.alloc.Allocator}s for given {@data class}es.
 	 *
 	 * @param classes
 	 */
@@ -58,7 +55,7 @@ public abstract class EventAllocator {
    * @param klass generic type of {@link reactor.bus.Event}
    * @param <T> generic type of {@link reactor.bus.Event}
    *
-   * @return a {@link reactor.core.alloc.Reference} that can be retained and released.
+   * @return a {@link reactor.alloc.Reference} that can be retained and released.
    */
   @SuppressWarnings("unchecked")
   public <T> Reference<Event<T>> get(Class<T> klass) {
@@ -82,7 +79,7 @@ public abstract class EventAllocator {
   protected abstract <T> Allocator<Event<T>> makeAllocator(Class<T> klass);
 
   /**
-   * Default Event Allocator, uses {@link reactor.core.alloc.ReferenceCountingAllocator} for
+   * Default Event Allocator, uses {@link reactor.alloc.ReferenceCountingAllocator} for
    * allocating and recycling events.
    *
    * @return newly constructed event alloator.

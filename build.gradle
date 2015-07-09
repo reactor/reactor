@@ -445,6 +445,17 @@ project('reactor-groovy') {
   }
 }
 
+project('reactor-alloc') {
+  description = 'Pooling utilities'
+
+  dependencies {
+    compile(files(project(":reactor-core").disruptorRepackJar))
+    compile project(':reactor-core')
+
+    optional project(':reactor-bus')
+  }
+}
+
 project('reactor-logback') {
   description = 'Async Logback appender implementation'
 

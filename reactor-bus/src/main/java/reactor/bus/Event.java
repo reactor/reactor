@@ -16,8 +16,8 @@
 
 package reactor.bus;
 
-import reactor.core.alloc.Recyclable;
 import reactor.core.support.Assert;
+import reactor.core.support.Recyclable;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple;

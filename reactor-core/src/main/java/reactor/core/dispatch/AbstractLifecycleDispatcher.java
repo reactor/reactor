@@ -18,8 +18,8 @@ package reactor.core.dispatch;
 
 import reactor.Environment;
 import reactor.core.Dispatcher;
-import reactor.core.alloc.Recyclable;
 import reactor.core.support.Assert;
+import reactor.core.support.Recyclable;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.TimeUnit;
