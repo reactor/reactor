@@ -22,7 +22,7 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.core.support.NonBlocking;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -108,7 +108,7 @@ public class RetryWhenAction<T> extends Action<T, T> {
 		return retryStream;
 	}
 
-	private class RestartSubscriber implements Subscriber<Object>, NonBlocking {
+	private class RestartSubscriber implements Subscriber<Object>, Bounded {
 		Subscription s;
 
 		@Override

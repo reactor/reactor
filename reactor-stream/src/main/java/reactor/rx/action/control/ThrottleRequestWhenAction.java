@@ -19,7 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.core.support.NonBlocking;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -78,7 +78,7 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 		}, null);
 	}
 
-	private class ThrottleSubscriber implements Subscriber<Long>, NonBlocking {
+	private class ThrottleSubscriber implements Subscriber<Long>, Bounded {
 		Subscription s;
 
 		@Override

@@ -18,7 +18,7 @@ package reactor.core.reactivestreams;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.core.support.NonBlocking;
+import reactor.core.support.Bounded;
 
 /**
  * Enforces single-threaded, serialized, ordered execution of {@link #onNext}, {@link #onComplete},
@@ -35,7 +35,7 @@ import reactor.core.support.NonBlocking;
  *            <p>
  *            Port from RxJava's SerializedObserver applied to Reactive Stream
  */
-public class SerializedSubscriber<T> implements Subscription, Subscriber<T>, NonBlocking {
+public class SerializedSubscriber<T> implements Subscription, Subscriber<T>, Bounded {
 	private final Subscriber<? super T> delegate;
 
 	private boolean emitting   = false;

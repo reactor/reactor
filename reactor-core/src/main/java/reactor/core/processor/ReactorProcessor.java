@@ -18,7 +18,7 @@ package reactor.core.processor;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscription;
 import reactor.core.Dispatcher;
-import reactor.core.support.NonBlocking;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Resource;
 
@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Stephane Maldini
  */
 public abstract class ReactorProcessor<IN, OUT> implements
-		Processor<IN, OUT>, Consumer<IN>, NonBlocking, Resource {
+		Processor<IN, OUT>, Consumer<IN>, Bounded, Resource {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 

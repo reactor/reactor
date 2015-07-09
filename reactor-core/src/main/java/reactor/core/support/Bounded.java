@@ -18,11 +18,11 @@ package reactor.core.support;
 import reactor.core.Dispatcher;
 
 /**
- * A dispatcher aware component
+ * A capacity aware component
  *
  * @author Stephane Maldini
  */
-public interface NonBlocking {
+public interface Bounded {
 
 	/**
 	 * Get the assigned {@link reactor.core.Dispatcher}.

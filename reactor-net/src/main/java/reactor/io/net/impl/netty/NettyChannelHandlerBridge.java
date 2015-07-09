@@ -27,8 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.processor.CancelException;
+import reactor.core.support.Bounded;
 import reactor.core.support.Exceptions;
-import reactor.core.support.NonBlocking;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
@@ -240,7 +240,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		if (msg instanceof Publisher) {
 			@SuppressWarnings("unchecked")
 			Publisher<?> data = (Publisher<?>) msg;
-			final long capacity = msg instanceof NonBlocking ? ((NonBlocking) data).getCapacity() : Long.MAX_VALUE;
+			final long capacity = msg instanceof Bounded ? ((Bounded) data).getCapacity() : Long.MAX_VALUE;
 
 			if (capacity == Long.MAX_VALUE) {
 				data.subscribe(new FlushOnTerminateSubscriber(ctx, promise));

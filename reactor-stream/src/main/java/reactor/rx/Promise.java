@@ -24,7 +24,7 @@ import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.core.support.NonBlocking;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -53,7 +53,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Stephane Maldini
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
-public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, NonBlocking {
+public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bounded {
 
 	private final ReentrantLock lock = new ReentrantLock();
 

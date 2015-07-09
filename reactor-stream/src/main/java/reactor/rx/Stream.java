@@ -28,8 +28,8 @@ import reactor.core.queue.CompletableBlockingQueue;
 import reactor.core.queue.CompletableLinkedQueue;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
+import reactor.core.support.Bounded;
 import reactor.core.support.Exceptions;
-import reactor.core.support.NonBlocking;
 import reactor.fn.*;
 import reactor.fn.support.Tap;
 import reactor.fn.timer.Timer;
@@ -84,7 +84,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @since 1.1, 2.0
  */
-public abstract class Stream<O> implements Publisher<O>, NonBlocking {
+public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 
 	protected Stream() {
@@ -3097,7 +3097,7 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 		return getClass().getSimpleName();
 	}
 
-	private static final class SubscribeOn<O> implements Subscriber<O>, Consumer<Subscription>, NonBlocking {
+	private static final class SubscribeOn<O> implements Subscriber<O>, Consumer<Subscription>, Bounded {
 		private final Subscriber<? super O> subscriber;
 		private final Action<O, ?> action;
 		private final Dispatcher dispatcher;

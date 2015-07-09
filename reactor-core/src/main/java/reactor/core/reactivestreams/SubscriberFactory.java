@@ -20,8 +20,8 @@ import org.reactivestreams.Subscription;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
+import reactor.core.support.Bounded;
 import reactor.core.support.Exceptions;
-import reactor.core.support.NonBlocking;
 import reactor.core.support.SpecificationExceptions;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -213,7 +213,7 @@ public final class SubscriberFactory {
 		}
 	};
 
-	private static final class ReactorSubscriber<T, C> implements Subscriber<T>, NonBlocking {
+	private static final class ReactorSubscriber<T, C> implements Subscriber<T>, Bounded {
 
 		protected final Function<Subscription, C>                 subscriptionHandler;
 		protected final BiConsumer<T, SubscriptionWithContext<C>> dataConsumer;
