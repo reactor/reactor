@@ -16,9 +16,6 @@
 
 package reactor.core.dispatch;
 
-import reactor.core.alloc.factory.BatchFactorySupplier;
-import reactor.fn.Supplier;
-
 /**
  * Base implementation for multi-threaded dispatchers
  *
@@ -30,20 +27,10 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 
 	private final int                                   backlog;
 	private final int                                   numberThreads;
-	private final BatchFactorySupplier<MultiThreadTask> taskFactory;
 
 	protected MultiThreadDispatcher(int numberThreads, int backlog) {
 		this.backlog = backlog;
 		this.numberThreads = numberThreads;
-		this.taskFactory = new BatchFactorySupplier<MultiThreadTask>(
-				backlog,
-				new Supplier<MultiThreadTask>() {
-					@Override
-					public MultiThreadTask get() {
-						return new MultiThreadTask();
-					}
-				}
-		);
 	}
 
 	@Override
@@ -71,16 +58,12 @@ public abstract class MultiThreadDispatcher extends AbstractLifecycleDispatcher 
 	}
 
 	protected Task allocateTask() {
-		return taskFactory.get();
+		return new MultiThreadTask();
 	}
 
 	@Override
 	protected Task tryAllocateTask() throws InsufficientCapacityException {
-		if(taskFactory.remaining() == 0){
-			throw InsufficientCapacityException.INSTANCE;
-		}else{
-			return allocateTask();
-		}
+		return allocateTask();
 	}
 
 	protected class MultiThreadTask extends Task {
