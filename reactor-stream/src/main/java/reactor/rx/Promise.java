@@ -21,7 +21,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.support.Bounded;
@@ -57,10 +57,10 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 
 	private final ReentrantLock lock = new ReentrantLock();
 
-	private final long        defaultTimeout;
-	private final Condition   pendingCondition;
-	private final Dispatcher  dispatcher;
-	private final Environment environment;
+	private final long             defaultTimeout;
+	private final Condition        pendingCondition;
+	private final ReactorProcessor dispatcher;
+	private final Environment      environment;
 	Action<O, O> outboundStream;
 
 	public static enum FinalState {
@@ -99,24 +99,25 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	 * @param dispatcher The Dispatcher to run any downstream subscribers
 	 * @param env        The Environment, if any, from which the default await timeout is obtained
 	 */
-	public Promise(Dispatcher dispatcher, @Nullable Environment env) {
+	public Promise(ReactorProcessor dispatcher, @Nullable Environment env) {
 		this.dispatcher = dispatcher;
 		this.environment = env;
-		this.defaultTimeout = env != null ? env.getLongProperty("reactor.await.defaultTimeout",  30000L) : 30000L;
+		this.defaultTimeout = env != null ? env.getLongProperty("reactor.await.defaultTimeout", 30000L) : 30000L;
 		this.pendingCondition = lock.newCondition();
 	}
 
 	/**
 	 * Creates a new promise that has been fulfilled with the given {@code value}.
 	 * <p>
-	 * The {@code observable} is used when notifying the Promise's consumers. The given {@code env} is used to determine
+	 * The {@code observable} is used when notifying the Promise's consumers. The given {@code env} is used to
+	 * determine
 	 * the default await timeout. If {@code env} is {@code null} the default await timeout will be 30 seconds.
 	 *
 	 * @param value      The value that fulfills the promise
 	 * @param dispatcher The Dispatcher to run any downstream subscribers
 	 * @param env        The Environment, if any, from which the default await timeout is obtained
 	 */
-	public Promise(O value, Dispatcher dispatcher,
+	public Promise(O value, ReactorProcessor dispatcher,
 	               @Nullable Environment env) {
 		this(dispatcher, env);
 		finalState = FinalState.COMPLETE;
@@ -134,7 +135,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	 * @param dispatcher The Dispatcher to run any downstream subscribers
 	 * @param env        The Environment, if any, from which the default await timeout is obtained
 	 */
-	public Promise(Throwable error, Dispatcher dispatcher,
+	public Promise(Throwable error, ReactorProcessor dispatcher,
 	               @Nullable Environment env) {
 		this(dispatcher, env);
 		finalState = FinalState.ERROR;
@@ -144,7 +145,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	/**
 	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed by either
 	 * setting a value or propagating an error, or, if this {@code Promise} has already been fulfilled, is immediately
-	 * scheduled to be executed on the current {@link reactor.core.Dispatcher}.
+	 * scheduled to be executed on the current {@link ReactorProcessor}.
 	 *
 	 * @param onComplete the completion {@link Consumer}
 	 * @return {@literal the new Promise}
@@ -219,7 +220,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is successfully completed
 	 * with
 	 * a value, or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the
-	 * current {@link Dispatcher}.
+	 * current {@link ReactorProcessor}.
 	 *
 	 * @param onSuccess the success {@link Consumer}
 	 * @return {@literal the new Promise}
@@ -247,7 +248,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	 * Assign a {@link Function} that will either be invoked later, when the {@code Promise} is successfully completed
 	 * with
 	 * a value, or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the
-	 * current {@link Dispatcher}.
+	 * current {@link ReactorProcessor}.
 	 *
 	 * @param transformation the function to apply on signal to the transformed Promise
 	 * @return {@literal the new Promise}
@@ -274,7 +275,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	 * Assign a {@link Function} that will either be invoked later, when the {@code Promise} is successfully completed
 	 * with
 	 * a value, or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the
-	 * current {@link Dispatcher}.
+	 * current {@link ReactorProcessor}.
 	 * <p>
 	 * FlatMap is typically used to listen for a delayed/async publisher, e.g. promise.flatMap( data -> Promise.success
 	 * (data) ).
@@ -311,7 +312,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	/**
 	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed with an error,
 	 * or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the current
-	 * {@link Dispatcher}. The error is recovered and materialized as the next signal to the returned stream.
+	 * {@link ReactorProcessor}. The error is recovered and materialized as the next signal to the returned stream.
 	 *
 	 * @param onError the error {@link Consumer}
 	 * @return {@literal the new Promise}
@@ -719,7 +720,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 		return true;
 	}
 

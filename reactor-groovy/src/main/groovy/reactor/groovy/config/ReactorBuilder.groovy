@@ -12,7 +12,7 @@ import reactor.bus.registry.Registries
 import reactor.bus.routing.Router
 import reactor.bus.selector.Selector
 import reactor.bus.selector.Selectors
-import reactor.core.Dispatcher
+import reactor.ReactorProcessor
 import reactor.core.dispatch.SynchronousDispatcher
 import reactor.fn.Consumer
 import reactor.fn.Supplier
@@ -37,7 +37,7 @@ class ReactorBuilder implements Supplier<EventBus> {
 
 	Environment env
 	Router router
-	Dispatcher dispatcher
+	ReactorProcessor dispatcher
 	Filter filter
 	boolean override = false
 

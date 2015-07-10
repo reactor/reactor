@@ -34,7 +34,7 @@ import reactor.bus.selector.ClassSelector;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
 import reactor.bus.spec.EventBusSpec;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.support.Assert;
 import reactor.core.support.UUIDUtils;
@@ -53,8 +53,8 @@ import java.util.UUID;
  * A reactor is an event gateway that allows other components to register {@link Event} {@link Consumer}s that can
  * subsequently be notified of events. A consumer is typically registered with a {@link Selector} which, by matching on
  * the notification key, governs which events the consumer will receive. </p> When a {@literal Reactor} is notified of
- * an {@link Event}, a task is dispatched using the reactor's {@link Dispatcher} which causes it to be executed on a
- * thread based on the implementation of the {@link Dispatcher} being used.
+ * an {@link Event}, a task is dispatched using the reactor's {@link ReactorProcessor} which causes it to be executed on a
+ * thread based on the implementation of the {@link ReactorProcessor} being used.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -64,14 +64,14 @@ import java.util.UUID;
 public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 	private static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
-			new PassThroughFilter()
+	  new PassThroughFilter()
 	);
 
-	private final Dispatcher                             dispatcher;
+	private final ReactorProcessor                               dispatcher;
 	private final Registry<Object, Consumer<? extends Event<?>>> consumerRegistry;
-	private final Router                                 router;
-	private final Consumer<Throwable>                    dispatchErrorHandler;
-	private final Consumer<Throwable>                    uncaughtErrorHandler;
+	private final Router                                         router;
+	private final Consumer<Throwable>                            dispatchErrorHandler;
+	private final Consumer<Throwable>                            uncaughtErrorHandler;
 
 	private volatile UUID id;
 
@@ -106,12 +106,12 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 
 	/**
-	 * Create a new {@link EventBus} using the given {@link reactor.core.Dispatcher}.
+	 * Create a new {@link EventBus} using the given {@link ReactorProcessor}.
 	 *
-	 * @param dispatcher The name of the {@link reactor.core.Dispatcher} to use.
+	 * @param dispatcher The name of the {@link ReactorProcessor} to use.
 	 * @return A new {@link EventBus}
 	 */
-	public static EventBus create(Dispatcher dispatcher) {
+	public static EventBus create(ReactorProcessor dispatcher) {
 		return new EventBusSpec().dispatcher(dispatcher).get();
 	}
 
@@ -119,7 +119,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * Create a new {@link EventBus} using the given {@link reactor.Environment} and dispatcher name.
 	 *
 	 * @param env        The {@link reactor.Environment} to use.
-	 * @param dispatcher The name of the {@link reactor.core.Dispatcher} to use.
+	 * @param dispatcher The name of the {@link ReactorProcessor} to use.
 	 * @return A new {@link EventBus}
 	 */
 	public static EventBus create(Environment env, String dispatcher) {
@@ -128,36 +128,36 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 	/**
 	 * Create a new {@link EventBus} using the given {@link reactor.Environment} and {@link
-	 * reactor.core.Dispatcher}.
+	 * ReactorProcessor}.
 	 *
 	 * @param env        The {@link reactor.Environment} to use.
-	 * @param dispatcher The {@link reactor.core.Dispatcher} to use.
+	 * @param dispatcher The {@link ReactorProcessor} to use.
 	 * @return A new {@link EventBus}
 	 */
-	public static EventBus create(Environment env, Dispatcher dispatcher) {
+	public static EventBus create(Environment env, ReactorProcessor dispatcher) {
 		return new EventBusSpec().env(env).dispatcher(dispatcher).get();
 	}
 
 
-
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
+	 * Create a new {@literal Reactor} that uses the given {@link ReactorProcessor}. The reactor will use a default
+	 * {@link
 	 * reactor.bus.routing.Router} that broadcast events to all of the registered consumers that {@link
 	 * Selector#matches(Object) match}
 	 * the notification key and does not perform any type conversion.
 	 *
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new {@link
+	 * @param dispatcher The {@link ReactorProcessor} to use. May be {@code null} in which case a new {@link
 	 *                   SynchronousDispatcher} is used
 	 */
-	public EventBus(@Nullable Dispatcher dispatcher) {
+	public EventBus(@Nullable ReactorProcessor dispatcher) {
 		this(dispatcher, null);
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link Dispatcher}. The reactor will use a default {@link
+	 * Create a new {@literal Reactor} that uses the given {@link ReactorProcessor}. The reactor will use a default {@link
 	 * CachingRegistry}.
 	 *
-	 * @param dispatcher The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous  dispatcher
+	 * @param dispatcher The {@link ReactorProcessor} to use. May be {@code null} in which case a new synchronous  dispatcher
 	 *                   is used.
 	 * @param router     The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code null} in
 	 *                   which case the
@@ -165,12 +165,12 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 *                   Selector#matches(Object) match} the notification key and does not perform any type conversion
 	 *                   will be used.
 	 */
-	public EventBus(@Nullable Dispatcher dispatcher,
+	public EventBus(@Nullable ReactorProcessor dispatcher,
 	                @Nullable Router router) {
 		this(dispatcher, router, null, null);
 	}
 
-	public EventBus(@Nullable Dispatcher dispatcher,
+	public EventBus(@Nullable ReactorProcessor dispatcher,
 	                @Nullable Router router,
 	                @Nullable Consumer<Throwable> dispatchErrorHandler,
 	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
@@ -184,7 +184,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@code dispatacher} and {@code eventRouter}.
 	 *
-	 * @param dispatcher       The {@link Dispatcher} to use. May be {@code null} in which case a new synchronous
+	 * @param dispatcher       The {@link ReactorProcessor} to use. May be {@code null} in which case a new synchronous
 	 *                         dispatcher is used.
 	 * @param router           The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code
 	 *                         null} in which case the
@@ -195,7 +195,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 *                         Consumer}.
 	 */
 	public EventBus(@Nonnull Registry<Object, Consumer<? extends Event<?>>> consumerRegistry,
-	                @Nullable Dispatcher dispatcher,
+	                @Nullable ReactorProcessor dispatcher,
 	                @Nullable Router router,
 	                @Nullable Consumer<Throwable> dispatchErrorHandler,
 	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
@@ -261,11 +261,11 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	}
 
 	/**
-	 * Get the {@link Dispatcher} currently in use.
+	 * Get the {@link ReactorProcessor} currently in use.
 	 *
-	 * @return The {@link Dispatcher}.
+	 * @return The {@link ReactorProcessor}.
 	 */
-	public Dispatcher getDispatcher() {
+	public ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 
@@ -571,7 +571,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 	/**
 	 * Schedule an arbitrary {@link reactor.fn.Consumer} to be executed on the current Reactor  {@link
-	 * reactor.core.Dispatcher}, passing the given {@param data}.
+	 * ReactorProcessor}, passing the given {@param data}.
 	 *
 	 * @param consumer The {@link reactor.fn.Consumer} to invoke.
 	 * @param data     The data to pass to the consumer.

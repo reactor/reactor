@@ -17,7 +17,7 @@
 package reactor.io.net.http;
 
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ReactorChannelHandler;
@@ -38,7 +38,7 @@ public abstract class HttpClient<IN, OUT>
 		extends ReactorClient<IN, OUT, HttpChannel<IN, OUT>> {
 
 	protected HttpClient(Environment env,
-	                     Dispatcher dispatcher,
+	                     ReactorProcessor dispatcher,
 	                     Codec<Buffer, IN, OUT> codec,
 	                     ClientSocketOptions options) {
 		super(env, dispatcher, codec, options.prefetch());

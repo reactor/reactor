@@ -16,8 +16,8 @@
 package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.core.processor.InsufficientCapacityException;
+import reactor.ReactorProcessor;
+import reactor.core.error.InsufficientCapacityException;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
@@ -33,25 +33,25 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class BatchAction<T, V> extends Action<T, V> {
 
-	protected final boolean    next;
-	protected final boolean    flush;
-	protected final boolean    first;
-	protected final int        batchSize;
-	protected final Dispatcher dispatcher;
-	protected final long       timespan;
-	protected final TimeUnit   unit;
-	protected final Timer      timer;
+	protected final boolean          next;
+	protected final boolean          flush;
+	protected final boolean          first;
+	protected final int              batchSize;
+	protected final ReactorProcessor dispatcher;
+	protected final long             timespan;
+	protected final TimeUnit         unit;
+	protected final Timer            timer;
 	protected final Consumer<T> flushConsumer = new FlushConsumer();
 
 	protected int index = 0;
 	private Pausable timespanRegistration;
 
 	public BatchAction(
-			Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush) {
+	  ReactorProcessor dispatcher, int batchSize, boolean next, boolean first, boolean flush) {
 		this(dispatcher, batchSize, next, first, flush, -1l, null, null);
 	}
 
-	public BatchAction(final Dispatcher dispatcher, int batchSize, boolean next, boolean first, boolean flush,
+	public BatchAction(final ReactorProcessor dispatcher, int batchSize, boolean next, boolean first, boolean flush,
 	                   long timespan, TimeUnit unit, Timer timer) {
 		super(batchSize);
 		this.dispatcher = dispatcher;
@@ -77,7 +77,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 		return false;
 	}
 
@@ -151,7 +151,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
+	public final ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 }

@@ -15,6 +15,7 @@
  */
 package reactor.core.processor;
 
+import org.junit.Test;
 import org.reactivestreams.Processor;
 
 /**
@@ -26,6 +27,14 @@ public class RingBufferProcessorTests extends AbstractProcessorTests {
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
 		return RingBufferProcessor.<Long>create("tckRingBufferProcessor", bufferSize);
+	}
+
+	@Test
+	public void testShutdown(){
+		for (int i = 0; i < 1000; i++) {
+			RingBufferProcessor dispatcher = RingBufferProcessor.create("tckRingBufferProcessor", 128);
+			dispatcher.awaitAndShutdown();
+		}
 	}
 
 }

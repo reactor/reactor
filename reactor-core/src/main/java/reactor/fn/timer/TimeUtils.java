@@ -16,7 +16,7 @@
 
 package reactor.fn.timer;
 
-import reactor.core.support.ReactorFatalException;
+import reactor.core.error.ReactorFatalException;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.TimeUnit;

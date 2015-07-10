@@ -23,9 +23,9 @@ import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.processor.CancelException;
-import reactor.core.support.Exceptions;
+import reactor.ReactorProcessor;
+import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -55,7 +55,7 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	public ZeroMQChannelStream(Environment env,
 	                           long prefetch,
-	                           Dispatcher eventsDispatcher,
+	                           ReactorProcessor eventsDispatcher,
 	                           InetSocketAddress remoteAddress,
 	                           Codec<Buffer, IN, OUT> codec) {
 		super(env, codec, prefetch, eventsDispatcher);

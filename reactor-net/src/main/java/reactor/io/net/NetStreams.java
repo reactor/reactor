@@ -140,7 +140,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -173,7 +173,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -205,7 +205,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -247,7 +247,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -283,7 +283,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when server is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -324,7 +324,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -356,7 +356,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -389,7 +389,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -422,7 +422,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -464,7 +464,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -500,7 +500,7 @@ public class NetStreams extends Streams {
 	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -635,7 +635,7 @@ public class NetStreams extends Streams {
 	 * emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
@@ -675,7 +675,7 @@ public class NetStreams extends Streams {
 	 * emit:
 	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
-	 * - onError when any exception (more specifically IO exception) occurs
+	 * - onError when any error (more specifically IO error) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>

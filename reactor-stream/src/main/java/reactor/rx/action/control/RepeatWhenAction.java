@@ -19,7 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.support.Bounded;
@@ -37,10 +37,10 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 
 	private final Broadcaster<Long>      retryStream;
 	private final Publisher<? extends T> rootPublisher;
-	private Dispatcher             dispatcher;
+	private       ReactorProcessor       dispatcher;
 	private long pendingRequests = 0l;
 
-	public RepeatWhenAction(Dispatcher dispatcher,
+	public RepeatWhenAction(ReactorProcessor dispatcher,
 	                        Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
 	                        Publisher<? extends T> rootPublisher) {
 		this.retryStream = Broadcaster.create(null, dispatcher);
@@ -79,7 +79,7 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 	@Override
 	protected void doOnSubscribe(Subscription subscription) {
 		long pendingRequests = this.pendingRequests;
-		if(pendingRequests > 0) {
+		if (pendingRequests > 0) {
 			subscription.request(pendingRequests);
 		}
 	}
@@ -112,7 +112,7 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
+	public final ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 
@@ -120,7 +120,7 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 		Subscription s;
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 			return RepeatWhenAction.this.isReactivePull(dispatcher, producerCapacity);
 		}
 

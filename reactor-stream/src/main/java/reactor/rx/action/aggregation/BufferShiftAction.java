@@ -16,8 +16,8 @@
 package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.core.processor.InsufficientCapacityException;
+import reactor.ReactorProcessor;
+import reactor.core.error.InsufficientCapacityException;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
@@ -48,11 +48,11 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 	private Pausable timeshiftRegistration;
 	private int      index;
 
-	public BufferShiftAction(Dispatcher dispatcher, int size, int skip) {
+	public BufferShiftAction(ReactorProcessor dispatcher, int size, int skip) {
 		this(dispatcher, size, skip, -1l, -1l, null, null);
 	}
 
-	public BufferShiftAction(final Dispatcher dispatcher, int size, int skip,
+	public BufferShiftAction(final ReactorProcessor dispatcher, int size, int skip,
 	                         final long timeshift, final long timespan, TimeUnit unit, final Timer timer) {
 		super(size);
 		this.skip = skip;

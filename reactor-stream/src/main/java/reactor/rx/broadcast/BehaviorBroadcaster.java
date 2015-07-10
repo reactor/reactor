@@ -17,9 +17,9 @@ package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.processor.CancelException;
+import reactor.core.error.CancelException;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
 import reactor.rx.action.Action;
@@ -82,11 +82,11 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param dispatcher the {@link ReactorProcessor} to use
 	 * @param <T>        the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> first(T value, Dispatcher dispatcher) {
+	public static <T> Broadcaster<T> first(T value, ReactorProcessor dispatcher) {
 		return first(value, null, dispatcher);
 	}
 
@@ -98,11 +98,11 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
 	 * @param env        the Reactor {@link reactor.Environment} to use
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param dispatcher the {@link ReactorProcessor} to use
 	 * @param <T>        the type of values passing through the {@literal Stream}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> first(T value, Environment env, Dispatcher dispatcher) {
+	public static <T> Broadcaster<T> first(T value, Environment env, ReactorProcessor dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
 				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
 				"dispatchers");
@@ -136,11 +136,11 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param dispatcher the {@link ReactorProcessor} to use
 	 * @param <T>        the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> create(Dispatcher dispatcher) {
+	public static <T> Broadcaster<T> create(ReactorProcessor dispatcher) {
 		return first(null, dispatcher);
 	}
 
@@ -152,11 +152,11 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
 	 * @param env        the Reactor {@link reactor.Environment} to use
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param dispatcher the {@link ReactorProcessor} to use
 	 * @param <T>        the type of values passing through the {@literal Stream}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> create(Environment env, Dispatcher dispatcher) {
+	public static <T> Broadcaster<T> create(Environment env, ReactorProcessor dispatcher) {
 		return first(null, env, dispatcher);
 	}
 
@@ -166,7 +166,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	private final BufferedSignal<O> lastSignal = new BufferedSignal<O>(null);
 
-	private BehaviorBroadcaster(Environment environment, Dispatcher dispatcher, long capacity, O defaultVal) {
+	private BehaviorBroadcaster(Environment environment, ReactorProcessor dispatcher, long capacity, O defaultVal) {
 		super(environment, dispatcher, capacity);
 		if (defaultVal != null) {
 			lastSignal.type = Signal.Type.NEXT;

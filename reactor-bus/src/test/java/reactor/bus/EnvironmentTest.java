@@ -32,7 +32,7 @@ public class EnvironmentTest {
     public void testGetDispatcherThrowsExceptionWhenNoDispatcherIsFound() throws Exception {
         try {
             env.getDispatcher("NonexistingDispatcher");
-            fail("Should have thrown an exception");
+            fail("Should have thrown an error");
         } catch ( IllegalArgumentException e ) {
             assertEquals("No Dispatcher found for name 'NonexistingDispatcher', it must be present in the configuration properties or being registered programmatically through this#setDispatcher(NonexistingDispatcher, someDispatcher)", e.getMessage());
         }

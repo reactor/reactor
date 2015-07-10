@@ -20,16 +20,16 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.core.processor.CancelException;
+import reactor.core.error.CancelException;
 import reactor.core.queue.CompletableLinkedQueue;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Bounded;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.core.support.Recyclable;
-import reactor.core.support.SpecificationExceptions;
+import reactor.core.error.SpecificationExceptions;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
@@ -53,8 +53,8 @@ import reactor.rx.subscription.ReactiveSubscription;
  * any downstream subscription.
  * <p>
  * The implementation specifics of an Action lies in two core features:
- * - Its signal scheduler on {@link reactor.core.Dispatcher}
- * - Its smart capacity awareness to prevent {@link reactor.core.Dispatcher} overflow
+ * - Its signal scheduler on {@link ReactorProcessor}
+ * - Its smart capacity awareness to prevent {@link ReactorProcessor} overflow
  * <p>
  * Up to a maximum capacity defined with {@link this#capacity(long)} will be allowed to be dispatched by requesting
  * the tracked remaining slots to the upstream {@link org.reactivestreams.Subscription}. This maximum in-flight data
@@ -235,7 +235,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public Action<I, O> capacity(long elements) {
-		Dispatcher dispatcher = getDispatcher();
+		ReactorProcessor dispatcher = getDispatcher();
 		if (dispatcher != SynchronousDispatcher.INSTANCE && dispatcher.getClass() != TailRecurseDispatcher.class) {
 			long dispatcherCapacity = evaluateCapacity(dispatcher.backlogSize());
 			capacity = elements > dispatcherCapacity ? dispatcherCapacity : elements;

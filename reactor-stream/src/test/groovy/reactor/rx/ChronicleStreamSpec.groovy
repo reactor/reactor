@@ -17,7 +17,7 @@
 package reactor.rx
 
 import reactor.io.codec.StandardCodecs
-import reactor.io.queue.spec.PersistentQueueSpec
+import reactor.io.persistent.spec.PersistentQueueSpec
 import reactor.rx.broadcast.Broadcaster
 import spock.lang.Specification
 

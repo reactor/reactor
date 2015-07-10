@@ -21,11 +21,12 @@ import net.openhft.chronicle.ChronicleQueueBuilder;
 import net.openhft.chronicle.ExcerptTailer;
 import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Subscriber;
-import reactor.core.support.Exceptions;
+import reactor.ReactorProcessor;
+import reactor.core.error.Exceptions;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.queue.spec.PersistentQueueSpec;
+import reactor.io.persistent.spec.PersistentQueueSpec;
 import reactor.rx.Stream;
 import reactor.rx.stream.MapStream;
 import reactor.rx.subscription.PushSubscription;
@@ -45,7 +46,7 @@ import static reactor.rx.stream.MapStream.Operation.*;
 
 
 /**
- * Implementation of a {@link reactor.core.Dispatcher} that uses a {@link net.openhft.chronicle.IndexedChronicle} to
+ * Implementation of a {@link ReactorProcessor} that uses a {@link net.openhft.chronicle.IndexedChronicle} to
  * queue tasks to execute.
  * <p>
  * Original design on https://github.com/peter-lawrey/Java-Chronicle (MapWrapper and Datastore)

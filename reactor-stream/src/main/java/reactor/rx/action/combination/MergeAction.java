@@ -17,7 +17,7 @@ package reactor.rx.action.combination;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 
 import java.util.List;
 
@@ -27,11 +27,11 @@ import java.util.List;
  */
 final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.InnerSubscriber<O>> {
 
-	public MergeAction(Dispatcher dispatcher) {
+	public MergeAction(ReactorProcessor dispatcher) {
 		super(dispatcher);
 	}
 
-	public MergeAction(Dispatcher dispatcher, List<? extends Publisher<? extends O>> publishers) {
+	public MergeAction(ReactorProcessor dispatcher, List<? extends Publisher<? extends O>> publishers) {
 		super(dispatcher, publishers);
 	}
 
@@ -81,7 +81,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 			return false;
 		}
 

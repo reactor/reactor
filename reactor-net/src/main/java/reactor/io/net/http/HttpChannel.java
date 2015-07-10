@@ -18,7 +18,7 @@ package reactor.io.net.http;
 
 import reactor.Environment;
 import reactor.bus.selector.HeaderResolver;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.http.model.*;
 
@@ -48,7 +48,7 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	public HttpChannel(Environment env,
 	                   long prefetch,
-	                   Dispatcher eventsDispatcher
+	                   ReactorProcessor eventsDispatcher
 	) {
 		super(env, null, prefetch, eventsDispatcher);
 	}

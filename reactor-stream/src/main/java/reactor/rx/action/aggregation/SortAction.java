@@ -15,7 +15,7 @@
  */
 package reactor.rx.action.aggregation;
 
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 
 import java.util.Comparator;
 import java.util.PriorityQueue;
@@ -28,7 +28,7 @@ public class SortAction<T> extends BatchAction<T, T> {
 
 	private final PriorityQueue<T> values;
 
-	public SortAction(Dispatcher dispatcher, int batchsize, Comparator<? super T> comparator) {
+	public SortAction(ReactorProcessor dispatcher, int batchsize, Comparator<? super T> comparator) {
 		super(dispatcher, batchsize, true, false, batchsize > 0);
 		if(comparator == null){
 			values = new PriorityQueue<T>();

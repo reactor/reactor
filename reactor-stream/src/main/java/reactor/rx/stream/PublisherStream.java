@@ -18,7 +18,7 @@ package reactor.rx.stream;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.rx.Stream;
 import reactor.rx.subscription.ReactiveSubscription;
 

@@ -65,7 +65,7 @@ public class HttpResponseStatusCodesHandlingSpec extends Specification {
                 println "Failed requesting server: $it"
             }
 
-        then: "exception is thrown with a message and no reply received"
+        then: "error is thrown with a message and no reply received"
             def exceptionMessage = ""
 
             try {

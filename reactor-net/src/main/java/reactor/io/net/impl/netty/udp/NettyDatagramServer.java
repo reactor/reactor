@@ -30,7 +30,7 @@ import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -67,7 +67,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	private volatile NioDatagramChannel          channel;
 
 	public NettyDatagramServer(@Nonnull Environment env,
-	                           @Nonnull Dispatcher dispatcher,
+	                           @Nonnull ReactorProcessor dispatcher,
 	                           @Nullable InetSocketAddress listenAddress,
 	                           @Nullable final NetworkInterface multicastInterface,
 	                           @Nonnull final ServerSocketOptions options,

@@ -24,7 +24,7 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -56,7 +56,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	protected final TcpServer<IN, OUT> server;
 
 	protected NettyHttpServer(final Environment env,
-	                          final Dispatcher dispatcher,
+	                          final ReactorProcessor dispatcher,
 	                          final InetSocketAddress listenAddress,
 	                          final ServerSocketOptions options,
 	                          final SslOptions sslOptions,

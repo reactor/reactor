@@ -18,10 +18,10 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.ReactorProcessor;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.Bounded;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
 import reactor.rx.subscription.PushSubscription;
@@ -213,7 +213,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 		}
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 			return false;
 		}
 	}

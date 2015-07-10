@@ -63,7 +63,7 @@ class BufferSpec extends Specification {
 		when: "an attempt is made to append data to the Buffer"
 		buff.append(" World!")
 
-		then: "an exception is thrown"
+		then: "an error is thrown"
 		thrown(BufferOverflowException)
 	}
 

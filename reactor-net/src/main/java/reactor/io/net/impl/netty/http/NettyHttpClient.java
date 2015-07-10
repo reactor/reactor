@@ -26,7 +26,7 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
@@ -83,7 +83,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	 * @param codec          The codec used to encode and decode data
 	 */
 	public NettyHttpClient(final Environment env,
-	                       final Dispatcher dispatcher,
+	                       final ReactorProcessor dispatcher,
 	                       final InetSocketAddress connectAddress,
 	                       final ClientSocketOptions options,
 	                       final SslOptions sslOptions,

@@ -15,7 +15,7 @@
  */
 package reactor.rx.action.aggregation;
 
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.fn.timer.Timer;
 
 import java.util.ArrayList;
@@ -30,11 +30,11 @@ public class BufferAction<T> extends BatchAction<T, List<T>> {
 
 	private final List<T> values = new ArrayList<T>();
 
-	public BufferAction(Dispatcher dispatcher, int batchsize) {
+	public BufferAction(ReactorProcessor dispatcher, int batchsize) {
 		super(dispatcher, batchsize, true, false, true);
 	}
 
-	public BufferAction(Dispatcher dispatcher, int maxSize, long timespan, TimeUnit unit, Timer timer) {
+	public BufferAction(ReactorProcessor dispatcher, int maxSize, long timespan, TimeUnit unit, Timer timer) {
 		super(dispatcher, maxSize, true, false, true, timespan, unit, timer);
 	}
 

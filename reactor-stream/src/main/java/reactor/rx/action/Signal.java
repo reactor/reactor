@@ -88,9 +88,9 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 	}
 
 	/**
-	 * Creates and returns a {@code Signal} of variety {@code Type.ERROR}, and assigns it an exception.
+	 * Creates and returns a {@code Signal} of variety {@code Type.ERROR}, and assigns it an error.
 	 *
-	 * @param e the exception to assign to the signal
+	 * @param e the error to assign to the signal
 	 * @return an {@code OnError} variety of {@code Signal}
 	 */
 	public static <T> Signal<T> error(Throwable e) {
@@ -126,7 +126,7 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 	}
 
 	/**
-	 * Read the exception associated with this (onError) signal.
+	 * Read the error associated with this (onError) signal.
 	 *
 	 * @return the Throwable associated with this (onError) signal
 	 */

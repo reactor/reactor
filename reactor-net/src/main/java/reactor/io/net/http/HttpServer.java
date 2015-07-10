@@ -22,7 +22,7 @@ import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.selector.Selector;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.NetSelectors;
@@ -50,7 +50,7 @@ public abstract class HttpServer<IN, OUT>
 
 	private boolean hasWebsocketEndpoints = false;
 
-	protected HttpServer(Environment env, Dispatcher dispatcher, Codec<Buffer, IN, OUT> codec) {
+	protected HttpServer(Environment env, ReactorProcessor dispatcher, Codec<Buffer, IN, OUT> codec) {
 		super(env, dispatcher, codec);
 		this.routedWriters = Registries.create();
 	}

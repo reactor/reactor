@@ -17,7 +17,7 @@
 package reactor.io.net.tcp;
 
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -47,7 +47,7 @@ public abstract class TcpServer<IN, OUT>
 	protected InetSocketAddress listenAddress;
 
 	protected TcpServer(Environment env,
-	                    Dispatcher dispatcher,
+	                    ReactorProcessor dispatcher,
 	                    InetSocketAddress listenAddress,
 	                    ServerSocketOptions options,
 	                    SslOptions sslOptions,

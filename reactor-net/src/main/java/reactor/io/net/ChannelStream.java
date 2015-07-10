@@ -21,7 +21,7 @@ import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -44,7 +44,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 
 	private final Environment env;
 
-	private final Dispatcher eventsDispatcher;
+	private final ReactorProcessor eventsDispatcher;
 
 	private final Function<Buffer, IN>  decoder;
 	private final Function<OUT, Buffer> encoder;
@@ -53,7 +53,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	protected ChannelStream(final Environment env,
 	                        Codec<Buffer, IN, OUT> codec,
 	                        long prefetch,
-	                        Dispatcher eventsDispatcher) {
+	                        ReactorProcessor eventsDispatcher) {
 
 		Assert.notNull(eventsDispatcher, "Events Reactor cannot be null");
 		this.env = env;
@@ -81,8 +81,8 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 
 		if (Stream.class.isAssignableFrom(source.getClass())) {
 			sourceStream = ((Stream<? extends OUT>) source);
-		}else{
-			sourceStream = new Stream<OUT>(){
+		} else {
+			sourceStream = new Stream<OUT>() {
 				@Override
 				public void subscribe(Subscriber<? super OUT> subscriber) {
 					source.subscribe(subscriber);
@@ -133,7 +133,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
+	public final ReactorProcessor getDispatcher() {
 		return eventsDispatcher;
 	}
 

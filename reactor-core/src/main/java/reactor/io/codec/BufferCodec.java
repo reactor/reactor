@@ -18,8 +18,8 @@ package reactor.io.codec;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.reactivestreams.PublisherFactory;
-import reactor.core.reactivestreams.SubscriberBarrier;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 

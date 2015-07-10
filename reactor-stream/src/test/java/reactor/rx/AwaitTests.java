@@ -21,7 +21,7 @@ import reactor.AbstractReactorTest;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.selector.Selectors;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.RingBufferDispatcher;
 import reactor.core.dispatch.ThreadPoolExecutorDispatcher;
 import reactor.fn.Consumer;
@@ -69,7 +69,7 @@ public class AwaitTests extends AbstractReactorTest {
 	@Test
 	public void testDoesntDeadlockOnError() throws InterruptedException {
 
-		Dispatcher dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new BlockingWaitStrategy());
+		ReactorProcessor dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new BlockingWaitStrategy());
 		EventBus r = new EventBus(dispatcher);
 
 		Broadcaster<Event<Throwable>> stream = Broadcaster.<Event<Throwable>> create();

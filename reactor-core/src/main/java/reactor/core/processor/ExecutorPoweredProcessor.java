@@ -15,8 +15,8 @@
  */
 package reactor.core.processor;
 
-import reactor.core.processor.util.SingleUseExecutor;
-import reactor.core.support.Exceptions;
+import reactor.core.support.SingleUseExecutor;
+import reactor.core.error.Exceptions;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Stephane Maldini
  */
-public abstract class ExecutorPoweredProcessor<IN, OUT> extends ReactorProcessor<IN, OUT> {
+public abstract class ExecutorPoweredProcessor<IN, OUT> extends AsyncProcessor<IN, OUT> {
 
 	protected final ExecutorService executor;
 

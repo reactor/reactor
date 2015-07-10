@@ -18,11 +18,11 @@ package reactor.rx.broadcast;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -50,8 +50,8 @@ public class Broadcaster<O> extends Action<O, O> {
 		}
 	};
 
-	protected final Dispatcher  dispatcher;
-	protected final Environment environment;
+	protected final ReactorProcessor dispatcher;
+	protected final Environment      environment;
 
 	/**
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
@@ -86,11 +86,11 @@ public class Broadcaster<O> extends Action<O, O> {
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param dispatcher the {@link ReactorProcessor} to use
 	 * @param <T>        the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> create(Dispatcher dispatcher) {
+	public static <T> Broadcaster<T> create(ReactorProcessor dispatcher) {
 		return create(null, dispatcher);
 	}
 
@@ -101,11 +101,11 @@ public class Broadcaster<O> extends Action<O, O> {
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
 	 * @param env        the Reactor {@link reactor.Environment} to use
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param dispatcher the {@link ReactorProcessor} to use
 	 * @param <T>        the type of values passing through the {@literal Stream}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> create(Environment env, Dispatcher dispatcher) {
+	public static <T> Broadcaster<T> create(Environment env, ReactorProcessor dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
 				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
 				"dispatchers");
@@ -117,7 +117,7 @@ public class Broadcaster<O> extends Action<O, O> {
 	 * INTERNAL
 	 */
 	@SuppressWarnings("unchecked")
-	protected Broadcaster(Environment environment, Dispatcher dispatcher, long capacity) {
+	protected Broadcaster(Environment environment, ReactorProcessor dispatcher, long capacity) {
 		super(capacity);
 		this.dispatcher = dispatcher;
 		this.environment = environment;
@@ -127,7 +127,7 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
+	public final ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 
@@ -271,22 +271,7 @@ public class Broadcaster<O> extends Action<O, O> {
 				_downstreamSubscription.updatePendingRequests(elements);
 			}
 		}
-	}
-
-
-	/*@Override
-	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		requestMore(elements);
-	}
-
-	@Override
-	public void requestMore(long n) {
-		Action.checkRequest(n);
-		PushSubscription<O> upstreamSubscription = this.upstreamSubscription;
-		if(upstreamSubscription != null) {
-			dispatcher.dispatch(n, upstreamSubscription, null);
-		}
-	}*/
+	}/
 
 
 }

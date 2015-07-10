@@ -16,6 +16,7 @@
 
 package reactor.fn.timer;
 
+import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
@@ -401,7 +402,7 @@ public class HashWheelTimer implements Timer {
 
 		/**
 		 * Cancel this {@link HashWheelTimer.TimerPausable} after it has been selected and used. {@link
-		 * reactor.core.Dispatcher} implementations should respect this value and perform
+		 * ReactorProcessor} implementations should respect this value and perform
 		 * the cancellation.
 		 *
 		 * @return {@literal this}

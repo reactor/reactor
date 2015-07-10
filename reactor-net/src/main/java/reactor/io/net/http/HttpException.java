@@ -19,7 +19,7 @@ package reactor.io.net.http;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 /**
- * An exception for signalling that an error occurred during a communication over HTTP protocol
+ * An error for signalling that an error occurred during a communication over HTTP protocol
  *
  * @author Anatoly Kadyshev
  */

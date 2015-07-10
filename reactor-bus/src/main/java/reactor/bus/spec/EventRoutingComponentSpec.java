@@ -24,7 +24,7 @@ import reactor.bus.registry.Registry;
 import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
 import reactor.bus.routing.TraceableDelegatingRouter;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.TraceableDelegatingDispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -32,7 +32,7 @@ import reactor.fn.Consumer;
 
 /**
  * A generic environment-aware class for specifying components that need to be configured with an {@link Environment},
- * {@link Dispatcher}, and {@link reactor.bus.routing.Router}.
+ * {@link ReactorProcessor}, and {@link reactor.bus.routing.Router}.
  *
  * @param <SPEC>
  * 		The DispatcherComponentSpec subclass
@@ -202,11 +202,11 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	protected abstract TARGET configure(EventBus reactor, Environment environment);
 
 	@Override
-	protected final TARGET configure(Dispatcher dispatcher, Environment environment) {
+	protected final TARGET configure(ReactorProcessor dispatcher, Environment environment) {
 		return configure(createReactor(dispatcher), environment);
 	}
 
-	private EventBus createReactor(Dispatcher dispatcher) {
+	private EventBus createReactor(ReactorProcessor dispatcher) {
 		if (traceEventPath) {
 			dispatcher = new TraceableDelegatingDispatcher(dispatcher);
 		}

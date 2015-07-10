@@ -16,7 +16,7 @@
 package reactor.rx.action.aggregation;
 
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
@@ -38,12 +38,12 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
 	private ReactiveSubscription<T> currentWindow;
 
-	public WindowAction(Environment environment, Dispatcher dispatcher, int backlog) {
+	public WindowAction(Environment environment, ReactorProcessor dispatcher, int backlog) {
 		super(dispatcher, backlog, true, true, true);
 		this.environment = environment;
 	}
 
-	public WindowAction(Environment environment, Dispatcher dispatcher, int backlog, long timespan, TimeUnit unit, Timer timer) {
+	public WindowAction(Environment environment, ReactorProcessor dispatcher, int backlog, long timespan, TimeUnit unit, Timer timer) {
 		super(dispatcher, backlog, true, true, true, timespan, unit, timer);
 		this.environment = environment;
 	}

@@ -20,10 +20,10 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.reactivestreams.PublisherFactory;
-import reactor.core.reactivestreams.SubscriberWithContext;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberWithContext;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -644,7 +644,7 @@ public class Streams {
 	 * @return a {@link Action} accepting publishers and producing inner data T
 	 * @since 2.0
 	 */
-	public static <T> Action<Publisher<? extends T>, T> switchOnNext(Dispatcher dispatcher) {
+	public static <T> Action<Publisher<? extends T>, T> switchOnNext(ReactorProcessor dispatcher) {
 		SwitchAction<T> switchAction = new SwitchAction<>(dispatcher);
 		switchAction.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
 		return switchAction;
@@ -675,7 +675,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> switchOnNext(
-			Publisher<? extends Publisher<? extends T>> mergedPublishers, Dispatcher dispatcher) {
+			Publisher<? extends Publisher<? extends T>> mergedPublishers, ReactorProcessor dispatcher) {
 		final Action<Publisher<? extends T>, T> mergeAction = new SwitchAction<>(dispatcher);
 
 		mergedPublishers.subscribe(mergeAction);

@@ -36,8 +36,8 @@ public interface Router {
 	 * {@code consumers}. Depending on the router implementation, zero or more of the consumers
 	 * will receive the event. Upon successful completion of the event routing, the
 	 * {@code completionConsumer} will be invoked. {@code completionConsumer} may be null. In the
-	 * event of an exception during routing the {@code errorConsumer} is invoked.
-	 * {@code errorConsumer} may be null, in which case the exception is swallowed.
+	 * event of an error during routing the {@code errorConsumer} is invoked.
+	 * {@code errorConsumer} may be null, in which case the error is swallowed.
 	 *
 	 * @param key The notification key
 	 * @param data The {@code Object} to route

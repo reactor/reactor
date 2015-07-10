@@ -19,7 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.support.Bounded;
@@ -38,16 +38,16 @@ public class RetryWhenAction<T> extends Action<T, T> {
 
 	private final Broadcaster<Throwable> retryStream;
 	private final Publisher<? extends T> rootPublisher;
-	private Dispatcher dispatcher;
+	private       ReactorProcessor       dispatcher;
 
-	public RetryWhenAction(Dispatcher dispatcher,
+	public RetryWhenAction(ReactorProcessor dispatcher,
 	                       Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate, Publisher<?
-			extends
-			T> rootPublisher) {
+	  extends
+	  T> rootPublisher) {
 		this.retryStream = Broadcaster.create(null, dispatcher);
-		if(SynchronousDispatcher.INSTANCE == dispatcher){
+		if (SynchronousDispatcher.INSTANCE == dispatcher) {
 			this.dispatcher = Environment.tailRecurse();
-		}else{
+		} else {
 			this.dispatcher = dispatcher;
 		}
 
@@ -68,7 +68,7 @@ public class RetryWhenAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	public Dispatcher getDispatcher() {
+	public ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 
@@ -84,7 +84,7 @@ public class RetryWhenAction<T> extends Action<T, T> {
 						upstream = upstreamSubscription;
 					} else {
 						pendingRequests = upstream.pendingRequestSignals();
-						if(TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())){
+						if (TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())){
 							dispatcher.shutdown();
 							dispatcher = Environment.tailRecurse();
 						}
@@ -112,7 +112,7 @@ public class RetryWhenAction<T> extends Action<T, T> {
 		Subscription s;
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 			return RetryWhenAction.this.isReactivePull(dispatcher, producerCapacity);
 		}
 

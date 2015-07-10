@@ -16,7 +16,7 @@
 package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
@@ -50,7 +50,7 @@ public final class TimeoutAction<T> extends FallbackAction<T> {
 
 	private Pausable timeoutRegistration;
 
-	public TimeoutAction(final Dispatcher dispatcher, Publisher<? extends T> fallback, Timer timer, long timeout) {
+	public TimeoutAction(final ReactorProcessor dispatcher, Publisher<? extends T> fallback, Timer timer, long timeout) {
 		super(fallback);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timeoutTask = new Consumer<Long>() {

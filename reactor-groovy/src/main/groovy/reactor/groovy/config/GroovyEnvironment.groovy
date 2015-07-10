@@ -6,7 +6,7 @@ import org.codehaus.groovy.control.CompilerConfiguration
 import org.codehaus.groovy.control.customizers.builder.CompilerCustomizationBuilder
 import reactor.Environment
 import reactor.bus.EventBus
-import reactor.core.Dispatcher
+import reactor.ReactorProcessor
 
 import static groovy.lang.Closure.DELEGATE_FIRST
 
@@ -71,7 +71,7 @@ class GroovyEnvironment {
 
 			if (reactorEnvironment) {
 				if (groovyEnvironment.reactorEnvironment) {
-					for (Map.Entry<String, Dispatcher> dispatcherEntry : groovyEnvironment.reactorEnvironment) {
+					for (Map.Entry<String, ReactorProcessor> dispatcherEntry : groovyEnvironment.reactorEnvironment) {
 						reactorEnvironment.setDispatcher(dispatcherEntry.key, dispatcherEntry.value)
 					}
 				}
@@ -171,11 +171,11 @@ class GroovyEnvironment {
 		this.reactorEnvironment
 	}
 
-	Dispatcher dispatcher(String dispatcher) {
+	ReactorProcessor dispatcher(String dispatcher) {
 		reactorEnvironment?.getDispatcher(dispatcher)
 	}
 
-	Dispatcher dispatcher(String dispatcherName, Dispatcher dispatcher) {
+	ReactorProcessor dispatcher(String dispatcherName, ReactorProcessor dispatcher) {
 		reactorEnvironment?.setDispatcher(dispatcherName, dispatcher)
 		dispatcher
 	}

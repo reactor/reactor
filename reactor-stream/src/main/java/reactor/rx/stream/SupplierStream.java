@@ -16,8 +16,8 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.Dispatcher;
-import reactor.core.support.Exceptions;
+import reactor.ReactorProcessor;
+import reactor.core.error.Exceptions;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
@@ -42,10 +42,10 @@ import reactor.rx.subscription.PushSubscription;
  */
 public final class SupplierStream<T> extends Stream<T> {
 
-	private final Dispatcher            dispatcher;
+	private final ReactorProcessor      dispatcher;
 	private final Supplier<? extends T> supplier;
 
-	public SupplierStream(Dispatcher dispatcher, Supplier<? extends T> supplier) {
+	public SupplierStream(ReactorProcessor dispatcher, Supplier<? extends T> supplier) {
 		this.dispatcher = dispatcher;
 		this.supplier = supplier;
 	}
@@ -69,7 +69,7 @@ public final class SupplierStream<T> extends Stream<T> {
 			} else {
 				subscriber.onComplete();
 			}
-		}catch (Throwable throwable){
+		} catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);
 		}
