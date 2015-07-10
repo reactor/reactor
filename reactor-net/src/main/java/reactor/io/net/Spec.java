@@ -17,7 +17,7 @@ package reactor.io.net;
 
 import reactor.Environment;
 import reactor.bus.spec.DispatcherComponentSpec;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -197,7 +197,7 @@ public interface Spec {
 			try {
 				this.clientImplConstructor = (Constructor<reactor.io.net.tcp.TcpClient>) clientImpl.getDeclaredConstructor(
 						Environment.class,
-						Dispatcher.class,
+						ReactorProcessor.class,
 						InetSocketAddress.class,
 						ClientSocketOptions.class,
 						SslOptions.class,
@@ -295,7 +295,7 @@ public interface Spec {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		protected reactor.io.net.tcp.TcpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
+		protected reactor.io.net.tcp.TcpClient<IN, OUT> configure(ReactorProcessor dispatcher, Environment environment) {
 			try {
 				return clientImplConstructor.newInstance(
 						environment,
@@ -342,7 +342,7 @@ public interface Spec {
 			try {
 				this.serverImplConstructor = serverImpl.getDeclaredConstructor(
 						Environment.class,
-						Dispatcher.class,
+						ReactorProcessor.class,
 						InetSocketAddress.class,
 						ServerSocketOptions.class,
 						SslOptions.class,
@@ -371,7 +371,7 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.tcp.TcpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
+		protected reactor.io.net.tcp.TcpServer<IN, OUT> configure(ReactorProcessor dispatcher, Environment env) {
 			try {
 				return serverImplConstructor.newInstance(
 						env,
@@ -405,7 +405,7 @@ public interface Spec {
 			try {
 				this.serverImplCtor = serverImpl.getDeclaredConstructor(
 						Environment.class,
-						Dispatcher.class,
+						ReactorProcessor.class,
 						InetSocketAddress.class,
 						NetworkInterface.class,
 						ServerSocketOptions.class,
@@ -433,7 +433,7 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.udp.DatagramServer<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
+		protected reactor.io.net.udp.DatagramServer<IN, OUT> configure(ReactorProcessor dispatcher, Environment environment) {
 			try {
 				return serverImplCtor.newInstance(
 						environment,
@@ -480,7 +480,7 @@ public interface Spec {
 			try {
 				this.serverImplConstructor = serverImpl.getDeclaredConstructor(
 						Environment.class,
-						Dispatcher.class,
+						ReactorProcessor.class,
 						InetSocketAddress.class,
 						ServerSocketOptions.class,
 						SslOptions.class,
@@ -509,7 +509,7 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.http.HttpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
+		protected reactor.io.net.http.HttpServer<IN, OUT> configure(ReactorProcessor dispatcher, Environment env) {
 			try {
 				return serverImplConstructor.newInstance(
 						env,
@@ -557,7 +557,7 @@ public interface Spec {
 			try {
 				this.clientImplConstructor = (Constructor<reactor.io.net.http.HttpClient>) clientImpl.getDeclaredConstructor(
 						Environment.class,
-						Dispatcher.class,
+						ReactorProcessor.class,
 						InetSocketAddress.class,
 						ClientSocketOptions.class,
 						SslOptions.class,
@@ -641,7 +641,7 @@ public interface Spec {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		protected reactor.io.net.http.HttpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
+		protected reactor.io.net.http.HttpClient<IN, OUT> configure(ReactorProcessor dispatcher, Environment environment) {
 			try {
 				return clientImplConstructor.newInstance(
 						environment,

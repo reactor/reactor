@@ -16,7 +16,7 @@
 package reactor.rx.action.support;
 
 import reactor.fn.Supplier;
-import reactor.fn.support.Tap;
+import reactor.core.subscriber.Tap;
 import reactor.rx.StreamUtils;
 import reactor.rx.action.Control;
 

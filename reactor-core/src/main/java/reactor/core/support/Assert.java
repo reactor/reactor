@@ -53,7 +53,7 @@ public abstract class Assert {
 	 * class="code">Assert.isTrue(i &gt; 0, "The value must be greater than zero");</pre>
 	 *
 	 * @param expression a boolean expression
-	 * @param message    the exception message to use if the assertion fails
+	 * @param message    the error message to use if the assertion fails
 	 * @throws IllegalArgumentException if expression is {@code false}
 	 */
 	public static void isTrue(boolean expression, String message) {
@@ -77,7 +77,7 @@ public abstract class Assert {
 	 * Assert that an object is {@code null} . <pre class="code">Assert.isNull(value, "The value must be null");</pre>
 	 *
 	 * @param object  the object to check
-	 * @param message the exception message to use if the assertion fails
+	 * @param message the error message to use if the assertion fails
 	 * @throws IllegalArgumentException if the object is not {@code null}
 	 */
 	public static void isNull(Object object, String message) {
@@ -91,7 +91,7 @@ public abstract class Assert {
 	 * null");</pre>
 	 *
 	 * @param object  the object to check
-	 * @param message the exception message to use if the assertion fails
+	 * @param message the error message to use if the assertion fails
 	 * @throws IllegalArgumentException if the object is {@code null}
 	 */
 	public static void notNull(Object object, String message) {
@@ -116,7 +116,7 @@ public abstract class Assert {
 	 * class="code">Assert.notEmpty(array, "The array must have elements");</pre>
 	 *
 	 * @param array   the array to check
-	 * @param message the exception message to use if the assertion fails
+	 * @param message the error message to use if the assertion fails
 	 * @throws IllegalArgumentException if the object array is {@code null} or has no elements
 	 */
 	public static void notEmpty(Object[] array, String message) {
@@ -172,7 +172,7 @@ public abstract class Assert {
 	 * "The id property must not already be initialized");</pre>
 	 *
 	 * @param expression a boolean expression
-	 * @param message    the exception message to use if the assertion fails
+	 * @param message    the error message to use if the assertion fails
 	 * @throws IllegalStateException if expression is {@code false}
 	 */
 	public static void state(boolean expression, String message) {

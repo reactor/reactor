@@ -18,7 +18,7 @@ package reactor.rx;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.action.CompositeAction;

@@ -25,7 +25,7 @@ import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.DispatcherSupplier;
 import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
@@ -52,7 +52,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
     private DispatcherSupplier dispatchers;
     private Environment        env;
-    private Dispatcher         subscriberDispatcher;
+    private ReactorProcessor   subscriberDispatcher;
     private int batch = 1024;
 
     public StreamIdentityProcessorTests() {

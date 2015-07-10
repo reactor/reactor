@@ -18,8 +18,10 @@ package reactor.core.processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.processor.util.RingBufferSubscriberUtils;
-import reactor.core.support.SpecificationExceptions;
+import reactor.core.processor.rb.MutableSignal;
+import reactor.core.processor.rb.RingBufferSubscriberUtils;
+import reactor.core.error.CancelException;
+import reactor.core.error.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
@@ -511,15 +513,15 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		super(name, executor, autoCancel);
 
 		this.ringBuffer = RingBuffer.create(
-				shared ? ProducerType.MULTI : ProducerType.SINGLE,
-				new EventFactory<MutableSignal<E>>() {
-					@Override
-					public MutableSignal<E> newInstance() {
-						return new MutableSignal<E>();
-					}
-				},
-				bufferSize,
-				waitStrategy
+		  shared ? ProducerType.MULTI : ProducerType.SINGLE,
+		  new EventFactory<MutableSignal<E>>() {
+			  @Override
+			  public MutableSignal<E> newInstance() {
+				  return new MutableSignal<E>();
+			  }
+		  },
+		  bufferSize,
+		  waitStrategy
 		);
 
 		this.recentSequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
@@ -537,9 +539,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			//create a unique eventProcessor for this subscriber
 			final Sequence pendingRequest = new Sequence(0);
 			final BatchSignalProcessor<E> signalProcessor = new BatchSignalProcessor<E>(
-					this,
-					pendingRequest,
-					subscriber
+			  this,
+			  pendingRequest,
+			  subscriber
 			);
 
 			//bind eventProcessor sequence to observe the ringBuffer
@@ -593,9 +595,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	@Override
 	public String toString() {
 		return "RingBufferProcessor{" +
-				"barrier=" + barrier +
-				", remaining=" + ringBuffer.remainingCapacity() +
-				'}';
+		  "barrier=" + barrier +
+		  ", remaining=" + ringBuffer.remainingCapacity() +
+		  '}';
 	}
 
 	@Override
@@ -635,12 +637,13 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			final long currentSequence = eventProcessor.nextSequence;
 			final long cursor = ringBuffer.getCursor();
 
-			//if the current subscriber sequence behind ringBuffer cursor, count the distance from the next slot to the end
+			//if the current subscriber sequence behind ringBuffer cursor, count the distance from the next slot to
+			// the end
 			final long buffered = currentSequence < cursor
-					? cursor - (currentSequence == Sequencer.INITIAL_CURSOR_VALUE
-					? currentSequence + 1l
-					: currentSequence)
-					: 0l;
+			  ? cursor - (currentSequence == Sequencer.INITIAL_CURSOR_VALUE
+			  ? currentSequence + 1l
+			  : currentSequence)
+			  : 0l;
 
 			final long toRequest;
 			if (buffered > 0l) {
@@ -684,7 +687,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 * be notified just after the thread
 	 * is started and just before the thread is shutdown.
 	 *
-	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an event.
+	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an
+	 *              event.
 	 */
 	private final static class BatchSignalProcessor<T> implements EventProcessor {
 
@@ -757,7 +761,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			try {
 
 				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
-						pendingRequest, processor.ringBuffer, processor.barrier, subscriber, running
+				  pendingRequest, processor.ringBuffer, processor.barrier, subscriber, running
 				)) {
 					return;
 				}
@@ -789,7 +793,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 								RingBufferSubscriberUtils.route(event, subscriber);
 								nextSequence++;
 							} else {
-								//Complete or Error are terminal events, we shutdown the processor and process the signal
+								//Complete or Error are terminal events, we shutdown the processor and process the
+								// signal
 								running.set(false);
 								RingBufferSubscriberUtils.route(event, subscriber);
 								//only alert on error (immediate), complete will be drained as usual with waitFor

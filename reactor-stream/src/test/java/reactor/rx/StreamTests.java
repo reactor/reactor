@@ -32,16 +32,16 @@ import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.DispatcherSupplier;
 import reactor.core.config.DispatcherType;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.processor.RingBufferProcessor;
-import reactor.core.reactivestreams.PublisherFactory;
+import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.fn.support.Tap;
+import reactor.core.subscriber.Tap;
 import reactor.io.IO;
 import reactor.io.codec.StringCodec;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
@@ -156,7 +156,7 @@ public class StreamTests extends AbstractReactorTest {
 						.when(IllegalArgumentException.class, e -> exception.set(true));
 
 		await(5, s, is(10));
-		assertThat("exception triggered", exception.get(), is(true));
+		assertThat("error triggered", exception.get(), is(true));
 	}
 
 
@@ -186,7 +186,7 @@ public class StreamTests extends AbstractReactorTest {
 						.when(IllegalArgumentException.class, e -> exception.set(true));
 
 		await(2, s, is(3));
-		assertThat("exception triggered", exception.get(), is(false));
+		assertThat("error triggered", exception.get(), is(false));
 	}
 
 	@Test
@@ -749,7 +749,7 @@ public class StreamTests extends AbstractReactorTest {
 						substream.dispatchOn(env.getCachedDispatcher()).consume(i -> latch.countDown()));
 				break;
 			default:
-				Dispatcher dispatcher1 = env.getDispatcher(dispatcher);
+				ReactorProcessor dispatcher1 = env.getDispatcher(dispatcher);
 				mapManydeferred = Broadcaster.<Integer>create(env, dispatcher1);
 				mapManydeferred
 						.flatMap(Streams::just)
@@ -1558,7 +1558,7 @@ public class StreamTests extends AbstractReactorTest {
 				.observe(ls -> println("Computed: ", ls))
 				.log("computed");;
 
-		Dispatcher d1 = Environment.newDispatcher("persistence", BACKLOG);
+		ReactorProcessor d1 = Environment.newDispatcher("persistence", BACKLOG);
 		final Broadcaster<Integer> persistenceBroadcaster = Broadcaster.create();
 		final Stream<List<String>> persistenceStream = persistenceBroadcaster
 				.dispatchOn(d1)
@@ -1569,7 +1569,7 @@ public class StreamTests extends AbstractReactorTest {
 		forkBroadcaster.subscribe(computationBroadcaster);
 		forkBroadcaster.subscribe(persistenceBroadcaster);
 
-		Dispatcher d2 = Environment.newDispatcher("join", BACKLOG, 1, DispatcherType.MPSC);
+		ReactorProcessor d2 = Environment.newDispatcher("join", BACKLOG, 1, DispatcherType.MPSC);
 		final Stream<List<String>> joinStream = Streams
 				.join(computationStream, persistenceStream)
 						// MPSC seems perfect for joining threads.

@@ -17,7 +17,7 @@
 package reactor.io.net.udp;
 
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -42,7 +42,7 @@ public abstract class DatagramServer<IN, OUT>
 	private final ServerSocketOptions options;
 
 	protected DatagramServer(Environment env,
-	                         Dispatcher dispatcher,
+	                         ReactorProcessor dispatcher,
 	                         InetSocketAddress listenAddress,
 	                         NetworkInterface multicastInterface,
 	                         ServerSocketOptions options,

@@ -19,9 +19,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.reactivestreams.Subscription
 import reactor.Environment
 import reactor.core.dispatch.SynchronousDispatcher
-import reactor.core.processor.CancelException
+import reactor.core.error.CancelException
 import reactor.core.processor.RingBufferProcessor
-import reactor.core.reactivestreams.SubscriberWithContext
+import reactor.core.subscriber.SubscriberWithContext
 import reactor.fn.BiFunction
 import reactor.io.buffer.Buffer
 import reactor.io.codec.DelimitedCodec
@@ -79,11 +79,11 @@ class StreamsSpec extends Specification {
 			def stream = Broadcaster.create(Environment.get())
 
 		when:
-			'the exception is retrieved after 2 sec'
+			'the error is retrieved after 2 sec'
 			Streams.await(stream.timeout(2, TimeUnit.SECONDS))
 
 		then:
-			'an exception has been thrown'
+			'an error has been thrown'
 			thrown TimeoutException
 	}
 
@@ -279,7 +279,7 @@ class StreamsSpec extends Specification {
 			Streams.generate(null)
 
 		then:
-			"exception is thrown"
+			"error is thrown"
 			thrown(IllegalArgumentException)
 
 			/*when:
@@ -1082,7 +1082,7 @@ class StreamsSpec extends Specification {
 			s.elementAt(-1).when(IndexOutOfBoundsException, errorConsumer).consume()
 
 		then:
-			'exception is thrown'
+			'error is thrown'
 			error == 1
 
 		when:
@@ -1090,7 +1090,7 @@ class StreamsSpec extends Specification {
 			s.elementAt(10).when(IndexOutOfBoundsException, errorConsumer).consume()
 
 		then:
-			'exception is thrown'
+			'error is thrown'
 			error == 2
 	}
 
@@ -1164,7 +1164,7 @@ class StreamsSpec extends Specification {
 
 	def "When a mapping function throws an exception, the mapped composable accepts the error"() {
 		given:
-			'a source composable with a mapping function that throws an exception'
+			'a source composable with a mapping function that throws an error'
 			def source = Broadcaster.<Integer> create()
 			Stream mapped = source.map { if (it == 1) throw new RuntimeException() else 'na' }
 			def errors = 0
@@ -1203,7 +1203,7 @@ class StreamsSpec extends Specification {
 
 	def "When a filter function throws an exception, the filtered composable accepts the error"() {
 		given:
-			'a source composable with a filter function that throws an exception'
+			'a source composable with a filter function that throws an error'
 			def source = Broadcaster.<Integer> create()
 			Stream filtered = source.filter { if (it == 1) throw new RuntimeException() else true }
 			def errors = 0
@@ -1912,7 +1912,7 @@ class StreamsSpec extends Specification {
 
 	def 'Creating Stream from Timer'() {
 		given:
-			'a source stream with a given timer'
+			'a source stream with a given globalTimer'
 
 			def res = 0l
 			def c = Streams.timer(1)
@@ -2182,7 +2182,7 @@ class StreamsSpec extends Specification {
 			println value.debug()
 
 		when:
-			'the first values are accepted on the source, paused just enough to refresh timer until 6'
+			'the first values are accepted on the source, paused just enough to refresh globalTimer until 6'
 			source.onNext(1)
 			sleep(500)
 			source.onNext(2)
@@ -2213,7 +2213,7 @@ class StreamsSpec extends Specification {
 			println value.debug()
 
 		when:
-			'the first values are accepted on the source, paused just enough to refresh timer until 6'
+			'the first values are accepted on the source, paused just enough to refresh globalTimer until 6'
 			source.onNext(1)
 			sleep(500)
 			source.onNext(2)
@@ -2665,7 +2665,7 @@ class StreamsSpec extends Specification {
 			def stream = Streams.from(['test', 'test2', 'test3'])
 
 		when:
-			'the stream triggers an exception for the 2 first elements and is using retry(2) to ignore them'
+			'the stream triggers an error for the 2 first elements and is using retry(2) to ignore them'
 			def i = 0
 			stream = stream
 					.log('beforeObserve')
@@ -2686,7 +2686,7 @@ class StreamsSpec extends Specification {
 			value.get() == 3
 
 		when:
-			'the stream triggers an exception for the 2 first elements and is using retry() to ignore them'
+			'the stream triggers an error for the 2 first elements and is using retry() to ignore them'
 			i = 0
 			stream = Broadcaster.create()
 			def tap = stream.observe {
@@ -2709,7 +2709,7 @@ class StreamsSpec extends Specification {
 			res == 1
 
 		when:
-			'the stream triggers an exception for the 2 first elements and is using retry(matcher) to ignore them'
+			'the stream triggers an error for the 2 first elements and is using retry(matcher) to ignore them'
 			i = 0
 			stream = Streams.from(['test', 'test2', 'test3'])
 			value = stream.observe {
@@ -2726,7 +2726,7 @@ class StreamsSpec extends Specification {
 			value.get() == 3
 
 		when:
-			'the stream triggers an exception for the 2 first elements and is using retry(matcher) to ignore them'
+			'the stream triggers an error for the 2 first elements and is using retry(matcher) to ignore them'
 			i = 0
 			stream = Broadcaster.create()
 			tap = stream.observe {

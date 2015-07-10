@@ -18,11 +18,11 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.core.processor.CancelException;
-import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.ReactorProcessor;
+import reactor.core.error.CancelException;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.Bounded;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -32,12 +32,12 @@ import reactor.rx.broadcast.Broadcaster;
  */
 public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 
-	private final Dispatcher              dispatcher;
+	private final ReactorProcessor dispatcher;
 
 	private long pendingRequests = 0l;
 	private SwitchSubscriber switchSubscriber;
 
-	public SwitchAction(Dispatcher dispatcher) {
+	public SwitchAction(ReactorProcessor dispatcher) {
 		this.dispatcher = dispatcher;
 	}
 
@@ -53,7 +53,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 			switcher = switchSubscriber;
 			toSubscribe = switcher != null && switcher.s == null;
 		}
-		if(toSubscribe){
+		if (toSubscribe) {
 			switcher.publisher.subscribe(switcher);
 		}
 		super.subscribe(SerializedSubscriber.create(subscriber));
@@ -67,7 +67,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 
 		try {
 			doNext(ev);
-		} catch (CancelException uae){
+		} catch (CancelException uae) {
 			throw uae;
 		} catch (Throwable cause) {
 			doError(Exceptions.addValueAsLastCause(cause, ev));
@@ -80,11 +80,11 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 		synchronized (this) {
 			subscriber = switchSubscriber;
 		}
-		if(subscriber != null){
+		if (subscriber != null) {
 			subscriber.cancel();
 		}
 
-		if(upstreamSubscription != Broadcaster.HOT_SUBSCRIPTION){
+		if (upstreamSubscription != Broadcaster.HOT_SUBSCRIPTION) {
 			super.cancel();
 		}
 	}
@@ -148,7 +148,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
+	public final ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 
@@ -162,7 +162,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 		}
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 			return SwitchAction.this.isReactivePull(dispatcher, producerCapacity);
 		}
 

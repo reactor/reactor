@@ -17,13 +17,13 @@
 package reactor.bus.spec;
 
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.Supplier;
 
 /**
  * A generic environment-aware class for specifying components that need to be configured
- * with an {@link Environment} and {@link Dispatcher}.
+ * with an {@link Environment} and {@link ReactorProcessor}.
  *
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -34,8 +34,10 @@ import reactor.fn.Supplier;
 @SuppressWarnings("unchecked")
 public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSpec<SPEC, TARGET>, TARGET> implements Supplier<TARGET> {
 
-	private Environment env;
-	private Dispatcher  dispatcher;
+
+
+	private Environment      env;
+	private ReactorProcessor dispatcher;
 
 	/**
 	 * Configures the spec, and potentially the component being configured, to use the given
@@ -83,7 +85,7 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 	 *
 	 * @return {@code this}
 	 */
-	public final SPEC dispatcher(Dispatcher dispatcher) {
+	public final SPEC dispatcher(ReactorProcessor dispatcher) {
 		this.dispatcher = dispatcher;
 		return (SPEC) this;
 	}
@@ -112,7 +114,7 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 		return configure(getDispatcher(), this.env);
 	}
 
-	private Dispatcher getDispatcher() {
+	private ReactorProcessor getDispatcher() {
 		if (this.dispatcher != null) {
 			return this.dispatcher;
 		} else if (env != null) {
@@ -128,6 +130,6 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 		}
 	}
 
-	protected abstract TARGET configure(Dispatcher dispatcher, Environment environment);
+	protected abstract TARGET configure(ReactorProcessor dispatcher, Environment environment);
 
 }

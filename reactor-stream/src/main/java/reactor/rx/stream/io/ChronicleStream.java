@@ -21,7 +21,7 @@ import net.openhft.chronicle.ExcerptAppender;
 import net.openhft.chronicle.tools.ChronicleTools;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.queue.spec.PersistentQueueSpec;
+import reactor.io.persistent.spec.PersistentQueueSpec;
 import reactor.rx.stream.MapStream;
 
 import java.io.IOException;

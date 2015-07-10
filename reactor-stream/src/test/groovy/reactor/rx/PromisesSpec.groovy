@@ -169,7 +169,7 @@ class PromisesSpec extends Specification {
       promise.onError { ex = it }
 
     then:
-      "no exception is thrown"
+      "no error is thrown"
       ex in Exception
       notThrown Exception
   }
@@ -184,7 +184,7 @@ class PromisesSpec extends Specification {
       promise.onSuccess {}
 
     then:
-      "no exception is thrown"
+      "no error is thrown"
       notThrown Exception
   }
 
@@ -434,7 +434,7 @@ class PromisesSpec extends Specification {
 
   def "When a promise is fulfilled, if a mapping function throws an exception the mapped promise is rejected"() {
     given:
-      "a promise with a filter that throws an exception"
+      "a promise with a filter that throws an error"
       Promise<String> promise = Promises.<String> prepare()
       def e = new RuntimeException()
       def mapped = promise.map { throw e }
@@ -454,7 +454,7 @@ class PromisesSpec extends Specification {
       def promise = Promises.success(1)
 
     when:
-      "a mapping function that throws an exception is added"
+      "a mapping function that throws an error is added"
       def e = new RuntimeException()
       def mapped = promise.map { throw e }
 
@@ -686,7 +686,7 @@ class PromisesSpec extends Specification {
 
   def "A promise with a Supplier that throws an exception is rejected"() {
     when:
-      "A promise configured with a supplier that throws an exception"
+      "A promise configured with a supplier that throws an error"
       def promise = Promises.syncTask { throw new RuntimeException() }
       promise.await()
 
@@ -729,7 +729,7 @@ class PromisesSpec extends Specification {
 
   def "If a filter throws an exception the filtered promise is rejected"() {
     given:
-      "a promise with a filter that throws an exception"
+      "a promise with a filter that throws an error"
       def promise = Promises.prepare()
       def e = new RuntimeException()
       def filteredPromise = promise.stream().filter { throw e }.next()

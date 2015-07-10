@@ -279,7 +279,7 @@ class EventBusSpec extends Specification {
 
 
 		when:
-			"a registered function rises exception"
+			"a registered function rises error"
 			r.receive($('test4'), function { s ->
 				throw new Exception()
 			})
@@ -299,7 +299,7 @@ class EventBusSpec extends Specification {
 			r.send 'test4', Event.wrap('anything', 'testReply4')
 
 		then:
-			"result should not be null and exception called"
+			"result should not be null and error called"
 			result
 			e
 	}
@@ -387,7 +387,7 @@ class EventBusSpec extends Specification {
 			r.notify('test',Event.wrap(null))
 
 		then:
-			"consumer has been invoked and e is an exception"
+			"consumer has been invoked and e is an error"
 			latch.await(3, TimeUnit.SECONDS)
 			e && e instanceof Exception
 

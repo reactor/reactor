@@ -15,7 +15,7 @@
  */
 package reactor.rx.action.aggregation;
 
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.fn.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
@@ -28,16 +28,16 @@ public class SampleAction<T> extends BatchAction<T, T> {
 
 	private T sample;
 
-	public SampleAction(Dispatcher dispatcher, int maxSize) {
+	public SampleAction(ReactorProcessor dispatcher, int maxSize) {
 		this(dispatcher, maxSize, false);
 	}
 
-	public SampleAction(Dispatcher dispatcher, boolean first, int maxSize, long timespan, TimeUnit unit, Timer timer) {
+	public SampleAction(ReactorProcessor dispatcher, boolean first, int maxSize, long timespan, TimeUnit unit, Timer timer) {
 		super(dispatcher, maxSize, !first, first, true, timespan, unit, timer);
 	}
 
 
-	public SampleAction(Dispatcher dispatcher, int maxSize, boolean first) {
+	public SampleAction(ReactorProcessor dispatcher, int maxSize, boolean first) {
 		super(dispatcher, maxSize, !first, first, true);
 	}
 

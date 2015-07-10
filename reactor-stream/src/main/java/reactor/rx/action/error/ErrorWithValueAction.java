@@ -16,7 +16,7 @@
 package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.fn.BiConsumer;
 
 /**

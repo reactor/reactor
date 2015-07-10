@@ -17,9 +17,9 @@ package reactor.rx.action.transformation;
 
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.queue.CompletableQueue;
-import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.rx.action.Action;
@@ -44,24 +44,24 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 	private final Function<? super T, ? extends K> fn;
 	private final Environment                      environment;
-	private final Dispatcher                       dispatcher;
+	private final ReactorProcessor                 dispatcher;
 
 	private final Map<K, ReactiveSubscription<T>> groupByMap = new ConcurrentHashMap<>();
 	private final SerializedSubscriber<Long>      serialized = SerializedSubscriber.create(new DefaultSubscriber<Long>
-			() {
+	  () {
 
 		@Override
 		public void onNext(Long aLong) {
 			checkRequest(aLong);
-			if(upstreamSubscription != null){
-				upstreamSubscription.request(aLong );
+			if (upstreamSubscription != null) {
+				upstreamSubscription.request(aLong);
 			}
 		}
 
 	});
 
 
-	public GroupByAction(Environment environment, Function<? super T, ? extends K> fn, Dispatcher dispatcher) {
+	public GroupByAction(Environment environment, Function<? super T, ? extends K> fn, ReactorProcessor dispatcher) {
 		Assert.notNull(fn, "Key mapping function cannot be null.");
 		this.dispatcher = dispatcher;
 		this.fn = fn;
@@ -90,7 +90,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 				}
 
 				@Override
-				public Dispatcher getDispatcher() {
+				public ReactorProcessor getDispatcher() {
 					return dispatcher;
 				}
 
@@ -169,7 +169,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
+	public final ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 

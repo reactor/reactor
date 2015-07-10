@@ -16,8 +16,8 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.reactivestreams.PublisherFactory;
-import reactor.core.reactivestreams.SubscriberWithContext;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberWithContext;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;

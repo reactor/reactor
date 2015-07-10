@@ -15,7 +15,6 @@
  */
 package reactor.core.support;
 
-import reactor.core.Dispatcher;
 
 /**
  * A capacity aware component
@@ -25,11 +24,13 @@ import reactor.core.Dispatcher;
 public interface Bounded {
 
 	/**
-	 * Get the assigned {@link reactor.core.Dispatcher}.
+	 * Check if the current component can be overflown by the passed
 	 *
-	 * @return true if the component wishes to use a back-pressure ready message-passing (e.g., ReactiveSubscription)
+	 * @param parentPublisher the eventual parent publisher
+	 *
+	 * @return true if the component is exposed to overflow
 	 */
-	boolean isReactivePull(Dispatcher dispatcher, long producerCapacity);
+	boolean isExposedToOverflow(Bounded parentPublisher);
 
 	/**
 	 * Return defined element capacity, used to drive new {@link org.reactivestreams.Subscription}

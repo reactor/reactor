@@ -17,9 +17,9 @@ package reactor.rx.action.terminal;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -34,16 +34,16 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;
 	private final Consumer<Void>              completeConsumer;
-	private final Dispatcher                  dispatcher;
+	private final ReactorProcessor            dispatcher;
 
 	private final AtomicLongFieldUpdater<ConsumerAction> COUNTED = AtomicLongFieldUpdater.newUpdater(ConsumerAction
-			.class, "count");
+	  .class, "count");
 
 	private volatile long count;
 	private          long pendingRequests;
 
 
-	public ConsumerAction(long capacity, Dispatcher dispatcher, Consumer<? super T> consumer,
+	public ConsumerAction(long capacity, ReactorProcessor dispatcher, Consumer<? super T> consumer,
 	                      Consumer<? super Throwable> errorConsumer, Consumer<Void> completeConsumer) {
 		this.consumer = consumer;
 		this.dispatcher = dispatcher;
@@ -64,11 +64,11 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 		PushSubscription<T> upstreamSubscription = this.upstreamSubscription;
 		if (upstreamSubscription != null) {
 			long toRequest = Math.min(n, capacity);
-			if(COUNTED.addAndGet(this, toRequest) < 0l){
+			if (COUNTED.addAndGet(this, toRequest) < 0l) {
 				COUNTED.set(this, Long.MAX_VALUE);
 			}
 			TailRecurseDispatcher.INSTANCE.dispatch(toRequest, upstreamSubscription, null);
-		}else{
+		} else {
 			synchronized (this) {
 				if ((pendingRequests += n) < 0l) {
 					pendingRequests = Long.MAX_VALUE;
@@ -83,7 +83,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 			consumer.accept(ev);
 		}
 		if (upstreamSubscription != null
-				&& capacity != Long.MAX_VALUE
+		  && capacity != Long.MAX_VALUE
 				&& COUNTED.decrementAndGet(this) == 0) {
 			requestMore(capacity);
 		}
@@ -132,12 +132,12 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 		return producerCapacity != Long.MAX_VALUE && capacity != Long.MAX_VALUE;
 	}
 
 	@Override
-	public Dispatcher getDispatcher() {
+	public ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 

@@ -21,7 +21,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.queue.CompletableBlockingQueue;
@@ -29,9 +29,9 @@ import reactor.core.queue.CompletableLinkedQueue;
 import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.fn.*;
-import reactor.fn.support.Tap;
+import reactor.core.subscriber.Tap;
 import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
@@ -67,17 +67,14 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Base class for components designed to provide a succinct API for working with future values.
- * Provides base functionality and an internal contract for subclasses that make use of
- * the {@link #map(reactor.fn.Function)} and {@link #filter(reactor.fn.Predicate)} methods.
+ * Provides base functionality and an internal contract for subclasses.
  * <p>
- * A Stream can be implemented to perform specific actions on callbacks (doNext,doComplete,doError,doOnSubscribe).
- * It is an asynchronous boundary and will run the callbacks using the input {@link Dispatcher}. Stream can
- * eventually produce a result {@code <O>} and will offer cascading over its own subscribers.
+ * A Stream can be implemented to perform specific actions on callbacks (onNext,onComplete,onError,onSubscribe).
+ * Stream can eventually produce result data {@code <O>} and will offer error cascading over to its subscribers.
  * <p>
- * *
+ *
  * Typically, new {@code Stream} aren't created directly. To create a {@code Stream},
- * create a {@link Streams} and configure it with the appropriate {@link Environment},
- * {@link Dispatcher}, and other settings.
+ * use {@link Streams} static API.
  *
  * @param <O> The type of the output values
  * @author Stephane Maldini
@@ -123,11 +120,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Assign an error handler to exceptions of the given type. Will not stop error propagation, use when(class,
-	 * publisher), retry, ignoreError or recover to actively deal with the exception
+	 * publisher), retry, ignoreError or recover to actively deal with the error
 	 *
 	 * @param exceptionType the type of exceptions to handle
-	 * @param onError       the error handler for each exception
-	 * @param <E>           type of the exception to handle
+	 * @param onError       the error handler for each error
+	 * @param <E>           type of the error to handle
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
@@ -145,11 +142,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	/**
 	 * Assign an error handler that will pass eventual associated values and exceptions of the given type.
 	 * Will not stop error propagation, use when(class,
-	 * publisher), retry, ignoreError or recover to actively deal with the exception.
+	 * publisher), retry, ignoreError or recover to actively deal with the error.
 	 *
 	 * @param exceptionType the type of exceptions to handle
-	 * @param onError       the error handler for each exception
-	 * @param <E>           type of the exception to handle
+	 * @param onError       the error handler for each error
+	 * @param <E>           type of the error to handle
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
@@ -164,9 +161,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Subscribe to a fallback publisher when any exception occurs.
+	 * Subscribe to a fallback publisher when any error occurs.
 	 *
-	 * @param fallback the error handler for each exception
+	 * @param fallback the error handler for each error
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> onErrorResumeNext(@Nonnull final Publisher<? extends O> fallback) {
@@ -177,8 +174,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Subscribe to a fallback publisher when exceptions of the given type occur, otherwise propagate the error.
 	 *
 	 * @param exceptionType the type of exceptions to handle
-	 * @param fallback      the error handler for each exception
-	 * @param <E>           type of the exception to handle
+	 * @param fallback      the error handler for each error
+	 * @param <E>           type of the error to handle
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
@@ -193,9 +190,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Produce a default value if any exception occurs.
+	 * Produce a default value if any error occurs.
 	 *
-	 * @param fallback the error handler for each exception
+	 * @param fallback the error handler for each error
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> onErrorReturn(@Nonnull final Function<Throwable, ? extends O> fallback) {
@@ -206,8 +203,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Produce a default value when exceptions of the given type occur, otherwise propagate the error.
 	 *
 	 * @param exceptionType the type of exceptions to handle
-	 * @param fallback      the error handler for each exception
-	 * @param <E>           type of the exception to handle
+	 * @param fallback      the error handler for each error
+	 * @param <E>           type of the error to handle
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
@@ -292,7 +289,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @param dispatcher the dispatcher to run the signals
 	 * @return a new {@literal stream} whose values are broadcasted to all subscribers
 	 */
-	public final Stream<O> broadcastOn(Dispatcher dispatcher) {
+	public final Stream<O> broadcastOn(ReactorProcessor dispatcher) {
 		Broadcaster<O> broadcaster = Broadcaster.create(getEnvironment(), dispatcher);
 		return broadcastTo(broadcaster);
 	}
@@ -315,11 +312,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a {@link reactor.fn.support.Tap} that maintains a reference to the last value seen by this {@code
-	 * Stream}. The {@link reactor.fn.support.Tap} is
+	 * Create a {@link Tap} that maintains a reference to the last value seen by this {@code
+	 * Stream}. The {@link Tap} is
 	 * continually updated when new values pass through the {@code Stream}.
 	 *
-	 * @return the new {@link reactor.fn.support.Tap}
+	 * @return the new {@link Tap}
 	 * @see Consumer
 	 */
 	public final TapAndControls<O> tap() {
@@ -328,11 +325,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a {@link reactor.fn.support.Tap} that maintains a reference to the last value seen by this {@code
-	 * Stream}. The {@link reactor.fn.support.Tap} is
+	 * Create a {@link Tap} that maintains a reference to the last value seen by this {@code
+	 * Stream}. The {@link Tap} is
 	 * continually updated when new values pass through the {@code Stream}.
 	 *
-	 * @return the new {@link reactor.fn.support.Tap}
+	 * @return the new {@link Tap}
 	 * @see Consumer
 	 */
 	@SuppressWarnings("unchecked")
@@ -347,7 +344,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return new Stream<E>() {
 
 			@Override
-			public Dispatcher getDispatcher(){
+			public ReactorProcessor getDispatcher(){
 				return PROCESSOR_SYNC;
 			}
 
@@ -437,7 +434,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @param consumer   the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer) {
+	public final Control consumeOn(ReactorProcessor dispatcher, final Consumer<? super O> consumer) {
 		ConsumerAction<O> consumerAction = new ConsumerAction<O>(
 				SynchronousDispatcher.INSTANCE != dispatcher && PROCESSOR_SYNC != dispatcher &&
 						dispatcher == getDispatcher() ? Long.MAX_VALUE : getCapacity(),
@@ -478,7 +475,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @param dispatcher    the dispatcher to run the consumer
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer,
+	public final Control consumeOn(ReactorProcessor dispatcher, final Consumer<? super O> consumer,
 	                               Consumer<? super Throwable> errorConsumer) {
 		return consumeOn(dispatcher, consumer, errorConsumer, null);
 	}
@@ -516,7 +513,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @param dispatcher       the dispatcher to run the consumer
 	 * @return {@literal new Stream}
 	 */
-	public final Control consumeOn(Dispatcher dispatcher, final Consumer<? super O> consumer,
+	public final Control consumeOn(ReactorProcessor dispatcher, final Consumer<? super O> consumer,
 	                               Consumer<? super Throwable> errorConsumer,
 	                               Consumer<Void> completeConsumer) {
 		ConsumerAction<O> consumerAction =
@@ -594,7 +591,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control batchConsumeOn(final Dispatcher dispatcher,
+	public final Control batchConsumeOn(final ReactorProcessor dispatcher,
 	                                    final Consumer<? super O> consumer,
 	                                    final Function<Long, ? extends Long>
 			                                    requestMapper) {
@@ -626,7 +623,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control adaptiveConsumeOn(final Dispatcher dispatcher,
+	public final Control adaptiveConsumeOn(final ReactorProcessor dispatcher,
 	                                       final Consumer<? super O> consumer,
 	                                       final Function<Stream<Long>, ? extends Publisher<? extends Long>>
 			                                       requestMapper) {
@@ -647,7 +644,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * FireHose synchronous subscription is the parent stream != null
 	 *
 	 * @param environment the environment to get dispatcher from {@link reactor.Environment#getDefaultDispatcher()}
-	 * @return a new {@link Stream} running on a different {@link Dispatcher}
+	 * @return a new {@link Stream} running on a different {@link ReactorProcessor}
 	 */
 	public final Stream<O> dispatchOn(@Nonnull final Environment environment) {
 		return dispatchOn(environment, environment.getDefaultDispatcher());
@@ -657,7 +654,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Assign a new Dispatcher to handle upstream request to the returned Stream.
 	 *
 	 * @param environment the environment to get dispatcher from {@link reactor.Environment#getDefaultDispatcher()}
-	 * @return a new {@link Stream} whose requests are running on a different {@link Dispatcher}
+	 * @return a new {@link Stream} whose requests are running on a different {@link ReactorProcessor}
 	 */
 	public final Stream<O> subscribeOn(@Nonnull final Environment environment) {
 		return subscribeOn(environment.getDefaultDispatcher());
@@ -669,9 +666,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * FireHose synchronous subscription is the parent stream != null
 	 *
 	 * @param dispatcher the new dispatcher
-	 * @return a new {@link Stream} running on a different {@link Dispatcher}
+	 * @return a new {@link Stream} running on a different {@link ReactorProcessor}
 	 */
-	public final Stream<O> dispatchOn(@Nonnull final Dispatcher dispatcher) {
+	public final Stream<O> dispatchOn(@Nonnull final ReactorProcessor dispatcher) {
 		return dispatchOn(null, dispatcher);
 	}
 
@@ -682,7 +679,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @param sub the subscriber to request using the current dispatcher
 	 * @param currentDispatcher the new dispatcher
 	 */
-	public final void subscribeOn(@Nonnull final Dispatcher currentDispatcher, Subscriber<? super O> sub) {
+	public final void subscribeOn(@Nonnull final ReactorProcessor currentDispatcher, Subscriber<? super O> sub) {
 		subscribeOn(currentDispatcher).subscribe(sub);
 	}
 
@@ -690,9 +687,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Assign a new Dispatcher to handle upstream request to the returned Stream.
 	 *
 	 * @param currentDispatcher the new dispatcher
-	 * @return a new {@link Stream} whose requests are running on a different {@link Dispatcher}
+	 * @return a new {@link Stream} whose requests are running on a different {@link ReactorProcessor}
 	 */
-	public final Stream<O> subscribeOn(@Nonnull final Dispatcher currentDispatcher) {
+	public final Stream<O> subscribeOn(@Nonnull final ReactorProcessor currentDispatcher) {
 		return new StreamDispatchedSubscribe<>(this, currentDispatcher);
 	}
 
@@ -704,9 +701,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 *
 	 * @param dispatcher  the new dispatcher
 	 * @param environment the environment
-	 * @return a new {@link Stream} running on a different {@link Dispatcher}
+	 * @return a new {@link Stream} running on a different {@link ReactorProcessor}
 	 */
-	public Stream<O> dispatchOn(final Environment environment, @Nonnull final Dispatcher dispatcher) {
+	public Stream<O> dispatchOn(final Environment environment, @Nonnull final ReactorProcessor dispatcher) {
 		if (dispatcher == SynchronousDispatcher.INSTANCE) {
 
 			if (environment != null && environment != getEnvironment()) {
@@ -722,7 +719,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 		long _capacity = Action.evaluateCapacity(dispatcher.backlogSize());
 		long parentCapacity = getCapacity();
-		final Dispatcher parentDispatcher = getDispatcher();
+		final ReactorProcessor parentDispatcher = getDispatcher();
 
 		final long capacity = _capacity > parentCapacity ? parentCapacity : _capacity;
 
@@ -733,7 +730,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 		}) {
 			@Override
-			public Dispatcher getDispatcher() {
+			public ReactorProcessor getDispatcher() {
 				return dispatcher;
 			}
 
@@ -1022,7 +1019,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Dispatcher getDispatcher() {
+			public ReactorProcessor getDispatcher() {
 				return Stream.this.getDispatcher();
 			}
 
@@ -1053,7 +1050,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Dispatcher getDispatcher() {
+			public ReactorProcessor getDispatcher() {
 				return Stream.this.getDispatcher();
 			}
 
@@ -1106,7 +1103,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Dispatcher getDispatcher() {
+			public ReactorProcessor getDispatcher() {
 				return Stream.this.getDispatcher();
 			}
 		};
@@ -1136,7 +1133,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Dispatcher getDispatcher() {
+			public ReactorProcessor getDispatcher() {
 				return Stream.this.getDispatcher();
 			}
 
@@ -1262,7 +1259,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Dispatcher getDispatcher() {
+			public ReactorProcessor getDispatcher() {
 				return Stream.this.getDispatcher();
 			}
 
@@ -1350,7 +1347,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Dispatcher getDispatcher() {
+			public ReactorProcessor getDispatcher() {
 				return Stream.this.getDispatcher();
 			}
 
@@ -1522,10 +1519,10 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair if the exception is of
+	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair if the error is of
 	 * the given type.
 	 * The recoveredValues subscriber will be emitted the associated value if any. If it doesn't match the given
-	 * exception type, the error signal will be propagated downstream but not to the recovered values sink.
+	 * error type, the error signal will be propagated downstream but not to the recovered values sink.
 	 *
 	 * @param recoveredValuesSink the subscriber to listen for recovered values
 	 * @param exceptionType       the type of exceptions to handle
@@ -2931,7 +2928,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Dispatcher getDispatcher() {
+			public ReactorProcessor getDispatcher() {
 				return Stream.this.getDispatcher();
 			}
 
@@ -3035,7 +3032,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 		return (getCapacity() < producerCapacity)
 				&& getDispatcher().getClass() != TailRecurseDispatcher.class
 				&& dispatcher.getClass() != TailRecurseDispatcher.class;
@@ -3043,7 +3040,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 
 	/**
-	 * Get the current timer available if any or try returning the shared Environment one (which may cause an exception
+	 * Get the current timer available if any or try returning the shared Environment one (which may cause an error
 	 * if no Environment has been globally initialized)
 	 *
 	 * @return any available timer
@@ -3088,7 +3085,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 *
 	 * @return assigned dispatcher
 	 */
-	public Dispatcher getDispatcher() {
+	public ReactorProcessor getDispatcher() {
 		return SynchronousDispatcher.INSTANCE;
 	}
 
@@ -3099,22 +3096,22 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	private static final class SubscribeOn<O> implements Subscriber<O>, Consumer<Subscription>, Bounded {
 		private final Subscriber<? super O> subscriber;
-		private final Action<O, ?> action;
-		private final Dispatcher dispatcher;
+		private final Action<O, ?>          action;
+		private final ReactorProcessor      dispatcher;
 
 		@SuppressWarnings("unchecked")
-		public SubscribeOn(Dispatcher dispatcher, Subscriber<? super O> subscriber) {
+		public SubscribeOn(ReactorProcessor dispatcher, Subscriber<? super O> subscriber) {
 			this.dispatcher = dispatcher;
 			this.subscriber = subscriber;
-			if(Action.class.isAssignableFrom(subscriber.getClass())){
-				this.action = (Action<O, ?>)subscriber;
-			}else{
+			if (Action.class.isAssignableFrom(subscriber.getClass())) {
+				this.action = (Action<O, ?>) subscriber;
+			} else {
 				this.action = null;
 			}
 		}
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 			return action == null || action.isReactivePull(dispatcher, producerCapacity);
 		}
 
@@ -3130,7 +3127,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 		@Override
 		public void onSubscribe(Subscription s) {
-			if( dispatcher.inContext() ){
+			if (dispatcher.inContext()) {
 				accept(s);
 			} else {
 				dispatcher.dispatch(s, this, null);
@@ -3153,11 +3150,12 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		}
 	}
 
-	private final static class StreamDispatchedSubscribe<O> extends Stream<O> implements Consumer<Subscriber<? super O>> {
-		private final Dispatcher currentDispatcher;
-		private final Stream<O> stream;
+	private final static class StreamDispatchedSubscribe<O> extends Stream<O> implements Consumer<Subscriber<? super
+	  O>> {
+		private final ReactorProcessor currentDispatcher;
+		private final Stream<O>        stream;
 
-		public StreamDispatchedSubscribe(Stream<O> stream, Dispatcher currentDispatcher) {
+		public StreamDispatchedSubscribe(Stream<O> stream, ReactorProcessor currentDispatcher) {
 			this.currentDispatcher = currentDispatcher;
 			this.stream = stream;
 		}
@@ -3178,7 +3176,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		}
 
 		@Override
-		public Dispatcher getDispatcher() {
+		public ReactorProcessor getDispatcher() {
 			return stream.getDispatcher();
 		}
 

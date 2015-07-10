@@ -18,10 +18,10 @@ package reactor.rx.broadcast;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.reactivestreams.SerializedSubscriber;
-import reactor.core.support.Exceptions;
+import reactor.core.subscriber.SerializedSubscriber;
+import reactor.core.error.Exceptions;
 
 /**
  * A {@code Broadcaster} is a subclass of {@code Stream} which exposes methods for publishing values into the pipeline.
@@ -109,7 +109,7 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 *
 	 */
 
-	private SerializedBroadcaster(Environment environment, Dispatcher dispatcher, long capacity) {
+	private SerializedBroadcaster(Environment environment, ReactorProcessor dispatcher, long capacity) {
 		super(environment, dispatcher, capacity);
 		this.serializer = SerializedSubscriber.create(new Subscriber<O>() {
 			@Override

@@ -18,8 +18,10 @@ package reactor.core.processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.processor.util.RingBufferSubscriberUtils;
-import reactor.core.support.SpecificationExceptions;
+import reactor.core.processor.rb.MutableSignal;
+import reactor.core.processor.rb.RingBufferSubscriberUtils;
+import reactor.core.error.CancelException;
+import reactor.core.error.SpecificationExceptions;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
@@ -506,15 +508,15 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		super(name, executor, autoCancel);
 
 		this.ringBuffer = RingBuffer.create(
-				share ? ProducerType.MULTI : ProducerType.SINGLE,
-				new EventFactory<MutableSignal<E>>() {
-					@Override
-					public MutableSignal<E> newInstance() {
-						return new MutableSignal<E>();
-					}
-				},
-				bufferSize,
-				waitStrategy
+		  share ? ProducerType.MULTI : ProducerType.SINGLE,
+		  new EventFactory<MutableSignal<E>>() {
+			  @Override
+			  public MutableSignal<E> newInstance() {
+				  return new MutableSignal<E>();
+			  }
+		  },
+		  bufferSize,
+		  waitStrategy
 		);
 
 		ringBuffer.addGatingSequences(workSequence);
@@ -528,8 +530,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		}
 		try {
 			final WorkSignalProcessor<E> signalProcessor = new WorkSignalProcessor<E>(
-					subscriber,
-					this
+			  subscriber,
+			  this
 			);
 
 			signalProcessor.sequence.set(workSequence.get());
@@ -577,11 +579,11 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	@Override
 	public String toString() {
 		return "RingBufferWorkProcessor{" +
-				", ringBuffer=" + ringBuffer +
-				", executor=" + executor +
-				", workSequence=" + workSequence +
-				", cancelledSequence=" + cancelledSequences +
-				'}';
+		  ", ringBuffer=" + ringBuffer +
+		  ", executor=" + executor +
+		  ", workSequence=" + workSequence +
+		  ", cancelledSequence=" + cancelledSequences +
+		  '}';
 	}
 
 	private final class RingBufferSubscription implements Subscription {
@@ -641,7 +643,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * be notified just after the thread
 	 * is started and just before the thread is shutdown.
 	 *
-	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an event.
+	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an
+	 *              event.
 	 */
 	private final static class WorkSignalProcessor<T> implements EventProcessor {
 
@@ -708,7 +711,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 			try {
 				subscriber.onSubscribe(subscription);
-			}catch (Throwable t){
+			} catch (Throwable t) {
 				subscriber.onError(t);
 			}
 
@@ -720,7 +723,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 			try {
 				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
-						pendingRequest, processor.ringBuffer, barrier, subscriber, running
+				  pendingRequest, processor.ringBuffer, barrier, subscriber, running
 				)) {
 					processor.ringBuffer.removeGatingSequence(sequence);
 					return;
@@ -740,7 +743,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 						// if previous sequence was processed - fetch the next sequence and set
 						// that we have successfully processed the previous sequence
 						// typically, this will be true
-						// this prevents the sequence getting too far forward if an exception
+						// this prevents the sequence getting too far forward if an error
 						// is thrown from the WorkHandler
 						if (processedSequence) {
 							processedSequence = false;
@@ -767,8 +770,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 					} catch (CancelException ce) {
 						if (event != null &&
-								event.type == MutableSignal.Type.NEXT &&
-								event.value != null) {
+						  event.type == MutableSignal.Type.NEXT &&
+						  event.value != null) {
 							sequence.set(nextSequence - 1L);
 						} else {
 							sequence.set(nextSequence);
@@ -791,7 +794,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 						processedSequence = true;
 					}
 				}
-			} finally{
+			} finally {
 				processor.decrementSubscribers();
 				running.set(false);
 			}
@@ -803,7 +806,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			while ((replayedSequence = processor.cancelledSequences.poll()) != null) {
 				signal = processor.ringBuffer.get(replayedSequence.get() + 1L);
 				try {
-					if(signal.value == null){
+					if (signal.value == null) {
 						barrier.waitFor(replayedSequence.get() + 1L);
 					}
 					readNextEvent(signal, unbounded);

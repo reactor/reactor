@@ -17,8 +17,8 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.support.Exceptions;
+import reactor.ReactorProcessor;
+import reactor.core.error.Exceptions;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
@@ -63,7 +63,7 @@ public class LiftStream<O, V> extends Stream<V> {
 	}
 
 	@Override
-	public Dispatcher getDispatcher() {
+	public ReactorProcessor getDispatcher() {
 		return producer.getDispatcher();
 	}
 

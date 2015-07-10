@@ -23,10 +23,10 @@ import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.selector.HeaderResolver;
 import reactor.bus.selector.Selector;
-import reactor.core.processor.CancelException;
+import reactor.core.error.CancelException;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.ReactorFatalException;
+import reactor.core.error.ReactorFatalException;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 

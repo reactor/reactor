@@ -24,7 +24,7 @@ import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
@@ -68,7 +68,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final ExecutorService           threadPool;
 
 	public ZeroMQTcpClient(@Nonnull Environment env,
-	                       @Nonnull Dispatcher eventsDispatcher,
+	                       @Nonnull ReactorProcessor eventsDispatcher,
 	                       @Nonnull InetSocketAddress connectAddress,
 	                       @Nullable ClientSocketOptions options,
 	                       @Nullable SslOptions sslOptions,

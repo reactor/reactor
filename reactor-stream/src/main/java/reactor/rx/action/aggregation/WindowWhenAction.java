@@ -19,7 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
@@ -36,17 +36,17 @@ import reactor.rx.broadcast.Broadcaster;
 public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 
 	final private Supplier<? extends Publisher<?>> boundarySupplier;
-	final private Environment environment;
-	final private Dispatcher dispatcher;
+	final private Environment                      environment;
+	final private ReactorProcessor                 dispatcher;
 
 	private Broadcaster<T> windowBroadcaster;
 
-	public WindowWhenAction(Environment environment, Dispatcher dispatcher, Supplier<? extends Publisher<?>> boundarySupplier) {
+	public WindowWhenAction(Environment environment, ReactorProcessor dispatcher, Supplier<? extends Publisher<?>>
+	  boundarySupplier) {
 		this.boundarySupplier = boundarySupplier;
 		this.environment = environment;
 		this.dispatcher = dispatcher;
 	}
-
 
 
 	@Override
@@ -99,9 +99,9 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 
 	@Override
 	protected void doNext(T value) {
-		if(windowBroadcaster == null) {
+		if (windowBroadcaster == null) {
 			broadcastNext(createWindowStream(value));
-		}else{
+		} else {
 			windowBroadcaster.onNext(value);
 		}
 	}
@@ -140,7 +140,7 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	@Override
-	public Dispatcher getDispatcher() {
+	public ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 }

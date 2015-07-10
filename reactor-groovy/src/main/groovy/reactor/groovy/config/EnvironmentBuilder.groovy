@@ -2,7 +2,7 @@ package reactor.groovy.config
 
 import groovy.transform.CompileStatic
 import reactor.Environment
-import reactor.core.Dispatcher
+import reactor.ReactorProcessor
 import reactor.core.config.ConfigurationReader
 import reactor.core.config.DispatcherConfiguration
 import reactor.core.config.ReactorConfiguration
@@ -17,7 +17,7 @@ import static groovy.lang.Closure.DELEGATE_FIRST
 class EnvironmentBuilder implements ConfigurationReader,Supplier<Environment> {
 
 	private final List<DispatcherConfiguration> dispatcherConfigurations = []
-	private final Map<String, Dispatcher> dispatchers = [:]
+	private final Map<String, ReactorProcessor> dispatchers = [:]
 	private final Properties props
 	private Environment environment
 
@@ -39,7 +39,7 @@ class EnvironmentBuilder implements ConfigurationReader,Supplier<Environment> {
 	/**
 	 * initialize a Dispatcher
 	 * @param c DSL
-	 * @return {@link Dispatcher}
+	 * @return {@link ReactorProcessor}
 	 */
 	DispatcherConfiguration dispatcher(String name,
 			@DelegatesTo(strategy = DELEGATE_FIRST, value = DispatcherConfigurationBuilder) Closure c
@@ -55,9 +55,9 @@ class EnvironmentBuilder implements ConfigurationReader,Supplier<Environment> {
 	/**
 	 * initialize a Dispatcher
 	 * @param c DSL
-	 * @return {@link Dispatcher}
+	 * @return {@link ReactorProcessor}
 	 */
-	Dispatcher dispatcher(String name, Dispatcher d) {
+	ReactorProcessor dispatcher(String name, ReactorProcessor d) {
 		dispatchers[name] = d
 		d
 	}

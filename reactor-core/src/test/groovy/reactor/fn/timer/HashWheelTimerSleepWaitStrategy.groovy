@@ -16,7 +16,7 @@ class HashWheelTimerSleepWaitStrategy extends Specification {
   def "HashWheelTimer can schedule recurring tasks"() {
 
     given:
-    "a new timer"
+    "a new globalTimer"
     def timer = new HashWheelTimer(10, 8, new HashWheelTimer.SleepWait())
     def latch = new CountDownLatch(10)
 
@@ -38,7 +38,7 @@ class HashWheelTimerSleepWaitStrategy extends Specification {
   def "HashWheelTimer can delay submitted tasks"() {
 
     given:
-    "a new timer"
+    "a new globalTimer"
     def delay = 500
     def timer = new HashWheelTimer(10, 8, new HashWheelTimer.SleepWait())
     def latch = new CountDownLatch(1)

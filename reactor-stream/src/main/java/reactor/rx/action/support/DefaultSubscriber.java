@@ -17,7 +17,7 @@ package reactor.rx.action.support;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.Bounded;
 
 /**
@@ -46,7 +46,7 @@ public class DefaultSubscriber<O> implements Subscriber<O>, Bounded {
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 		return getCapacity() < producerCapacity;
 	}
 

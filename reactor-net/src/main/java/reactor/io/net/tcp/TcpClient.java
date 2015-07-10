@@ -17,7 +17,7 @@
 package reactor.io.net.tcp;
 
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -46,7 +46,7 @@ public abstract class TcpClient<IN, OUT>
 	private final SslOptions          sslOptions;
 
 	protected TcpClient(Environment env,
-	                    Dispatcher dispatcher,
+	                    ReactorProcessor dispatcher,
 	                    InetSocketAddress connectAddress,
 	                    ClientSocketOptions options,
 	                    SslOptions sslOptions,

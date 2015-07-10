@@ -19,8 +19,8 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.reactivestreams.PublisherFactory;
-import reactor.core.reactivestreams.SubscriberFactory;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberFactory;
 
 import java.util.concurrent.atomic.AtomicLong;
 

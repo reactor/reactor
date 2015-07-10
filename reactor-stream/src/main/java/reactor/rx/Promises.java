@@ -18,10 +18,10 @@ package reactor.rx;
 
 import org.reactivestreams.Publisher;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.reactivestreams.PublisherFactory;
-import reactor.core.reactivestreams.SubscriberWithContext;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -72,11 +72,11 @@ public final class Promises {
 	 * Create a {@link Promise}.
 	 *
 	 * @param env        the {@link reactor.Environment} to use
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
+	 * @param dispatcher the {@link ReactorProcessor} to use
 	 * @param <T>        type of the expected value
 	 * @return a new {@link reactor.rx.Promise}
 	 */
-	public static <T> Promise<T> ready(Environment env, Dispatcher dispatcher) {
+	public static <T> Promise<T> ready(Environment env, ReactorProcessor dispatcher) {
 		return new Promise<T>(dispatcher, env);
 	}
 
@@ -115,7 +115,7 @@ public final class Promises {
 	 * @param <T>        type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> task(Environment env, Dispatcher dispatcher, final Supplier<T> supplier) {
+	public static <T> Promise<T> task(Environment env, ReactorProcessor dispatcher, final Supplier<T> supplier) {
 		Publisher<T> p = PublisherFactory.forEach(new Consumer<SubscriberWithContext<T, Void>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Void> sub) {
@@ -173,7 +173,7 @@ public final class Promises {
 	 * @param <T>        the type of the value
 	 * @return A {@link Promise} that is completed with the given value
 	 */
-	public static <T> Promise<T> success(Environment env, Dispatcher dispatcher, T value) {
+	public static <T> Promise<T> success(Environment env, ReactorProcessor dispatcher, T value) {
 		return new Promise<T>(value, dispatcher, env);
 	}
 
@@ -212,7 +212,7 @@ public final class Promises {
 	 * @param <T>        the type of the value
 	 * @return A {@link Promise} that is completed with the given error
 	 */
-	public static <T> Promise<T> error(Environment env, Dispatcher dispatcher, Throwable error) {
+	public static <T> Promise<T> error(Environment env, ReactorProcessor dispatcher, Throwable error) {
 		return new Promise<T>(error, dispatcher, env);
 	}
 

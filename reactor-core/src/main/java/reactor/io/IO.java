@@ -17,9 +17,9 @@ package reactor.io;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.reactivestreams.PublisherFactory;
-import reactor.core.reactivestreams.SubscriberWithContext;
-import reactor.core.support.ReactorFatalException;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.error.ReactorFatalException;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;

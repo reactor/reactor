@@ -86,7 +86,7 @@ class GroovyPromisesSpec extends Specification {
 			p.error
 			thrown(RuntimeException)
 
-		when: "a deferred failed Promise with runtime exception"
+		when: "a deferred failed Promise with runtime error"
 			p = Promises.error(new IllegalArgumentException("Bad code! Bad!"))
 
 		and: "invoke result"

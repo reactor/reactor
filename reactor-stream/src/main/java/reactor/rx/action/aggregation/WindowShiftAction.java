@@ -17,7 +17,7 @@ package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
@@ -42,21 +42,21 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 
 	private final Consumer<Long> timeshiftTask;
 	private final List<ReactiveSubscription<T>> currentWindows = new LinkedList<>();
-	private final int         skip;
-	private final int         batchSize;
-	private final long           timeshift;
-	private final TimeUnit       unit;
-	private final Timer          timer;
-	private final Environment environment;
-	private final Dispatcher  dispatcher;
-	private       int         index;
-	private Pausable    timeshiftRegistration;
+	private final int              skip;
+	private final int              batchSize;
+	private final long             timeshift;
+	private final TimeUnit         unit;
+	private final Timer            timer;
+	private final Environment      environment;
+	private final ReactorProcessor dispatcher;
+	private       int              index;
+	private       Pausable         timeshiftRegistration;
 
-	public WindowShiftAction(Environment environment, Dispatcher dispatcher, int size, int skip) {
+	public WindowShiftAction(Environment environment, ReactorProcessor dispatcher, int size, int skip) {
 		this(environment, dispatcher, size, skip, -1l, -1l, null, null);
 	}
 
-	public WindowShiftAction(Environment environment, final Dispatcher dispatcher, int size, int skip,
+	public WindowShiftAction(Environment environment, final ReactorProcessor dispatcher, int size, int skip,
 	                         final long timespan, final long timeshift, TimeUnit unit, final Timer timer) {
 		this.dispatcher = dispatcher;
 		this.skip = skip;
@@ -165,7 +165,7 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
+	public final ReactorProcessor getDispatcher() {
 		return this.dispatcher;
 	}
 

@@ -16,7 +16,7 @@
 package reactor.groovy
 
 import reactor.Environment
-import reactor.fn.support.Tap
+import reactor.core.subscriber.Tap
 import reactor.fn.tuple.Tuple
 import reactor.rx.Stream
 import reactor.rx.Streams
@@ -97,7 +97,7 @@ class GroovyStreamSpec extends Specification {
 			def c = Streams.from(['1', '2', '3', '4', '5'])
 
 		and:
-			'apply a transformation that generates an exception for the last value'
+			'apply a transformation that generates an error for the last value'
 			int sum = 0
 			def t = new Tap()
 			def d = c | { Integer.parseInt it } | { if (it >= 5) throw new IllegalArgumentException() else sum += it }

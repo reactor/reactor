@@ -29,7 +29,7 @@ import io.netty.util.concurrent.FutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -94,7 +94,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	 * @param codec          The codec used to encode and decode data
 	 */
 	public NettyTcpClient(Environment env,
-	                      Dispatcher dispatcher,
+	                      ReactorProcessor dispatcher,
 	                      InetSocketAddress connectAddress,
 	                      final ClientSocketOptions options,
 	                      final SslOptions sslOptions,

@@ -22,9 +22,9 @@ import reactor.bus.Bus;
 import reactor.bus.EventBus;
 import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.fn.Consumer;
 
 import javax.annotation.Nonnull;
@@ -55,7 +55,7 @@ public final class BusPublisher<T> implements Publisher<T> {
 
 		this.selector = selector;
 		this.observable = observable;
-		Dispatcher dispatcher = EventBus.class.isAssignableFrom(observable.getClass()) ?
+		ReactorProcessor dispatcher = EventBus.class.isAssignableFrom(observable.getClass()) ?
 				((EventBus)observable).getDispatcher() : SynchronousDispatcher.INSTANCE;
 		this.ordering = dispatcher.supportsOrdering();
 	}

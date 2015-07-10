@@ -15,7 +15,9 @@
  */
 
 /**
- * Core components of the Reactor framework. Mainly Message-Passing facilities between resources( Dispatcher, Allocator, Queues...).
- * Can be used outside Reactor, it is mainly powering RX and BUS modules.
+ * Core components of the Reactor framework supporting Reactive Stream programming model.
+ * It is mainly powering 'stream', 'net' and 'bus' modules.
+ * Works well with other Reactive Stream libraries to add fast RingBuffer processors, or quickly implement Reactive Stream
+ * Ready components.
  */
 package reactor.core;

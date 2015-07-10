@@ -18,11 +18,11 @@ package reactor.rx.action.terminal;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.support.Bounded;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -38,27 +38,27 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 
 	private final Consumer<? super T> consumer;
-	private final Dispatcher          dispatcher;
+	private final ReactorProcessor    dispatcher;
 	private final Broadcaster<Long>   requestMapperStream;
 
 	private final AtomicLongFieldUpdater<AdaptiveConsumerAction> COUNTED = AtomicLongFieldUpdater.newUpdater
-			(AdaptiveConsumerAction
-					.class, "counted");
+	  (AdaptiveConsumerAction
+		.class, "counted");
 
 	private final AtomicLongFieldUpdater<AdaptiveConsumerAction> COUNTING = AtomicLongFieldUpdater.newUpdater
-			(AdaptiveConsumerAction
-					.class, "counting");
+	  (AdaptiveConsumerAction
+		.class, "counting");
 
 	private volatile long counted;
 	private volatile long counting;
 	private          long pendingRequests;
 
 
-	public AdaptiveConsumerAction(Dispatcher dispatcher,
+	public AdaptiveConsumerAction(ReactorProcessor dispatcher,
 	                              long initCapacity,
 	                              Consumer<? super T> consumer,
 	                              Function<Stream<Long>, ? extends Publisher<? extends Long>>
-			                              requestMapper) {
+	                                requestMapper) {
 		this.consumer = consumer;
 		this.requestMapperStream = Broadcaster.create();
 		this.requestMapperStream.onSubscribe(new Subscription() {
@@ -70,14 +70,14 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 			@Override
 			public void cancel() {
 				Subscription subscription = upstreamSubscription;
-				if(subscription != null){
+				if (subscription != null) {
 					upstreamSubscription = null;
 					subscription.cancel();
 				}
 			}
 		});
 		if (SynchronousDispatcher.INSTANCE == dispatcher) {
-			this.dispatcher =  TailRecurseDispatcher.INSTANCE;
+			this.dispatcher = TailRecurseDispatcher.INSTANCE;
 		} else {
 			this.dispatcher = dispatcher;
 		}
@@ -155,12 +155,12 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 		return capacity != Long.MAX_VALUE;
 	}
 
 	@Override
-	public Dispatcher getDispatcher() {
+	public ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 
@@ -208,7 +208,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 		}
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 			return AdaptiveConsumerAction.this.isReactivePull(dispatcher, producerCapacity);
 		}
 

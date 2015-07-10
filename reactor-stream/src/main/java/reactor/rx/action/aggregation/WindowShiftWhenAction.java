@@ -19,7 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
@@ -44,11 +44,11 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 	private final Supplier<? extends Publisher<?>> bucketClosing;
 	private final Publisher<?>                     bucketOpening;
 	private final Environment                      environment;
-	private final Dispatcher                      dispatcher;
+	private final ReactorProcessor                 dispatcher;
 
-	public WindowShiftWhenAction(Environment environment, Dispatcher dispatcher,
+	public WindowShiftWhenAction(Environment environment, ReactorProcessor dispatcher,
 	                             Publisher<?> bucketOpenings, Supplier<? extends Publisher<?>>
-			boundarySupplier) {
+	                               boundarySupplier) {
 		this.dispatcher = dispatcher;
 		this.bucketClosing = boundarySupplier;
 		this.bucketOpening = bucketOpenings;
@@ -185,7 +185,7 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
+	public final ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 

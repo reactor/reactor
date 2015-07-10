@@ -18,7 +18,7 @@ package reactor.rx.action.control;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -34,7 +34,7 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 
 	private final Broadcaster<Long> throttleStream;
 
-	public ThrottleRequestWhenAction(Dispatcher dispatcher,
+	public ThrottleRequestWhenAction(ReactorProcessor dispatcher,
 	                                 Function<? super Stream<? extends Long>, ? extends Publisher<? extends Long>>
 			                                 predicate) {
 		this.throttleStream = Broadcaster.create(null, dispatcher);
@@ -63,7 +63,7 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 		return true;
 	}
 
@@ -82,7 +82,7 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 		Subscription s;
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 			return false;
 		}
 

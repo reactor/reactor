@@ -19,7 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.support.Bounded;
@@ -49,25 +49,25 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	final List<? extends Publisher<? extends I>> publishers;
 
 	final AtomicInteger status = new AtomicInteger();
-	final protected Dispatcher dispatcher;
+	final protected ReactorProcessor dispatcher;
 
 
 	DynamicMergeAction<?, ?> dynamicMergeAction = null;
 
 	@SuppressWarnings("unchecked")
-	public FanInAction(Dispatcher dispatcher) {
+	public FanInAction(ReactorProcessor dispatcher) {
 		this(dispatcher, null);
 	}
 
-	public FanInAction(Dispatcher dispatcher,
+	public FanInAction(ReactorProcessor dispatcher,
 	                   List<? extends Publisher<? extends I>> publishers) {
 		super();
 		this.dispatcher = SynchronousDispatcher.INSTANCE == dispatcher ?
-				Environment.tailRecurse() : dispatcher;
+		  Environment.tailRecurse() : dispatcher;
 		this.publishers = publishers;
 
 		this.upstreamSubscription = this.innerSubscriptions = createFanInSubscription();
-		if(publishers != null){
+		if (publishers != null) {
 			FanInSubscription.RUNNING_COMPOSABLE_UPDATER.set(innerSubscriptions, publishers.size());
 		}
 	}
@@ -156,7 +156,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
+	public final ReactorProcessor getDispatcher() {
 		return TailRecurseDispatcher.class == dispatcher.getClass() ? SynchronousDispatcher.INSTANCE : dispatcher;
 	}
 
@@ -265,7 +265,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		}
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
 			return outerAction.isReactivePull(dispatcher, producerCapacity);
 		}
 

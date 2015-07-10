@@ -18,7 +18,7 @@ package reactor.rx.action.error;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
@@ -36,10 +36,10 @@ public class RetryAction<T> extends Action<T, T> {
 	private final Publisher<? extends T> rootPublisher;
 	private final Consumer<Throwable> throwableConsumer = new ThrowableConsumer();
 	private       long                currentNumRetries = 0;
-	private       long                pendingRequests = 0l;
-	private Dispatcher dispatcher;
+	private       long                pendingRequests   = 0l;
+	private ReactorProcessor dispatcher;
 
-	public RetryAction(Dispatcher dispatcher, int numRetries,
+	public RetryAction(ReactorProcessor dispatcher, int numRetries,
 	                   Predicate<Throwable> predicate, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
 		this.retryMatcher = predicate;
@@ -62,9 +62,9 @@ public class RetryAction<T> extends Action<T, T> {
 	protected void doNext(T ev) {
 		currentNumRetries = 0;
 		broadcastNext(ev);
-		if(capacity != Long.MAX_VALUE && pendingRequests != Long.MAX_VALUE){
-			synchronized (this){
-				if(pendingRequests != Long.MAX_VALUE) {
+		if (capacity != Long.MAX_VALUE && pendingRequests != Long.MAX_VALUE) {
+			synchronized (this) {
+				if (pendingRequests != Long.MAX_VALUE) {
 					pendingRequests--;
 				}
 			}
@@ -75,7 +75,7 @@ public class RetryAction<T> extends Action<T, T> {
 	@SuppressWarnings("unchecked")
 	public void onError(Throwable throwable) {
 		if ((numRetries != -1 && ++currentNumRetries > numRetries) && (retryMatcher == null || !retryMatcher.test
-				(throwable))) {
+		  (throwable))) {
 			doError(throwable);
 			doShutdown();
 			currentNumRetries = 0;
@@ -97,7 +97,7 @@ public class RetryAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
+	public final ReactorProcessor getDispatcher() {
 		return dispatcher;
 	}
 

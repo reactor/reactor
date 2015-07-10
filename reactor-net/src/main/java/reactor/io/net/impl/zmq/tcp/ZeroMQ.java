@@ -24,7 +24,7 @@ import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.selector.Selectors;
-import reactor.core.Dispatcher;
+import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -65,9 +65,9 @@ public class ZeroMQ<T> {
 		}
 	}
 
-	private final Environment env;
-	private final Dispatcher  dispatcher;
-	private final ZContext    zmqCtx;
+	private final Environment      env;
+	private final ReactorProcessor dispatcher;
+	private final ZContext         zmqCtx;
 
 	private final List<ReactorPeer<T, T, ChannelStream<T, T>>> peers = new ArrayList<>();
 
@@ -83,7 +83,7 @@ public class ZeroMQ<T> {
 		this(env, env.getDispatcher(dispatcher));
 	}
 
-	public ZeroMQ(Environment env, Dispatcher dispatcher) {
+	public ZeroMQ(Environment env, ReactorProcessor dispatcher) {
 		this.env = env;
 		this.dispatcher = dispatcher;
 		this.zmqCtx = new ZContext();
@@ -92,9 +92,9 @@ public class ZeroMQ<T> {
 
 	public static String findSocketTypeName(final int socketType) {
 		List<Registration<Integer, ? extends String>> registrations = SOCKET_TYPES.select(socketType);
-		if(registrations.isEmpty()){
+		if (registrations.isEmpty()) {
 			return "";
-		}else{
+		} else {
 			return registrations.get(0).getObject();
 		}
 
@@ -133,17 +133,17 @@ public class ZeroMQ<T> {
 		Assert.isTrue(!shutdown, "This ZeroMQ instance has been shut down");
 
 		TcpClient<T, T> client = NetStreams.tcpClient(ZeroMQTcpClient.class,
-				new NetStreams.TcpClientFactory<T, T>() {
+		  new NetStreams.TcpClientFactory<T, T>() {
 
-					@Override
-					public Spec.TcpClientSpec<T, T> apply(Spec.TcpClientSpec<T, T> spec) {
-						return spec.env(env).dispatcher(dispatcher).codec(codec)
-								.options(new ZeroMQClientSocketOptions()
-										.context(zmqCtx)
-										.connectAddresses(addrs)
-										.socketType(socketType));
-					}
-				});
+			  @Override
+			  public Spec.TcpClientSpec<T, T> apply(Spec.TcpClientSpec<T, T> spec) {
+				  return spec.env(env).dispatcher(dispatcher).codec(codec)
+					.options(new ZeroMQClientSocketOptions()
+					  .context(zmqCtx)
+					  .connectAddresses(addrs)
+					  .socketType(socketType));
+			  }
+		  });
 
 		final Promise<ChannelStream<T, T>> promise = Promises.ready(env, dispatcher);
 		client.start(new ReactorChannelHandler<T, T, ChannelStream<T, T>>() {
