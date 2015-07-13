@@ -41,6 +41,7 @@ ext {
   hadoopVersion = '1.1.2'
   openHftChronicleVersion = '3.4.2'
   openHftLangVersion = '6.6.2'
+  aeronVersion = '0.1.1'
 
   // Testing
   mockitoVersion = '1.10.19'
@@ -480,5 +481,19 @@ project('reactor-logback') {
       include(dependency("commons-cli:commons-cli:1.2"))
       //include(project(":reactor-core"))
     }
+  }
+}
+
+project('reactor-aeron') {
+  description = 'Integration of Aeron library with reactor'
+
+  dependencies {
+    compile project(':reactor-core')
+
+    compile "uk.co.real-logic:aeron-driver:$aeronVersion",
+            "uk.co.real-logic:aeron-client:$aeronVersion"
+
+    testCompile project(':reactor-stream')
+    testCompile project(':reactor-net')
   }
 }
