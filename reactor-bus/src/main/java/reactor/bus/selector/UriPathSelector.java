@@ -27,7 +27,7 @@ import java.util.Map;
  *
  * @see UriPathTemplate
  */
-public class UriPathSelector extends ObjectSelector<String, UriPathTemplate> {
+public class UriPathSelector extends ObjectSelector<Object, UriPathTemplate> {
 
 	private final HeaderResolver headerResolver = new HeaderResolver() {
 		@Nullable
@@ -64,8 +64,8 @@ public class UriPathSelector extends ObjectSelector<String, UriPathTemplate> {
 	}
 
 	@Override
-	public boolean matches(String path) {
-		return getObject().matches(path);
+	public boolean matches(Object path) {
+		return String.class.isAssignableFrom(path.getClass()) && getObject().matches((String)path);
 	}
 
 	@Override
