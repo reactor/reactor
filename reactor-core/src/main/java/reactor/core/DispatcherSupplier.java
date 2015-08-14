@@ -24,5 +24,6 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.0
  */
+@Deprecated
 public interface DispatcherSupplier extends Resource, Supplier<Dispatcher> {
 }

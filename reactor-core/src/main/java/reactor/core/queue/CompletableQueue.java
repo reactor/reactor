@@ -24,6 +24,7 @@ import java.util.Queue;
  * @author Stephane Maldini
  * @since 2.0
  */
+@Deprecated
 public interface CompletableQueue<T> extends Queue<T> {
 
 	/**
