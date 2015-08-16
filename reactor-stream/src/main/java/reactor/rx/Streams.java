@@ -459,135 +459,9 @@ public class Streams {
 		return new SingleValueStream<T>(value1);
 	}
 
-
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2) {
-		return from(value1, value2);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3) {
-		return from(value1, value2, value3);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4) {
-		return from(value1, value2, value3, value4);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param value5 The fifth value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5) {
-		return from(value1, value2, value3, value4, value5);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param value5 The fifth value to {@code onNext()}
-	 * @param value6 The sixth value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6) {
-		return from(value1, value2, value3, value4, value5, value6);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param value5 The fifth value to {@code onNext()}
-	 * @param value6 The sixth value to {@code onNext()}
-	 * @param value7 The seventh value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7) {
-		return from(value1, value2, value3, value4, value5, value6, value7);
-	}
-
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param value5 The fifth value to {@code onNext()}
-	 * @param value6 The sixth value to {@code onNext()}
-	 * @param value7 The seventh value to {@code onNext()}
-	 * @param value8 The eigth value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8) {
-		return from(value1, value2, value3, value4, value5, value6, value7, value8);
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request. Evoked only when there are more than 8 parameters.
 	 * <p>
 	 *
 	 * @param values Send values to {@code onNext()}
@@ -686,7 +560,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stream<T> concat(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
+	public static <T> Stream<T> concat(List<? extends Publisher<? extends T>> mergedPublishers) {
 		final List<Publisher<? extends T>> publishers = new ArrayList<>();
 		for (Publisher<? extends T> mergedPublisher : mergedPublishers) {
 			publishers.add(mergedPublisher);
@@ -707,14 +581,14 @@ public class Streams {
 	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
 	 * to.
 	 *
-	 * @param concatdPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param concatedPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>               type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<T> concat(Publisher<? extends Publisher<? extends T>> concatdPublishers) {
+	public static <T> Stream<T> concat(Publisher<? extends Publisher<? extends T>> concatedPublishers) {
 		final Action<Publisher<? extends T>, T> concatAction = new ConcatAction<>();
-		concatdPublishers.subscribe(concatAction);
+		concatedPublishers.subscribe(concatAction);
 		return concatAction;
 	}
 
@@ -723,164 +597,13 @@ public class Streams {
 	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
 	 * to.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param sources The upstream sources {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>     type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2
-	) {
-		return concat(Arrays.asList(source1, source2));
-	}
-
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3
-	) {
-		return concat(Arrays.asList(source1, source2, source3));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3,
-	                                   Publisher<? extends T> source4
-	) {
-		return concat(Arrays.asList(source1, source2, source3, source4));
-	}
-
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3,
-	                                   Publisher<? extends T> source4,
-	                                   Publisher<? extends T> source5
-	) {
-		return concat(Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3,
-	                                   Publisher<? extends T> source4,
-	                                   Publisher<? extends T> source5,
-	                                   Publisher<? extends T> source6
-	) {
-		return concat(Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3,
-	                                   Publisher<? extends T> source4,
-	                                   Publisher<? extends T> source5,
-	                                   Publisher<? extends T> source6,
-	                                   Publisher<? extends T> source7
-	) {
-		return concat(Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8 The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3,
-	                                   Publisher<? extends T> source4,
-	                                   Publisher<? extends T> source5,
-	                                   Publisher<? extends T> source6,
-	                                   Publisher<? extends T> source7,
-	                                   Publisher<? extends T> source8
-	) {
-		return concat(Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7, source8));
+	public static <T> Stream<T> concat(Publisher<? extends T>... sources) {
+		return concat(Arrays.asList(sources));
 	}
 
 	/**
@@ -929,164 +652,14 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param sources The upstream sources {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>     type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2
-	) {
-		return merge(Arrays.asList(source1, source2));
+	public static <T> Stream<T> merge(Publisher<? extends T> ... sources) {
+		return merge(Arrays.asList(sources));
 	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3
-	) {
-		return merge(Arrays.asList(source1, source2, source3));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4
-	) {
-		return merge(Arrays.asList(source1, source2, source3, source4));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5
-	) {
-		return merge(Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6
-	) {
-		return merge(Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7
-	) {
-		return merge(Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8 The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7,
-	                                  Publisher<? extends T> source8
-	) {
-		return merge(Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7, source8));
-	}
-
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
@@ -1623,160 +1196,13 @@ public class Streams {
 	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
 	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param sources The upstream sources {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>     type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2) {
-		return join(Arrays.asList(source1, source2));
-	}
-
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3) {
-		return join(Arrays.asList(source1, source2, source3));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4) {
-		return join(Arrays.asList(source1, source2, source3, source4));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5) {
-		return join(Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5,
-	                                       Publisher<? extends T> source6) {
-		return join(Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5,
-	                                       Publisher<? extends T> source6,
-	                                       Publisher<? extends T> source7) {
-		return join(Arrays.asList(source1, source2, source3, source4, source5, source6, source7));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
-	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source8 The eigth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2,
-	                                       Publisher<? extends T> source3,
-	                                       Publisher<? extends T> source4,
-	                                       Publisher<? extends T> source5,
-	                                       Publisher<? extends T> source6,
-	                                       Publisher<? extends T> source7,
-	                                       Publisher<? extends T> source8) {
-		return join(Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8));
+	public static <T> Stream<List<T>> join(Publisher<? extends T> ... sources) {
+		return join(Arrays.asList(sources));
 	}
 
 	/**
