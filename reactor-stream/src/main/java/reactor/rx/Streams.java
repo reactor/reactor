@@ -255,7 +255,7 @@ public class Streams {
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> from(T[] values) {
+	public static <T> Stream<T> from(T... values) {
 		return IterableStream.create(Arrays.asList(values));
 	}
 
@@ -471,7 +471,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2) {
-		return from(Arrays.asList(value1, value2));
+		return from(value1, value2);
 	}
 
 
@@ -487,7 +487,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3) {
-		return from(Arrays.asList(value1, value2, value3));
+		return from(value1, value2, value3);
 	}
 
 
@@ -504,7 +504,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4) {
-		return from(Arrays.asList(value1, value2, value3, value4));
+		return from(value1, value2, value3, value4);
 	}
 
 
@@ -522,7 +522,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5));
+		return from(value1, value2, value3, value4, value5);
 	}
 
 
@@ -541,7 +541,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5, value6));
+		return from(value1, value2, value3, value4, value5, value6);
 	}
 
 
@@ -561,7 +561,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
+		return from(value1, value2, value3, value4, value5, value6, value7);
 	}
 
 
@@ -582,28 +582,20 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
+		return from(value1, value2, value3, value4, value5, value6, value7, value8);
 	}
 
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
+	 * request. Evoked only when there are more than 8 parameters.
 	 * <p>
 	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param value5 The fifth value to {@code onNext()}
-	 * @param value6 The sixth value to {@code onNext()}
-	 * @param value7 The seventh value to {@code onNext()}
-	 * @param value8 The eigth value to {@code onNext()}
-	 * @param rest rest of values to {@code onNext()}
+	 * @param values Send values to {@code onNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8, T... rest) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8)).concatWith(from(Arrays.asList(rest)));
+	public static <T> Stream<T> just(T... values) {
+		return from(values);
 	}
 
 
