@@ -7,4 +7,5 @@ include 'reactor-core',
 		'reactor-net',
 		'reactor-groovy-extensions',
 		'reactor-groovy',
-		'reactor-logback'
+		'reactor-logback',
+		'reactor-aeron'
