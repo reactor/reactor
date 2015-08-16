@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A public factory to build {@link Stream}, Streams provide for common transformations from a few structures such as
- * Iterable or Future to a Stream, in addition to provide for combinatory operations (merge, switchOnNext...).
+ * List or Future to a Stream, in addition to provide for combinatory operations (merge, switchOnNext...).
  * <p>
  * <p>
  * Examples of use (In Java8 but would also work with Anonymous classes or Groovy Closures for instance):
@@ -234,7 +234,7 @@ public class Streams {
 
 
 	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription request.
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed List on subscription request.
 	 * <p>
 	 * It will use the passed dispatcher to emit signals.
 	 *
@@ -242,7 +242,7 @@ public class Streams {
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> from(Iterable<? extends T> values) {
+	public static <T> Stream<T> from(List<? extends T> values) {
 		return IterableStream.create(values);
 	}
 
@@ -460,7 +460,7 @@ public class Streams {
 	}
 
 	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed List on subscription
 	 * request.
 	 * <p>
 	 *
@@ -617,17 +617,14 @@ public class Streams {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stream<T> merge(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		final List<Publisher<? extends T>> publishers = new ArrayList<>();
-		for (Publisher<? extends T> mergedPublisher : mergedPublishers) {
-			publishers.add(mergedPublisher);
-		}
-		if (publishers.size() == 0) {
+	public static <T> Stream<T> merge(List<? extends Publisher<? extends T>> mergedPublishers) {
+		final int size = mergedPublishers.size();
+		if (size == 0) {
 			return empty();
-		} else if (publishers.size() == 1) {
-			return wrap((Publisher<T>) publishers.get(0));
+		} else if (size == 1) {
+			return wrap((Publisher<T>) mergedPublishers.get(0));
 		}
-		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, publishers);
+		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, mergedPublishers);
 	}
 
 	/**
