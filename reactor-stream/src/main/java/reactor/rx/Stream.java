@@ -1153,8 +1153,18 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	 * @return the merged stream
 	 * @since 2.0
 	 */
-	public final Stream<O> startWith(final Iterable<O> iterable) {
+	public final Stream<O> startWith(final Iterable<? extends O> iterable) {
 		return startWith(Streams.from(iterable));
+	}
+
+	/**
+	 * Start emitting all items from the passed publisher then emits from the current stream.
+	 *
+	 * @return the merged stream
+	 * @since 2.0
+	 */
+	public final Stream<O> startWith(final List<? extends O> list) {
+		return startWith(Streams.from(list));
 	}
 
 	/**
@@ -1237,6 +1247,20 @@ public abstract class Stream<O> implements Publisher<O>, NonBlocking {
 	public final <T2, V> Stream<V> zipWith(Iterable<? extends T2> iterable,
 	                                       @Nonnull Function<Tuple2<O, T2>, V> zipper) {
 		return zipWith(Streams.from(iterable), zipper);
+	}
+
+	/**
+	 * {@link #lift(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
+	 * complete.
+	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
+	 *
+	 * @return the zipped stream
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T2, V> Stream<V> zipWith(List<? extends T2> list,
+										   @Nonnull Function<Tuple2<O, T2>, V> zipper) {
+		return zipWith(Streams.from(list), zipper);
 	}
 
 	/**
