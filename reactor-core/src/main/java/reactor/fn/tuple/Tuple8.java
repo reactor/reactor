@@ -113,7 +113,7 @@ public class Tuple8<T1, T2, T3, T4, T5, T6, T7, T8> extends Tuple7<T1, T2, T3, T
 
 	@Override
 	public String toString() {
-		return super.toString()+
-				(t8 != null ? ","+t8.toString() : "");
+		return super.toString() +
+		  (t8 != null ? "," + t8.toString() : "");
 	}
 }

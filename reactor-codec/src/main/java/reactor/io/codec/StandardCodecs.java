@@ -49,6 +49,6 @@ public abstract class StandardCodecs {
 	 * A {@link DelimitedCodec} that works with {@code String} data delimited by a line-feed ({@code '\n'}) character
 	 */
 	public static final DelimitedCodec<String, String> LINE_FEED_CODEC = new DelimitedCodec<String,
-			String>(STRING_CODEC);
+	  String>(STRING_CODEC);
 
 }

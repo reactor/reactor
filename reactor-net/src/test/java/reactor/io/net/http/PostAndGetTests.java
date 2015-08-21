@@ -52,10 +52,12 @@ public class PostAndGetTests {
 
 	ReactorChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>> getHandler() {
 		return channel -> {
-			channel.headers().entries().forEach(entry1 -> System.out.println(String.format("header [%s=>%s]", entry1.getKey
-					(), entry1.getValue())));
-			channel.params().entrySet().forEach(entry2 -> System.out.println(String.format("params [%s=>%s]", entry2.getKey
-					(), entry2.getValue())));
+			channel.headers().entries().forEach(entry1 -> System.out.println(String.format("header [%s=>%s]", entry1
+			  .getKey
+			  (), entry1.getValue())));
+			channel.params().entrySet().forEach(entry2 -> System.out.println(String.format("params [%s=>%s]", entry2
+			  .getKey
+			  (), entry2.getValue())));
 
 			StringBuilder response = new StringBuilder().append("hello ").append(channel.params().get("name"));
 			System.out.println(String.format("%s from thread %s", response.toString(), Thread.currentThread()));
@@ -66,23 +68,25 @@ public class PostAndGetTests {
 	ReactorChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>> postHandler() {
 		return channel -> {
 
-			channel.headers().entries().forEach(entry -> System.out.println(String.format("header [%s=>%s]", entry.getKey(),
-					entry.getValue())));
+			channel.headers().entries().forEach(entry -> System.out.println(String.format("header [%s=>%s]", entry
+				.getKey(),
+			  entry.getValue())));
 
 			return channel.writeWith(Streams
-					.wrap(channel)
-					.take(1)
-					.log("received")
-					.flatMap(data -> {
-						final StringBuilder response = new StringBuilder().append("hello ").append(new String(data.asBytes()));
-						System.out.println(String.format("%s from thread %s", response.toString(), Thread.currentThread()));
-						return Streams.just(Buffer.wrap(response.toString()));
-					}));
+			  .wrap(channel)
+			  .take(1)
+			  .log("received")
+			  .flatMap(data -> {
+				  final StringBuilder response = new StringBuilder().append("hello ").append(new String(data.asBytes
+				    ()));
+				  System.out.println(String.format("%s from thread %s", response.toString(), Thread.currentThread()));
+				  return Streams.just(Buffer.wrap(response.toString()));
+			  }));
 		};
 	}
 
 	@After
-	public void teardown() throws Exception{
+	public void teardown() throws Exception {
 		httpServer.shutdown().await();
 	}
 
@@ -95,7 +99,7 @@ public class PostAndGetTests {
 	private void get(String path, SocketAddress address) {
 		try {
 			StringBuilder request = new StringBuilder().append(String.format("GET %s HTTP/1.1\r\n", path)).append
-					("Connection: Keep-Alive\r\n").append("\r\n");
+			  ("Connection: Keep-Alive\r\n").append("\r\n");
 			java.nio.channels.SocketChannel channel = java.nio.channels.SocketChannel.open(address);
 			System.out.println(String.format("get: request >> [%s]", request.toString()));
 			channel.write(Buffer.wrap(request.toString()).byteBuffer());
@@ -113,9 +117,9 @@ public class PostAndGetTests {
 	private void post(String path, String data, SocketAddress address) {
 		try {
 			StringBuilder request = new StringBuilder().append(String.format("POST %s HTTP/1.1\r\n", path)).append
-					("Connection: Keep-Alive\r\n");
+			  ("Connection: Keep-Alive\r\n");
 			request.append(String.format("Content-Length: %s\r\n", data.length())).append("\r\n").append(data).append
-					("\r\n");
+			  ("\r\n");
 			java.nio.channels.SocketChannel channel = java.nio.channels.SocketChannel.open(address);
 			System.out.println(String.format("post: request >> [%s]", request.toString()));
 			channel.write(Buffer.wrap(request.toString()).byteBuffer());

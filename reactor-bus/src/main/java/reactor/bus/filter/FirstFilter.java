@@ -23,7 +23,6 @@ import java.util.List;
  * A {@link Filter} implementation that returns the first item.
  *
  * @author Stephane Maldini
- *
  */
 public final class FirstFilter extends AbstractFilter {
 

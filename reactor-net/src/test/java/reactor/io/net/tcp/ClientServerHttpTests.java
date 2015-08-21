@@ -46,7 +46,7 @@ import static org.junit.Assert.assertThat;
 @Ignore
 public class ClientServerHttpTests {
 	private reactor.io.net.http.HttpServer<List<String>, List<String>> httpServer;
-	private Broadcaster<String> broadcaster;
+	private Broadcaster<String>                                        broadcaster;
 
 	@Test
 	public void testSingleConsumerWithOneSession() throws Exception {
@@ -179,7 +179,7 @@ public class ClientServerHttpTests {
 		int count = 1000;
 		int threads = 5;
 
-		for (int t=0; t<10; t++) {
+		for (int t = 0; t < 10; t++) {
 			List<List<String>> clientDatas = getClientDatas(threads, sender, count);
 
 			assertThat(clientDatas.size(), is(threads));
@@ -187,13 +187,13 @@ public class ClientServerHttpTests {
 			int total = 0;
 			List<String> numbersNoEnds = new ArrayList<String>();
 			List<Integer> numbersNoEndsInt = new ArrayList<Integer>();
-			for (int i = 0; i<clientDatas.size(); i++) {
+			for (int i = 0; i < clientDatas.size(); i++) {
 				List<String> datas = clientDatas.get(i);
 				assertThat(datas, notNullValue());
 				for (int j = 0; j < datas.size(); j++) {
 					String data = datas.get(j);
 					List<String> split = split(data);
-					for (int x = 0; x<split.size(); x++) {
+					for (int x = 0; x < split.size(); x++) {
 						if (!split.get(x).contains("END") && !numbersNoEnds.contains(split.get(x))) {
 							numbersNoEnds.add(split.get(x));
 							numbersNoEndsInt.add(Integer.parseInt(split.get(x)));
@@ -211,7 +211,7 @@ public class ClientServerHttpTests {
 			assertThat(msg, numbersNoEndsInt.size(), is(count));
 			assertThat(msg, numbersNoEnds.size(), is(count));
 			// should have total + END with each thread/client
-			assertThat(msg, total, is(count+threads));
+			assertThat(msg, total, is(count + threads));
 		}
 
 	}
@@ -240,22 +240,22 @@ public class ClientServerHttpTests {
 	}
 
 	private void setupFakeProtocolListener() throws Exception {
-		broadcaster = Broadcaster.<String> create(Environment.sharedDispatcher());
+		broadcaster = Broadcaster.<String>create(Environment.sharedDispatcher());
 		final Processor<List<String>, List<String>> processor = RingBufferWorkProcessor.create(false);
 		broadcaster.buffer(5).subscribe(processor);
 
 		DummyListCodec codec = new DummyListCodec();
 		httpServer = NetStreams.httpServer(server -> server
-				.codec(codec).listen(0).dispatcher(Environment.sharedDispatcher()));
+		  .codec(codec).listen(0).dispatcher(Environment.sharedDispatcher()));
 
 		httpServer.get("/data", (request) -> {
 			request.responseHeaders().removeTransferEncodingChunked();
 			return request.writeWith(
-					Streams.wrap(processor)
-							.log("server")
-							.timeout(2, TimeUnit.SECONDS, Streams.empty())
-							.concatWith(Streams.just(new ArrayList<String>()))
-							.capacity(1L)
+			  Streams.wrap(processor)
+				.log("server")
+				.timeout(2, TimeUnit.SECONDS, Streams.empty())
+				.concatWith(Streams.just(new ArrayList<String>()))
+				.capacity(1L)
 
 			);
 		});
@@ -269,13 +269,13 @@ public class ClientServerHttpTests {
 
 	private Promise<List<String>> getClientDataPromise() throws Exception {
 		HttpClient<String, String> httpClient = NetStreams.httpClient(t ->
-						t.codec(StandardCodecs.STRING_CODEC).connect("localhost", httpServer.getListenAddress().getPort())
+			t.codec(StandardCodecs.STRING_CODEC).connect("localhost", httpServer.getListenAddress().getPort())
 		);
 
-		return httpClient.get("/data" )
-				.flatMap(s ->
-						s.log("client").toList()
-				);
+		return httpClient.get("/data")
+		  .flatMap(s ->
+			  s.log("client").toList()
+		  );
 	}
 
 	private List<List<String>> getClientDatas(int threadCount, Sender sender, int count) throws Exception {

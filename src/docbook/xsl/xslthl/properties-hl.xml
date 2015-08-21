@@ -29,10 +29,10 @@ Michiel Hendriks <elmuerte at users.sourceforge.net>
 
 -->
 <highlighters>
-	<highlighter type="oneline-comment">#</highlighter>
-	<highlighter type="regex">
-		<pattern>^(.+?)(?==|:)</pattern>
-		<style>attribute</style>
-		<flags>MULTILINE</flags>
-	</highlighter>
+    <highlighter type="oneline-comment">#</highlighter>
+    <highlighter type="regex">
+        <pattern>^(.+?)(?==|:)</pattern>
+        <style>attribute</style>
+        <flags>MULTILINE</flags>
+    </highlighter>
 </highlighters>

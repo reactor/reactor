@@ -26,7 +26,6 @@ import java.util.List;
  *
  * @param <K> the type of objects that can be matched
  * @param <V> the type of objects that can be registered
- *
  * @author Jon Brisbin
  * @author Andy Wilkinson
  * @author Stephane Maldini

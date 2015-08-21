@@ -46,7 +46,7 @@ public interface Bus<T> {
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 */
 	<V extends T> Registration<Object, Consumer<? extends T>> on(final Selector selector,
-	                                              final Consumer<V> consumer);
+	                                                             final Consumer<V> consumer);
 
 
 	/**

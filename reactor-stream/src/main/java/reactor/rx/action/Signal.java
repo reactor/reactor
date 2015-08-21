@@ -50,7 +50,8 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 
 		/**
 		 * Only happens once, a complete signal is used to confirm the successful end of the data sequence flowing in a
-		 * {@link reactor.rx.Stream}. The signal releases batching operations such as {@link reactor.rx.Stream#buffer()},
+		 * {@link reactor.rx.Stream}. The signal releases batching operations such as {@link reactor.rx.Stream#buffer
+		 * ()},
 		 * {@link reactor.rx.Stream#window()} or {@link reactor.rx.Stream#reduce(reactor.fn.Function)}
 		 * <p>
 		 * see {@link reactor.rx.action.Action#onComplete()}
@@ -59,8 +60,9 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 
 		/**
 		 * Only happens once, a complete signal is used to confirm the error end of the data sequence flowing in a
-		 * {@link reactor.rx.Stream}. However, the signal can be recovered using various operations such as {@link reactor
-				  * .rx.Stream#recover
+		 * {@link reactor.rx.Stream}. However, the signal can be recovered using various operations such as {@link
+		 * reactor
+		 * .rx.Stream#recover
 		 * (Class)} or {@link reactor.rx.Stream#retry()}
 		 * <p>
 		 * see {@link reactor.rx.action.Action#onError(Throwable cause)}
@@ -238,11 +240,12 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 
 		if (type != signal.type) return false;
 		if (isOnComplete()) return true;
-		if (isOnSubscribe() && subscription != null ? !subscription.equals(signal.subscription) : signal.subscription !=
-				null)
+		if (isOnSubscribe() && subscription != null ? !subscription.equals(signal.subscription) : signal
+		  .subscription !=
+		  null)
 			return false;
 		if (isOnError() && throwable != null ? !throwable.equals(signal.throwable) : signal.throwable != null) return
-				false;
+		  false;
 		return (isOnNext() && value != null ? !value.equals(signal.value) : signal.value != null);
 	}
 
@@ -261,10 +264,10 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 	@Override
 	public String toString() {
 		return "Signal{" +
-				"type=" + type +
-				(isOnError() ? ", throwable=" + throwable :
-						(isOnNext() ? ", value=" + value :
-								(isOnSubscribe() ? ", subscription=" + subscription : ""))) +
-				'}';
+		  "type=" + type +
+		  (isOnError() ? ", throwable=" + throwable :
+			(isOnNext() ? ", value=" + value :
+			  (isOnSubscribe() ? ", subscription=" + subscription : ""))) +
+		  '}';
 	}
 }

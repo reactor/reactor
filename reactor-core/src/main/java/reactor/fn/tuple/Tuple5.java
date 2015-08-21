@@ -29,7 +29,6 @@ import java.util.Iterator;
  * @param <T3> The type of the third value held by this tuple
  * @param <T4> The type of the fourth value held by this tuple
  * @param <T5> The type of the fifth value held by this tuple
- *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -39,7 +38,7 @@ public class Tuple5<T1, T2, T3, T4, T5> extends Tuple4<T1, T2, T3, T4> {
 
 	public final T5 t5;
 
-	Tuple5(int size, T1 t1,T2 t2,T3 t3,T4 t4,T5 t5) {
+	Tuple5(int size, T1 t1, T2 t2, T3 t3, T4 t4, T5 t5) {
 		super(size, t1, t2, t3, t4);
 		this.t5 = t5;
 	}
@@ -106,7 +105,7 @@ public class Tuple5<T1, T2, T3, T4, T5> extends Tuple4<T1, T2, T3, T4> {
 
 	@Override
 	public String toString() {
-		return super.toString()+
-				(t5 != null ? ","+t5.toString() : "");
+		return super.toString() +
+		  (t5 != null ? "," + t5.toString() : "");
 	}
 }

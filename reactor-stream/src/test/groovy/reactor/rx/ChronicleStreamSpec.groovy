@@ -81,7 +81,7 @@ class ChronicleStreamSpec extends Specification {
 			def stream = Broadcaster.<String> create()
 			def result = null
 
-			def bufferedStream = stream.onOverflowBuffer{persistentQueue}.observe{
+			def bufferedStream = stream.onOverflowBuffer { persistentQueue }.observe {
 				println it
 				result = it
 			}.consumeLater()

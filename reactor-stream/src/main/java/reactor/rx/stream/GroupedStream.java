@@ -19,7 +19,7 @@ import reactor.rx.Stream;
 
 /**
  * The Stream will complete or fail whever the parent groupBy action terminates itself.
- *
+ * <p>
  * Create such stream with the provided factory, E.g.:
  * {@code
  * stream.groupBy(data -> data.id).consume(partitionedStream -> partitionedStream.consume())
@@ -40,8 +40,8 @@ public abstract class GroupedStream<K, T> extends Stream<T> {
 
 	@Override
 	public String toString() {
-		return super.toString()+"{" +
-				"key=" + key +
-				'}';
+		return super.toString() + "{" +
+		  "key=" + key +
+		  '}';
 	}
 }

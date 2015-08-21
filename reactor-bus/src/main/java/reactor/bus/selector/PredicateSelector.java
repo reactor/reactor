@@ -32,9 +32,7 @@ public class PredicateSelector extends ObjectSelector<Object, Predicate<Object>>
 	/**
 	 * Creates a {@link Selector} based on the given {@link Predicate}.
 	 *
-	 * @param predicate
-	 * 		The {@link Predicate} to delegate to when matching objects.
-	 *
+	 * @param predicate The {@link Predicate} to delegate to when matching objects.
 	 * @return PredicateSelector
 	 */
 	public static PredicateSelector predicateSelector(Predicate<Object> predicate) {

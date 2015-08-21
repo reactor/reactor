@@ -31,7 +31,6 @@ public interface HeaderResolver<T> {
 	 * Resolve the headers that might be encoded in a key.
 	 *
 	 * @param key The key to match.
-	 *
 	 * @return Any applicable headers. Might be {@literal null}.
 	 */
 	@Nullable

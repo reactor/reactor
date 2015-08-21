@@ -27,77 +27,72 @@ import reactor.core.publisher.PublisherFactory;
  */
 public final class Publishers extends PublisherFactory {
 
-    /**
-     *
-     * @param publisher
-     * @param <IN>
-     * @return
-     */
-    public static <IN> Publisher<IN> log(Publisher<IN> publisher){
-        return log(publisher, null);
-    }
+	/**
+	 * @param publisher
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
+		return log(publisher, null);
+	}
 
-    /**
-     *
-     * @param publisher
-     * @param category
-     * @param <IN>
-     * @return
-     */
-    public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category){
-        return LogPublisher.log(publisher, category);
-    }
+	/**
+	 * @param publisher
+	 * @param category
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
+		return LogPublisher.log(publisher, category);
+	}
 
-    /**
-     *
-     * @param publisher
-     * @param <IN>
-     * @return
-     */
-    public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher){
-        return publisher;
-    }
+	/**
+	 * @param publisher
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher) {
+		return publisher;
+	}
 
-    /**
-     *
-     * @param error
-     * @param <IN>
-     * @return
-     */
-    public static <IN> Publisher<IN> error(Throwable error){
-        return new Publisher<IN>() {
-            @Override
-            public void subscribe(Subscriber<? super IN> s) {
-                s.onSubscribe(NOOP_SUBSCRIPTION);
-                s.onError(error);
-            }
-        };
-    }
+	/**
+	 * @param error
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> error(Throwable error) {
+		return new Publisher<IN>() {
+			@Override
+			public void subscribe(Subscriber<? super IN> s) {
+				s.onSubscribe(NOOP_SUBSCRIPTION);
+				s.onError(error);
+			}
+		};
+	}
 
-    /**
-     *
-     * @param <IN>
-     * @return
-     */
-    public static <IN> Publisher<IN> complete(){
-        return new Publisher<IN>() {
-            @Override
-            public void subscribe(Subscriber<? super IN> s) {
-                s.onSubscribe(NOOP_SUBSCRIPTION);
-                s.onComplete();
-            }
-        };
-    }
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> complete() {
+		return new Publisher<IN>() {
+			@Override
+			public void subscribe(Subscriber<? super IN> s) {
+				s.onSubscribe(NOOP_SUBSCRIPTION);
+				s.onComplete();
+			}
+		};
+	}
 
 
-    static final Subscription NOOP_SUBSCRIPTION = new Subscription() {
-        @Override
-        public void request(long n) {
-        }
+	static final Subscription NOOP_SUBSCRIPTION = new Subscription() {
+		@Override
+		public void request(long n) {
+		}
 
-        @Override
-        public void cancel() {
-        }
-    };
+		@Override
+		public void cancel() {
+		}
+	};
 
 }

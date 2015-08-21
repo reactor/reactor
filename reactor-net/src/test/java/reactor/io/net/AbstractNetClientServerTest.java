@@ -56,8 +56,10 @@ public class AbstractNetClientServerTest {
 
 	@Before
 	public void setup() {
-		clientPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(getClass().getSimpleName() + "-server"));
-		serverPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(getClass().getSimpleName() + "-client"));
+		clientPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(getClass().getSimpleName() +
+		  "-server"));
+		serverPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(getClass().getSimpleName() +
+		  "-client"));
 
 		env1 = new Environment();
 		env2 = new Environment();
@@ -84,24 +86,24 @@ public class AbstractNetClientServerTest {
 	}
 
 	protected <T> Spec.TcpServerSpec<T, T> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
-	                                                  Class<? extends T> dataType) {
+	                                                       Class<? extends T> dataType) {
 		return createTcpServer(type, dataType, dataType);
 	}
 
 	protected <IN, OUT> Spec.TcpServerSpec<IN, OUT> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
-	                                                           Class<? extends IN> inType,
-	                                                           Class<? extends OUT> outType) {
+	                                                                Class<? extends IN> inType,
+	                                                                Class<? extends OUT> outType) {
 		return new Spec.TcpServerSpec<IN, OUT>(type).env(env1).dispatcher("sync").listen(LOCALHOST, port);
 	}
 
 	protected <T> Spec.TcpClientSpec<T, T> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
-	                                                  Class<? extends T> dataType) {
+	                                                       Class<? extends T> dataType) {
 		return createTcpClient(type, dataType, dataType);
 	}
 
 	protected <IN, OUT> Spec.TcpClientSpec<IN, OUT> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
-	                                                           Class<? extends IN> inType,
-	                                                           Class<? extends OUT> outType) {
+	                                                                Class<? extends IN> inType,
+	                                                                Class<? extends OUT> outType) {
 		return new Spec.TcpClientSpec<IN, OUT>(type).env(env2).dispatcher("sync").connect(LOCALHOST, port);
 	}
 
@@ -109,15 +111,15 @@ public class AbstractNetClientServerTest {
 	                                                      Class<? extends reactor.io.net.tcp.TcpClient> clientType,
 	                                                      Buffer data) throws InterruptedException {
 		assertTcpClientServerExchangedData(
-				serverType,
-				clientType,
-				StandardCodecs.PASS_THROUGH_CODEC,
-				data,
-				(Buffer b) -> {
-					byte[] b1 = data.flip().asBytes();
-					byte[] b2 = b.asBytes();
-					return Arrays.equals(b1, b2);
-				}
+		  serverType,
+		  clientType,
+		  StandardCodecs.PASS_THROUGH_CODEC,
+		  data,
+		  (Buffer b) -> {
+			  byte[] b1 = data.flip().asBytes();
+			  byte[] b2 = b.asBytes();
+			  return Arrays.equals(b1, b2);
+		  }
 		);
 	}
 
@@ -127,22 +129,22 @@ public class AbstractNetClientServerTest {
 	                                                      Codec<Buffer, T, T> codec,
 	                                                      T data,
 	                                                      Predicate<T> replyPredicate)
-			throws InterruptedException {
+	  throws InterruptedException {
 		final Codec<Buffer, T, T> elCodec = codec == null ? (Codec<Buffer, T, T>) StandardCodecs.PASS_THROUGH_CODEC :
-				codec;
+		  codec;
 
 		TcpServer<T, T> server = NetStreams.tcpServer(serverType, s -> s
-						.env(env1)
-						.listen(LOCALHOST, getPort())
-						.codec(elCodec)
+			.env(env1)
+			.listen(LOCALHOST, getPort())
+			.codec(elCodec)
 		);
 
 		server.start(ch -> ch.writeWith(ch.take(1))).await();
 
 		TcpClient<T, T> client = NetStreams.tcpClient(clientType, s -> s
-						.env(env2)
-						.connect(LOCALHOST, getPort())
-						.codec(elCodec)
+			.env(env2)
+			.connect(LOCALHOST, getPort())
+			.codec(elCodec)
 		);
 
 		final Promise<T> p = Promises.prepare();
@@ -191,10 +193,10 @@ public class AbstractNetClientServerTest {
 		@Override
 		public String toString() {
 			return "Data{" +
-					"count=" + count +
-					", length=" + length +
-					", name='" + name + '\'' +
-					'}';
+			  "count=" + count +
+			  ", length=" + length +
+			  ", name='" + name + '\'' +
+			  '}';
 		}
 
 		@Override

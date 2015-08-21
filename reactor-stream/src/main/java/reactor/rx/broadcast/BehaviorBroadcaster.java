@@ -104,8 +104,8 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 */
 	public static <T> Broadcaster<T> first(T value, Environment env, ReactorProcessor dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
-				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
-				"dispatchers");
+		  " For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
+		  "dispatchers");
 		return new BehaviorBroadcaster<>(env, dispatcher, Action.evaluateCapacity(dispatcher.backlogSize()), value);
 	}
 
@@ -191,7 +191,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 		} else {
 			synchronized (this) {
 				if (lastSignal.type == Signal.Type.COMPLETE ||
-						lastSignal.type == Signal.Type.ERROR)
+				  lastSignal.type == Signal.Type.ERROR)
 					return;
 				lastSignal.value = ev;
 				lastSignal.error = null;
@@ -210,7 +210,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	protected void doComplete() {
 		synchronized (this) {
 			if (lastSignal.type == Signal.Type.COMPLETE ||
-					lastSignal.type == Signal.Type.ERROR)
+			  lastSignal.type == Signal.Type.ERROR)
 				return;
 			lastSignal.error = null;
 			lastSignal.type = Signal.Type.COMPLETE;
@@ -222,7 +222,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	protected void doError(Throwable ev) {
 		synchronized (this) {
 			if (lastSignal.type == Signal.Type.COMPLETE ||
-					lastSignal.type == Signal.Type.ERROR)
+			  lastSignal.type == Signal.Type.ERROR)
 				return;
 			lastSignal.value = null;
 			lastSignal.error = ev;
@@ -232,7 +232,8 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	}
 
 	@Override
-	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, CompletableQueue<O> queue) {
+	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, CompletableQueue<O>
+	  queue) {
 		final BufferedSignal<O> withDefault;
 		synchronized (this) {
 			if (lastSignal.type != null) {

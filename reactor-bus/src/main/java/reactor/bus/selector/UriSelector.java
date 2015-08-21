@@ -82,9 +82,9 @@ public class UriSelector extends ObjectSelector<Object, URI> {
 		scheme = (null != uri.getScheme() ? uri.getScheme() : "*");
 		String authority = uri.getAuthority();
 		host = (null != uri.getHost() ? uri.getHost() : "*");
-		if(authority.contains("*:")) {
+		if (authority.contains("*:")) {
 			int i = authority.lastIndexOf(":") + 1;
-			if(i > 1) {
+			if (i > 1) {
 				port = Integer.parseInt(authority.substring(i));
 			} else {
 				port = -1;
@@ -103,13 +103,13 @@ public class UriSelector extends ObjectSelector<Object, URI> {
 
 	@Override
 	public boolean matches(Object key) {
-		if(null == key) {
+		if (null == key) {
 			return false;
 		}
 
 		URI uri = objectToURI(key);
 
-		if(uri == null){
+		if (uri == null) {
 			return false;
 		}
 
@@ -120,16 +120,16 @@ public class UriSelector extends ObjectSelector<Object, URI> {
 		boolean fragmentMatches = null == fragment || fragment.equals(uri.getFragment());
 
 		return schemeMatches
-				&& hostMatches
-				&& portMatches
-				&& pathMatches
-				&& fragmentMatches;
+		  && hostMatches
+		  && portMatches
+		  && pathMatches
+		  && fragmentMatches;
 	}
 
 	private static URI objectToURI(Object key) {
-		if(key instanceof URI) {
-			return (URI)key;
-		} else if(key instanceof String) {
+		if (key instanceof URI) {
+			return (URI) key;
+		} else if (key instanceof String) {
 			return URI.create(key.toString());
 		} else {
 			return null;
@@ -140,13 +140,13 @@ public class UriSelector extends ObjectSelector<Object, URI> {
 		@Nullable
 		@Override
 		public Map<String, Object> resolve(Object key) {
-			if(null == key) {
+			if (null == key) {
 				return null;
 			}
 
 			URI uri = objectToURI(key);
 
-			if(uri == null){
+			if (uri == null) {
 				return null;
 			}
 
@@ -158,14 +158,14 @@ public class UriSelector extends ObjectSelector<Object, URI> {
 			headers.put("path", uri.getPath());
 			headers.put("port", String.valueOf(uri.getPort()));
 			headers.put("query", uri.getQuery());
-			if(null != uri.getQuery()) {
+			if (null != uri.getQuery()) {
 				try {
 					String query = URLDecoder.decode(uri.getQuery(), "ISO-8859-1");
-					for(String s : query.split("&")) {
+					for (String s : query.split("&")) {
 						String[] parts = s.split("=");
 						headers.put(parts[0], parts[1]);
 					}
-				} catch(UnsupportedEncodingException e) {
+				} catch (UnsupportedEncodingException e) {
 					throw new IllegalArgumentException(e);
 				}
 			}

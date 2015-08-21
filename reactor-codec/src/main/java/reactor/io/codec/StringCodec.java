@@ -34,7 +34,7 @@ import java.util.List;
  */
 public class StringCodec extends BufferCodec<String, String> {
 
-	private final Charset        charset;
+	private final Charset charset;
 
 	public StringCodec() {
 		this(null, Charset.forName("UTF-8"));
@@ -73,7 +73,7 @@ public class StringCodec extends BufferCodec<String, String> {
 		return encode(s, charset.newEncoder());
 	}
 
-	protected String decode(Buffer buffer, CharsetDecoder charsetDecoder){
+	protected String decode(Buffer buffer, CharsetDecoder charsetDecoder) {
 		try {
 			return charsetDecoder.decode(buffer.byteBuffer()).toString();
 		} catch (CharacterCodingException e) {
@@ -83,7 +83,7 @@ public class StringCodec extends BufferCodec<String, String> {
 
 	private class StringDecoder implements Function<Buffer, String> {
 
-		private final CharsetDecoder decoder;
+		private final CharsetDecoder   decoder;
 		private final Consumer<String> next;
 
 		private StringDecoder(Consumer<String> next) {
@@ -98,7 +98,7 @@ public class StringCodec extends BufferCodec<String, String> {
 		@Override
 		public String apply(Buffer buffer) {
 			//split using the delimiter
-			if(delimiter != null) {
+			if (delimiter != null) {
 				List<Buffer.View> views = buffer.split(delimiter);
 				int viewCount = views.size();
 
@@ -106,16 +106,16 @@ public class StringCodec extends BufferCodec<String, String> {
 
 				for (Buffer.View view : views) {
 					String in = invokeCallbackOrReturn(next, decode(view.get(), decoder));
-					if(in != null) return in;
+					if (in != null) return in;
 				}
 				return null;
-			}else{
+			} else {
 				return invokeCallbackOrReturn(next, decode(buffer, decoder));
 			}
 		}
 	}
 
-	protected Buffer encode(String s, CharsetEncoder charsetEncoder){
+	protected Buffer encode(String s, CharsetEncoder charsetEncoder) {
 		try {
 			ByteBuffer bb = charsetEncoder.encode(CharBuffer.wrap(s));
 			if (delimiter != null) {

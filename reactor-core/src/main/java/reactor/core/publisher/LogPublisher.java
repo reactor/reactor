@@ -31,109 +31,107 @@ import reactor.fn.Function;
  */
 public final class LogPublisher<IN> implements Publisher<IN> {
 
-    /**
-     *
-     * @param publisher
-     * @param category
-     * @param <IN>
-     * @return
-     */
-    public static <IN> Publisher<IN> log(Publisher<? extends IN> publisher, String category){
-        return new LogPublisher<>(publisher, category);
-    }
+	/**
+	 * @param publisher
+	 * @param category
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> log(Publisher<? extends IN> publisher, String category) {
+		return new LogPublisher<>(publisher, category);
+	}
 
 
-    private final Publisher<IN> wrappedPublisher;
+	private final Publisher<IN> wrappedPublisher;
 
-    protected LogPublisher(final Publisher<? extends IN> source,
-                           final String category) {
+	protected LogPublisher(final Publisher<? extends IN> source,
+	                       final String category) {
 
-        final Logger log = category != null && !category.isEmpty() ?
-          LoggerFactory.getLogger(category) :
-          LoggerFactory.getLogger(LogPublisher.class);
+		final Logger log = category != null && !category.isEmpty() ?
+		  LoggerFactory.getLogger(category) :
+		  LoggerFactory.getLogger(LogPublisher.class);
 
-        this.wrappedPublisher = PublisherFactory.intercept(
-          source,
-          new Function<Subscriber<? super IN>, SubscriberBarrier<IN, IN>>() {
-              @Override
-              public SubscriberBarrier<IN, IN> apply(Subscriber<? super IN> subscriber) {
-                  if(log.isTraceEnabled()) {
-                      log.trace("subscribe: {}", subscriber.getClass().getSimpleName());
-                  }
-                  return new LoggerBarrier<>(log, subscriber);
-              }
-          });
-    }
+		this.wrappedPublisher = PublisherFactory.intercept(
+		  source,
+		  new Function<Subscriber<? super IN>, SubscriberBarrier<IN, IN>>() {
+			  @Override
+			  public SubscriberBarrier<IN, IN> apply(Subscriber<? super IN> subscriber) {
+				  if (log.isTraceEnabled()) {
+					  log.trace("subscribe: {}", subscriber.getClass().getSimpleName());
+				  }
+				  return new LoggerBarrier<>(log, subscriber);
+			  }
+		  });
+	}
 
-    @Override
-    public void subscribe(Subscriber<? super IN> s) {
-        wrappedPublisher.subscribe(s);
-    }
+	@Override
+	public void subscribe(Subscriber<? super IN> s) {
+		wrappedPublisher.subscribe(s);
+	}
 
-    private static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> {
+	private static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> {
 
-        private final Logger log;
+		private final Logger log;
 
-        public LoggerBarrier(Logger log,
-                             Subscriber<? super IN> subscriber) {
-            super(subscriber);
-            this.log = log;
-        }
+		public LoggerBarrier(Logger log,
+		                     Subscriber<? super IN> subscriber) {
+			super(subscriber);
+			this.log = log;
+		}
 
-        @Override
-        protected void doOnSubscribe(Subscription subscription) {
-            if(log.isInfoEnabled()){
-                log.info("⇩ onSubscribe({})", this.subscription);
-            }
-            super.doOnSubscribe(subscription);
-        }
+		@Override
+		protected void doOnSubscribe(Subscription subscription) {
+			if (log.isInfoEnabled()) {
+				log.info("⇩ onSubscribe({})", this.subscription);
+			}
+			super.doOnSubscribe(subscription);
+		}
 
-        @Override
-        protected void doNext(IN in) {
-            if(log.isInfoEnabled()){
-                log.info("↓ onNext({})", in);
-            }
-            super.doNext(in);
-        }
+		@Override
+		protected void doNext(IN in) {
+			if (log.isInfoEnabled()) {
+				log.info("↓ onNext({})", in);
+			}
+			super.doNext(in);
+		}
 
-        @Override
-        protected void doError(Throwable throwable) {
-            if(log.isErrorEnabled()){
-                log.error("↯ onError({})", throwable);
-            }
-            super.doError(throwable);
-        }
+		@Override
+		protected void doError(Throwable throwable) {
+			if (log.isErrorEnabled()) {
+				log.error("↯ onError({})", throwable);
+			}
+			super.doError(throwable);
+		}
 
-        @Override
-        protected void doComplete() {
-            if(log.isInfoEnabled()){
-                log.info("↧ onComplete()");
-            }
-            super.doComplete();
-        }
+		@Override
+		protected void doComplete() {
+			if (log.isInfoEnabled()) {
+				log.info("↧ onComplete()");
+			}
+			super.doComplete();
+		}
 
-        @Override
-        protected void doRequest(long n) {
-            if(log.isInfoEnabled()){
-                log.info("⇡ request({})", n);
-            }
-            super.doRequest(n);
-        }
+		@Override
+		protected void doRequest(long n) {
+			if (log.isInfoEnabled()) {
+				log.info("⇡ request({})", n);
+			}
+			super.doRequest(n);
+		}
 
-        @Override
-        protected void doCancel() {
-            if(log.isInfoEnabled()){
-                log.info("↥ cancel()");
-            }
-            super.doCancel();
-        }
+		@Override
+		protected void doCancel() {
+			if (log.isInfoEnabled()) {
+				log.info("↥ cancel()");
+			}
+			super.doCancel();
+		}
 
 
-
-        @Override
-        public String toString() {
-            return super.toString()+"{logger="+log.getName()+"}";
-        }
-    }
+		@Override
+		public String toString() {
+			return super.toString() + "{logger=" + log.getName() + "}";
+		}
+	}
 
 }

@@ -35,7 +35,7 @@ import java.net.NetworkInterface;
  * @author Stephane Maldini
  */
 public abstract class DatagramServer<IN, OUT>
-		extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
+  extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   listenAddress;
 	private final NetworkInterface    multicastInterface;
@@ -57,11 +57,8 @@ public abstract class DatagramServer<IN, OUT>
 	/**
 	 * Join a multicast group.
 	 *
-	 * @param multicastAddress
-	 * 		multicast address of the group to join
-	 * @param iface
-	 * 		interface to use for multicast
-	 *
+	 * @param multicastAddress multicast address of the group to join
+	 * @param iface            interface to use for multicast
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been joined
 	 */
 	public abstract Promise<Void> join(InetAddress multicastAddress, NetworkInterface iface);
@@ -69,9 +66,7 @@ public abstract class DatagramServer<IN, OUT>
 	/**
 	 * Join a multicast group.
 	 *
-	 * @param multicastAddress
-	 * 		multicast address of the group to join
-	 *
+	 * @param multicastAddress multicast address of the group to join
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been joined
 	 */
 	public Promise<Void> join(InetAddress multicastAddress) {
@@ -81,11 +76,8 @@ public abstract class DatagramServer<IN, OUT>
 	/**
 	 * Leave a multicast group.
 	 *
-	 * @param multicastAddress
-	 * 		multicast address of the group to leave
-	 * @param iface
-	 * 		interface to use for multicast
-	 *
+	 * @param multicastAddress multicast address of the group to leave
+	 * @param iface            interface to use for multicast
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been left
 	 */
 	public abstract Promise<Void> leave(InetAddress multicastAddress, NetworkInterface iface);
@@ -93,9 +85,7 @@ public abstract class DatagramServer<IN, OUT>
 	/**
 	 * Leave a multicast group.
 	 *
-	 * @param multicastAddress
-	 * 		multicast address of the group to leave
-	 *
+	 * @param multicastAddress multicast address of the group to leave
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been left
 	 */
 	public Promise<Void> leave(InetAddress multicastAddress) {
@@ -116,7 +106,9 @@ public abstract class DatagramServer<IN, OUT>
 	 *
 	 * @return the multicast NetworkInterface
 	 */
-	protected NetworkInterface getMulticastInterface() { return multicastInterface; }
+	protected NetworkInterface getMulticastInterface() {
+		return multicastInterface;
+	}
 
 	/**
 	 * Get the {@link reactor.io.net.config.ServerSocketOptions} currently in effect.

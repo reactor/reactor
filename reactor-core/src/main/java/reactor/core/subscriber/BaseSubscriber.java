@@ -26,30 +26,30 @@ import reactor.core.error.SpecificationExceptions;
  * @since 2.1
  */
 public class BaseSubscriber<T> implements Subscriber<T> {
-    @Override
-    public void onSubscribe(Subscription s) {
-        if (s == null) {
-            throw SpecificationExceptions.spec_2_13_exception();
-        }
-    }
+	@Override
+	public void onSubscribe(Subscription s) {
+		if (s == null) {
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
+	}
 
-    @Override
-    public void onNext(T t) {
-        if (t == null) {
-            throw SpecificationExceptions.spec_2_13_exception();
-        }
+	@Override
+	public void onNext(T t) {
+		if (t == null) {
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
 
-    }
+	}
 
-    @Override
-    public void onError(Throwable t) {
-        if (t == null) {
-            throw SpecificationExceptions.spec_2_13_exception();
-        }
-    }
+	@Override
+	public void onError(Throwable t) {
+		if (t == null) {
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
+	}
 
-    @Override
-    public void onComplete() {
+	@Override
+	public void onComplete() {
 
-    }
+	}
 }

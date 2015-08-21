@@ -28,7 +28,6 @@ import javax.annotation.Nonnull;
  *
  * @param <T> the type of the event that can be handled by the consumer and the type that
  *            can be handled by the delegate
- *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */

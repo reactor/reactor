@@ -28,54 +28,54 @@ import java.net.InetSocketAddress;
 import static org.junit.Assert.assertEquals;
 
 public class IncrementalBackoffReconnectTest {
-    @Test
-    public void testDefaultReconnect() {
-        Reconnect rec = NetStreams.backoffReconnect().get();
+	@Test
+	public void testDefaultReconnect() {
+		Reconnect rec = NetStreams.backoffReconnect().get();
 
-        InetSocketAddress a1 = new InetSocketAddress("129.168.0.1",1001);
-        Tuple2<InetSocketAddress, Long> t1 = rec.reconnect(a1, 0);
+		InetSocketAddress a1 = new InetSocketAddress("129.168.0.1", 1001);
+		Tuple2<InetSocketAddress, Long> t1 = rec.reconnect(a1, 0);
 
-        assertEquals(Spec.IncrementalBackoffReconnect.DEFAULT_INTERVAL,t1.getT2().longValue());
-        assertEquals(a1,t1.getT1());
+		assertEquals(Spec.IncrementalBackoffReconnect.DEFAULT_INTERVAL, t1.getT2().longValue());
+		assertEquals(a1, t1.getT1());
 
-        InetSocketAddress a2 = new InetSocketAddress("129.168.0.1",1001);
-        Tuple2<InetSocketAddress, Long> t2 = rec.reconnect(a1, 0);
+		InetSocketAddress a2 = new InetSocketAddress("129.168.0.1", 1001);
+		Tuple2<InetSocketAddress, Long> t2 = rec.reconnect(a1, 0);
 
-        assertEquals(Spec.IncrementalBackoffReconnect.DEFAULT_INTERVAL,t2.getT2().longValue());
-        assertEquals(a2,t2.getT1());
-    }
+		assertEquals(Spec.IncrementalBackoffReconnect.DEFAULT_INTERVAL, t2.getT2().longValue());
+		assertEquals(a2, t2.getT1());
+	}
 
-    @Test
-    public void testReconnectIntervalWithCap() {
-        InetSocketAddress addr1 = new InetSocketAddress("129.168.0.1",1001);
+	@Test
+	public void testReconnectIntervalWithCap() {
+		InetSocketAddress addr1 = new InetSocketAddress("129.168.0.1", 1001);
 
-        Reconnect rec = NetStreams.backoffReconnect()
-            .address(addr1)
-            .interval(5000)
-            .maxInterval(10000)
-            .multiplier(2)
-            .get();
+		Reconnect rec = NetStreams.backoffReconnect()
+		  .address(addr1)
+		  .interval(5000)
+		  .maxInterval(10000)
+		  .multiplier(2)
+		  .get();
 
-        assertEquals(    0L,(long)rec.reconnect(addr1,0).getT2());
-        assertEquals( 5000L,(long)rec.reconnect(addr1,1).getT2());
-        assertEquals(10000L,(long)rec.reconnect(addr1,2).getT2());
-        assertEquals(10000L,(long)rec.reconnect(addr1,3).getT2());
-    }
+		assertEquals(0L, (long) rec.reconnect(addr1, 0).getT2());
+		assertEquals(5000L, (long) rec.reconnect(addr1, 1).getT2());
+		assertEquals(10000L, (long) rec.reconnect(addr1, 2).getT2());
+		assertEquals(10000L, (long) rec.reconnect(addr1, 3).getT2());
+	}
 
-    @Test
-    public void testRoundRobinAddresses() {
-        InetSocketAddress addr1 = new InetSocketAddress("129.168.0.1",1001);
-        InetSocketAddress addr2 = new InetSocketAddress("129.168.0.2",1002);
-        InetSocketAddress addr3 = new InetSocketAddress("129.168.0.3",1003);
+	@Test
+	public void testRoundRobinAddresses() {
+		InetSocketAddress addr1 = new InetSocketAddress("129.168.0.1", 1001);
+		InetSocketAddress addr2 = new InetSocketAddress("129.168.0.2", 1002);
+		InetSocketAddress addr3 = new InetSocketAddress("129.168.0.3", 1003);
 
-        Reconnect rec = NetStreams.backoffReconnect()
-            .address(addr1)
-            .address(addr2)
-            .address(addr3)
-            .get();
+		Reconnect rec = NetStreams.backoffReconnect()
+		  .address(addr1)
+		  .address(addr2)
+		  .address(addr3)
+		  .get();
 
-        assertEquals(addr1,rec.reconnect(addr1,0).getT1());
-        assertEquals(addr2,rec.reconnect(addr2,1).getT1());
-        assertEquals(addr3,rec.reconnect(addr3,2).getT1());
-    }
+		assertEquals(addr1, rec.reconnect(addr1, 0).getT1());
+		assertEquals(addr2, rec.reconnect(addr2, 1).getT1());
+		assertEquals(addr3, rec.reconnect(addr3, 2).getT1());
+	}
 }

@@ -36,7 +36,7 @@ public class DropSubscription<O> extends PushSubscription<O> {
 	protected volatile long capacity = 0l;
 
 	protected static final AtomicLongFieldUpdater<DropSubscription> CAPACITY_UPDATER = AtomicLongFieldUpdater
-			.newUpdater(DropSubscription.class, "capacity");
+	  .newUpdater(DropSubscription.class, "capacity");
 
 	public DropSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
 		super(publisher, subscriber);
@@ -66,8 +66,8 @@ public class DropSubscription<O> extends PushSubscription<O> {
 	@Override
 	public String toString() {
 		return "{" +
-				"capacity=" + capacity +
-				(capacity <= 0 ? "[dropping]" : "") +
-				'}';
+		  "capacity=" + capacity +
+		  (capacity <= 0 ? "[dropping]" : "") +
+		  '}';
 	}
 }

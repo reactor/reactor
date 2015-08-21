@@ -28,6 +28,7 @@ public interface Control {
 
 	/**
 	 * Request the next n elements from the source
+	 *
 	 * @param n the number of elements to request
 	 */
 	void requestMore(long n);
@@ -51,6 +52,7 @@ public interface Control {
 
 	/**
 	 * Parse the materialized upstream source to fetch a materialized map form which allows for graph-style printing.
+	 *
 	 * @return {@link reactor.rx.StreamUtils.StreamVisitor} a Debug container for the current source
 	 */
 	StreamUtils.StreamVisitor debug();

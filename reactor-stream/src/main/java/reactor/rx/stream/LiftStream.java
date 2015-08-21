@@ -89,7 +89,7 @@ public class LiftStream<O, V> extends Stream<V> {
 	@Override
 	public final String toString() {
 		return "LiftStream{" +
-				"producer=" + producer.getClass().getSimpleName() +
-				'}';
+		  "producer=" + producer.getClass().getSimpleName() +
+		  '}';
 	}
 }

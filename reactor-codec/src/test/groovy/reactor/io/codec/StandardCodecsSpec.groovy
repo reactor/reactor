@@ -100,7 +100,7 @@ class StandardCodecsSpec extends Specification {
 			decoder.apply(data)
 
 		then: "the buffer's take and position are at the end of the buffer"
-			res.length() == string.length() -3
+			res.length() == string.length() - 3
 	}
 
 	def "LengthFieldCodec can encode and decode length-prefixed items"() {

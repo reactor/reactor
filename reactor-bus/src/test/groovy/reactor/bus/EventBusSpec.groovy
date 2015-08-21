@@ -109,11 +109,12 @@ class EventBusSpec extends Specification {
 			!data
 	}
 
-	class Foo{}
-	class Bar{}
+	class Foo {}
+
+	class Bar {}
 
 	@CompileStatic
-	class TestConsumer implements Consumer<Event<Foo>>{
+	class TestConsumer implements Consumer<Event<Foo>> {
 		final AtomicInteger value = new AtomicInteger()
 
 		@Override
@@ -127,7 +128,7 @@ class EventBusSpec extends Specification {
 		given:
 			"a plain Reactor and a simple consumer on \$('test')"
 			def reactor = EventBus.create()
-		def c = new TestConsumer()
+			def c = new TestConsumer()
 			reactor.on($("test"), c)
 
 		when:
@@ -354,8 +355,8 @@ class EventBusSpec extends Specification {
 
 		when:
 			"the consumer is invoked several times"
-			r.notify('test',Event.wrap(null))
-			r.notify('test',Event.wrap(null))
+			r.notify('test', Event.wrap(null))
+			r.notify('test', Event.wrap(null))
 
 		then:
 			"the count is only 1"
@@ -375,16 +376,16 @@ class EventBusSpec extends Specification {
 			def e = null
 			r.on(T(Exception),
 					consumer { Exception ex -> e = ex; latch.countDown() }
-					as Consumer<Exception>
+							as Consumer<Exception>
 			)
 
 		and:
 			"a normal consumer that rise exceptions"
-			r.on($('test'),consumer { throw new Exception('bad') })
+			r.on($('test'), consumer { throw new Exception('bad') })
 
 		and:
 			"the consumer is invoked"
-			r.notify('test',Event.wrap(null))
+			r.notify('test', Event.wrap(null))
 
 		then:
 			"consumer has been invoked and e is an error"
@@ -417,7 +418,7 @@ class EventBusSpec extends Specification {
 			latch = new CountDownLatch(1)
 			r.on(T(Exception),
 					consumer { latch.countDown() }
-					as Consumer<Exception>)
+							as Consumer<Exception>)
 
 		and:
 			"the arbitrary consumer fails"

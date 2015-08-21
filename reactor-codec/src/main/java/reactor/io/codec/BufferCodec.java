@@ -46,7 +46,8 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 	/**
 	 * A delimiter can be used to trail any decoded buffer or to finalize encoding from any incoming value
 	 *
-	 * @param delimiter delimiter can be left undefined (null) to bypass appending at encode time and scanning at decode
+	 * @param delimiter delimiter can be left undefined (null) to bypass appending at encode time and scanning at
+	 *                     decode
 	 *                  time.
 	 */
 	protected BufferCodec(Byte delimiter) {
@@ -59,12 +60,12 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 			return super.decode(publisherToDecode);
 		}
 		return PublisherFactory.intercept(publisherToDecode,
-				new Function<Subscriber<? super IN>, SubscriberBarrier<Buffer, IN>>() {
-					@Override
-					public SubscriberBarrier<Buffer, IN> apply(final Subscriber<? super IN> subscriber) {
-						return new AggregatingDecoderBarrier<IN>(BufferCodec.this, subscriber);
-					}
-				});
+		  new Function<Subscriber<? super IN>, SubscriberBarrier<Buffer, IN>>() {
+			  @Override
+			  public SubscriberBarrier<Buffer, IN> apply(final Subscriber<? super IN> subscriber) {
+				  return new AggregatingDecoderBarrier<IN>(BufferCodec.this, subscriber);
+			  }
+		  });
 	}
 
 	@Override
@@ -73,12 +74,12 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 			return super.encode(publisherToEncode);
 		}
 		return PublisherFactory.intercept(publisherToEncode,
-				new Function<Subscriber<? super Buffer>, SubscriberBarrier<OUT, Buffer>>() {
-					@Override
-					public SubscriberBarrier<OUT, Buffer> apply(final Subscriber<? super Buffer> subscriber) {
-						return new AggregatingEncoderBarrier(subscriber);
-					}
-				});
+		  new Function<Subscriber<? super Buffer>, SubscriberBarrier<OUT, Buffer>>() {
+			  @Override
+			  public SubscriberBarrier<OUT, Buffer> apply(final Subscriber<? super Buffer> subscriber) {
+				  return new AggregatingEncoderBarrier(subscriber);
+			  }
+		  });
 	}
 
 	private static final class AggregatingDecoderBarrier<IN> extends SubscriberBarrier<Buffer, IN> {
@@ -86,7 +87,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		private volatile long pendingDemand = 0l;
 
 		private final static AtomicLongFieldUpdater<AggregatingDecoderBarrier> PENDING_UPDATER =
-				AtomicLongFieldUpdater.newUpdater(AggregatingDecoderBarrier.class, "pendingDemand");
+		  AtomicLongFieldUpdater.newUpdater(AggregatingDecoderBarrier.class, "pendingDemand");
 
 		final Buffer               aggregate;
 		final Function<Buffer, IN> codec;
@@ -121,7 +122,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 					Buffer aggregTmp = aggregate.duplicate();
 					aggregTmp.position(aggregate.position()).flip();
 					for (Buffer.View view : aggregTmp.split(delimiter)) {
-						if(view.getEnd() == aggregTmp.limit()) {
+						if (view.getEnd() == aggregTmp.limit()) {
 							return;
 						}
 

@@ -77,7 +77,7 @@ import reactor.rx.subscription.ReactiveSubscription;
  * @since 1.1, 2.0
  */
 public abstract class Action<I, O> extends Stream<O>
-		implements Processor<I, O>, Consumer<I>, Recyclable, Control {
+  implements Processor<I, O>, Consumer<I>, Recyclable, Control {
 
 	/**
 	 * onComplete, onError, request, onSubscribe are dispatched events, therefore up to capacity + 4 events can be
@@ -103,8 +103,8 @@ public abstract class Action<I, O> extends Stream<O>
 
 	public static long evaluateCapacity(long n) {
 		return n != Long.MAX_VALUE ?
-				Math.max(Action.RESERVED_SLOTS, n - Action.RESERVED_SLOTS) :
-				Long.MAX_VALUE;
+		  Math.max(Action.RESERVED_SLOTS, n - Action.RESERVED_SLOTS) :
+		  Long.MAX_VALUE;
 	}
 
 	public Action() {
@@ -126,14 +126,14 @@ public abstract class Action<I, O> extends Stream<O>
 	public void subscribe(final Subscriber<? super O> subscriber) {
 		try {
 			final Bounded asyncSubscriber = Bounded.class.isAssignableFrom(subscriber.getClass()) ?
-					(Bounded) subscriber :
-					null;
+			  (Bounded) subscriber :
+			  null;
 
 			boolean isReactiveCapacity = null == asyncSubscriber || asyncSubscriber.isReactivePull(getDispatcher(),
-					capacity);
+			  capacity);
 
 			final PushSubscription<O> subscription = createSubscription(subscriber,
-					isReactiveCapacity);
+			  isReactiveCapacity);
 
 			if (subscription == null)
 				return;
@@ -144,7 +144,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 			subscribeWithSubscription(subscriber, subscription);
 
-		}catch (Throwable throwable){
+		} catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);
 		}
@@ -179,7 +179,7 @@ public abstract class Action<I, O> extends Stream<O>
 	protected final void doStart() {
 		final PushSubscription<O> downSub = downstreamSubscription;
 		if (downSub != null) {
-				downSub.start();
+			downSub.start();
 		}
 	}
 
@@ -200,7 +200,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 		try {
 			doNext(ev);
-		} catch (CancelException uae){
+		} catch (CancelException uae) {
 			throw uae;
 		} catch (Throwable cause) {
 			doError(Exceptions.addValueAsLastCause(cause, ev));
@@ -260,12 +260,12 @@ public abstract class Action<I, O> extends Stream<O>
 		//log.debug("event [" + ev + "] by: " + getClass().getSimpleName());
 		PushSubscription<O> downstreamSubscription = this.downstreamSubscription;
 		if (downstreamSubscription == null) {
-				throw CancelException.get();
+			throw CancelException.get();
 		}
 
 		try {
 			downstreamSubscription.onNext(ev);
-		} catch(CancelException ce){
+		} catch (CancelException ce) {
 			throw ce;
 		} catch (Throwable throwable) {
 			doError(Exceptions.addValueAsLastCause(throwable, ev));
@@ -368,7 +368,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @since 2.0
 	 */
 	public final <E> Action<I, O> control(Stream<E> controlStream, final Consumer<Tuple2<Action<I, O>,
-			? super E>> controller) {
+	  ? super E>> controller) {
 		final Action<I, O> thiz = this;
 		controlStream.consume(new Consumer<E>() {
 			@Override
@@ -395,7 +395,7 @@ public abstract class Action<I, O> extends Stream<O>
 					});
 				} else {
 					subscribeWithSubscription(newStream,
-							createSubscription(newStream, queueSupplier.get()));
+					  createSubscription(newStream, queueSupplier.get()));
 				}
 				return newStream;
 			}
@@ -473,7 +473,8 @@ public abstract class Action<I, O> extends Stream<O>
 			if (that != null) {
 
 				if (FanInAction.class.isAssignableFrom(that.getClass())) {
-					that = ((FanInAction) that).dynamicMergeAction() != null ? ((FanInAction) that).dynamicMergeAction() : that;
+					that = ((FanInAction) that).dynamicMergeAction() != null ? ((FanInAction) that).dynamicMergeAction
+					  () : that;
 				}
 			}
 		}
@@ -533,7 +534,7 @@ public abstract class Action<I, O> extends Stream<O>
 			PushSubscription<O> dsub = this.downstreamSubscription;
 			if (FanOutSubscription.class.isAssignableFrom(dsub.getClass())) {
 				FanOutSubscription<O> fsub =
-						((FanOutSubscription<O>) this.downstreamSubscription);
+				  ((FanOutSubscription<O>) this.downstreamSubscription);
 
 				if (fsub.remove(subscription) && fsub.isEmpty()) {
 					cancel();
@@ -548,7 +549,8 @@ public abstract class Action<I, O> extends Stream<O>
 		return createSubscription(subscriber, reactivePull ? new CompletableLinkedQueue<O>() : null);
 	}
 
-	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, CompletableQueue<O> queue) {
+	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, CompletableQueue<O>
+	  queue) {
 		if (queue != null) {
 			return new ReactiveSubscription<O>(this, subscriber, queue) {
 
@@ -631,7 +633,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @param subscription
 	 */
 	protected void subscribeWithSubscription(final Subscriber<? super O> subscriber, final PushSubscription<O>
-			subscription) {
+	  subscription) {
 		try {
 			if (!addSubscription(subscription)) {
 				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
@@ -676,8 +678,8 @@ public abstract class Action<I, O> extends Stream<O>
 
 	private boolean inspectPublisher(Action<?, ?> that, Class<?> actionClass) {
 		return that.upstreamSubscription != null
-				&& ((PushSubscription<?>) that.upstreamSubscription).getPublisher() != null
-				&& actionClass.isAssignableFrom(((PushSubscription<?>) that.upstreamSubscription).getPublisher().getClass());
+		  && ((PushSubscription<?>) that.upstreamSubscription).getPublisher() != null
+		  && actionClass.isAssignableFrom(((PushSubscription<?>) that.upstreamSubscription).getPublisher().getClass());
 	}
 
 	@Override
@@ -690,14 +692,14 @@ public abstract class Action<I, O> extends Stream<O>
 	@SuppressWarnings("unchecked")
 	public String toString() {
 		return "{" +
-				(capacity != Long.MAX_VALUE || upstreamSubscription == null ?
-						"{dispatcher=" + getDispatcher() +
-								((!SynchronousDispatcher.class.isAssignableFrom(getDispatcher().getClass()) ? (":" + getDispatcher()
-										.remainingSlots()) :
-										"")) +
-								", max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) + "}"
-						: "") +
-				(upstreamSubscription != null ? upstreamSubscription : "") + '}';
+		  (capacity != Long.MAX_VALUE || upstreamSubscription == null ?
+			"{dispatcher=" + getDispatcher() +
+			  ((!SynchronousDispatcher.class.isAssignableFrom(getDispatcher().getClass()) ? (":" + getDispatcher()
+				.remainingSlots()) :
+				"")) +
+			  ", max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) + "}"
+			: "") +
+		  (upstreamSubscription != null ? upstreamSubscription : "") + '}';
 	}
 
 }

@@ -29,7 +29,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Abstract base class that implements common functionality shared by clients and servers.
  * <p>
- * A Peer is network component with start and shutdown capabilities. On Start it will require a {@link ReactorChannelHandler}
+ * A Peer is network component with start and shutdown capabilities. On Start it will require a {@link
+ * ReactorChannelHandler}
  * to process the incoming {@link ReactorChannel}, regardless of being a server or a client.
  *
  * @author Stephane Maldini

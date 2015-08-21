@@ -49,8 +49,7 @@ public interface Reference<T extends Recyclable> extends Supplier<T> {
 	/**
 	 * Increase reference count by {@literal incr} amount.
 	 *
-	 * @param incr
-	 * 		the amount to increment the reference count.
+	 * @param incr the amount to increment the reference count.
 	 */
 	void retain(int incr);
 
@@ -62,8 +61,7 @@ public interface Reference<T extends Recyclable> extends Supplier<T> {
 	/**
 	 * Decrease the reference count by {@literal incr} amount.
 	 *
-	 * @param decr
-	 * 		the amount to decrement the reference count.
+	 * @param decr the amount to decrement the reference count.
 	 */
 	void release(int decr);
 

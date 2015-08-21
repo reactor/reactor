@@ -26,10 +26,8 @@ import reactor.fn.Pausable;
  *
  * @param <K> The type of object that is matched by selectors
  * @param <V> The type of object that is registered
- *
  * @author Jon Brisbin
  * @author Stephane Maldini
- *
  */
 public interface Registration<K, V> extends Pausable {
 

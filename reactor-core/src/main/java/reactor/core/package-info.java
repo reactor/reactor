@@ -17,7 +17,8 @@
 /**
  * Core components of the Reactor framework supporting Reactive Stream programming model.
  * It is mainly powering 'stream', 'net' and 'bus' modules.
- * Works well with other Reactive Stream libraries to add fast RingBuffer processors, or quickly implement Reactive Stream
+ * Works well with other Reactive Stream libraries to add fast RingBuffer processors, or quickly implement Reactive
+ * Stream
  * Ready components.
  */
 package reactor.core;

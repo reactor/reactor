@@ -21,7 +21,6 @@ package reactor.fn;
  * {@code get()} or can be created in some other way.
  *
  * @param <T> the type of the supplied object
- *
  * @author Jon Brisbin
  */
 public interface Supplier<T> {

@@ -218,14 +218,14 @@ public class SerializedSubscriber<T> extends BaseSubscriber<T> implements Subscr
 
 	@Override
 	public void request(long n) {
-		if(subscription != null){
+		if (subscription != null) {
 			subscription.request(n);
 		}
 	}
 
 	@Override
 	public void cancel() {
-		if(subscription != null){
+		if (subscription != null) {
 			subscription.cancel();
 		}
 	}
@@ -264,11 +264,11 @@ public class SerializedSubscriber<T> extends BaseSubscriber<T> implements Subscr
 		FastList queue;
 		synchronized (this) {
 			queue = this.queue;
-			if(queue == null) return "";
+			if (queue == null) return "";
 		}
 		String res = "{";
 
-		for(Object o : queue.array){
+		for (Object o : queue.array) {
 			res += o + " ";
 		}
 

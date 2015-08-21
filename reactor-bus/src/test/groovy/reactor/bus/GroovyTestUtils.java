@@ -68,9 +68,9 @@ public abstract class GroovyTestUtils {
 					return;
 				}
 				if (null != arg
-						&& argTypes[0] != Object.class
-						&& !argTypes[0].isAssignableFrom(arg.getClass())
-						&& arg instanceof Event) {
+				  && argTypes[0] != Object.class
+				  && !argTypes[0].isAssignableFrom(arg.getClass())
+				  && arg instanceof Event) {
 					accept(((Event) arg).getData());
 					return;
 				}
@@ -91,9 +91,9 @@ public abstract class GroovyTestUtils {
 					return cl.call();
 				}
 				if (null != arg
-						&& argTypes[0] != Object.class
-						&& !argTypes[0].isAssignableFrom(arg.getClass())
-						&& arg instanceof Event) {
+				  && argTypes[0] != Object.class
+				  && !argTypes[0].isAssignableFrom(arg.getClass())
+				  && arg instanceof Event) {
 					return apply((K) ((Event<?>) arg).getData());
 				}
 
@@ -101,6 +101,7 @@ public abstract class GroovyTestUtils {
 			}
 		};
 	}
+
 	public static <K> Predicate<K> predicate(final Closure<Boolean> cl) {
 		return new Predicate<K>() {
 			Class<?>[] argTypes = cl.getParameterTypes();
@@ -112,9 +113,9 @@ public abstract class GroovyTestUtils {
 					return cl.call();
 				}
 				if (null != arg
-						&& argTypes[0] != Object.class
-						&& !argTypes[0].isAssignableFrom(arg.getClass())
-						&& arg instanceof Event) {
+				  && argTypes[0] != Object.class
+				  && !argTypes[0].isAssignableFrom(arg.getClass())
+				  && arg instanceof Event) {
 					return test((K) ((Event<?>) arg).getData());
 				}
 

@@ -107,7 +107,6 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	 * Write Buffer directly to be encoded if any codec has been setup
 	 *
 	 * @param source the raw source to encode
-	 *
 	 * @return the acknowledgement publisher from {@link #writeWith(Publisher)}
 	 */
 	final public Stream<Void> writeBufferWith(Publisher<? extends Buffer> source) {

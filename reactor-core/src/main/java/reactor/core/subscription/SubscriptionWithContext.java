@@ -31,11 +31,12 @@ public class SubscriptionWithContext<C> implements Subscription {
 
 	private volatile       long                                            pending         = 0;
 	protected static final AtomicLongFieldUpdater<SubscriptionWithContext> PENDING_UPDATER = AtomicLongFieldUpdater
-			.newUpdater(SubscriptionWithContext.class, "pending");
+	  .newUpdater(SubscriptionWithContext.class, "pending");
 
-	private volatile       int                                                terminated      = 0;
-	protected static final AtomicIntegerFieldUpdater<SubscriptionWithContext> TERMINATED_UPDATER = AtomicIntegerFieldUpdater
-			.newUpdater(SubscriptionWithContext.class, "terminated");
+	private volatile       int                                                terminated         = 0;
+	protected static final AtomicIntegerFieldUpdater<SubscriptionWithContext> TERMINATED_UPDATER =
+	  AtomicIntegerFieldUpdater
+	  .newUpdater(SubscriptionWithContext.class, "terminated");
 
 
 	protected final C            context;
@@ -46,8 +47,8 @@ public class SubscriptionWithContext<C> implements Subscription {
 	 * will delegate properly.
 	 *
 	 * @param subscription the delegate subscription to invoke on request/cancel
-	 * @param context    the contextual state of any type to bind for later use
-	 * @param <C>        Type of attached stateful context
+	 * @param context      the contextual state of any type to bind for later use
+	 * @param <C>          Type of attached stateful context
 	 * @return a new Subscription with context information
 	 */
 	public static <C> SubscriptionWithContext<C> create(Subscription subscription, C context) {
@@ -75,12 +76,12 @@ public class SubscriptionWithContext<C> implements Subscription {
 
 	@Override
 	public void cancel() {
-		if(TERMINATED_UPDATER.compareAndSet(this, 0, 1)) {
+		if (TERMINATED_UPDATER.compareAndSet(this, 0, 1)) {
 			subscription.cancel();
 		}
 	}
 
-	public boolean isCancelled(){
+	public boolean isCancelled() {
 		return terminated == 1;
 	}
 

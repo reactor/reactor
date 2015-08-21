@@ -44,8 +44,9 @@ public abstract class ReactorClient<IN, OUT, CONN extends ChannelStream<IN, OUT>
 	};
 
 
-	protected ReactorClient(Environment defaultEnv, ReactorProcessor defaultDispatcher, Codec<Buffer, IN, OUT> codec, long
-			prefetch) {
+	protected ReactorClient(Environment defaultEnv, ReactorProcessor defaultDispatcher, Codec<Buffer, IN, OUT> codec,
+	                        long
+	  prefetch) {
 		super(defaultEnv, defaultDispatcher, codec, prefetch);
 	}
 
@@ -61,7 +62,7 @@ public abstract class ReactorClient<IN, OUT, CONN extends ChannelStream<IN, OUT>
 	 * @return a Stream of reconnected address and accumulated number of attempt pairs
 	 */
 	public final Stream<Tuple2<InetSocketAddress, Integer>> start(ReactorChannelHandler<IN, OUT, CONN> handler,
-	                                                              Reconnect reconnect){
+	                                                              Reconnect reconnect) {
 		if (!started.compareAndSet(false, true)) {
 			throw new IllegalStateException("Client already started");
 		}
@@ -70,5 +71,5 @@ public abstract class ReactorClient<IN, OUT, CONN extends ChannelStream<IN, OUT>
 	}
 
 	protected abstract Stream<Tuple2<InetSocketAddress, Integer>> doStart(ReactorChannelHandler<IN, OUT, CONN> handler,
-	                                              Reconnect reconnect);
+	                                                                      Reconnect reconnect);
 }

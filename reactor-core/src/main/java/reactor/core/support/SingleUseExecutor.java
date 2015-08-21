@@ -22,20 +22,20 @@ import java.util.concurrent.*;
 /**
  * @author Stephane Maldini
  */
-public final class SingleUseExecutor implements ExecutorService{
+public final class SingleUseExecutor implements ExecutorService {
 
 	final private ExecutorService delegate;
 
-	public static ExecutorService create(String name){
+	public static ExecutorService create(String name) {
 		return create(name, null);
 	}
 
 	public static ExecutorService create(String name, ClassLoader contextClassLoader) {
 		return new SingleUseExecutor(Executors.newCachedThreadPool(
-				new NamedDaemonThreadFactory(name, contextClassLoader, null, false)));
+		  new NamedDaemonThreadFactory(name, contextClassLoader, null, false)));
 	}
 
-	public static ExecutorService wrap(ExecutorService delegate){
+	public static ExecutorService wrap(ExecutorService delegate) {
 		return new SingleUseExecutor(delegate);
 	}
 
@@ -90,7 +90,7 @@ public final class SingleUseExecutor implements ExecutorService{
 
 	@Override
 	public <T> List<Future<T>> invokeAll(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws
-			InterruptedException {
+	  InterruptedException {
 		return delegate.invokeAll(tasks, timeout, unit);
 	}
 
@@ -101,7 +101,7 @@ public final class SingleUseExecutor implements ExecutorService{
 
 	@Override
 	public <T> T invokeAny(Collection<? extends Callable<T>> tasks, long timeout, TimeUnit unit) throws
-			InterruptedException, ExecutionException, TimeoutException {
+	  InterruptedException, ExecutionException, TimeoutException {
 		return delegate.invokeAny(tasks, timeout, unit);
 	}
 

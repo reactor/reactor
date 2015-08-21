@@ -28,15 +28,17 @@ public class EnvironmentTest {
 		Environment.terminate();
 	}
 
-    @Test
-    public void testGetDispatcherThrowsExceptionWhenNoDispatcherIsFound() throws Exception {
-        try {
-            env.getDispatcher("NonexistingDispatcher");
-            fail("Should have thrown an error");
-        } catch ( IllegalArgumentException e ) {
-            assertEquals("No Dispatcher found for name 'NonexistingDispatcher', it must be present in the configuration properties or being registered programmatically through this#setDispatcher(NonexistingDispatcher, someDispatcher)", e.getMessage());
-        }
-    }
+	@Test
+	public void testGetDispatcherThrowsExceptionWhenNoDispatcherIsFound() throws Exception {
+		try {
+			env.getDispatcher("NonexistingDispatcher");
+			fail("Should have thrown an error");
+		} catch (IllegalArgumentException e) {
+			assertEquals("No Dispatcher found for name 'NonexistingDispatcher', it must be present in the " +
+			  "configuration properties or being registered programmatically through this#setDispatcher" +
+			  "(NonexistingDispatcher, someDispatcher)", e.getMessage());
+		}
+	}
 
 	@Test
 	public void workerOrchestrator() throws InterruptedException {
@@ -45,10 +47,10 @@ public class EnvironmentTest {
 		CountDownLatch latch = new CountDownLatch(3);
 
 		reactor.on(Selectors.$("worker"), o -> {
-				System.out.println(Thread.currentThread().getName() + " worker " + o);
-				reactor.notify("orchestrator", Event.wrap(1000));
-				latch.countDown();
-				System.out.println(Thread.currentThread().getName() + " ok");
+			System.out.println(Thread.currentThread().getName() + " worker " + o);
+			reactor.notify("orchestrator", Event.wrap(1000));
+			latch.countDown();
+			System.out.println(Thread.currentThread().getName() + " ok");
 		});
 
 		reactor.on(Selectors.$("orchestrator"), new Consumer<Event<Integer>>() {

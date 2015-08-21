@@ -44,7 +44,8 @@ public class SslOptions {
 
 	public SslOptions keystoreFile(String keystoreFile) {
 		this.keystoreFile = new File(keystoreFile);
-		Assert.isTrue(this.keystoreFile.exists(), "No keystore file found at path " + this.keystoreFile.getAbsolutePath());
+		Assert.isTrue(this.keystoreFile.exists(), "No keystore file found at path " + this.keystoreFile
+		  .getAbsolutePath());
 		return this;
 	}
 

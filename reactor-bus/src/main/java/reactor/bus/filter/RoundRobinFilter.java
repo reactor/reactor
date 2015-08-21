@@ -32,7 +32,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * passed into the filter.
  *
  * @author Andy Wilkinson
- *
  */
 public final class RoundRobinFilter extends AbstractFilter {
 
@@ -50,7 +49,7 @@ public final class RoundRobinFilter extends AbstractFilter {
 		if (items.isEmpty()) {
 			return items;
 		} else {
-			int index = (int)(getUsageCount(key).getAndIncrement() % (items.size()));
+			int index = (int) (getUsageCount(key).getAndIncrement() % (items.size()));
 			return Collections.singletonList(items.get(index));
 		}
 	}

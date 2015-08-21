@@ -52,7 +52,7 @@ public class UUIDUtilsTests {
 
 				lock.lock();
 				try {
-					if(lastTimeAtomicLong.get() == timeMillis) {
+					if (lastTimeAtomicLong.get() == timeMillis) {
 						timeMillis = lastTimeAtomicLong.incrementAndGet();
 					} else {
 						lastTimeAtomicLong.set(timeMillis);
@@ -83,8 +83,8 @@ public class UUIDUtilsTests {
 			public UUID get() {
 				long timeMillis = (System.currentTimeMillis() * 10000) + 0x01B21DD213814000L;
 
-				synchronized(MONITOR) {
-					if(lastTimeAtomicLong.get() == timeMillis) {
+				synchronized (MONITOR) {
+					if (lastTimeAtomicLong.get() == timeMillis) {
 						timeMillis = lastTimeAtomicLong.incrementAndGet();
 					} else {
 						lastTimeAtomicLong.set(timeMillis);
@@ -116,7 +116,7 @@ public class UUIDUtilsTests {
 
 				lock.lock();
 				try {
-					if(lastTimeLong == timeMillis) {
+					if (lastTimeLong == timeMillis) {
 						timeMillis = ++lastTimeLong;
 					} else {
 						lastTimeLong = timeMillis;
@@ -147,8 +147,8 @@ public class UUIDUtilsTests {
 			public UUID get() {
 				long timeMillis = (System.currentTimeMillis() * 10000) + 0x01B21DD213814000L;
 
-				synchronized(MONITOR) {
-					if(lastTimeLong == timeMillis) {
+				synchronized (MONITOR) {
+					if (lastTimeLong == timeMillis) {
 						timeMillis = ++lastTimeLong;
 					} else {
 						lastTimeLong = timeMillis;
@@ -187,22 +187,22 @@ public class UUIDUtilsTests {
 	}
 
 	private void doTest(String description, final Supplier<UUID> uuidSupplier) throws InterruptedException {
-		for(int t = 0; t < THREADS.length; t++) {
+		for (int t = 0; t < THREADS.length; t++) {
 			int threads = THREADS[t];
 			final int iterations = ITERATIONS_PER_THREAD[t];
 			long[] durations = new long[TEST_ITERATIONS];
 
-			for(int i = 0; i < TEST_ITERATIONS; i++) {
+			for (int i = 0; i < TEST_ITERATIONS; i++) {
 				final CountDownLatch latch = new CountDownLatch(threads);
 
 				long startTime = System.currentTimeMillis();
 
-				for(int j = 0; j < threads; j++) {
+				for (int j = 0; j < threads; j++) {
 					new Thread(new Runnable() {
 
 						@Override
 						public void run() {
-							for(int u = 0; u < iterations; u++) {
+							for (int u = 0; u < iterations; u++) {
 								uuidSupplier.get();
 							}
 							latch.countDown();
@@ -225,7 +225,7 @@ public class UUIDUtilsTests {
 
 	private long getMin(long[] durations) {
 		long min = Long.MAX_VALUE;
-		for(long duration : durations) {
+		for (long duration : durations) {
 			min = Math.min(duration, min);
 		}
 		return min;
@@ -233,7 +233,7 @@ public class UUIDUtilsTests {
 
 	private long getMax(long[] durations) {
 		long max = Long.MIN_VALUE;
-		for(long duration : durations) {
+		for (long duration : durations) {
 			max = Math.max(duration, max);
 		}
 		return max;
@@ -241,7 +241,7 @@ public class UUIDUtilsTests {
 
 	private long getAverage(long[] durations) {
 		long total = 0;
-		for(long duration : durations) {
+		for (long duration : durations) {
 			total += duration;
 		}
 		return total / durations.length;

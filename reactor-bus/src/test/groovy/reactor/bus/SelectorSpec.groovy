@@ -127,7 +127,7 @@ class SelectorSpec extends Specification {
 			r.on(sel2) { Event<String> ev ->
 				vals["wildcard"] = true
 			}
-			r.on(sel3)  { Event<String> ev ->
+			r.on(sel3) { Event<String> ev ->
 				// shouldn't be matched
 				vals = [:]
 			}
@@ -150,42 +150,42 @@ class SelectorSpec extends Specification {
 
 	}
 
-    def "Match-All selector is available"() {
+	def "Match-All selector is available"() {
 
-        given:
-            "A MatchAllSelector"
-            def sel = new MatchAllSelector()
+		given:
+			"A MatchAllSelector"
+			def sel = new MatchAllSelector()
 
-        when:
-            "The selector is matched"
+		when:
+			"The selector is matched"
 
-        then:
-            sel.matches "a string"
-            sel.matches 1L
-            sel.matches true
-            sel.matches false
-            sel.matches(new Date())
-            sel.matches(new Object())
-    }
+		then:
+			sel.matches "a string"
+			sel.matches 1L
+			sel.matches true
+			sel.matches false
+			sel.matches(new Date())
+			sel.matches(new Object())
+	}
 
 	def "Set membership selector is available"() {
 
 		given:
-		"A SetMembershipSelector"
-		def coll = ["a", "b", "c"] as Set<String>
-		def sel = new SetMembershipSelector(coll)
+			"A SetMembershipSelector"
+			def coll = ["a", "b", "c"] as Set<String>
+			def sel = new SetMembershipSelector(coll)
 
 		when:
-		"The selector is matched"
+			"The selector is matched"
 
 		then:
-		sel.matches "a"
-		sel.matches "b"
-		sel.matches "c"
-		!sel.matches("d")
-		!sel.matches([1])
-		!sel.matches(1)
-		!sel.matches(1.0)
+			sel.matches "a"
+			sel.matches "b"
+			sel.matches "c"
+			!sel.matches("d")
+			!sel.matches([1])
+			!sel.matches(1)
+			!sel.matches(1.0)
 	}
 
 	@Ignore

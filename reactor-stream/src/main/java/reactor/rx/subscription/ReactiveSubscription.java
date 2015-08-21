@@ -88,7 +88,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 						long previous = pendingRequestSignals;
 						if (previous != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, toRequest) < 0l) {
 							PENDING_UPDATER.set(this, Long.MAX_VALUE);
-							//onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, previous, toRequest));
+							//onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, previous,
+							// toRequest));
 							return;
 						}
 					}
@@ -115,7 +116,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 					drainNext(list);
 				} else {
 					//started
-					if(terminated == 0) {
+					if (terminated == 0) {
 						onRequest(elements);
 					}
 					return;
@@ -136,9 +137,9 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 						toRequest = elements;
 					} else if (elements > 0l) {
 						//started
-						if(terminated == 0) {
+						if (terminated == 0) {
 							onRequest(elements);
-						}else{
+						} else {
 							updatePendingRequests(elements);
 						}
 						toRequest = 0;
@@ -178,7 +179,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			} else */
 
 			if (pendingRequestSignals != Long.MAX_VALUE &&
-					PENDING_UPDATER.decrementAndGet(this) < 0l) {
+			  PENDING_UPDATER.decrementAndGet(this) < 0l) {
 				PENDING_UPDATER.incrementAndGet(this);
 				if (ev != null) {
 					buffer.add(ev);
@@ -236,7 +237,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	public boolean shouldRequestPendingSignals() {
 		synchronized (this) {
 			return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE
-					&& (!buffer.isEmpty() || currentNextSignals == maxCapacity);
+			  && (!buffer.isEmpty() || currentNextSignals == maxCapacity);
 		}
 	}
 
@@ -267,10 +268,10 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	@Override
 	public String toString() {
 		return "{" +
-				"current=" + currentNextSignals +
-				", pending=" + (pendingRequestSignals() == Long.MAX_VALUE ? "infinite" : pendingRequestSignals()) +
-				(buffer != null ? (terminated == 1 ? ", complete" : "") + (", waiting=" + buffer.size()) : "") +
-				'}';
+		  "current=" + currentNextSignals +
+		  ", pending=" + (pendingRequestSignals() == Long.MAX_VALUE ? "infinite" : pendingRequestSignals()) +
+		  (buffer != null ? (terminated == 1 ? ", complete" : "") + (", waiting=" + buffer.size()) : "") +
+		  '}';
 	}
 
 	static final class FastList {

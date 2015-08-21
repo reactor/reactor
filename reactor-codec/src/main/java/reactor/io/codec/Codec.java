@@ -55,7 +55,8 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	/**
 	 * A delimiter can be used to trail any decoded buffer or to finalize encoding from any incoming value
 	 *
-	 * @param delimiter delimiter can be left undefined (null) to bypass appending at encode time and scanning at decode
+	 * @param delimiter delimiter can be left undefined (null) to bypass appending at encode time and scanning at
+	 *                     decode
 	 *                  time.
 	 */
 	protected Codec(Byte delimiter) {
@@ -71,12 +72,12 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 */
 	public Publisher<IN> decode(final Publisher<? extends SRC> publisherToDecode) {
 		return PublisherFactory.intercept(publisherToDecode,
-				new Function<Subscriber<? super IN>, SubscriberBarrier<SRC, IN>>() {
-					@Override
-					public SubscriberBarrier<SRC, IN> apply(final Subscriber<? super IN> subscriber) {
-						return new DecoderBarrier(subscriber);
-					}
-				});
+		  new Function<Subscriber<? super IN>, SubscriberBarrier<SRC, IN>>() {
+			  @Override
+			  public SubscriberBarrier<SRC, IN> apply(final Subscriber<? super IN> subscriber) {
+				  return new DecoderBarrier(subscriber);
+			  }
+		  });
 	}
 
 	/**
@@ -107,12 +108,12 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 */
 	public Publisher<SRC> encode(Publisher<? extends OUT> publisherToEncode) {
 		return PublisherFactory.intercept(publisherToEncode,
-				new Function<Subscriber<? super SRC>, SubscriberBarrier<OUT, SRC>>() {
-					@Override
-					public SubscriberBarrier<OUT, SRC> apply(final Subscriber<? super SRC> subscriber) {
-						return new EncoderBarrier(subscriber);
-					}
-				});
+		  new Function<Subscriber<? super SRC>, SubscriberBarrier<OUT, SRC>>() {
+			  @Override
+			  public SubscriberBarrier<OUT, SRC> apply(final Subscriber<? super SRC> subscriber) {
+				  return new EncoderBarrier(subscriber);
+			  }
+		  });
 	}
 
 	/**

@@ -30,7 +30,7 @@ import static org.junit.Assert.assertEquals;
 
 public final class CachingRegistryTests {
 
-	private final AtomicInteger    cacheMisses     = new AtomicInteger();
+	private final AtomicInteger            cacheMisses     = new AtomicInteger();
 	private final Registry<Object, Object> cachingRegistry = new CacheMissCountingCachingRegistry<Object>(cacheMisses);
 
 	@Test
@@ -207,7 +207,7 @@ public final class CachingRegistryTests {
 
 		@Override
 		public boolean matches(Object key) {
-			if(!(key instanceof String)) return false;
+			if (!(key instanceof String)) return false;
 			return key.equals(getObject().topic);
 		}
 	}

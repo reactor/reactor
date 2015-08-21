@@ -29,13 +29,13 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Stephane Maldini
  */
 public abstract class AsyncProcessor<IN, OUT> implements
-		Processor<IN, OUT>, Consumer<IN>, Bounded, Resource {
+  Processor<IN, OUT>, Consumer<IN>, Bounded, Resource {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
 	private final ClassLoader contextClassLoader;
 
-	protected static final int SMALL_BUFFER_SIZE = 32;
+	protected static final int SMALL_BUFFER_SIZE  = 32;
 	protected static final int MEDIUM_BUFFER_SIZE = 8192;
 
 	protected final boolean autoCancel;
@@ -58,12 +58,11 @@ public abstract class AsyncProcessor<IN, OUT> implements
 	}
 
 	/**
-	 *
 	 * @return
 	 */
 	public boolean isInContext() {
-				return Thread.currentThread().getContextClassLoader() == contextClassLoader;
-		}
+		return Thread.currentThread().getContextClassLoader() == contextClassLoader;
+	}
 
 	@Override
 	public final void accept(IN e) {

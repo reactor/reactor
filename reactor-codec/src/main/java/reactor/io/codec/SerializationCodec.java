@@ -42,7 +42,8 @@ public abstract class SerializationCodec<E, IN, OUT> extends BufferCodec<IN, OUT
 	private final Codec<Buffer, IN, OUT> encoder;
 
 	/**
-	 * Create a {@code SerializationCodec} using the given engine and specifying whether or not to prepend a length field
+	 * Create a {@code SerializationCodec} using the given engine and specifying whether or not to prepend a length
+	 * field
 	 * to frame the message.
 	 *
 	 * @param engine             the engine which will perform the serialization
@@ -83,8 +84,8 @@ public abstract class SerializationCodec<E, IN, OUT> extends BufferCodec<IN, OUT
 	private String readTypeName(Buffer buffer) {
 		int len = buffer.readInt();
 		Assert.isTrue(buffer.remaining() > len,
-				"Incomplete buffer. Must contain " + len + " bytes, "
-						+ "but only " + buffer.remaining() + " were found.");
+		  "Incomplete buffer. Must contain " + len + " bytes, "
+			+ "but only " + buffer.remaining() + " were found.");
 		byte[] bytes = new byte[len];
 		buffer.read(bytes);
 		return new String(bytes);
@@ -95,9 +96,9 @@ public abstract class SerializationCodec<E, IN, OUT> extends BufferCodec<IN, OUT
 		int len = typeName.length();
 		Buffer buffer = new Buffer(4 + len + bytes.length, true);
 		return buffer.append(len)
-				.append(typeName)
-				.append(bytes)
-				.flip();
+		  .append(typeName)
+		  .append(bytes)
+		  .flip();
 
 	}
 

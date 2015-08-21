@@ -1840,8 +1840,8 @@ class StreamsSpec extends Specification {
 						}
 						sub.onComplete()
 					},
-					{ println Thread.currentThread().name+' start' },
-					{ println Thread.currentThread().name+' end' }
+					{ println Thread.currentThread().name + ' start' },
+					{ println Thread.currentThread().name + ' end' }
 			)
 					.log()
 					.subscribeOn(Environment.workDispatcher())

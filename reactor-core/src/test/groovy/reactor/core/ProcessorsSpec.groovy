@@ -91,15 +91,15 @@ class ProcessorsSpec extends Specification {
 			def bc2 = RingBufferProcessor.<String> create(executorService, 16)
 			def elems = 10
 			def latch = new CountDownLatch(elems)
-			def manualSub = new Subscription(){
+			def manualSub = new Subscription() {
 				@Override
 				void request(long n) {
-					println Thread.currentThread().name+" $n"
+					println Thread.currentThread().name + " $n"
 				}
 
 				@Override
 				void cancel() {
-					println Thread.currentThread().name+" cancelling"
+					println Thread.currentThread().name + " cancelling"
 				}
 			}
 
@@ -143,15 +143,15 @@ class ProcessorsSpec extends Specification {
 			def bc = RingBufferWorkProcessor.<String> create(executorService, 16)
 			def elems = 18
 			def latch = new CountDownLatch(elems)
-			def manualSub = new Subscription(){
+			def manualSub = new Subscription() {
 				@Override
 				void request(long n) {
-					println Thread.currentThread().name+" $n"
+					println Thread.currentThread().name + " $n"
 				}
 
 				@Override
 				void cancel() {
-					println Thread.currentThread().name+" cancelling"
+					println Thread.currentThread().name + " cancelling"
 				}
 			}
 
@@ -218,7 +218,7 @@ class ProcessorsSpec extends Specification {
 			"listen for recursive event"
 			Consumer<Integer> c
 			c = { data ->
-				if(data < 2) {
+				if (data < 2) {
 					latch.countDown()
 					r.dispatch(++data, c, null)
 				}
@@ -237,7 +237,7 @@ class ProcessorsSpec extends Specification {
 
 		given:
 			"a Reactor with a ThreadPoolExecutorDispatcher"
-			def r  = env.getDispatcher(Environment.THREAD_POOL)
+			def r = env.getDispatcher(Environment.THREAD_POOL)
 			long start = System.currentTimeMillis()
 			def hello = ""
 			def c = { String ev ->

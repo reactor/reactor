@@ -57,21 +57,21 @@ public class DurableLogUtility {
 		Option head = new Option("head", true, "Number of lines to display from the head of the file");
 		Option tail = new Option("tail", true, "Number of lines to display from the tail of the file");
 		OptionGroup findOpts = new OptionGroup()
-				.addOption(regex)
-				.addOption(head)
-				.addOption(tail);
+		  .addOption(regex)
+		  .addOption(head)
+		  .addOption(tail);
 
 		OPTS.addOption(path)
-		    .addOption(config)
-		    .addOption(output)
-		    .addOption(level)
-		    .addOptionGroup(findOpts);
+		  .addOption(config)
+		  .addOption(output)
+		  .addOption(level)
+		  .addOptionGroup(findOpts);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static void main(String... args) throws ParseException,
-	                                               JoranException,
-	                                               IOException {
+	  JoranException,
+	  IOException {
 		Parser parser = new BasicParser();
 		CommandLine cl = null;
 		try {
@@ -169,12 +169,12 @@ public class DurableLogUtility {
 
 		Logger logger = ctx.getLogger(rec.getLoggerName());
 		LoggingEvent evt = new LoggingEvent(
-				logger.getClass().getName(),
-				logger,
-				Level.toLevel(rec.getLevel()),
-				rec.getMessage(),
-				rec.getCause(),
-				rec.getArgs()
+		  logger.getClass().getName(),
+		  logger,
+		  Level.toLevel(rec.getLevel()),
+		  rec.getMessage(),
+		  rec.getCause(),
+		  rec.getArgs()
 		);
 		evt.setTimeStamp(rec.getTimestamp());
 		evt.setThreadName(rec.getThreadName());

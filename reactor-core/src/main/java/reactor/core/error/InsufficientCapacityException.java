@@ -20,17 +20,15 @@ package reactor.core.error;
  * due to insufficient capacity.
  *
  * @author Stephane Maldini
- *
  */
 @SuppressWarnings("serial")
-public final class InsufficientCapacityException extends RuntimeException
-{
+public final class InsufficientCapacityException extends RuntimeException {
 	private static final InsufficientCapacityException INSTANCE = new InsufficientCapacityException();
 
-	public static final boolean TRACE_NOCAPACITY = Boolean.parseBoolean(System.getProperty("reactor.trace.nocapacity", "false"));
+	public static final boolean TRACE_NOCAPACITY = Boolean.parseBoolean(System.getProperty("reactor.trace.nocapacity",
+	  "false"));
 
-	private InsufficientCapacityException()
-	{
+	private InsufficientCapacityException() {
 		super("The subscriber is overrun by more signals than expected (bounded queue...)");
 	}
 

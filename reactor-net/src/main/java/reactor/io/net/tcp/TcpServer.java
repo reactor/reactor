@@ -37,7 +37,7 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class TcpServer<IN, OUT>
-		extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
+  extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final ServerSocketOptions options;
 	private final SslOptions          sslOptions;

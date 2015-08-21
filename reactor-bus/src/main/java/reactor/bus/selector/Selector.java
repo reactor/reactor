@@ -23,7 +23,7 @@ package reactor.bus.selector;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public interface Selector<T>  {
+public interface Selector<T> {
 
 
 	/**
@@ -37,7 +37,6 @@ public interface Selector<T>  {
 	 * Indicates whether this Selector matches the {@code key}.
 	 *
 	 * @param key The key to match
-	 *
 	 * @return {@code true} if there's a match, otherwise {@code false}.
 	 */
 	boolean matches(T key);

@@ -35,8 +35,9 @@ public class TupleN extends Tuple8 {
 
 	@SuppressWarnings("unchecked")
 	TupleN(Object... values) {
-		super(values.length, null,null,null,null,null,null,null,null);
-		this.entries = Arrays.copyOf(values, values.length);;
+		super(values.length, null, null, null, null, null, null, null, null);
+		this.entries = Arrays.copyOf(values, values.length);
+		;
 	}
 
 	@Nullable
@@ -104,7 +105,7 @@ public class TupleN extends Tuple8 {
 			return this.entries[0] == null ? 0 : this.entries[0].hashCode();
 		} else {
 			int hashCode = 1;
-			for (Object entry: this.entries) {
+			for (Object entry : this.entries) {
 				hashCode = hashCode ^ (entry == null ? 0 : entry.hashCode());
 			}
 			return hashCode;
@@ -117,7 +118,7 @@ public class TupleN extends Tuple8 {
 
 		if (!(o instanceof TupleN)) return false;
 
-		TupleN cast = (TupleN)o;
+		TupleN cast = (TupleN) o;
 
 		if (this.size != cast.size) return false;
 
@@ -133,10 +134,10 @@ public class TupleN extends Tuple8 {
 	@Override
 	public String toString() {
 		String formatted = "";
-		for(int i = 0; i < size; i++){
-			formatted += entries[i]+",";
+		for (int i = 0; i < size; i++) {
+			formatted += entries[i] + ",";
 		}
 
-		return formatted.substring(0, formatted.length()-1);
+		return formatted.substring(0, formatted.length() - 1);
 	}
 }

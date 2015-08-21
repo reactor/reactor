@@ -65,26 +65,26 @@ public class AwaitTests extends AbstractReactorTest {
 	}
 
 
-
 	@Test
 	public void testDoesntDeadlockOnError() throws InterruptedException {
 
-		ReactorProcessor dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new BlockingWaitStrategy());
+		ReactorProcessor dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new
+		  BlockingWaitStrategy());
 		EventBus r = new EventBus(dispatcher);
 
-		Broadcaster<Event<Throwable>> stream = Broadcaster.<Event<Throwable>> create();
+		Broadcaster<Event<Throwable>> stream = Broadcaster.<Event<Throwable>>create();
 		Promise<List<Long>> promise = stream.take(16).count().toList();
 		r.on(Selectors.T(Throwable.class), stream.toBroadcastNextConsumer());
 		r.on(Selectors.$("test"), (Event<?> ev) -> {
-				try {
-					Thread.sleep(100);
-				} catch (InterruptedException e){
-					//IGNORE
-				}
-				throw new RuntimeException();
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				//IGNORE
+			}
+			throw new RuntimeException();
 		});
 
-		for(int i = 0; i<16; i++){
+		for (int i = 0; i < 16; i++) {
 			r.notify("test", Event.wrap("test"));
 		}
 		promise.await(5, TimeUnit.SECONDS);

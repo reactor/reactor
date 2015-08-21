@@ -40,8 +40,9 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 * .Broadcaster#onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
-	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to broadcast at a time.
+	 * <p>
+	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to
+	 * broadcast at a time.
 	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
 	 *
 	 * @param <T> the type of values passing through the {@literal action}
@@ -56,8 +57,9 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 * Broadcaster#onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
-	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to broadcast at a time.
+	 * <p>
+	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to
+	 * broadcast at a time.
 	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
 	 *
 	 * @param env the Reactor {@link reactor.Environment} to use
@@ -104,9 +106,7 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 
 
 	/**
-	 *
 	 * Internal
-	 *
 	 */
 
 	private SerializedBroadcaster(Environment environment, ReactorProcessor dispatcher, long capacity) {

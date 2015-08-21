@@ -28,7 +28,6 @@ import java.util.Iterator;
  * @param <T2> The type of the second value held by this tuple
  * @param <T3> The type of the third value held by this tuple
  * @param <T4> The type of the fourth value held by this tuple
- *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -38,7 +37,7 @@ public class Tuple4<T1, T2, T3, T4> extends Tuple3<T1, T2, T3> {
 
 	public final T4 t4;
 
-	Tuple4(int size, T1 t1,T2 t2,T3 t3,T4 t4) {
+	Tuple4(int size, T1 t1, T2 t2, T3 t3, T4 t4) {
 		super(size, t1, t2, t3);
 		this.t4 = t4;
 	}
@@ -55,11 +54,15 @@ public class Tuple4<T1, T2, T3, T4> extends Tuple3<T1, T2, T3> {
 	@Nullable
 	@Override
 	public Object get(int index) {
-		switch(index){
-			case 0: return t1;
-			case 1: return t2;
-			case 2: return t3;
-			case 3: return t4;
+		switch (index) {
+			case 0:
+				return t1;
+			case 1:
+				return t2;
+			case 2:
+				return t3;
+			case 3:
+				return t4;
 			default:
 				return null;
 		}
@@ -98,7 +101,7 @@ public class Tuple4<T1, T2, T3, T4> extends Tuple3<T1, T2, T3> {
 
 	@Override
 	public String toString() {
-		return super.toString()+
-				(t4 != null ? ","+t4.toString() : "");
+		return super.toString() +
+		  (t4 != null ? "," + t4.toString() : "");
 	}
 }

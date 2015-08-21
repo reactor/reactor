@@ -160,7 +160,8 @@ public abstract class PublisherFactory {
 
 
 	/**
-	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
+	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by
+	 * calling
 	 * or not
 	 * the right operand {@link Subscriber}.
 	 *
@@ -174,7 +175,8 @@ public abstract class PublisherFactory {
 	}
 
 	/**
-	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
+	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by
+	 * calling
 	 * or not
 	 * the right operand {@link Subscriber}.
 	 *
@@ -192,11 +194,13 @@ public abstract class PublisherFactory {
 
 
 	/**
-	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
+	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by
+	 * calling
 	 * or not
 	 * the right operand {@link Subscriber}.
 	 * <p>
-	 * The argument {@code subscriptionHandler} is executed once by new subscriber to generate a context shared by every
+	 * The argument {@code subscriptionHandler} is executed once by new subscriber to generate a context shared by
+	 * every
 	 * request calls.
 	 *
 	 * @param dataConsumer     A {@link BiConsumer} with left argument onNext data and right argument output subscriber
@@ -211,13 +215,13 @@ public abstract class PublisherFactory {
 	                                          final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer,
 	                                          final Consumer<Subscriber<? super O>> completeConsumer) {
 		return intercept(
-				source,
-				new Function<Subscriber<? super O>, SubscriberBarrier<I, O>>() {
-					@Override
-					public SubscriberBarrier<I, O> apply(final Subscriber<? super O> subscriber) {
-						return new ConsumerSubscriberBarrier<>(subscriber, dataConsumer, errorConsumer, completeConsumer);
-					}
-				}
+		  source,
+		  new Function<Subscriber<? super O>, SubscriberBarrier<I, O>>() {
+			  @Override
+			  public SubscriberBarrier<I, O> apply(final Subscriber<? super O> subscriber) {
+				  return new ConsumerSubscriberBarrier<>(subscriber, dataConsumer, errorConsumer, completeConsumer);
+			  }
+		  }
 		);
 	}
 
@@ -234,7 +238,7 @@ public abstract class PublisherFactory {
 	 */
 	public static <I, O> Publisher<O> intercept(Publisher<? extends I> source,
 	                                            Function<Subscriber<? super O>, SubscriberBarrier<I, O>>
-			                                            barrierProvider) {
+	                                              barrierProvider) {
 		Assert.notNull(source, "A data source must be provided");
 		Assert.notNull(barrierProvider, "A barrier interceptor must be provided");
 		return new ProxyPublisher<>(source, barrierProvider);
@@ -259,7 +263,7 @@ public abstract class PublisherFactory {
 			try {
 				final C context = contextFactory != null ? contextFactory.apply(subscriber) : null;
 				subscriber.onSubscribe(createSubscription(subscriber, context));
-			} catch (PrematureCompleteException pce){
+			} catch (PrematureCompleteException pce) {
 				//IGNORE
 			} catch (Throwable throwable) {
 				Exceptions.throwIfFatal(throwable);
@@ -267,25 +271,26 @@ public abstract class PublisherFactory {
 			}
 		}
 
-		protected Subscription createSubscription(Subscriber<? super T> subscriber, C context){
+		protected Subscription createSubscription(Subscriber<? super T> subscriber, C context) {
 			return new SubscriberProxy<>(subscriber, context, requestConsumer, shutdownConsumer);
 		}
 	}
 
-	private static final class ForEachPublisher<T, C> extends ReactorPublisher<T, C>{
+	private static final class ForEachPublisher<T, C> extends ReactorPublisher<T, C> {
 
 		final Consumer<SubscriberWithContext<T, C>> forEachConsumer;
 
 
 		public ForEachPublisher(Consumer<SubscriberWithContext<T, C>> forEachConsumer, Function<Subscriber<? super
-				T>, C> contextFactory, Consumer<C> shutdownConsumer) {
+		  T>, C> contextFactory, Consumer<C> shutdownConsumer) {
 			super(null, contextFactory, shutdownConsumer);
 			this.forEachConsumer = forEachConsumer;
 		}
 
 		@Override
 		protected Subscription createSubscription(Subscriber<? super T> subscriber, C context) {
-			return new SubscriberProxy<>(subscriber, context, new ForEachBiConsumer<>(forEachConsumer), shutdownConsumer);
+			return new SubscriberProxy<>(subscriber, context, new ForEachBiConsumer<>(forEachConsumer),
+			  shutdownConsumer);
 		}
 	}
 
@@ -367,10 +372,10 @@ public abstract class PublisherFactory {
 
 		@Override
 		public String toString() {
-			return context !=  null ? context.toString() : ( "SubscriberProxy{" +
-					"requestConsumer=" + requestConsumer +
-					", shutdownConsumer=" + shutdownConsumer +
-					'}');
+			return context != null ? context.toString() : ("SubscriberProxy{" +
+			  "requestConsumer=" + requestConsumer +
+			  ", shutdownConsumer=" + shutdownConsumer +
+			  '}');
 		}
 	}
 
@@ -381,7 +386,7 @@ public abstract class PublisherFactory {
 		private volatile long pending = 0L;
 
 		private final static AtomicLongFieldUpdater<ForEachBiConsumer> PENDING_UPDATER =
-				AtomicLongFieldUpdater.newUpdater(ForEachBiConsumer.class, "pending");
+		  AtomicLongFieldUpdater.newUpdater(ForEachBiConsumer.class, "pending");
 
 		public ForEachBiConsumer(Consumer<SubscriberWithContext<T, C>> requestConsumer) {
 			this.requestConsumer = requestConsumer;
@@ -397,7 +402,7 @@ public abstract class PublisherFactory {
 			long demand = n;
 			long afterAdd;
 			if (!PENDING_UPDATER.compareAndSet(this, 0L, demand)
-					&& (afterAdd = PENDING_UPDATER.addAndGet(this, demand)) != demand) {
+			  && (afterAdd = PENDING_UPDATER.addAndGet(this, demand)) != demand) {
 				if (afterAdd < 0L) {
 					if (!PENDING_UPDATER.compareAndSet(this, afterAdd, Long.MAX_VALUE)) {
 						return;
@@ -430,7 +435,7 @@ public abstract class PublisherFactory {
 
 		@Override
 		public void subscribe(Subscriber<? super O> s) {
-			if(s == null){
+			if (s == null) {
 				throw SpecificationExceptions.spec_2_13_exception();
 			}
 			source.subscribe(barrierProvider.apply(s));
@@ -439,8 +444,8 @@ public abstract class PublisherFactory {
 		@Override
 		public String toString() {
 			return "ProxyPublisher{" +
-					"source=" + source +
-					'}';
+			  "source=" + source +
+			  '}';
 		}
 	}
 
@@ -450,8 +455,8 @@ public abstract class PublisherFactory {
 		private final Consumer<Subscriber<? super O>>              completeConsumer;
 
 		public ConsumerSubscriberBarrier(Subscriber<? super O> subscriber, BiConsumer<I, Subscriber<? super O>>
-				dataConsumer, BiConsumer<Throwable, Subscriber<? super O>> errorConsumer, Consumer<Subscriber<? super O>>
-				                                 completeConsumer) {
+		  dataConsumer, BiConsumer<Throwable, Subscriber<? super O>> errorConsumer, Consumer<Subscriber<? super O>>
+		                                   completeConsumer) {
 			super(subscriber);
 			this.dataConsumer = dataConsumer;
 			this.errorConsumer = errorConsumer;
@@ -488,15 +493,15 @@ public abstract class PublisherFactory {
 		@Override
 		public String toString() {
 			return "ConsumerSubscriberBarrier{" +
-					"subscriber=" + subscriber +
-					", dataConsumer=" + dataConsumer +
-					", errorConsumer=" + errorConsumer +
-					", completeConsumer=" + completeConsumer +
-					'}';
+			  "subscriber=" + subscriber +
+			  ", dataConsumer=" + dataConsumer +
+			  ", errorConsumer=" + errorConsumer +
+			  ", completeConsumer=" + completeConsumer +
+			  '}';
 		}
 	}
 
-	public static class PrematureCompleteException extends RuntimeException{
+	public static class PrematureCompleteException extends RuntimeException {
 		static public final PrematureCompleteException INSTANCE = new PrematureCompleteException();
 
 		private PrematureCompleteException() {

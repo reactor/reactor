@@ -51,7 +51,7 @@ public abstract class TimeUtils {
 	}
 
 	public static Timer getTimer() {
-		if(null == timer) {
+		if (null == timer) {
 			setTimer(new HashWheelTimer(DEFAULT_RESOLUTION));
 		}
 		return timer;
@@ -60,8 +60,8 @@ public abstract class TimeUtils {
 	public static void checkResolution(long time, long resolution) {
 		if (time % resolution != 0) {
 			throw ReactorFatalException.create(new IllegalArgumentException(
-					"Period must be a multiple of Timer resolution (e.g. period % resolution == 0 ). " +
-					"Resolution for this Timer is: " + resolution + "ms"
+			  "Period must be a multiple of Timer resolution (e.g. period % resolution == 0 ). " +
+				"Resolution for this Timer is: " + resolution + "ms"
 			));
 		}
 	}

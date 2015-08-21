@@ -29,93 +29,94 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * https://github.com/reactor/reactor/issues/500
+ *
  * @author nitzanvolman
  * @author Stephane Maldini
  */
 public class FizzBuzzTests extends AbstractReactorTest {
 
 
-    @Test
-    public void fizzTest() throws Throwable {
-        int numOfItems = 1024;
-        int batchSize = 8;
-        final Timer timer = new Timer();
-        AtomicLong globalCounter = new AtomicLong();
-        CountDownLatch latch = new CountDownLatch(1);
+	@Test
+	public void fizzTest() throws Throwable {
+		int numOfItems = 1024;
+		int batchSize = 8;
+		final Timer timer = new Timer();
+		AtomicLong globalCounter = new AtomicLong();
+		CountDownLatch latch = new CountDownLatch(1);
 
-        Control c = Streams.createWith((demand, subscriber) -> {
-            System.out.println("demand is " + demand);
-            if (!subscriber.isCancelled()) {
-                for (int i = 0; i < demand; i++) {
-                    long curr = globalCounter.incrementAndGet();
-                    if (curr % 5 == 0 && curr % 3 == 0) subscriber.onNext("FizBuz \r\n");
-                    else if (curr % 3 == 0) subscriber.onNext("Fiz ");
-                    else if (curr % 5 == 0) subscriber.onNext("Buz ");
-                    else subscriber.onNext(String.valueOf(curr) + " ");
+		Control c = Streams.createWith((demand, subscriber) -> {
+			System.out.println("demand is " + demand);
+			if (!subscriber.isCancelled()) {
+				for (int i = 0; i < demand; i++) {
+					long curr = globalCounter.incrementAndGet();
+					if (curr % 5 == 0 && curr % 3 == 0) subscriber.onNext("FizBuz \r\n");
+					else if (curr % 3 == 0) subscriber.onNext("Fiz ");
+					else if (curr % 5 == 0) subscriber.onNext("Buz ");
+					else subscriber.onNext(String.valueOf(curr) + " ");
 
-                    if (globalCounter.get() > numOfItems) {
-                        subscriber.onComplete();
-                        return;
-                    }
-                }
-            }
-        })
-          .flatMap((s) -> Streams.create((sub) -> timer.schedule(new TimerTask() {
-              @Override
-              public void run() {
-                  sub.onNext(s);
-                  sub.onComplete();
-              }
-          }, 10)))
-          .capacity(batchSize)
-          .log()
+					if (globalCounter.get() > numOfItems) {
+						subscriber.onComplete();
+						return;
+					}
+				}
+			}
+		})
+		  .flatMap((s) -> Streams.create((sub) -> timer.schedule(new TimerTask() {
+			  @Override
+			  public void run() {
+				  sub.onNext(s);
+				  sub.onComplete();
+			  }
+		  }, 10)))
+		  .capacity(batchSize)
+		  .log()
 //                .observe(System.out::print)
-          .consume(numOfItems)
-        ;
+		  .consume(numOfItems);
 
-        while(c.isPublishing());
-    }
+		while (c.isPublishing()) ;
+	}
 
 
-    @Test
-    public void indexBugTest() throws InterruptedException {
-        int numOfItems = 20;
+	@Test
+	public void indexBugTest() throws InterruptedException {
+		int numOfItems = 20;
 
-        Environment.initializeIfEmpty();
+		Environment.initializeIfEmpty();
 
-        //this line causes an java.lang.ArrayIndexOutOfBoundsException unless there is a break point in ZipAction.createSubscriber()
-        RingBufferProcessor<String> ring = RingBufferProcessor.create("test", 1024);
+		//this line causes an java.lang.ArrayIndexOutOfBoundsException unless there is a break point in ZipAction
+		// .createSubscriber()
+		RingBufferProcessor<String> ring = RingBufferProcessor.create("test", 1024);
 
-        //this line works
+		//this line works
 //        Broadcaster<String> ring = Broadcaster.create(Environment.get());
 
-        Stream<String> stream = Streams.wrap(ring);
+		Stream<String> stream = Streams.wrap(ring);
 
-        Stream<String> stream2 = stream
-          .zipWith(Streams.createWith((d, s) -> {
-              for (int i = 0; i < d; i++) {
-                  s.onNext(System.currentTimeMillis());
-              }
-          }), t -> String.format("%s : %s", t.getT2(), t.getT1()))
-          .observeError(Throwable.class, (o, t) -> {
-              System.err.println(t.toString());
-              t.printStackTrace();
-          });
+		Stream<String> stream2 = stream
+		  .zipWith(Streams.createWith((d, s) -> {
+			  for (int i = 0; i < d; i++) {
+				  s.onNext(System.currentTimeMillis());
+			  }
+		  }), t -> String.format("%s : %s", t.getT2(), t.getT1()))
+		  .observeError(Throwable.class, (o, t) -> {
+			  System.err.println(t.toString());
+			  t.printStackTrace();
+		  });
 
-        Promise<List<String>> p = stream2
-          .observe(System.out::println)
-          .buffer(numOfItems)
-          .next();
+		Promise<List<String>> p = stream2
+		  .observe(System.out::println)
+		  .buffer(numOfItems)
+		  .next();
 
-        for (int curr = 0; curr < numOfItems; curr++) {
-            if (curr % 5 == 0 && curr % 3 == 0) ring.onNext("FizBuz");
-            else if (curr % 3 == 0) ring.onNext("Fiz");
-            else if (curr % 5 == 0) ring.onNext("Buz");
-            else ring.onNext(String.valueOf(curr));
-        }
+		for (int curr = 0; curr < numOfItems; curr++) {
+			if (curr % 5 == 0 && curr % 3 == 0) ring.onNext("FizBuz");
+			else if (curr % 3 == 0) ring.onNext("Fiz");
+			else if (curr % 5 == 0) ring.onNext("Buz");
+			else ring.onNext(String.valueOf(curr));
+		}
 
-        p.await();
+		p.await();
 
-    }
+	}
 }
 

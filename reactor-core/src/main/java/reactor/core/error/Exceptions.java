@@ -20,7 +20,7 @@ import java.util.Set;
 
 /**
  * Static Helpers to decorate an error with an associated data
- *
+ * <p>
  * Original design from https://github.com/ReactiveX/RxJava/blob/1.x/src/main/java/rx/exceptions/Exceptions.java
  *
  * @author Stephane Maldini
@@ -34,10 +34,8 @@ public final class Exceptions {
 	 * Adds a {@code Throwable} to a causality-chain of Throwables, as an additional cause (if it does not
 	 * already appear in the chain among the causes).
 	 *
-	 * @param e
-	 *         the {@code Throwable} at the head of the causality chain
-	 * @param cause
-	 *         the {@code Throwable} you want to add as a cause of the chain
+	 * @param e     the {@code Throwable} at the head of the causality chain
+	 * @param cause the {@code Throwable} you want to add as a cause of the chain
 	 */
 	public static void addCause(Throwable e, Throwable cause) {
 		Set<Throwable> seenCauses = new HashSet<Throwable>();
@@ -70,16 +68,15 @@ public final class Exceptions {
 	 * If the final cause wasn't of type {@link Exceptions.ValueCause},
 	 * return null;
 	 *
-	 * @param e
-	 *         the {@code Throwable} whose final cause you are curious about
+	 * @param e the {@code Throwable} whose final cause you are curious about
 	 * @return the last {@code Throwable} in the causality-chain of {@code e} (or a "Stack too deep to get
-	 *         final cause" {@code RuntimeException} if the chain is too long to traverse)
+	 * final cause" {@code RuntimeException} if the chain is too long to traverse)
 	 */
 	@SuppressWarnings("unchecked")
 	public static Object getFinalValueCause(Throwable e) {
 		Throwable t = getFinalCause(e);
-		if(ValueCause.class.isAssignableFrom(t.getClass())){
-				return ((ValueCause)t).getValue();
+		if (ValueCause.class.isAssignableFrom(t.getClass())) {
+			return ((ValueCause) t).getValue();
 		}
 		return null;
 	}
@@ -87,10 +84,9 @@ public final class Exceptions {
 	/**
 	 * Get the {@code Throwable} at the end of the causality-chain for a particular {@code Throwable}
 	 *
-	 * @param e
-	 *         the {@code Throwable} whose final cause you are curious about
+	 * @param e the {@code Throwable} whose final cause you are curious about
 	 * @return the last {@code Throwable} in the causality-chain of {@code e} (or a "Stack too deep to get
-	 *         final cause" {@code RuntimeException} if the chain is too long to traverse)
+	 * final cause" {@code RuntimeException} if the chain is too long to traverse)
 	 */
 	public static Throwable getFinalCause(Throwable e) {
 		int i = 0;
@@ -108,12 +104,10 @@ public final class Exceptions {
 	 * Adds the given item as the final cause of the given {@code Throwable}, wrapped in {@code OnNextValue}
 	 * (which extends {@code RuntimeException}).
 	 *
-	 * @param e
-	 *          the {@link Throwable} to which you want to add a cause
-	 * @param value
-	 *          the item you want to add to {@code e} as the cause of the {@code Throwable}
+	 * @param e     the {@link Throwable} to which you want to add a cause
+	 * @param value the item you want to add to {@code e} as the cause of the {@code Throwable}
 	 * @return the same {@code Throwable} ({@code e}) that was passed in, with {@code value} added to it as a
-	 *         cause
+	 * cause
 	 */
 	public static Throwable addValueAsLastCause(Throwable e, Object value) {
 		Throwable lastCause = Exceptions.getFinalCause(e);
@@ -144,8 +138,7 @@ public final class Exceptions {
 	public static void throwIfFatal(Throwable t) {
 		if (t instanceof ReactorFatalException) {
 			throw (ReactorFatalException) t;
-		}
-		else if (t instanceof StackOverflowError) {
+		} else if (t instanceof StackOverflowError) {
 			throw (StackOverflowError) t;
 		} else if (t instanceof VirtualMachineError) {
 			throw (VirtualMachineError) t;
@@ -169,8 +162,7 @@ public final class Exceptions {
 		 * Create a {@code CauseValue} error and include in its error message a string representation of
 		 * the item that was intended to be emitted at the time the error was handled.
 		 *
-		 * @param value
-		 *         the item that the component was trying to emit at the time of the error
+		 * @param value the item that the component was trying to emit at the time of the error
 		 */
 		public ValueCause(Object value) {
 			super("Exception while signaling value: " + renderValue(value));
@@ -190,11 +182,10 @@ public final class Exceptions {
 		 * Render the object if it is a basic type. This avoids the library making potentially expensive
 		 * or calls to toString() which may throw exceptions.
 		 *
-		 * @param value
-		 *        the item that the Observable was trying to emit at the time of the error
+		 * @param value the item that the Observable was trying to emit at the time of the error
 		 * @return a string version of the object if primitive, otherwise the classname of the object
 		 */
-		private static String renderValue(Object value){
+		private static String renderValue(Object value) {
 			if (value == null) {
 				return "null";
 			}
@@ -207,7 +198,7 @@ public final class Exceptions {
 			if (value instanceof Enum) {
 				return ((Enum) value).name();
 			}
-			return value.getClass().getName() + ".class : "+value;
+			return value.getClass().getName() + ".class : " + value;
 		}
 	}
 }

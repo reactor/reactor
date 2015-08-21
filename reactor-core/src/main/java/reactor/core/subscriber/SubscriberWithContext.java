@@ -30,9 +30,10 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  */
 public class SubscriberWithContext<T, C> implements Subscriber<T> {
 
-	private volatile     int                                              terminated       = 0;
-	protected static final AtomicIntegerFieldUpdater<SubscriberWithContext> TERMINAL_UPDATER = AtomicIntegerFieldUpdater
-			.newUpdater(SubscriberWithContext.class, "terminated");
+	private volatile       int                                              terminated       = 0;
+	protected static final AtomicIntegerFieldUpdater<SubscriberWithContext> TERMINAL_UPDATER =
+	  AtomicIntegerFieldUpdater
+	  .newUpdater(SubscriberWithContext.class, "terminated");
 
 
 	protected final C                     context;
@@ -103,7 +104,7 @@ public class SubscriberWithContext<T, C> implements Subscriber<T> {
 		}
 	}
 
-	public boolean isCancelled(){
+	public boolean isCancelled() {
 		return terminated == 1;
 	}
 }
