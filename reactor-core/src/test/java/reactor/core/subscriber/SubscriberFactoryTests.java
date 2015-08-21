@@ -75,7 +75,7 @@ public class SubscriberFactoryTests extends SubscriberWhiteboxVerification<Long>
 	@org.junit.Test
 	public void someTest() {
 
-		Publishers.forEach(sub ->
+		Publishers.create(sub ->
 			sub.onNext(random.nextLong())
 		).subscribe(Subscribers.unbounded(
 		  (data, sub) -> {

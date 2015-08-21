@@ -44,7 +44,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 	public static void main(String... args) {
 		final RingBufferWorkProcessor<Long> processor = RingBufferWorkProcessor.<Long>create();
 
-		Publisher<Long> pub = PublisherFactory.forEach(
+		Publisher<Long> pub = PublisherFactory.create(
 		  c -> {
 			  if (c.context().incrementAndGet() >= 661) {
 				  c.onComplete();

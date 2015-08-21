@@ -161,7 +161,7 @@ public class Streams {
 	                                          Function<Subscriber<? super T>, C> contextFactory,
 	                                          Consumer<C> shutdownConsumer) {
 
-		return Streams.wrap(PublisherFactory.create(requestConsumer, contextFactory, shutdownConsumer));
+		return Streams.wrap(PublisherFactory.createWithDemand(requestConsumer, contextFactory, shutdownConsumer));
 	}
 
 	/**

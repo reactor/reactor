@@ -27,4 +27,9 @@ public final class Subscribers extends SubscriberFactory {
 	public static <T> Subscriber<T> flowControl(Subscriber<T> source) {
 		return source;
 	}
+
+
+	public static <T> Subscriber<T> group(Subscriber<T> source) {
+		return source;
+	}
 }

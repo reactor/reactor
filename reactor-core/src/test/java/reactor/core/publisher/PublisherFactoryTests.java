@@ -40,16 +40,16 @@ public class PublisherFactoryTests extends PublisherVerification<Long> {
 		return
 		  Publishers.log(
 			Publishers.barrier(
-			  Publishers.<Long, AtomicLong>forEach(
-				(s) -> {
-					long cursor = s.context().getAndIncrement();
-					if (cursor < elements) {
-						s.onNext(cursor);
-					} else {
-						s.onComplete();
-					}
-				},
-				s -> new AtomicLong(0L)
+			  Publishers.<Long, AtomicLong>create(
+			    (s) -> {
+				    long cursor = s.context().getAndIncrement();
+				    if (cursor < elements) {
+					    s.onNext(cursor);
+				    } else {
+					    s.onComplete();
+				    }
+			    },
+			    s -> new AtomicLong(0L)
 			  ),
 			  (data, sub) -> sub.onNext(data * 10)
 			),

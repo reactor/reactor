@@ -16,7 +16,6 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
 import reactor.Publishers;
 
@@ -52,7 +51,7 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 	@Override
 	public Publisher<Long> createHelperPublisher(final long elements) {
 		if (elements < 100 && elements > 0) {
-			return Publishers.forEach(
+			return Publishers.create(
 			  (s) -> {
 				  long cursor = s.context().getAndIncrement();
 				  if (cursor < elements) {
@@ -65,7 +64,7 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 			);
 		} else {
 			final Random random = new Random();
-			return Publishers.forEach(
+			return Publishers.create(
 			  s -> s.onNext(random.nextLong())
 			);
 		}

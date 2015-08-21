@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * Create such publisher with the provided factory, E.g.:
  * <pre>
  * {@code
- * PublisherFactory.create((n, sub) -> {
+ * PublisherFactory.createWithDemand((n, sub) -> {
  *  for(int i = 0; i < n; i++){
  *    sub.onNext(i);
  *  }
@@ -57,8 +57,8 @@ public abstract class PublisherFactory {
 	 * @param <T>             The type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <T> Publisher<T> create(BiConsumer<Long, SubscriberWithContext<T, Void>> requestConsumer) {
-		return create(requestConsumer, null, null);
+	public static <T> Publisher<T> createWithDemand(BiConsumer<Long, SubscriberWithContext<T, Void>> requestConsumer) {
+		return createWithDemand(requestConsumer, null, null);
 	}
 
 	/**
@@ -73,9 +73,9 @@ public abstract class PublisherFactory {
 	 * @param <C>             The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <T, C> Publisher<T> create(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
-	                                         Function<Subscriber<? super T>, C> contextFactory) {
-		return create(requestConsumer, contextFactory, null);
+	public static <T, C> Publisher<T> createWithDemand(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+	                                                   Function<Subscriber<? super T>, C> contextFactory) {
+		return createWithDemand(requestConsumer, contextFactory, null);
 	}
 
 
@@ -95,9 +95,9 @@ public abstract class PublisherFactory {
 	 * @param <C>              The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <T, C> Publisher<T> create(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
-	                                         Function<Subscriber<? super T>, C> contextFactory,
-	                                         Consumer<C> shutdownConsumer) {
+	public static <T, C> Publisher<T> createWithDemand(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+	                                                   Function<Subscriber<? super T>, C> contextFactory,
+	                                                   Consumer<C> shutdownConsumer) {
 
 		return new ReactorPublisher<T, C>(requestConsumer, contextFactory, shutdownConsumer);
 	}
@@ -111,8 +111,8 @@ public abstract class PublisherFactory {
 	 * @param <T>             The type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <T> Publisher<T> forEach(Consumer<SubscriberWithContext<T, Void>> requestConsumer) {
-		return forEach(requestConsumer, null, null);
+	public static <T> Publisher<T> create(Consumer<SubscriberWithContext<T, Void>> requestConsumer) {
+		return create(requestConsumer, null, null);
 	}
 
 	/**
@@ -128,9 +128,9 @@ public abstract class PublisherFactory {
 	 * @param <C>             The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <T, C> Publisher<T> forEach(Consumer<SubscriberWithContext<T, C>> requestConsumer,
-	                                          Function<Subscriber<? super T>, C> contextFactory) {
-		return forEach(requestConsumer, contextFactory, null);
+	public static <T, C> Publisher<T> create(Consumer<SubscriberWithContext<T, C>> requestConsumer,
+	                                         Function<Subscriber<? super T>, C> contextFactory) {
+		return create(requestConsumer, contextFactory, null);
 	}
 
 
@@ -151,9 +151,9 @@ public abstract class PublisherFactory {
 	 * @param <C>              The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <T, C> Publisher<T> forEach(final Consumer<SubscriberWithContext<T, C>> requestConsumer,
-	                                          Function<Subscriber<? super T>, C> contextFactory,
-	                                          Consumer<C> shutdownConsumer) {
+	public static <T, C> Publisher<T> create(final Consumer<SubscriberWithContext<T, C>> requestConsumer,
+	                                         Function<Subscriber<? super T>, C> contextFactory,
+	                                         Consumer<C> shutdownConsumer) {
 		Assert.notNull(requestConsumer, "A data producer must be provided");
 		return new ForEachPublisher<T, C>(requestConsumer, contextFactory, shutdownConsumer);
 	}
