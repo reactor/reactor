@@ -100,7 +100,7 @@ public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Bou
 
 	@Override
 	public final void request(long n) {
-		if(n < 0){
+		if (n < 0) {
 			doError(SpecificationExceptions.spec_3_09_exception(n));
 			return;
 		}
@@ -139,13 +139,13 @@ public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Bou
 	@Override
 	public boolean isExposedToOverflow(Bounded parentPublisher) {
 		return Bounded.class.isAssignableFrom(subscriber.getClass())
-				&& ((Bounded) subscriber).isExposedToOverflow(parentPublisher);
+		  && ((Bounded) subscriber).isExposedToOverflow(parentPublisher);
 	}
 
 	@Override
 	public long getCapacity() {
 		return Bounded.class.isAssignableFrom(subscriber.getClass()) ?
-				((Bounded) subscriber).getCapacity() :
-				Long.MAX_VALUE;
+		  ((Bounded) subscriber).getCapacity() :
+		  Long.MAX_VALUE;
 	}
 }

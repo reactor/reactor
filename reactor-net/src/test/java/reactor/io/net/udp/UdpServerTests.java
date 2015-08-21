@@ -58,9 +58,9 @@ public class UdpServerTests {
 		final CountDownLatch latch = new CountDownLatch(4);
 
 		final DatagramServer<byte[], byte[]> server = NetStreams.udpServer(
-				s -> s.env(env)
-						.listen(port)
-						.codec(StandardCodecs.BYTE_ARRAY_CODEC)
+		  s -> s.env(env)
+			.listen(port)
+			.codec(StandardCodecs.BYTE_ARRAY_CODEC)
 		);
 
 		server.start(ch -> {
@@ -105,14 +105,14 @@ public class UdpServerTests {
 
 		for (int i = 0; i < Environment.PROCESSORS; i++) {
 			DatagramServer<byte[], byte[]> server = NetStreams.<byte[], byte[]>udpServer(
-					NettyDatagramServer.class,
-					spec -> spec.env(env)
-							.dispatcher(Environment.SHARED)
-							.listen(port)
-							.options(new ServerSocketOptions()
-									.reuseAddr(true)
-									.protocolFamily(StandardProtocolFamily.INET))
-							.codec(StandardCodecs.BYTE_ARRAY_CODEC)
+			  NettyDatagramServer.class,
+			  spec -> spec.env(env)
+				.dispatcher(Environment.SHARED)
+				.listen(port)
+				.options(new ServerSocketOptions()
+				  .reuseAddr(true)
+				  .protocolFamily(StandardProtocolFamily.INET))
+				.codec(StandardCodecs.BYTE_ARRAY_CODEC)
 			);
 
 			server.start(ch -> {
@@ -186,15 +186,17 @@ public class UdpServerTests {
 			return NetUtil.LOOPBACK_IF;
 		}
 
-		for (Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces(); ifaces.hasMoreElements(); ) {
+		for (Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces(); ifaces.hasMoreElements();
+		  ) {
 			NetworkInterface iface = ifaces.nextElement();
 			if (isMulticastEnabledIPv4Interface(iface)) {
 				return iface;
 			}
 		}
 
-		throw new UnsupportedOperationException("This test requires a multicast enabled IPv4 network interface, but none" +
-				" " +
-				"were found");
+		throw new UnsupportedOperationException("This test requires a multicast enabled IPv4 network interface, but " +
+		  "none" +
+		  " " +
+		  "were found");
 	}
 }

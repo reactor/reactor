@@ -19,12 +19,11 @@ package reactor.fn;
 /**
  * Implementations of this class perform work on the given parameters pair.
  *
- * @param <LEFT> The type of the left value to the apply operation
+ * @param <LEFT>  The type of the left value to the apply operation
  * @param <RIGHT> The type of the right to the apply operation
- *
  * @author Stephane Maldini
  */
-public interface BiConsumer<LEFT, RIGHT>{
+public interface BiConsumer<LEFT, RIGHT> {
 
 	public void accept(LEFT left, RIGHT right);
 }

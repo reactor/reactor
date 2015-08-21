@@ -24,7 +24,6 @@ import java.util.Map;
  *
  * @author Jon Brisbin
  * @author Andy Wilkinson
- *
  * @see UriPathTemplate
  */
 public class UriPathSelector extends ObjectSelector<Object, UriPathTemplate> {
@@ -54,9 +53,7 @@ public class UriPathSelector extends ObjectSelector<Object, UriPathTemplate> {
 	 * Creates a {@link Selector} based on a URI template.
 	 *
 	 * @param uriTemplate The URI template to compile.
-	 *
 	 * @return The new {@link Selector}.
-	 *
 	 * @see UriPathTemplate
 	 */
 	public static Selector uriPathSelector(String uriTemplate) {
@@ -65,7 +62,7 @@ public class UriPathSelector extends ObjectSelector<Object, UriPathTemplate> {
 
 	@Override
 	public boolean matches(Object path) {
-		return String.class.isAssignableFrom(path.getClass()) && getObject().matches((String)path);
+		return String.class.isAssignableFrom(path.getClass()) && getObject().matches((String) path);
 	}
 
 	@Override

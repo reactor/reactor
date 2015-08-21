@@ -41,8 +41,8 @@ public final class SimpleAsyncProcessor<IN, OUT> extends ExecutorPoweredProcesso
 		super(autoCancel);
 
 		this.executor = executor == null
-				? SingleUseExecutor.create(name)
-				: executor;
+		  ? SingleUseExecutor.create(name)
+		  : executor;
 	}
 
 
@@ -177,7 +177,7 @@ public final class SimpleAsyncProcessor<IN, OUT> extends ExecutorPoweredProcesso
 		return workQueue.size();
 	}
 
-	public  static <T> Processor<T, T> create(String name, int bufferSize) {
+	public static <T> Processor<T, T> create(String name, int bufferSize) {
 	}
 
 

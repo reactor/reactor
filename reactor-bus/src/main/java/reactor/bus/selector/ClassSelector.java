@@ -42,7 +42,6 @@ public class ClassSelector extends ObjectSelector<Object, Class<?>> {
 	 * key being matched is assignable according to {@link Class#isAssignableFrom(Class)}.
 	 *
 	 * @param supertype The supertype to compare.
-	 *
 	 * @return The new {@link Selector}.
 	 */
 	public static Selector typeSelector(Class<?> supertype) {
@@ -52,7 +51,7 @@ public class ClassSelector extends ObjectSelector<Object, Class<?>> {
 	@Override
 	public boolean matches(Object key) {
 		return (Class.class.isInstance(key) && getObject().isAssignableFrom((Class<?>) key)) ||
-				getObject().isAssignableFrom(key.getClass());
+		  getObject().isAssignableFrom(key.getClass());
 	}
 
 }

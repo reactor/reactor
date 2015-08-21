@@ -63,7 +63,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> create() {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				LiteBlockingWaitStrategy(), true);
+		  LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -78,7 +78,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(boolean autoCancel) {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				LiteBlockingWaitStrategy(), autoCancel);
+		  LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
@@ -194,7 +194,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
-			strategy) {
+	  strategy) {
 		return create(name, bufferSize, strategy, true);
 	}
 
@@ -213,7 +213,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
-			strategy, boolean autoCancel) {
+	  strategy, boolean autoCancel) {
 		return new RingBufferWorkProcessor<E>(name, null, bufferSize, strategy, false, autoCancel);
 	}
 
@@ -231,7 +231,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService executor, int bufferSize, WaitStrategy
-			strategy) {
+	  strategy) {
 		return create(executor, bufferSize, strategy, true);
 	}
 
@@ -250,7 +250,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService executor, int bufferSize, WaitStrategy
-			strategy, boolean autoCancel) {
+	  strategy, boolean autoCancel) {
 		return new RingBufferWorkProcessor<E>(null, executor, bufferSize, strategy, false, autoCancel);
 	}
 
@@ -268,7 +268,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> share() {
 		return share(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				LiteBlockingWaitStrategy(), true);
+		  LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -286,7 +286,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(boolean autoCancel) {
 		return share(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				LiteBlockingWaitStrategy(), autoCancel);
+		  LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
@@ -420,7 +420,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(String name, int bufferSize, WaitStrategy
-			strategy) {
+	  strategy) {
 		return share(name, bufferSize, strategy, true);
 	}
 
@@ -442,7 +442,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(String name, int bufferSize, WaitStrategy
-			strategy, boolean autoCancel) {
+	  strategy, boolean autoCancel) {
 		return new RingBufferWorkProcessor<E>(name, null, bufferSize, strategy, true, autoCancel);
 	}
 
@@ -463,7 +463,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService executor, int bufferSize, WaitStrategy
-			strategy) {
+	  strategy) {
 		return share(executor, bufferSize, strategy, true);
 	}
 
@@ -485,7 +485,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService executor, int bufferSize, WaitStrategy
-			strategy, boolean autoCancel) {
+	  strategy, boolean autoCancel) {
 		return new RingBufferWorkProcessor<E>(null, executor, bufferSize, strategy, true, autoCancel);
 	}
 
@@ -638,7 +638,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		return true;
 	}
 
-	RingBuffer<MutableSignal<E>> ringBuffer(){
+	RingBuffer<MutableSignal<E>> ringBuffer() {
 		return ringBuffer;
 	}
 
@@ -654,7 +654,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * is started and just before the thread is shutdown.
 	 *
 	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an
-	 *              event.
+	 *            event.
 	 */
 	private final static class WorkSignalProcessor<T> implements EventProcessor {
 

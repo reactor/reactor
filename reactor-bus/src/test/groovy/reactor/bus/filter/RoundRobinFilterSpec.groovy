@@ -15,9 +15,6 @@
  */
 
 
-
-
-
 package reactor.bus.filter
 
 import spock.lang.Specification
@@ -26,73 +23,73 @@ class RoundRobinFilterSpec extends Specification {
 
 	def "When items are filtered multiple times a single item, selected using a round-robin algorithm, is returned"() {
 		given: "A round robin filter and a list of three items"
-		def filter = new RoundRobinFilter()
-	  def items = ['a', 'b', 'c']
+			def filter = new RoundRobinFilter()
+			def items = ['a', 'b', 'c']
 
 		when: "items are filtered"
-		def filteredItems = filter.filter items, "key"
+			def filteredItems = filter.filter items, "key"
 
 		then: "the first item is returned"
-		filteredItems.size() == 1
-		filteredItems[0] == 'a'
+			filteredItems.size() == 1
+			filteredItems[0] == 'a'
 
 		when: "items are filtered a second time"
-		filteredItems = filter.filter items, "key"
+			filteredItems = filter.filter items, "key"
 
 		then: "the second item is returned"
-		filteredItems.size() == 1
-		filteredItems[0] == 'b'
+			filteredItems.size() == 1
+			filteredItems[0] == 'b'
 
 		when: "items are filtered a third time"
-		filteredItems = filter.filter items, "key"
+			filteredItems = filter.filter items, "key"
 
 		then: "the third item is returned"
-		filteredItems.size() == 1
-		filteredItems[0] == 'c'
+			filteredItems.size() == 1
+			filteredItems[0] == 'c'
 
 		when: "items are filtered a fourth time"
-		filteredItems = filter.filter items, "key"
+			filteredItems = filter.filter items, "key"
 
 		then: "the first item is returned"
-		filteredItems.size() == 1
-		filteredItems[0] == 'a'
+			filteredItems.size() == 1
+			filteredItems[0] == 'a'
 
 		when: "items are filtered with a different key"
-		filteredItems = filter.filter items, "new-key"
+			filteredItems = filter.filter items, "new-key"
 
 		then: "the first item is returned"
 	}
 
 	def "When null items are filtered an IllegalStateException is thrown"() {
 		given: "A round robin filter"
-		def filter = new RoundRobinFilter()
+			def filter = new RoundRobinFilter()
 
 		when: "null items are filtered"
-		filter.filter null, null
+			filter.filter null, null
 
 		then: "an IllegalArgumentException was thrown"
-		thrown(IllegalArgumentException)
+			thrown(IllegalArgumentException)
 	}
 
 	def "When a null key is provided an IllegalStateException is thrown"() {
 		given: "A round robin filter"
-		def filter = new RoundRobinFilter()
+			def filter = new RoundRobinFilter()
 
 		when: "a null key is provided"
-		filter.filter(['a'], null)
+			filter.filter(['a'], null)
 
 		then: "an IllegalArgumentException was thrown"
-		thrown(IllegalArgumentException)
+			thrown(IllegalArgumentException)
 	}
 
 	def "When an empty list of items are filtered, an empty list is returned"() {
 		given: "A random filter"
-		def filter = new RandomFilter()
+			def filter = new RandomFilter()
 
 		when: "an empty list of items is filtered"
-		def filteredItems = filter.filter([], null)
+			def filteredItems = filter.filter([], null)
 
 		then: "an empty list is returned"
-		filteredItems.empty
+			filteredItems.empty
 	}
 }

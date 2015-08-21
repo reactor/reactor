@@ -137,7 +137,8 @@ public abstract class SubscriberFactory {
 	 * Create a {@link Subscriber} reacting onNext and onError. The subscriber will automatically
 	 * request Long.MAX_VALUE onSubscribe.
 	 *
-	 * @param dataConsumer  A {@link BiConsumer} with left argument onNext data and right argument upstream subscription
+	 * @param dataConsumer  A {@link BiConsumer} with left argument onNext data and right argument upstream
+	 *                         subscription
 	 * @param errorConsumer A {@link Consumer} called onError
 	 * @param <T>           The type of the data sequence
 	 * @return a fresh Reactive Streams subscriber ready to be subscribed
@@ -152,7 +153,8 @@ public abstract class SubscriberFactory {
 	 * Create a {@link Subscriber} reacting onNext, onError and onComplete. The subscriber will automatically
 	 * request Long.MAX_VALUE onSubscribe.
 	 * <p>
-	 * The argument {@code subscriptionHandler} is executed once by new subscriber to generate a context shared by every
+	 * The argument {@code subscriptionHandler} is executed once by new subscriber to generate a context shared by
+	 * every
 	 * request calls.
 	 *
 	 * @param dataConsumer     A {@link BiConsumer} with left argument onNext data and right argument upstream
@@ -166,21 +168,23 @@ public abstract class SubscriberFactory {
 	                                          final Consumer<Throwable> errorConsumer,
 	                                          Consumer<Void> completeConsumer) {
 		return create(
-				UNBOUNDED_REQUEST_FUNCTION,
-				dataConsumer,
-				errorConsumer != null ? new BiConsumer<Throwable, Void>() {
-					@Override
-					public void accept(Throwable throwable, Void aVoid) {
-						errorConsumer.accept(throwable);
-					}
-				} : null,
-				completeConsumer
+		  UNBOUNDED_REQUEST_FUNCTION,
+		  dataConsumer,
+		  errorConsumer != null ? new BiConsumer<Throwable, Void>() {
+			  @Override
+			  public void accept(Throwable throwable, Void aVoid) {
+				  errorConsumer.accept(throwable);
+			  }
+		  } : null,
+		  completeConsumer
 		);
 	}
 
 	/**
-	 * Create a {@link Subscriber} reacting onNext, onSubscribe, onError, onComplete with the passed {@link BiConsumer}.
-	 * The argument {@code subscriptionHandler} is executed once by new subscriber to generate a context shared by every
+	 * Create a {@link Subscriber} reacting onNext, onSubscribe, onError, onComplete with the passed {@link
+	 * BiConsumer}.
+	 * The argument {@code subscriptionHandler} is executed once by new subscriber to generate a context shared by
+	 * every
 	 * request calls.
 	 * The argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel, onComplete,
 	 * onError).
@@ -305,7 +309,8 @@ public abstract class SubscriberFactory {
 		public void onComplete() {
 			if (completeConsumer != null) {
 				try {
-					completeConsumer.accept(subscriptionWithContext != null ? subscriptionWithContext.context() : null);
+					completeConsumer.accept(subscriptionWithContext != null ? subscriptionWithContext.context() :
+					  null);
 				} catch (Throwable t) {
 					onError(t);
 				}

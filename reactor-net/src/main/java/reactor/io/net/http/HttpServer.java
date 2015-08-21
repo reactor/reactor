@@ -40,11 +40,10 @@ import java.util.List;
  *
  * @param <IN>  The type that will be received by this server
  * @param <OUT> The type that will be sent by this server
- *
  * @author Stephane Maldini
  */
 public abstract class HttpServer<IN, OUT>
-		extends ReactorPeer<IN, OUT, HttpChannel<IN, OUT>> {
+  extends ReactorPeer<IN, OUT, HttpChannel<IN, OUT>> {
 
 	protected final Registry<HttpChannel, ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> routedWriters;
 
@@ -73,31 +72,30 @@ public abstract class HttpServer<IN, OUT>
 
 	/**
 	 * Register an handler for the given Selector condition, incoming connections will query the internal registry
-	 *  to invoke the matching handlers. Implementation may choose to reply 404 if no route matches.
+	 * to invoke the matching handlers. Implementation may choose to reply 404 if no route matches.
 	 *
-	 * @param condition a {@link Selector} to match the incoming connection with registered handler
+	 * @param condition       a {@link Selector} to match the incoming connection with registered handler
 	 * @param serviceFunction an handler to invoke for the given condition
-	 *
 	 * @return {@code this}
 	 */
 	@SuppressWarnings("unchecked")
 	public HttpServer<IN, OUT> route(
-			final Selector<HttpChannel> condition,
-			final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> serviceFunction) {
+	  final Selector<HttpChannel> condition,
+	  final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> serviceFunction) {
 
 		routedWriters.register(condition, serviceFunction);
 		return this;
 	}
 
 	/**
-	 * Listen for HTTP GET on the passed path to be used as a routing condition. Incoming connections will query the internal registry
-	 *  to invoke the matching handlers.
-	 * 
-	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)} 
-	 * 
-	 * @param path The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * Listen for HTTP GET on the passed path to be used as a routing condition. Incoming connections will query the
+	 * internal registry
+	 * to invoke the matching handlers.
+	 * <p>
+	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
+	 *
+	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
-	 * 
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> get(String path,
@@ -107,12 +105,13 @@ public abstract class HttpServer<IN, OUT>
 	}
 
 	/**
-	 * Listen for HTTP POST on the passed path to be used as a routing condition. Incoming connections will query the internal registry
-	 *  to invoke the matching handlers.
-	 *
+	 * Listen for HTTP POST on the passed path to be used as a routing condition. Incoming connections will query the
+	 * internal registry
+	 * to invoke the matching handlers.
+	 * <p>
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
@@ -124,14 +123,14 @@ public abstract class HttpServer<IN, OUT>
 
 
 	/**
-	 * Listen for HTTP PUT on the passed path to be used as a routing condition. Incoming connections will query the internal registry
-	 *  to invoke the matching handlers.
-	 *
+	 * Listen for HTTP PUT on the passed path to be used as a routing condition. Incoming connections will query the
+	 * internal registry
+	 * to invoke the matching handlers.
+	 * <p>
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
-	 * 
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> put(String path,
@@ -142,32 +141,32 @@ public abstract class HttpServer<IN, OUT>
 
 
 	/**
-	 * Listen for WebSocket on the passed path to be used as a routing condition. Incoming connections will query the internal registry
-	 *  to invoke the matching handlers.
-	 *
+	 * Listen for WebSocket on the passed path to be used as a routing condition. Incoming connections will query the
+	 * internal registry
+	 * to invoke the matching handlers.
+	 * <p>
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
-	 *
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> ws(String path,
-	                                     final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
+	                                    final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		route(NetSelectors.get(path), handler);
 		hasWebsocketEndpoints = true;
 		return this;
 	}
 
 	/**
-	 * Listen for HTTP DELETE on the passed path to be used as a routing condition. Incoming connections will query the internal registry
-	 *  to invoke the matching handlers.
-	 *
+	 * Listen for HTTP DELETE on the passed path to be used as a routing condition. Incoming connections will query
+	 * the internal registry
+	 * to invoke the matching handlers.
+	 * <p>
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
-	 *
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> delete(String path,
@@ -178,15 +177,15 @@ public abstract class HttpServer<IN, OUT>
 
 	protected abstract void onWebsocket(HttpChannel<IN, OUT> next);
 
-	protected final boolean hasWebsocketEndpoints(){
+	protected final boolean hasWebsocketEndpoints() {
 		return hasWebsocketEndpoints;
 	}
 
 	protected Iterable<? extends Publisher<Void>> routeChannel(final HttpChannel<IN, OUT> ch) {
 		final List<Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
-				selected = routedWriters.select(ch);
+		  selected = routedWriters.select(ch);
 
-		if(hasWebsocketEndpoints) {
+		if (hasWebsocketEndpoints) {
 			String connection = ch.headers().get(HttpHeaders.CONNECTION);
 			if (connection != null && connection.equals(HttpHeaders.UPGRADE)) {
 				onWebsocket(ch);
@@ -196,8 +195,9 @@ public abstract class HttpServer<IN, OUT>
 		return new Iterable<Publisher<Void>>() {
 			@Override
 			public Iterator<Publisher<Void>> iterator() {
-				final Iterator<Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
-						iterator = selected.iterator();
+				final Iterator<Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN,
+				  OUT>>>>
+				  iterator = selected.iterator();
 
 				return new Iterator<Publisher<Void>>() {
 					@Override
@@ -214,7 +214,8 @@ public abstract class HttpServer<IN, OUT>
 					@Override
 					@SuppressWarnings("unchecked")
 					public Publisher<Void> next() {
-						Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> next = iterator.next();
+						Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> next
+						  = iterator.next();
 						if (next != null) {
 							ch.paramsResolver(next.getSelector().getHeaderResolver());
 							return next.getObject().apply(ch);

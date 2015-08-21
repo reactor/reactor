@@ -48,17 +48,17 @@ import java.util.List;
  */
 @NotThreadSafe
 public class Buffer implements Recyclable,
-		Comparable<Buffer>,
-		Iterable<Byte>,
-		ReadableByteChannel,
-		WritableByteChannel {
+  Comparable<Buffer>,
+  Iterable<Byte>,
+  ReadableByteChannel,
+  WritableByteChannel {
 
 	/**
 	 * The size, in bytes, of a small buffer. Can be configured using the {@code reactor.io.defaultBufferSize} system
 	 * property. Default to 16384 bytes.
 	 */
 	public static int SMALL_BUFFER_SIZE = Integer.parseInt(
-			System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16)
+	  System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16)
 	);
 
 	/**
@@ -66,7 +66,7 @@ public class Buffer implements Recyclable,
 	 * property. Defaults to 16384000 bytes.
 	 */
 	public static int MAX_BUFFER_SIZE = Integer.parseInt(
-			System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000 * 16)
+	  System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000 * 16)
 	);
 
 	private static final Charset UTF8 = Charset.forName("UTF-8");
@@ -85,7 +85,8 @@ public class Buffer implements Recyclable,
 	}
 
 	/**
-	 * Create an {@literal Buffer} that has an internal {@link ByteBuffer} allocated to the given size and optional make
+	 * Create an {@literal Buffer} that has an internal {@link ByteBuffer} allocated to the given size and optional
+	 * make
 	 * this buffer fixed-length.
 	 *
 	 * @param atLeast Allocate this many bytes immediately.
@@ -96,7 +97,8 @@ public class Buffer implements Recyclable,
 			if (atLeast <= MAX_BUFFER_SIZE) {
 				this.buffer = ByteBuffer.allocate(atLeast);
 			} else {
-				throw new IllegalArgumentException("Requested buffer size exceeds maximum allowed (" + MAX_BUFFER_SIZE + ")");
+				throw new IllegalArgumentException("Requested buffer size exceeds maximum allowed (" + MAX_BUFFER_SIZE
+				  + ")");
 			}
 		} else {
 			ensureCapacity(atLeast);
@@ -135,12 +137,13 @@ public class Buffer implements Recyclable,
 	@SuppressWarnings("resource")
 	public static Buffer wrap(byte[] bytes) {
 		return new Buffer(bytes.length, true)
-				.append(bytes)
-				.flip();
+		  .append(bytes)
+		  .flip();
 	}
 
 	/**
-	 * Convenience method to create a new {@literal Buffer} from the given String and optionally specify whether the new
+	 * Convenience method to create a new {@literal Buffer} from the given String and optionally specify whether the
+	 * new
 	 * {@literal Buffer} should be a fixed length or not.
 	 *
 	 * @param str   The String to create a buffer from.
@@ -149,9 +152,9 @@ public class Buffer implements Recyclable,
 	 */
 	@SuppressWarnings("resource")
 	public static Buffer wrap(String str, boolean fixed) {
-		if(fixed){
+		if (fixed) {
 			return wrap(str.getBytes());
-		}else {
+		} else {
 			return new Buffer(str.length(), false)
 			  .append(str)
 			  .flip();
@@ -1014,7 +1017,8 @@ public class Buffer implements Recyclable,
 	 * Split this buffer on the given delimiter and optionally leave the delimiter intact rather than stripping it.
 	 *
 	 * @param delimiter      The delimiter on which to split this buffer.
-	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
+	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned
+	 *                                         data.
 	 * @return A {@link List} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public List<View> split(int delimiter, boolean stripDelimiter) {
@@ -1022,12 +1026,14 @@ public class Buffer implements Recyclable,
 	}
 
 	/**
-	 * Split this buffer on the given delimiter, save memory by reusing the given {@link List}, and optionally leave the
+	 * Split this buffer on the given delimiter, save memory by reusing the given {@link List}, and optionally leave
+	 * the
 	 * delimiter intact rather than stripping it.
 	 *
 	 * @param views          The list to store {@link View Views} in.
 	 * @param delimiter      The delimiter on which to split this buffer.
-	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
+	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned
+	 *                                         data.
 	 * @return A {@link List} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public List<View> split(List<View> views, int delimiter, boolean stripDelimiter) {
@@ -1065,7 +1071,8 @@ public class Buffer implements Recyclable,
 	 * stripDelimiter} is {@code true}.
 	 *
 	 * @param delimiter      The multi-byte delimiter.
-	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
+	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned
+	 *                                         data.
 	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public Iterable<View> split(Buffer delimiter, boolean stripDelimiter) {
@@ -1079,7 +1086,8 @@ public class Buffer implements Recyclable,
 	 *
 	 * @param views          The already-allocated List to reuse.
 	 * @param delimiter      The multi-byte delimiter.
-	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned data.
+	 * @param stripDelimiter {@literal true} to ignore the delimiter, {@literal false} to leave it in the returned
+	 *                                         data.
 	 * @return An {@link Iterable} of {@link View Views} that point to the segments of this buffer.
 	 */
 	public Iterable<View> split(List<View> views, Buffer delimiter, boolean stripDelimiter) {
@@ -1219,7 +1227,7 @@ public class Buffer implements Recyclable,
 	 * @return true if delimiter
 	 * @since 2.0.4
 	 */
-	public boolean isDelimitingBuffer(){
+	public boolean isDelimitingBuffer() {
 		return this == DELIMITING_BUFFER;
 	}
 
@@ -1255,8 +1263,8 @@ public class Buffer implements Recyclable,
 	private void expand(int expandSize) {
 		snapshot();
 		ByteBuffer newBuff = (buffer.isDirect()
-				? ByteBuffer.allocateDirect(buffer.capacity() + expandSize)
-				: ByteBuffer.allocate(buffer.capacity() + expandSize));
+		  ? ByteBuffer.allocateDirect(buffer.capacity() + expandSize)
+		  : ByteBuffer.allocate(buffer.capacity() + expandSize));
 		buffer.flip();
 		newBuff.put(buffer);
 		buffer = newBuff;
@@ -1389,10 +1397,13 @@ public class Buffer implements Recyclable,
 	}
 
 	/**
-	 * A {@literal View} represents a segment of a buffer. When {@link #get()} is called, the {@literal Buffer} is set to
-	 * the correct start and end points as given at creation time. After the view has been used, it is the responsibility
+	 * A {@literal View} represents a segment of a buffer. When {@link #get()} is called, the {@literal Buffer} is
+	 * set to
+	 * the correct start and end points as given at creation time. After the view has been used, it is the
+	 * responsibility
 	 * of the caller to {@link #reset()} the buffer if more manipulation is required. Otherwise, multiple views can be
-	 * created from a single buffer and used consecutively to extract portions of a buffer without expensive substrings.
+	 * created from a single buffer and used consecutively to extract portions of a buffer without expensive
+	 * substrings.
 	 */
 	public class View implements Supplier<Buffer> {
 		private final int start;
@@ -1430,7 +1441,9 @@ public class Buffer implements Recyclable,
 	}
 
 	/**
-	 * A delimiting buffer is sent to {@link reactor.io.codec.BufferCodec} and other components to signal the end of a sequence of Buffer.
+	 * A delimiting buffer is sent to {@link reactor.io.codec.BufferCodec} and other components to signal the end of a
+	 * sequence of Buffer.
+	 *
 	 * @since 2.0.4
 	 */
 	public static final Buffer DELIMITING_BUFFER = new Buffer();

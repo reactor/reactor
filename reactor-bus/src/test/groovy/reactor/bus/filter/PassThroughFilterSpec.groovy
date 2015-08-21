@@ -15,9 +15,6 @@
  */
 
 
-
-
-
 package reactor.bus.filter
 
 import spock.lang.Specification
@@ -27,24 +24,24 @@ class PassThroughFilterSpec extends Specification {
 
 	def "When items are filtered they are returned as is"() {
 		given: "A pass-through filter"
-		def filter = new PassThroughFilter()
+			def filter = new PassThroughFilter()
 
 		when: "items are filtered"
-		def items = ['a', 'b', 'c']
-		def filteredItems = filter.filter items, null
+			def items = ['a', 'b', 'c']
+			def filteredItems = filter.filter items, null
 
 		then: "they are returned as-is"
-		items == filteredItems
+			items == filteredItems
 	}
 
 	def "When null items are filtered an IllegalStateException is thrown"() {
 		given: "A pass-through filter"
-		def filter = new PassThroughFilter()
+			def filter = new PassThroughFilter()
 
 		when: "null items are filtered"
-		filter.filter null, null
+			filter.filter null, null
 
 		then: "an IllegalArgumentException is thrown"
-		thrown(IllegalArgumentException)
+			thrown(IllegalArgumentException)
 	}
 }

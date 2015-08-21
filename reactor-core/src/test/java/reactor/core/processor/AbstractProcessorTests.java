@@ -66,7 +66,7 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 		} else {
 			final Random random = new Random();
 			return Publishers.forEach(
-					s -> s.onNext(random.nextLong())
+			  s -> s.onNext(random.nextLong())
 			);
 		}
 	}

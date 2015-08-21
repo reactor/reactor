@@ -45,24 +45,24 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 		final RingBufferWorkProcessor<Long> processor = RingBufferWorkProcessor.<Long>create();
 
 		Publisher<Long> pub = PublisherFactory.forEach(
-				c -> {
-					if (c.context().incrementAndGet() >= 661) {
-						c.onComplete();
-						processor.onComplete();
-					} else {
-						try {
-							Thread.sleep(50);
-						} catch (InterruptedException e) {
+		  c -> {
+			  if (c.context().incrementAndGet() >= 661) {
+				  c.onComplete();
+				  processor.onComplete();
+			  } else {
+				  try {
+					  Thread.sleep(50);
+				  } catch (InterruptedException e) {
 
-						}
-						c.onNext(c.context().get());
-						System.out.println(c.context() + " emit");
-					}
-				},
-				s -> new AtomicLong()
+				  }
+				  c.onNext(c.context().get());
+				  System.out.println(c.context() + " emit");
+			  }
+		  },
+		  s -> new AtomicLong()
 		);
 
-		for(int i = 0; i < 2; i++) {
+		for (int i = 0; i < 2; i++) {
 			processor.subscribe(new Subscriber<Long>() {
 				@Override
 				public void onSubscribe(Subscription s) {
@@ -87,7 +87,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 		}
 
 		processor
-				.writeWith(pub)
-				.subscribe(SubscriberFactory.unbounded());
+		  .writeWith(pub)
+		  .subscribe(SubscriberFactory.unbounded());
 	}
 }

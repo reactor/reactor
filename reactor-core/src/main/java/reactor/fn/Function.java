@@ -22,7 +22,6 @@ package reactor.fn;
  *
  * @param <T> The type of the input to the apply operation
  * @param <R> The type of the result of the apply operation
- *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -32,7 +31,6 @@ public interface Function<T, R> {
 	 * Execute the logic of the action, accepting the given parameter.
 	 *
 	 * @param t The parameter to pass to the action.
-	 *
 	 * @return result
 	 */
 	R apply(T t);

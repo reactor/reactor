@@ -39,13 +39,13 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	protected volatile int terminated = 0;
 
 	protected static final AtomicIntegerFieldUpdater<PushSubscription> TERMINAL_UPDATER = AtomicIntegerFieldUpdater
-			.newUpdater(PushSubscription.class, "terminated");
+	  .newUpdater(PushSubscription.class, "terminated");
 
 
 	protected volatile long pendingRequestSignals = 0l;
 
 	protected static final AtomicLongFieldUpdater<PushSubscription> PENDING_UPDATER = AtomicLongFieldUpdater
-			.newUpdater(PushSubscription.class, "pendingRequestSignals");
+	  .newUpdater(PushSubscription.class, "pendingRequestSignals");
 
 
 	/**
@@ -214,9 +214,9 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	@Override
 	public String toString() {
 		return "{push" +
-				(pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE ? ",pending=" + pendingRequestSignals :
-						"")
-				+ "}";
+		  (pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE ? ",pending=" + pendingRequestSignals :
+			"")
+		  + "}";
 	}
 
 

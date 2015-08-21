@@ -38,70 +38,56 @@ public interface Timer {
 	 * Schedule a recurring task. The given {@link reactor.fn.Consumer} will be invoked once every N time units
 	 * after the given delay.
 	 *
-	 * @param consumer
-	 * 		the {@code Consumer} to invoke each period
-	 * @param period
-	 * 		the amount of time that should elapse between invocations of the given {@code Consumer}
-	 * @param timeUnit
-	 * 		the unit of time the {@code period} is to be measured in
-	 * @param delayInMilliseconds
-	 * 		a number of milliseconds in which to delay any execution of the given {@code Consumer}
-	 *
+	 * @param consumer            the {@code Consumer} to invoke each period
+	 * @param period              the amount of time that should elapse between invocations of the given {@code
+	 * Consumer}
+	 * @param timeUnit            the unit of time the {@code period} is to be measured in
+	 * @param delayInMilliseconds a number of milliseconds in which to delay any execution of the given {@code
+	 * Consumer}
 	 * @return a {@link reactor.fn.Pausable} that can be used to {@link
 	 * reactor.fn.Pausable#cancel() cancel}, {@link reactor.fn.Pausable#pause() pause} or
 	 * {@link reactor.fn.Pausable#resume() resume} the given task.
 	 */
 	Pausable schedule(Consumer<Long> consumer,
-	                                                long period,
-	                                                TimeUnit timeUnit,
-	                                                long delayInMilliseconds);
+	                  long period,
+	                  TimeUnit timeUnit,
+	                  long delayInMilliseconds);
 
 	/**
 	 * Schedule a recurring task. The given {@link reactor.fn.Consumer} will be invoked immediately, as well as
 	 * once
 	 * every N time units.
 	 *
-	 * @param consumer
-	 * 		the {@code Consumer} to invoke each period
-	 * @param period
-	 * 		the amount of time that should elapse between invocations of the given {@code Consumer}
-	 * @param timeUnit
-	 * 		the unit of time the {@code period} is to be measured in
-	 *
+	 * @param consumer the {@code Consumer} to invoke each period
+	 * @param period   the amount of time that should elapse between invocations of the given {@code Consumer}
+	 * @param timeUnit the unit of time the {@code period} is to be measured in
 	 * @return a {@link reactor.fn.Pausable} that can be used to {@link
 	 * reactor.fn.Pausable#cancel() cancel}, {@link reactor.fn.Pausable#pause() pause} or
 	 * {@link reactor.fn.Pausable#resume() resume} the given task.
-	 *
 	 * @see #schedule(reactor.fn.Consumer, long, java.util.concurrent.TimeUnit, long)
 	 */
 	Pausable schedule(Consumer<Long> consumer,
-	                                                long period,
-	                                                TimeUnit timeUnit);
+	                  long period,
+	                  TimeUnit timeUnit);
 
 	/**
 	 * Submit a task for arbitrary execution after the given time delay.
 	 *
-	 * @param consumer
-	 * 		the {@code Consumer} to invoke
-	 * @param delay
-	 * 		the amount of time that should elapse before invocations of the given {@code Consumer}
-	 * @param timeUnit
-	 * 		the unit of time the {@code period} is to be measured in
-	 *
+	 * @param consumer the {@code Consumer} to invoke
+	 * @param delay    the amount of time that should elapse before invocations of the given {@code Consumer}
+	 * @param timeUnit the unit of time the {@code period} is to be measured in
 	 * @return a {@link reactor.fn.Pausable} that can be used to {@link
 	 * reactor.fn.Pausable#cancel() cancel}, {@link reactor.fn.Pausable#pause() pause} or
 	 * {@link reactor.fn.Pausable#resume() resume} the given task.
 	 */
 	Pausable submit(Consumer<Long> consumer,
-	                                              long delay,
-	                                              TimeUnit timeUnit);
+	                long delay,
+	                TimeUnit timeUnit);
 
 	/**
 	 * Submit a task for arbitrary execution after the delay of this timer's resolution.
 	 *
-	 * @param consumer
-	 * 		the {@code Consumer} to invoke
-	 *
+	 * @param consumer the {@code Consumer} to invoke
 	 * @return {@literal this}
 	 */
 	Pausable submit(Consumer<Long> consumer);

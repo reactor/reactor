@@ -17,16 +17,16 @@
 package reactor.fn;
 
 /**
- * Implementations of this class perform work on the given parameters pair and return a result of an optionally different
+ * Implementations of this class perform work on the given parameters pair and return a result of an optionally
+ * different
  * type.
  *
- * @param <LEFT> The type of the left value to the apply operation
+ * @param <LEFT>  The type of the left value to the apply operation
  * @param <RIGHT> The type of the right to the apply operation
- * @param <R> The type of the result of the apply operation
- *
+ * @param <R>     The type of the result of the apply operation
  * @author Stephane Maldini
  */
-public interface BiFunction<LEFT, RIGHT, R>{
+public interface BiFunction<LEFT, RIGHT, R> {
 
 
 	public R apply(LEFT left, RIGHT right);

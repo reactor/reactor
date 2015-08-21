@@ -35,8 +35,8 @@ public abstract class OverflowPublisher<IN, OUT> extends AsyncProcessor<IN, OUT>
 		super(autoCancel);
 
 		this.executor = executor == null
-				? SingleUseExecutor.create(name)
-				: executor;
+		  ? SingleUseExecutor.create(name)
+		  : executor;
 	}
 
 

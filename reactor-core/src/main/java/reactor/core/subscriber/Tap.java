@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicReference;
  * return the last value seen by the event stream.
  *
  * @param <T> the type of values that this Tap can consume and supply
- *
  * @author Stephane Maldini
  * @author Jon Brisbin
  */

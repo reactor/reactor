@@ -27,7 +27,6 @@ public interface Bounded {
 	 * Check if the current component can be overflown by the passed
 	 *
 	 * @param parentPublisher the eventual parent publisher
-	 *
 	 * @return true if the component is exposed to overflow
 	 */
 	boolean isExposedToOverflow(Bounded parentPublisher);

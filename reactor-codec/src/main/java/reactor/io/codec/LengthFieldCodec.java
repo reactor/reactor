@@ -58,7 +58,7 @@ public class LengthFieldCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 	 */
 	public LengthFieldCodec(int lengthFieldLength, Codec<Buffer, IN, OUT> delegate) {
 		Assert.state(lengthFieldLength == 2 || lengthFieldLength == 4 || lengthFieldLength == 8,
-				"lengthFieldLength should be 2 (short), 4 (int), or 8 (long).");
+		  "lengthFieldLength should be 2 (short), 4 (int), or 8 (long).");
 		this.lengthFieldLength = lengthFieldLength;
 		this.delegate = delegate;
 	}

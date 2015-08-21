@@ -19,5 +19,5 @@ package reactor.core.support;
  * @author Stephane Maldini
  */
 public enum Signal {
-    NEXT, ERROR, COMPLETE, SUBSCRIPTION
+	NEXT, ERROR, COMPLETE, SUBSCRIPTION
 }

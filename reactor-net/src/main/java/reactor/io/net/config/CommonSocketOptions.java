@@ -67,9 +67,11 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Set the Consuming capacity along with eventual flushing strategy each given prefetch iteration.
-	 * Long.MAX will instruct the channels to be unbounded (e.g. limited by the dispatcher capacity if any or a slow consumer).
+	 * Long.MAX will instruct the channels to be unbounded (e.g. limited by the dispatcher capacity if any or a slow
+	 * consumer).
 	 * When unbounded the system will take a maximum of data off the channel incoming connection.
-	 * Setting a value of 10 will however pause the channel after 10 successful reads until the next request from the consumer.
+	 * Setting a value of 10 will however pause the channel after 10 successful reads until the next request from the
+	 * consumer.
 	 *
 	 * @param prefetch The {@code prefetch} in-flight data over this channel ({@code Long.MAX_VALUE} for unbounded).
 	 * @return {@code this}

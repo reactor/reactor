@@ -103,7 +103,7 @@ public class SelectorUnitTests {
 				Object key;
 				try {
 					key = mapper.readValue(json, Map.class);
-				} catch(IOException e) {
+				} catch (IOException e) {
 					throw new IllegalStateException(e);
 				}
 				return Tuple.<Selector, Object>of(sel, key);
@@ -118,7 +118,7 @@ public class SelectorUnitTests {
 				Object key;
 				try {
 					key = mapper.readTree(json);
-				} catch(IOException e) {
+				} catch (IOException e) {
 					throw new IllegalStateException(e);
 				}
 				return Tuple.<Selector, Object>of(sel, key);
@@ -141,7 +141,7 @@ public class SelectorUnitTests {
 		Selector<Object>[] sels = new Selector[selectors];
 		Object[] keys = new Object[selectors];
 
-		for(int i = 0; i < selectors; i++) {
+		for (int i = 0; i < selectors; i++) {
 			Tuple2<Selector, Object> tup = fn.apply(i);
 			sels[i] = tup.getT1();
 			keys[i] = tup.getT2();
@@ -149,9 +149,9 @@ public class SelectorUnitTests {
 		}
 
 		long start = System.currentTimeMillis();
-		for(int i = 0; i < selectors * iterations; i++) {
+		for (int i = 0; i < selectors * iterations; i++) {
 			int j = i % selectors;
-			for(Registration<?, ? extends Consumer<?>> reg : registry.select(keys[j])) {
+			for (Registration<?, ? extends Consumer<?>> reg : registry.select(keys[j])) {
 				reg.getObject().accept(null);
 			}
 		}

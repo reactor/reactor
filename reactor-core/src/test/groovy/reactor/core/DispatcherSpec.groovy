@@ -72,7 +72,7 @@ class DispatcherSpec extends Specification {
 			"listen for recursive event"
 			Consumer<Integer> c
 			c = { data ->
-				if(data < 2) {
+				if (data < 2) {
 					latch.countDown()
 					r.dispatch(++data, c, null)
 				}
@@ -91,7 +91,7 @@ class DispatcherSpec extends Specification {
 
 		given:
 			"a Reactor with a ThreadPoolExecutorDispatcher"
-			def r  = env.getDispatcher(Environment.THREAD_POOL)
+			def r = env.getDispatcher(Environment.THREAD_POOL)
 			long start = System.currentTimeMillis()
 			def hello = ""
 			def c = { String ev ->

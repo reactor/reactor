@@ -74,7 +74,7 @@ public class FanOutSubscription<O> extends PushSubscription<O> {
 		drainErrors();
 	}
 
-	private void drainErrors(){
+	private void drainErrors() {
 		PushSubscription<O> deleteSubscription;
 		synchronized (deleteQueue) {
 			synchronized (subscriptions) {
@@ -131,7 +131,7 @@ public class FanOutSubscription<O> extends PushSubscription<O> {
 
 	public void forEach(Consumer<PushSubscription<O>> consumer) {
 		synchronized (subscriptions) {
-			if(subscriptions.isEmpty()) return;
+			if (subscriptions.isEmpty()) return;
 			for (PushSubscription<O> subscription : subscriptions) {
 				if (subscription != null) {
 					consumer.accept(subscription);
@@ -159,7 +159,7 @@ public class FanOutSubscription<O> extends PushSubscription<O> {
 
 	public boolean add(PushSubscription<O> subscription) {
 		synchronized (subscriptions) {
-		return subscriptions.add(subscription);
+			return subscriptions.add(subscription);
 		}
 	}
 

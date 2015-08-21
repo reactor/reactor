@@ -20,25 +20,25 @@
 -->
 
 <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
-		xmlns:xslthl="http://xslthl.sf.net"
-		exclude-result-prefixes="xslthl"
-		version='1.0'>
+                xmlns:xslthl="http://xslthl.sf.net"
+                exclude-result-prefixes="xslthl"
+                version='1.0'>
 
-	<!-- Extensions -->
-	<xsl:param name="use.extensions">1</xsl:param>
-	<xsl:param name="tablecolumns.extension">0</xsl:param>
-	<xsl:param name="callout.extensions">1</xsl:param>
+    <!-- Extensions -->
+    <xsl:param name="use.extensions">1</xsl:param>
+    <xsl:param name="tablecolumns.extension">0</xsl:param>
+    <xsl:param name="callout.extensions">1</xsl:param>
 
-	<!-- Graphics -->
-	<xsl:param name="admon.graphics" select="1"/>
-	<xsl:param name="admon.graphics.path">images/</xsl:param>
-	<xsl:param name="admon.graphics.extension">.png</xsl:param>
+    <!-- Graphics -->
+    <xsl:param name="admon.graphics" select="1"/>
+    <xsl:param name="admon.graphics.path">images/</xsl:param>
+    <xsl:param name="admon.graphics.extension">.png</xsl:param>
 
-	<!-- Table of Contents -->
-	<xsl:param name="generate.toc">book toc,title</xsl:param>
-	<xsl:param name="toc.section.depth">3</xsl:param>
+    <!-- Table of Contents -->
+    <xsl:param name="generate.toc">book toc,title</xsl:param>
+    <xsl:param name="toc.section.depth">3</xsl:param>
 
-	<!-- Hide revhistory -->
-	<xsl:template match="revhistory" mode="titlepage.mode"/>
+    <!-- Hide revhistory -->
+    <xsl:template match="revhistory" mode="titlepage.mode"/>
 
 </xsl:stylesheet>

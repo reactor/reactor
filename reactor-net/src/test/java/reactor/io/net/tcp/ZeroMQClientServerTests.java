@@ -56,39 +56,39 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 	@Test(timeout = 60000)
 	public void clientSendsDataToServerUsingKryo() throws InterruptedException {
 		assertTcpClientServerExchangedData(ZeroMQTcpServer.class,
-		                                   ZeroMQTcpClient.class,
-		                                   KRYO_CODEC,
-		                                   data,
-		                                   d -> d.equals(data));
+		  ZeroMQTcpClient.class,
+		  KRYO_CODEC,
+		  data,
+		  d -> d.equals(data));
 	}
 
 	@Test(timeout = 60000)
 	public void clientSendsDataToServerUsingJson() throws InterruptedException {
 		assertTcpClientServerExchangedData(ZeroMQTcpServer.class,
-		                                   ZeroMQTcpClient.class,
-		                                   new JacksonJsonCodec<>(),
-		                                   data,
-		                                   d -> d.equals(data));
+		  ZeroMQTcpClient.class,
+		  new JacksonJsonCodec<>(),
+		  data,
+		  d -> d.equals(data));
 	}
 
 	@Test(timeout = 60000)
 	public void clientSendsDataToServerUsingBuffers() throws InterruptedException {
 		assertTcpClientServerExchangedData(ZeroMQTcpServer.class,
-		                                   ZeroMQTcpClient.class,
-		                                   Buffer.wrap("Hello World!"));
+		  ZeroMQTcpClient.class,
+		  Buffer.wrap("Hello World!"));
 	}
 
 	@Test//(timeout = 60000)
 	public void zmqRequestReply() throws InterruptedException {
 		ZMQ.reply("tcp://*:" + getPort())
-		   .onSuccess(ch -> ch.writeWith(ch.observe(d -> latch.countDown())).consume());
+		  .onSuccess(ch -> ch.writeWith(ch.observe(d -> latch.countDown())).consume());
 
 		ZMQ.request("tcp://127.0.0.1:" + getPort())
-		   .onSuccess(ch -> {
-			              ch.consume(d -> latch.countDown());
-			              ch.writeWith(Streams.just(data)).consume();
-		              }
-		   );
+		  .onSuccess(ch -> {
+				ch.consume(d -> latch.countDown());
+				ch.writeWith(Streams.just(data)).consume();
+			}
+		  );
 
 		assertTrue("REQ/REP socket exchanged data", latch.await(5, TimeUnit.SECONDS));
 	}
@@ -96,10 +96,10 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 	@Test(timeout = 60000)
 	public void zmqPushPull() throws InterruptedException {
 		ZMQ.pull("tcp://*:" + getPort())
-		   .onSuccess(ch -> latch.countDown());
+		  .onSuccess(ch -> latch.countDown());
 
 		ZMQ.push("tcp://127.0.0.1:" + getPort())
-		   .onSuccess(ch -> ch.writeWith(Streams.just(data)).consume());
+		  .onSuccess(ch -> ch.writeWith(Streams.just(data)).consume());
 
 		assertTrue("PULL socket received data", latch.await(1, TimeUnit.SECONDS));
 	}
@@ -107,12 +107,12 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 	@Test(timeout = 60000)
 	public void zmqRouterDealer() throws InterruptedException {
 		ZMQ.router("tcp://*:" + getPort())
-		   .onSuccess(ch -> latch.countDown());
+		  .onSuccess(ch -> latch.countDown());
 
 		ZMQ.dealer("tcp://127.0.0.1:" + getPort())
-		   .onSuccess(ch ->
-						   ch.writeWith(Streams.just(data).log("zmqp")).consume()
-		   );
+		  .onSuccess(ch ->
+			  ch.writeWith(Streams.just(data).log("zmqp")).consume()
+		  );
 
 		assertTrue("ROUTER socket received data", latch.await(50, TimeUnit.SECONDS));
 	}
@@ -120,17 +120,17 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 	@Test(timeout = 60000)
 	public void zmqInprocRouterDealer() throws InterruptedException {
 		ZMQ.router("inproc://queue" + getPort())
-		   .onSuccess(ch -> {
-			   ch.consume(data -> {
-				   latch.countDown();
-			   });
-		   });
+		  .onSuccess(ch -> {
+			  ch.consume(data -> {
+				  latch.countDown();
+			  });
+		  });
 
 		// we have to sleep a couple cycles to let ZeroMQ get set up on inproc
 		Thread.sleep(500);
 
 		ZMQ.dealer("inproc://queue" + getPort())
-				.onSuccess(ch -> ch.writeWith(Streams.just(data)).consume());
+		  .onSuccess(ch -> ch.writeWith(Streams.just(data)).consume());
 
 		assertTrue("ROUTER socket received inproc data", latch.await(1, TimeUnit.SECONDS));
 	}

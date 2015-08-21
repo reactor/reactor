@@ -260,7 +260,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 				if (finalState == FinalState.ERROR) {
 					return Promises.error(environment, dispatcher, error);
 				} else if (finalState == FinalState.COMPLETE) {
-					return Promises.success(environment, dispatcher, value != null ? transformation.apply(value) : null);
+					return Promises.success(environment, dispatcher, value != null ? transformation.apply(value) :
+					  null);
 				}
 			} catch (Throwable t) {
 				return Promises.error(environment, dispatcher, t);
@@ -284,7 +285,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	 * @param transformation the function to apply on signal to the supplied Promise that will be merged back.
 	 * @return {@literal the new Promise}
 	 */
-	public <V> Promise<V> flatMap(@Nonnull final Function<? super O, ? extends Publisher<? extends V>> transformation) {
+	public <V> Promise<V> flatMap(@Nonnull final Function<? super O, ? extends Publisher<? extends V>>
+	                                transformation) {
 		if (dispatcher == SynchronousDispatcher.INSTANCE || TailRecurseDispatcher.class == dispatcher.getClass()) {
 			lock.lock();
 			try {
@@ -310,7 +312,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	}
 
 	/**
-	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed with an error,
+	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed with an
+	 * error,
 	 * or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed on the current
 	 * {@link ReactorProcessor}. The error is recovered and materialized as the next signal to the returned stream.
 	 *
@@ -324,7 +327,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 				if (finalState == FinalState.ERROR) {
 					onError.accept(error);
 					return this;
-				}else if(finalState == FinalState.COMPLETE){
+				} else if (finalState == FinalState.COMPLETE) {
 					return this;
 				}
 			} catch (Throwable t) {
@@ -514,7 +517,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	}
 
 	/**
-	 * Returns the value that completed this promise. Returns {@code null} if the promise has not been completed. If the
+	 * Returns the value that completed this promise. Returns {@code null} if the promise has not been completed. If
+	 * the
 	 * promise is completed with an error a RuntimeException that wraps the error is thrown.
 	 *
 	 * @return the value that completed the promise, or {@code null} if it has not been completed
@@ -626,10 +630,10 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 		Action<?, ?> that = null;
 
 		while (sub != null
-				&& PushSubscription.class.isAssignableFrom(sub.getClass())
-				&& ((PushSubscription<?>) sub).getPublisher() != null
-				&& Action.class.isAssignableFrom(((PushSubscription<?>) sub).getPublisher().getClass())
-				) {
+		  && PushSubscription.class.isAssignableFrom(sub.getClass())
+		  && ((PushSubscription<?>) sub).getPublisher() != null
+		  && Action.class.isAssignableFrom(((PushSubscription<?>) sub).getPublisher().getClass())
+		  ) {
 
 			that = (Action<?, ?>) ((PushSubscription<?>) sub).getPublisher();
 			sub = that.getSubscription();
@@ -688,7 +692,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 			}
 
 			if (outboundStream != null) {
-				if(value != null) {
+				if (value != null) {
 					outboundStream.onNext(value);
 				}
 				outboundStream.onComplete();
@@ -734,10 +738,10 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 		lock.lock();
 		try {
 			return "Promise{" +
-					"value=" + value +
-					(finalState != null ? ", state=" + finalState : "") +
-					", error=" + error +
-					'}';
+			  "value=" + value +
+			  (finalState != null ? ", state=" + finalState : "") +
+			  ", error=" + error +
+			  '}';
 		} finally {
 			lock.unlock();
 		}

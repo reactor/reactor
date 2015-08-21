@@ -20,17 +20,18 @@ import org.reactivestreams.Publisher;
 import reactor.fn.Function;
 
 /**
- * A {@link ReactorChannel} callback that is attached on {@link ReactorPeer} or {@link ReactorClient} initialization and receives
+ * A {@link ReactorChannel} callback that is attached on {@link ReactorPeer} or {@link ReactorClient} initialization
+ * and receives
  * all connected {@link ReactorChannel}. The {@link #apply} implementation must return a Publisher to complete or error
  * in order to close the {@link ReactorChannel}.
  *
- * @param <IN> the type of the received data
+ * @param <IN>  the type of the received data
  * @param <OUT> the type of replied data
- *
  * @author Stephane Maldini
  * @since 2.0.1.GA
  */
-public interface ReactorChannelHandler<IN, OUT, CONN extends ReactorChannel<IN, OUT>> extends Function<CONN, Publisher<Void>>  {
+public interface ReactorChannelHandler<IN, OUT, CONN extends ReactorChannel<IN, OUT>> extends Function<CONN,
+  Publisher<Void>> {
 
 
 }

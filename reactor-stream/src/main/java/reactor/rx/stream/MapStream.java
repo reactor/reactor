@@ -28,12 +28,14 @@ import java.util.Map;
  * A SubscribableMap is an event-driven Map that signals logged operations to its subscribers. Useful for IO bound
  * map storage where acknowledgement is decoupled from writing operation (asynchronous). In that case, read operations
  * will often operate as local proxy cache read in a usual implementation, but it doesn't have to be enforced.
- * E.g. a Pivotal Gemfire™ implementation will delegate map operations to a region and will create listeners on subscribe.
- * A Chronicle implementation as provided in {@link reactor.rx.stream.io} will either allow write or just read off a chronicle backed persistent store.
+ * E.g. a Pivotal Gemfire™ implementation will delegate map operations to a region and will create listeners on
+ * subscribe.
+ * A Chronicle implementation as provided in {@link reactor.rx.stream.io} will either allow write or just read off a
+ * chronicle backed persistent store.
  *
  * @author Stephane Maldini
  */
-public abstract class MapStream<K,V> extends Stream<MapStream.Signal<K,V>> implements Map<K,V> {
+public abstract class MapStream<K, V> extends Stream<MapStream.Signal<K, V>> implements Map<K, V> {
 
 	public enum Operation {
 		put, putAll, remove, clear
@@ -75,11 +77,11 @@ public abstract class MapStream<K,V> extends Stream<MapStream.Signal<K,V>> imple
 		@Override
 		public String toString() {
 			return "SubscribableMap.Signal{" +
-					"op=" + op +
-					(key != null ? ", key=" + key : "") +
-					(previous != null ? ", previous=" + previous : "") +
-					(value != null ? ", value=" + value : "") +
-					'}';
+			  "op=" + op +
+			  (key != null ? ", key=" + key : "") +
+			  (previous != null ? ", previous=" + previous : "") +
+			  (value != null ? ", value=" + value : "") +
+			  '}';
 		}
 
 		public static <K, V> Signal<K, V> create(Operation op) {
@@ -99,7 +101,7 @@ public abstract class MapStream<K,V> extends Stream<MapStream.Signal<K,V>> imple
 		}
 	}
 
-	public static class MutableSignal<K,V> extends Signal<K,V>{
+	public static class MutableSignal<K, V> extends Signal<K, V> {
 		public MutableSignal() {
 			super(null, null, null, null);
 		}
@@ -126,13 +128,13 @@ public abstract class MapStream<K,V> extends Stream<MapStream.Signal<K,V>> imple
 	 *
 	 * @return new Stream
 	 */
-	public Stream<Tuple2<K,V>> onPut(){
+	public Stream<Tuple2<K, V>> onPut() {
 		return map(new Function<Signal<K, V>, Tuple2<K, V>>() {
 			@Override
 			public Tuple2<K, V> apply(Signal<K, V> kvSignal) {
-				if(kvSignal.op == Operation.put){
+				if (kvSignal.op == Operation.put) {
 					return kvSignal.pair();
-				}else{
+				} else {
 					return null;
 				}
 			}
@@ -144,13 +146,13 @@ public abstract class MapStream<K,V> extends Stream<MapStream.Signal<K,V>> imple
 	 *
 	 * @return new Stream
 	 */
-	public Stream<K> onRemove(){
+	public Stream<K> onRemove() {
 		return map(new Function<Signal<K, V>, K>() {
 			@Override
 			public K apply(Signal<K, V> kvSignal) {
-				if(kvSignal.op == Operation.remove){
+				if (kvSignal.op == Operation.remove) {
 					return kvSignal.key;
-				}else{
+				} else {
 					return null;
 				}
 			}

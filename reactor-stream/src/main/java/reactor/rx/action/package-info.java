@@ -15,7 +15,8 @@
  */
 
 /**
- * Actions are Reactive Streams components derived from Reactive Extensions and beyond. Actions are usually taking input and produce
+ * Actions are Reactive Streams components derived from Reactive Extensions and beyond. Actions are usually taking
+ * input and produce
  * an eventual output. Some actions will be scalar where some will be non linear (combinatory Actions).
  */
 package reactor.rx.action;

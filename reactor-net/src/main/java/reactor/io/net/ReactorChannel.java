@@ -24,11 +24,10 @@ import java.net.InetSocketAddress;
 /**
  * {@code Channel} is a virtual connection that often matches with a Socket or a Channel (e.g. Netty).
  * Implementations handle interacting inbound (received data) and errors by subscribing to it.
- *
+ * <p>
  * Writing and "flushing" is controlled by sinking 1 or more {@link #writeWith(Publisher)}
  * that will forward data to outbound.
  * When a drained Publisher completes or error, the channel will automatically "flush" its pending writes.
- *
  *
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -44,11 +43,10 @@ public interface ReactorChannel<IN, OUT> extends Publisher<IN> {
 
 	/**
 	 * Send data to the peer, listen for any error on write and close on terminal signal (complete|error).
-	 * If more than one publisher is attached (multiple calls to writeWith()) completion occurs after all publishers complete.
+	 * If more than one publisher is attached (multiple calls to writeWith()) completion occurs after all publishers
+	 * complete.
 	 *
-	 * @param dataStream
-	 * 		the dataStream publishing OUT items to write on this channel
-	 *
+	 * @param dataStream the dataStream publishing OUT items to write on this channel
 	 * @return A Publisher to signal successful sequence write (e.g. after "flush") or any error during write
 	 */
 	Publisher<Void> writeWith(Publisher<? extends OUT> dataStream);
@@ -68,9 +66,7 @@ public interface ReactorChannel<IN, OUT> extends Publisher<IN> {
 		/**
 		 * Assign a {@link Runnable} to be invoked when the channel is closed.
 		 *
-		 * @param onClose
-		 * 		the close event handler
-		 *
+		 * @param onClose the close event handler
 		 * @return {@literal this}
 		 */
 		ConsumerSpec close(Consumer<Void> onClose);
@@ -78,11 +74,8 @@ public interface ReactorChannel<IN, OUT> extends Publisher<IN> {
 		/**
 		 * Assign a {@link Runnable} to be invoked when reads have become idle for the given timeout.
 		 *
-		 * @param idleTimeout
-		 * 		the idle timeout
-		 * @param onReadIdle
-		 * 		the idle timeout handler
-		 *
+		 * @param idleTimeout the idle timeout
+		 * @param onReadIdle  the idle timeout handler
 		 * @return {@literal this}
 		 */
 		ConsumerSpec readIdle(long idleTimeout, Consumer<Void> onReadIdle);
@@ -90,11 +83,8 @@ public interface ReactorChannel<IN, OUT> extends Publisher<IN> {
 		/**
 		 * Assign a {@link Runnable} to be invoked when writes have become idle for the given timeout.
 		 *
-		 * @param idleTimeout
-		 * 		the idle timeout
-		 * @param onWriteIdle
-		 * 		the idle timeout handler
-		 *
+		 * @param idleTimeout the idle timeout
+		 * @param onWriteIdle the idle timeout handler
 		 * @return {@literal this}
 		 */
 		ConsumerSpec writeIdle(long idleTimeout, Consumer<Void> onWriteIdle);

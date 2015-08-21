@@ -69,7 +69,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create() {
-		return create(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), true);
+		return create(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
+		  true);
 	}
 
 	/**
@@ -84,7 +85,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 */
 	public static <E> RingBufferProcessor<E> create(boolean autoCancel) {
 		return create(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
-				autoCancel);
+		  autoCancel);
 	}
 
 	/**
@@ -209,14 +210,15 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
 	 * the created threads.
 	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
-	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
+	 * @param name           Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize     A Backlog Size to mitigate slow subscribers
+	 * @param strategy       A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
 	 * @param signalSupplier A supplier of dispatched signals to preallocate in the ring buffer
-	 * @param <E>        Type of processed signals
+	 * @param <E>            Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy, Supplier<E> signalSupplier) {
+	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy, Supplier<E>
+	  signalSupplier) {
 		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false, true, signalSupplier);
 	}
 
@@ -292,7 +294,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> share() {
-		return share(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), true);
+		return share(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
+		  true);
 	}
 
 	/**
@@ -310,7 +313,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 */
 	public static <E> RingBufferProcessor<E> share(boolean autoCancel) {
 		return share(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
-				autoCancel);
+		  autoCancel);
 	}
 
 	/**
@@ -459,14 +462,15 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
 	 * the created threads.
 	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
-	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param name           Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize     A Backlog Size to mitigate slow subscribers
 	 * @param signalSupplier A supplier of dispatched signals to preallocate in the ring buffer
-	 * @param <E>        Type of processed signals
+	 * @param <E>            Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, Supplier<E> signalSupplier) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, new LiteBlockingWaitStrategy(), true, true, signalSupplier);
+		return new RingBufferProcessor<E>(name, null, bufferSize, new LiteBlockingWaitStrategy(), true, true,
+		  signalSupplier);
 	}
 
 	/**
@@ -547,23 +551,23 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	                            WaitStrategy waitStrategy,
 	                            boolean shared,
 	                            boolean autoCancel,
-								final Supplier<E> signalSupplier) {
+	                            final Supplier<E> signalSupplier) {
 		super(name, executor, autoCancel);
 
 		this.ringBuffer = RingBuffer.create(
-				shared ? ProducerType.MULTI : ProducerType.SINGLE,
-				new EventFactory<MutableSignal<E>>() {
-					@Override
-					public MutableSignal<E> newInstance() {
-						MutableSignal<E> signal = new MutableSignal<>();
-						if (signalSupplier != null) {
-							signal.value = signalSupplier.get();
-						}
-						return signal;
-					}
-				},
-				bufferSize,
-				waitStrategy
+		  shared ? ProducerType.MULTI : ProducerType.SINGLE,
+		  new EventFactory<MutableSignal<E>>() {
+			  @Override
+			  public MutableSignal<E> newInstance() {
+				  MutableSignal<E> signal = new MutableSignal<>();
+				  if (signalSupplier != null) {
+					  signal.value = signalSupplier.get();
+				  }
+				  return signal;
+			  }
+		  },
+		  bufferSize,
+		  waitStrategy
 		);
 
 		this.recentSequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
@@ -654,7 +658,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		return false;
 	}
 
-	RingBuffer<MutableSignal<E>> ringBuffer(){
+	RingBuffer<MutableSignal<E>> ringBuffer() {
 		return ringBuffer;
 	}
 
@@ -767,7 +771,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 * is started and just before the thread is shutdown.
 	 *
 	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an
-	 *              event.
+	 *            event.
 	 */
 	private final static class BatchSignalProcessor<T> implements EventProcessor {
 

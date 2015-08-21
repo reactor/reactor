@@ -35,8 +35,8 @@ import java.util.concurrent.TimeUnit;
  * <pre>
  * {@code
  * Streams.timer(env, 1).consume(
- *log::info,
- *log::error,
+ * log::info,
+ * log::error,
  * (-> log.info("complete"))
  * )
  * }
@@ -67,13 +67,13 @@ public final class SingleTimerStream extends Stream<Long> {
 	public void subscribe(final Subscriber<? super Long> subscriber) {
 		try {
 			subscriber.onSubscribe(new TimerSubscription(this, subscriber));
-		}catch (Throwable throwable){
+		} catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);
 		}
 	}
 
-	private class TimerSubscription extends PushSubscription<Long>{
+	private class TimerSubscription extends PushSubscription<Long> {
 
 		final Pausable registration = timer.submit(new Consumer<Long>() {
 			@Override

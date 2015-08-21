@@ -41,8 +41,8 @@ public final class SimpleWorkProcessor<IN, OUT> extends ExecutorPoweredProcessor
 		super(autoCancel);
 
 		this.executor = executor == null
-				? SingleUseExecutor.create(name)
-				: executor;
+		  ? SingleUseExecutor.create(name)
+		  : executor;
 	}
 
 
@@ -183,7 +183,7 @@ public final class SimpleWorkProcessor<IN, OUT> extends ExecutorPoweredProcessor
 		}
 	}
 
-	public  static <T> Processor<T, T> create(String name, int bufferSize) {
+	public static <T> Processor<T, T> create(String name, int bufferSize) {
 	}
 
 

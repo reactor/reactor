@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @author Andy Wilkinson
  * @author Jon Brisbin
  * @author Stephane Maldini
- *
  */
 public abstract class Selectors {
 
@@ -37,7 +36,6 @@ public abstract class Selectors {
 	 * Creates an anonymous {@link Selector}.
 	 *
 	 * @return a new Selector
-	 *
 	 * @see ObjectSelector
 	 */
 	public static Selector anonymous() {
@@ -47,11 +45,10 @@ public abstract class Selectors {
 
 	/**
 	 * A short-hand alias for {@link Selectors#anonymous()}.
-	 * <p/>
+	 * <p>
 	 * Creates an anonymous {@link Selector}.
 	 *
 	 * @return a new Selector
-	 *
 	 * @see ObjectSelector
 	 */
 	public static Selector $() {
@@ -61,11 +58,8 @@ public abstract class Selectors {
 	/**
 	 * Creates a {@link Selector} based on the given object.
 	 *
-	 * @param obj
-	 * 		The object to use for matching
-	 *
+	 * @param obj The object to use for matching
 	 * @return The new {@link ObjectSelector}.
-	 *
 	 * @see ObjectSelector
 	 */
 	public static <T> Selector<T> object(T obj) {
@@ -74,14 +68,11 @@ public abstract class Selectors {
 
 	/**
 	 * A short-hand alias for {@link Selectors#object}.
-	 * <p/>
+	 * <p>
 	 * Creates a {@link Selector} based on the given object.
 	 *
-	 * @param obj
-	 * 		The object to use for matching
-	 *
+	 * @param obj The object to use for matching
 	 * @return The new {@link ObjectSelector}.
-	 *
 	 * @see ObjectSelector
 	 */
 	public static <T> Selector<T> $(T obj) {
@@ -91,13 +82,9 @@ public abstract class Selectors {
 	/**
 	 * Creates a {@link Selector} based on the given string format and arguments.
 	 *
-	 * @param fmt
-	 * 		The {@code String.format} style format specification
-	 * @param args
-	 * 		The format args
-	 *
+	 * @param fmt  The {@code String.format} style format specification
+	 * @param args The format args
 	 * @return The new {@link ObjectSelector}.
-	 *
 	 * @see ObjectSelector
 	 * @see String#format(String, Object...)
 	 */
@@ -108,11 +95,8 @@ public abstract class Selectors {
 	/**
 	 * Creates a {@link Selector} based on the given regular expression.
 	 *
-	 * @param regex
-	 * 		The regular expression to compile and use for matching
-	 *
+	 * @param regex The regular expression to compile and use for matching
 	 * @return The new {@link RegexSelector}.
-	 *
 	 * @see RegexSelector
 	 */
 	public static Selector regex(String regex) {
@@ -121,14 +105,11 @@ public abstract class Selectors {
 
 	/**
 	 * A short-hand alias for {@link Selectors#regex(String)}.
-	 * <p/>
+	 * <p>
 	 * Creates a {@link Selector} based on the given regular expression.
 	 *
-	 * @param regex
-	 * 		The regular expression to compile and use for matching
-	 *
+	 * @param regex The regular expression to compile and use for matching
 	 * @return The new {@link RegexSelector}.
-	 *
 	 * @see RegexSelector
 	 */
 	public static Selector R(String regex) {
@@ -139,11 +120,8 @@ public abstract class Selectors {
 	 * Creates a {@link Selector} based on the given class type that matches objects whose type is
 	 * assignable according to {@link Class#isAssignableFrom(Class)}.
 	 *
-	 * @param supertype
-	 * 		The supertype to use for matching
-	 *
+	 * @param supertype The supertype to use for matching
 	 * @return The new {@link ClassSelector}.
-	 *
 	 * @see ClassSelector
 	 */
 	public static ClassSelector type(Class<?> supertype) {
@@ -152,15 +130,12 @@ public abstract class Selectors {
 
 	/**
 	 * A short-hand alias for {@link Selectors#type(Class)}.
-	 * <p/>
+	 * <p>
 	 * Creates a {@link Selector} based on the given class type that matches objects whose type is
 	 * assignable according to {@link Class#isAssignableFrom(Class)}.
 	 *
-	 * @param supertype
-	 * 		The supertype to compare.
-	 *
+	 * @param supertype The supertype to compare.
 	 * @return The new {@link ClassSelector}.
-	 *
 	 * @see ClassSelector
 	 */
 	public static ClassSelector T(Class<?> supertype) {
@@ -170,19 +145,16 @@ public abstract class Selectors {
 	/**
 	 * Creates a {@link Selector} based on a URI template.
 	 *
-	 * @param uri
-	 * 		The string to compile into a URI template and use for matching
-	 *
+	 * @param uri The string to compile into a URI template and use for matching
 	 * @return The new {@link UriPathSelector}.
-	 *
 	 * @see UriPathTemplate
 	 * @see UriPathSelector
 	 */
 	public static Selector uri(String uri) {
-		if(null == uri) {
+		if (null == uri) {
 			return null;
 		}
-		switch(uri.charAt(0)) {
+		switch (uri.charAt(0)) {
 			case '/':
 				return new UriPathSelector(uri);
 			default:
@@ -192,14 +164,11 @@ public abstract class Selectors {
 
 	/**
 	 * A short-hand alias for {@link Selectors#uri(String)}.
-	 * <p/>
+	 * <p>
 	 * Creates a {@link Selector} based on a URI template.
 	 *
-	 * @param uri
-	 * 		The string to compile into a URI template and use for matching
-	 *
+	 * @param uri The string to compile into a URI template and use for matching
 	 * @return The new {@link UriPathSelector}.
-	 *
 	 * @see UriPathTemplate
 	 * @see UriPathSelector
 	 */
@@ -210,33 +179,30 @@ public abstract class Selectors {
 	/**
 	 * Creates a {@link Selector} based on the given {@link Predicate}.
 	 *
-	 * @param predicate
-	 * 		The {@link Predicate} to delegate to when matching objects.
-	 *
+	 * @param predicate The {@link Predicate} to delegate to when matching objects.
 	 * @return PredicateSelector
-	 *
 	 * @see PredicateSelector
 	 */
 	public static Selector predicate(Predicate<Object> predicate) {
 		return new PredicateSelector(predicate);
 	}
 
-    /**
-     * Creates a {@link Selector} that matches
-     * all objects.
-     * @return The new {@link MatchAllSelector}
-     *
-     * @see MatchAllSelector
-     */
-    public static Selector matchAll() {
-        return new MatchAllSelector();
-    }
+	/**
+	 * Creates a {@link Selector} that matches
+	 * all objects.
+	 *
+	 * @return The new {@link MatchAllSelector}
+	 * @see MatchAllSelector
+	 */
+	public static Selector matchAll() {
+		return new MatchAllSelector();
+	}
 
 	/**
 	 * Creates a {@link Selector} that matches
 	 * objects on set membership.
-	 * @return The new {@link SetMembershipSelector}
 	 *
+	 * @return The new {@link SetMembershipSelector}
 	 * @see SetMembershipSelector
 	 */
 	public static Selector setMembership(Set set) {

@@ -85,7 +85,7 @@ class AllocatorsSpec extends Specification {
 			allocators[type] = new ReferenceCountingAllocator<Generic<String>>(new Supplier<Generic<String>>() {
 				@Override
 				Generic<String> get() {
-					return new Generic(data:"Hello World!")
+					return new Generic(data: "Hello World!")
 				}
 			})
 
@@ -97,7 +97,7 @@ class AllocatorsSpec extends Specification {
 
 	}
 
-	class Generic<T> implements Recyclable{
+	class Generic<T> implements Recyclable {
 		T data
 
 		@Override
@@ -129,7 +129,7 @@ class AllocatorsSpec extends Specification {
 	}
 
 	static <T> Type fromGenericType(Class<T> type) {
-		return ((ParameterizedType)type.getGenericInterfaces()[0]).getActualTypeArguments()[0];
+		return ((ParameterizedType) type.getGenericInterfaces()[0]).getActualTypeArguments()[0];
 	}
 
 	static <T> Type fromTypeRef(TypeReference<T> typeRef) {

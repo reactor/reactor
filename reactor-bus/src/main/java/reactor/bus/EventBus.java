@@ -53,7 +53,8 @@ import java.util.UUID;
  * A reactor is an event gateway that allows other components to register {@link Event} {@link Consumer}s that can
  * subsequently be notified of events. A consumer is typically registered with a {@link Selector} which, by matching on
  * the notification key, governs which events the consumer will receive. </p> When a {@literal Reactor} is notified of
- * an {@link Event}, a task is dispatched using the reactor's {@link ReactorProcessor} which causes it to be executed on a
+ * an {@link Event}, a task is dispatched using the reactor's {@link ReactorProcessor} which causes it to be executed
+ * on a
  * thread based on the implementation of the {@link ReactorProcessor} being used.
  *
  * @author Jon Brisbin
@@ -154,10 +155,12 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	}
 
 	/**
-	 * Create a new {@literal Reactor} that uses the given {@link ReactorProcessor}. The reactor will use a default {@link
+	 * Create a new {@literal Reactor} that uses the given {@link ReactorProcessor}. The reactor will use a default
+	 * {@link
 	 * CachingRegistry}.
 	 *
-	 * @param dispatcher The {@link ReactorProcessor} to use. May be {@code null} in which case a new synchronous  dispatcher
+	 * @param dispatcher The {@link ReactorProcessor} to use. May be {@code null} in which case a new synchronous
+	 *                      dispatcher
 	 *                   is used.
 	 * @param router     The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code null} in
 	 *                   which case the
@@ -175,10 +178,10 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	                @Nullable Consumer<Throwable> dispatchErrorHandler,
 	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
 		this(Registries.<Object, Consumer<? extends Event<?>>>create(),
-				dispatcher,
-				router,
-				dispatchErrorHandler,
-				uncaughtErrorHandler);
+		  dispatcher,
+		  router,
+		  dispatchErrorHandler,
+		  uncaughtErrorHandler);
 	}
 
 	/**
@@ -188,7 +191,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 *                         dispatcher is used.
 	 * @param router           The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code
 	 *                         null} in which case the
-	 *                         default event router that broadcasts events to all of the registered consumers that {@link
+	 *                         default event router that broadcasts events to all of the registered consumers that
+	 *                         {@link
 	 *                         Selector#matches(Object) match} the notification key and does not perform any type
 	 *                         conversion will be used.
 	 * @param consumerRegistry The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
@@ -209,10 +213,10 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 				public void accept(Throwable t) {
 					Class<? extends Throwable> type = t.getClass();
 					EventBus.this.router.route(type,
-							Event.wrap(t),
-							EventBus.this.consumerRegistry.select(type),
-							null,
-							null);
+					  Event.wrap(t),
+					  EventBus.this.consumerRegistry.select(type),
+					  null,
+					  null);
 				}
 			};
 		} else {
@@ -251,7 +255,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	}
 
 	/**
-	 * Get the {@link Registry} is use to maintain the {@link Consumer}s currently listening for events on this {@literal
+	 * Get the {@link Registry} is use to maintain the {@link Consumer}s currently listening for events on this
+	 * {@literal
 	 * Reactor}.
 	 *
 	 * @return The {@link Registry} in use.
@@ -288,7 +293,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 	@Override
 	public boolean respondsToKey(Object key) {
-		List<Registration<Object, ? extends Consumer<? extends Event<?>>>> registrations = consumerRegistry.select(key);
+		List<Registration<Object, ? extends Consumer<? extends Event<?>>>> registrations = consumerRegistry.select
+		  (key);
 		if (registrations.isEmpty()) return false;
 
 		for (Registration<?, ?> reg : registrations) {
@@ -301,41 +307,41 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 	@Override
 	public <T extends Event<?>> Registration<Object, Consumer<? extends Event<?>>> on(final Selector selector,
-	                                                         final Consumer<T> consumer) {
+	                                                                                  final Consumer<T> consumer) {
 		Assert.notNull(selector, "Selector cannot be null.");
 		Assert.notNull(consumer, "Consumer cannot be null.");
 
 		final Class<?> tClass = extractGeneric(consumer);
 
 		Consumer<T> proxyConsumer = new Consumer<T>() {
-				@Override
-				public void accept(T e) {
-					if (null != selector.getHeaderResolver()) {
-						e.getHeaders().setAll(selector.getHeaderResolver().resolve(e.getKey()));
-					}
-					if (tClass == null || e.getData() == null || tClass.isAssignableFrom(e.getData().getClass())) {
-						consumer.accept(e);
-					}
+			@Override
+			public void accept(T e) {
+				if (null != selector.getHeaderResolver()) {
+					e.getHeaders().setAll(selector.getHeaderResolver().resolve(e.getKey()));
 				}
-			};
+				if (tClass == null || e.getData() == null || tClass.isAssignableFrom(e.getData().getClass())) {
+					consumer.accept(e);
+				}
+			}
+		};
 
 		return consumerRegistry.register(selector, proxyConsumer);
 	}
 
 	private Class<?> extractGeneric(Consumer<? extends Event<?>> consumer) {
-		if(consumer.getClass().getGenericInterfaces().length == 0) return null;
+		if (consumer.getClass().getGenericInterfaces().length == 0) return null;
 
 		Type t = consumer.getClass().getGenericInterfaces()[0];
 		if (ParameterizedType.class.isAssignableFrom(t.getClass())) {
 			ParameterizedType pt = (ParameterizedType) t;
 
-			if(pt.getActualTypeArguments().length == 0) return null;
+			if (pt.getActualTypeArguments().length == 0) return null;
 
 			t = pt.getActualTypeArguments()[0];
 			if (ParameterizedType.class.isAssignableFrom(t.getClass())) {
 				pt = (ParameterizedType) t;
 
-				if(pt.getActualTypeArguments().length == 0) return null;
+				if (pt.getActualTypeArguments().length == 0) return null;
 
 				Type t1 = pt.getActualTypeArguments()[0];
 				if (t1 instanceof ParameterizedType) {
@@ -373,13 +379,13 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	/**
 	 * Pass values accepted by this {@code Stream} into the given {@link Bus}, notifying with the given key.
 	 *
-	 * @param key        the key to notify on
+	 * @param key    the key to notify on
 	 * @param source the {@link Publisher} to consume
 	 * @return {@literal new Stream}
 	 * @since 1.1, 2.0
 	 */
 	public final EventBus notify(@Nonnull final Publisher<?> source, @Nonnull final Object key) {
-		return notify(source, new Function<Object,Object>(){
+		return notify(source, new Function<Object, Object>() {
 			@Override
 			public Object apply(Object o) {
 				return key;
@@ -390,14 +396,16 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	/**
 	 * Pass values accepted by this {@code Stream} into the given {@link Bus}, notifying with the given key.
 	 *
-	 * @param source the {@link Publisher} to consume
-	 * @param keyMapper  the key function mapping each incoming data to a key to notify on
+	 * @param source    the {@link Publisher} to consume
+	 * @param keyMapper the key function mapping each incoming data to a key to notify on
 	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
-	public final <T> EventBus notify(@Nonnull final Publisher<? extends T> source, @Nonnull final Function<? super T, ?> keyMapper) {
+	public final <T> EventBus notify(@Nonnull final Publisher<? extends T> source, @Nonnull final Function<? super T,
+	  ?> keyMapper) {
 		source.subscribe(new Subscriber<T>() {
 			Subscription s;
+
 			@Override
 			public void onSubscribe(Subscription s) {
 				this.s = s;
@@ -411,12 +419,12 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 			@Override
 			public void onError(Throwable t) {
-				if(s != null) s.cancel();
+				if (s != null) s.cancel();
 			}
 
 			@Override
 			public void onComplete() {
-				if(s != null) s.cancel();
+				if (s != null) s.cancel();
 			}
 		});
 		return this;
@@ -429,7 +437,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * @param fn  The transformative {@link reactor.fn.Function} to call to receive an {@link Event}
 	 * @return A {@link Registration} object that allows the caller to interact with the given mapping
 	 */
-	public <T extends Event<?>, V> Registration<?, Consumer<? extends Event<?>>> receive(Selector sel, Function<T, V> fn) {
+	public <T extends Event<?>, V> Registration<?, Consumer<? extends Event<?>>> receive(Selector sel, Function<T, V>
+	  fn) {
 		return on(sel, new ReplyToConsumer<>(fn));
 	}
 
@@ -446,7 +455,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	}
 
 	/**
-	 * Notify this component that the consumers registered with a {@link Selector} that matches the {@code key} should be
+	 * Notify this component that the consumers registered with a {@link Selector} that matches the {@code key}
+	 * should be
 	 * triggered with a {@literal null} input argument.
 	 *
 	 * @param key The key to be matched by {@link Selector Selectors}
@@ -458,7 +468,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 	/**
 	 * Notify this component of the given {@link Event} and register an internal {@link Consumer} that will take the
-	 * output of a previously-registered {@link Function} and respond using the key set on the {@link Event}'s {@literal
+	 * output of a previously-registered {@link Function} and respond using the key set on the {@link Event}'s
+	 * {@literal
 	 * replyTo} property.
 	 *
 	 * @param key The key to be matched by {@link Selector Selectors}
@@ -502,7 +513,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	/**
 	 * Notify this component that the given {@link Supplier} will provide an {@link Event} and register an internal
 	 * {@link
-	 * Consumer} that will take the output of a previously-registered {@link Function} and respond to the key set on the
+	 * Consumer} that will take the output of a previously-registered {@link Function} and respond to the key set on
+	 * the
 	 * {@link Event}'s {@literal replyTo} property and will call the {@code notify} method on the given {@link
 	 * Bus}.
 	 *
@@ -534,7 +546,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 	/**
 	 * Register the given {@link reactor.fn.Consumer} on an anonymous {@link reactor.bus.selector.Selector} and
-	 * set the event's {@code replyTo} property to the corresponding anonymous key, then register the consumer to receive
+	 * set the event's {@code replyTo} property to the corresponding anonymous key, then register the consumer to
+	 * receive
 	 * replies from the {@link reactor.fn.Function} assigned to handle the given key.
 	 *
 	 * @param key      The key to be matched by {@link Selector Selectors}
@@ -542,7 +555,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * @param reply    The consumer to register as a reply handler.
 	 * @return {@literal this}
 	 */
-	public <T extends Event<?>> EventBus sendAndReceive(Object key, Supplier<? extends Event<?>> supplier, Consumer<T> reply) {
+	public <T extends Event<?>> EventBus sendAndReceive(Object key, Supplier<? extends Event<?>> supplier, Consumer<T>
+	  reply) {
 		return sendAndReceive(key, supplier.get(), reply);
 	}
 
@@ -554,14 +568,15 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 */
 	public <T> Consumer<Event<T>> prepare(final Object key) {
 		return new Consumer<Event<T>>() {
-			final List<Registration<Object, ? extends Consumer<? extends Event<?>>>> regs = consumerRegistry.select(key);
+			final List<Registration<Object, ? extends Consumer<? extends Event<?>>>> regs = consumerRegistry.select
+			  (key);
 			final int size = regs.size();
 
 			@Override
 			public void accept(Event<T> ev) {
 				for (int i = 0; i < size; i++) {
 					Registration<Object, ? extends Consumer<Event<T>>> reg =
-							(Registration<Object, ? extends Consumer<Event<T>>>) regs.get(i);
+					  (Registration<Object, ? extends Consumer<Event<T>>>) regs.get(i);
 					ev.setKey(key);
 					dispatcher.dispatch(ev, reg.getObject(), dispatchErrorHandler);
 				}
@@ -605,7 +620,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 		private ReplyToEvent(Event<T> delegate, Bus replyToObservable) {
 			this(delegate.getHeaders(), delegate.getData(), delegate.getReplyTo(), replyToObservable,
-					delegate.getErrorConsumer());
+			  delegate.getErrorConsumer());
 		}
 
 		@Override

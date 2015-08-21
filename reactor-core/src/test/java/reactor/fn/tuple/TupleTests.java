@@ -62,22 +62,22 @@ public class TupleTests {
 		assertThat("last value in TRest is 15", (Integer) tn.get(14), is(15));
 	}
 
-    @Test
-    public void tupleEquals() {
-        Tuple3<String, Long, Integer> t3a = Tuple.of("string", 1L, 10);
-        Tuple3<String, Long, Integer> t3b = Tuple.of("string", 1L, 10);
+	@Test
+	public void tupleEquals() {
+		Tuple3<String, Long, Integer> t3a = Tuple.of("string", 1L, 10);
+		Tuple3<String, Long, Integer> t3b = Tuple.of("string", 1L, 10);
 
-        assertThat("Tuples of same length and values are equal.", t3a, is(t3b));
-    }
+		assertThat("Tuples of same length and values are equal.", t3a, is(t3b));
+	}
 
-    @Test
+	@Test
 	public void tuplesOfDifferentLengthAreNotEqual() {
-    	Tuple3<String, Long, Integer> t3 = Tuple.of("string", 1L, 10);
-    	Tuple2<String, Long> t2 = Tuple.of("string", 1L);
+		Tuple3<String, Long, Integer> t3 = Tuple.of("string", 1L, 10);
+		Tuple2<String, Long> t2 = Tuple.of("string", 1L);
 
-    	assertThat("Tuples of different length are not equal.", t3, is(not(t2)));
-    	assertThat("Tuples of different length are not equal.", t2, is(not((Tuple2<String, Long>) t3)));
-    }
+		assertThat("Tuples of different length are not equal.", t3, is(not(t2)));
+		assertThat("Tuples of different length are not equal.", t2, is(not((Tuple2<String, Long>) t3)));
+	}
 
-	
+
 }

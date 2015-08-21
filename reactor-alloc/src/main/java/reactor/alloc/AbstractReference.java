@@ -65,7 +65,7 @@ public abstract class AbstractReference<T extends Recyclable> implements Referen
 	@Override
 	public void release(int decr) {
 		refCnt -= Math.min(decr, refCnt);
-		if(refCnt < 1) {
+		if (refCnt < 1) {
 			obj.recycle();
 		}
 	}
@@ -78,10 +78,10 @@ public abstract class AbstractReference<T extends Recyclable> implements Referen
 	@Override
 	public String toString() {
 		return "Reference{" +
-				"refCnt=" + refCnt +
-				", inception=" + inception +
-				", obj=" + obj +
-				'}';
+		  "refCnt=" + refCnt +
+		  ", inception=" + inception +
+		  ", obj=" + obj +
+		  '}';
 	}
 
 }

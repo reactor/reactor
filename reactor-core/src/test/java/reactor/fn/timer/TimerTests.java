@@ -30,8 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TimerTests {
 
 	@Test
-	public void verifyPause() throws InterruptedException
-	{
+	public void verifyPause() throws InterruptedException {
 		HashWheelTimer timer = new HashWheelTimer();
 
 		AtomicInteger count = new AtomicInteger();
@@ -42,8 +41,7 @@ public class TimerTests {
 		AtomicLong sysTime = new AtomicLong();
 
 		Pausable pausable = timer.schedule((time) -> {
-			if (phaser.getPhase() == 0)
-			{
+			if (phaser.getPhase() == 0) {
 				phaser.arrive();
 				sysTime.set(System.nanoTime());
 			}

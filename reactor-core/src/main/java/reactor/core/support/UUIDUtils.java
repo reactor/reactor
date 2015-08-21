@@ -37,14 +37,14 @@ public abstract class UUIDUtils {
 	static {
 		try {
 			IS_THREADLOCALRANDOM_AVAILABLE = null != UUIDUtils.class.getClassLoader().loadClass(
-					"java.util.concurrent.ThreadLocalRandom"
+			  "java.util.concurrent.ThreadLocalRandom"
 			);
-		} catch(Throwable t) {
+		} catch (Throwable t) {
 		}
 
 		byte[] seed = new SecureRandom().generateSeed(8);
 		leastSigBits = new BigInteger(seed).longValue();
-		if(!IS_THREADLOCALRANDOM_AVAILABLE) {
+		if (!IS_THREADLOCALRANDOM_AVAILABLE) {
 			random = new Random(leastSigBits);
 		}
 	}
@@ -59,18 +59,18 @@ public abstract class UUIDUtils {
 	 */
 	public static UUID random() {
 		byte[] randomBytes = new byte[16];
-		if(IS_THREADLOCALRANDOM_AVAILABLE) {
+		if (IS_THREADLOCALRANDOM_AVAILABLE) {
 			java.util.concurrent.ThreadLocalRandom.current().nextBytes(randomBytes);
 		} else {
 			random.nextBytes(randomBytes);
 		}
 
 		long mostSigBits = 0;
-		for(int i = 0; i < 8; i++) {
+		for (int i = 0; i < 8; i++) {
 			mostSigBits = (mostSigBits << 8) | (randomBytes[i] & 0xff);
 		}
 		long leastSigBits = 0;
-		for(int i = 8; i < 16; i++) {
+		for (int i = 8; i < 16; i++) {
 			leastSigBits = (leastSigBits << 8) | (randomBytes[i] & 0xff);
 		}
 
@@ -87,7 +87,7 @@ public abstract class UUIDUtils {
 
 		lock.lock();
 		try {
-			if(timeMillis > lastTime) {
+			if (timeMillis > lastTime) {
 				lastTime = timeMillis;
 			} else {
 				timeMillis = ++lastTime;

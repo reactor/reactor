@@ -30,7 +30,7 @@ public class RingBufferProcessorTests extends AbstractProcessorTests {
 	}
 
 	@Test
-	public void testShutdown(){
+	public void testShutdown() {
 		for (int i = 0; i < 1000; i++) {
 			RingBufferProcessor dispatcher = RingBufferProcessor.create("tckRingBufferProcessor", 128);
 			dispatcher.awaitAndShutdown();

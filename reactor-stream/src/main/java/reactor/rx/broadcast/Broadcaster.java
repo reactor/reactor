@@ -107,13 +107,12 @@ public class Broadcaster<O> extends Action<O, O> {
 	 */
 	public static <T> Broadcaster<T> create(Environment env, ReactorProcessor dispatcher) {
 		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
-				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
-				"dispatchers");
+		  " For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
+		  "dispatchers");
 		return new Broadcaster<T>(env, dispatcher, Action.evaluateCapacity(dispatcher.backlogSize()));
 	}
 
 	/**
-	 *
 	 * INTERNAL
 	 */
 	@SuppressWarnings("unchecked")
@@ -123,7 +122,7 @@ public class Broadcaster<O> extends Action<O, O> {
 		this.environment = environment;
 
 		//start broadcaster
-		this.upstreamSubscription = (PushSubscription<O>)HOT_SUBSCRIPTION;
+		this.upstreamSubscription = (PushSubscription<O>) HOT_SUBSCRIPTION;
 	}
 
 	@Override
@@ -138,7 +137,7 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	@Override
 	public void onNext(O ev) {
-		if(ev == null){
+		if (ev == null) {
 			throw new NullPointerException("Spec 2.13: Signal cannot be null");
 		}
 		if (!dispatcher.inContext()) {
@@ -150,23 +149,23 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		if(upstreamSubscription == HOT_SUBSCRIPTION){
+		if (upstreamSubscription == HOT_SUBSCRIPTION) {
 			upstreamSubscription = null;
 			super.onSubscribe(subscription);
 
 			PushSubscription<O> downSub = downstreamSubscription;
-			if(downSub != null && downSub.pendingRequestSignals() > 0L ){
+			if (downSub != null && downSub.pendingRequestSignals() > 0L) {
 				subscription.request(downSub.pendingRequestSignals());
 			}
 
-		}else{
+		} else {
 			super.onSubscribe(subscription);
 		}
 	}
 
 	@Override
 	public void onError(Throwable cause) {
-		if(cause == null){
+		if (cause == null) {
 			throw new NullPointerException("Spec 2.13: Signal cannot be null");
 		}
 		if (!dispatcher.inContext()) {
@@ -219,8 +218,8 @@ public class Broadcaster<O> extends Action<O, O> {
 			return super.createSubscription(subscriber, true);
 		} else {
 			return super.createSubscription(subscriber,
-					dispatcher != SynchronousDispatcher.INSTANCE &&
-							(upstreamSubscription != null && !upstreamSubscription.hasPublisher()));
+			  dispatcher != SynchronousDispatcher.INSTANCE &&
+				(upstreamSubscription != null && !upstreamSubscription.hasPublisher()));
 		}
 	}
 
@@ -240,14 +239,14 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	@Override
 	public void cancel() {
-		if(upstreamSubscription != HOT_SUBSCRIPTION){
+		if (upstreamSubscription != HOT_SUBSCRIPTION) {
 			super.cancel();
 		}
 	}
 
 	@Override
 	public void recycle() {
-		if(HOT_SUBSCRIPTION != upstreamSubscription){
+		if (HOT_SUBSCRIPTION != upstreamSubscription) {
 			upstreamSubscription = null;
 		} else {
 			downstreamSubscription = null;
@@ -271,7 +270,9 @@ public class Broadcaster<O> extends Action<O, O> {
 				_downstreamSubscription.updatePendingRequests(elements);
 			}
 		}
-	}/
+	}
+
+	/
 
 
 }

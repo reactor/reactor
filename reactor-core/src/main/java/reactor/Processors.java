@@ -23,16 +23,16 @@ import org.reactivestreams.Processor;
  */
 public final class Processors {
 
-    /**
-     * Default number of processors available to the runtime on init (min 2)
-     *
-     * @see Runtime#availableProcessors()
-     */
-    public static final int DEFAULT_POOL_SIZE = Math.min(Runtime.getRuntime().availableProcessors(), 2);
+	/**
+	 * Default number of processors available to the runtime on init (min 2)
+	 *
+	 * @see Runtime#availableProcessors()
+	 */
+	public static final int DEFAULT_POOL_SIZE = Math.min(Runtime.getRuntime().availableProcessors(), 2);
 
-    public <I, O> Processor<I, O> broadcast(Processor<I, O> processor){
-        processor.onSubscribe(Publishers.NOOP_SUBSCRIPTION);
-        return processor;
-    }
+	public <I, O> Processor<I, O> broadcast(Processor<I, O> processor) {
+		processor.onSubscribe(Publishers.NOOP_SUBSCRIPTION);
+		return processor;
+	}
 
 }

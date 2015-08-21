@@ -21,17 +21,17 @@ import reactor.bus.Event;
 
 public class EventAllocatorTests {
 
-  @Test
-  public void eventAllocatorTest() {
-    EventAllocator eventAllocator = EventAllocator.defaultEventAllocator();
+	@Test
+	public void eventAllocatorTest() {
+		EventAllocator eventAllocator = EventAllocator.defaultEventAllocator();
 
-    Event<String> eStr = eventAllocator.get(String.class).get();
-    eStr.setData("string");
-    Assert.assertTrue("String data is settable into the String event", eStr.getData() == "string");
+		Event<String> eStr = eventAllocator.get(String.class).get();
+		eStr.setData("string");
+		Assert.assertTrue("String data is settable into the String event", eStr.getData() == "string");
 
 
-    Event<Integer> eInt = eventAllocator.get(Integer.class).get();
-    eInt.setData(1);
-    Assert.assertTrue("Integer data is settable into the Integer event", eInt.getData() == 1);
-  }
+		Event<Integer> eInt = eventAllocator.get(Integer.class).get();
+		eInt.setData(1);
+		Assert.assertTrue("Integer data is settable into the Integer event", eInt.getData() == 1);
+	}
 }

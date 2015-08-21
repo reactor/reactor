@@ -27,16 +27,16 @@ import reactor.fn.Supplier;
  * @author Oleksandr Petrov
  * @since 1.1
  */
-public class  EventFactorySupplier<T> implements Supplier<Event<T>> {
+public class EventFactorySupplier<T> implements Supplier<Event<T>> {
 
-  private final Class<T> klass;
+	private final Class<T> klass;
 
-  public EventFactorySupplier(Class<T> klass) {
-    this.klass = klass;
-  }
+	public EventFactorySupplier(Class<T> klass) {
+		this.klass = klass;
+	}
 
-  @Override
-  public Event<T> get() {
-    return new Event<T>(klass);
-  }
+	@Override
+	public Event<T> get() {
+		return new Event<T>(klass);
+	}
 }

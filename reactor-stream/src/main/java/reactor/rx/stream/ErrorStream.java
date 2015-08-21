@@ -70,9 +70,9 @@ public final class ErrorStream<O, T extends Throwable> extends Stream<O> {
 
 	@Override
 	public void subscribe(final Subscriber<? super O> s) {
-		try{
-		s.onSubscribe(ERROR_SUB);
-		}catch (Throwable throwable){
+		try {
+			s.onSubscribe(ERROR_SUB);
+		} catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			s.onError(throwable);
 		}

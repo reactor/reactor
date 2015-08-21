@@ -23,7 +23,8 @@ package reactor.core.error;
 public final class CancelException extends RuntimeException {
 	public static final CancelException INSTANCE = new CancelException();
 
-	public static final boolean TRACE_CANCEL = Boolean.parseBoolean(System.getProperty("reactor.trace.cancel", "false"));
+	public static final boolean TRACE_CANCEL = Boolean.parseBoolean(System.getProperty("reactor.trace.cancel",
+	  "false"));
 
 	private CancelException() {
 		super("The subscriber has denied dispatching");

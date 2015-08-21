@@ -25,15 +25,14 @@ import reactor.fn.Supplier;
  * A generic environment-aware class for specifying components that need to be configured
  * with an {@link Environment} and {@link ReactorProcessor}.
  *
+ * @param <SPEC>   The DispatcherComponentSpec subclass
+ * @param <TARGET> The type that this spec will create
  * @author Stephane Maldini
  * @author Jon Brisbin
- *
- * @param <SPEC> The DispatcherComponentSpec subclass
- * @param <TARGET> The type that this spec will create
  */
 @SuppressWarnings("unchecked")
-public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSpec<SPEC, TARGET>, TARGET> implements Supplier<TARGET> {
-
+public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSpec<SPEC, TARGET>, TARGET> implements
+  Supplier<TARGET> {
 
 
 	private Environment      env;
@@ -44,7 +43,6 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 	 * environment
 	 *
 	 * @param env The environment to use
-	 *
 	 * @return {@code this}
 	 */
 	public final SPEC env(Environment env) {
@@ -56,9 +54,7 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 	 * Configures the component to use the configured Environment's default dispatcher
 	 *
 	 * @return {@code this}
-	 *
 	 * @throws IllegalStateException if no Environment has been configured
-	 *
 	 * @see Environment#getDefaultDispatcher()
 	 * @see #env(Environment)
 	 */
@@ -82,7 +78,6 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 	 * Configures the component to use the given {@code dispatcher}
 	 *
 	 * @param dispatcher The dispatcher to use
-	 *
 	 * @return {@code this}
 	 */
 	public final SPEC dispatcher(ReactorProcessor dispatcher) {
@@ -95,11 +90,8 @@ public abstract class DispatcherComponentSpec<SPEC extends DispatcherComponentSp
 	 * {@code dispatcherName}
 	 *
 	 * @param dispatcherName The name of the dispatcher
-	 *
 	 * @return {@code this}
-	 *
 	 * @throws IllegalStateException if no Environment has been configured
-	 *
 	 * @see Environment#getDispatcher(String)
 	 * @see #env(Environment)
 	 */

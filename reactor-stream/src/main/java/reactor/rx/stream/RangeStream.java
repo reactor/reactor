@@ -65,27 +65,27 @@ public final class RangeStream {
 	 */
 	public static Stream<Long> create(final long min, final long max) {
 		return Streams.wrap(PublisherFactory.forEach(new Consumer<SubscriberWithContext<Long, Range>>() {
-					@Override
-					public void accept(SubscriberWithContext<Long, Range> subscriber) {
-						Range range = subscriber.context();
+			  @Override
+			  public void accept(SubscriberWithContext<Long, Range> subscriber) {
+				  Range range = subscriber.context();
 
-						if (range.cursor <= range.end) {
-							subscriber.onNext(range.cursor++);
-						}
-						if (range.cursor > range.end) {
-							subscriber.onComplete();
-						}
-					}
-				}, new Function<Subscriber<? super Long>, Range>() {
-					@Override
-					public Range apply(Subscriber<? super Long> subscriber) {
-						if (max < min) {
-							subscriber.onComplete();
-							throw PublisherFactory.PrematureCompleteException.INSTANCE;
-						}
-						return new Range(min, max);
-					}
-				})
+				  if (range.cursor <= range.end) {
+					  subscriber.onNext(range.cursor++);
+				  }
+				  if (range.cursor > range.end) {
+					  subscriber.onComplete();
+				  }
+			  }
+		  }, new Function<Subscriber<? super Long>, Range>() {
+			  @Override
+			  public Range apply(Subscriber<? super Long> subscriber) {
+				  if (max < min) {
+					  subscriber.onComplete();
+					  throw PublisherFactory.PrematureCompleteException.INSTANCE;
+				  }
+				  return new Range(min, max);
+			  }
+		  })
 		);
 	}
 
@@ -104,8 +104,8 @@ public final class RangeStream {
 		@Override
 		public String toString() {
 			return "{" +
-					"cursor=" + cursor + "" + (end > 0 ? "[" + 100 * (cursor - 1) / end + "%]" : "") +
-					", start=" + start + ", end=" + end + "}";
+			  "cursor=" + cursor + "" + (end > 0 ? "[" + 100 * (cursor - 1) / end + "%]" : "") +
+			  ", start=" + start + ", end=" + end + "}";
 		}
 	}
 }

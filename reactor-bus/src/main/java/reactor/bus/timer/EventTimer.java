@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * A hashed wheel timer implementation that uses a {@link reactor.bus.registry.Registry} and custom {@link
  * reactor.bus.selector.Selector Selectors} to determine when tasks should be executed.
- *
+ * <p>
  * This is specifically useful when RingBuffer HashWheelTimer is not supported (Android).
  * <p>
  * A {@code SimpleHashWheelTimer} has two variations for scheduling tasks: {@link #schedule(reactor.fn.Consumer,
@@ -52,7 +52,7 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * <code><pre>
  *   SimpleHashWheelTimer timer = new SimpleHashWheelTimer();
- *
+ * <p>
  *   timer.schedule(new Consumer&lt;Long&gt;() {
  *     public void accept(Long now) {
  *       // run a task
@@ -91,8 +91,7 @@ public class EventTimer implements Timer {
 	 * closest
 	 * multiple of this resolution.
 	 *
-	 * @param resolution
-	 * 		the resolution of this timer, in milliseconds
+	 * @param resolution the resolution of this timer, in milliseconds
 	 */
 	Timer create(final int resolution) {
 		return new EventTimer(resolution);
@@ -104,43 +103,42 @@ public class EventTimer implements Timer {
 	 * closest
 	 * multiple of this resolution.
 	 *
-	 * @param resolution
-	 * 		the resolution of this timer, in milliseconds
+	 * @param resolution the resolution of this timer, in milliseconds
 	 */
 	private EventTimer(final int resolution) {
 		this.resolution = resolution;
 
 		this.loop = new NamedDaemonThreadFactory("simple-hash-wheel-timer").newThread(
-				new Runnable() {
-					@Override
-					public void run() {
-						while (!Thread.currentThread().isInterrupted()) {
-							long now = now(resolution);
-							for (Registration<Long, ? extends Consumer<Long>> reg : tasks.select(now)) {
-								try {
-									if (reg.isCancelled() || reg.isPaused()) {
-										continue;
-									}
-									reg.getObject().accept(now);
-								} catch (CancelException cce) {
-									reg.cancel();
-								} catch (Throwable t) {
-									LOG.error(t.getMessage(), t);
-								} finally {
-									if (reg.isCancelAfterUse()) {
-										reg.cancel();
-									}
-								}
-							}
-							try {
-								Thread.sleep(resolution);
-							} catch (InterruptedException e) {
-								Thread.currentThread().interrupt();
-								return;
-							}
-						}
-					}
-				}
+		  new Runnable() {
+			  @Override
+			  public void run() {
+				  while (!Thread.currentThread().isInterrupted()) {
+					  long now = now(resolution);
+					  for (Registration<Long, ? extends Consumer<Long>> reg : tasks.select(now)) {
+						  try {
+							  if (reg.isCancelled() || reg.isPaused()) {
+								  continue;
+							  }
+							  reg.getObject().accept(now);
+						  } catch (CancelException cce) {
+							  reg.cancel();
+						  } catch (Throwable t) {
+							  LOG.error(t.getMessage(), t);
+						  } finally {
+							  if (reg.isCancelAfterUse()) {
+								  reg.cancel();
+							  }
+						  }
+					  }
+					  try {
+						  Thread.sleep(resolution);
+					  } catch (InterruptedException e) {
+						  Thread.currentThread().interrupt();
+						  return;
+					  }
+				  }
+			  }
+		  }
 		);
 		this.loop.start();
 	}
@@ -152,38 +150,38 @@ public class EventTimer implements Timer {
 
 	@Override
 	public Registration<Long, ? extends Consumer<Long>> schedule(Consumer<Long> consumer,
-	                                                       long period,
-	                                                       TimeUnit timeUnit,
-	                                                       long delayInMilliseconds) {
+	                                                             long period,
+	                                                             TimeUnit timeUnit,
+	                                                             long delayInMilliseconds) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long milliPeriod = TimeUnit.MILLISECONDS.convert(period, timeUnit);
-		if(milliPeriod % resolution != 0){
+		if (milliPeriod % resolution != 0) {
 			throw ReactorFatalException.create(new IllegalArgumentException(
-					"Period must be a multiple of timer resolution (e.g. period % resolution == 0 )")
+				"Period must be a multiple of timer resolution (e.g. period % resolution == 0 )")
 			);
 		}
 		return tasks.register(
-				new PeriodSelector(milliPeriod, delayInMilliseconds, resolution),
-				consumer
+		  new PeriodSelector(milliPeriod, delayInMilliseconds, resolution),
+		  consumer
 		);
 	}
 
 	@Override
 	public Registration<Long, ? extends Consumer<Long>> schedule(Consumer<Long> consumer,
-	                                                       long period,
-	                                                       TimeUnit timeUnit) {
+	                                                             long period,
+	                                                             TimeUnit timeUnit) {
 		return schedule(consumer, period, timeUnit, 0);
 	}
 
 	@Override
 	public Registration<Long, ? extends Consumer<Long>> submit(Consumer<Long> consumer,
-	                                                     long delay,
-	                                                     TimeUnit timeUnit) {
+	                                                           long delay,
+	                                                           TimeUnit timeUnit) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long ms = TimeUnit.MILLISECONDS.convert(delay, timeUnit);
 		return tasks.register(
-				new PeriodSelector(0l, ms, resolution),
-				consumer
+		  new PeriodSelector(0l, ms, resolution),
+		  consumer
 		).cancelAfterUse();
 	}
 
@@ -199,7 +197,7 @@ public class EventTimer implements Timer {
 	}
 
 	private static long now(int resolution) {
-		return (long)(Math.ceil(System.currentTimeMillis() / resolution) * resolution);
+		return (long) (Math.ceil(System.currentTimeMillis() / resolution) * resolution);
 	}
 
 	private static class PeriodSelector implements Selector<Long> {
@@ -223,7 +221,7 @@ public class EventTimer implements Timer {
 		@Override
 		public boolean matches(Long key) {
 			long now = key;
-			long period = (long)(Math.ceil((now - createdMillis) / resolution) * resolution);
+			long period = (long) (Math.ceil((now - createdMillis) / resolution) * resolution);
 			return period >= delay && period % this.period == 0;
 		}
 

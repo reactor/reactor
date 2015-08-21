@@ -28,28 +28,28 @@ import static reactor.bus.selector.Selectors.$
  */
 class RegistrySpec extends Specification {
 
-  def "Registry tracks Registrations"(Registry<?, String> regs) {
+	def "Registry tracks Registrations"(Registry<?, String> regs) {
 
-    given: "simple Registrations"
-      regs.register $("Hello"), "World!"
+		given: "simple Registrations"
+			regs.register $("Hello"), "World!"
 
-    when: "Registration is selected"
-      def r = regs.select("Hello")
+		when: "Registration is selected"
+			def r = regs.select("Hello")
 
-    then: "a Registration was found"
-      r.size() == 1
-      r[0].object == "World!"
+		then: "a Registration was found"
+			r.size() == 1
+			r[0].object == "World!"
 
-    when: "Registration is cancelled"
-      r[0].cancel()
+		when: "Registration is cancelled"
+			r[0].cancel()
 
-    then: "Registration is not found on subsequent search"
-      !regs.select("Hello")
+		then: "Registration is not found on subsequent search"
+			!regs.select("Hello")
 
-    where:
-      regs << [new CachingRegistry<?, String>(true, true, null),
-               new SimpleCachingRegistry<?, String>(true, true, null)]
+		where:
+			regs << [new CachingRegistry<?, String>(true, true, null),
+			         new SimpleCachingRegistry<?, String>(true, true, null)]
 
-  }
+	}
 
 }

@@ -51,7 +51,7 @@ public class CachableRegistration<K, V> implements Registration<K, V> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public Selector<K> getSelector() {
-		return (!cancelled ? selector : (Selector<K>)NO_MATCH);
+		return (!cancelled ? selector : (Selector<K>) NO_MATCH);
 	}
 
 	@Override
@@ -115,14 +115,14 @@ public class CachableRegistration<K, V> implements Registration<K, V> {
 	@Override
 	public String toString() {
 		return "CachableRegistration{" +
-				"\n\tselector=" + selector +
-				",\n\tobject=" + object +
-				",\n\tonCancel=" + onCancel +
-				",\n\tlifecycle=" + lifecycle +
-				",\n\tcancelled=" + cancelled +
-				",\n\tcancelAfterUse=" + cancelAfterUse +
-				",\n\tpaused=" + paused +
-				"\n}";
+		  "\n\tselector=" + selector +
+		  ",\n\tobject=" + object +
+		  ",\n\tonCancel=" + onCancel +
+		  ",\n\tlifecycle=" + lifecycle +
+		  ",\n\tcancelled=" + cancelled +
+		  ",\n\tcancelAfterUse=" + cancelAfterUse +
+		  ",\n\tpaused=" + paused +
+		  "\n}";
 	}
 
 }
