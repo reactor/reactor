@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 /**
  * Borrowed from Netty project which itself borrows from JCTools and various other projects.
  *
- * The {@see github.com/netty/netty/blob/master/common/src/main/java/io/netty/util/internal/PlatformDependent.java}
+ * @see <a href="https://github.com/netty/netty/blob/master/common/src/main/java/io/netty/util/internal/PlatformDependent.java">Netty javadoc</a>.
  * operations which requires access to {@code sun.misc.*}.
  */
 final class PlatformDependent0 {

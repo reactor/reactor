@@ -1,3 +1,0 @@
-/**
- * Reactor Groovy Extensions.
- */
