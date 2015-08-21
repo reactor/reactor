@@ -40,11 +40,10 @@ ext {
   snappyVersion = '1.1.1.6'
   hadoopVersion = '1.1.2'
   openHftChronicleVersion = '3.4.2'
-  openHftLangVersion = '6.6.2'
 
   // Testing
   mockitoVersion = '1.10.19'
-  spockVersion = '0.7-groovy-2.0'
+  spockVersion = '1.0-groovy-2.4'
 
   javadocLinks = [
       "http://docs.oracle.com/javase/7/docs/api/",
@@ -234,21 +233,9 @@ project('reactor-core') {
     compile "org.reactivestreams:reactive-streams:1.0.0"
 
     // Logging
-    compile "org.slf4j:slf4j-api:$slf4jVersion"
+    optional "org.slf4j:slf4j-api:$slf4jVersion"
 
     testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
-
-    // High-speed Messaging
-    optional "net.openhft:chronicle:$openHftChronicleVersion",
-        "net.openhft:lang:$openHftLangVersion"
-
-    // JSON handling
-    optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
-
-    // Serialization
-    optional "com.esotericsoftware:kryo:$kryoVersion",
-        "com.google.protobuf:protobuf-java:$protobufVersion",
-        "org.xerial.snappy:snappy-java:$snappyVersion"
   }
 
   jar {
@@ -283,11 +270,6 @@ project('reactor-stream') {
 
   dependencies {
     compile project(':reactor-core')
-
-    // High-speed Messaging
-    optional "net.openhft:chronicle:$openHftChronicleVersion",
-        "net.openhft:lang:$openHftLangVersion"
-
 
     testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
     testCompile project(':reactor-bus')
@@ -408,43 +390,6 @@ project('reactor-net') {
   }
 }
 
-
-
-
-project('reactor-groovy-extensions') {
-  description = 'Reactor Groovy Ext components'
-
-  apply plugin: 'osgi'
-  apply plugin: 'groovy'
-
-  dependencies {
-    compile (project(':reactor-bus')){
-      transitive = false
-    }
-    compile project(':reactor-core'),
-        project(':reactor-stream'),
-        "org.codehaus.groovy:groovy:$groovyVersion"
-  }
-}
-
-project('reactor-groovy') {
-  description = 'Reactor Groovy components'
-
-  apply plugin: 'osgi'
-  apply plugin: 'groovy'
-
-  artifacts {
-    archives sourcesJar
-    archives javadocJar
-    archives groovydocJar
-  }
-
-  dependencies {
-    compile(files(project(":reactor-core").disruptorRepackJar))
-    compile project(':reactor-groovy-extensions')
-  }
-}
-
 project('reactor-alloc') {
   description = 'Pooling utilities'
 
@@ -453,6 +398,22 @@ project('reactor-alloc') {
     compile project(':reactor-core')
 
     optional project(':reactor-bus')
+  }
+}
+
+project('reactor-codec') {
+  description = 'Codec families'
+
+  dependencies {
+    compile project(':reactor-core')
+
+    // JSON handling
+    optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+
+    // Serialization
+    optional "com.esotericsoftware:kryo:$kryoVersion",
+        "com.google.protobuf:protobuf-java:$protobufVersion",
+        "org.xerial.snappy:snappy-java:$snappyVersion"
   }
 }
 

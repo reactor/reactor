@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  *
  * Expose some runtime properties such as Unsafe access or Android environment.
  *
- * The {@see github.com/netty/netty/blob/master/common/src/main/java/io/netty/util/internal/PlatformDependent.java}.
+ * @see <a href="https://github.com/netty/netty/blob/master/common/src/main/java/io/netty/util/internal/PlatformDependent.java">Netty javadoc</a>.
  */
 public class PlatformDependent {
 
