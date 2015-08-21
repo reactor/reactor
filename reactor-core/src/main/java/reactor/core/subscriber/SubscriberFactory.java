@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * Create such publisher with the provided factory, E.g.:
  * <pre>
  * {@code
- * PublisherFactory.forEach(sub ->
+ * PublisherFactory.create(sub ->
  *    sub.onNext("hello")
  * ).subscribe( SubscriberFactory.unbounded(
  *    System.out::println

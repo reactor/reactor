@@ -64,7 +64,7 @@ public final class IO {
 	 * @return a Publisher of Buffer values
 	 */
 	public static Publisher<Buffer> read(final ReadableByteChannel channel, int chunkSize) {
-		return PublisherFactory.forEach(
+		return PublisherFactory.create(
 		  chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
 		  new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {
 			  @Override
@@ -124,7 +124,7 @@ public final class IO {
 	 * @return a Publisher of Buffer values read from file sequentially
 	 */
 	public static Publisher<Buffer> readFile(final String path, int chunkSize) {
-		return PublisherFactory.forEach(
+		return PublisherFactory.create(
 		  chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
 		  new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {
 			  @Override

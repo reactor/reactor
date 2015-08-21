@@ -457,8 +457,8 @@ public class StreamTests extends AbstractReactorTest {
 					  Long prevThreadId = seenInternal.put(o, curThreadId);
 					  if (prevThreadId != null) {
 						  fail(String.format(
-							"The object %d has already been seen internally on the thread %d, current thread %d",
-							o, prevThreadId, curThreadId));
+						    "The object %d has already been seen internally on the thread %d, current thread %d",
+						    o, prevThreadId, curThreadId));
 					  }
 
 					  internalLatch.countDown();
@@ -473,8 +473,8 @@ public class StreamTests extends AbstractReactorTest {
 					  Long prevThreadId = seenConsumer.put(o, curThreadId);
 					  if (prevThreadId != null) {
 						  System.out.println(String.format(
-							"The object %d has already been seen by the consumer on the thread %d, current thread %d",
-							o, prevThreadId, curThreadId));
+						    "The object %d has already been seen by the consumer on the thread %d, current thread %d",
+						    o, prevThreadId, curThreadId));
 						  fail();
 					  }
 
@@ -647,7 +647,7 @@ public class StreamTests extends AbstractReactorTest {
 		deferred
 		  .partition()
 		  .consume(stream ->
-			stream
+		    stream
 			  .dispatchOn(env.getCachedDispatcher())
 			  .buffer(1000 / 8, 1l, TimeUnit.SECONDS)
 			  .consume(batch -> {
@@ -855,7 +855,7 @@ public class StreamTests extends AbstractReactorTest {
 		int messagesProcessed = batchesDistribution.entrySet()
 		  .stream()
 		  .mapToInt(entry -> entry.getKey() * entry
-			.getValue())
+		    .getValue())
 		  .reduce(Integer::sum).getAsInt();
 
 		System.out.println(batchingStreamDef.debug());
@@ -879,15 +879,15 @@ public class StreamTests extends AbstractReactorTest {
 		  .map(Integer::parseInt)
 		  .flatMap(l ->
 			  Streams.<Integer>merge(
-				globalFeed,
-				Streams.just(1111, l, 3333, 4444, 5555, 6666)
+			    globalFeed,
+			    Streams.just(1111, l, 3333, 4444, 5555, 6666)
 			  )
-				.log("merged")
-				.dispatchOn(env)
-				.log("dispatched")
-				.observeSubscribe(x -> afterSubscribe.countDown())
-				.filter(nearbyLoc -> 3333 >= nearbyLoc)
-				.filter(nearbyLoc -> 2222 <= nearbyLoc)
+			    .log("merged")
+			    .dispatchOn(env)
+			    .log("dispatched")
+			    .observeSubscribe(x -> afterSubscribe.countDown())
+			    .filter(nearbyLoc -> 3333 >= nearbyLoc)
+			    .filter(nearbyLoc -> 2222 <= nearbyLoc)
 
 		  );
 
@@ -1004,7 +1004,7 @@ public class StreamTests extends AbstractReactorTest {
 			  .dispatchOn(env.getCachedDispatcher())
 			  .map(v -> v)
 			  .consume(v -> countDownLatch.countDown(),
-				Throwable::printStackTrace)
+			    Throwable::printStackTrace)
 		);
 
 		countDownLatch.await(5, TimeUnit.SECONDS);
@@ -1020,9 +1020,9 @@ public class StreamTests extends AbstractReactorTest {
 		ExecutorService pool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("tee", null, null, true));
 
 		Stream<Point> points = Streams
-		  .wrap(PublisherFactory.<Double, Random>forEach(
-			sub -> sub.onNext(sub.context().nextDouble()),
-			sub -> new Random()
+		  .wrap(PublisherFactory.<Double, Random>create(
+		    sub -> sub.onNext(sub.context().nextDouble()),
+		    sub -> new Random()
 		  ))
 		  .log("points")
 			//.requestWhen(requests -> requests.dispatchOn(Environment.cachedDispatcher()))
@@ -1145,9 +1145,9 @@ public class StreamTests extends AbstractReactorTest {
 		processor
 		  .capacity(5L)
 		  .consume(
-			System.out::println,
-			Throwable::printStackTrace,
-			nothing -> System.out.println("## EOF ##")
+		    System.out::println,
+		    Throwable::printStackTrace,
+		    nothing -> System.out.println("## EOF ##")
 		  );
 
 		Thread.sleep(3000);
@@ -1223,7 +1223,7 @@ public class StreamTests extends AbstractReactorTest {
 		  .buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
 		  .partition(parallelStreams)
 		  .consume(innerStream ->
-			innerStream
+		    innerStream
 			  .dispatchOn(env.getCachedDispatcher())
 			  .when(Exception.class, Throwable::printStackTrace)
 			  .consume(i -> latch.countDown()));
@@ -1354,7 +1354,7 @@ public class StreamTests extends AbstractReactorTest {
 		  .period(delayMS, TimeUnit.MILLISECONDS)
 		  .map((signal) -> {
 			  return TimeUnit.NANOSECONDS.toMillis(System.nanoTime()
-				- elapsed);
+			    - elapsed);
 		  }).observe((elapsedMillis) -> {
 			  times.add(localTime + elapsedMillis);
 			  barrier.arrive();
@@ -1596,8 +1596,8 @@ public class StreamTests extends AbstractReactorTest {
 			  doneSemaphore.release();
 		  })
 		  .observeError(
-			Throwable.class,
-			(Ø, t) -> println("observedSplitStream#observeError ", t.getMessage())
+		    Throwable.class,
+		    (Ø, t) -> println("observedSplitStream#observeError ", t.getMessage())
 		  );
 
 		final Promise<List<String>> listPromise = observedSplitStream.toList();

@@ -62,7 +62,7 @@ public final class IterableStream<T> {
 	 * @return
 	 */
 	public static <T> Stream<T> create(final Iterable<? extends T> defaultValues) {
-		return Streams.wrap(PublisherFactory.forEach(new Consumer<SubscriberWithContext<T, Iterator<? extends T>>>() {
+		return Streams.wrap(PublisherFactory.create(new Consumer<SubscriberWithContext<T, Iterator<? extends T>>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Iterator<? extends T>> subscriber) {
 				final Iterator<? extends T> iterator = subscriber.context();

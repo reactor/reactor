@@ -116,7 +116,7 @@ public final class Promises {
 	 * @return A {@link Promise}.
 	 */
 	public static <T> Promise<T> task(Environment env, ReactorProcessor dispatcher, final Supplier<T> supplier) {
-		Publisher<T> p = PublisherFactory.forEach(new Consumer<SubscriberWithContext<T, Void>>() {
+		Publisher<T> p = PublisherFactory.create(new Consumer<SubscriberWithContext<T, Void>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Void> sub) {
 				sub.onNext(supplier.get());

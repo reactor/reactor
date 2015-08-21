@@ -64,7 +64,7 @@ public final class RangeStream {
 	 * @return
 	 */
 	public static Stream<Long> create(final long min, final long max) {
-		return Streams.wrap(PublisherFactory.forEach(new Consumer<SubscriberWithContext<Long, Range>>() {
+		return Streams.wrap(PublisherFactory.create(new Consumer<SubscriberWithContext<Long, Range>>() {
 			  @Override
 			  public void accept(SubscriberWithContext<Long, Range> subscriber) {
 				  Range range = subscriber.context();
