@@ -301,7 +301,7 @@ class ProcessorsSpec extends Specification {
 			def t1 = Thread.currentThread()
 			def t2 = Thread.currentThread()
 			def serviceRBWork = SharedProcessorService.work("ping-pong", 1024, 4)
-			def serviceSimpleWork = SharedProcessorService.wrap(SimpleWorkProcessor.create("ping-pong", 1024))
+			def serviceSimpleWork = SharedProcessorService.create(SimpleWorkProcessor.create("ping-pong", 1024))
 
 		when:
 			Consumer<String> pong

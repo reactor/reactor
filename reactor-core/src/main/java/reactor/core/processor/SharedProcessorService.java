@@ -133,10 +133,10 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		if (PlatformDependent.hasUnsafe()) {
 			processor = RingBufferProcessor.share(name, bufferSize, DEFAULT_TASK_PROVIDER);
 		} else {
-			processor = SimpleAsyncProcessor.create(name, bufferSize);
+			processor = SimpleWorkProcessor.create(name, bufferSize);
 		}
 
-		return wrap(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		return create(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 
@@ -230,7 +230,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 
 		SharedProcessorService<E> sharedProcessorService =
-		  wrap(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		  create(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 
 		//add extra concurrent subscribers
 		for (int i = 1; i < concurrency; i++) {
@@ -254,8 +254,8 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> wrap(Processor<Task, Task> p) {
-		return wrap(p, null, null, true);
+	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p) {
+		return create(p, null, null, true);
 	}
 
 
@@ -265,9 +265,9 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> wrap(Processor<Task, Task> p,
-	                                                 boolean autoShutdown) {
-		return wrap(p, null, null, autoShutdown);
+	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p,
+	                                                   boolean autoShutdown) {
+		return create(p, null, null, autoShutdown);
 	}
 
 	/**
@@ -277,10 +277,10 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> wrap(Processor<Task, Task> p,
-	                                                 Consumer<Throwable> uncaughtExceptionHandler,
-	                                                 boolean autoShutdown) {
-		return wrap(p, uncaughtExceptionHandler, null, autoShutdown);
+	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p,
+	                                                   Consumer<Throwable> uncaughtExceptionHandler,
+	                                                   boolean autoShutdown) {
+		return create(p, uncaughtExceptionHandler, null, autoShutdown);
 	}
 
 	/**
@@ -291,10 +291,10 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> wrap(Processor<Task, Task> p,
-	                                                 Consumer<Throwable> uncaughtExceptionHandler,
-	                                                 Consumer<Void> shutdownHandler,
-	                                                 boolean autoShutdown) {
+	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p,
+	                                                   Consumer<Throwable> uncaughtExceptionHandler,
+	                                                   Consumer<Void> shutdownHandler,
+	                                                   boolean autoShutdown) {
 		return new SharedProcessorService<E>(p, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
@@ -610,8 +610,11 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	@SuppressWarnings("unchecked")
 	private ProcessorBarrier<T> createBarrier() {
 
-		REF_COUNT.incrementAndGet(this);
+		if(processor == null){
+			return new SyncProcessorBarrier<>();
+		}
 
+		REF_COUNT.incrementAndGet(this);
 		if (RingBufferProcessor.class == processor.getClass()) {
 			return new RingBufferProcessorBarrier<>(((RingBufferProcessor) processor).ringBuffer());
 		} else if (ExecutorPoweredProcessor.class.isAssignableFrom(processor.getClass())
@@ -835,7 +838,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 				task.subscriber = subscriber;
 			} else {
 				MutableSignal<Task> signal = RingBufferSubscriberUtils.next(ringBuffer);
-				task = signal.value;
+				task = signal.value != null ? signal.value : new Task(); //TODO should assume supplied?
 				task.type = type;
 				task.payload = data;
 				task.subscriber = subscriber;
@@ -850,6 +853,14 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 		@Override
 		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
+			route(data, subscriber, type);
+		}
+	}
+
+	private final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> {
+
+		@Override
+		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
 			route(data, subscriber, type);
 		}
 	}

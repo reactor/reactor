@@ -21,11 +21,11 @@ import org.reactivestreams.Processor;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class AsyncSharedProcessorTests extends AbstractProcessorTests {
+public class SharedProcessorServiceSyncTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return SharedProcessorService.<Long>async("tckRingBufferProcessor", bufferSize).get();
+		return SharedProcessorService.<Long>sync().get();
 	}
 
 }
