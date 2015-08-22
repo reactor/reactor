@@ -27,7 +27,7 @@ import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.Recyclable;
 import reactor.core.support.Resource;
-import reactor.core.support.Signal;
+import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -455,19 +455,19 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 	/* INTERNAL */
 	@SuppressWarnings("unchecked")
-	static private void route(Object payload, Subscriber subscriber, Signal type) {
+	static private void route(Object payload, Subscriber subscriber, SignalType type) {
 		try {
-			if (type == Signal.NEXT) {
+			if (type == SignalType.NEXT) {
 				subscriber.onNext(payload);
-			} else if (type == Signal.COMPLETE) {
+			} else if (type == SignalType.COMPLETE) {
 				subscriber.onComplete();
-			} else if (type == Signal.SUBSCRIPTION) {
+			} else if (type == SignalType.SUBSCRIPTION) {
 				subscriber.onSubscribe((Subscription) payload);
 			} else {
 				subscriber.onError((Throwable) payload);
 			}
 		} catch (Throwable t) {
-			if (type != Signal.ERROR) {
+			if (type != SignalType.ERROR) {
 				Exceptions.throwIfFatal(t);
 				subscriber.onError(t);
 			} else {
@@ -658,7 +658,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	static private final class Task implements Recyclable {
 		Subscriber subscriber;
 		Object     payload;
-		Signal     type;
+		SignalType type;
 
 		@Override
 		public void recycle() {
@@ -682,7 +682,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			if (consumer == null) {
 				throw SpecificationExceptions.spec_2_13_exception();
 			}
-			dispatch(data, new ConsumerSubscriber<>(consumer), Signal.NEXT);
+			dispatch(data, new ConsumerSubscriber<>(consumer), SignalType.NEXT);
 		}
 
 		@Override
@@ -690,7 +690,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			if (consumer == null) {
 				throw SpecificationExceptions.spec_2_13_exception();
 			}
-			dispatch(null, new ConsumerSubscriber<>(consumer), Signal.NEXT);
+			dispatch(null, new ConsumerSubscriber<>(consumer), SignalType.NEXT);
 		}
 
 		@Override
@@ -698,7 +698,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			if (command == null) {
 				throw SpecificationExceptions.spec_2_13_exception();
 			}
-			dispatch(null, new RunnableSubscriber(command), Signal.NEXT);
+			dispatch(null, new RunnableSubscriber(command), SignalType.NEXT);
 		}
 
 		@Override
@@ -720,7 +720,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			if (!set) {
 				s.onError(new IllegalStateException("Shared Processors do not support multi-subscribe"));
 			} else if (subscribed) {
-				dispatch(subscription, s, Signal.SUBSCRIPTION);
+				dispatch(subscription, s, SignalType.SUBSCRIPTION);
 			}
 
 		}
@@ -743,7 +743,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			if (!set) {
 				s.cancel();
 			} else if (subscribed) {
-				dispatch(s, subscriber, Signal.SUBSCRIPTION);
+				dispatch(s, subscriber, SignalType.SUBSCRIPTION);
 			}
 		}
 
@@ -755,7 +755,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 				throw CancelException.get();
 			}
 
-			dispatchProcessorSequence(o, subscriber, Signal.NEXT);
+			dispatchProcessorSequence(o, subscriber, SignalType.NEXT);
 		}
 
 		@Override
@@ -766,7 +766,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 				throw ReactorFatalException.create(t);
 			}
 
-			dispatchProcessorSequence(t, subscriber, Signal.ERROR);
+			dispatchProcessorSequence(t, subscriber, SignalType.ERROR);
 		}
 
 		@Override
@@ -777,14 +777,14 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 				throw CancelException.get();
 			}
 
-			dispatchProcessorSequence(null, subscriber, Signal.COMPLETE);
+			dispatchProcessorSequence(null, subscriber, SignalType.COMPLETE);
 		}
 
-		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, Signal type) {
+		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
 			dispatch(data, subscriber, type);
 		}
 
-		protected void dispatch(Object data, Subscriber subscriber, Signal type) {
+		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
 			final Task task;
 			if (managedProcessor != null && managedProcessor.isInContext()) {
 				task = tailRecurser.next();
@@ -810,7 +810,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 
 		@Override
-		protected void dispatch(Object data, Subscriber subscriber, Signal type) {
+		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
 			final Task task;
 			if (managedProcessor != null && managedProcessor.isInContext()) {
 				task = tailRecurser.next();
@@ -833,7 +833,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	private final class WorkProcessorBarrier<V> extends ProcessorBarrier<V> {
 
 		@Override
-		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, Signal type) {
+		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
 			route(data, subscriber, type);
 		}
 	}

@@ -19,7 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.support.Signal;
+import reactor.core.support.SignalType;
 import reactor.fn.Supplier;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
@@ -623,25 +623,6 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		RingBufferSubscriberUtils.onNext(o, ringBuffer);
 	}
 
-	/**
-	 * Returns the next signal from the ring buffer for publishing.
-	 * Value of signal should be modified and the signal should be published via a call {@link #publish(MutableSignal)}
-	 *
-	 * @return the next signal
-	 */
-	public MutableSignal<E> next() {
-		return RingBufferSubscriberUtils.next(ringBuffer);
-	}
-
-	/**
-	 * Publishes signal previously returned via either {@link #next()}}
-	 *
-	 * @param signal signal to be published
-	 */
-	public void publish(MutableSignal<E> signal) {
-		RingBufferSubscriberUtils.publish(ringBuffer, signal);
-	}
-
 	@Override
 	public void onError(Throwable t) {
 		RingBufferSubscriberUtils.onError(t, ringBuffer);
@@ -857,7 +838,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 							event = processor.ringBuffer.get(nextSequence);
 
 							//if event is Next Signal we need to handle backpressure (pendingRequests)
-							if (event.type == Signal.NEXT) {
+							if (event.type == SignalType.NEXT) {
 								//if bounded and out of capacity
 								if (!unbounded && pendingRequest.addAndGet(-1l) < 0l) {
 									//re-add the retained capacity
@@ -881,7 +862,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 								running.set(false);
 								RingBufferSubscriberUtils.route(event, subscriber);
 								//only alert on error (immediate), complete will be drained as usual with waitFor
-								if (event.type == Signal.ERROR) {
+								if (event.type == SignalType.ERROR) {
 									processor.barrier.alert();
 								}
 								throw AlertException.INSTANCE;
@@ -896,7 +877,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 							break;
 						} else {
 							long cursor = processor.barrier.getCursor();
-							if (processor.ringBuffer.get(cursor).type == Signal.ERROR) {
+							if (processor.ringBuffer.get(cursor).type == SignalType.ERROR) {
 								sequence.set(cursor);
 								nextSequence = cursor;
 							} else {

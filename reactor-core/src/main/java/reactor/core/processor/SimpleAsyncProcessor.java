@@ -15,118 +15,273 @@
  */
 package reactor.core.processor;
 
-import org.reactivestreams.Processor;
-import reactor.core.error.InsufficientCapacityException;
+import org.reactivestreams.Subscriber;
 import reactor.core.support.internal.MpscLinkedQueue;
-import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.SingleUseExecutor;
-import reactor.core.error.Exceptions;
 
 import java.util.Queue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
 /**
- * A base processor used by executor backed processors to take care of their ExecutorService
+ * A simple async processor
  *
  * @author Stephane Maldini
  */
-public final class SimpleAsyncProcessor<IN, OUT> extends ExecutorPoweredProcessor<IN, OUT> {
-
-	protected final ExecutorService executor;
-
-	protected SimpleAsyncProcessor(String name, ExecutorService executor, boolean autoCancel) {
-		super(autoCancel);
-
-		this.executor = executor == null
-		  ? SingleUseExecutor.create(name)
-		  : executor;
-	}
-
-
-	@Override
-	public void onComplete() {
-		if (executor.getClass() == SingleUseExecutor.class) {
-			executor.shutdown();
-		}
-	}
-
-	@Override
-	public boolean awaitAndShutdown() {
-		return awaitAndShutdown(-1, TimeUnit.SECONDS);
-	}
-
-	@Override
-	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
-		try {
-			shutdown();
-			return executor.awaitTermination(timeout, timeUnit);
-		} catch (InterruptedException ie) {
-			Thread.currentThread().interrupt();
-			return false;
-		}
-	}
-
-	@Override
-	public void forceShutdown() {
-		if (executor.isShutdown()) return;
-		executor.shutdownNow();
-	}
-
-	@Override
-	public boolean alive() {
-		return !executor.isTerminated();
-	}
-
-	@Override
-	public void shutdown() {
-		try {
-			onComplete();
-			executor.shutdown();
-		} catch (Throwable t) {
-			Exceptions.throwIfFatal(t);
-			onError(t);
-		}
-	}
-
-	private static final int DEFAULT_BUFFER_SIZE = 1024;
-
-	//private final Logger log = LoggerFactory.getLogger(getClass());
-	private final ExecutorService executor;
-	private final Queue<Task>     workQueue;
-	private final int             capacity;
+public final class SimpleAsyncProcessor<IN> extends ExecutorPoweredProcessor<IN, IN> {
 
 	/**
-	 * Creates a new {@code MpscDispatcher} with the given {@code name}. It will use a MpscLinkedQueue and a virtual
-	 * capacity of 1024 slots.
+	 * Create a new SimpleAsyncProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and auto-cancel.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created.
 	 *
-	 * @param name The name of the dispatcher.
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
 	 */
-	public Mpsc
-
-
-	Dispatcher(String name) {
-		this(name, DEFAULT_BUFFER_SIZE);
+	public static <E> SimpleAsyncProcessor<E> create() {
+		return create(SimpleAsyncProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, null, true);
 	}
 
 	/**
-	 * Creates a new {@code MpscDispatcher} with the given {@code name}. It will use a MpscLinkedQueue and a virtual
-	 * capacity of {code bufferSize}
+	 * Create a new SimpleAsyncProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and the passed auto-cancel setting.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created.
 	 *
-	 * @param name       The name of the dispatcher
-	 * @param bufferSize The size to configure the ring buffer with
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
 	 */
-	@SuppressWarnings({"unchecked"})
-	public MpscDispatcher(String name,
-	                      int bufferSize) {
-		super(bufferSize);
+	public static <E> SimpleAsyncProcessor<E> create(boolean autoCancel) {
+		return create(SimpleAsyncProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, null, autoCancel);
+	}
 
-		this.executor = Executors.newSingleThreadExecutor(new NamedDaemonThreadFactory(name, getContext()));
-		this.workQueue = MpscLinkedQueue.create();
-		this.capacity = bufferSize
-		;
+	/**
+	 * Create a new SimpleAsyncProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and auto-cancel.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param <E>     Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> SimpleAsyncProcessor<E> create(ExecutorService service) {
+		return create(service, SMALL_BUFFER_SIZE, null, true);
+	}
+
+	/**
+	 * Create a new SimpleAsyncProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and the passed auto-cancel setting.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> SimpleAsyncProcessor<E> create(ExecutorService service, boolean autoCancel) {
+		return create(service, SMALL_BUFFER_SIZE, null, autoCancel);
+	}
+
+	/**
+	 * Create a new SimpleAsyncProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and the passed auto-cancel setting.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> SimpleAsyncProcessor<E> create(String name, int bufferSize) {
+		return create(name, bufferSize, null, true);
+	}
+
+	/**
+	 * Create a new SimpleAsyncProcessor using the blockingWait Strategy, passed backlog size,
+	 * and auto-cancel settings.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> SimpleAsyncProcessor<E> create(String name, int bufferSize, boolean autoCancel) {
+		return create(name, bufferSize, null, autoCancel);
+	}
+
+	/**
+	 * Create a new SimpleAsyncProcessor using passed backlog size, blockingWait Strategy
+	 * and will auto-cancel.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> SimpleAsyncProcessor<E> create(ExecutorService service, int bufferSize) {
+		return create(service, bufferSize, null, true);
+	}
+
+	/**
+	 * Create a new SimpleAsyncProcessor using passed backlog size, blockingWait Strategy
+	 * and the auto-cancel argument.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> SimpleAsyncProcessor<E> create(ExecutorService service, int bufferSize, boolean autoCancel) {
+		return create(service, bufferSize, null, autoCancel);
+	}
+
+
+	/**
+	 * Create a new SimpleAsyncProcessor using passed backlog size, wait strategy
+	 * and will auto-cancel.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param queue      A supplied queue to buffer incoming messages
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> SimpleAsyncProcessor<E> create(String name, int bufferSize, Queue<E> queue) {
+		return create(name, bufferSize, queue, true);
+	}
+
+	/**
+	 * Create a new SimpleAsyncProcessor using passed backlog size, wait strategy
+	 * and auto-cancel settings.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param queue      A supplied queue to buffer incoming messages
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> SimpleAsyncProcessor<E> create(String name,
+	                                                 int bufferSize,
+	                                                 Queue<E> queue,
+	                                                 boolean autoCancel) {
+		return new SimpleAsyncProcessor<>(name, null, bufferSize, queue, autoCancel);
+	}
+
+	/**
+	 * Create a new SimpleAsyncProcessor using passed backlog size, wait strategy
+	 * and will auto-cancel.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param queue      A supplied queue to buffer incoming messages
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> SimpleAsyncProcessor<E> create(ExecutorService service, int bufferSize, Queue<E> queue) {
+		return create(service, bufferSize, queue, true);
+	}
+
+	/**
+	 * Create a new SimpleAsyncProcessor using passed backlog size, wait strategy
+	 * and auto-cancel settings.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * consuming the ringbuffer as subscribers.
+	 *
+	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param queue      A supplied queue to buffer incoming messages
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> SimpleAsyncProcessor<E> create(ExecutorService service,
+	                                                 int bufferSize,
+	                                                 Queue<E> queue,
+	                                                 boolean autoCancel) {
+		return new SimpleAsyncProcessor<>(null, service, bufferSize, queue, autoCancel);
+	}
+
+
+	private final Queue<IN> workQueue;
+	private final int       capacity;
+
+
+	protected SimpleAsyncProcessor(String name, ExecutorService executor,
+	                               int bufferSize, Queue<IN> workQueue, boolean autoCancel) {
+		super(name, executor, autoCancel);
+
+		this.workQueue = workQueue == null ? MpscLinkedQueue.create() : workQueue;
+		this.capacity = bufferSize;
+	}
+
+	@Override
+	public void subscribe(Subscriber<? super IN> s) {
+
 		this.executor.execute(new Runnable() {
 			@Override
 			public void run() {
@@ -148,69 +303,34 @@ public final class SimpleAsyncProcessor<IN, OUT> extends ExecutorPoweredProcesso
 	}
 
 	@Override
-	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
-		shutdown();
-		try {
-			executor.awaitTermination(timeout, timeUnit);
-		} catch (InterruptedException e) {
-			return false;
-		}
-		return true;
+	public void onNext(IN in) {
+		workQueue.add(task);
 	}
 
 	@Override
-	public void shutdown() {
+	public void onError(Throwable t) {
+		workQueue.add(task);
+	}
+
+	@Override
+	public void onComplete() {
 		workQueue.add(new EndMpscTask());
-		executor.shutdown();
-		super.shutdown();
 	}
 
 	@Override
-	public void forceShutdown() {
-		workQueue.add(new EndMpscTask());
-		executor.shutdownNow();
-		super.forceShutdown();
+	public long getCapacity() {
+		return capacity;
 	}
 
 	@Override
-	public long remainingSlots() {
+	public long getAvailableCapacity() {
 		return workQueue.size();
-	}
-
-	public static <T> Processor<T, T> create(String name, int bufferSize) {
-	}
-
-
-	@Override
-	protected Task tryAllocateTask() throws InsufficientCapacityException {
-		if (workQueue.size() > capacity) {
-			throw InsufficientCapacityException.get();
-		} else {
-			return allocateTask();
-		}
 	}
 
 
 	@Override
 	public boolean isWork() {
 		return false;
-	}
-
-	@Override
-	protected Task allocateTask() {
-		return new SingleThreadTask();
-	}
-
-	protected void execute(Task task) {
-		workQueue.add(task);
-	}
-
-	private class EndMpscTask extends SingleThreadTask {
-
-		@Override
-		public void run() {
-			throw EndException.INSTANCE;
-		}
 	}
 
 }
