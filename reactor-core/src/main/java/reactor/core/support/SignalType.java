@@ -18,6 +18,6 @@ package reactor.core.support;
 /**
  * @author Stephane Maldini
  */
-public enum Signal {
+public enum SignalType {
 	NEXT, ERROR, COMPLETE, SUBSCRIPTION
 }

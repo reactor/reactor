@@ -3,9 +3,10 @@ package reactor.core.processor.rb;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.*;
-import reactor.core.processor.Signal;
-import reactor.core.support.*;
+import reactor.core.error.Exceptions;
+import reactor.core.error.SpecificationExceptions;
+import reactor.core.support.Bounded;
+import reactor.core.support.SignalType;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.InsufficientCapacityException;
 
@@ -28,7 +29,7 @@ public final class RingBufferSubscriberUtils {
 
 		final long seqId = ringBuffer.next();
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
-		signal.type = Signal.NEXT;
+		signal.type = SignalType.NEXT;
 		signal.value = value;
 
 		ringBuffer.publish(seqId);
@@ -37,7 +38,7 @@ public final class RingBufferSubscriberUtils {
 	public static <E> MutableSignal<E> next(RingBuffer<MutableSignal<E>> ringBuffer) {
 		long seqId = ringBuffer.next();
 		MutableSignal<E> signal = ringBuffer.get(seqId);
-		signal.type = Signal.NEXT;
+		signal.type = SignalType.NEXT;
 		signal.seqId = seqId;
 		return signal;
 	}
@@ -54,7 +55,7 @@ public final class RingBufferSubscriberUtils {
 		final long seqId = ringBuffer.next();
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
 
-		signal.type = Signal.ERROR;
+		signal.type = SignalType.ERROR;
 		signal.value = null;
 		signal.error = error;
 
@@ -65,7 +66,7 @@ public final class RingBufferSubscriberUtils {
 		final long seqId = ringBuffer.next();
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
 
-		signal.type = Signal.COMPLETE;
+		signal.type = SignalType.COMPLETE;
 		signal.value = null;
 		signal.error = null;
 
@@ -73,13 +74,13 @@ public final class RingBufferSubscriberUtils {
 	}
 
 	public static <E> void route(MutableSignal<E> task, Subscriber<? super E> subscriber) {
-		if (task.type == Signal.NEXT && null != task.value) {
+		if (task.type == SignalType.NEXT && null != task.value) {
 			// most likely case first
 			subscriber.onNext(task.value);
-		} else if (task.type == Signal.COMPLETE) {
+		} else if (task.type == SignalType.COMPLETE) {
 			// second most likely case next
 			subscriber.onComplete();
-		} else if (task.type == Signal.ERROR) {
+		} else if (task.type == SignalType.ERROR) {
 			// errors should be relatively infrequent compared to other signals
 			subscriber.onError(task.error);
 		}
@@ -91,13 +92,13 @@ public final class RingBufferSubscriberUtils {
 		E value = task.value;
 		task.value = null;
 		try {
-			if (task.type == Signal.NEXT && null != value) {
+			if (task.type == SignalType.NEXT && null != value) {
 				// most likely case first
 				subscriber.onNext(value);
-			} else if (task.type == Signal.COMPLETE) {
+			} else if (task.type == SignalType.COMPLETE) {
 				// second most likely case next
 				subscriber.onComplete();
-			} else if (task.type == Signal.ERROR) {
+			} else if (task.type == SignalType.ERROR) {
 				// errors should be relatively infrequent compared to other signals
 				subscriber.onError(task.error);
 			}
@@ -123,7 +124,7 @@ public final class RingBufferSubscriberUtils {
 					barrier.waitFor(waitedSequence);
 					event = ringBuffer.get(waitedSequence);
 
-					if (event.type == Signal.COMPLETE) {
+					if (event.type == SignalType.COMPLETE) {
 						try {
 							subscriber.onComplete();
 							return false;
@@ -132,7 +133,7 @@ public final class RingBufferSubscriberUtils {
 							subscriber.onError(t);
 							return false;
 						}
-					} else if (event.type == Signal.ERROR) {
+					} else if (event.type == SignalType.ERROR) {
 						subscriber.onError(event.error);
 						return false;
 					}
@@ -217,7 +218,7 @@ public final class RingBufferSubscriberUtils {
 				long previous = pendingRequest.addAndGet(-1L);
 				if (previous >= 0) {
 					MutableSignal<E> signal = ringBuffer.get(index + (capacity - previous));
-					signal.type = Signal.NEXT;
+					signal.type = SignalType.NEXT;
 					signal.value = e;
 					if (previous == 0 && subscription != null) {
 						ringBuffer.publish(index - ((index + capacity) - 1), index);

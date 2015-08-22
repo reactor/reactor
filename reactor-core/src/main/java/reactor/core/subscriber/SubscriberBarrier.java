@@ -29,7 +29,7 @@ import reactor.core.error.SpecificationExceptions;
  * @author Stephane Maldini
  * @since 2.0.4
  */
-public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Bounded {
+public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription, Bounded {
 
 	protected final Subscriber<? super O> subscriber;
 
@@ -41,9 +41,7 @@ public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Bou
 
 	@Override
 	public final void onSubscribe(Subscription s) {
-		if (s == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
-		}
+		super.onSubscribe(s);
 
 		try {
 			if (subscription != null) {
@@ -64,6 +62,7 @@ public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Bou
 
 	@Override
 	public final void onNext(I i) {
+		super.onNext(i);
 		try {
 			doNext(i);
 		} catch (Throwable throwable) {
@@ -78,6 +77,7 @@ public class SubscriberBarrier<I, O> implements Subscriber<I>, Subscription, Bou
 
 	@Override
 	public final void onError(Throwable t) {
+		super.onError(t);
 		doError(t);
 	}
 

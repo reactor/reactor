@@ -20,40 +20,13 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.LogPublisher;
 import reactor.core.publisher.PublisherFactory;
+import reactor.core.publisher.TrampolinePublisher;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
 public final class Publishers extends PublisherFactory {
-
-	/**
-	 * @param publisher
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
-		return log(publisher, null);
-	}
-
-	/**
-	 * @param publisher
-	 * @param category
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
-		return LogPublisher.log(publisher, category);
-	}
-
-	/**
-	 * @param publisher
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher) {
-		return publisher;
-	}
 
 	/**
 	 * @param error
@@ -82,6 +55,34 @@ public final class Publishers extends PublisherFactory {
 				s.onComplete();
 			}
 		};
+	}
+
+	/**
+	 * @param publisher
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
+		return log(publisher, null);
+	}
+
+	/**
+	 * @param publisher
+	 * @param category
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
+		return LogPublisher.log(publisher, category);
+	}
+
+	/**
+	 * @param publisher
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher) {
+		return TrampolinePublisher.trampoline(publisher);
 	}
 
 

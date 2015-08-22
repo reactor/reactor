@@ -22,7 +22,7 @@ import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.error.CancelException;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.support.Signal;
+import reactor.core.support.SignalType;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
@@ -780,7 +780,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 					} catch (CancelException ce) {
 						if (event != null &&
-						  event.type == Signal.NEXT &&
+						  event.type == SignalType.NEXT &&
 						  event.value != null) {
 							sequence.set(nextSequence - 1L);
 						} else {
@@ -833,7 +833,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 		private void readNextEvent(MutableSignal<T> event, final boolean unbounded) throws AlertException {
 			//if event is Next Signal we need to handle backpressure (pendingRequests)
-			if (event.type == Signal.NEXT) {
+			if (event.type == SignalType.NEXT) {
 				if (event.value == null) {
 					return;
 				}

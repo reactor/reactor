@@ -1,6 +1,6 @@
 package reactor.core.processor.rb;
 
-import reactor.core.support.Signal;
+import reactor.core.support.SignalType;
 
 /**
  * @author Stephane Maldini
@@ -8,8 +8,8 @@ import reactor.core.support.Signal;
  */
 public final class MutableSignal<T> {
 
-	public Signal    type  = Signal.NEXT;
-	public T         value = null;
-	public Throwable error = null;
-	public long      seqId = -1;
+	public SignalType type  = SignalType.NEXT;
+	public T          value = null;
+	public Throwable  error = null;
+	public long       seqId = -1;
 }
