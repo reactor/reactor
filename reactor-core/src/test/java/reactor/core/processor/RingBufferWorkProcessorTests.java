@@ -41,7 +41,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 	}
 
 
-	public static void main(String... args) {
+	public static void main() {
 		final RingBufferWorkProcessor<Long> processor = RingBufferWorkProcessor.<Long>create();
 
 		Publisher<Long> pub = PublisherFactory.create(

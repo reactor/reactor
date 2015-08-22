@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2015 Pivotal Software Inc., Inc. All Rights Reserved.
+ * Copyright (c) 2011-2015 Pivotal Software Inc, All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,28 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package reactor.core.processor;
 
-package reactor;
-
-import org.junit.After;
-import org.junit.Before;
+import org.reactivestreams.Processor;
 
 /**
- * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public abstract class AbstractReactorTest {
+@org.testng.annotations.Test
+public class AsyncSharedProcessorTests extends AbstractProcessorTests {
 
-	protected Environment env;
-
-	@Before
-	public void loadEnv() {
-		env = Environment.initializeIfEmpty().assignErrorJournal();
-	}
-
-	@After
-	public void closeEnv() {
-		Environment.terminate();
+	@Override
+	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
+		return SharedProcessorService.<Long>async("tckRingBufferProcessor", bufferSize).get();
 	}
 
 }

@@ -17,6 +17,7 @@ package reactor.core.processor;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscription;
+import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.Bounded;
 import reactor.core.support.Resource;
 import reactor.fn.Consumer;
@@ -28,7 +29,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  *
  * @author Stephane Maldini
  */
-public abstract class AsyncProcessor<IN, OUT> implements
+public abstract class AsyncProcessor<IN, OUT> extends BaseSubscriber<IN> implements
   Processor<IN, OUT>, Consumer<IN>, Bounded, Resource {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
@@ -71,6 +72,7 @@ public abstract class AsyncProcessor<IN, OUT> implements
 
 	@Override
 	public void onSubscribe(final Subscription s) {
+		super.onSubscribe(s);
 		if (this.upstreamSubscription != null) {
 			s.cancel();
 			return;

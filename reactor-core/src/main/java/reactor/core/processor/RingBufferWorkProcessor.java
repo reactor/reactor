@@ -18,6 +18,7 @@ package reactor.core.processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.error.CancelException;
@@ -527,13 +528,14 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	@Override
 	public void subscribe(final Subscriber<? super E> subscriber) {
 		if (null == subscriber) {
-			throw new NullPointerException("Cannot subscribe NULL subscriber");
+			throw SpecificationExceptions.spec_2_13_exception();
 		}
 		try {
 			final WorkSignalProcessor<E> signalProcessor = new WorkSignalProcessor<E>(
 			  subscriber,
 			  this
 			);
+
 
 			signalProcessor.sequence.set(workSequence.get());
 
@@ -542,6 +544,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 			//prepare the subscriber subscription to this processor
 			signalProcessor.setSubscription(new RingBufferSubscription(subscriber, signalProcessor));
+
+			incrementSubscribers();
 
 			//start the subscriber thread
 			executor.execute(signalProcessor);
@@ -553,11 +557,13 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 	@Override
 	public void onNext(E o) {
+		super.onNext(o);
 		RingBufferSubscriberUtils.onNext(o, ringBuffer);
 	}
 
 	@Override
 	public void onError(Throwable t) {
+		super.onError(t);
 		RingBufferSubscriberUtils.onError(t, ringBuffer);
 		for (int i = 1; i < SUBSCRIBER_COUNT.get(this); i++) {
 			RingBufferSubscriberUtils.onError(t, ringBuffer);
@@ -619,11 +625,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 		@Override
 		public void cancel() {
-			Subscription subscription = upstreamSubscription;
-			if (subscription != null && autoCancel && SUBSCRIBER_COUNT.get(RingBufferWorkProcessor.this) - 1 == 0) {
-				upstreamSubscription = null;
-				subscription.cancel();
-			}
 			eventProcessor.halt();
 		}
 	}
@@ -717,21 +718,21 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				return;
 			}
 
-			processor.incrementSubscribers();
-
 			try {
-				subscriber.onSubscribe(subscription);
-			} catch (Throwable t) {
-				subscriber.onError(t);
-			}
+				try {
+					subscriber.onSubscribe(subscription);
+				} catch (Throwable t) {
+					Exceptions.throwIfFatal(t);
+					subscriber.onError(t);
+					return;
+				}
 
 
-			boolean processedSequence = true;
-			long cachedAvailableSequence = Long.MIN_VALUE;
-			long nextSequence = sequence.get();
-			MutableSignal<T> event = null;
+				boolean processedSequence = true;
+				long cachedAvailableSequence = Long.MIN_VALUE;
+				long nextSequence = sequence.get();
+				MutableSignal<T> event = null;
 
-			try {
 				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
 				  pendingRequest, processor.ringBuffer, barrier, subscriber, running
 				)) {

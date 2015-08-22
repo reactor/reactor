@@ -22,8 +22,7 @@ import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.AbstractReactorTest;
-import reactor.Environment;
+import reactor.Timers;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -39,7 +38,7 @@ import static org.junit.Assert.assertTrue;
  * @author Stephane Maldini
  */
 @Ignore
-public class ConsistentProcessorTests extends AbstractReactorTest {
+public class ConsistentProcessorTests {
 	private Processor<String, String> processor;
 	private Processor<String, String> workProcessor;
 
@@ -107,7 +106,6 @@ public class ConsistentProcessorTests extends AbstractReactorTest {
 
 	@Before
 	public void loadEnv() {
-		super.loadEnv();
 		setupPipeline();
 	}
 
@@ -209,7 +207,7 @@ public class ConsistentProcessorTests extends AbstractReactorTest {
 
 		@Override
 		public void onSubscribe(Subscription s) {
-			Environment.timer().submit(time -> finish(s), 5, TimeUnit.SECONDS);
+			Timers.global().submit(time -> finish(s), 5, TimeUnit.SECONDS);
 			s.request(Long.MAX_VALUE);
 		}
 

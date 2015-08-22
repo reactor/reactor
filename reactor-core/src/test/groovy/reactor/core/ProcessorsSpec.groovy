@@ -19,13 +19,12 @@ package reactor.core
 
 import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
-import reactor.Environment
-import reactor.ReactorProcessor
 import reactor.core.processor.RingBufferProcessor
 import reactor.core.processor.RingBufferWorkProcessor
+import reactor.core.processor.SharedProcessorService
+import reactor.core.processor.SimpleWorkProcessor
+import reactor.fn.BiConsumer
 import reactor.fn.Consumer
-import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy
-import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -177,8 +176,8 @@ class ProcessorsSpec extends Specification {
 	def "Dispatcher executes tasks in correct thread"() {
 
 		given:
-			def sameThread = new SynchronousDispatcher()
-			def diffThread = new ThreadPoolExecutorDispatcher(1, 128)
+			def sameThread = SharedProcessorService.sync().dataDispatcher()
+			def diffThread = SharedProcessorService.work("rbWork").dataDispatcher()
 			def currentThread = Thread.currentThread()
 			Thread taskThread = null
 			def consumer = { ev ->
@@ -187,7 +186,7 @@ class ProcessorsSpec extends Specification {
 
 		when:
 			"a task is submitted"
-			sameThread.dispatch('test', consumer, null)
+			sameThread.accept('test', consumer)
 
 		then:
 			"the task thread should be the current thread"
@@ -196,7 +195,7 @@ class ProcessorsSpec extends Specification {
 		when:
 			"a task is submitted to the thread pool dispatcher"
 			def latch = new CountDownLatch(1)
-			diffThread.dispatch('test', { ev -> consumer(ev); latch.countDown() }, null)
+			diffThread.accept('test', { ev -> consumer(ev); latch.countDown() })
 
 			latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
 
@@ -211,7 +210,8 @@ class ProcessorsSpec extends Specification {
 
 		given:
 			"ring buffer eventBus"
-			def r = env.getDispatcher(Environment.SHARED)
+			def serviceRB = SharedProcessorService.async("rb", 32)
+			def r = serviceRB.dataDispatcher()
 			def latch = new CountDownLatch(2)
 
 		when:
@@ -220,13 +220,13 @@ class ProcessorsSpec extends Specification {
 			c = { data ->
 				if (data < 2) {
 					latch.countDown()
-					r.dispatch(++data, c, null)
+					r.accept(++data, c,)
 				}
 			}
 
 		and:
 			"call the eventBus"
-			r.dispatch(0, c, null)
+			r.accept(0, c)
 
 		then:
 			"a task is submitted to the thread pool dispatcher"
@@ -237,7 +237,8 @@ class ProcessorsSpec extends Specification {
 
 		given:
 			"a Reactor with a ThreadPoolExecutorDispatcher"
-			def r = env.getDispatcher(Environment.THREAD_POOL)
+			def serviceRB = SharedProcessorService.work("rbWork", 32)
+			def r = serviceRB.dataDispatcher()
 			long start = System.currentTimeMillis()
 			def hello = ""
 			def c = { String ev ->
@@ -247,8 +248,8 @@ class ProcessorsSpec extends Specification {
 
 		when:
 			"the Dispatcher is shutdown and tasks are awaited"
-			r.dispatch("Hello World!", c, null)
-			def success = r.awaitAndShutdown(5, TimeUnit.SECONDS)
+			r.accept("Hello World!", c)
+			def success = serviceRB.awaitAndShutdown(5, TimeUnit.SECONDS)
 			long end = System.currentTimeMillis()
 
 		then:
@@ -262,7 +263,8 @@ class ProcessorsSpec extends Specification {
 	def "RingBufferDispatcher executes tasks in correct thread"() {
 
 		given:
-			def dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new BlockingWaitStrategy())
+			def serviceRB = SharedProcessorService.async("rb", 8)
+			def dispatcher = serviceRB.executor()
 			def t1 = Thread.currentThread()
 			def t2 = Thread.currentThread()
 
@@ -278,7 +280,8 @@ class ProcessorsSpec extends Specification {
 	def "WorkQueueDispatcher executes tasks in correct thread"() {
 
 		given:
-			def dispatcher = new WorkQueueDispatcher("rb", 8, 1024, null, ProducerType.MULTI, new BlockingWaitStrategy())
+			def serviceRBWork = SharedProcessorService.work("rbWork", 1024, 8)
+			def dispatcher = serviceRBWork.executor()
 			def t1 = Thread.currentThread()
 			def t2 = Thread.currentThread()
 
@@ -291,12 +294,14 @@ class ProcessorsSpec extends Specification {
 
 	}
 
-	def "MultiThreadDispatchers support ping pong dispatching"(ReactorProcessor d) {
+	def "MultiThreadDispatchers support ping pong dispatching"(BiConsumer<String, Consumer<String>> d) {
 		given:
 			def latch = new CountDownLatch(4)
 			def main = Thread.currentThread()
 			def t1 = Thread.currentThread()
 			def t2 = Thread.currentThread()
+			def serviceRBWork = SharedProcessorService.work("ping-pong", 1024, 4)
+			def serviceSimpleWork = SharedProcessorService.wrap(SimpleWorkProcessor.create("ping-pong", 1024))
 
 		when:
 			Consumer<String> pong
@@ -304,19 +309,19 @@ class ProcessorsSpec extends Specification {
 			def ping = {
 				if (latch.count > 0) {
 					t1 = Thread.currentThread()
-					d.dispatch("pong", pong, null)
+					d.accept("pong", pong)
 					latch.countDown()
 				}
 			}
 			pong = {
 				if (latch.count > 0) {
 					t2 = Thread.currentThread()
-					d.dispatch("ping", ping, null)
+					d.accept("ping", ping)
 					latch.countDown()
 				}
 			}
 
-			d.dispatch("ping", ping, null)
+			d.accept("ping", ping)
 
 		then:
 			latch.await(1, TimeUnit.SECONDS)
@@ -325,8 +330,8 @@ class ProcessorsSpec extends Specification {
 
 		where:
 			d << [
-					new ThreadPoolExecutorDispatcher(4, 1024),
-					new WorkQueueDispatcher("ping-pong", 4, 1024, null)
+					serviceRBWork.dataDispatcher(),
+					serviceSimpleWork.dataDispatcher()
 			]
 
 	}

@@ -28,7 +28,7 @@ public final class SpecificationExceptions {
 	}
 
 	public static NullPointerException spec_2_13_exception() {
-		return new NullPointerException("Spec 2.13: Signal cannot be null");
+		return new NullPointerException("Spec 2.13: Signal/argument cannot be null");
 	}
 
 	public static IllegalArgumentException spec_3_09_exception(long elements) {

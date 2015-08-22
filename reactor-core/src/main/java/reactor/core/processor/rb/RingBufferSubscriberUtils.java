@@ -23,10 +23,6 @@ public final class RingBufferSubscriberUtils {
 	}
 
 	public static <E> void onNext(E value, RingBuffer<MutableSignal<E>> ringBuffer) {
-		if (value == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
-		}
-
 		final long seqId = ringBuffer.next();
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
 		signal.type = SignalType.NEXT;
@@ -48,10 +44,6 @@ public final class RingBufferSubscriberUtils {
 	}
 
 	public static <E> void onError(Throwable error, RingBuffer<MutableSignal<E>> ringBuffer) {
-		if (error == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
-		}
-
 		final long seqId = ringBuffer.next();
 		final MutableSignal<E> signal = ringBuffer.get(seqId);
 

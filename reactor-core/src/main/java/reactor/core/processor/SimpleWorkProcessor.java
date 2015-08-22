@@ -16,10 +16,16 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
+import reactor.core.error.SpecificationExceptions;
+import reactor.core.processor.simple.SimpleSignal;
+import reactor.core.processor.simple.SimpleSubscriberUtils;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -194,7 +200,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> SimpleWorkProcessor<E> create(String name, int bufferSize, Queue<E> queue) {
+	public static <E> SimpleWorkProcessor<E> create(String name, int bufferSize, Queue<SimpleSignal<E>> queue) {
 		return create(name, bufferSize, queue, true);
 	}
 
@@ -216,9 +222,9 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 	 * @return a fresh processor
 	 */
 	public static <E> SimpleWorkProcessor<E> create(String name,
-	                                                 int bufferSize,
-	                                                 Queue<E> queue,
-	                                                 boolean autoCancel) {
+	                                                int bufferSize,
+	                                                Queue<SimpleSignal<E>> queue,
+	                                                boolean autoCancel) {
 		return new SimpleWorkProcessor<>(name, null, bufferSize, queue, autoCancel);
 	}
 
@@ -238,7 +244,8 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> SimpleWorkProcessor<E> create(ExecutorService service, int bufferSize, Queue<E> queue) {
+	public static <E> SimpleWorkProcessor<E> create(ExecutorService service, int bufferSize, Queue<SimpleSignal<E>>
+	  queue) {
 		return create(service, bufferSize, queue, true);
 	}
 
@@ -260,61 +267,59 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 	 * @return a fresh processor
 	 */
 	public static <E> SimpleWorkProcessor<E> create(ExecutorService service,
-	                                                 int bufferSize,
-	                                                 Queue<E> queue,
-	                                                 boolean autoCancel) {
+	                                                int bufferSize,
+	                                                Queue<SimpleSignal<E>> queue,
+	                                                boolean autoCancel) {
 		return new SimpleWorkProcessor<>(null, service, bufferSize, queue, autoCancel);
 	}
 
 
-	private final Queue<IN> workQueue;
-	private final int       capacity;
+	private final Queue<SimpleSignal<IN>> workQueue;
+	private final int                     capacity;
 
 
 	protected SimpleWorkProcessor(String name, ExecutorService executor,
-	                               int bufferSize, Queue<IN> workQueue, boolean autoCancel) {
+	                              int bufferSize, Queue<SimpleSignal<IN>> workQueue, boolean autoCancel) {
 		super(name, executor, autoCancel);
 
-		this.workQueue = workQueue == null ? new ConcurrentLinkedQueue<>() : workQueue;
+		this.workQueue = workQueue == null ? new ConcurrentLinkedQueue<SimpleSignal<IN>>() : workQueue;
 		this.capacity = bufferSize;
 	}
 
 	@Override
-	public void subscribe(Subscriber<? super IN> s) {
+	public void subscribe(final Subscriber<? super IN> subscriber) {
+		if (subscriber == null) {
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
 
-		this.executor.execute(new Runnable() {
-			@Override
-			public void run() {
-				Task task;
-				try {
-					for (; ; ) {
-						task = workQueue.poll();
-						if (null != task) {
-							task.run();
-						} else {
-							LockSupport.parkNanos(1l); //TODO expose
-						}
-					}
-				} catch (EndException e) {
-					//ignore
-				}
-			}
-		});
+		final SubscriberWorker<IN> signalProcessor = new SubscriberWorker<>(
+		  this,
+		  subscriber
+		);
+
+		//prepare the subscriber subscription to this processor
+		signalProcessor.subscription = new SimpleSubscription<>(signalProcessor, subscriber);
+
+		incrementSubscribers();
+		this.executor.execute(new SubscriberWorker<>(this, subscriber));
 	}
 
 	@Override
 	public void onNext(IN in) {
-		workQueue.offer(task);
+		super.onNext(in);
+		SimpleSubscriberUtils.onNext(in, workQueue);
 	}
 
 	@Override
 	public void onError(Throwable t) {
-		workQueue.add(task);
+		super.onError(t);
+		SimpleSubscriberUtils.onError(t, workQueue);
 	}
 
 	@Override
 	public void onComplete() {
-		workQueue.add(new EndMpscTask());
+		SimpleSubscriberUtils.onComplete(workQueue);
+		super.onComplete();
 	}
 
 	@Override
@@ -332,4 +337,65 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 		return true;
 	}
 
+	private class SimpleSubscription<IN> implements Subscription {
+
+		private final SubscriberWorker<IN>   runnable;
+		private final Subscriber<? super IN> subscriber;
+
+		public SimpleSubscription(SubscriberWorker<IN> runnable,
+		                          Subscriber<? super IN> subscriber) {
+			this.runnable = runnable;
+			this.subscriber = subscriber;
+		}
+
+		@Override
+		public void request(long n) {
+
+		}
+
+		@Override
+		public void cancel() {
+
+		}
+	}
+
+	private static class SubscriberWorker<IN> implements Runnable {
+
+		private final Subscriber<? super IN>  subscriber;
+		private final SimpleWorkProcessor<IN> processor;
+		private final AtomicBoolean           running;
+
+		Subscription subscription;
+
+		public SubscriberWorker(SimpleWorkProcessor<IN> workProcessor, Subscriber<? super IN> s) {
+			this.subscriber = s;
+			this.processor = workProcessor;
+			this.running = new AtomicBoolean();
+		}
+
+		@Override
+		public void run() {
+			if (!running.compareAndSet(false, true)) {
+				subscriber.onError(new IllegalStateException("Thread is already running"));
+				processor.decrementSubscribers();
+				return;
+			}
+
+			SimpleSignal<IN> task;
+			try {
+				subscriber.onSubscribe(subscription);
+				for (; ; ) {
+					task = processor.workQueue.poll();
+					if (null != task) {
+						SimpleSubscriberUtils.route(task, subscriber);
+					} else {
+						LockSupport.parkNanos(1l); //TODO expose?
+					}
+				}
+			} catch (CancelException e) {
+				//ignore
+			}
+			processor.decrementSubscribers();
+		}
+	}
 }

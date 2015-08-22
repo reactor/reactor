@@ -15,7 +15,6 @@
  */
 package reactor;
 
-import reactor.fn.Consumer;
 import reactor.fn.timer.HashWheelTimer;
 import reactor.fn.timer.Timer;
 
@@ -32,97 +31,34 @@ public final class Timers implements Closeable {
 	private static final AtomicReference<Timer> globalTimer = new AtomicReference<Timer>();
 
 	/**
-	 * Create and assign a context environment bound to the current classloader.
+	 * Read if the context timer has been set
 	 *
-	 * @return the produced {@link Environment}
+	 * @return true if context timer is initialized
 	 */
-	public static Timers initialize() {
-		return new Timers().assignErrorJournal();
-	}
-
-
-	/**
-	 * Create and assign a context environment bound to the current classloader only if it not already set. Otherwise
-	 * returns
-	 * the current context environment
-	 *
-	 * @return the produced {@link Environment}
-	 */
-	public static Environment initializeIfEmpty() {
-		if (alive()) {
-			return get();
-		} else {
-			return assign(new Environment());
-		}
+	public static boolean available() {
+		return globalTimer.get() != null;
 	}
 
 	/**
-	 * Assign an environment to the context in order to make it available statically in the application from the
-	 * current
-	 * classloader.
-	 *
-	 * @param environment The environment to assign to the current context
-	 * @return the assigned {@link Environment}
-	 */
-	public static Environment assign(Environment environment) {
-		if (!enviromentReference.compareAndSet(null, environment)) {
-			environment.shutdown();
-			throw new IllegalStateException("An environment is already initialized in the current context");
-		}
-		return environment;
-	}
-
-	/**
-	 * Read if the context environment has been set
-	 *
-	 * @return true if context environment is initialized
-	 */
-	public static boolean alive() {
-		return enviromentReference.get() != null;
-	}
-
-	/**
-	 * Read the context environment. It must have been previously assigned with
-	 * {@link this#assign(Environment)}.
-	 *
-	 * @return the context environment.
-	 * @throws java.lang.IllegalStateException if there is no environment initialized.
-	 */
-	public static Environment get() throws IllegalStateException {
-		Environment environment = enviromentReference.get();
-		if (environment == null) {
-			throw new IllegalStateException("The environment has not been initialized yet");
-		}
-		return environment;
-	}
-
-	/**
-	 * Clean and Shutdown the context environment. It must have been previously assigned with
-	 * {@link this#assign(Environment)}.
-	 *
-	 * @throws java.lang.IllegalStateException if there is no environment initialized.
-	 */
-	public static void terminate() throws IllegalStateException {
-		Environment env = get();
-		enviromentReference.compareAndSet(env, null);
-		env.shutdown();
-	}
-
-	/**
-	 * Obtain the default globalTimer from the current environment. The globalTimer is created lazily so
+	 * Obtain the default global timer from the current context. The globalTimer is created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
 	 * The default globalTimer is a {@link reactor.fn.timer.HashWheelTimer}. It is suitable for non blocking periodic
 	 * work
-	 * such as
-	 * eventing, memory access, lock=free code, dispatching...
+	 * such as  eventing, memory access, lock=free code, dispatching...
 	 *
 	 * @return the globalTimer, usually a {@link reactor.fn.timer.HashWheelTimer}
 	 */
 	public static Timer global() {
 		if (null == globalTimer.get()) {
 			synchronized (globalTimer) {
-				Timer t = new HashWheelTimer();
+				Timer t = new HashWheelTimer(){
+					@Override
+					public void cancel() {
+						globalTimer.compareAndSet(this, null);
+						super.cancel();
+					}
+				};
 				if (!globalTimer.compareAndSet(null, t)) {
 					t.cancel();
 				}
@@ -131,16 +67,20 @@ public final class Timers implements Closeable {
 		return globalTimer.get();
 	}
 
-	public void shutdown() {
-		Timer timer = Timers.globalTimer.get();
-		if (null != timer) {
+	/**
+	 * Clean current global timer references and cancel the respective {@link Timer}.
+	 * A new global timer can be assigned later with {@link #global()}.
+	 */
+	public static void unregisterGlobal() {
+		Timer timer;
+		while ((timer = globalTimer.getAndSet(null)) != null) {
 			timer.cancel();
 		}
 	}
 
 	@Override
 	public void close() throws IOException {
-		shutdown();
+		unregisterGlobal();
 	}
 
 }

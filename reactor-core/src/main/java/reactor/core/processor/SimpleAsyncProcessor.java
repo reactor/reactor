@@ -16,6 +16,9 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.error.SpecificationExceptions;
+import reactor.core.processor.simple.SimpleSignal;
+import reactor.core.processor.simple.SimpleSubscriberUtils;
 import reactor.core.support.internal.MpscLinkedQueue;
 
 import java.util.Queue;
@@ -194,7 +197,7 @@ public final class SimpleAsyncProcessor<IN> extends ExecutorPoweredProcessor<IN,
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> SimpleAsyncProcessor<E> create(String name, int bufferSize, Queue<E> queue) {
+	public static <E> SimpleAsyncProcessor<E> create(String name, int bufferSize, Queue<SimpleSignal<E>> queue) {
 		return create(name, bufferSize, queue, true);
 	}
 
@@ -217,7 +220,7 @@ public final class SimpleAsyncProcessor<IN> extends ExecutorPoweredProcessor<IN,
 	 */
 	public static <E> SimpleAsyncProcessor<E> create(String name,
 	                                                 int bufferSize,
-	                                                 Queue<E> queue,
+	                                                 Queue<SimpleSignal<E>> queue,
 	                                                 boolean autoCancel) {
 		return new SimpleAsyncProcessor<>(name, null, bufferSize, queue, autoCancel);
 	}
@@ -238,7 +241,7 @@ public final class SimpleAsyncProcessor<IN> extends ExecutorPoweredProcessor<IN,
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> SimpleAsyncProcessor<E> create(ExecutorService service, int bufferSize, Queue<E> queue) {
+	public static <E> SimpleAsyncProcessor<E> create(ExecutorService service, int bufferSize, Queue<SimpleSignal<E>> queue) {
 		return create(service, bufferSize, queue, true);
 	}
 
@@ -261,60 +264,49 @@ public final class SimpleAsyncProcessor<IN> extends ExecutorPoweredProcessor<IN,
 	 */
 	public static <E> SimpleAsyncProcessor<E> create(ExecutorService service,
 	                                                 int bufferSize,
-	                                                 Queue<E> queue,
+	                                                 Queue<SimpleSignal<E>> queue,
 	                                                 boolean autoCancel) {
 		return new SimpleAsyncProcessor<>(null, service, bufferSize, queue, autoCancel);
 	}
 
 
-	private final Queue<IN> workQueue;
+	private final Queue<SimpleSignal<IN>> workQueue;
 	private final int       capacity;
 
 
 	protected SimpleAsyncProcessor(String name, ExecutorService executor,
-	                               int bufferSize, Queue<IN> workQueue, boolean autoCancel) {
+	                               int bufferSize, Queue<SimpleSignal<IN>> workQueue, boolean autoCancel) {
 		super(name, executor, autoCancel);
 
-		this.workQueue = workQueue == null ? MpscLinkedQueue.create() : workQueue;
+		this.workQueue = workQueue == null ? MpscLinkedQueue.<SimpleSignal<IN>>create() : workQueue;
 		this.capacity = bufferSize;
 	}
 
 	@Override
-	public void subscribe(Subscriber<? super IN> s) {
+	public void subscribe(final Subscriber<? super IN> s) {
+		if(s == null) {
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
 
-		this.executor.execute(new Runnable() {
-			@Override
-			public void run() {
-				Task task;
-				try {
-					for (; ; ) {
-						task = workQueue.poll();
-						if (null != task) {
-							task.run();
-						} else {
-							LockSupport.parkNanos(1l); //TODO expose
-						}
-					}
-				} catch (EndException e) {
-					//ignore
-				}
-			}
-		});
+		incrementSubscribers();
 	}
-
+	
 	@Override
 	public void onNext(IN in) {
-		workQueue.add(task);
+		super.onNext(in);
+		SimpleSubscriberUtils.onNext(in, workQueue);
 	}
 
 	@Override
 	public void onError(Throwable t) {
-		workQueue.add(task);
+		super.onError(t);
+		SimpleSubscriberUtils.onError(t, workQueue);
 	}
 
 	@Override
 	public void onComplete() {
-		workQueue.add(new EndMpscTask());
+		SimpleSubscriberUtils.onComplete(workQueue);
+		super.onComplete();
 	}
 
 	@Override
