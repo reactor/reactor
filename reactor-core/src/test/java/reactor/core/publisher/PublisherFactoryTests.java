@@ -38,22 +38,24 @@ public class PublisherFactoryTests extends PublisherVerification<Long> {
 	@Override
 	public Publisher<Long> createPublisher(long elements) {
 		return
-		  Publishers.log(
-			Publishers.barrier(
-			  Publishers.<Long, AtomicLong>create(
-			    (s) -> {
-				    long cursor = s.context().getAndIncrement();
-				    if (cursor < elements) {
-					    s.onNext(cursor);
-				    } else {
-					    s.onComplete();
-				    }
-			    },
-			    s -> new AtomicLong(0L)
+		  Publishers.trampoline(
+			Publishers.log(
+			  Publishers.barrier(
+				Publishers.<Long, AtomicLong>create(
+				  (s) -> {
+					  long cursor = s.context().getAndIncrement();
+					  if (cursor < elements) {
+						  s.onNext(cursor);
+					  } else {
+						  s.onComplete();
+					  }
+				  },
+				  s -> new AtomicLong(0L)
+				),
+				(data, sub) -> sub.onNext(data * 10)
 			  ),
-			  (data, sub) -> sub.onNext(data * 10)
-			),
-			"log-test"
+			  "log-test"
+			)
 		  );
 	}
 

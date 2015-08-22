@@ -1,6 +1,7 @@
 package reactor.core.processor;
 
 import org.junit.Test;
+import org.reactivestreams.Processor;
 import reactor.core.support.Assert;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -12,13 +13,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Anatoly Kadyshev
+ * @author Stephane Maldini
  */
-public class SharedProcessorServiceTests {
+@org.testng.annotations.Test
+public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 
 	private final int           BUFFER_SIZE     = 8;
 	private final AtomicBoolean exceptionThrown = new AtomicBoolean();
-	;
 	private final int N = 17;
+
+	@Override
+	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
+		return SharedProcessorService.<Long>async("tckRingBufferProcessor", bufferSize).get();
+	}
 
 	@Test
 	public void testDispatch() throws InterruptedException {
@@ -30,6 +37,8 @@ public class SharedProcessorServiceTests {
 
 		runTest(dispatcher);
 		runTest(dispatcher);
+
+		SharedProcessorService.release(dispatcher);
 	}
 
 	private void runTest(final BiConsumer<String, Consumer<? super String>> dispatcher) throws InterruptedException {

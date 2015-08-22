@@ -25,7 +25,8 @@ import reactor.fn.Consumer;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
- * A base processor
+ * A base processor with an async boundary trait to manage active subscribers (Threads), upstream subscription
+ * and shutdown options.
  *
  * @author Stephane Maldini
  */
@@ -59,7 +60,7 @@ public abstract class AsyncProcessor<IN, OUT> extends BaseSubscriber<IN> impleme
 	}
 
 	/**
-	 * @return
+	 * @return true if the classLoader marker is detected in the current thread
 	 */
 	public boolean isInContext() {
 		return Thread.currentThread().getContextClassLoader() == contextClassLoader;
@@ -70,6 +71,16 @@ public abstract class AsyncProcessor<IN, OUT> extends BaseSubscriber<IN> impleme
 		onNext(e);
 	}
 
+	/**
+	 * @return a snapshot number of available onNext before starving the resource
+	 */
+	public abstract long getAvailableCapacity();
+
+	@Override
+	public long getCapacity() {
+		return Long.MAX_VALUE;
+	}
+
 	@Override
 	public void onSubscribe(final Subscription s) {
 		super.onSubscribe(s);
@@ -78,6 +89,11 @@ public abstract class AsyncProcessor<IN, OUT> extends BaseSubscriber<IN> impleme
 			return;
 		}
 		this.upstreamSubscription = s;
+	}
+
+	@Override
+	public boolean isExposedToOverflow(Bounded parentPublisher) {
+		return false;
 	}
 
 	protected boolean incrementSubscribers() {
@@ -95,18 +111,6 @@ public abstract class AsyncProcessor<IN, OUT> extends BaseSubscriber<IN> impleme
 			return subs;
 		}
 		return subs;
-	}
-
-	public abstract long getAvailableCapacity();
-
-	@Override
-	public long getCapacity() {
-		return Long.MAX_VALUE;
-	}
-
-	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return false;
 	}
 
 
