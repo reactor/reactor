@@ -18,6 +18,10 @@ package reactor.core.processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
+import reactor.core.processor.rb.RingBufferSubscriberUtils;
+import reactor.core.processor.rb.MutableSignal;
+import reactor.core.error.CancelException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.SignalType;
 import reactor.fn.Supplier;
@@ -578,7 +582,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	@Override
 	public void subscribe(final Subscriber<? super E> subscriber) {
 		if (null == subscriber) {
-			throw new NullPointerException("Cannot subscribe NULL subscriber");
+			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
 		try {
@@ -620,11 +624,13 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 	@Override
 	public void onNext(E o) {
+		super.onNext(o);
 		RingBufferSubscriberUtils.onNext(o, ringBuffer);
 	}
 
 	@Override
 	public void onError(Throwable t) {
+		super.onError(t);
 		RingBufferSubscriberUtils.onError(t, ringBuffer);
 	}
 
@@ -718,11 +724,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 		@Override
 		public void cancel() {
-			try {
-				eventProcessor.halt();
-			} finally {
-				decrementSubscribers();
-			}
+			eventProcessor.halt();
 		}
 	}
 
@@ -808,21 +810,22 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		 */
 		@Override
 		public void run() {
-			if (!running.compareAndSet(false, true)) {
-				subscriber.onError(new IllegalStateException("Thread is already running"));
-				return;
-			}
-
 			try {
-				subscriber.onSubscribe(subscription);
-			} catch (Throwable t) {
-				subscriber.onError(t);
-			}
+				if (!running.compareAndSet(false, true)) {
+					subscriber.onError(new IllegalStateException("Thread is already running"));
+					return;
+				}
 
-			MutableSignal<T> event = null;
-			nextSequence = sequence.get() + 1L;
+				try {
+					subscriber.onSubscribe(subscription);
+				} catch (Throwable t) {
+					Exceptions.throwIfFatal(t);
+					subscriber.onError(t);
+					return;
+				}
 
-			try {
+				MutableSignal<T> event = null;
+				nextSequence = sequence.get() + 1L;
 
 				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
 				  pendingRequest, processor.ringBuffer, processor.barrier, subscriber, running
@@ -893,6 +896,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 				}
 			} finally {
 				processor.ringBuffer.removeGatingSequence(sequence);
+				processor.decrementSubscribers();
 				running.set(false);
 			}
 		}

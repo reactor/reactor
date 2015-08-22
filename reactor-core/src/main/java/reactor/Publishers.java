@@ -33,7 +33,7 @@ public final class Publishers extends PublisherFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> error(Throwable error) {
+	public static <IN> Publisher<IN> error(final Throwable error) {
 		return new Publisher<IN>() {
 			@Override
 			public void subscribe(Subscriber<? super IN> s) {

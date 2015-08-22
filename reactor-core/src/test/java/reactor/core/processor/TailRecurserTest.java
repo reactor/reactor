@@ -1,7 +1,8 @@
-package reactor.core.dispatch;
+package reactor.core.processor;
 
 import org.hamcrest.Matchers;
 import org.junit.Test;
+import reactor.core.processor.SharedProcessorService;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
@@ -18,17 +19,17 @@ public class TailRecurserTest {
 	public void testConsumeTasks() throws Exception {
 		AtomicInteger nRecursiveTasks = new AtomicInteger(0);
 
-		Consumer<RingBufferDispatcher3.Task> taskConsumer = new Consumer<RingBufferDispatcher3.Task>() {
+		Consumer<SharedProcessorService.Task> taskConsumer = new Consumer<SharedProcessorService.Task>() {
 			@Override
-			public void accept(RingBufferDispatcher3.Task dispatcherTask) {
+			public void accept(SharedProcessorService.Task dispatcherTask) {
 				nRecursiveTasks.incrementAndGet();
 			}
 		};
 
-		RingBufferDispatcher3.TailRecurser recursion = new RingBufferDispatcher3.TailRecurser(1,
-		  new Supplier<RingBufferDispatcher3.Task>() {
+		SharedProcessorService.TailRecurser recursion = new SharedProcessorService.TailRecurser(1,
+		  new Supplier<SharedProcessorService.Task>() {
 			  @Override
-			  public RingBufferDispatcher3.Task get() {
+			  public SharedProcessorService.Task get() {
 				  return null;
 			  }
 		  }, taskConsumer);

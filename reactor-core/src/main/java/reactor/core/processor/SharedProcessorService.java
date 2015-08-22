@@ -240,8 +240,6 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		return sharedProcessorService;
 	}
 
-	private static final SharedProcessorService SYNC_SERVICE = new SharedProcessorService(null, null, null, false);
-
 	/**
 	 * @param <E>
 	 * @return
@@ -251,7 +249,6 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		return (SharedProcessorService<E>) SYNC_SERVICE;
 	}
 
-
 	/**
 	 * @param p
 	 * @param <E>
@@ -260,6 +257,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	public static <E> SharedProcessorService<E> wrap(Processor<Task, Task> p) {
 		return wrap(p, null, null, true);
 	}
+
 
 	/**
 	 * @param p
@@ -300,7 +298,6 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		return new SharedProcessorService<E>(p, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
-
 	/**
 	 * @param sharedProcessorReferences
 	 * @return
@@ -322,9 +319,10 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 */
 
 	final private TailRecurser          tailRecurser;
+
+
 	final private Processor<Task, Task> processor;
 	final private boolean               autoShutdown;
-
 	final ExecutorPoweredProcessor<Task, Task> managedProcessor;
 
 	@SuppressWarnings("unused")
@@ -345,7 +343,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <V> Processor<V, V> directProcessor(Class<V> clazz) {
+	public <V extends T> Processor<V, V> directProcessor(Class<V> clazz) {
 		return (Processor<V, V>) get();
 	}
 
@@ -366,8 +364,12 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <V> BiConsumer<V, Consumer<? super V>> dataDispatcher(Class<V> clazz) {
-		return (BiConsumer<V, Consumer<? super V>>) dataDispatcher();
+	public <V extends T> BiConsumer<V, Consumer<? super V>> dataDispatcher(Class<V> clazz) {
+		if (processor == null) {
+			return (BiConsumer<V, Consumer<? super V>>) SYNC_DATA_DISPATCHER;
+		}
+
+		return (BiConsumer<V, Consumer<? super V>>) createBarrier();
 	}
 
 	/**
@@ -476,7 +478,6 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 	}
 
-
 	static private void routeTask(Task task) {
 		try {
 			route(task.payload, task.subscriber, task.type);
@@ -485,14 +486,18 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 	}
 
+
+	@SuppressWarnings("unchecked")
+	private static final SharedProcessorService SYNC_SERVICE = new SharedProcessorService(null, null, null, false);
+
 	/**
 	 * Singleton delegating consumer for synchronous data dispatchers
 	 */
-	private final static BiConsumer<Object, Consumer<? super Object>> SYNC_DATA_DISPATCHER = new BiConsumer<Object,
-	  Consumer<? super Object>>() {
+	private final static BiConsumer SYNC_DATA_DISPATCHER = new BiConsumer() {
 		@Override
-		public void accept(Object o, Consumer<? super Object> callback) {
-			callback.accept(o);
+		@SuppressWarnings("unchecked")
+		public void accept(Object o, Object callback) {
+			((Consumer) callback).accept(o);
 		}
 	};
 
@@ -516,8 +521,6 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 	};
 
-	private final static int MAX_BUFFER_SIZE = 2 ^ 17;
-
 	private final static Supplier<Task> DEFAULT_TASK_PROVIDER = new Supplier<Task>() {
 		@Override
 		public Task get() {
@@ -525,6 +528,16 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 	};
 
+	private final static Consumer<Task> DEFAULT_TASK_CONSUMER = new Consumer<Task>() {
+		@Override
+		public void accept(Task task) {
+			routeTask(task);
+		}
+	};
+
+	private final static int MAX_BUFFER_SIZE = 2 ^ 17;
+
+	@SuppressWarnings("unchecked")
 	private SharedProcessorService(
 	  Processor<Task, Task> processor,
 	  Consumer<Throwable> uncaughtExceptionHandler,
@@ -541,7 +554,8 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 				this.tailRecurser = new TailRecurser(
 				  bufferSize,
-				  DEFAULT_TASK_PROVIDER
+				  DEFAULT_TASK_PROVIDER,
+				  DEFAULT_TASK_CONSUMER
 				);
 
 				this.managedProcessor = (ExecutorPoweredProcessor<Task, Task>) processor;
@@ -610,19 +624,21 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	/**
 	 *
 	 */
-	private static class TailRecurser {
+	static class TailRecurser {
 
 		private final ArrayList<Task> pile;
 
 		private final int pileSizeIncrement;
 
 		private final Supplier<Task> taskSupplier;
+		private final Consumer<Task> taskConsumer;
 
 		private int next = 0;
 
-		public TailRecurser(int backlogSize, Supplier<Task> taskSupplier) {
+		public TailRecurser(int backlogSize, Supplier<Task> taskSupplier, Consumer<Task> taskConsumer) {
 			this.pileSizeIncrement = backlogSize * 2;
 			this.taskSupplier = taskSupplier;
+			this.taskConsumer = taskConsumer;
 			this.pile = new ArrayList<Task>(pileSizeIncrement);
 			ensureEnoughTasks();
 		}
@@ -644,7 +660,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		public void consumeTasks() {
 			if (next > 0) {
 				for (int i = 0; i < next; i++) {
-					routeTask(pile.get(i));
+					taskConsumer.accept(pile.get(i));
 				}
 
 				for (int i = next - 1; i >= pileSizeIncrement; i--) {
@@ -655,7 +671,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 	}
 
-	static private final class Task implements Recyclable {
+	static final class Task implements Recyclable {
 		Subscriber subscriber;
 		Object     payload;
 		SignalType type;
