@@ -16,6 +16,7 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Processor;
+import org.testng.SkipException;
 
 /**
  * @author Stephane Maldini
@@ -28,4 +29,9 @@ public class SharedProcessorServiceSyncTests extends AbstractProcessorTests {
 		return SharedProcessorService.<Long>sync().get();
 	}
 
+	@Override
+	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
+	  Throwable {
+		throw new SkipException("Optional requirement");
+	}
 }

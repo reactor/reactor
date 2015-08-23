@@ -16,6 +16,7 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Processor;
+import org.testng.SkipException;
 
 /**
  * @author Stephane Maldini
@@ -25,7 +26,13 @@ public class SharedProcessorServiceWorkTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return SharedProcessorService.<Long>async("tckRingBufferProcessor", bufferSize).get();
+		return SharedProcessorService.<Long>work("tckRingBufferProcessor", bufferSize).get();
+	}
+
+	@Override
+	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
+	  Throwable {
+		throw new SkipException("Optional requirement");
 	}
 
 }

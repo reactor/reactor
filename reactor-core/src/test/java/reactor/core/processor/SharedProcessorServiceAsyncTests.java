@@ -2,6 +2,7 @@ package reactor.core.processor;
 
 import org.junit.Test;
 import org.reactivestreams.Processor;
+import org.testng.SkipException;
 import reactor.core.support.Assert;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -25,6 +26,12 @@ public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
 		return SharedProcessorService.<Long>async("tckRingBufferProcessor", bufferSize).get();
+	}
+
+	@Override
+	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
+	  Throwable {
+		throw new SkipException("Optional requirement");
 	}
 
 	@Test
