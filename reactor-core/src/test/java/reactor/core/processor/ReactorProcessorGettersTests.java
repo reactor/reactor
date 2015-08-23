@@ -13,7 +13,7 @@ public class ReactorProcessorGettersTests {
 	public void testRingBufferProcessorGetters() {
 
 		final int TEST_BUFFER_SIZE = 16;
-		AsyncProcessor<Object, Object> processor = RingBufferProcessor.create("testProcessor", TEST_BUFFER_SIZE);
+		BaseProcessor<Object, Object> processor = RingBufferProcessor.create("testProcessor", TEST_BUFFER_SIZE);
 
 		assertEquals(TEST_BUFFER_SIZE, processor.getAvailableCapacity());
 
@@ -23,7 +23,7 @@ public class ReactorProcessorGettersTests {
 	public void testRingBufferWorkProcessorGetters() {
 
 		final int TEST_BUFFER_SIZE = 16;
-		AsyncProcessor<Object, Object> processor = RingBufferWorkProcessor.create("testProcessor", TEST_BUFFER_SIZE);
+		BaseProcessor<Object, Object> processor = RingBufferWorkProcessor.create("testProcessor", TEST_BUFFER_SIZE);
 
 		assertEquals(TEST_BUFFER_SIZE, processor.getAvailableCapacity());
 

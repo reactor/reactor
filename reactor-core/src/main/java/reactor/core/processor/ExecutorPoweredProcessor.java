@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Stephane Maldini
  */
-public abstract class ExecutorPoweredProcessor<IN, OUT> extends AsyncProcessor<IN, OUT> {
+public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN, OUT> {
 
 	protected final ExecutorService executor;
 

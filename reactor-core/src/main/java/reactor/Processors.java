@@ -37,7 +37,7 @@ public final class Processors {
 	public static final int DEFAULT_POOL_SIZE = Math.min(Runtime.getRuntime().availableProcessors(), 2);
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
 	 * and auto-cancel.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -49,11 +49,11 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorPoweredProcessor<E, E> async() {
-		return async("async", AsyncProcessor.SMALL_BUFFER_SIZE, true);
+		return async("async", BaseProcessor.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -66,11 +66,11 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorPoweredProcessor<E, E> async(boolean autoCancel) {
-		return async(Processors.class.getSimpleName(), AsyncProcessor.SMALL_BUFFER_SIZE, autoCancel);
+		return async(Processors.class.getSimpleName(), BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -117,7 +117,7 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
 	 * and auto-cancel.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -129,11 +129,11 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorPoweredProcessor<E, E> work() {
-		return work("worker", AsyncProcessor.SMALL_BUFFER_SIZE, true);
+		return work("worker", BaseProcessor.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -146,11 +146,11 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorPoweredProcessor<E, E> work(boolean autoCancel) {
-		return work(Processors.class.getSimpleName(), AsyncProcessor.SMALL_BUFFER_SIZE, autoCancel);
+		return work(Processors.class.getSimpleName(), BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -201,7 +201,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> SharedProcessorService<E> asyncService(String name) {
-		return asyncService(name, AsyncProcessor.MEDIUM_BUFFER_SIZE);
+		return asyncService(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -276,7 +276,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> SharedProcessorService<E> workService(String name) {
-		return workService(name, AsyncProcessor.MEDIUM_BUFFER_SIZE);
+		return workService(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
