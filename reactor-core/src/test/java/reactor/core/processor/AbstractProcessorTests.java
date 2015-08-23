@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public abstract class AbstractProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Long> {
 
 	public AbstractProcessorTests() {
-		super(new TestEnvironment(2000, true), 3500);
+		super(new TestEnvironment(500, true), 1000);
 	}
 
 	@Override

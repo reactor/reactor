@@ -35,10 +35,8 @@ public abstract class AsyncProcessor<IN, OUT> extends BaseSubscriber<IN> impleme
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
-	private final ClassLoader contextClassLoader;
-
-	protected static final int SMALL_BUFFER_SIZE  = 32;
-	protected static final int MEDIUM_BUFFER_SIZE = 8192;
+	public static final int SMALL_BUFFER_SIZE  = 32;
+	public static final int MEDIUM_BUFFER_SIZE = 8192;
 
 	protected final boolean autoCancel;
 
@@ -51,19 +49,7 @@ public abstract class AsyncProcessor<IN, OUT> extends BaseSubscriber<IN> impleme
 	protected Subscription upstreamSubscription;
 
 	public AsyncProcessor(boolean autoCancel) {
-		this(autoCancel, null);
-	}
-
-	public AsyncProcessor(boolean autoCancel, ClassLoader contextClassLoader) {
 		this.autoCancel = autoCancel;
-		this.contextClassLoader = contextClassLoader;
-	}
-
-	/**
-	 * @return true if the classLoader marker is detected in the current thread
-	 */
-	public boolean isInContext() {
-		return Thread.currentThread().getContextClassLoader() == contextClassLoader;
 	}
 
 	@Override

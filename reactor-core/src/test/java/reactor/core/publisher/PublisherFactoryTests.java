@@ -15,6 +15,7 @@
  */
 package reactor.core.publisher;
 
+import org.junit.Ignore;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.PublisherVerification;
@@ -28,10 +29,11 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  */
 @Test
+@Ignore
 public class PublisherFactoryTests extends PublisherVerification<Long> {
 
 	public PublisherFactoryTests() {
-		super(new TestEnvironment(1000, true), 1500);
+		super(new TestEnvironment(500, true), 1000);
 	}
 
 

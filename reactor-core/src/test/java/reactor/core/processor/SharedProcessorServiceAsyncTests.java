@@ -3,6 +3,7 @@ package reactor.core.processor;
 import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
+import reactor.Processors;
 import reactor.core.support.Assert;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -21,11 +22,11 @@ public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 
 	private final int           BUFFER_SIZE     = 8;
 	private final AtomicBoolean exceptionThrown = new AtomicBoolean();
-	private final int N = 17;
+	private final int           N               = 17;
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return SharedProcessorService.<Long>async("tckRingBufferProcessor", bufferSize).get();
+		return Processors.<Long>asyncService("tckRingBufferProcessor", bufferSize).get();
 	}
 
 	@Override
@@ -36,19 +37,19 @@ public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 
 	@Test
 	public void testDispatch() throws InterruptedException {
-		SharedProcessorService<String> service = SharedProcessorService.async("dispatcher", BUFFER_SIZE, t -> {
+		SharedProcessorService<String> service = Processors.asyncService("dispatcher", BUFFER_SIZE, t -> {
 			exceptionThrown.set(true);
 			t.printStackTrace();
 		});
-		BiConsumer<String, Consumer<? super String>> dispatcher = service.dataDispatcher();
 
-		runTest(dispatcher);
-		runTest(dispatcher);
-
-		SharedProcessorService.release(dispatcher);
+		SharedProcessorService.release(
+		  runTest(service.dataDispatcher()),
+		  runTest(service.dataDispatcher())
+		);
 	}
 
-	private void runTest(final BiConsumer<String, Consumer<? super String>> dispatcher) throws InterruptedException {
+	private BiConsumer<String, Consumer<? super String>> runTest(final BiConsumer<String, Consumer<? super String>>
+	                                                               dispatcher) throws InterruptedException {
 		CountDownLatch tasksCountDown = new CountDownLatch(N);
 
 		dispatcher.accept("Hello", s -> {
@@ -59,6 +60,8 @@ public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 
 		Assert.isTrue(tasksCountDown.await(5, TimeUnit.SECONDS));
 		Assert.isTrue(!exceptionThrown.get());
+
+		return dispatcher;
 	}
 
 }

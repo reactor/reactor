@@ -15,18 +15,21 @@
  */
 package reactor.core.processor;
 
+import org.junit.Ignore;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
+import reactor.Processors;
 
 /**
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
+@Ignore
 public class SharedProcessorServiceWorkTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return SharedProcessorService.<Long>work("tckRingBufferProcessor", bufferSize).get();
+		return Processors.<Long>workService("tckRingBufferProcessor", bufferSize).get();
 	}
 
 	@Override
