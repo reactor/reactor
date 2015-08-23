@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  *
  * @author Stephane Maldini
  */
-public abstract class AsyncProcessor<IN, OUT> extends BaseSubscriber<IN> implements
+public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implements
   Processor<IN, OUT>, Consumer<IN>, Bounded, Resource {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
@@ -41,14 +41,14 @@ public abstract class AsyncProcessor<IN, OUT> extends BaseSubscriber<IN> impleme
 	protected final boolean autoCancel;
 
 	@SuppressWarnings("unused")
-	private volatile       int                                       subscriberCount  = 0;
-	protected static final AtomicIntegerFieldUpdater<AsyncProcessor> SUBSCRIBER_COUNT =
+	private volatile       int                                      subscriberCount  = 0;
+	protected static final AtomicIntegerFieldUpdater<BaseProcessor> SUBSCRIBER_COUNT =
 	  AtomicIntegerFieldUpdater
-		.newUpdater(AsyncProcessor.class, "subscriberCount");
+		.newUpdater(BaseProcessor.class, "subscriberCount");
 
 	protected Subscription upstreamSubscription;
 
-	public AsyncProcessor(boolean autoCancel) {
+	public BaseProcessor(boolean autoCancel) {
 		this.autoCancel = autoCancel;
 	}
 

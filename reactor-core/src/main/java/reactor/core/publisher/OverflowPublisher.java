@@ -15,7 +15,7 @@
  */
 package reactor.core.publisher;
 
-import reactor.core.processor.AsyncProcessor;
+import reactor.core.processor.BaseProcessor;
 import reactor.core.support.SingleUseExecutor;
 import reactor.core.error.Exceptions;
 
@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Stephane Maldini
  */
-public abstract class OverflowPublisher<IN, OUT> extends AsyncProcessor<IN, OUT> {
+public abstract class OverflowPublisher<IN, OUT> extends BaseProcessor<IN, OUT> {
 
 	protected final ExecutorService executor;
 
