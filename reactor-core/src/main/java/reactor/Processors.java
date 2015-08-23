@@ -21,6 +21,9 @@ import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 
 /**
+ * Main gateway to build various asynchronous {@link Processor} or "pool" services that allow their reuse.
+ * Reactor offers a few management API via the subclassed {@link ExecutorPoweredProcessor} for the underlying {@link java.util.concurrent.Executor} in use.
+ * 
  * @author Stephane Maldini
  * @since 2.1
  */
@@ -34,7 +37,7 @@ public final class Processors {
 	public static final int DEFAULT_POOL_SIZE = Math.min(Runtime.getRuntime().availableProcessors(), 2);
 
 	/**
-	 * Create a new SimpleWorkProcessor using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
 	 * and auto-cancel.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -46,11 +49,11 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorPoweredProcessor<E, E> async() {
-		return async(Processors.class.getSimpleName(), AsyncProcessor.SMALL_BUFFER_SIZE, true);
+		return async("async", AsyncProcessor.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
-	 * Create a new SimpleWorkProcessor using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -67,7 +70,7 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new SimpleWorkProcessor using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -86,7 +89,7 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new SimpleWorkProcessor using the blockingWait Strategy, passed backlog size,
+	 * Create a new {@link ExecutorPoweredProcessor} using the blockingWait Strategy, passed backlog size,
 	 * and auto-cancel settings.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -105,9 +108,89 @@ public final class Processors {
 		final ExecutorPoweredProcessor<E, E> processor;
 
 		if (PlatformDependent.hasUnsafe()) {
-			processor = RingBufferProcessor.create(name, bufferSize);
+			processor = RingBufferProcessor.create(name, bufferSize, autoCancel);
 		} else {
-			processor = SimpleWorkProcessor.create(name, bufferSize);
+			throw new UnsupportedOperationException("Pub-Sub async processor not yet supported without Unsafe");
+				//			processor = SimpleWorkProcessor.create(name, bufferSize);
+		}
+		return processor;
+	}
+
+	/**
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and auto-cancel.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created.
+	 *
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> ExecutorPoweredProcessor<E, E> work() {
+		return work("worker", AsyncProcessor.SMALL_BUFFER_SIZE, true);
+	}
+
+	/**
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and the passed auto-cancel setting.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created.
+	 *
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> ExecutorPoweredProcessor<E, E> work(boolean autoCancel) {
+		return work(Processors.class.getSimpleName(), AsyncProcessor.SMALL_BUFFER_SIZE, autoCancel);
+	}
+
+	/**
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link AsyncProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * and the passed auto-cancel setting.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> ExecutorPoweredProcessor<E, E> work(String name, int bufferSize) {
+		return work(name, bufferSize, true);
+	}
+
+	/**
+	 * Create a new {@link ExecutorPoweredProcessor} using the blockingWait Strategy, passed backlog size,
+	 * and auto-cancel settings.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> ExecutorPoweredProcessor<E, E> work(String name, int bufferSize, boolean autoCancel) {
+		final ExecutorPoweredProcessor<E, E> processor;
+
+		if (PlatformDependent.hasUnsafe()) {
+			processor = RingBufferWorkProcessor.create(name, bufferSize, autoCancel);
+		} else {
+			processor = SimpleWorkProcessor.create(name, bufferSize, autoCancel);
 		}
 		return processor;
 	}
@@ -175,15 +258,15 @@ public final class Processors {
 	                                                         Consumer<Throwable> uncaughtExceptionHandler,
 	                                                         Consumer<Void> shutdownHandler,
 	                                                         boolean autoShutdown) {
-		final Processor<SharedProcessorService.Task, SharedProcessorService.Task> processor;
 
-		if (PlatformDependent.hasUnsafe()) {
-			processor = RingBufferProcessor.share(name, bufferSize, SharedProcessorService.DEFAULT_TASK_PROVIDER);
-		} else {
-			processor = SimpleWorkProcessor.create(name, bufferSize);
-		}
-
-		return SharedProcessorService.create(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		return SharedProcessorService.create(
+		  PlatformDependent.hasUnsafe()
+			? RingBufferProcessor.share(name, bufferSize, SharedProcessorService.DEFAULT_TASK_PROVIDER)
+			: SimpleWorkProcessor.create(name, bufferSize),
+		  uncaughtExceptionHandler,
+		  shutdownHandler,
+		  autoShutdown
+		);
 	}
 
 
@@ -269,15 +352,15 @@ public final class Processors {
 	                                                        Consumer<Throwable> uncaughtExceptionHandler,
 	                                                        Consumer<Void> shutdownHandler,
 	                                                        boolean autoShutdown) {
-		final Processor<SharedProcessorService.Task, SharedProcessorService.Task> processor;
-		if (PlatformDependent.hasUnsafe()) {
-			processor = RingBufferWorkProcessor.share(name, bufferSize);
-		} else {
-			processor = SimpleWorkProcessor.create(name, bufferSize);
-		}
-
-		return SharedProcessorService.create(processor, concurrency, uncaughtExceptionHandler, shutdownHandler,
-		  autoShutdown);
+		return SharedProcessorService.create(
+		  PlatformDependent.hasUnsafe()
+		    ? RingBufferWorkProcessor.share(name, bufferSize)
+		    : SimpleWorkProcessor.create(name, bufferSize),
+		  concurrency,
+		  uncaughtExceptionHandler,
+		  shutdownHandler,
+		  autoShutdown
+		);
 	}
 
 	/**
