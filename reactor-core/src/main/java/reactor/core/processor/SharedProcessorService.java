@@ -318,12 +318,12 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * INSTANCE STUFF *
 	 */
 
-	final private TailRecurser          tailRecurser;
+	final private TailRecurser tailRecurser;
 
 
-	final private Processor<Task, Task> processor;
-	final private boolean               autoShutdown;
-	final ExecutorPoweredProcessor<Task, Task> managedProcessor;
+	final private Processor<Task, Task>                processor;
+	final private boolean                              autoShutdown;
+	final         ExecutorPoweredProcessor<Task, Task> managedProcessor;
 
 	@SuppressWarnings("unused")
 	private volatile int refCount = 0;
@@ -610,7 +610,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	@SuppressWarnings("unchecked")
 	private ProcessorBarrier<T> createBarrier() {
 
-		if(processor == null){
+		if (processor == null) {
 			return new SyncProcessorBarrier<>();
 		}
 
@@ -691,7 +691,8 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	  Consumer<Consumer<Void>>,
 	  BiConsumer<V, Consumer<? super V>>,
 	  Processor<V, V>,
-	  Executor {
+	  Executor,
+	  Subscription {
 
 		Subscription          subscription;
 		Subscriber<? super V> subscriber;
@@ -739,7 +740,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			if (!set) {
 				s.onError(new IllegalStateException("Shared Processors do not support multi-subscribe"));
 			} else if (subscribed) {
-				dispatch(subscription, s, SignalType.SUBSCRIPTION);
+				dispatch(this, s, SignalType.SUBSCRIPTION);
 			}
 
 		}
@@ -762,7 +763,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			if (!set) {
 				s.cancel();
 			} else if (subscribed) {
-				dispatch(s, subscriber, SignalType.SUBSCRIPTION);
+				dispatch(this, subscriber, SignalType.SUBSCRIPTION);
 			}
 		}
 
@@ -771,6 +772,9 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			super.onNext(o);
 
 			if (subscriber == null) {
+				//cancelled
+				if(subscription == null) return;
+
 				throw CancelException.get();
 			}
 
@@ -782,21 +786,47 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			super.onError(t);
 
 			if (subscriber == null) {
+				//cancelled
+				if(subscription == null) return;
+
 				throw ReactorFatalException.create(t);
 			}
 
 			dispatchProcessorSequence(t, subscriber, SignalType.ERROR);
+			handleTerminalSignal();
 		}
 
 		@Override
 		public final void onComplete() {
 			REF_COUNT.decrementAndGet(SharedProcessorService.this);
 
-			if (subscriber == null) {
-				throw CancelException.get();
-			}
-
 			dispatchProcessorSequence(null, subscriber, SignalType.COMPLETE);
+			handleTerminalSignal();
+		}
+
+		@Override
+		public void request(long n) {
+			Subscription subscription = this.subscription;
+			if(subscription != null){
+				subscription.request(n);
+			}
+		}
+
+		@Override
+		public void cancel() {
+			Subscription subscription = this.subscription;
+			if(subscription != null){
+				synchronized (this){
+					this.subscription = null;
+					this.subscriber = null;
+				}
+				subscription.cancel();
+			}
+			handleTerminalSignal();
+		}
+
+		protected void handleTerminalSignal() {
+			REF_COUNT.decrementAndGet(SharedProcessorService.this);
 		}
 
 		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
