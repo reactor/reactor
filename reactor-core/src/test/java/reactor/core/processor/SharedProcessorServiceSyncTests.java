@@ -15,6 +15,7 @@
  */
 package reactor.core.processor;
 
+import org.junit.Ignore;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
 
@@ -22,6 +23,7 @@ import org.testng.SkipException;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
+@Ignore
 public class SharedProcessorServiceSyncTests extends AbstractProcessorTests {
 
 	@Override

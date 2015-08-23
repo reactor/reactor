@@ -33,7 +33,7 @@ public class SubscriberFactoryTests extends SubscriberWhiteboxVerification<Long>
 	private final Random random = new Random();
 
 	public SubscriberFactoryTests() {
-		super(new TestEnvironment(2000, true));
+		super(new TestEnvironment(500, true));
 	}
 
 	@Override

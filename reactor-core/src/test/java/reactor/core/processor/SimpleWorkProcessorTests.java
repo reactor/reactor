@@ -15,12 +15,14 @@
  */
 package reactor.core.processor;
 
+import org.junit.Ignore;
 import org.reactivestreams.Processor;
 
 /**
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
+@Ignore
 public class SimpleWorkProcessorTests extends AbstractProcessorTests {
 
 	@Override

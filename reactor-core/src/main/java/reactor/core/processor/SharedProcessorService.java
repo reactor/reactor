@@ -34,9 +34,11 @@ import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.jarjar.com.lmax.disruptor.RingBuffer;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
@@ -66,181 +68,6 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 public final class SharedProcessorService<T> implements Supplier<Processor<T, T>>, Resource {
 
 	/**
-	 * @param name
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> async(String name) {
-		return async(name, AsyncProcessor.MEDIUM_BUFFER_SIZE);
-	}
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> async(String name,
-	                                                  int bufferSize) {
-		return async(name, bufferSize, null);
-	}
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param uncaughtExceptionHandler
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> async(String name,
-	                                                  int bufferSize,
-	                                                  Consumer<Throwable> uncaughtExceptionHandler) {
-		return async(name, bufferSize, uncaughtExceptionHandler, null);
-	}
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param uncaughtExceptionHandler
-	 * @param shutdownHandler
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> async(String name,
-	                                                  int bufferSize,
-	                                                  Consumer<Throwable> uncaughtExceptionHandler,
-	                                                  Consumer<Void> shutdownHandler
-	) {
-		return async(name, bufferSize, uncaughtExceptionHandler, shutdownHandler, true);
-	}
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param uncaughtExceptionHandler
-	 * @param shutdownHandler
-	 * @param autoShutdown
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> async(String name,
-	                                                  int bufferSize,
-	                                                  Consumer<Throwable> uncaughtExceptionHandler,
-	                                                  Consumer<Void> shutdownHandler,
-	                                                  boolean autoShutdown) {
-		final Processor<Task, Task> processor;
-
-		if (PlatformDependent.hasUnsafe()) {
-			processor = RingBufferProcessor.share(name, bufferSize, DEFAULT_TASK_PROVIDER);
-		} else {
-			processor = SimpleWorkProcessor.create(name, bufferSize);
-		}
-
-		return create(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
-	}
-
-
-	/**
-	 * @param name
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> work(String name) {
-		return work(name, AsyncProcessor.MEDIUM_BUFFER_SIZE);
-	}
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> work(String name,
-	                                                 int bufferSize) {
-		return work(name, bufferSize, Runtime.getRuntime().availableProcessors());
-	}
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param concurrency
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> work(String name,
-	                                                 int bufferSize,
-	                                                 int concurrency) {
-		return work(name, bufferSize, concurrency, null, null, true);
-	}
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param concurrency
-	 * @param uncaughtExceptionHandler
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> work(String name,
-	                                                 int bufferSize,
-	                                                 int concurrency,
-	                                                 Consumer<Throwable> uncaughtExceptionHandler) {
-		return work(name, bufferSize, concurrency, uncaughtExceptionHandler, null, true);
-	}
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param concurrency
-	 * @param uncaughtExceptionHandler
-	 * @param shutdownHandler
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> work(String name,
-	                                                 int bufferSize,
-	                                                 int concurrency,
-	                                                 Consumer<Throwable> uncaughtExceptionHandler,
-	                                                 Consumer<Void> shutdownHandler) {
-		return work(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
-	}
-
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param concurrency
-	 * @param uncaughtExceptionHandler
-	 * @param shutdownHandler
-	 * @param autoShutdown
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> SharedProcessorService<E> work(String name,
-	                                                 int bufferSize,
-	                                                 int concurrency,
-	                                                 Consumer<Throwable> uncaughtExceptionHandler,
-	                                                 Consumer<Void> shutdownHandler,
-	                                                 boolean autoShutdown) {
-		final Processor<Task, Task> processor;
-		if (PlatformDependent.hasUnsafe()) {
-			processor = RingBufferWorkProcessor.share(name, bufferSize);
-		} else {
-			processor = SimpleWorkProcessor.create(name, bufferSize);
-		}
-
-		SharedProcessorService<E> sharedProcessorService =
-		  create(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
-
-		//add extra concurrent subscribers
-		for (int i = 1; i < concurrency; i++) {
-			sharedProcessorService.createSubscriber(uncaughtExceptionHandler, shutdownHandler);
-		}
-
-		return sharedProcessorService;
-	}
-
-	/**
 	 * @param <E>
 	 * @return
 	 */
@@ -258,6 +85,16 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		return create(p, null, null, true);
 	}
 
+	/**
+	 * @param p
+	 * @param concurrency
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p,
+	                                                   int concurrency) {
+		return create(p, concurrency, null, null, true);
+	}
 
 	/**
 	 * @param p
@@ -295,7 +132,24 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	                                                   Consumer<Throwable> uncaughtExceptionHandler,
 	                                                   Consumer<Void> shutdownHandler,
 	                                                   boolean autoShutdown) {
-		return new SharedProcessorService<E>(p, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		return create(p, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+	}
+
+	/**
+	 * @param p
+	 * @param concurrency
+	 * @param uncaughtExceptionHandler
+	 * @param shutdownHandler
+	 * @param autoShutdown
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p,
+	                                                   int concurrency,
+	                                                   Consumer<Throwable> uncaughtExceptionHandler,
+	                                                   Consumer<Void> shutdownHandler,
+	                                                   boolean autoShutdown) {
+		return new SharedProcessorService<E>(p, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**
@@ -307,8 +161,8 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 		for (Object sharedProcessorReference : sharedProcessorReferences) {
 			if (sharedProcessorReference != null &&
-			  Processor.class.isAssignableFrom(sharedProcessorReference.getClass())) {
-				((Processor) sharedProcessorReference).onComplete();
+			  ProcessorBarrier.class.isAssignableFrom(sharedProcessorReference.getClass())) {
+				((ProcessorBarrier) sharedProcessorReference).cancel();
 			}
 		}
 	}
@@ -323,6 +177,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 	final private Processor<Task, Task>                processor;
 	final private boolean                              autoShutdown;
+	final private int                                  concurrency;
 	final         ExecutorPoweredProcessor<Task, Task> managedProcessor;
 
 	@SuppressWarnings("unused")
@@ -455,10 +310,40 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		return processor;
 	}
 
+	/**
+	 * A mutable transport for materialized signal dispatching
+	 */
+	public static final class Task implements Recyclable, Serializable {
+		Subscriber subscriber;
+		Object     payload;
+		SignalType type;
+
+		@Override
+		public void recycle() {
+			type = null;
+			payload = null;
+			subscriber = null;
+		}
+	}
+
+	/**
+	 * Simple Task {@link Supplier} used for tail recursion or by a ring buffer
+	 */
+	public final static Supplier<Task> DEFAULT_TASK_PROVIDER = new Supplier<Task>() {
+		@Override
+		public Task get() {
+			return new Task();
+		}
+	};
+
+
 	/* INTERNAL */
 	@SuppressWarnings("unchecked")
 	static private void route(Object payload, Subscriber subscriber, SignalType type) {
+
 		try {
+			if (subscriber == null) return;
+
 			if (type == SignalType.NEXT) {
 				subscriber.onNext(payload);
 			} else if (type == SignalType.COMPLETE) {
@@ -478,6 +363,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 	}
 
+
 	static private void routeTask(Task task) {
 		try {
 			route(task.payload, task.subscriber, task.type);
@@ -486,9 +372,8 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 	}
 
-
 	@SuppressWarnings("unchecked")
-	private static final SharedProcessorService SYNC_SERVICE = new SharedProcessorService(null, null, null, false);
+	private static final SharedProcessorService SYNC_SERVICE = new SharedProcessorService(null, -1, null, null, false);
 
 	/**
 	 * Singleton delegating consumer for synchronous data dispatchers
@@ -521,13 +406,6 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 	};
 
-	private final static Supplier<Task> DEFAULT_TASK_PROVIDER = new Supplier<Task>() {
-		@Override
-		public Task get() {
-			return new Task();
-		}
-	};
-
 	private final static Consumer<Task> DEFAULT_TASK_CONSUMER = new Consumer<Task>() {
 		@Override
 		public void accept(Task task) {
@@ -540,12 +418,14 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	@SuppressWarnings("unchecked")
 	private SharedProcessorService(
 	  Processor<Task, Task> processor,
+	  int concurrency,
 	  Consumer<Throwable> uncaughtExceptionHandler,
 	  Consumer<Void> shutdownHandler,
 	  boolean autoShutdown
 	) {
 		this.processor = processor;
 		this.autoShutdown = autoShutdown;
+		this.concurrency = concurrency;
 
 		if (processor != null) {
 			// Managed Processor, providing for tail recursion,
@@ -564,7 +444,9 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 				this.tailRecurser = null;
 			}
 
-			processor.subscribe(createSubscriber(uncaughtExceptionHandler, shutdownHandler));
+			for (int i = 0; i < concurrency; i++) {
+				processor.subscribe(new TaskSubscriber(uncaughtExceptionHandler, shutdownHandler));
+			}
 
 		} else {
 			this.managedProcessor = null;
@@ -572,68 +454,42 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 	}
 
-	private Subscriber<Task> createSubscriber(
-	  final Consumer<Throwable> uncaughtExceptionHandler,
-	  final Consumer<Void> shutdownHandler
-	) {
-		return new Subscriber<Task>() {
-
-			@Override
-			public void onSubscribe(Subscription s) {
-				s.request(Long.MAX_VALUE);
-			}
-
-			@Override
-			public void onNext(Task task) {
-				routeTask(task);
-				tailRecurser.consumeTasks();
-			}
-
-			@Override
-			public void onError(Throwable t) {
-				Exceptions.throwIfFatal(t);
-				if (uncaughtExceptionHandler != null) {
-					uncaughtExceptionHandler.accept(t);
-				}
-			}
-
-			@Override
-			public void onComplete() {
-				if (shutdownHandler != null) {
-					shutdownHandler.accept(null);
-				}
-			}
-
-		};
-	}
-
 	@SuppressWarnings("unchecked")
 	private ProcessorBarrier<T> createBarrier() {
 
 		if (processor == null) {
-			return new SyncProcessorBarrier<>();
+			return new SyncProcessorBarrier<>(null);
+		}
+
+		if (ExecutorPoweredProcessor.class.isAssignableFrom(processor.getClass())
+		  && !((ExecutorPoweredProcessor) processor).alive()) {
+			throw new IllegalStateException("Internal Processor is shutdown");
 		}
 
 		REF_COUNT.incrementAndGet(this);
-		if (RingBufferProcessor.class == processor.getClass()) {
-			return new RingBufferProcessorBarrier<>(((RingBufferProcessor) processor).ringBuffer());
-		} else if (ExecutorPoweredProcessor.class.isAssignableFrom(processor.getClass())
-		  && ((ExecutorPoweredProcessor) processor).isWork()) {
-			return new WorkProcessorBarrier<>();
+
+		if (concurrency > 1) {
+			return new WorkProcessorBarrier<>(this);
 		}
-		return new ProcessorBarrier<>();
+
+		if (RingBufferProcessor.class == processor.getClass()) {
+			return new RingBufferProcessorBarrier<>(this, ((RingBufferProcessor) processor).ringBuffer());
+		}
+
+		return new ProcessorBarrier<>(this);
 	}
 
 	/**
 	 *
 	 */
+
 	static class TailRecurser {
 
 		private final ArrayList<Task> pile;
 
-		private final int pileSizeIncrement;
-
+		private final int            pileSizeIncrement;
 		private final Supplier<Task> taskSupplier;
+
 		private final Consumer<Task> taskConsumer;
 
 		private int next = 0;
@@ -672,30 +528,27 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 				next = 0;
 			}
 		}
+
 	}
 
-	static final class Task implements Recyclable {
-		Subscriber subscriber;
-		Object     payload;
-		SignalType type;
-
-		@Override
-		public void recycle() {
-			type = null;
-			payload = null;
-			subscriber = null;
-		}
-	}
-
-	private class ProcessorBarrier<V> extends BaseSubscriber<V> implements
+	private static class ProcessorBarrier<V> extends BaseSubscriber<V> implements
 	  Consumer<Consumer<Void>>,
 	  BiConsumer<V, Consumer<? super V>>,
 	  Processor<V, V>,
 	  Executor,
 	  Subscription {
 
+
+		protected final SharedProcessorService service;
+		protected final AtomicBoolean          terminated;
+
 		Subscription          subscription;
 		Subscriber<? super V> subscriber;
+
+		public ProcessorBarrier(SharedProcessorService service) {
+			this.service = service;
+			this.terminated = service != null && service.processor == null ? null : new AtomicBoolean(false);
+		}
 
 		@Override
 		public final void accept(V data, Consumer<? super V> consumer) {
@@ -773,7 +626,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 			if (subscriber == null) {
 				//cancelled
-				if(subscription == null) return;
+				if (subscription == null) return;
 
 				throw CancelException.get();
 			}
@@ -787,7 +640,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 			if (subscriber == null) {
 				//cancelled
-				if(subscription == null) return;
+				if (subscription == null) return;
 
 				throw ReactorFatalException.create(t);
 			}
@@ -798,8 +651,6 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 		@Override
 		public final void onComplete() {
-			REF_COUNT.decrementAndGet(SharedProcessorService.this);
-
 			dispatchProcessorSequence(null, subscriber, SignalType.COMPLETE);
 			handleTerminalSignal();
 		}
@@ -807,7 +658,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		@Override
 		public void request(long n) {
 			Subscription subscription = this.subscription;
-			if(subscription != null){
+			if (subscription != null) {
 				subscription.request(n);
 			}
 		}
@@ -815,8 +666,8 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		@Override
 		public void cancel() {
 			Subscription subscription = this.subscription;
-			if(subscription != null){
-				synchronized (this){
+			if (subscription != null) {
+				synchronized (this) {
 					this.subscription = null;
 					this.subscriber = null;
 				}
@@ -826,17 +677,24 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 
 		protected void handleTerminalSignal() {
-			REF_COUNT.decrementAndGet(SharedProcessorService.this);
+			if (service != null && terminated != null
+			  && terminated.compareAndSet(false, true)
+			  && REF_COUNT.decrementAndGet(service) <= 0
+			  && service.autoShutdown) {
+
+				service.processor.onComplete();
+			}
 		}
 
 		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
 			dispatch(data, subscriber, type);
 		}
 
+		@SuppressWarnings("unchecked")
 		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
 			final Task task;
-			if (managedProcessor != null && managedProcessor.isInContext()) {
-				task = tailRecurser.next();
+			if (service.managedProcessor != null && service.managedProcessor.isInContext()) {
+				task = service.tailRecurser.next();
 				task.type = type;
 				task.payload = data;
 				task.subscriber = subscriber;
@@ -845,24 +703,26 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 				task.type = type;
 				task.payload = data;
 				task.subscriber = subscriber;
-				processor.onNext(task);
+				service.processor.onNext(task);
 			}
 		}
 	}
 
-	private final class RingBufferProcessorBarrier<V> extends ProcessorBarrier<V> {
+	private static final class RingBufferProcessorBarrier<V> extends ProcessorBarrier<V> {
 
 		private final RingBuffer<MutableSignal<Task>> ringBuffer;
 
-		public RingBufferProcessorBarrier(RingBuffer<MutableSignal<Task>> ringBuffer) {
+		public RingBufferProcessorBarrier(SharedProcessorService service,
+		                                  RingBuffer<MutableSignal<Task>> ringBuffer) {
+			super(service);
 			this.ringBuffer = ringBuffer;
 		}
 
 		@Override
 		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
 			final Task task;
-			if (managedProcessor != null && managedProcessor.isInContext()) {
-				task = tailRecurser.next();
+			if (service.managedProcessor != null && service.managedProcessor.isInContext()) {
+				task = service.tailRecurser.next();
 				task.type = type;
 				task.payload = data;
 				task.subscriber = subscriber;
@@ -879,7 +739,11 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 	}
 
-	private final class WorkProcessorBarrier<V> extends ProcessorBarrier<V> {
+	private static final class WorkProcessorBarrier<V> extends ProcessorBarrier<V> {
+
+		public WorkProcessorBarrier(SharedProcessorService service) {
+			super(service);
+		}
 
 		@Override
 		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
@@ -887,7 +751,11 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		}
 	}
 
-	private final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> {
+	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> {
+
+		public SyncProcessorBarrier(SharedProcessorService service) {
+			super(service);
+		}
 
 		@Override
 		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
@@ -930,6 +798,44 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 		@Override
 		public void onNext(Void t) {
 			runnable.run();
+		}
+
+	}
+
+	private class TaskSubscriber implements Subscriber<Task> {
+
+		private final Consumer<Throwable> uncaughtExceptionHandler;
+		private final Consumer<Void>      shutdownHandler;
+
+		public TaskSubscriber(Consumer<Throwable> uncaughtExceptionHandler, Consumer<Void> shutdownHandler) {
+			this.uncaughtExceptionHandler = uncaughtExceptionHandler;
+			this.shutdownHandler = shutdownHandler;
+		}
+
+		@Override
+		public void onSubscribe(Subscription s) {
+			s.request(Long.MAX_VALUE);
+		}
+
+		@Override
+		public void onNext(Task task) {
+			routeTask(task);
+			tailRecurser.consumeTasks();
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			Exceptions.throwIfFatal(t);
+			if (uncaughtExceptionHandler != null) {
+				uncaughtExceptionHandler.accept(t);
+			}
+		}
+
+		@Override
+		public void onComplete() {
+			if (shutdownHandler != null) {
+				shutdownHandler.accept(null);
+			}
 		}
 
 	}
