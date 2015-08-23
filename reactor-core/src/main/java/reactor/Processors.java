@@ -17,6 +17,7 @@ package reactor;
 
 import org.reactivestreams.Processor;
 import reactor.core.processor.*;
+import reactor.core.support.internal.MpscLinkedQueue;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 
@@ -262,7 +263,7 @@ public final class Processors {
 		return SharedProcessorService.create(
 		  PlatformDependent.hasUnsafe()
 			? RingBufferProcessor.share(name, bufferSize, SharedProcessorService.DEFAULT_TASK_PROVIDER)
-			: SimpleWorkProcessor.create(name, bufferSize),
+			: SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.create()),
 		  uncaughtExceptionHandler,
 		  shutdownHandler,
 		  autoShutdown
