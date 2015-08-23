@@ -26,6 +26,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -301,7 +302,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 		signalProcessor.subscription = new SimpleSubscription<>(signalProcessor, subscriber);
 
 		incrementSubscribers();
-		this.executor.execute(new SubscriberWorker<>(this, subscriber));
+		this.executor.execute(signalProcessor);
 	}
 
 	@Override
@@ -350,21 +351,45 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 
 		@Override
 		public void request(long n) {
+			if (n <= 0l) {
+				subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
+				return;
+			}
 
+			if (!runnable.running.get()) {
+				return;
+			}
+
+			if (SubscriberWorker.PENDING.addAndGet(runnable, n) < 0) {
+				SubscriberWorker.PENDING.set(runnable, Long.MAX_VALUE);
+			}
+
+			long toRequest = n;
+
+			if (toRequest > 0l) {
+				Subscription parent = upstreamSubscription;
+				if (parent != null) {
+					parent.request(toRequest);
+				}
+			}
 		}
 
 		@Override
 		public void cancel() {
-
+			runnable.running.set(false);
 		}
 	}
 
 	private static class SubscriberWorker<IN> implements Runnable {
 
+		static private final AtomicLongFieldUpdater<SubscriberWorker> PENDING =
+		  AtomicLongFieldUpdater.newUpdater(SubscriberWorker.class, "pendingRequests");
+
 		private final Subscriber<? super IN>  subscriber;
 		private final SimpleWorkProcessor<IN> processor;
 		private final AtomicBoolean           running;
 
+		private volatile long pendingRequests = 0L;
 		Subscription subscription;
 
 		public SubscriberWorker(SimpleWorkProcessor<IN> workProcessor, Subscriber<? super IN> s) {
@@ -390,6 +415,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 						SimpleSubscriberUtils.route(task, subscriber);
 					} else {
 						LockSupport.parkNanos(1l); //TODO expose?
+						if(!running.get()) throw CancelException.INSTANCE;
 					}
 				}
 			} catch (CancelException e) {

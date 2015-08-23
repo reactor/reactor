@@ -35,7 +35,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * @author Jon Brisbin
  * @author Stephane Maldini
  */
 class ProcessorsSpec extends Specification {
@@ -181,7 +180,7 @@ class ProcessorsSpec extends Specification {
 			BiConsumer<String, Consumer<String>> diffThread = Processors.workService("rbWork").dataDispatcher()
 			def currentThread = Thread.currentThread()
 			Thread taskThread = null
-			Consumer consumer = { ev ->
+			Consumer<String> consumer = { ev ->
 				taskThread = Thread.currentThread()
 			}
 
@@ -196,7 +195,7 @@ class ProcessorsSpec extends Specification {
 		when:
 			"a task is submitted to the thread pool dispatcher"
 			def latch = new CountDownLatch(1)
-			diffThread.accept('test', { ev -> consumer(ev); latch.countDown() })
+			diffThread.accept('test', { String ev -> consumer.accept(ev); latch.countDown() } as Consumer<String>)
 
 			latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
 

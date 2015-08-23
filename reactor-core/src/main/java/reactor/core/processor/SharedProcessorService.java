@@ -829,6 +829,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			if (uncaughtExceptionHandler != null) {
 				uncaughtExceptionHandler.accept(t);
 			}
+			throw new UnsupportedOperationException("No error handler provided for this exception", t);
 		}
 
 		@Override
