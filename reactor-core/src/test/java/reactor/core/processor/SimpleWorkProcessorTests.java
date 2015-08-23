@@ -17,6 +17,7 @@ package reactor.core.processor;
 
 import org.junit.Ignore;
 import org.reactivestreams.Processor;
+import org.testng.SkipException;
 
 /**
  * @author Stephane Maldini
@@ -30,4 +31,9 @@ public class SimpleWorkProcessorTests extends AbstractProcessorTests {
 		return SimpleWorkProcessor.create("simple-work", bufferSize);
 	}
 
+	@Override
+	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
+	  Throwable {
+		throw new SkipException("Optional requirement");
+	}
 }
