@@ -18,6 +18,7 @@ package reactor.core.processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.simple.SimpleSignal;
 import reactor.core.processor.simple.SimpleSubscriberUtils;
@@ -26,7 +27,7 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -360,8 +361,8 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 				return;
 			}
 
-			if (SubscriberWorker.PENDING.addAndGet(runnable, n) < 0) {
-				SubscriberWorker.PENDING.set(runnable, Long.MAX_VALUE);
+			if (runnable.pendingRequests.addAndGet(n) < 0) {
+				runnable.pendingRequests.set(Long.MAX_VALUE);
 			}
 
 			long toRequest = n;
@@ -382,46 +383,62 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 
 	private static class SubscriberWorker<IN> implements Runnable {
 
-		static private final AtomicLongFieldUpdater<SubscriberWorker> PENDING =
-		  AtomicLongFieldUpdater.newUpdater(SubscriberWorker.class, "pendingRequests");
-
 		private final Subscriber<? super IN>  subscriber;
 		private final SimpleWorkProcessor<IN> processor;
 		private final AtomicBoolean           running;
+		private final AtomicLong              pendingRequests;
 
-		private volatile long pendingRequests = 0L;
 		Subscription subscription;
 
 		public SubscriberWorker(SimpleWorkProcessor<IN> workProcessor, Subscriber<? super IN> s) {
 			this.subscriber = s;
 			this.processor = workProcessor;
 			this.running = new AtomicBoolean();
+			this.pendingRequests = new AtomicLong(0);
 		}
 
 		@Override
 		public void run() {
-			if (!running.compareAndSet(false, true)) {
-				subscriber.onError(new IllegalStateException("Thread is already running"));
-				processor.decrementSubscribers();
-				return;
-			}
-
-			SimpleSignal<IN> task;
 			try {
-				subscriber.onSubscribe(subscription);
-				for (; ; ) {
-					task = processor.workQueue.poll();
-					if (null != task) {
-						SimpleSubscriberUtils.route(task, subscriber);
-					} else {
-						LockSupport.parkNanos(1l); //TODO expose?
-						if(!running.get()) throw CancelException.INSTANCE;
-					}
+				if (!running.compareAndSet(false, true)) {
+					subscriber.onError(new IllegalStateException("Thread is already running"));
+					return;
 				}
-			} catch (CancelException e) {
-				//ignore
+
+				try {
+					subscriber.onSubscribe(subscription);
+				} catch (Throwable t) {
+					Exceptions.throwIfFatal(t);
+					subscriber.onError(t);
+					return;
+				}
+
+				if (!SimpleSubscriberUtils.waitRequestOrTerminalEvent(
+				  pendingRequests, processor.workQueue, subscriber, running
+				)) {
+					return;
+				}
+
+				final boolean unbounded = pendingRequests.get() == Long.MAX_VALUE;
+
+				SimpleSignal<IN> task;
+				try {
+					for (; ; ) {
+						task = processor.workQueue.poll();
+						if (null != task) {
+							SimpleSubscriberUtils.route(task, subscriber);
+						} else {
+							LockSupport.parkNanos(1l); //TODO expose?
+							if (!running.get()) throw CancelException.INSTANCE;
+						}
+					}
+				} catch (CancelException e) {
+					//ignore
+				}
+			} finally {
+				processor.decrementSubscribers();
 			}
-			processor.decrementSubscribers();
+			running.set(false);
 		}
 	}
 }
