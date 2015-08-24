@@ -26,7 +26,7 @@ public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return Processors.<Long>asyncService("tckRingBufferProcessor", bufferSize).get();
+		return Processors.<Long>asyncService("shared-async", bufferSize).get();
 	}
 
 	@Override

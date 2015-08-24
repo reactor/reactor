@@ -18,6 +18,7 @@ package reactor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
 import reactor.core.publisher.LogPublisher;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolinePublisher;
@@ -34,6 +35,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> error(final Throwable error) {
+		Exceptions.throwIfFatal(error);
 		return new Publisher<IN>() {
 			@Override
 			public void subscribe(Subscriber<? super IN> s) {

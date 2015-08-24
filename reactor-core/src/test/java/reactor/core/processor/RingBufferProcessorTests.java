@@ -26,13 +26,13 @@ public class RingBufferProcessorTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return RingBufferProcessor.<Long>create("tckRingBufferProcessor", bufferSize);
+		return RingBufferProcessor.<Long>create("rb-async", bufferSize);
 	}
 
 	@Test
 	public void testShutdown() {
 		for (int i = 0; i < 1000; i++) {
-			RingBufferProcessor dispatcher = RingBufferProcessor.create("tckRingBufferProcessor", 128);
+			RingBufferProcessor dispatcher = RingBufferProcessor.create("rb-test-shutdown", 16);
 			dispatcher.awaitAndShutdown();
 		}
 	}

@@ -17,6 +17,7 @@ package reactor.core.processor;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
@@ -294,16 +295,20 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
-		final SubscriberWorker<IN> signalProcessor = new SubscriberWorker<>(
-		  this,
-		  subscriber
-		);
+		try {
+			final SubscriberWorker<IN> signalProcessor = new SubscriberWorker<>(
+			  this,
+			  subscriber
+			);
 
-		//prepare the subscriber subscription to this processor
-		signalProcessor.subscription = new SimpleSubscription<>(signalProcessor, subscriber);
+			//prepare the subscriber subscription to this processor
+			signalProcessor.subscription = new SimpleSubscription<>(signalProcessor, subscriber);
 
-		incrementSubscribers();
-		this.executor.execute(signalProcessor);
+			this.executor.execute(signalProcessor);
+			incrementSubscribers();
+		}catch(Throwable t){
+			Publishers.<IN>error(t).subscribe(subscriber);
+		}
 	}
 
 	@Override
