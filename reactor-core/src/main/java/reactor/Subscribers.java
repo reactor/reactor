@@ -32,4 +32,17 @@ public final class Subscribers extends SubscriberFactory {
 	public static <T> Subscriber<T> group(Subscriber<T> source) {
 		return source;
 	}
+
+
+
+	/**
+	 *
+	 * @param subscriber
+	 * @param <I>
+	 * @return
+	 */
+	public <I, E extends Subscriber<I>> E start(E subscriber) {
+		subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+		return subscriber;
+	}
 }

@@ -35,14 +35,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> error(final Throwable error) {
-		Exceptions.throwIfFatal(error);
-		return new Publisher<IN>() {
-			@Override
-			public void subscribe(Subscriber<? super IN> s) {
-				s.onSubscribe(NOOP_SUBSCRIPTION);
-				s.onError(error);
-			}
-		};
+		return Exceptions.publisher(error);
 	}
 
 	/**
@@ -86,16 +79,5 @@ public final class Publishers extends PublisherFactory {
 	public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher) {
 		return TrampolinePublisher.trampoline(publisher);
 	}
-
-
-	static final Subscription NOOP_SUBSCRIPTION = new Subscription() {
-		@Override
-		public void request(long n) {
-		}
-
-		@Override
-		public void cancel() {
-		}
-	};
 
 }

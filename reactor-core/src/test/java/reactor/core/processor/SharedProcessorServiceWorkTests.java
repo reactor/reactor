@@ -33,6 +33,11 @@ public class SharedProcessorServiceWorkTests extends AbstractProcessorTests {
 	}
 
 	@Override
+	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
+		throw new SkipException("Optional multi subscribe requirement");
+	}
+
+	@Override
 	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
 	  Throwable {
 		throw new SkipException("Optional requirement");

@@ -15,6 +15,10 @@
  */
 package reactor.core.error;
 
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -148,6 +152,36 @@ public final class Exceptions {
 			throw (LinkageError) t;
 		}
 	}
+
+	/**
+	 * Return a failed {@link Publisher} if the given error is not fatal
+	 * @param error
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> publisher(final Throwable error) {
+		throwIfFatal(error);
+		return new Publisher<IN>() {
+			@Override
+			public void subscribe(Subscriber<? super IN> s) {
+				s.onSubscribe(ERROR_SUBSCRIPTION);
+				s.onError(error);
+			}
+		};
+	}
+
+	/**
+	 * A singleton noop subscription
+	 */
+	public static final Subscription ERROR_SUBSCRIPTION = new Subscription() {
+		@Override
+		public void request(long n) {
+		}
+
+		@Override
+		public void cancel() {
+		}
+	};
 
 	/**
 	 * Represents an error that was encountered while trying to emit an item from an Observable, and

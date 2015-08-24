@@ -71,14 +71,20 @@ public final class SimpleSubscriberUtils {
 	public static <T> boolean waitRequestOrTerminalEvent(
 	  AtomicLong pendingRequest,
 	  Queue<SimpleSignal<T>> queue,
-	  Subscriber<? super T> subscriber,
-	  AtomicBoolean isRunning
+	  Subscriber<? super T> subscriber
 	) {
 		SimpleSignal<T> event = null;
-		while (pendingRequest.get() < 0l) {
+		while (pendingRequest.get() <= 0l) {
 			//pause until first request
 			if (event == null) {
 				event = queue.peek();
+
+				if (event == null) {
+					if (pendingRequest.get() == Long.MIN_VALUE / 2) {
+						return false;
+					}
+					continue;
+				}
 
 				if (event.type == SignalType.COMPLETE) {
 					try {
@@ -93,7 +99,7 @@ public final class SimpleSubscriberUtils {
 					subscriber.onError(event.error);
 					return false;
 				}
-			} else if (!isRunning.get()) {
+			} else if (pendingRequest.get() == Long.MIN_VALUE / 2) {
 				return false;
 			}
 			LockSupport.parkNanos(1l);

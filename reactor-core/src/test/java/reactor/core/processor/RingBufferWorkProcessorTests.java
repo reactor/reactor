@@ -34,7 +34,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return RingBufferWorkProcessor.<Long>create("work-async", bufferSize);
+		return RingBufferWorkProcessor.<Long>create("rb-work", bufferSize);
 	}
 
 	@Override
@@ -43,8 +43,8 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 	}
 
 
-	public static void main() {
-		final RingBufferWorkProcessor<Long> processor = RingBufferWorkProcessor.<Long>create();
+	/*public static void main() {
+		final RingBufferWorkProcessor<Long> processor = RingBufferWorkProcessor.<Long>create("some-test");
 
 		Publisher<Long> pub = PublisherFactory.create(
 		  c -> {
@@ -91,5 +91,5 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 		processor
 		  .writeWith(pub)
 		  .subscribe(SubscriberFactory.unbounded());
-	}
+	}*/
 }

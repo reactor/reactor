@@ -244,6 +244,19 @@ public abstract class PublisherFactory {
 		return new ProxyPublisher<>(source, barrierProvider);
 	}
 
+	/**
+	 * A singleton noop subscription
+	 */
+	protected static final Subscription NOOP_SUBSCRIPTION = new Subscription() {
+		@Override
+		public void request(long n) {
+		}
+
+		@Override
+		public void cancel() {
+		}
+	};
+
 	private static class ReactorPublisher<T, C> implements Publisher<T> {
 
 		protected final Function<Subscriber<? super T>, C>            contextFactory;
