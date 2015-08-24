@@ -18,12 +18,11 @@ package reactor.core.processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
+import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
-import reactor.core.error.CancelException;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.SignalType;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
@@ -552,7 +551,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			incrementSubscribers();
 
 		} catch (Throwable t) {
-			Publishers.<E>error(t).subscribe(subscriber);
+			Exceptions.<E>publisher(t).subscribe(subscriber);
 		}
 	}
 

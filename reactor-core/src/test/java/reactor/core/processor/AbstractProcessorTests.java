@@ -17,17 +17,18 @@ package reactor.core.processor;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.TestEnvironment;
+import org.testng.annotations.AfterClass;
 import reactor.Publishers;
 
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
  */
 public abstract class AbstractProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Long> {
+
+	final ExecutorService executorService = Executors.newCachedThreadPool();
 
 	public AbstractProcessorTests() {
 		super(new TestEnvironment(500, true), 1000);
@@ -35,17 +36,17 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 
 	@Override
 	public ExecutorService publisherExecutorService() {
-		return Executors.newCachedThreadPool();
+		return executorService;
+	}
+
+	@AfterClass
+	public void tearDown(){
+		executorService.shutdown();
 	}
 
 	@Override
 	public Long createElement(int element) {
 		return (long) element;
-	}
-
-	@Override
-	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
-		//IGNORE since subscribers see distinct data
 	}
 
 	@Override

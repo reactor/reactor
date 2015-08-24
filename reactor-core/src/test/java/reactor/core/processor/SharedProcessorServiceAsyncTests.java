@@ -35,6 +35,11 @@ public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 		throw new SkipException("Optional requirement");
 	}
 
+	@Override
+	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
+		throw new SkipException("Optional multi subscribe requirement");
+	}
+
 	@Test
 	public void testDispatch() throws InterruptedException {
 		SharedProcessorService<String> service = Processors.asyncService("dispatcher", BUFFER_SIZE, t -> {

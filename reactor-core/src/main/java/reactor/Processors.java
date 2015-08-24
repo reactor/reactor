@@ -365,16 +365,4 @@ public final class Processors {
 		);
 	}
 
-	/**
-	 *
-	 * @param processor
-	 * @param <I>
-	 * @param <O>
-	 * @return
-	 */
-	public <I, O> Processor<I, O> broadcast(Processor<I, O> processor) {
-		processor.onSubscribe(Publishers.NOOP_SUBSCRIPTION);
-		return processor;
-	}
-
 }

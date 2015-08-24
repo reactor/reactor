@@ -17,15 +17,28 @@ package reactor.core.subscriber;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Subscribers;
 import reactor.core.error.SpecificationExceptions;
 
 /**
- * Convenience base class
+ * Convenience subscriber base class that checks for input errors and provide a self-subscription operation.
  *
  * @author Stephane Maldini
  * @since 2.1
  */
 public class BaseSubscriber<T> implements Subscriber<T> {
+
+	/**
+	 * Trigger onSubscribe with a stateless subscription to signal this subscriber it can start receiving
+	 * onNext, onComplete and onError calls.
+	 * <p>
+	 * Doing so MAY allow direct UNBOUNDED onXXX calls and MAY prevent {@link org.reactivestreams.Publisher} to subscribe this
+	 * subscriber.
+	 */
+	public void start() {
+		onSubscribe(Subscribers.NOOP_SUBSCRIPTION);
+	}
+
 	@Override
 	public void onSubscribe(Subscription s) {
 		if (s == null) {

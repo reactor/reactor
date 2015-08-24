@@ -17,17 +17,17 @@ package reactor.core.processor;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.simple.SimpleSignal;
 import reactor.core.processor.simple.SimpleSubscriberUtils;
+import reactor.core.support.SignalType;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
@@ -280,13 +280,18 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 	private final Queue<SimpleSignal<IN>> workQueue;
 	private final int                     capacity;
 
+	private static final AtomicIntegerFieldUpdater<SimpleWorkProcessor> AVAILABLE =
+		AtomicIntegerFieldUpdater.newUpdater(SimpleWorkProcessor.class, "availableCapacity");
+
+	private volatile int                     availableCapacity;
+
 
 	protected SimpleWorkProcessor(String name, ExecutorService executor,
 	                              int bufferSize, Queue<SimpleSignal<IN>> workQueue, boolean autoCancel) {
 		super(name, executor, autoCancel);
 
 		this.workQueue = workQueue == null ? new ConcurrentLinkedQueue<SimpleSignal<IN>>() : workQueue;
-		this.capacity = bufferSize;
+		this.availableCapacity = this.capacity = bufferSize;
 	}
 
 	@Override
@@ -307,13 +312,18 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 			this.executor.execute(signalProcessor);
 			incrementSubscribers();
 		}catch(Throwable t){
-			Publishers.<IN>error(t).subscribe(subscriber);
+			Exceptions.<IN>publisher(t).subscribe(subscriber);
 		}
 	}
 
 	@Override
 	public void onNext(IN in) {
 		super.onNext(in);
+		while(AVAILABLE.decrementAndGet(this) < 0) {
+			AVAILABLE.incrementAndGet(this);
+			if(!alive()) throw CancelException.get();
+		}
+
 		SimpleSubscriberUtils.onNext(in, workQueue);
 	}
 
@@ -336,7 +346,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 
 	@Override
 	public long getAvailableCapacity() {
-		return workQueue.size();
+		return availableCapacity;
 	}
 
 	@Override
@@ -344,13 +354,14 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 		return true;
 	}
 
-	private class SimpleSubscription<IN> implements Subscription {
+	private static class SimpleSubscription<IN> extends AtomicLong implements Subscription {
 
 		private final SubscriberWorker<IN>   runnable;
 		private final Subscriber<? super IN> subscriber;
 
 		public SimpleSubscription(SubscriberWorker<IN> runnable,
 		                          Subscriber<? super IN> subscriber) {
+			super(Long.MIN_VALUE);
 			this.runnable = runnable;
 			this.subscriber = subscriber;
 		}
@@ -362,27 +373,18 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 				return;
 			}
 
-			if (!runnable.running.get()) {
+			if (!runnable.isRunning()) {
 				return;
 			}
 
-			if (runnable.pendingRequests.addAndGet(n) < 0) {
-				runnable.pendingRequests.set(Long.MAX_VALUE);
-			}
-
-			long toRequest = n;
-
-			if (toRequest > 0l) {
-				Subscription parent = upstreamSubscription;
-				if (parent != null) {
-					parent.request(toRequest);
-				}
+			if (addAndGet(n) < 0) {
+				set(Long.MAX_VALUE);
 			}
 		}
 
 		@Override
 		public void cancel() {
-			runnable.running.set(false);
+			runnable.halt();
 		}
 	}
 
@@ -390,22 +392,18 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 
 		private final Subscriber<? super IN>  subscriber;
 		private final SimpleWorkProcessor<IN> processor;
-		private final AtomicBoolean           running;
-		private final AtomicLong              pendingRequests;
 
-		Subscription subscription;
+		SimpleSubscription subscription;
 
 		public SubscriberWorker(SimpleWorkProcessor<IN> workProcessor, Subscriber<? super IN> s) {
 			this.subscriber = s;
 			this.processor = workProcessor;
-			this.running = new AtomicBoolean();
-			this.pendingRequests = new AtomicLong(0);
 		}
 
 		@Override
 		public void run() {
 			try {
-				if (!running.compareAndSet(false, true)) {
+				if (!subscription.compareAndSet(Long.MIN_VALUE, 0)) {
 					subscriber.onError(new IllegalStateException("Thread is already running"));
 					return;
 				}
@@ -419,31 +417,80 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 				}
 
 				if (!SimpleSubscriberUtils.waitRequestOrTerminalEvent(
-				  pendingRequests, processor.workQueue, subscriber, running
+				  subscription, processor.workQueue, subscriber
 				)) {
 					return;
 				}
 
-				final boolean unbounded = pendingRequests.get() == Long.MAX_VALUE;
+				final boolean unbounded = subscription.get() == Long.MAX_VALUE;
 
 				SimpleSignal<IN> task;
+				long availableBuffer;
+
+				Subscription upstream = processor.upstreamSubscription;
 				try {
-					for (; ; ) {
+
+					if(upstream != null) {
+						if (unbounded) {
+							upstream.request(Long.MAX_VALUE);
+						} else {
+							upstream.request(processor.capacity);
+						}
+					}
+
+					for (;;) {
+
+						while (!unbounded && subscription.decrementAndGet() < 0L){
+							subscription.incrementAndGet();
+							if( !isRunning() ) throw CancelException.INSTANCE;
+							LockSupport.parkNanos(1L);
+						}
+
 						task = processor.workQueue.poll();
+
 						if (null != task) {
+
+							availableBuffer = AVAILABLE.getAndIncrement(processor);
+
+							if(!unbounded &&
+							  task.type == SignalType.NEXT &&
+							  (upstream = processor.upstreamSubscription) != null &&
+							  availableBuffer == processor.capacity / 2){
+								upstream.request(availableBuffer);
+							}
+
 							SimpleSubscriberUtils.route(task, subscriber);
 						} else {
+
+							if(!unbounded) {
+								subscription.incrementAndGet();
+							}
+
+							if (!isRunning()) {
+								throw CancelException.INSTANCE;
+							}
+
 							LockSupport.parkNanos(1l); //TODO expose?
-							if (!running.get()) throw CancelException.INSTANCE;
 						}
 					}
 				} catch (CancelException e) {
 					//ignore
+				} catch (Throwable e){
+					Exceptions.throwIfFatal(e);
+					subscriber.onError(e);
 				}
 			} finally {
 				processor.decrementSubscribers();
 			}
-			running.set(false);
+			halt();
+		}
+
+		private boolean isRunning(){
+			return subscription.get() != Long.MIN_VALUE / 2;
+		}
+
+		private void halt(){
+			subscription.set(Long.MIN_VALUE / 2);
 		}
 	}
 }

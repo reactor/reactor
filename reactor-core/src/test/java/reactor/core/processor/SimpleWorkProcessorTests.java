@@ -34,6 +34,18 @@ public class SimpleWorkProcessorTests extends AbstractProcessorTests {
 	@Override
 	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
 	  Throwable {
-		throw new SkipException("Optional requirement");
+		throw new SkipException("Optional multi subscribe requirement");
+	}
+
+	@Override
+	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
+		throw new SkipException("Optional multi subscribe requirement");
+	}
+
+
+	@Override
+	public void stochastic_spec103_mustSignalOnMethodsSequentially() throws Throwable {
+		for(int i = 0 ; i < 1000 ; i++)
+		super.stochastic_spec103_mustSignalOnMethodsSequentially();
 	}
 }

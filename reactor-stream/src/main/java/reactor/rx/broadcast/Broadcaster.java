@@ -272,7 +272,5 @@ public class Broadcaster<O> extends Action<O, O> {
 		}
 	}
 
-	/
-
 
 }
