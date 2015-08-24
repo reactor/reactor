@@ -17,6 +17,7 @@ package reactor;
 
 import org.reactivestreams.Processor;
 import reactor.core.processor.*;
+import reactor.core.processor.simple.SimpleSignal;
 import reactor.core.support.internal.MpscLinkedQueue;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
@@ -263,7 +264,7 @@ public final class Processors {
 		return SharedProcessorService.create(
 		  PlatformDependent.hasUnsafe()
 			? RingBufferProcessor.share(name, bufferSize, SharedProcessorService.DEFAULT_TASK_PROVIDER)
-			: SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.create()),
+			: SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.<SimpleSignal<SharedProcessorService.Task>>create()),
 		  uncaughtExceptionHandler,
 		  shutdownHandler,
 		  autoShutdown
@@ -355,8 +356,8 @@ public final class Processors {
 	                                                        boolean autoShutdown) {
 		return SharedProcessorService.create(
 		  PlatformDependent.hasUnsafe()
-		    ? RingBufferWorkProcessor.share(name, bufferSize)
-		    : SimpleWorkProcessor.create(name, bufferSize),
+		    ? RingBufferWorkProcessor.<SharedProcessorService.Task>share(name, bufferSize)
+		    : SimpleWorkProcessor.<SharedProcessorService.Task>create(name, bufferSize),
 		  concurrency,
 		  uncaughtExceptionHandler,
 		  shutdownHandler,

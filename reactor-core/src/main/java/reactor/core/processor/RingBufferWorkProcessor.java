@@ -18,6 +18,7 @@ package reactor.core.processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
@@ -545,13 +546,13 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			//prepare the subscriber subscription to this processor
 			signalProcessor.setSubscription(new RingBufferSubscription(subscriber, signalProcessor));
 
-			incrementSubscribers();
 
 			//start the subscriber thread
 			executor.execute(signalProcessor);
+			incrementSubscribers();
 
 		} catch (Throwable t) {
-			subscriber.onError(t);
+			Publishers.<E>error(t).subscribe(subscriber);
 		}
 	}
 

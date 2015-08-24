@@ -49,28 +49,6 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 	}
 
 	@Override
-	public Publisher<Long> createHelperPublisher(final long elements) {
-		if (elements < 100 && elements > 0) {
-			return Publishers.create(
-			  (s) -> {
-				  long cursor = s.context().getAndIncrement();
-				  if (cursor < elements) {
-					  s.onNext(cursor);
-				  } else {
-					  s.onComplete();
-				  }
-			  },
-			  s -> new AtomicLong(0L)
-			);
-		} else {
-			final Random random = new Random();
-			return Publishers.create(
-			  s -> s.onNext(random.nextLong())
-			);
-		}
-	}
-
-	@Override
 	public Publisher<Long> createFailedPublisher() {
 		return Publishers.error(new Exception("test"));
 	}

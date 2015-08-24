@@ -34,7 +34,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return RingBufferWorkProcessor.<Long>create("tckRingBufferProcessor", bufferSize);
+		return RingBufferWorkProcessor.<Long>create("work-async", bufferSize);
 	}
 
 	@Override

@@ -17,6 +17,8 @@ public class ReactorProcessorGettersTests {
 
 		assertEquals(TEST_BUFFER_SIZE, processor.getAvailableCapacity());
 
+		processor.awaitAndShutdown();
+
 	}
 
 	@Test
@@ -30,6 +32,7 @@ public class ReactorProcessorGettersTests {
 		processor.accept(new Object());
 
 		assertEquals(TEST_BUFFER_SIZE - 1, processor.getAvailableCapacity());
+		processor.awaitAndShutdown();
 
 	}
 

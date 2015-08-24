@@ -29,7 +29,7 @@ public class SharedProcessorServiceWorkTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return Processors.<Long>workService("tckRingBufferProcessor", bufferSize).get();
+		return Processors.<Long>workService("shared-work", bufferSize).get();
 	}
 
 	@Override

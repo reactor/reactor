@@ -18,6 +18,7 @@ package reactor.core.processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.processor.rb.MutableSignal;
@@ -585,40 +586,41 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
+		//create a unique eventProcessor for this subscriber
+		final Sequence pendingRequest = new Sequence(0);
+		final BatchSignalProcessor<E> signalProcessor = new BatchSignalProcessor<E>(
+		  this,
+		  pendingRequest,
+		  subscriber
+		);
+
+		//bind eventProcessor sequence to observe the ringBuffer
+
+		//if only active subscriber, replay missed data
+		if (incrementSubscribers()) {
+			ringBuffer.addGatingSequences(signalProcessor.getSequence());
+
+			//set eventProcessor sequence to minimum index (replay)
+			signalProcessor.getSequence().set(recentSequence.get());
+		} else {
+			//otherwise only listen to new data
+			//set eventProcessor sequence to ringbuffer index
+			signalProcessor.getSequence().set(ringBuffer.getCursor());
+			signalProcessor.nextSequence = signalProcessor.getSequence().get();
+
+			ringBuffer.addGatingSequences(signalProcessor.getSequence());
+		}
+
+		//prepare the subscriber subscription to this processor
+		signalProcessor.setSubscription(new RingBufferSubscription(pendingRequest, subscriber, signalProcessor));
+
 		try {
-			//create a unique eventProcessor for this subscriber
-			final Sequence pendingRequest = new Sequence(0);
-			final BatchSignalProcessor<E> signalProcessor = new BatchSignalProcessor<E>(
-			  this,
-			  pendingRequest,
-			  subscriber
-			);
-
-			//bind eventProcessor sequence to observe the ringBuffer
-
-			//if only active subscriber, replay missed data
-			if (incrementSubscribers()) {
-				ringBuffer.addGatingSequences(signalProcessor.getSequence());
-
-				//set eventProcessor sequence to minimum index (replay)
-				signalProcessor.getSequence().set(recentSequence.get());
-			} else {
-				//otherwise only listen to new data
-				//set eventProcessor sequence to ringbuffer index
-				signalProcessor.getSequence().set(ringBuffer.getCursor());
-				signalProcessor.nextSequence = signalProcessor.getSequence().get();
-
-				ringBuffer.addGatingSequences(signalProcessor.getSequence());
-			}
-
-			//prepare the subscriber subscription to this processor
-			signalProcessor.setSubscription(new RingBufferSubscription(pendingRequest, subscriber, signalProcessor));
-
 			//start the subscriber thread
 			executor.execute(signalProcessor);
 
 		} catch (Throwable t) {
-			subscriber.onError(t);
+			decrementSubscribers();
+			Publishers.<E>error(t).subscribe(subscriber);
 		}
 	}
 
