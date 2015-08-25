@@ -88,7 +88,7 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return true;
 	}
 

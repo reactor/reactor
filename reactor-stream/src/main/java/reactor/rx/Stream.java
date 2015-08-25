@@ -3051,7 +3051,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	@Override
-	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return (getCapacity() < producerCapacity)
 		  && getDispatcher().getClass() != TailRecurseDispatcher.class
 		  && dispatcher.getClass() != TailRecurseDispatcher.class;
@@ -3090,24 +3090,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return false;
 	}
 
-	/**
-	 * Get the assigned {@link reactor.Environment}.
-	 *
-	 * @return current {@link Environment}
-	 */
-	public Environment getEnvironment() {
-		return null;
-	}
-
-	/**
-	 * Get the dispatcher used to execute signals on this Stream instance.
-	 *
-	 * @return assigned dispatcher
-	 */
-	public ReactorProcessor getDispatcher() {
-		return SynchronousDispatcher.INSTANCE;
-	}
-
 	@Override
 	public String toString() {
 		return getClass().getSimpleName();
@@ -3130,7 +3112,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		}
 
 		@Override
-		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+		public boolean isExposedToOverflow(Bounded upstream) {
 			return action == null || action.isReactivePull(dispatcher, producerCapacity);
 		}
 
@@ -3187,16 +3169,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		@Override
 		public long getCapacity() {
 			return stream.getCapacity();
-		}
-
-		@Override
-		public Environment getEnvironment() {
-			return stream.getEnvironment();
-		}
-
-		@Override
-		public ReactorProcessor getDispatcher() {
-			return stream.getDispatcher();
 		}
 
 		@Override

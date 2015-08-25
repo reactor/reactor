@@ -16,7 +16,7 @@
 package reactor.io.net;
 
 import reactor.Environment;
-import reactor.bus.spec.DispatcherComponentSpec;
+import reactor.bus.spec.ProcessorComponentSpec;
 import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -30,7 +30,9 @@ import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.http.HttpChannel;
+import reactor.io.net.http.HttpClient;
 import reactor.io.net.http.HttpServer;
+import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.udp.DatagramServer;
 
@@ -78,7 +80,7 @@ public interface Spec {
 	  CONN extends ChannelStream<IN, OUT>,
 	  S extends PeerSpec<IN, OUT, CONN, S, N>,
 	  N extends ReactorPeer<IN, OUT, CONN>>
-	  extends DispatcherComponentSpec<S, N> {
+	  extends ProcessorComponentSpec<S, N> {
 
 		protected ServerSocketOptions options = new ServerSocketOptions();
 		protected InetSocketAddress      listenAddress;
@@ -171,8 +173,7 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class TcpClientSpec<IN, OUT> extends DispatcherComponentSpec<TcpClientSpec<IN, OUT>, reactor.io.net.tcp
-	  .TcpClient<IN, OUT>> {
+	class TcpClientSpec<IN, OUT> extends ProcessorComponentSpec<TcpClientSpec<IN, OUT>,TcpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.tcp.TcpClient> clientImplConstructor;
 
@@ -508,8 +509,7 @@ public interface Spec {
 	 * @param <OUT> The type that will be sent by the client
 	 * @author Stephane Maldini
 	 */
-	class HttpClientSpec<IN, OUT> extends DispatcherComponentSpec<HttpClientSpec<IN, OUT>, reactor.io.net.http
-	  .HttpClient<IN, OUT>> {
+	class HttpClientSpec<IN, OUT> extends ProcessorComponentSpec<HttpClientSpec<IN, OUT>,HttpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.http.HttpClient> clientImplConstructor;
 

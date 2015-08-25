@@ -28,7 +28,6 @@ import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.Recyclable;
 import reactor.core.support.Resource;
 import reactor.core.support.SignalType;
-import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -591,7 +590,9 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			}
 
 			if (!set) {
-				s.onError(new IllegalStateException("Shared Processors do not support multi-subscribe"));
+				  Exceptions
+				    .<V>publisher(new IllegalStateException("Shared Processors do not support multi-subscribe"))
+				    .subscribe(s);
 			} else if (subscribed) {
 				dispatch(this, s, SignalType.SUBSCRIPTION);
 			}
@@ -728,7 +729,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 				task.subscriber = subscriber;
 			} else {
 				MutableSignal<Task> signal = RingBufferSubscriberUtils.next(ringBuffer);
-				task = signal.value != null ? signal.value : new Task(); //TODO should assume supplied?
+				task = signal.value != null ? signal.value : new Task(); //TODO should always assume supplied?
 				task.type = type;
 				task.payload = data;
 				task.subscriber = subscriber;

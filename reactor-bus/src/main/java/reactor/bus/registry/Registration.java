@@ -17,7 +17,6 @@
 package reactor.bus.registry;
 
 import reactor.bus.selector.Selector;
-import reactor.ReactorProcessor;
 import reactor.fn.Pausable;
 
 /**
@@ -47,7 +46,7 @@ public interface Registration<K, V> extends Pausable {
 
 	/**
 	 * Cancel this {@link Registration} after it has been selected and used. {@link
-	 * ReactorProcessor} implementations should respect this value and perform
+	 * reactor.bus.routing.Router} implementations should respect this value and perform
 	 * the cancellation.
 	 *
 	 * @return {@literal this}

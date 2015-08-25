@@ -155,7 +155,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return capacity != Long.MAX_VALUE;
 	}
 
@@ -208,7 +208,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 		}
 
 		@Override
-		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+		public boolean isExposedToOverflow(Bounded upstream) {
 			return AdaptiveConsumerAction.this.isReactivePull(dispatcher, producerCapacity);
 		}
 

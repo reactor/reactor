@@ -15,7 +15,7 @@
  */
 package reactor.bus.spec;
 
-import reactor.Environment;
+import org.reactivestreams.Processor;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.filter.*;
@@ -24,15 +24,14 @@ import reactor.bus.registry.Registry;
 import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
 import reactor.bus.routing.TraceableDelegatingRouter;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.TraceableDelegatingDispatcher;
+import reactor.core.publisher.LogPublisher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 
 
 /**
- * A generic environment-aware class for specifying components that need to be configured with an {@link Environment},
- * {@link ReactorProcessor}, and {@link reactor.bus.routing.Router}.
+ * A generic processor-aware class for specifying components that need to be configured with a
+ * {@link Processor}, and {@link reactor.bus.routing.Router}.
  *
  * @param <SPEC>   The DispatcherComponentSpec subclass
  * @param <TARGET> The type that this spec will create
@@ -40,7 +39,7 @@ import reactor.fn.Consumer;
  */
 @SuppressWarnings("unchecked")
 public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingComponentSpec<SPEC, TARGET>, TARGET> extends
-  DispatcherComponentSpec<SPEC, TARGET> {
+  ProcessorComponentSpec<SPEC, TARGET, Event<?>> {
 
 
 	private EventRoutingStrategy                           eventRoutingStrategy;
@@ -188,19 +187,19 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 		return (SPEC) this;
 	}
 
-	protected abstract TARGET configure(EventBus reactor, Environment environment);
+	protected abstract TARGET configure(EventBus reactor);
 
 	@Override
-	protected final TARGET configure(ReactorProcessor dispatcher, Environment environment) {
-		return configure(createReactor(dispatcher), environment);
+	protected final TARGET configure(Processor<Event<?>,Event<?>> processor) {
+		return configure(createReactor(processor));
 	}
 
-	private EventBus createReactor(ReactorProcessor dispatcher) {
+	private EventBus createReactor(Processor<Event<?>, Event<?>> processor) {
 		if (traceEventPath) {
-			dispatcher = new TraceableDelegatingDispatcher(dispatcher);
+			processor = new LogPublisher<>(dispatcher);
 		}
 		return new EventBus((consumerRegistry != null ? consumerRegistry : createRegistry()),
-		  dispatcher,
+		  processor,
 		  (router != null ? router : createEventRouter()),
 		  dispatchErrorHandler,
 		  uncaughtErrorHandler);

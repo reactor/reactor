@@ -326,7 +326,6 @@ project('reactor-bus') {
 
 		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 		optional "com.jayway.jsonpath:json-path:$jsonPathVersion"
-		testCompile project(':reactor-stream')
 	}
 
 	jar {

@@ -47,7 +47,7 @@ public class FlowControlAction<O> extends Action<O, O> {
 	}
 
 	@Override
-	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return false;
 	}
 

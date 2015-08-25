@@ -46,7 +46,7 @@ public class DefaultSubscriber<O> implements Subscriber<O>, Bounded {
 	}
 
 	@Override
-	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return getCapacity() < producerCapacity;
 	}
 

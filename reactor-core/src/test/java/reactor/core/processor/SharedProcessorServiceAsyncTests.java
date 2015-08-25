@@ -25,8 +25,8 @@ public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 	private final int           N               = 17;
 
 	@Override
-	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return Processors.<Long>asyncService("shared-async", bufferSize).get();
+	public Processor<Long, Long> createProcessor(int bufferSize) {
+		return Processors.<Long>asyncService("shared-async", bufferSize, Throwable::printStackTrace).get();
 	}
 
 	@Override
@@ -38,6 +38,11 @@ public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 	@Override
 	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
 		throw new SkipException("Optional multi subscribe requirement");
+	}
+
+	@Override
+	public long maxSupportedSubscribers() {
+		return 1L;
 	}
 
 	@Test

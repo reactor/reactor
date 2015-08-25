@@ -48,8 +48,14 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 
 	protected Subscription upstreamSubscription;
 
-	public BaseProcessor(boolean autoCancel) {
+	protected BaseProcessor(boolean autoCancel) {
 		this.autoCancel = autoCancel;
+	}
+
+	@Override
+	public BaseProcessor<IN, OUT> start() {
+		super.start();
+		return this;
 	}
 
 	@Override

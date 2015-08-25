@@ -18,6 +18,7 @@ package reactor.io.codec;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.Publishers;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Function;
@@ -59,7 +60,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		if (true) {
 			return super.decode(publisherToDecode);
 		}
-		return PublisherFactory.intercept(publisherToDecode,
+		return Publishers.intercept(publisherToDecode,
 		  new Function<Subscriber<? super IN>, SubscriberBarrier<Buffer, IN>>() {
 			  @Override
 			  public SubscriberBarrier<Buffer, IN> apply(final Subscriber<? super IN> subscriber) {
@@ -73,7 +74,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		if (true) {
 			return super.encode(publisherToEncode);
 		}
-		return PublisherFactory.intercept(publisherToEncode,
+		return Publishers.intercept(publisherToEncode,
 		  new Function<Subscriber<? super Buffer>, SubscriberBarrier<OUT, Buffer>>() {
 			  @Override
 			  public SubscriberBarrier<OUT, Buffer> apply(final Subscriber<? super Buffer> subscriber) {

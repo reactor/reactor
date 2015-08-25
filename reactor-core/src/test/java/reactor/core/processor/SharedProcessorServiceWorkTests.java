@@ -28,8 +28,13 @@ import reactor.Processors;
 public class SharedProcessorServiceWorkTests extends AbstractProcessorTests {
 
 	@Override
-	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return Processors.<Long>workService("shared-work", bufferSize).get();
+	public Processor<Long, Long> createProcessor(int bufferSize) {
+		return Processors.<Long>workService("shared-work", bufferSize, 2, Throwable::printStackTrace).get();
+	}
+
+	@Override
+	public long maxSupportedSubscribers() {
+		return 1L;
 	}
 
 	@Override

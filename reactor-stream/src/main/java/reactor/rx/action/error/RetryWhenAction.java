@@ -112,7 +112,7 @@ public class RetryWhenAction<T> extends Action<T, T> {
 		Subscription s;
 
 		@Override
-		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+		public boolean isExposedToOverflow(Bounded upstream) {
 			return RetryWhenAction.this.isReactivePull(dispatcher, producerCapacity);
 		}
 

@@ -27,14 +27,20 @@ import org.testng.SkipException;
 public class SharedProcessorServiceSyncTests extends AbstractProcessorTests {
 
 	@Override
-	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
+	public Processor<Long, Long> createProcessor(int bufferSize) {
 		return SharedProcessorService.<Long>sync().get();
+	}
+
+	@Override
+	public long maxSupportedSubscribers() {
+		return 1L;
 	}
 
 	@Override
 	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
 		throw new SkipException("Optional multi subscribe requirement");
 	}
+
 
 	@Override
 	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws

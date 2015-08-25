@@ -15,13 +15,18 @@
  */
 package reactor.core.processor;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
 import reactor.Publishers;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -30,17 +35,19 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 
 	final ExecutorService executorService = Executors.newCachedThreadPool();
 
-	public AbstractProcessorTests() {
-		super(new TestEnvironment(500, true), 1000);
-	}
+	final Queue<Processor<Long, Long>> processorReferences = new ConcurrentLinkedQueue<>();
 
 	@Override
 	public ExecutorService publisherExecutorService() {
 		return executorService;
 	}
 
+	public AbstractProcessorTests() {
+		super(new TestEnvironment(500, true), 1000);
+	}
+
 	@AfterClass
-	public void tearDown(){
+	public void tearDown() {
 		executorService.shutdown();
 	}
 
@@ -48,6 +55,38 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 	public Long createElement(int element) {
 		return (long) element;
 	}
+
+	@Override
+	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
+		Processor<Long, Long> p = createProcessor(bufferSize);
+		processorReferences.add(p);
+		return p;
+	}
+
+	@AfterMethod
+	public void after(){
+		Processor<Long, Long> p = processorReferences.poll();
+		if(p != null){
+			p.onComplete();
+		}
+	}
+
+	protected abstract Processor<Long, Long> createProcessor(int bufferSize);
+
+	/*@Override
+	public Publisher<Long> createHelperPublisher(long elements) {
+		return Publishers.<Long, AtomicLong>create(
+		  (s) -> {
+			  long cursor = s.context().getAndIncrement();
+			  if (cursor < elements) {
+				  s.onNext(cursor);
+			  } else {
+				  s.onComplete();
+			  }
+		  },
+		  s -> new AtomicLong(0L)
+		);
+	}*/
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
