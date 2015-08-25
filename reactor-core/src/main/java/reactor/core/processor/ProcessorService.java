@@ -56,7 +56,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * SharedProcessor maintains a reference count on how many artefacts have been built. Therefore it will automatically
  * shutdown the internal async resource after all references have been released. Each reference (consumer, executor
  * or processor)
- * can be used in combination with {@link SharedProcessorService#release(Object...)} to cleanly unregister and
+ * can be used in combination with {@link ProcessorService#release(Object...)} to cleanly unregister and
  * eventually
  * shutdown when no more references use that service.
  *
@@ -64,15 +64,15 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Anatoly Kadyshev
  * @author Stephane Maldini
  */
-public final class SharedProcessorService<T> implements Supplier<Processor<T, T>>, Resource {
+public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource {
 
 	/**
 	 * @param <E>
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <E> SharedProcessorService<E> sync() {
-		return (SharedProcessorService<E>) SYNC_SERVICE;
+	public static <E> ProcessorService<E> sync() {
+		return (ProcessorService<E>) SYNC_SERVICE;
 	}
 
 	/**
@@ -80,7 +80,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p) {
+	public static <E> ProcessorService<E> create(Processor<Task, Task> p) {
 		return create(p, null, null, true);
 	}
 
@@ -90,7 +90,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p,
+	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
 	                                                   int concurrency) {
 		return create(p, concurrency, null, null, true);
 	}
@@ -101,7 +101,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p,
+	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
 	                                                   boolean autoShutdown) {
 		return create(p, null, null, autoShutdown);
 	}
@@ -113,7 +113,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p,
+	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
 	                                                   Consumer<Throwable> uncaughtExceptionHandler,
 	                                                   boolean autoShutdown) {
 		return create(p, uncaughtExceptionHandler, null, autoShutdown);
@@ -127,7 +127,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p,
+	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
 	                                                   Consumer<Throwable> uncaughtExceptionHandler,
 	                                                   Consumer<Void> shutdownHandler,
 	                                                   boolean autoShutdown) {
@@ -143,12 +143,12 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> create(Processor<Task, Task> p,
+	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
 	                                                   int concurrency,
 	                                                   Consumer<Throwable> uncaughtExceptionHandler,
 	                                                   Consumer<Void> shutdownHandler,
 	                                                   boolean autoShutdown) {
-		return new SharedProcessorService<E>(p, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		return new ProcessorService<E>(p, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**
@@ -182,9 +182,9 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	@SuppressWarnings("unused")
 	private volatile int refCount = 0;
 
-	private static final AtomicIntegerFieldUpdater<SharedProcessorService> REF_COUNT =
+	private static final AtomicIntegerFieldUpdater<ProcessorService> REF_COUNT =
 	  AtomicIntegerFieldUpdater
-		.newUpdater(SharedProcessorService.class, "refCount");
+		.newUpdater(ProcessorService.class, "refCount");
 
 	@Override
 	public Processor<T, T> get() {
@@ -372,7 +372,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	}
 
 	@SuppressWarnings("unchecked")
-	private static final SharedProcessorService SYNC_SERVICE = new SharedProcessorService(null, -1, null, null, false);
+	private static final ProcessorService SYNC_SERVICE = new ProcessorService(null, -1, null, null, false);
 
 	/**
 	 * Singleton delegating consumer for synchronous data dispatchers
@@ -415,7 +415,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	private final static int MAX_BUFFER_SIZE = 2 ^ 17;
 
 	@SuppressWarnings("unchecked")
-	private SharedProcessorService(
+	private ProcessorService(
 	  Processor<Task, Task> processor,
 	  int concurrency,
 	  Consumer<Throwable> uncaughtExceptionHandler,
@@ -538,13 +538,13 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 	  Subscription {
 
 
-		protected final SharedProcessorService service;
-		protected final AtomicBoolean          terminated;
+		protected final ProcessorService service;
+		protected final AtomicBoolean    terminated;
 
 		Subscription          subscription;
 		Subscriber<? super V> subscriber;
 
-		public ProcessorBarrier(SharedProcessorService service) {
+		public ProcessorBarrier(ProcessorService service) {
 			this.service = service;
 			this.terminated = service != null && service.processor == null ? null : new AtomicBoolean(false);
 		}
@@ -590,9 +590,9 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 			}
 
 			if (!set) {
-				  Exceptions
-				    .<V>publisher(new IllegalStateException("Shared Processors do not support multi-subscribe"))
-				    .subscribe(s);
+				Exceptions
+				  .<V>publisher(new IllegalStateException("Shared Processors do not support multi-subscribe"))
+				  .subscribe(s);
 			} else if (subscribed) {
 				dispatch(this, s, SignalType.SUBSCRIPTION);
 			}
@@ -713,7 +713,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 		private final RingBuffer<MutableSignal<Task>> ringBuffer;
 
-		public RingBufferProcessorBarrier(SharedProcessorService service,
+		public RingBufferProcessorBarrier(ProcessorService service,
 		                                  RingBuffer<MutableSignal<Task>> ringBuffer) {
 			super(service);
 			this.ringBuffer = ringBuffer;
@@ -742,7 +742,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 	private static final class WorkProcessorBarrier<V> extends ProcessorBarrier<V> {
 
-		public WorkProcessorBarrier(SharedProcessorService service) {
+		public WorkProcessorBarrier(ProcessorService service) {
 			super(service);
 		}
 
@@ -754,7 +754,7 @@ public final class SharedProcessorService<T> implements Supplier<Processor<T, T>
 
 	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> {
 
-		public SyncProcessorBarrier(SharedProcessorService service) {
+		public SyncProcessorBarrier(ProcessorService service) {
 			super(service);
 		}
 

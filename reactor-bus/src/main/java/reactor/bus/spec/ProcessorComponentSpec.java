@@ -17,7 +17,7 @@
 package reactor.bus.spec;
 
 import org.reactivestreams.Processor;
-import reactor.core.processor.SharedProcessorService;
+import reactor.core.processor.ProcessorService;
 import reactor.fn.Supplier;
 
 /**
@@ -45,7 +45,7 @@ public abstract class ProcessorComponentSpec<SPEC extends ProcessorComponentSpec
 	 */
 	@SuppressWarnings("unchecked")
 	public final SPEC sync() {
-		this.processor =(Processor<PAYLOAD, PAYLOAD>) SharedProcessorService.sync().get();
+		this.processor =(Processor<PAYLOAD, PAYLOAD>) ProcessorService.sync().get();
 		return (SPEC) this;
 	}
 
@@ -70,7 +70,7 @@ public abstract class ProcessorComponentSpec<SPEC extends ProcessorComponentSpec
 		if (this.processor != null) {
 			return this.processor;
 		} else {
-			return (Processor<PAYLOAD, PAYLOAD>)SharedProcessorService.sync().get();
+			return (Processor<PAYLOAD, PAYLOAD>) ProcessorService.sync().get();
 		}
 	}
 

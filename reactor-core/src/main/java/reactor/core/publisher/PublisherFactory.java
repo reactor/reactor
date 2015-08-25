@@ -170,8 +170,8 @@ public abstract class PublisherFactory {
 	 * @param <O>          The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> barrier(Publisher<I> source, BiConsumer<I, Subscriber<? super O>> dataConsumer) {
-		return barrier(source, dataConsumer, null, null);
+	public static <I, O> Publisher<O> map(Publisher<I> source, BiConsumer<I, Subscriber<? super O>> dataConsumer) {
+		return map(source, dataConsumer, null, null);
 	}
 
 	/**
@@ -186,10 +186,10 @@ public abstract class PublisherFactory {
 	 * @param <O>           The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> barrier(Publisher<I> source,
-	                                          BiConsumer<I, Subscriber<? super O>> dataConsumer,
-	                                          BiConsumer<Throwable, Subscriber<? super O>> errorConsumer) {
-		return barrier(source, dataConsumer, errorConsumer, null);
+	public static <I, O> Publisher<O> map(Publisher<I> source,
+	                                      BiConsumer<I, Subscriber<? super O>> dataConsumer,
+	                                      BiConsumer<Throwable, Subscriber<? super O>> errorConsumer) {
+		return map(source, dataConsumer, errorConsumer, null);
 	}
 
 
@@ -210,11 +210,11 @@ public abstract class PublisherFactory {
 	 * @param <O>              The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> barrier(Publisher<I> source,
-	                                          final BiConsumer<I, Subscriber<? super O>> dataConsumer,
-	                                          final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer,
-	                                          final Consumer<Subscriber<? super O>> completeConsumer) {
-		return intercept(
+	public static <I, O> Publisher<O> map(Publisher<I> source,
+	                                      final BiConsumer<I, Subscriber<? super O>> dataConsumer,
+	                                      final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer,
+	                                      final Consumer<Subscriber<? super O>> completeConsumer) {
+		return lift(
 		  source,
 		  new Function<Subscriber<? super O>, SubscriberBarrier<I, O>>() {
 			  @Override
@@ -236,11 +236,11 @@ public abstract class PublisherFactory {
 	 * @param <O>             The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> intercept(Publisher<? extends I> source,
-	                                            Function<Subscriber<? super O>, SubscriberBarrier<I, O>>
-	                                              barrierProvider) {
+	public static <I, O> Publisher<O> lift(Publisher<? extends I> source,
+	                                       Function<Subscriber<? super O>, SubscriberBarrier<I, O>>
+	                                         barrierProvider) {
 		Assert.notNull(source, "A data source must be provided");
-		Assert.notNull(barrierProvider, "A barrier interceptor must be provided");
+		Assert.notNull(barrierProvider, "A lift interceptor must be provided");
 		return new ProxyPublisher<>(source, barrierProvider);
 	}
 
@@ -279,8 +279,7 @@ public abstract class PublisherFactory {
 			} catch (PrematureCompleteException pce) {
 				//IGNORE
 			} catch (Throwable throwable) {
-				Exceptions.throwIfFatal(throwable);
-				subscriber.onError(throwable);
+				Exceptions.<T>publisher(throwable).subscribe(subscriber);
 			}
 		}
 

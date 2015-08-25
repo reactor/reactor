@@ -37,10 +37,14 @@ public class Tap<T> implements Consumer<T>, Supplier<T>, Subscriber<T> {
 
 	private final AtomicReference<T> value = new AtomicReference<T>();
 
+	public static <T> Tap<T> create(){
+		return new Tap<>();
+	}
+
 	/**
 	 * Create a {@code Tap}.
 	 */
-	public Tap() {
+	private Tap() {
 	}
 
 	/**

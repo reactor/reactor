@@ -16,6 +16,7 @@
 package reactor.bus.spec;
 
 import org.reactivestreams.Processor;
+import reactor.Processors;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.filter.*;
@@ -24,7 +25,6 @@ import reactor.bus.registry.Registry;
 import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
 import reactor.bus.routing.TraceableDelegatingRouter;
-import reactor.core.publisher.LogPublisher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 
@@ -196,7 +196,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 
 	private EventBus createReactor(Processor<Event<?>, Event<?>> processor) {
 		if (traceEventPath) {
-			processor = new LogPublisher<>(dispatcher);
+			processor = Processors.log(processor);
 		}
 		return new EventBus((consumerRegistry != null ? consumerRegistry : createRegistry()),
 		  processor,

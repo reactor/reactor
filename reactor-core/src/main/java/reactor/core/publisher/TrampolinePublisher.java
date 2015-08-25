@@ -37,7 +37,7 @@ public final class TrampolinePublisher<IN> implements Publisher<IN> {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> trampoline(Publisher<? extends IN> publisher) {
+	public static <IN> Publisher<IN> create(Publisher<? extends IN> publisher) {
 		return new TrampolinePublisher<>(publisher);
 	}
 
@@ -45,7 +45,7 @@ public final class TrampolinePublisher<IN> implements Publisher<IN> {
 
 	protected TrampolinePublisher(final Publisher<? extends IN> source) {
 
-		this.wrappedPublisher = PublisherFactory.intercept(
+		this.wrappedPublisher = PublisherFactory.lift(
 		  source,
 		  new Function<Subscriber<? super IN>, SubscriberBarrier<IN, IN>>() {
 			  @Override

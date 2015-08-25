@@ -71,7 +71,7 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 * @since 2.0.4
 	 */
 	public Publisher<IN> decode(final Publisher<? extends SRC> publisherToDecode) {
-		return PublisherFactory.intercept(publisherToDecode,
+		return PublisherFactory.lift(publisherToDecode,
 		  new Function<Subscriber<? super IN>, SubscriberBarrier<SRC, IN>>() {
 			  @Override
 			  public SubscriberBarrier<SRC, IN> apply(final Subscriber<? super IN> subscriber) {
@@ -107,7 +107,7 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 * @since 2.0.4
 	 */
 	public Publisher<SRC> encode(Publisher<? extends OUT> publisherToEncode) {
-		return PublisherFactory.intercept(publisherToEncode,
+		return PublisherFactory.lift(publisherToEncode,
 		  new Function<Subscriber<? super SRC>, SubscriberBarrier<OUT, SRC>>() {
 			  @Override
 			  public SubscriberBarrier<OUT, SRC> apply(final Subscriber<? super SRC> subscriber) {

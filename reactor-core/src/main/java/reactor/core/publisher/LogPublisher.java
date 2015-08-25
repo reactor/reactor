@@ -51,7 +51,7 @@ public final class LogPublisher<IN> implements Publisher<IN> {
 		  LoggerFactory.getLogger(category) :
 		  LoggerFactory.getLogger(LogPublisher.class);
 
-		this.wrappedPublisher = PublisherFactory.intercept(
+		this.wrappedPublisher = PublisherFactory.lift(
 		  source,
 		  new Function<Subscriber<? super IN>, SubscriberBarrier<IN, IN>>() {
 			  @Override

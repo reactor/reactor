@@ -2,7 +2,6 @@ package reactor.core.processor;
 
 import org.hamcrest.Matchers;
 import org.junit.Test;
-import reactor.core.processor.SharedProcessorService;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
@@ -19,17 +18,17 @@ public class TailRecurserTest {
 	public void testConsumeTasks() throws Exception {
 		AtomicInteger nRecursiveTasks = new AtomicInteger(0);
 
-		Consumer<SharedProcessorService.Task> taskConsumer = new Consumer<SharedProcessorService.Task>() {
+		Consumer<ProcessorService.Task> taskConsumer = new Consumer<ProcessorService.Task>() {
 			@Override
-			public void accept(SharedProcessorService.Task dispatcherTask) {
+			public void accept(ProcessorService.Task dispatcherTask) {
 				nRecursiveTasks.incrementAndGet();
 			}
 		};
 
-		SharedProcessorService.TailRecurser recursion = new SharedProcessorService.TailRecurser(1,
-		  new Supplier<SharedProcessorService.Task>() {
+		ProcessorService.TailRecurser recursion = new ProcessorService.TailRecurser(1,
+		  new Supplier<ProcessorService.Task>() {
 			  @Override
-			  public SharedProcessorService.Task get() {
+			  public ProcessorService.Task get() {
 				  return null;
 			  }
 		  }, taskConsumer);

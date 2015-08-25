@@ -22,7 +22,7 @@ import org.reactivestreams.Subscription
 import reactor.Processors
 import reactor.core.processor.RingBufferProcessor
 import reactor.core.processor.RingBufferWorkProcessor
-import reactor.core.processor.SharedProcessorService
+import reactor.core.processor.ProcessorService
 import reactor.core.processor.SimpleWorkProcessor
 import reactor.fn.BiConsumer
 import reactor.fn.Consumer
@@ -176,7 +176,7 @@ class ProcessorsSpec extends Specification {
 	def "Dispatcher executes tasks in correct thread"() {
 
 		given:
-			def sameThread = SharedProcessorService.sync().dataDispatcher()
+			def sameThread = ProcessorService.sync().dataDispatcher()
 			BiConsumer<String, Consumer<String>> diffThread = Processors.workService("rbWork").dataDispatcher()
 			def currentThread = Thread.currentThread()
 			Thread taskThread = null
@@ -206,7 +206,7 @@ class ProcessorsSpec extends Specification {
 
 
 		cleanup:
-			SharedProcessorService.release(diffThread)
+			ProcessorService.release(diffThread)
 	}
 
 	def "Dispatcher thread can be reused"() {
@@ -236,7 +236,7 @@ class ProcessorsSpec extends Specification {
 			latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
 
 		cleanup:
-			SharedProcessorService.release(r)
+			ProcessorService.release(r)
 	}
 
 	def "Dispatchers can be shutdown awaiting tasks to complete"() {
@@ -282,7 +282,7 @@ class ProcessorsSpec extends Specification {
 			t1 != t2
 
 		cleanup:
-			SharedProcessorService.release(dispatcher)
+			ProcessorService.release(dispatcher)
 
 	}
 
@@ -302,7 +302,7 @@ class ProcessorsSpec extends Specification {
 			t1 != t2
 
 		cleanup:
-			SharedProcessorService.release(dispatcher)
+			ProcessorService.release(dispatcher)
 
 	}
 
@@ -339,12 +339,12 @@ class ProcessorsSpec extends Specification {
 			main != t2
 
 		cleanup:
-		 SharedProcessorService.release(d)
+		 ProcessorService.release(d)
 
 		where:
 			d << [
 					Processors.workService("ping-pong-rb", 1024, 4).dataDispatcher(),
-					SharedProcessorService.create(SimpleWorkProcessor.create("ping-pong-work", 1024), 4).dataDispatcher()
+					ProcessorService.create(SimpleWorkProcessor.create("ping-pong-work", 1024), 4).dataDispatcher()
 			]
 
 	}

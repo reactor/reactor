@@ -42,8 +42,8 @@ public class PublisherFactoryTests extends PublisherVerification<Long> {
 		return
 		  Publishers.trampoline(
 			Publishers.log(
-			  Publishers.barrier(
-				Publishers.<Long, AtomicLong>create(
+			  Publishers.map(
+			    Publishers.<Long, AtomicLong>create(
 				  (s) -> {
 					  long cursor = s.context().getAndIncrement();
 					  if (cursor < elements) {
@@ -53,8 +53,8 @@ public class PublisherFactoryTests extends PublisherVerification<Long> {
 					  }
 				  },
 				  s -> new AtomicLong(0L)
-				),
-				(data, sub) -> sub.onNext(data * 10)
+			    ),
+			    (data, sub) -> sub.onNext(data * 10)
 			  ),
 			  "log-test"
 			)
