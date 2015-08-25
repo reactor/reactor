@@ -31,6 +31,8 @@ import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
+import reactor.fn.timer.GlobalTimer;
+import reactor.fn.timer.Timer;
 import reactor.jarjar.com.lmax.disruptor.RingBuffer;
 
 import java.io.Serializable;
@@ -683,7 +685,21 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 			  && REF_COUNT.decrementAndGet(service) <= 0
 			  && service.autoShutdown) {
 
-				service.processor.onComplete();
+				if(ExecutorPoweredProcessor.CANCEL_TIMEOUT > 0) {
+					final Timer timer = GlobalTimer.globalOrNew();
+					timer.submit(new Consumer<Long>() {
+						@Override
+						public void accept(Long aLong) {
+							if (REF_COUNT.get(service) == 0) {
+								service.processor.onComplete();
+							}
+							timer.cancel();
+						}
+					}, ExecutorPoweredProcessor.CANCEL_TIMEOUT, TimeUnit.SECONDS);
+				} else {
+					service.processor.onComplete();
+				}
+
 			}
 		}
 

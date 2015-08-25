@@ -15,12 +15,16 @@
  */
 package reactor.core.processor;
 
+import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
 import reactor.Publishers;
+import reactor.Timers;
+import reactor.fn.timer.Timer;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -37,18 +41,37 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 
 	final Queue<Processor<Long, Long>> processorReferences = new ConcurrentLinkedQueue<>();
 
+	@Test
+	public void simpleTest() throws Exception{
+
+	}
+
 	@Override
 	public ExecutorService publisherExecutorService() {
 		return executorService;
 	}
 
 	public AbstractProcessorTests() {
-		super(new TestEnvironment(500, true), 1000);
+		super(new TestEnvironment(500), 1000);
+	}
+
+	@BeforeClass
+	public void setup() {
+		Timers.global();
 	}
 
 	@AfterClass
 	public void tearDown() {
+		executorService.submit(() -> {
+			  Processor<Long, Long> p;
+			  while ((p = processorReferences.poll()) != null) {
+				  p.onComplete();
+			  }
+		  }
+		);
+
 		executorService.shutdown();
+		Timers.unregisterGlobal();
 	}
 
 	@Override
@@ -61,14 +84,6 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 		Processor<Long, Long> p = createProcessor(bufferSize);
 		processorReferences.add(p);
 		return p;
-	}
-
-	@AfterMethod
-	public void after(){
-		Processor<Long, Long> p = processorReferences.poll();
-		if(p != null){
-			p.onComplete();
-		}
 	}
 
 	protected abstract Processor<Long, Long> createProcessor(int bufferSize);

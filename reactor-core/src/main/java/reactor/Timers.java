@@ -15,56 +15,91 @@
  */
 package reactor;
 
+import reactor.fn.timer.GlobalTimer;
 import reactor.fn.timer.HashWheelTimer;
 import reactor.fn.timer.Timer;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class Timers implements Closeable {
+public final class Timers {
 
-	private static final AtomicReference<Timer> globalTimer = new AtomicReference<Timer>();
+	private Timers() {
+	}
+
+	/**
+	 * Create a new {@link Timer} using the default resolution (50MS) and backlog size (64). All times
+	 * will
+	 * rounded up to the closest multiple of this resolution.
+	 * <p>
+	 * return a new {@link Timer}
+	 */
+	public static Timer create() {
+		return create(50);
+	}
+
+	/**
+	 * Create a new {@link Timer} using the the given timer {@param resolution} and backlog size (64). All times
+	 * will
+	 * rounded up to the closest multiple of this resolution.
+	 *
+	 * @param resolution resolution of this timer in milliseconds
+	 *                   <p>
+	 *                   return a new {@link Timer}
+	 */
+	public static Timer create(int resolution) {
+		return create(resolution, 64);
+	}
+
+	/**
+	 * Create a new {@code HashWheelTimer} using the given timer {@param resolution} and {@param bufferSize}. All times
+	 * will
+	 * rounded up to the closest multiple of this resolution.
+	 *
+	 * @param resolution resolution of this timer in milliseconds
+	 * @param bufferSize size of the wheel supporting the Timer, the larger the wheel, the less the lookup time is
+	 *                   for sparse timeouts.
+	 *                   <p>
+	 *                   return a new {@link Timer}
+	 */
+	public static Timer create(int resolution, int bufferSize) {
+		return new HashWheelTimer(resolution, bufferSize, new HashWheelTimer.SleepWait());
+	}
 
 	/**
 	 * Read if the context timer has been set
 	 *
 	 * @return true if context timer is initialized
 	 */
-	public static boolean available() {
-		return globalTimer.get() != null;
+	public static boolean hasGlobal() {
+		return GlobalTimer.available();
+	}
+
+	/**
+	 * The returned timer SHOULD always be cancelled after use, however global timer will ignore it.
+	 *
+	 * @return eventually the global timer or if not set a fresh timer.
+	 */
+	public static Timer globalOrNew() {
+		return GlobalTimer.globalOrNew();
 	}
 
 	/**
 	 * Obtain the default global timer from the current context. The globalTimer is created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
+	 * The global timer will also ignore {@link Timer#cancel()} calls and should be cleaned using {@link
+	 * #unregisterGlobal()}.
+	 * <p>
 	 * The default globalTimer is a {@link reactor.fn.timer.HashWheelTimer}. It is suitable for non blocking periodic
 	 * work
-	 * such as  eventing, memory access, lock=free code, dispatching...
+	 * such as  eventing, memory access, lock-free code, dispatching...
 	 *
 	 * @return the globalTimer, usually a {@link reactor.fn.timer.HashWheelTimer}
 	 */
 	public static Timer global() {
-		if (null == globalTimer.get()) {
-			synchronized (globalTimer) {
-				Timer t = new HashWheelTimer(){
-					@Override
-					public void cancel() {
-						globalTimer.compareAndSet(this, null);
-						super.cancel();
-					}
-				};
-				if (!globalTimer.compareAndSet(null, t)) {
-					t.cancel();
-				}
-			}
-		}
-		return globalTimer.get();
+		return GlobalTimer.get();
 	}
 
 	/**
@@ -72,15 +107,7 @@ public final class Timers implements Closeable {
 	 * A new global timer can be assigned later with {@link #global()}.
 	 */
 	public static void unregisterGlobal() {
-		Timer timer;
-		while ((timer = globalTimer.getAndSet(null)) != null) {
-			timer.cancel();
-		}
-	}
-
-	@Override
-	public void close() throws IOException {
-		unregisterGlobal();
+		GlobalTimer.unregister();
 	}
 
 }

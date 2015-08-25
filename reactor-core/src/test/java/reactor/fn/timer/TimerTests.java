@@ -17,6 +17,7 @@ package reactor.fn.timer;
 
 import org.junit.Assert;
 import org.junit.Test;
+import reactor.Timers;
 import reactor.fn.Pausable;
 
 import java.util.concurrent.Phaser;
@@ -31,7 +32,7 @@ public class TimerTests {
 
 	@Test
 	public void verifyPause() throws InterruptedException {
-		HashWheelTimer timer = new HashWheelTimer();
+		Timer timer = Timers.create();
 
 		AtomicInteger count = new AtomicInteger();
 

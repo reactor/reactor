@@ -719,6 +719,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			}
 
 			try {
+				//while(processor.alive() && processor.upstreamSubscription == null);
 				try {
 					subscriber.onSubscribe(subscription);
 				} catch (Throwable t) {

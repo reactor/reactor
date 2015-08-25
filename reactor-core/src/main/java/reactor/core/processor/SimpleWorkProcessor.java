@@ -22,6 +22,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.simple.SimpleSignal;
 import reactor.core.processor.simple.SimpleSubscriberUtils;
+import reactor.core.support.Assert;
 import reactor.core.support.SignalType;
 
 import java.util.Queue;
@@ -279,6 +280,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 
 	private final Queue<SimpleSignal<IN>> workQueue;
 	private final int                     capacity;
+	private final int                     prefetch;
 
 	private static final AtomicIntegerFieldUpdater<SimpleWorkProcessor> AVAILABLE =
 		AtomicIntegerFieldUpdater.newUpdater(SimpleWorkProcessor.class, "availableCapacity");
@@ -289,9 +291,11 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 	protected SimpleWorkProcessor(String name, ExecutorService executor,
 	                              int bufferSize, Queue<SimpleSignal<IN>> workQueue, boolean autoCancel) {
 		super(name, executor, autoCancel);
+		Assert.isTrue(bufferSize > 0, "Buffer size must be strictly positive");
 
 		this.workQueue = workQueue == null ? new ConcurrentLinkedQueue<SimpleSignal<IN>>() : workQueue;
 		this.availableCapacity = this.capacity = bufferSize;
+		this.prefetch = Math.min(bufferSize / 2 - 1, 1);
 	}
 
 	@Override
@@ -455,7 +459,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 							if(!unbounded &&
 							  task.type == SignalType.NEXT &&
 							  (upstream = processor.upstreamSubscription) != null &&
-							  availableBuffer == processor.capacity / 2){
+							  availableBuffer == processor.prefetch){
 								upstream.request(availableBuffer);
 							}
 
