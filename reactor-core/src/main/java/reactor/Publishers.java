@@ -17,11 +17,12 @@ package reactor;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.LogPublisher;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolinePublisher;
+import reactor.core.subscriber.Tap;
+import reactor.fn.Supplier;
 
 /**
  * @author Stephane Maldini
@@ -77,7 +78,21 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher) {
-		return TrampolinePublisher.trampoline(publisher);
+		return TrampolinePublisher.create(publisher);
+	}
+
+	/**
+	 * Monitor the most recent value of this publisher sequence to be returned by {@link Supplier#get}
+	 *
+	 * @param publisher the sequence to monitor
+	 * @param <IN> the sequence type
+	 *
+	 * @return a new {@link Supplier} tapping into publisher (requesting an unbounded demand of Long.MAX_VALUE)
+	 */
+	public static <IN> Supplier<IN> tap(Publisher<IN> publisher) {
+		Tap<IN> tap = Tap.create();
+		publisher.subscribe(tap);
+		return tap;
 	}
 
 }

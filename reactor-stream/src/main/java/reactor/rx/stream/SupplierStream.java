@@ -16,7 +16,6 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.ReactorProcessor;
 import reactor.core.error.Exceptions;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;

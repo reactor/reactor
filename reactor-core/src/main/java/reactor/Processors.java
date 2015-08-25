@@ -16,16 +16,23 @@
 package reactor;
 
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
 import reactor.core.processor.*;
 import reactor.core.processor.simple.SimpleSignal;
+import reactor.core.publisher.LogPublisher;
 import reactor.core.support.internal.MpscLinkedQueue;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
+import reactor.fn.Function;
 
 /**
  * Main gateway to build various asynchronous {@link Processor} or "pool" services that allow their reuse.
- * Reactor offers a few management API via the subclassed {@link ExecutorPoweredProcessor} for the underlying {@link java.util.concurrent.Executor} in use.
- * 
+ * Reactor offers a few management API via the subclassed {@link ExecutorPoweredProcessor} for the underlying {@link
+ * java.util.concurrent.Executor} in use.
+ *
  * @author Stephane Maldini
  * @since 2.1
  */
@@ -39,7 +46,8 @@ public final class Processors {
 	public static final int DEFAULT_POOL_SIZE = Math.min(Runtime.getRuntime().availableProcessors(), 2);
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy
 	 * and auto-cancel.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -55,7 +63,8 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -72,7 +81,8 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -113,13 +123,14 @@ public final class Processors {
 			processor = RingBufferProcessor.create(name, bufferSize, autoCancel);
 		} else {
 			throw new UnsupportedOperationException("Pub-Sub async processor not yet supported without Unsafe");
-				//			processor = SimpleWorkProcessor.create(name, bufferSize);
+			//			processor = SimpleWorkProcessor.create(name, bufferSize);
 		}
 		return processor;
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy
 	 * and auto-cancel.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -135,7 +146,8 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -152,7 +164,8 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
+	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -202,7 +215,7 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> asyncService(String name) {
+	public static <E> ProcessorService<E> asyncService(String name) {
 		return asyncService(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}
 
@@ -212,8 +225,8 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> asyncService(String name,
-	                                                         int bufferSize) {
+	public static <E> ProcessorService<E> asyncService(String name,
+	                                                   int bufferSize) {
 		return asyncService(name, bufferSize, null);
 	}
 
@@ -224,9 +237,9 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> asyncService(String name,
-	                                                         int bufferSize,
-	                                                         Consumer<Throwable> uncaughtExceptionHandler) {
+	public static <E> ProcessorService<E> asyncService(String name,
+	                                                   int bufferSize,
+	                                                   Consumer<Throwable> uncaughtExceptionHandler) {
 		return asyncService(name, bufferSize, uncaughtExceptionHandler, null);
 	}
 
@@ -238,10 +251,10 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> asyncService(String name,
-	                                                         int bufferSize,
-	                                                         Consumer<Throwable> uncaughtExceptionHandler,
-	                                                         Consumer<Void> shutdownHandler
+	public static <E> ProcessorService<E> asyncService(String name,
+	                                                   int bufferSize,
+	                                                   Consumer<Throwable> uncaughtExceptionHandler,
+	                                                   Consumer<Void> shutdownHandler
 	) {
 		return asyncService(name, bufferSize, uncaughtExceptionHandler, shutdownHandler, true);
 	}
@@ -255,16 +268,17 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> asyncService(String name,
-	                                                         int bufferSize,
-	                                                         Consumer<Throwable> uncaughtExceptionHandler,
-	                                                         Consumer<Void> shutdownHandler,
-	                                                         boolean autoShutdown) {
+	public static <E> ProcessorService<E> asyncService(String name,
+	                                                   int bufferSize,
+	                                                   Consumer<Throwable> uncaughtExceptionHandler,
+	                                                   Consumer<Void> shutdownHandler,
+	                                                   boolean autoShutdown) {
 
-		return SharedProcessorService.create(
+		return ProcessorService.create(
 		  PlatformDependent.hasUnsafe()
-			? RingBufferProcessor.share(name, bufferSize, SharedProcessorService.DEFAULT_TASK_PROVIDER)
-			: SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.<SimpleSignal<SharedProcessorService.Task>>create()),
+			? RingBufferProcessor.share(name, bufferSize, ProcessorService.DEFAULT_TASK_PROVIDER)
+			: SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.<SimpleSignal<ProcessorService.Task>>create
+			()),
 		  uncaughtExceptionHandler,
 		  shutdownHandler,
 		  autoShutdown
@@ -277,7 +291,7 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> workService(String name) {
+	public static <E> ProcessorService<E> workService(String name) {
 		return workService(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}
 
@@ -287,8 +301,8 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> workService(String name,
-	                                                        int bufferSize) {
+	public static <E> ProcessorService<E> workService(String name,
+	                                                  int bufferSize) {
 		return workService(name, bufferSize, DEFAULT_POOL_SIZE);
 	}
 
@@ -299,9 +313,9 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> workService(String name,
-	                                                        int bufferSize,
-	                                                        int concurrency) {
+	public static <E> ProcessorService<E> workService(String name,
+	                                                  int bufferSize,
+	                                                  int concurrency) {
 		return workService(name, bufferSize, concurrency, null, null, true);
 	}
 
@@ -313,10 +327,10 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> workService(String name,
-	                                                        int bufferSize,
-	                                                        int concurrency,
-	                                                        Consumer<Throwable> uncaughtExceptionHandler) {
+	public static <E> ProcessorService<E> workService(String name,
+	                                                  int bufferSize,
+	                                                  int concurrency,
+	                                                  Consumer<Throwable> uncaughtExceptionHandler) {
 		return workService(name, bufferSize, concurrency, uncaughtExceptionHandler, null, true);
 	}
 
@@ -329,11 +343,11 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> workService(String name,
-	                                                        int bufferSize,
-	                                                        int concurrency,
-	                                                        Consumer<Throwable> uncaughtExceptionHandler,
-	                                                        Consumer<Void> shutdownHandler) {
+	public static <E> ProcessorService<E> workService(String name,
+	                                                  int bufferSize,
+	                                                  int concurrency,
+	                                                  Consumer<Throwable> uncaughtExceptionHandler,
+	                                                  Consumer<Void> shutdownHandler) {
 		return workService(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
 	}
 
@@ -348,16 +362,16 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> SharedProcessorService<E> workService(String name,
-	                                                        int bufferSize,
-	                                                        int concurrency,
-	                                                        Consumer<Throwable> uncaughtExceptionHandler,
-	                                                        Consumer<Void> shutdownHandler,
-	                                                        boolean autoShutdown) {
-		return SharedProcessorService.create(
+	public static <E> ProcessorService<E> workService(String name,
+	                                                  int bufferSize,
+	                                                  int concurrency,
+	                                                  Consumer<Throwable> uncaughtExceptionHandler,
+	                                                  Consumer<Void> shutdownHandler,
+	                                                  boolean autoShutdown) {
+		return ProcessorService.create(
 		  PlatformDependent.hasUnsafe()
-		    ? RingBufferWorkProcessor.<SharedProcessorService.Task>share(name, bufferSize)
-		    : SimpleWorkProcessor.<SharedProcessorService.Task>create(name, bufferSize),
+			? RingBufferWorkProcessor.<ProcessorService.Task>share(name, bufferSize)
+			: SimpleWorkProcessor.<ProcessorService.Task>create(name, bufferSize),
 		  concurrency,
 		  uncaughtExceptionHandler,
 		  shutdownHandler,
@@ -365,4 +379,74 @@ public final class Processors {
 		);
 	}
 
+	/**
+	 * @param processor
+	 * @param <IN>
+	 * @param <OUT>
+	 * @return
+	 */
+	public static <IN, OUT> Processor<IN, OUT> log(Processor<IN, OUT> processor) {
+		return log(processor, null);
+	}
+
+	/**
+	 * @param processor
+	 * @param category
+	 * @param <IN>
+	 * @param <OUT>
+	 * @return
+	 */
+	public static <IN, OUT> Processor<IN, OUT> log(final Processor<IN, OUT> processor, final String category) {
+		return lift(processor, new Function<Processor<IN, OUT>, Publisher<OUT>>() {
+			@Override
+			public Publisher<OUT> apply(Processor<IN, OUT> processor) {
+				return LogPublisher.log(processor, category);
+			}
+		});
+	}
+
+	/**
+	 *
+	 * @param processor
+	 * @param liftTransformation
+	 * @param <IN>
+	 * @param <OUT>
+	 * @return
+	 */
+	public static <IN, OUT> Processor<IN, OUT> lift(
+	  final Processor<IN, OUT> processor,
+	  final Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation)
+	{
+		return new Processor<IN, OUT>() {
+			@Override
+			public void subscribe(Subscriber<? super OUT> s) {
+				try {
+					liftTransformation.apply(processor).subscribe(s);
+				}catch (Throwable t){
+					Exceptions.<OUT>publisher(t).subscribe(s);
+				}
+			}
+
+			@Override
+			public void onSubscribe(Subscription s) {
+				processor.onSubscribe(s);
+			}
+
+			@Override
+			public void onNext(IN in) {
+				processor.onNext(in);
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				processor.onError(t);
+			}
+
+			@Override
+			public void onComplete() {
+				processor.onComplete();
+			}
+		};
+
+	}
 }

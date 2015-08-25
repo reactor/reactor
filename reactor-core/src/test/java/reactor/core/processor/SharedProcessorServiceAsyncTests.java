@@ -47,12 +47,12 @@ public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 
 	@Test
 	public void testDispatch() throws InterruptedException {
-		SharedProcessorService<String> service = Processors.asyncService("dispatcher", BUFFER_SIZE, t -> {
+		ProcessorService<String> service = Processors.asyncService("dispatcher", BUFFER_SIZE, t -> {
 			exceptionThrown.set(true);
 			t.printStackTrace();
 		});
 
-		SharedProcessorService.release(
+		ProcessorService.release(
 		  runTest(service.dataDispatcher()),
 		  runTest(service.dataDispatcher())
 		);

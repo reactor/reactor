@@ -28,7 +28,7 @@ public class SharedProcessorServiceSyncTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
-		return SharedProcessorService.<Long>sync().get();
+		return ProcessorService.<Long>sync().get();
 	}
 
 	@Override

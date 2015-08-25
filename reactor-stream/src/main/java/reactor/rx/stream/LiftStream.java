@@ -63,11 +63,6 @@ public class LiftStream<O, V> extends Stream<V> {
 	}
 
 	@Override
-	public ReactorProcessor getDispatcher() {
-		return producer.getDispatcher();
-	}
-
-	@Override
 	public Environment getEnvironment() {
 		return producer.getEnvironment();
 	}

@@ -34,7 +34,6 @@ import reactor.bus.selector.ClassSelector;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
 import reactor.bus.spec.EventBusSpec;
-import reactor.core.processor.SharedProcessorService;
 import reactor.core.support.Assert;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
