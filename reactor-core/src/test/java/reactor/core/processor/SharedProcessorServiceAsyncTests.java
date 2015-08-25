@@ -34,11 +34,11 @@ public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
 	  Throwable {
 		throw new SkipException("Optional requirement");
 	}
-
+/*
 	@Override
 	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
 		throw new SkipException("Optional multi subscribe requirement");
-	}
+	}*/
 
 	@Override
 	public long maxSupportedSubscribers() {

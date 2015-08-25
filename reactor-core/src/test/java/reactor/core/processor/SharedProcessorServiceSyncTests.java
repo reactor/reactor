@@ -23,7 +23,6 @@ import org.testng.SkipException;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-@Ignore
 public class SharedProcessorServiceSyncTests extends AbstractProcessorTests {
 
 	@Override
@@ -34,11 +33,6 @@ public class SharedProcessorServiceSyncTests extends AbstractProcessorTests {
 	@Override
 	public long maxSupportedSubscribers() {
 		return 1L;
-	}
-
-	@Override
-	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
-		throw new SkipException("Optional multi subscribe requirement");
 	}
 
 

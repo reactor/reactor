@@ -24,7 +24,6 @@ import reactor.Processors;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-@Ignore
 public class SharedProcessorServiceWorkTests extends AbstractProcessorTests {
 
 	@Override
@@ -37,10 +36,6 @@ public class SharedProcessorServiceWorkTests extends AbstractProcessorTests {
 		return 1L;
 	}
 
-	@Override
-	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
-		throw new SkipException("Optional multi subscribe requirement");
-	}
 
 	@Override
 	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws

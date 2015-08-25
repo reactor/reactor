@@ -17,6 +17,9 @@ package reactor.core.processor;
 
 import reactor.core.support.SingleUseExecutor;
 import reactor.core.error.Exceptions;
+import reactor.fn.Consumer;
+import reactor.fn.timer.GlobalTimer;
+import reactor.fn.timer.Timer;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +31,9 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN, OUT> {
 
+	public static final int CANCEL_TIMEOUT = Integer.parseInt(System.getProperty("reactor.processor.cancel.timeout",
+	  "3"));
+
 	protected final ExecutorService executor;
 
 	private final ClassLoader contextClassLoader;
@@ -35,8 +41,10 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {
 		super(autoCancel);
 		if (executor == null) {
-			this.contextClassLoader = new ClassLoader(Thread.currentThread().getContextClassLoader()) {
-			};
+			this.contextClassLoader =
+			  new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+			  };
+
 			this.executor = SingleUseExecutor.create(name, contextClassLoader);
 		} else {
 			this.contextClassLoader = null;
@@ -60,6 +68,14 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	}
 
 	@Override
+	public void onError(Throwable error) {
+		if (executor.getClass() == SingleUseExecutor.class) {
+			executor.shutdown();
+		}
+		super.onError(error);
+	}
+
+	@Override
 	public boolean awaitAndShutdown() {
 		return awaitAndShutdown(-1, TimeUnit.SECONDS);
 	}
@@ -73,6 +89,29 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 			Thread.currentThread().interrupt();
 			return false;
 		}
+	}
+
+	@Override
+	protected int decrementSubscribers() {
+		int subs = super.decrementSubscribers();
+		if (autoCancel &&  subs == 0 && executor.getClass() == SingleUseExecutor.class) {
+			if (CANCEL_TIMEOUT > 0) {
+				final Timer timer = GlobalTimer.globalOrNew();
+				timer.submit(new Consumer<Long>() {
+					@Override
+					public void accept(Long aLong) {
+						if (SUBSCRIBER_COUNT.get(ExecutorPoweredProcessor.this) == 0) {
+							executor.shutdown();
+						}
+						timer.cancel();
+					}
+				}, CANCEL_TIMEOUT, TimeUnit.SECONDS);
+			} else {
+				executor.shutdown();
+			}
+
+		}
+		return subs;
 	}
 
 	@Override
