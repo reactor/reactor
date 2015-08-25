@@ -34,9 +34,12 @@ public class BaseSubscriber<T> implements Subscriber<T> {
 	 * <p>
 	 * Doing so MAY allow direct UNBOUNDED onXXX calls and MAY prevent {@link org.reactivestreams.Publisher} to subscribe this
 	 * subscriber.
+	 *
+	 * Note that {@link org.reactivestreams.Processor} can extend this behavior to effectively start its subscribers.
 	 */
-	public void start() {
+	public BaseSubscriber<T> start() {
 		onSubscribe(Subscribers.NOOP_SUBSCRIPTION);
+		return this;
 	}
 
 	@Override

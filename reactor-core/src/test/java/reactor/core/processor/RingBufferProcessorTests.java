@@ -25,7 +25,7 @@ import org.reactivestreams.Processor;
 public class RingBufferProcessorTests extends AbstractProcessorTests {
 
 	@Override
-	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
+	public Processor<Long, Long> createProcessor(int bufferSize) {
 		return RingBufferProcessor.<Long>create("rb-async", bufferSize);
 	}
 

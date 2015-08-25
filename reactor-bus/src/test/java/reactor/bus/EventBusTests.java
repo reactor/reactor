@@ -1,7 +1,5 @@
 package reactor.bus;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import reactor.Environment;
 import reactor.bus.selector.Selectors;
@@ -11,34 +9,7 @@ import reactor.fn.Consumer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-public class EnvironmentTest {
-
-	protected Environment env;
-
-	@Before
-	public void loadEnv() {
-		env = Environment.initializeIfEmpty().assignErrorJournal();
-	}
-
-	@After
-	public void closeEnv() {
-		Environment.terminate();
-	}
-
-	@Test
-	public void testGetDispatcherThrowsExceptionWhenNoDispatcherIsFound() throws Exception {
-		try {
-			env.getDispatcher("NonexistingDispatcher");
-			fail("Should have thrown an error");
-		} catch (IllegalArgumentException e) {
-			assertEquals("No Dispatcher found for name 'NonexistingDispatcher', it must be present in the " +
-			  "configuration properties or being registered programmatically through this#setDispatcher" +
-			  "(NonexistingDispatcher, someDispatcher)", e.getMessage());
-		}
-	}
+public class EventBusTests {
 
 	@Test
 	public void workerOrchestrator() throws InterruptedException {

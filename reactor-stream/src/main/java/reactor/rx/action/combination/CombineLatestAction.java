@@ -163,7 +163,7 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 		}
 
 		@Override
-		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+		public boolean isExposedToOverflow(Bounded upstream) {
 			return false;
 		}
 

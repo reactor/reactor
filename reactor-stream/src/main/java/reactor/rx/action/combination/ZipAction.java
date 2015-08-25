@@ -237,7 +237,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 
         @Override
-        public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+        public boolean isExposedToOverflow(Bounded upstream) {
             return true;
         }
 

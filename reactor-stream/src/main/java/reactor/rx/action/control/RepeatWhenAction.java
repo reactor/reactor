@@ -120,7 +120,7 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 		Subscription s;
 
 		@Override
-		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+		public boolean isExposedToOverflow(Bounded upstream) {
 			return RepeatWhenAction.this.isReactivePull(dispatcher, producerCapacity);
 		}
 

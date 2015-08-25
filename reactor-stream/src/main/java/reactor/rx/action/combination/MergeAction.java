@@ -81,7 +81,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 
 
 		@Override
-		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+		public boolean isExposedToOverflow(Bounded upstream) {
 			return false;
 		}
 

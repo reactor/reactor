@@ -724,7 +724,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	}
 
 	@Override
-	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return true;
 	}
 

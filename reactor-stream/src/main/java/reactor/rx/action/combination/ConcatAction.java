@@ -213,7 +213,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 		}
 
 		@Override
-		public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+		public boolean isExposedToOverflow(Bounded upstream) {
 			return false;
 		}
 	}

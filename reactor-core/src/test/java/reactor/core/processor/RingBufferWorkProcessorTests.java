@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 
 	@Override
-	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
+	public Processor<Long, Long> createProcessor(int bufferSize) {
 		return RingBufferWorkProcessor.<Long>create("rb-work", bufferSize);
 	}
 

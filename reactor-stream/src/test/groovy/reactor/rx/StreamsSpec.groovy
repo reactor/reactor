@@ -18,6 +18,8 @@ package reactor.rx
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.reactivestreams.Subscription
 import reactor.Environment
+import reactor.bus.Event
+import reactor.bus.EventBus
 import reactor.core.dispatch.SynchronousDispatcher
 import reactor.core.error.CancelException
 import reactor.core.processor.RingBufferProcessor
@@ -28,10 +30,13 @@ import reactor.io.codec.DelimitedCodec
 import reactor.io.codec.StandardCodecs
 import reactor.rx.action.Signal
 import reactor.rx.broadcast.Broadcaster
+import reactor.rx.broadcast.SerializedBroadcaster
 import spock.lang.Specification
 
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
+
+import static reactor.bus.selector.Selectors.anonymous
 
 class StreamsSpec extends Specification {
 
@@ -3018,6 +3023,42 @@ class StreamsSpec extends Specification {
 
 		then: "the buffers have been correctly decoded"
 			res == ['Hello World!', 'Hello World!', 'Hello World!', 'Test', 'Test', 'Test', 'End']
+	}
+
+
+	def 'Creating Stream from observable'() {
+		given:
+			'a source stream with a given observable'
+			def r = EventBus.config().get()
+			def selector = anonymous()
+			int event = 0
+			def s = Streams.create(r.on(selector)).map { it.data }.consume { event = it }
+			println s.debug()
+
+		when:
+			'accept a value'
+			r.notify(selector.object, Event.wrap(1))
+			println s.debug()
+
+		then:
+			'dispatching works'
+			event == 1
+
+		when:
+			"multithreaded bus can be serialized"
+			r = EventBus.create(Environment.dispatcher("workQueue"))
+			s = SerializedBroadcaster.<Event<Integer>> create()
+			def tail = s.map { it.data }.observe { sleep(100) }.elapsed().log().take(1500, TimeUnit.MILLISECONDS).toList()
+
+			r.on(selector, s)
+
+			10.times {
+				r.notify(selector.object, Event.wrap(it))
+			}
+
+		then:
+			tail.await().size() == 10
+			tail.get().sum { it.t1 } >= 1000 //correctly serialized
 	}
 
 

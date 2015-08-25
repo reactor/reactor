@@ -132,7 +132,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return producerCapacity != Long.MAX_VALUE && capacity != Long.MAX_VALUE;
 	}
 

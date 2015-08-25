@@ -77,7 +77,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
-	public boolean isReactivePull(ReactorProcessor dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return false;
 	}
 

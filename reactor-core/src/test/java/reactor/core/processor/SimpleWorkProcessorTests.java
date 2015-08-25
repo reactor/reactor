@@ -15,20 +15,25 @@
  */
 package reactor.core.processor;
 
-import org.junit.Ignore;
+import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
+import reactor.Subscribers;
 
 /**
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-@Ignore
 public class SimpleWorkProcessorTests extends AbstractProcessorTests {
 
 	@Override
-	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
+	public Processor<Long, Long> createProcessor(int bufferSize) {
 		return SimpleWorkProcessor.create("simple-work", bufferSize);
+	}
+
+	@Override
+	public long maxSupportedSubscribers() {
+		return 1L;
 	}
 
 	@Override
@@ -42,10 +47,42 @@ public class SimpleWorkProcessorTests extends AbstractProcessorTests {
 		throw new SkipException("Optional multi subscribe requirement");
 	}
 
-
+/*
 	@Override
 	public void stochastic_spec103_mustSignalOnMethodsSequentially() throws Throwable {
 		for(int i = 0 ; i < 1000 ; i++)
 		super.stochastic_spec103_mustSignalOnMethodsSequentially();
+	}*/
+
+	/*@Override
+	public void
+	required_spec205_mustCallSubscriptionCancelIfItAlreadyHasAnSubscriptionAndReceivesAnotherOnSubscribeSignal()
+	  throws Throwable {
+		for(int i = 0; i < 10000; i++) {
+			super
+			  .required_spec205_mustCallSubscriptionCancelIfItAlreadyHasAnSubscriptionAndReceivesAnotherOnSubscribeSignal();
+
+		}
+	}*/
+
+	@Test
+	public void simpleTest() throws Exception {
+		SimpleWorkProcessor<String> processor = SimpleWorkProcessor.create("simple-test-work", 10);
+		processor.subscribe(Subscribers.create(
+		  subscription -> {
+			  subscription.request(1);
+			  return null;
+		  },
+		  (data, sub) -> {
+			  System.out.println(Thread.currentThread() + " " + data);
+			  sub.request(1);
+		  }
+		));
+
+		for(int i = 0; i < 100; i++){
+			processor.onNext(""+i);
+		}
+
+		processor.awaitAndShutdown();
 	}
 }
