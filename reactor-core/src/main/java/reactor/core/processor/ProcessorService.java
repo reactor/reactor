@@ -93,7 +93,7 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	 * @return
 	 */
 	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
-	                                                   int concurrency) {
+	                                             int concurrency) {
 		return create(p, concurrency, null, null, true);
 	}
 
@@ -104,7 +104,7 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	 * @return
 	 */
 	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
-	                                                   boolean autoShutdown) {
+	                                             boolean autoShutdown) {
 		return create(p, null, null, autoShutdown);
 	}
 
@@ -116,8 +116,8 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	 * @return
 	 */
 	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
-	                                                   Consumer<Throwable> uncaughtExceptionHandler,
-	                                                   boolean autoShutdown) {
+	                                             Consumer<Throwable> uncaughtExceptionHandler,
+	                                             boolean autoShutdown) {
 		return create(p, uncaughtExceptionHandler, null, autoShutdown);
 	}
 
@@ -130,9 +130,9 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	 * @return
 	 */
 	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
-	                                                   Consumer<Throwable> uncaughtExceptionHandler,
-	                                                   Consumer<Void> shutdownHandler,
-	                                                   boolean autoShutdown) {
+	                                             Consumer<Throwable> uncaughtExceptionHandler,
+	                                             Consumer<Void> shutdownHandler,
+	                                             boolean autoShutdown) {
 		return create(p, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
@@ -146,10 +146,10 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	 * @return
 	 */
 	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
-	                                                   int concurrency,
-	                                                   Consumer<Throwable> uncaughtExceptionHandler,
-	                                                   Consumer<Void> shutdownHandler,
-	                                                   boolean autoShutdown) {
+	                                             int concurrency,
+	                                             Consumer<Throwable> uncaughtExceptionHandler,
+	                                             Consumer<Void> shutdownHandler,
+	                                             boolean autoShutdown) {
 		return new ProcessorService<E>(p, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
@@ -685,7 +685,7 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 			  && REF_COUNT.decrementAndGet(service) <= 0
 			  && service.autoShutdown) {
 
-				if(ExecutorPoweredProcessor.CANCEL_TIMEOUT > 0) {
+				if (ExecutorPoweredProcessor.CANCEL_TIMEOUT > 0) {
 					final Timer timer = GlobalTimer.globalOrNew();
 					timer.submit(new Consumer<Long>() {
 						@Override
@@ -707,10 +707,16 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 			dispatch(data, subscriber, type);
 		}
 
+		protected boolean shouldTailRecruse() {
+			return service.concurrency == 1 &&
+			  service.managedProcessor != null &&
+			  service.managedProcessor .isInContext();
+		}
+
 		@SuppressWarnings("unchecked")
 		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
 			final Task task;
-			if (service.managedProcessor != null && service.managedProcessor.isInContext()) {
+			if (shouldTailRecruse()) {
 				task = service.tailRecurser.next();
 				task.type = type;
 				task.payload = data;
@@ -738,7 +744,7 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 		@Override
 		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
 			final Task task;
-			if (service.managedProcessor != null && service.managedProcessor.isInContext()) {
+			if (shouldTailRecruse()) {
 				task = service.tailRecurser.next();
 				task.type = type;
 				task.payload = data;

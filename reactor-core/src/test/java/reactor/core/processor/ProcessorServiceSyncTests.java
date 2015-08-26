@@ -18,17 +18,16 @@ package reactor.core.processor;
 import org.junit.Ignore;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
-import reactor.Processors;
 
 /**
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class SharedProcessorServiceWorkTests extends AbstractProcessorTests {
+public class ProcessorServiceSyncTests extends AbstractProcessorTests {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
-		return Processors.<Long>workService("shared-work", bufferSize, 2, Throwable::printStackTrace).get();
+		return ProcessorService.<Long>sync().get();
 	}
 
 	@Override
@@ -42,5 +41,4 @@ public class SharedProcessorServiceWorkTests extends AbstractProcessorTests {
 	  Throwable {
 		throw new SkipException("Optional requirement");
 	}
-
 }

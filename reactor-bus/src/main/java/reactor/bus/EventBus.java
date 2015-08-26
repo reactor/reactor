@@ -34,6 +34,8 @@ import reactor.bus.selector.ClassSelector;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
 import reactor.bus.spec.EventBusSpec;
+import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.support.Assert;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
@@ -94,8 +96,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	}
 
 	/**
-	 * Create a new {@link EventBus} using the given {@link reactor.Environment} and {@link
-	 * Processor}.
+	 * Create a new {@link EventBus} using the given {@link Processor}.
 	 *
 	 * @param processor The {@link Processor} to use.
 	 * @return A new {@link EventBus}
@@ -112,8 +113,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * Selector#matches(Object) match}
 	 * the notification key and does not perform any type conversion.
 	 *
-	 * @param processor The {@link Processor} to use. May be {@code null} in which case a new {@link
-	 *                  SynchronousProcessor} is used
+	 * @param processor The {@link Processor} to use. May be {@code null} in which case the bus will be synchronous
 	 */
 	public EventBus(@Nullable Processor<Event<?>, Event<?>> processor) {
 		this(processor, null);
@@ -153,7 +153,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * Create a new {@literal Reactor} that uses the given {@code processor} and {@code eventRouter}.
 	 *
 	 * @param consumerRegistry     The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
-	 * Consumer}
+	 *                             Consumer}
 	 * @param processor            The {@link Processor} to use. May be {@code null} in which case a new synchronous
 	 *                             processor is used.
 	 * @param router               The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code
@@ -337,7 +337,16 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 		Assert.notNull(key, "Key cannot be null.");
 		Assert.notNull(ev, "Event cannot be null.");
 		ev.setKey(key);
-		processor.dispatch(ev, this, processorErrorHandler);
+
+		if (processor == null) {
+			try {
+				accept(ev);
+			} catch (Throwable throwable) {
+				errorHandlerOrThrow(throwable);
+			}
+		} else {
+			processor.dispatch(ev, this, processorErrorHandler);
+		}
 
 		return this;
 	}
@@ -544,7 +553,15 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 					Registration<Object, ? extends Consumer<Event<T>>> reg =
 					  (Registration<Object, ? extends Consumer<Event<T>>>) regs.get(i);
 					ev.setKey(key);
-					processor.dispatch(ev, reg.getObject(), processorErrorHandler);
+					if (processor == null) {
+						try {
+							accept(ev);
+						} catch (Throwable t) {
+							errorHandlerOrThrow(t);
+						}
+					} else {
+						processor.dispatch(ev, reg.getObject(), processorErrorHandler);
+					}
 				}
 			}
 		};
@@ -559,6 +576,15 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * @param <T>      The type of the data.
 	 */
 	public <T> void schedule(final Consumer<T> consumer, final T data) {
+		if (processor == null) {
+			try {
+				consumer.accept(data);
+			} catch (Throwable t) {
+				errorHandlerOrThrow(t);
+			}
+			return;
+		}
+
 		processor.dispatch(null, new Consumer<Event<?>>() {
 			@Override
 			public void accept(Event<?> event) {
@@ -635,6 +661,15 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 		public Function<E, V> getDelegate() {
 			return fn;
+		}
+	}
+
+	private void errorHandlerOrThrow(Throwable t){
+		if (processorErrorHandler != null) {
+			Exceptions.throwIfFatal(t);
+			processorErrorHandler.accept(t);
+		}else{
+			throw ReactorFatalException.create(t);
 		}
 	}
 

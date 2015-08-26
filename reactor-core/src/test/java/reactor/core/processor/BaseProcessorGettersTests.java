@@ -7,7 +7,7 @@ import static org.junit.Assert.assertEquals;
 /**
  * @author Sergey Shcherbakov
  */
-public class ReactorProcessorGettersTests {
+public class BaseProcessorGettersTests {
 
 	@Test
 	public void testRingBufferProcessorGetters() {
