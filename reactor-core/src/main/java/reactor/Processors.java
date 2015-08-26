@@ -184,12 +184,9 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using the blockingWait Strategy, passed backlog size,
+	 * Create a new {@link ExecutorPoweredProcessor} using the passed buffer size
 	 * and auto-cancel settings.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
+	 *
 	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
 	 * the created threads.
 	 *

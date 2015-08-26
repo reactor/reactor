@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class SharedProcessorServiceAsyncTests extends AbstractProcessorTests {
+public class ProcessorServiceAsyncTests extends AbstractProcessorTests {
 
 	private final int           BUFFER_SIZE     = 8;
 	private final AtomicBoolean exceptionThrown = new AtomicBoolean();

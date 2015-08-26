@@ -291,10 +291,11 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 	protected SimpleWorkProcessor(String name, ExecutorService executor,
 	                              int bufferSize, Queue<SimpleSignal<IN>> workQueue, boolean autoCancel) {
 		super(name, executor, autoCancel);
-		Assert.isTrue(bufferSize > 0, "Buffer size must be strictly positive");
+		Assert.isTrue(bufferSize > 2, "Buffer size must be greater than 2");
 
 		this.workQueue = workQueue == null ? new ConcurrentLinkedQueue<SimpleSignal<IN>>() : workQueue;
-		this.availableCapacity = this.capacity = bufferSize;
+		this.capacity = bufferSize;
+		this.availableCapacity = bufferSize - 1;
 		this.prefetch = Math.min(bufferSize / 2 - 1, 1);
 	}
 
@@ -309,9 +310,6 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 			  this,
 			  subscriber
 			);
-
-			//prepare the subscriber subscription to this processor
-			signalProcessor.subscription = new SimpleSubscription<>(signalProcessor, subscriber);
 
 			this.executor.execute(signalProcessor);
 			incrementSubscribers();
@@ -358,46 +356,10 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 		return true;
 	}
 
-	private static class SimpleSubscription<IN> extends AtomicLong implements Subscription {
-
-		private final SubscriberWorker<IN>   runnable;
-		private final Subscriber<? super IN> subscriber;
-
-		public SimpleSubscription(SubscriberWorker<IN> runnable,
-		                          Subscriber<? super IN> subscriber) {
-			super(Long.MIN_VALUE);
-			this.runnable = runnable;
-			this.subscriber = subscriber;
-		}
-
-		@Override
-		public void request(long n) {
-			if (n <= 0l) {
-				subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
-				return;
-			}
-
-			if (!runnable.isRunning()) {
-				return;
-			}
-
-			if (addAndGet(n) < 0) {
-				set(Long.MAX_VALUE);
-			}
-		}
-
-		@Override
-		public void cancel() {
-			runnable.halt();
-		}
-	}
-
-	private static class SubscriberWorker<IN> implements Runnable {
+	private static class SubscriberWorker<IN> extends AtomicLong implements Subscription, Runnable {
 
 		private final Subscriber<? super IN>  subscriber;
 		private final SimpleWorkProcessor<IN> processor;
-
-		SimpleSubscription subscription;
 
 		public SubscriberWorker(SimpleWorkProcessor<IN> workProcessor, Subscriber<? super IN> s) {
 			this.subscriber = s;
@@ -407,13 +369,13 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 		@Override
 		public void run() {
 			try {
-				if (!subscription.compareAndSet(Long.MIN_VALUE, 0)) {
+				if (!compareAndSet(Long.MIN_VALUE, 0)) {
 					subscriber.onError(new IllegalStateException("Thread is already running"));
 					return;
 				}
 
 				try {
-					subscriber.onSubscribe(subscription);
+					subscriber.onSubscribe(this);
 				} catch (Throwable t) {
 					Exceptions.throwIfFatal(t);
 					subscriber.onError(t);
@@ -421,12 +383,12 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 				}
 
 				if (!SimpleSubscriberUtils.waitRequestOrTerminalEvent(
-				  subscription, processor.workQueue, subscriber
+				  this, processor.workQueue, subscriber
 				)) {
 					return;
 				}
 
-				final boolean unbounded = subscription.get() == Long.MAX_VALUE;
+				final boolean unbounded = get() == Long.MAX_VALUE;
 
 				SimpleSignal<IN> task;
 				long availableBuffer;
@@ -438,14 +400,14 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 						if (unbounded) {
 							upstream.request(Long.MAX_VALUE);
 						} else {
-							upstream.request(processor.capacity);
+							upstream.request(processor.capacity - 1);
 						}
 					}
 
 					for (;;) {
 
-						while (!unbounded && subscription.decrementAndGet() < 0L){
-							subscription.incrementAndGet();
+						while (!unbounded && decrementAndGet() < 0L){
+							incrementAndGet();
 							if( !isRunning() ) throw CancelException.INSTANCE;
 							LockSupport.parkNanos(1L);
 						}
@@ -467,7 +429,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 						} else {
 
 							if(!unbounded) {
-								subscription.incrementAndGet();
+								incrementAndGet();
 							}
 
 							if (!isRunning()) {
@@ -489,12 +451,34 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 			halt();
 		}
 
+		@Override
+		public void request(long n) {
+			if (n <= 0l) {
+				subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
+				return;
+			}
+
+			if (!isRunning()) {
+				return;
+			}
+
+			if (addAndGet(n) < 0) {
+				set(Long.MAX_VALUE);
+			}
+		}
+
+
+		@Override
+		public void cancel() {
+			halt();
+		}
+
 		private boolean isRunning(){
-			return subscription.get() != Long.MIN_VALUE / 2;
+			return get() != Long.MIN_VALUE / 2;
 		}
 
 		private void halt(){
-			subscription.set(Long.MIN_VALUE / 2);
+			set(Long.MIN_VALUE / 2);
 		}
 	}
 }
