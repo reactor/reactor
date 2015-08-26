@@ -18,13 +18,10 @@
 package reactor.bus
 
 import groovy.transform.CompileStatic
-import reactor.Environment
 import reactor.bus.filter.RoundRobinFilter
 import reactor.bus.routing.ConsumerFilteringRouter
-import reactor.core.dispatch.SynchronousDispatcher
+import reactor.core.processor.ProcessorService
 import reactor.fn.Consumer
-import reactor.rx.Streams
-import reactor.rx.broadcast.SerializedBroadcaster
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -40,23 +37,15 @@ import static reactor.bus.selector.Selectors.*
  */
 class EventBusSpec extends Specification {
 
-	void setup() {
-		Environment.initializeIfEmpty().assignErrorJournal()
-	}
-
-	def cleanup() {
-		Environment.terminate()
-	}
-
 	def "A Reactor can be configured with EventBus.create()"() {
 
 		when:
 			"Building a Synchronous EventBus"
-			def reactor = EventBus.config().synchronousDispatcher().get()
+			def reactor = EventBus.config().sync().get()
 
 		then:
 			"Dispatcher has been set to Synchronous"
-			reactor.dispatcher instanceof SynchronousDispatcher
+			reactor.processor instanceof Consumer
 
 		when:
 			"Building a RoundRobin EventBus"
@@ -72,7 +61,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a plain Reactor and a simple consumer on \$('test')"
-			def reactor = EventBus.config().synchronousDispatcher().get()
+			def reactor = EventBus.config().sync().get()
 			def data = ""
 			Thread t = null
 			reactor.on($("test"), { ev ->
@@ -144,7 +133,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a simple eventBus implementation"
-			def reactor = EventBus.config().synchronousDispatcher().get()
+			def reactor = EventBus.config().sync().get()
 			def data = ""
 			def reg = reactor.on($("test"), { ev ->
 				data = ev.data
@@ -173,7 +162,7 @@ class EventBusSpec extends Specification {
 
 	def "A Reactor can reply to events"() {
 
-		def r = EventBus.config().synchronousDispatcher().get()
+		def r = EventBus.config().sync().get()
 
 		given:
 			"a simple consumer"
@@ -309,7 +298,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a normal eventBus"
-			def reactor = EventBus.config().synchronousDispatcher().get()
+			def reactor = EventBus.config().sync().get()
 
 		when:
 			"registering few handlers"
@@ -330,7 +319,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a normal synchronous eventBus"
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.config().sync().get()
 			def d1, d2
 			def selector = $("test")
 
@@ -368,7 +357,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a synchronous Reactor"
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.config().sync().get()
 
 		when:
 			"an error consumer is registered"
@@ -399,7 +388,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a synchronous Reactor"
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.config().sync().get()
 
 		when:
 			"the Reactor default Selector is notified with a tuple of consumer and data"
@@ -437,7 +426,7 @@ class EventBusSpec extends Specification {
 			"a synchronous Reactor with a dispatch error handler"
 			def count = 0
 			def r = EventBus.config().
-					synchronousDispatcher().
+					sync().
 					dispatchErrorHandler(consumer { t -> count++ }).
 					uncaughtErrorHandler(consumer { t -> count++ }).
 					get()

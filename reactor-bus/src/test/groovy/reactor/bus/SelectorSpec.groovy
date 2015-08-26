@@ -96,7 +96,7 @@ class SelectorSpec extends Specification {
 			"A UriPathSelector"
 			def sel1 = U("/path/**/{resource}")
 			def key = "/path/to/some/resourceId"
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.config().sync().get()
 			def resourceId = ""
 			r.on(sel1) { Event<String> ev ->
 				resourceId = ev.headers["resource"]
@@ -119,7 +119,7 @@ class SelectorSpec extends Specification {
 			def sel1 = new UriSelector("http://user:pwd@host:80/path/segment?param=value#fragment")
 			def sel2 = new UriSelector("http://*:80/path/segment#fragment")
 			def sel3 = new UriSelector("http://user:ENCODEDPWD@*:3000/path/segment#fragment")
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.config().sync().get()
 			def vals = [:]
 			r.on(sel1) { Event<String> ev ->
 				vals = ev.headers
@@ -193,7 +193,7 @@ class SelectorSpec extends Specification {
 
 		given:
 			"A Reactor using round-robin routing and a set of consumers assigned to the same selector"
-			def r = EventBus.config().synchronousDispatcher().roundRobinEventRouting().get()
+			def r = EventBus.config().sync().roundRobinEventRouting().get()
 			def called = []
 			def a1 = {
 				called << 1
@@ -229,7 +229,7 @@ class SelectorSpec extends Specification {
 		given:
 			"A Reactor using random routing and a set of consumers assigned to the same selector"
 
-			def r = EventBus.config().synchronousDispatcher().randomEventRouting().get()
+			def r = EventBus.config().sync().randomEventRouting().get()
 			def called = []
 			def a1 = {
 				called << 1

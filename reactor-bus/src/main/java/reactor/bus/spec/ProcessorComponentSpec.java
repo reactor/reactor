@@ -38,6 +38,8 @@ public abstract class ProcessorComponentSpec<SPEC extends ProcessorComponentSpec
 
 	private Processor<PAYLOAD, PAYLOAD>   processor;
 
+	private int concurrency = 1;
+
 	/**
 	 * Configures the component to use a synchronous processor
 	 *
@@ -60,9 +62,20 @@ public abstract class ProcessorComponentSpec<SPEC extends ProcessorComponentSpec
 		return (SPEC) this;
 	}
 
+	/**
+	 * Configures the component to use the given {@code concurrency} (e.g., number of concurrent threads for EventBus)
+	 *
+	 * @param concurrency The concurrency hint for the component resulting in matching number of processor.subscribe()
+	 * @return {@code this}
+	 */
+	public final SPEC concurrency(int concurrency) {
+		this.concurrency = concurrency;
+		return (SPEC) this;
+	}
+
 	@Override
 	public final TARGET get() {
-		return configure(getProcessor());
+		return configure(getProcessor(), concurrency);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -74,6 +87,6 @@ public abstract class ProcessorComponentSpec<SPEC extends ProcessorComponentSpec
 		}
 	}
 
-	protected abstract TARGET configure(Processor<PAYLOAD, PAYLOAD> processor);
+	protected abstract TARGET configure(Processor<PAYLOAD, PAYLOAD> processor, int concurrency);
 
 }

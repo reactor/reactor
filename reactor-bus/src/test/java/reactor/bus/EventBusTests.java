@@ -1,7 +1,7 @@
 package reactor.bus;
 
 import org.junit.Test;
-import reactor.Environment;
+import reactor.Processors;
 import reactor.bus.selector.Selectors;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -13,7 +13,7 @@ public class EventBusTests {
 
 	@Test
 	public void workerOrchestrator() throws InterruptedException {
-		EventBus reactor = EventBus.create(env, Environment.WORK_QUEUE);
+		EventBus reactor = EventBus.create(Processors.work(), 4);
 
 		CountDownLatch latch = new CountDownLatch(3);
 
@@ -41,6 +41,8 @@ public class EventBusTests {
 		reactor.notify("orchestrator", Event.wrap(1000));
 
 		Assert.isTrue(latch.await(10, TimeUnit.SECONDS));
+
+		reactor.getProcessor().onComplete();
 	}
 
 }

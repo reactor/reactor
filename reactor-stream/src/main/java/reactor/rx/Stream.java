@@ -20,13 +20,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.core.queue.CompletableBlockingQueue;
-import reactor.core.queue.CompletableLinkedQueue;
-import reactor.core.queue.CompletableQueue;
+import reactor.Timers;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
 import reactor.core.error.Exceptions;
@@ -35,7 +29,6 @@ import reactor.core.subscriber.Tap;
 import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
-import reactor.io.codec.Codec;
 import reactor.rx.action.Action;
 import reactor.rx.action.CompositeAction;
 import reactor.rx.action.Control;
@@ -356,7 +349,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Environment getEnvironment() {
+			public Timer getTimer() {
 				return Stream.this.getEnvironment();
 			}
 
@@ -733,13 +726,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 		}) {
 			@Override
-			public ReactorProcessor getDispatcher() {
-				return dispatcher;
-			}
-
-			@Override
-			public Environment getEnvironment() {
-				return environment;
+			public Timer getTimer() {
+				return timer;
 			}
 
 			@Override
@@ -1029,7 +1017,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Environment getEnvironment() {
+			public Timer getTimer() {
 				return Stream.this.getEnvironment();
 			}
 		};
@@ -1060,7 +1048,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Environment getEnvironment() {
+			public Timer getTimer() {
 				return Stream.this.getEnvironment();
 			}
 		};
@@ -1098,7 +1086,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Environment getEnvironment() {
+			public Timer getTimer() {
 				return Stream.this.getEnvironment();
 			}
 
@@ -1143,7 +1131,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Environment getEnvironment() {
+			public Timer getTimer() {
 				return Stream.this.getEnvironment();
 			}
 		};
@@ -1269,7 +1257,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Environment getEnvironment() {
+			public Timer getTimer() {
 				return Stream.this.getEnvironment();
 			}
 		};
@@ -1358,7 +1346,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Environment getEnvironment() {
+			public Timer getTimer() {
 				return Stream.this.getEnvironment();
 			}
 
@@ -2952,7 +2940,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 
 			@Override
-			public Environment getEnvironment() {
+			public Timer getTimer() {
 				return environment;
 			}
 		};
@@ -3065,7 +3053,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return any available timer
 	 */
 	public Timer getTimer() {
-		return getEnvironment() == null ? Environment.timer() : getEnvironment().getTimer();
+		return Timers.globalOrNull();
 	}
 
 	/**

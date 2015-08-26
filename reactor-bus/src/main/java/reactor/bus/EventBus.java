@@ -22,6 +22,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.Subscribers;
 import reactor.bus.filter.PassThroughFilter;
 import reactor.bus.publisher.BusPublisher;
 import reactor.bus.registry.CachingRegistry;
@@ -36,8 +37,10 @@ import reactor.bus.selector.Selectors;
 import reactor.bus.spec.EventBusSpec;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
+import reactor.core.subscription.SubscriptionWithContext;
 import reactor.core.support.Assert;
 import reactor.core.support.UUIDUtils;
+import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -73,6 +76,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	private final Router                                         router;
 	private final Consumer<Throwable>                            processorErrorHandler;
 	private final Consumer<Throwable>                            uncaughtErrorHandler;
+	private final int                                            concurrency;
 
 	private volatile UUID id;
 
@@ -92,7 +96,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * @return A new {@link EventBus}
 	 */
 	public static EventBus create() {
-		return new EventBus(null);
+		return create(null);
 	}
 
 	/**
@@ -102,7 +106,22 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * @return A new {@link EventBus}
 	 */
 	public static EventBus create(Processor<Event<?>, Event<?>> processor) {
-		return new EventBus(processor);
+		return create(processor, 1);
+	}
+
+	/**
+	 * Create a new {@link EventBus} using the given {@link Processor}.
+	 *
+	 * @param processor   The {@link Processor} to use.
+	 * @param concurrency The allowed number of concurrent routing. This is highly dependent on the
+	 *                    processor used. Only "Work" processors like {@link reactor.core.processor
+	 *                    .RingBufferWorkProcessor}
+	 *                    will be meaningful as they distribute their messages, default RS behavior is to broadcast
+	 *                    resulting
+	 * @return A new {@link EventBus}
+	 */
+	public static EventBus create(Processor<Event<?>, Event<?>> processor, int concurrency) {
+		return new EventBus(processor, concurrency);
 	}
 
 
@@ -113,10 +132,15 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * Selector#matches(Object) match}
 	 * the notification key and does not perform any type conversion.
 	 *
-	 * @param processor The {@link Processor} to use. May be {@code null} in which case the bus will be synchronous
+	 * @param processor   The {@link Processor} to use. May be {@code null} in which case the bus will be synchronous
+	 * @param concurrency The allowed number of concurrent routing. This is highly dependent on the
+	 *                    processor used. Only "Work" processors like {@link reactor.core.processor
+	 *                    .RingBufferWorkProcessor}
+	 *                    will be meaningful as they distribute their messages, default RS behavior is to broadcast
+	 *                    resulting
 	 */
-	public EventBus(@Nullable Processor<Event<?>, Event<?>> processor) {
-		this(processor, null);
+	public EventBus(@Nullable Processor<Event<?>, Event<?>> processor, int concurrency) {
+		this(processor, concurrency, null);
 	}
 
 	/**
@@ -124,26 +148,34 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 * {@link
 	 * CachingRegistry}.
 	 *
-	 * @param processor The {@link Processor} to use. May be {@code null} in which case a new synchronous
-	 *                  processor
-	 *                  is used.
-	 * @param router    The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code null} in
-	 *                  which case the
-	 *                  default event router that broadcasts events to all of the registered consumers that {@link
-	 *                  Selector#matches(Object) match} the notification key and does not perform any type conversion
-	 *                  will be used.
+	 * @param processor   The {@link Processor} to use. May be {@code null} in which case a new synchronous
+	 *                    processor
+	 *                    is used.
+	 * @param concurrency The allowed number of concurrent routing. This is highly dependent on the
+	 *                    processor used. Only "Work" processors like {@link reactor.core.processor
+	 *                    .RingBufferWorkProcessor}
+	 *                    will be meaningful as they distribute their messages, default RS behavior is to broadcast
+	 *                    resulting
+	 * @param router      The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code null} in
+	 *                    which case the
+	 *                    default event router that broadcasts events to all of the registered consumers that {@link
+	 *                    Selector#matches(Object) match} the notification key and does not perform any type conversion
+	 *                    will be used.
 	 */
 	public EventBus(@Nullable Processor<Event<?>, Event<?>> processor,
+	                int concurrency,
 	                @Nullable Router router) {
-		this(processor, router, null, null);
+		this(processor, concurrency, router, null, null);
 	}
 
 	public EventBus(@Nullable Processor<Event<?>, Event<?>> processor,
+	                int concurrency,
 	                @Nullable Router router,
 	                @Nullable Consumer<Throwable> processorErrorHandler,
 	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
 		this(Registries.<Object, Consumer<? extends Event<?>>>create(),
 		  processor,
+		  concurrency,
 		  router,
 		  processorErrorHandler,
 		  uncaughtErrorHandler);
@@ -156,6 +188,12 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	 *                             Consumer}
 	 * @param processor            The {@link Processor} to use. May be {@code null} in which case a new synchronous
 	 *                             processor is used.
+	 * @param concurrency          The allowed number of concurrent routing. This is highly dependent on the
+	 *                             processor used. Only "Work" processors like {@link reactor.core.processor
+	 *                             .RingBufferWorkProcessor}
+	 *                             will be meaningful as they distribute their messages, default RS behavior is to
+	 *                             broadcast resulting
+	 *                             in a matching number of duplicate routing.
 	 * @param router               The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code
 	 *                             null} in which case the
 	 *                             default event router that broadcasts events to all of the registered consumers that
@@ -169,12 +207,14 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 	@SuppressWarnings("unchecked")
 	public EventBus(@Nonnull Registry<Object, Consumer<? extends Event<?>>> consumerRegistry,
 	                @Nullable Processor<Event<?>, Event<?>> processor,
+	                int concurrency,
 	                @Nullable Router router,
 	                @Nullable Consumer<Throwable> processorErrorHandler,
 	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
 		Assert.notNull(consumerRegistry, "Consumer Registry cannot be null.");
 		this.consumerRegistry = consumerRegistry;
 		this.processor = processor;
+		this.concurrency = concurrency;
 		this.router = (null == router ? DEFAULT_EVENT_ROUTER : router);
 		if (null == processorErrorHandler) {
 			this.processorErrorHandler = new Consumer<Throwable>() {
@@ -193,6 +233,17 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 		}
 
 		this.uncaughtErrorHandler = uncaughtErrorHandler;
+
+		if(processor != null) {
+			for (int i = 0; i < concurrency; i++) {
+				processor.subscribe(Subscribers.unbounded(new BiConsumer<Event<?>, SubscriptionWithContext<Void>>() {
+					@Override
+					public void accept(Event<?> event, SubscriptionWithContext<Void> voidSubscriptionWithContext) {
+						EventBus.this.accept(event);
+					}
+				}, this.processorErrorHandler));
+			}
+		}
 
 		this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
 			final Logger log = LoggerFactory.getLogger(EventBus.class);
@@ -294,6 +345,10 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 		return consumerRegistry.register(selector, proxyConsumer);
 	}
 
+	public int getConcurrency() {
+		return concurrency;
+	}
+
 	private Class<?> extractGeneric(Consumer<? extends Event<?>> consumer) {
 		if (consumer.getClass().getGenericInterfaces().length == 0) return null;
 
@@ -345,7 +400,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 				errorHandlerOrThrow(throwable);
 			}
 		} else {
-			processor.dispatch(ev, this, processorErrorHandler);
+			processor.onNext(ev);
 		}
 
 		return this;
@@ -560,7 +615,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 							errorHandlerOrThrow(t);
 						}
 					} else {
-						processor.dispatch(ev, reg.getObject(), processorErrorHandler);
+						schedule(reg.getObject(), ev);
 					}
 				}
 			}
@@ -585,17 +640,16 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 			return;
 		}
 
-		processor.dispatch(null, new Consumer<Event<?>>() {
-			@Override
-			public void accept(Event<?> event) {
-				consumer.accept(data);
-			}
-		}, processorErrorHandler);
+		processor.onNext(new ConsumerEvent<>(consumer, data));
 	}
 
 	@Override
 	public void accept(Event<?> event) {
-		router.route(event.getKey(), event, consumerRegistry.select(event.getKey()), null, processorErrorHandler);
+		if (event.getClass() == ConsumerEvent.class) {
+			((ConsumerEvent) event).run();
+		} else {
+			router.route(event.getKey(), event, consumerRegistry.select(event.getKey()), null, processorErrorHandler);
+		}
 	}
 
 	public static class ReplyToEvent<T> extends Event<T> {
@@ -622,6 +676,19 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 		public Bus getReplyToObservable() {
 			return replyToObservable;
+		}
+	}
+
+	private static class ConsumerEvent<T> extends Event<Consumer<T>> {
+		private final T data;
+
+		public ConsumerEvent(Consumer<T> consumer, T data) {
+			super(consumer);
+			this.data = data;
+		}
+
+		void run() {
+			getData().accept(data);
 		}
 	}
 
@@ -664,11 +731,11 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 		}
 	}
 
-	private void errorHandlerOrThrow(Throwable t){
+	private void errorHandlerOrThrow(Throwable t) {
 		if (processorErrorHandler != null) {
 			Exceptions.throwIfFatal(t);
 			processorErrorHandler.accept(t);
-		}else{
+		} else {
 			throw ReactorFatalException.create(t);
 		}
 	}
