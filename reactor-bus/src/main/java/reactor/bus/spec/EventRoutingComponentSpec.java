@@ -190,16 +190,17 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	protected abstract TARGET configure(EventBus reactor);
 
 	@Override
-	protected final TARGET configure(Processor<Event<?>,Event<?>> processor) {
-		return configure(createReactor(processor));
+	protected final TARGET configure(Processor<Event<?>,Event<?>> processor, int concurrency) {
+		return configure(createReactor(processor, concurrency));
 	}
 
-	private EventBus createReactor(Processor<Event<?>, Event<?>> processor) {
+	private EventBus createReactor(Processor<Event<?>, Event<?>> processor, int concurrency) {
 		if (traceEventPath) {
-			processor = Processors.log(processor);
+			processor = Processors.log(processor, "reactor.bus.log");
 		}
 		return new EventBus((consumerRegistry != null ? consumerRegistry : createRegistry()),
 		  processor,
+		  concurrency,
 		  (router != null ? router : createEventRouter()),
 		  dispatchErrorHandler,
 		  uncaughtErrorHandler);

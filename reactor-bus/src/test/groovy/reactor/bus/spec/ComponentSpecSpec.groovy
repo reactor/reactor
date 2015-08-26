@@ -16,7 +16,6 @@
 package reactor.bus.spec
 
 import reactor.bus.EventBus
-import reactor.core.dispatch.TraceableDelegatingDispatcher
 import spock.lang.Specification
 
 /**
@@ -28,22 +27,12 @@ class ComponentSpecSpec extends Specification {
 
 		when:
 			"we create a plain Reactor"
-			def reactor = EventBus.config().synchronousDispatcher().get()
+			def reactor = EventBus.config().sync().get()
 
 		then:
 			EventBus.isAssignableFrom(reactor.class)
 	}
 
-	def "Tracing is enabled"() {
-
-		when:
-			"a traceable Reactor is created"
-			def reactor = EventBus.config().synchronousDispatcher().traceEventPath().get()
-
-		then:
-			"Reactor uses traceable components"
-			reactor.getDispatcher() instanceof TraceableDelegatingDispatcher
-	}
 
 }
 

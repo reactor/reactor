@@ -186,7 +186,7 @@ public final class Processors {
 	/**
 	 * Create a new {@link ExecutorPoweredProcessor} using the passed buffer size
 	 * and auto-cancel settings.
-	 *
+	 * <p>
 	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
 	 * the created threads.
 	 *
@@ -403,7 +403,6 @@ public final class Processors {
 	}
 
 	/**
-	 *
 	 * @param processor
 	 * @param liftTransformation
 	 * @param <IN>
@@ -412,38 +411,48 @@ public final class Processors {
 	 */
 	public static <IN, OUT> Processor<IN, OUT> lift(
 	  final Processor<IN, OUT> processor,
-	  final Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation)
-	{
-		return new Processor<IN, OUT>() {
-			@Override
-			public void subscribe(Subscriber<? super OUT> s) {
-				try {
-					liftTransformation.apply(processor).subscribe(s);
-				}catch (Throwable t){
-					Exceptions.<OUT>publisher(t).subscribe(s);
-				}
-			}
+	  final Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation) {
+		return new LiftProcessor<>(liftTransformation, processor);
 
-			@Override
-			public void onSubscribe(Subscription s) {
-				processor.onSubscribe(s);
-			}
+	}
 
-			@Override
-			public void onNext(IN in) {
-				processor.onNext(in);
-			}
+	private static class LiftProcessor<IN, OUT> implements Processor<IN, OUT> {
+		private final Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation;
+		private final Processor<IN, OUT>                                             processor;
 
-			@Override
-			public void onError(Throwable t) {
-				processor.onError(t);
-			}
+		public LiftProcessor(Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation,
+		                     Processor<IN, OUT> processor) {
+			this.liftTransformation = liftTransformation;
+			this.processor = processor;
+		}
 
-			@Override
-			public void onComplete() {
-				processor.onComplete();
+		@Override
+		public void subscribe(Subscriber<? super OUT> s) {
+			try {
+				liftTransformation.apply(processor).subscribe(s);
+			} catch (Throwable t) {
+				Exceptions.<OUT>publisher(t).subscribe(s);
 			}
-		};
+		}
 
+		@Override
+		public void onSubscribe(Subscription s) {
+			processor.onSubscribe(s);
+		}
+
+		@Override
+		public void onNext(IN in) {
+			processor.onNext(in);
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			processor.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			processor.onComplete();
+		}
 	}
 }

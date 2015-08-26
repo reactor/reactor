@@ -86,6 +86,15 @@ public final class Timers {
 	}
 
 	/**
+	 * The returned timer MIGHT be NULL if no global timer set.
+	 *
+	 * @return eventually the global timer or if not NULL.
+	 */
+	public static Timer globalOrNull() {
+		return GlobalTimer.available() ? GlobalTimer.get() : null;
+	}
+
+	/**
 	 * Obtain the default global timer from the current context. The globalTimer is created lazily so
 	 * it is preferrable to fetch them out of the critical path.
 	 * <p>
