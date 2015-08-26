@@ -36,6 +36,10 @@ public class PublisherFactoryTests extends PublisherVerification<Long> {
 		super(new TestEnvironment(500, true), 1000);
 	}
 
+	@Test
+	public void simpleTest(){
+
+	}
 
 	@Override
 	public Publisher<Long> createPublisher(long elements) {
