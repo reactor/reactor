@@ -17,10 +17,7 @@ package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
+import reactor.Publishers;
 import reactor.fn.Consumer;
 import reactor.fn.Predicate;
 import reactor.rx.action.Action;
@@ -42,13 +39,7 @@ public class RetryAction<T> extends Action<T, T> {
 	                   Predicate<Throwable> predicate, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
 		this.retryMatcher = predicate;
-		this.rootPublisher = parentStream;
-
-		if (SynchronousDispatcher.INSTANCE == dispatcher) {
-			this.dispatcher = Environment.tailRecurse();
-		} else {
-			this.dispatcher = dispatcher;
-		}
+		this.rootPublisher = parentStream != null ? Publishers.trampoline(parentStream) : null;
 	}
 
 	@Override
@@ -80,7 +71,7 @@ public class RetryAction<T> extends Action<T, T> {
 			currentNumRetries = 0;
 		} else {
 			cancel();
-			dispatcher.dispatch(throwable, throwableConsumer, null);
+			throwableConsumer.accept(throwable);
 
 		}
 	}
@@ -99,10 +90,6 @@ public class RetryAction<T> extends Action<T, T> {
 		@Override
 		public void accept(Throwable throwable) {
 				if (rootPublisher != null) {
-					if(TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())){
-						dispatcher.shutdown();
-						dispatcher = Environment.tailRecurse();
-					}
 					rootPublisher.subscribe(RetryAction.this);
 				}
 		}

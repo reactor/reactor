@@ -17,7 +17,6 @@ package reactor.rx;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.Environment;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.rx.action.Control;
 
@@ -80,8 +79,6 @@ public class FizzBuzzTests extends AbstractReactorTest {
 	@Test
 	public void indexBugTest() throws InterruptedException {
 		int numOfItems = 20;
-
-		Environment.initializeIfEmpty();
 
 		//this line causes an java.lang.ArrayIndexOutOfBoundsException unless there is a break point in ZipAction
 		// .createSubscriber()

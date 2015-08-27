@@ -18,6 +18,7 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
@@ -67,8 +68,13 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		super.subscribe(subscriber);
-		doOnSubscribe(this.innerSubscriptions);
+		Publishers.trampoline(new Publisher<O>() {
+			@Override
+			public void subscribe(Subscriber<? super O> s) {
+				FanInAction.super.subscribe(s);
+				doOnSubscribe(innerSubscriptions);
+			}
+		}).subscribe(subscriber);
 	}
 
 	public void addPublisher(Publisher<? extends I> publisher) {
@@ -128,7 +134,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			long left = upstreamSubscription.pendingRequestSignals();
 			if (left > 0l) {
 				upstreamSubscription.updatePendingRequests(-left);
-				tailDispatcher.dispatch(left, upstreamSubscription, null);
+				upstreamSubscription.accept(left);
 			}
 		}
 	}
@@ -136,7 +142,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	public void requestMore(long n) {
 		checkRequest(n);
-		tailDispatcher.dispatch(n, upstreamSubscription, null);
+		upstreamSubscription.accept(n);
 	}
 
 	@Override

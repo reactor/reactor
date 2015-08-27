@@ -16,9 +16,8 @@
 
 package reactor.io.net.udp;
 
-import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -41,13 +40,12 @@ public abstract class DatagramServer<IN, OUT>
 	private final NetworkInterface    multicastInterface;
 	private final ServerSocketOptions options;
 
-	protected DatagramServer(Environment env,
-	                         ReactorProcessor dispatcher,
+	protected DatagramServer(Timer timer,
 	                         InetSocketAddress listenAddress,
 	                         NetworkInterface multicastInterface,
 	                         ServerSocketOptions options,
 	                         Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec, options.prefetch());
+		super(timer, codec, options.prefetch());
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.listenAddress = listenAddress;
 		this.multicastInterface = multicastInterface;

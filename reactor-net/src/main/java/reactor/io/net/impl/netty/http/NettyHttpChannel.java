@@ -50,7 +50,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	public NettyHttpChannel(NettyChannelStream<IN, OUT> tcpStream,
 	                        HttpRequest request
 	) {
-		super(tcpStream.getEnvironment(), tcpStream.getCapacity(), tcpStream.getDispatcher());
+		super(tcpStream.getTimer(), tcpStream.getCapacity());
 		this.tcpStream = tcpStream;
 		this.nettyRequest = request;
 		this.nettyResponse = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.OK);

@@ -22,6 +22,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
@@ -50,12 +51,13 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 	private          long pendingRequests;
 
 
-	public AdaptiveConsumerAction(long initCapacity,
+	public AdaptiveConsumerAction(Timer timer,
+	                              long initCapacity,
 	                              Consumer<? super T> consumer,
 	                              Function<Stream<Long>, ? extends Publisher<? extends Long>>
 	                                requestMapper) {
 		this.consumer = consumer;
-		this.requestMapperStream = Broadcaster.create();
+		this.requestMapperStream = Broadcaster.create(timer);
 		this.requestMapperStream.onSubscribe(new Subscription() {
 			@Override
 			public void request(long n) {

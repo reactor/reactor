@@ -68,8 +68,9 @@ public class ProcessorServiceAsyncTests extends AbstractProcessorTests {
 			}
 		});
 
-		Assert.isTrue(tasksCountDown.await(5, TimeUnit.SECONDS));
+		boolean check = tasksCountDown.await(5, TimeUnit.SECONDS);
 		Assert.isTrue(!exceptionThrown.get());
+		Assert.isTrue(check);
 
 		return dispatcher;
 	}

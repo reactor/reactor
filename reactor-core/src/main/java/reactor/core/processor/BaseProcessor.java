@@ -39,6 +39,7 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	public static final int MEDIUM_BUFFER_SIZE = 8192;
 
 	protected final boolean autoCancel;
+	protected final ClassLoader contextClassLoader;
 
 	@SuppressWarnings("unused")
 	private volatile       int                                      subscriberCount  = 0;
@@ -49,7 +50,12 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	protected Subscription upstreamSubscription;
 
 	protected BaseProcessor(boolean autoCancel) {
+		this(null, autoCancel);
+	}
+
+	protected BaseProcessor(ClassLoader contextClassLoader, boolean autoCancel) {
 		this.autoCancel = autoCancel;
+		this.contextClassLoader = contextClassLoader;
 	}
 
 	@Override
@@ -67,6 +73,13 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	 * @return a snapshot number of available onNext before starving the resource
 	 */
 	public abstract long getAvailableCapacity();
+
+	/**
+	 * @return true if the classLoader marker is detected in the current thread
+	 */
+	public boolean isInContext() {
+		return Thread.currentThread().getContextClassLoader() == contextClassLoader;
+	}
 
 	@Override
 	public long getCapacity() {

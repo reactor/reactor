@@ -23,8 +23,7 @@ import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
-import reactor.ReactorProcessor;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -55,17 +54,16 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 	protected final TcpServer<IN, OUT> server;
 
-	protected NettyHttpServer(final Environment env,
-	                          final ReactorProcessor dispatcher,
+	protected NettyHttpServer(final Timer timer,
 	                          final InetSocketAddress listenAddress,
 	                          final ServerSocketOptions options,
 	                          final SslOptions sslOptions,
 	                          final Codec<Buffer, IN, OUT> codec) {
 
-		super(env, dispatcher, codec);
+		super(timer, codec);
 
-		this.server = new NettyTcpServer<IN, OUT>(env,
-				dispatcher,
+		this.server = new NettyTcpServer<IN, OUT>(
+		        timer,
 				listenAddress,
 				options,
 				sslOptions,
@@ -140,10 +138,9 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 			nativeChannel) {
 
 		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getDefaultEnvironment(),
+				getDefaultTimer(),
 				getDefaultCodec(),
 				getDefaultPrefetchSize(),
-				getDefaultDispatcher(),
 				nativeChannel
 		);
 

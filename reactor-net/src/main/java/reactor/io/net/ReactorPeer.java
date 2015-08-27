@@ -16,9 +16,8 @@
 
 package reactor.io.net;
 
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.Timers;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.rx.Promise;
@@ -37,25 +36,21 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public abstract class ReactorPeer<IN, OUT, CONN extends ChannelStream<IN, OUT>> {
 
-	private final   ReactorProcessor       defaultDispatcher;
-	private final   Environment            defaultEnv;
+	private final   Timer            defaultTimer;
 	private final   Codec<Buffer, IN, OUT> defaultCodec;
 	private final   long                   defaultPrefetch;
 	protected final AtomicBoolean          started;
 
-	protected ReactorPeer(Environment defaultEnv,
-	                      ReactorProcessor defaultDispatcher,
+	protected ReactorPeer(Timer defaultTimer,
 	                      Codec<Buffer, IN, OUT> codec) {
-		this(defaultEnv, defaultDispatcher, codec, Long.MAX_VALUE);
+		this(defaultTimer, codec, Long.MAX_VALUE);
 	}
 
-	protected ReactorPeer(Environment defaultEnv,
-	                      ReactorProcessor defaultDispatcher,
+	protected ReactorPeer(Timer defaultTimer,
 	                      Codec<Buffer, IN, OUT> codec,
 	                      long prefetch) {
-		this.defaultEnv = defaultEnv == null && Environment.alive() ? Environment.get() : defaultEnv;
+		this.defaultTimer = defaultTimer == null && Timers.hasGlobal() ? Timers.global() : defaultTimer;
 		this.defaultCodec = codec;
-		this.defaultDispatcher = defaultDispatcher != null ? defaultDispatcher : SynchronousDispatcher.INSTANCE;
 		this.defaultPrefetch = prefetch > 0 ? prefetch : Long.MAX_VALUE;
 		this.started = new AtomicBoolean();
 	}
@@ -89,13 +84,6 @@ public abstract class ReactorPeer<IN, OUT, CONN extends ChannelStream<IN, OUT>> 
 	}
 
 	/**
-	 * @return Dispatcher assigned to this peer (and used by default on each new Channel)
-	 */
-	public final ReactorProcessor getDefaultDispatcher() {
-		return defaultDispatcher;
-	}
-
-	/**
 	 * Get the {@link Codec} in use.
 	 *
 	 * @return The defaultCodec. May be {@literal null}.
@@ -109,8 +97,8 @@ public abstract class ReactorPeer<IN, OUT, CONN extends ChannelStream<IN, OUT>> 
 	 *
 	 * @return The default environment
 	 */
-	public final Environment getDefaultEnvironment() {
-		return defaultEnv;
+	public final Timer getDefaultTimer() {
+		return defaultTimer;
 	}
 
 	/**

@@ -88,7 +88,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
                 broadcastNext(res);
 
                 if (!isFinishing && upstreamSubscription.pendingRequestSignals() > 0) {
-                    dispatcher.dispatch(capacity, upstreamSubscription, null);
+                    upstreamSubscription.accept(capacity);
                 }
             }
         }

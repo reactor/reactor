@@ -16,9 +16,8 @@
 
 package reactor.io.net.http;
 
-import reactor.Environment;
 import reactor.bus.selector.HeaderResolver;
-import reactor.ReactorProcessor;
+import reactor.fn.timer.Timer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.http.model.*;
 
@@ -45,11 +44,10 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	protected final static AtomicIntegerFieldUpdater<HttpChannel> HEADERS_SENT =
 	  AtomicIntegerFieldUpdater.newUpdater(HttpChannel.class, "statusAndHeadersSent");
 
-	public HttpChannel(Environment env,
-	                   long prefetch,
-	                   ReactorProcessor eventsDispatcher
+	public HttpChannel(Timer timer,
+	                   long prefetch
 	) {
-		super(env, null, prefetch, eventsDispatcher);
+		super(timer, null, prefetch);
 	}
 
 	// REQUEST contract

@@ -16,8 +16,7 @@
 
 package reactor.io.net;
 
-import reactor.Environment;
-import reactor.ReactorProcessor;
+import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -44,10 +43,10 @@ public abstract class ReactorClient<IN, OUT, CONN extends ChannelStream<IN, OUT>
 	};
 
 
-	protected ReactorClient(Environment defaultEnv, ReactorProcessor defaultDispatcher, Codec<Buffer, IN, OUT> codec,
+	protected ReactorClient(Timer defaultEnv, Codec<Buffer, IN, OUT> codec,
 	                        long
 	  prefetch) {
-		super(defaultEnv, defaultDispatcher, codec, prefetch);
+		super(defaultEnv, codec, prefetch);
 	}
 
 	/**

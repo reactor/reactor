@@ -1632,10 +1632,6 @@ public class StreamTests extends AbstractReactorTest {
 	// Setting it to 1 doesn't help.
 	private static final int BACKLOG = 1024;
 
-	static {
-		Environment.initializeIfEmpty();
-	}
-
 	private static void println(final Object... fragments) {
 		final Thread currentThread = Thread.currentThread();
 		synchronized (System.out) {

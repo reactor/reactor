@@ -22,10 +22,9 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.core.error.CancelException;
 import reactor.fn.Consumer;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -47,12 +46,11 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	private final Channel ioChannel;
 
-	public NettyChannelStream(Environment env,
+	public NettyChannelStream(Timer timer,
 	                          Codec<Buffer, IN, OUT> codec,
 	                          long prefetch,
-	                          ReactorProcessor eventsDispatcher,
 	                          Channel ioChannel) {
-		super(env, codec, prefetch, eventsDispatcher);
+		super(timer, codec, prefetch);
 		this.ioChannel = ioChannel;
 	}
 

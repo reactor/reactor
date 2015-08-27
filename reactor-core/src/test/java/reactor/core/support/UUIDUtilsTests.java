@@ -29,7 +29,6 @@ import java.util.concurrent.locks.ReentrantLock;
 /**
  * @author Andy Wilkinson
  */
-@Ignore
 public class UUIDUtilsTests {
 
 	private static final long          clockNodeAndSeq    = new Random().nextLong();
@@ -43,6 +42,7 @@ public class UUIDUtilsTests {
 	private static final int    TEST_ITERATIONS       = 10;
 
 	@Test
+	@Ignore
 	public void reentrantLockWithAtomicLongPerformance() throws InterruptedException {
 		doTest("ReentrantLock with AtomicLong", new Supplier<UUID>() {
 
@@ -76,6 +76,7 @@ public class UUIDUtilsTests {
 	}
 
 	@Test
+	@Ignore
 	public void synchronizedWithAtomicLongPerformance() throws InterruptedException {
 		doTest("Synchronized with AtomicLong", new Supplier<UUID>() {
 
@@ -107,6 +108,7 @@ public class UUIDUtilsTests {
 	}
 
 	@Test
+	@Ignore
 	public void reentrantLockWithLongPerformance() throws InterruptedException {
 		doTest("ReentrantLock with long", new Supplier<UUID>() {
 
@@ -140,6 +142,7 @@ public class UUIDUtilsTests {
 	}
 
 	@Test
+	@Ignore
 	public void synchronizedWithLongPerformance() throws InterruptedException {
 		doTest("Synchronized with long", new Supplier<UUID>() {
 
@@ -171,6 +174,7 @@ public class UUIDUtilsTests {
 	}
 
 	@Test
+	@Ignore
 	public void timeBasedVersusRandom() throws InterruptedException {
 		doTest("Create time-based", new Supplier<UUID>() {
 			@Override

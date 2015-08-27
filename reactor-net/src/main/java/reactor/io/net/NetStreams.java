@@ -15,7 +15,7 @@
  */
 package reactor.io.net;
 
-import reactor.Environment;
+import reactor.Timers;
 import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -123,7 +123,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -157,7 +157,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -193,7 +193,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -229,7 +229,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -242,9 +242,7 @@ public class NetStreams extends Streams {
 		return tcpServer(new Function<Spec.TcpServerSpec<Buffer, Buffer>, Spec.TcpServerSpec<Buffer, Buffer>>() {
 			@Override
 			public Spec.TcpServerSpec<Buffer, Buffer> apply(Spec.TcpServerSpec<Buffer, Buffer> serverSpec) {
-				if (Environment.alive()) {
-					serverSpec.env(Environment.get());
-				}
+				serverSpec.timer(Timers.globalOrNull());
 				return serverSpec.listen(bindAddress, port);
 			}
 		});
@@ -274,7 +272,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -313,7 +311,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -357,7 +355,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -392,7 +390,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -428,7 +426,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -464,7 +462,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -477,9 +475,7 @@ public class NetStreams extends Streams {
 		return tcpClient(new Function<Spec.TcpClientSpec<Buffer, Buffer>, Spec.TcpClientSpec<Buffer, Buffer>>() {
 			@Override
 			public Spec.TcpClientSpec<Buffer, Buffer> apply(Spec.TcpClientSpec<Buffer, Buffer> clientSpec) {
-				if (Environment.alive()) {
-					clientSpec.env(Environment.get());
-				}
+				clientSpec.timer(Timers.globalOrNull());
 				return clientSpec.connect(bindAddress, port);
 			}
 		});
@@ -509,7 +505,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -548,7 +544,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -610,9 +606,7 @@ public class NetStreams extends Streams {
 		return httpServer(new Function<Spec.HttpServerSpec<Buffer, Buffer>, Spec.HttpServerSpec<Buffer, Buffer>>() {
 			@Override
 			public Spec.HttpServerSpec<Buffer, Buffer> apply(Spec.HttpServerSpec<Buffer, Buffer> serverSpec) {
-				if (Environment.alive()) {
-					serverSpec.env(Environment.get());
-				}
+				serverSpec.timer(Timers.globalOrNull());
 				return serverSpec.listen(bindAddress, port);
 			}
 		});
@@ -654,9 +648,7 @@ public class NetStreams extends Streams {
 		return httpClient(new Function<Spec.HttpClientSpec<Buffer, Buffer>, Spec.HttpClientSpec<Buffer, Buffer>>() {
 			@Override
 			public Spec.HttpClientSpec<Buffer, Buffer> apply(Spec.HttpClientSpec<Buffer, Buffer> clientSpec) {
-				if (Environment.alive()) {
-					clientSpec.env(Environment.get());
-				}
+				clientSpec.timer(Timers.globalOrNull());
 				return clientSpec;
 			}
 		});
@@ -687,7 +679,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -730,7 +722,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -771,7 +763,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -801,7 +793,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -833,7 +825,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -865,7 +857,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -879,9 +871,7 @@ public class NetStreams extends Streams {
 		  Buffer>>() {
 			@Override
 			public Spec.DatagramServerSpec<Buffer, Buffer> apply(Spec.DatagramServerSpec<Buffer, Buffer> serverSpec) {
-				if (Environment.alive()) {
-					serverSpec.env(Environment.get());
-				}
+				serverSpec.timer(Timers.globalOrNull());
 				return serverSpec.listen(bindAddress, port);
 			}
 		});
@@ -907,7 +897,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
@@ -943,7 +933,7 @@ public class NetStreams extends Streams {
 	 * capacity batch size and read will pause when capacity number of elements have been dispatched.
 	 * <p>
 	 * Emitted channels will run on the same thread they have beem receiving IO events.
-	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#dispatchOn} to process requests
+	 * Apart from dispatching the write, it is possible to use {@link reactor.rx.Stream#process} to process requests
 	 * asynchronously.
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}

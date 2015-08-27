@@ -344,7 +344,7 @@ class ProcessorsSpec extends Specification {
 		where:
 			d << [
 					Processors.workService("ping-pong-rb", 1024, 4).dataDispatcher(),
-					ProcessorService.create(SimpleWorkProcessor.create("ping-pong-work", 1024), 4).dataDispatcher()
+					ProcessorService.create({ -> SimpleWorkProcessor.create("ping-pong-work", 1024)}, 4).dataDispatcher()
 			]
 
 	}

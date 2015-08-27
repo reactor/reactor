@@ -29,9 +29,8 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -67,13 +66,12 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private final EventLoopGroup           selectorGroup;
 	private final EventLoopGroup           ioGroup;
 
-	protected NettyTcpServer(Environment env,
-	                         ReactorProcessor dispatcher,
+	protected NettyTcpServer(Timer timer,
 	                         InetSocketAddress listenAddress,
 	                         final ServerSocketOptions options,
 	                         final SslOptions sslOptions,
 	                         Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, listenAddress, options, sslOptions, codec);
+		super(timer, listenAddress, options, sslOptions, codec);
 
 		if (options instanceof NettyServerSocketOptions) {
 			this.nettyOptions = (NettyServerSocketOptions) options;
@@ -192,10 +190,9 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel nativeChannel) {
 
 		NettyChannelStream<IN ,OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getDefaultEnvironment(),
+				getDefaultTimer(),
 				getDefaultCodec(),
 				getDefaultPrefetchSize(),
-				getDefaultDispatcher(),
 				nativeChannel
 		);
 

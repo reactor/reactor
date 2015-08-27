@@ -18,9 +18,7 @@ package reactor.rx.action.control;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.ReactorProcessor;
 import reactor.core.support.Bounded;
-import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
@@ -37,7 +35,7 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 
 	public ThrottleRequestWhenAction(Timer timer,
 	                                 Function<? super Stream<? extends Long>, ? extends Publisher<? extends Long>>
-			                                 predicate) {
+	                                   predicate) {
 		this.throttleStream = Broadcaster.create(timer);
 		Publisher<? extends Long> afterRequestStream = predicate.apply(throttleStream);
 		afterRequestStream.subscribe(new ThrottleSubscriber());
@@ -58,7 +56,7 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 		try {
 			throttleStream.onComplete();
 			doShutdown();
-		}catch(Exception e){
+		} catch (Exception e) {
 			doError(e);
 		}
 	}
@@ -69,14 +67,9 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 	}
 
 	protected void doRequest(final long requested) {
-		throttleStream.getDispatcher().dispatch(requested, new Consumer<Long>() {
-			@Override
-			public void accept(Long o) {
-				if (upstreamSubscription != null) {
-					upstreamSubscription.request(o);
-				}
-			}
-		}, null);
+		if (upstreamSubscription != null) {
+			upstreamSubscription.request(requested);
+		}
 	}
 
 	private class ThrottleSubscriber implements Subscriber<Long>, Bounded {

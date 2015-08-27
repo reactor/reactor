@@ -19,29 +19,20 @@ package reactor;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import reactor.fn.timer.Timer;
 
 /**
- * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public abstract class AbstractReactorTest {
-
-	protected Environment env;
-
-
 	@BeforeClass
 	public static void loadEnv() {
-		Environment.initializeIfEmpty().assignErrorJournal();
-	}
-
-	@Before
-	public void assignEnv() {
-		env = Environment.get();
+		Timers.global();
 	}
 
 	@AfterClass
 	public static void closeEnv() {
-		Environment.terminate();
+		Timers.unregisterGlobal();
 	}
 
 }

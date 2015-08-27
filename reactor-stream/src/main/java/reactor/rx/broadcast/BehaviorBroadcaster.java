@@ -17,9 +17,7 @@ package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.error.CancelException;
-import reactor.core.support.Assert;
 import reactor.fn.timer.Timer;
-import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
@@ -47,11 +45,12 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 * broadcast at a time.
 	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
 	 *
+	 * @param value the value to start with the sequence
 	 * @param <T> the type of values passing through the {@literal action}
 	 * @return a new {@link reactor.rx.action.Action}
 	 */
 	public static <T> Broadcaster<T> first(T value) {
-		return new BehaviorBroadcaster<>(null, SynchronousDispatcher.INSTANCE, Long.MAX_VALUE, value);
+		return new BehaviorBroadcaster<>(null, value);
 	}
 
 	/**
@@ -61,12 +60,13 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
-	 * @param dispatcher the {@link ReactorProcessor} to use
+	 * @param value the value to start with the sequence
+	 * @param timer the {@link Timer} to use downstream
 	 * @param <T>        the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> first(T value, Timer timer) {
-		return new BehaviorBroadcaster<>(timer, Action.evaluateCapacity(dispatcher.backlogSize()), value);
+		return new BehaviorBroadcaster<>(timer, value);
 	}
 
 	/**
@@ -76,7 +76,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
-	 * @param dispatcher the {@link ReactorProcessor} to use
+	 * @param timer the {@link Timer} to use downstream
 	 * @param <T>        the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
@@ -90,8 +90,8 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	private final BufferedSignal<O> lastSignal = new BufferedSignal<O>(null);
 
-	private BehaviorBroadcaster(Timer timer, long capacity, O defaultVal) {
-		super(timer, capacity);
+	private BehaviorBroadcaster(Timer timer, O defaultVal) {
+		super(timer);
 		if (defaultVal != null) {
 			lastSignal.type = Signal.Type.NEXT;
 			lastSignal.value = defaultVal;
@@ -110,25 +110,22 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	@Override
 	public void onNext(O ev) {
-		if (!dispatcher.inContext()) {
-			dispatcher.dispatch(ev, this, null);
-		} else {
-			synchronized (this) {
-				if (lastSignal.type == Signal.Type.COMPLETE ||
-				  lastSignal.type == Signal.Type.ERROR)
-					return;
-				lastSignal.value = ev;
-				lastSignal.error = null;
-				lastSignal.type = Signal.Type.NEXT;
-				try {
-					broadcastNext(ev);
-				} catch (CancelException ce) {
-					//IGNORE since cached
-				}
-			}
+		synchronized (this) {
+			if (lastSignal.type == Signal.Type.COMPLETE ||
+			  lastSignal.type == Signal.Type.ERROR)
+				return;
+			lastSignal.value = ev;
+			lastSignal.error = null;
+			lastSignal.type = Signal.Type.NEXT;
 		}
-
+		try {
+			broadcastNext(ev);
+		} catch (CancelException ce) {
+			//IGNORE since cached
+		}
 	}
+
+
 
 	@Override
 	protected void doComplete() {

@@ -18,7 +18,6 @@ package reactor.rx.action.aggregation;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
@@ -42,7 +41,7 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 	private final List<Broadcaster<T>> currentWindows = new LinkedList<>();
 	private final Supplier<? extends Publisher<?>> bucketClosing;
 	private final Publisher<?>                     bucketOpening;
-	private final Timer                      timer;
+	private final Timer                            timer;
 
 	public WindowShiftWhenAction(Timer timer,
 	                             Publisher<?> bucketOpenings, Supplier<? extends Publisher<?>>
@@ -67,13 +66,9 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 
 			@Override
 			public void onNext(Object o) {
-				dispatcher.dispatch(null, new Consumer<Void>() {
-					@Override
-					public void accept(Void aVoid) {
-						Broadcaster<T> newBucket = createWindowStream(null);
-						bucketClosing.get().subscribe(new BucketConsumer(newBucket));
-					}
-				}, null);
+
+				Broadcaster<T> newBucket = createWindowStream(null);
+				bucketClosing.get().subscribe(new BucketConsumer(newBucket));
 
 				if (s != null) {
 					s.request(1);
@@ -159,20 +154,24 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 			if (s != null) {
 				s.cancel();
 			}
-			dispatcher.dispatch(null, new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					Iterator<Broadcaster<T>> iterator = currentWindows.iterator();
-					while (iterator.hasNext()) {
-						Broadcaster<T> itBucket = iterator.next();
-						if (itBucket == bucket) {
-							iterator.remove();
-							bucket.onComplete();
-							break;
-						}
+
+			Broadcaster<T> toComplete = null;
+
+			synchronized (currentWindows) {
+				Iterator<Broadcaster<T>> iterator = currentWindows.iterator();
+				while (iterator.hasNext()) {
+					Broadcaster<T> itBucket = iterator.next();
+					if (itBucket == bucket) {
+						iterator.remove();
+						toComplete = bucket;
+						break;
 					}
 				}
-			}, null);
+			}
+
+			if(toComplete != null) {
+				toComplete.onComplete();
+			}
 		}
 	}
 
@@ -183,7 +182,9 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 
 	protected Broadcaster<T> createWindowStream(T first) {
 		Broadcaster<T> action = BehaviorBroadcaster.first(first, timer);
-		currentWindows.add(action);
+		synchronized (currentWindows) {
+			currentWindows.add(action);
+		}
 		broadcastNext(action);
 		return action;
 	}

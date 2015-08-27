@@ -25,6 +25,7 @@ import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.subscriber.BaseSubscriber;
+import reactor.core.support.Assert;
 import reactor.core.support.Recyclable;
 import reactor.core.support.Resource;
 import reactor.core.support.SignalType;
@@ -66,7 +67,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Anatoly Kadyshev
  * @author Stephane Maldini
  */
-public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource {
+public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource {
 
 	/**
 	 * @param <E>
@@ -92,7 +93,7 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
+	public static <E> ProcessorService<E> create(Supplier<? extends Processor<Task, Task>> p,
 	                                             int concurrency) {
 		return create(p, concurrency, null, null, true);
 	}
@@ -129,11 +130,16 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
+	public static <E> ProcessorService<E> create(final Processor<Task, Task> p,
 	                                             Consumer<Throwable> uncaughtExceptionHandler,
 	                                             Consumer<Void> shutdownHandler,
 	                                             boolean autoShutdown) {
-		return create(p, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		return create(new Supplier<Processor<Task, Task>>() {
+			@Override
+			public Processor<Task, Task> get() {
+				return p;
+			}
+		}, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**
@@ -145,12 +151,21 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> create(Processor<Task, Task> p,
+	@SuppressWarnings("unchecked")
+	public static <E> ProcessorService<E> create(Supplier<? extends Processor<Task, Task>> p,
 	                                             int concurrency,
 	                                             Consumer<Throwable> uncaughtExceptionHandler,
 	                                             Consumer<Void> shutdownHandler,
 	                                             boolean autoShutdown) {
-		return new ProcessorService<E>(p, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		if (p != null && concurrency > 1 &&
+		  (!ExecutorPoweredProcessor.class.isAssignableFrom(p.getClass()) ||
+			!((ExecutorPoweredProcessor) p).isWork())) {
+			return new PooledProcessorService<>(p, concurrency, uncaughtExceptionHandler, shutdownHandler,
+			  autoShutdown);
+		} else {
+			return new SingleProcessorService<E>(p, concurrency, uncaughtExceptionHandler, shutdownHandler,
+			  autoShutdown);
+		}
 	}
 
 	/**
@@ -176,10 +191,10 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	final private TailRecurser tailRecurser;
 
 
-	final private Processor<Task, Task>                processor;
-	final private boolean                              autoShutdown;
-	final private int                                  concurrency;
-	final         ExecutorPoweredProcessor<Task, Task> managedProcessor;
+	final private   Processor<Task, Task>                processor;
+	final protected boolean                              autoShutdown;
+	final protected int                                  concurrency;
+	final           ExecutorPoweredProcessor<Task, Task> managedProcessor;
 
 	@SuppressWarnings("unused")
 	private volatile int refCount = 0;
@@ -305,13 +320,6 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	}
 
 	/**
-	 * @return a Reference to the internal shared Processor
-	 */
-	public Processor<Task, Task> engine() {
-		return processor;
-	}
-
-	/**
 	 * A mutable transport for materialized signal dispatching
 	 */
 	public static final class Task implements Recyclable, Serializable {
@@ -417,42 +425,80 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 	private final static int MAX_BUFFER_SIZE = 2 ^ 17;
 
 	@SuppressWarnings("unchecked")
-	private ProcessorService(
-	  Processor<Task, Task> processor,
+	protected ProcessorService(
+	  Supplier<? extends Processor<Task, Task>> processor,
 	  int concurrency,
 	  Consumer<Throwable> uncaughtExceptionHandler,
 	  Consumer<Void> shutdownHandler,
 	  boolean autoShutdown
 	) {
-		this.processor = processor;
 		this.autoShutdown = autoShutdown;
 		this.concurrency = concurrency;
 
 		if (processor != null) {
+			this.processor = processor.get();
+			Assert.isTrue(this.processor != null);
+
 			// Managed Processor, providing for tail recursion,
-			if (ExecutorPoweredProcessor.class.isAssignableFrom(processor.getClass())) {
-				int bufferSize = (int) Math.min(((ExecutorPoweredProcessor) processor).getCapacity(), MAX_BUFFER_SIZE);
+			if (ExecutorPoweredProcessor.class.isAssignableFrom(this.processor.getClass())) {
 
-				this.tailRecurser = new TailRecurser(
-				  bufferSize,
-				  DEFAULT_TASK_PROVIDER,
-				  DEFAULT_TASK_CONSUMER
-				);
+				this.managedProcessor = (ExecutorPoweredProcessor<Task, Task>) this.processor;
 
-				this.managedProcessor = (ExecutorPoweredProcessor<Task, Task>) processor;
+				if (concurrency == 1) {
+					int bufferSize = (int) Math.min(
+					  this.managedProcessor.getCapacity(),
+					  MAX_BUFFER_SIZE
+					);
+
+					this.tailRecurser = new TailRecurser(
+					  bufferSize,
+					  DEFAULT_TASK_PROVIDER,
+					  DEFAULT_TASK_CONSUMER
+					);
+				} else {
+					this.tailRecurser = null;
+				}
+
+
 			} else {
 				this.managedProcessor = null;
 				this.tailRecurser = null;
 			}
 
 			for (int i = 0; i < concurrency; i++) {
-				processor.subscribe(new TaskSubscriber(uncaughtExceptionHandler, shutdownHandler));
+				this.processor.subscribe(new TaskSubscriber(uncaughtExceptionHandler, shutdownHandler));
 			}
 
 		} else {
+			this.processor = null;
 			this.managedProcessor = null;
 			this.tailRecurser = null;
 		}
+	}
+
+	protected void decrementReference() {
+		if (processor != null && REF_COUNT.decrementAndGet(this) <= 0
+		  && autoShutdown) {
+
+			if (ExecutorPoweredProcessor.CANCEL_TIMEOUT > 0) {
+				final Timer timer = GlobalTimer.globalOrNew();
+				timer.submit(new Consumer<Long>() {
+					@Override
+					public void accept(Long aLong) {
+						if (refCount == 0) {
+							processor.onComplete();
+						}
+						timer.cancel();
+					}
+				}, ExecutorPoweredProcessor.CANCEL_TIMEOUT, TimeUnit.SECONDS);
+			} else {
+				processor.onComplete();
+			}
+		}
+	}
+
+	protected void incrementReference() {
+		REF_COUNT.incrementAndGet(this);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -467,7 +513,7 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 			throw new IllegalStateException("Internal Processor is shutdown");
 		}
 
-		REF_COUNT.incrementAndGet(this);
+		incrementReference();
 
 		if (concurrency > 1) {
 			return new WorkProcessorBarrier<>(this);
@@ -681,25 +727,8 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 
 		protected void handleTerminalSignal() {
 			if (service != null && terminated != null
-			  && terminated.compareAndSet(false, true)
-			  && REF_COUNT.decrementAndGet(service) <= 0
-			  && service.autoShutdown) {
-
-				if (ExecutorPoweredProcessor.CANCEL_TIMEOUT > 0) {
-					final Timer timer = GlobalTimer.globalOrNew();
-					timer.submit(new Consumer<Long>() {
-						@Override
-						public void accept(Long aLong) {
-							if (REF_COUNT.get(service) == 0) {
-								service.processor.onComplete();
-							}
-							timer.cancel();
-						}
-					}, ExecutorPoweredProcessor.CANCEL_TIMEOUT, TimeUnit.SECONDS);
-				} else {
-					service.processor.onComplete();
-				}
-
+			  && terminated.compareAndSet(false, true)) {
+				service.decrementReference();
 			}
 		}
 
@@ -708,9 +737,9 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 		}
 
 		protected boolean shouldTailRecruse() {
-			return service.concurrency == 1 &&
+			return service.tailRecurser != null &&
 			  service.managedProcessor != null &&
-			  service.managedProcessor .isInContext();
+			  service.managedProcessor.isInContext();
 		}
 
 		@SuppressWarnings("unchecked")
@@ -843,7 +872,9 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 		@Override
 		public void onNext(Task task) {
 			routeTask(task);
-			tailRecurser.consumeTasks();
+			if(tailRecurser != null) {
+				tailRecurser.consumeTasks();
+			}
 		}
 
 		@Override
@@ -862,5 +893,115 @@ public final class ProcessorService<T> implements Supplier<Processor<T, T>>, Res
 			}
 		}
 
+	}
+
+
+	final static class SingleProcessorService<T> extends ProcessorService<T> {
+		public SingleProcessorService(Supplier<? extends Processor<Task, Task>> processor, int concurrency,
+		                              Consumer<Throwable>
+		                                uncaughtExceptionHandler, Consumer<Void> shutdownHandler, boolean
+		                                autoShutdown) {
+			super(processor, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		}
+	}
+
+	final static class PooledProcessorService<T> extends ProcessorService<T> {
+
+		final ProcessorService[] processorServices;
+
+		volatile int index = 0;
+
+		public PooledProcessorService(
+		  Supplier<? extends Processor<Task, Task>> processor,
+		  int concurrency, Consumer<Throwable>
+			uncaughtExceptionHandler, Consumer<Void> shutdownHandler,
+		  boolean autoShutdown) {
+			super(null, concurrency, null, null, autoShutdown);
+
+			processorServices = new ProcessorService[concurrency];
+
+			for (int i = 0; i < concurrency; i++) {
+				processorServices[i] = new ProcessorService<T>(processor, 1, uncaughtExceptionHandler,
+				  shutdownHandler, autoShutdown) {
+					@Override
+					protected void decrementReference() {
+						REF_COUNT.decrementAndGet(this);
+						PooledProcessorService.this.decrementReference();
+					}
+
+					@Override
+					protected void incrementReference() {
+						REF_COUNT.incrementAndGet(this);
+						PooledProcessorService.this.incrementReference();
+					}
+				};
+			}
+		}
+
+
+		@Override
+		public void shutdown() {
+			for (ProcessorService processorService : processorServices) {
+				processorService.shutdown();
+			}
+		}
+
+		@Override
+		public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
+			for (ProcessorService processorService : processorServices) {
+				if(!processorService.awaitAndShutdown(timeout, timeUnit)) return false;
+			}
+			return true;
+		}
+
+		@Override
+		public void forceShutdown() {
+			for (ProcessorService processorService : processorServices) {
+				processorService.forceShutdown();
+			}
+		}
+
+		@Override
+		public boolean alive() {
+			for (ProcessorService processorService : processorServices) {
+				if (!processorService.alive()) return false;
+			}
+			return true;
+		}
+
+		@SuppressWarnings("unchecked")
+		private ProcessorService<T> next() {
+			return (ProcessorService<T>) processorServices[index % concurrency];
+		}
+
+		@Override
+		public Executor executor() {
+			return next().executor();
+		}
+
+		@Override
+		public BiConsumer<T, Consumer<? super T>> dataDispatcher() {
+			return next().dataDispatcher();
+		}
+
+		@Override
+		public <V extends T> BiConsumer<V, Consumer<? super V>> dataDispatcher(Class<V> clazz) {
+			return next().dataDispatcher(clazz);
+		}
+
+		@Override
+		public <V extends T> Processor<V, V> directProcessor(Class<V> clazz) {
+			return next().directProcessor(clazz);
+		}
+
+		@Override
+		public Consumer<Consumer<Void>> dispatcher() {
+			return next().dispatcher();
+		}
+
+		@Override
+		public Processor<T, T> get() {
+			return super.get();
+		}
 	}
 }

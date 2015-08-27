@@ -45,7 +45,7 @@ class NettyTcpServerSpec extends Specification {
 			def dataLatch = new CountDownLatch(1)
 			def server = NetStreams.<Buffer, Buffer> tcpServer {
 				it.
-						env(env).
+						timer(timer).
 						listen(port).
 						codec(new PassThroughCodec<Buffer>())
 			}
