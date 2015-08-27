@@ -17,7 +17,6 @@ package reactor.rx.action.support;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.ReactorProcessor;
 import reactor.core.support.Bounded;
 
 /**
@@ -47,7 +46,7 @@ public class DefaultSubscriber<O> implements Subscriber<O>, Bounded {
 
 	@Override
 	public boolean isExposedToOverflow(Bounded upstream) {
-		return getCapacity() < producerCapacity;
+		return getCapacity() < upstream.getCapacity();
 	}
 
 	@Override

@@ -19,9 +19,7 @@ package reactor.rx;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.Timers;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.fn.BiConsumer;
@@ -303,7 +301,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> timer(long delay) {
-		return timer(Environment.timer(), delay, TimeUnit.SECONDS);
+		return timer(Timers.globalOrNull(), delay, TimeUnit.SECONDS);
 	}
 
 
@@ -327,7 +325,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> timer(long delay, TimeUnit unit) {
-		return new SingleTimerStream(delay, unit, Environment.timer());
+		return new SingleTimerStream(delay, unit, Timers.globalOrNull());
 	}
 
 	/**
@@ -351,7 +349,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long period) {
-		return period(Environment.timer(), -1l, period, TimeUnit.SECONDS);
+		return period(Timers.globalOrNull(), -1l, period, TimeUnit.SECONDS);
 	}
 
 
@@ -378,7 +376,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long delay, long period) {
-		return period(Environment.timer(), delay, period, TimeUnit.SECONDS);
+		return period(Timers.globalOrNull(), delay, period, TimeUnit.SECONDS);
 	}
 
 
@@ -404,7 +402,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long period, TimeUnit unit) {
-		return period(Environment.timer(), -1l, period, unit);
+		return period(Timers.globalOrNull(), -1l, period, unit);
 	}
 
 	/**
@@ -430,7 +428,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long delay, long period, TimeUnit unit) {
-		return period(Environment.timer(), delay, period, unit);
+		return period(Timers.globalOrNull(), delay, period, unit);
 	}
 
 	/**
@@ -620,7 +618,7 @@ public class Streams {
 	 */
 	public static <T> Stream<T> generate(Supplier<? extends T> value) {
 		if (value == null) throw new IllegalArgumentException("Supplier must be provided");
-		return new SupplierStream<T>(SynchronousDispatcher.INSTANCE, value);
+		return new SupplierStream<T>(value);
 	}
 
 	/**
@@ -633,21 +631,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Action<Publisher<? extends T>, T> switchOnNext() {
-		return switchOnNext(SynchronousDispatcher.INSTANCE);
-	}
-
-	/**
-	 * Build an {@literal Action} whose data are emitted by the most recent {@link Action#onNext(Object)} signaled
-	 * publisher.
-	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
-	 *
-	 * @param dispatcher The dispatcher to execute the signals
-	 * @param <T>        type of the value
-	 * @return a {@link Action} accepting publishers and producing inner data T
-	 * @since 2.0
-	 */
-	public static <T> Action<Publisher<? extends T>, T> switchOnNext(ReactorProcessor dispatcher) {
-		SwitchAction<T> switchAction = new SwitchAction<>(dispatcher);
+		SwitchAction<T> switchAction = new SwitchAction<>();
 		switchAction.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
 		return switchAction;
 	}
@@ -663,22 +647,7 @@ public class Streams {
 	 */
 	public static <T> Stream<T> switchOnNext(
 	  Publisher<? extends Publisher<? extends T>> mergedPublishers) {
-		return switchOnNext(mergedPublishers, SynchronousDispatcher.INSTANCE);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are emitted by the most recent passed publisher.
-	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
-	 *
-	 * @param mergedPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param dispatcher       The dispatcher to execute the signals
-	 * @param <T>              type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> switchOnNext(
-	  Publisher<? extends Publisher<? extends T>> mergedPublishers, ReactorProcessor dispatcher) {
-		final Action<Publisher<? extends T>, T> mergeAction = new SwitchAction<>(dispatcher);
+		final Action<Publisher<? extends T>, T> mergeAction = new SwitchAction<>();
 
 		mergedPublishers.subscribe(mergeAction);
 		return mergeAction;
@@ -923,7 +892,7 @@ public class Streams {
 		} else if (publishers.size() == 1) {
 			return wrap((Publisher<T>) publishers.get(0));
 		}
-		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, publishers);
+		return new MergeAction<T>(publishers);
 	}
 
 	/**
@@ -1348,7 +1317,7 @@ public class Streams {
 	 */
 	public static <TUPLE extends Tuple, V> Stream<V> combineLatest(List<? extends Publisher<?>> sources,
 	                                                               Function<TUPLE, ? extends V> combinator) {
-		return new CombineLatestAction<>(SynchronousDispatcher.INSTANCE, combinator, sources);
+		return new CombineLatestAction<>(combinator, sources);
 	}
 
 	/**
@@ -1369,7 +1338,7 @@ public class Streams {
 	  Publisher<? extends Publisher<E>> sources,
 	  Function<TUPLE, ? extends V> combinator) {
 		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(
-		  new CombineLatestAction<E, V, TUPLE>(SynchronousDispatcher.INSTANCE, combinator, null)
+		  new CombineLatestAction<E, V, TUPLE>(combinator, null)
 		);
 
 		sources.subscribe(mergeAction);
@@ -1608,7 +1577,7 @@ public class Streams {
 	 */
 	public static <TUPLE extends Tuple, V> Stream<V> zip(List<? extends Publisher<?>> sources,
 	                                                     Function<TUPLE, ? extends V> combinator) {
-		return new ZipAction<>(SynchronousDispatcher.INSTANCE, combinator, sources);
+		return new ZipAction<>(combinator, sources);
 	}
 
 	/**
@@ -1628,7 +1597,7 @@ public class Streams {
 	  Publisher<? extends Publisher<E>> sources,
 	  Function<TUPLE, ? extends V> combinator) {
 		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(
-		  new ZipAction<E, V, TUPLE>(SynchronousDispatcher.INSTANCE, combinator, null)
+		  new ZipAction<E, V, TUPLE>(combinator, null)
 		);
 
 		sources.subscribe(mergeAction);
@@ -1839,11 +1808,7 @@ public class Streams {
 	 * @param publisher the publisher to listen for terminal signals
 	 */
 	public static void await(Publisher<?> publisher) throws Throwable {
-		long timeout = 30000l;
-		if (Environment.alive()) {
-			timeout = Environment.get().getLongProperty("reactor.await.defaultTimeout", 30000L);
-		}
-		await(publisher, timeout, TimeUnit.MILLISECONDS, true);
+		await(publisher, 30000, TimeUnit.MILLISECONDS, true);
 	}
 
 	/**

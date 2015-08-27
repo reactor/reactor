@@ -18,10 +18,6 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
@@ -49,21 +45,18 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	final List<? extends Publisher<? extends I>> publishers;
 
 	final AtomicInteger status = new AtomicInteger();
-	final protected ReactorProcessor dispatcher;
 
 
 	DynamicMergeAction<?, ?> dynamicMergeAction = null;
 
 	@SuppressWarnings("unchecked")
-	public FanInAction(ReactorProcessor dispatcher) {
-		this(dispatcher, null);
+	public FanInAction() {
+		this(null);
 	}
 
-	public FanInAction(ReactorProcessor dispatcher,
-	                   List<? extends Publisher<? extends I>> publishers) {
+	public FanInAction(
+	  List<? extends Publisher<? extends I>> publishers) {
 		super();
-		this.dispatcher = SynchronousDispatcher.INSTANCE == dispatcher ?
-		  Environment.tailRecurse() : dispatcher;
 		this.publishers = publishers;
 
 		this.upstreamSubscription = this.innerSubscriptions = createFanInSubscription();
@@ -135,7 +128,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			long left = upstreamSubscription.pendingRequestSignals();
 			if (left > 0l) {
 				upstreamSubscription.updatePendingRequests(-left);
-				dispatcher.dispatch(left, upstreamSubscription, null);
+				tailDispatcher.dispatch(left, upstreamSubscription, null);
 			}
 		}
 	}
@@ -143,7 +136,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	@Override
 	public void requestMore(long n) {
 		checkRequest(n);
-		dispatcher.dispatch(n, upstreamSubscription, null);
+		tailDispatcher.dispatch(n, upstreamSubscription, null);
 	}
 
 	@Override
@@ -153,11 +146,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if (dynamicMergeAction != null) {
 			dynamicMergeAction.requestUpstream(capacity, terminated, elements);
 		}
-	}
-
-	@Override
-	public final ReactorProcessor getDispatcher() {
-		return TailRecurseDispatcher.class == dispatcher.getClass() ? SynchronousDispatcher.INSTANCE : dispatcher;
 	}
 
 	@Override
@@ -266,7 +254,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 		@Override
 		public boolean isExposedToOverflow(Bounded upstream) {
-			return outerAction.isReactivePull(dispatcher, producerCapacity);
+			return outerAction.isExposedToOverflow(upstream);
 		}
 
 		@Override

@@ -17,11 +17,9 @@ package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.error.Exceptions;
+import reactor.fn.timer.Timer;
 
 /**
  * A {@code Broadcaster} is a subclass of {@code Stream} which exposes methods for publishing values into the pipeline.
@@ -49,7 +47,7 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 * @return a new {@link reactor.rx.action.Action}
 	 */
 	public static <T> Broadcaster<T> create() {
-		return new SerializedBroadcaster<>(null, SynchronousDispatcher.INSTANCE, Long.MAX_VALUE);
+		return new SerializedBroadcaster<>(null, Long.MAX_VALUE);
 	}
 
 	/**
@@ -62,12 +60,12 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 * broadcast at a time.
 	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
 	 *
-	 * @param env the Reactor {@link reactor.Environment} to use
+	 * @param env the Reactor {@link reactor.fn.timer.Timer} to use
 	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> create(Environment env) {
-		return new SerializedBroadcaster<>(env, SynchronousDispatcher.INSTANCE, Long.MAX_VALUE);
+	public static <T> Broadcaster<T> create(Timer env) {
+		return new SerializedBroadcaster<>(env, Long.MAX_VALUE);
 	}
 
 	@Override
@@ -109,8 +107,8 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 * Internal
 	 */
 
-	private SerializedBroadcaster(Environment environment, ReactorProcessor dispatcher, long capacity) {
-		super(environment, dispatcher, capacity);
+	private SerializedBroadcaster(Timer timer, long capacity) {
+		super(timer, capacity);
 		this.serializer = SerializedSubscriber.create(new Subscriber<O>() {
 			@Override
 			public void onSubscribe(Subscription s) {

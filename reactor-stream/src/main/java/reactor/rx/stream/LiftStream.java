@@ -16,10 +16,9 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.core.error.Exceptions;
 import reactor.fn.Supplier;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.CompositeAction;
@@ -63,8 +62,8 @@ public class LiftStream<O, V> extends Stream<V> {
 	}
 
 	@Override
-	public Environment getEnvironment() {
-		return producer.getEnvironment();
+	public Timer getTimer() {
+		return producer.getTimer();
 	}
 
 	@Override

@@ -18,10 +18,9 @@ package reactor.rx.action.aggregation;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.BehaviorBroadcaster;
@@ -43,16 +42,14 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 	private final List<Broadcaster<T>> currentWindows = new LinkedList<>();
 	private final Supplier<? extends Publisher<?>> bucketClosing;
 	private final Publisher<?>                     bucketOpening;
-	private final Environment                      environment;
-	private final ReactorProcessor                 dispatcher;
+	private final Timer                      timer;
 
-	public WindowShiftWhenAction(Environment environment, ReactorProcessor dispatcher,
+	public WindowShiftWhenAction(Timer timer,
 	                             Publisher<?> bucketOpenings, Supplier<? extends Publisher<?>>
 	                               boundarySupplier) {
-		this.dispatcher = dispatcher;
 		this.bucketClosing = boundarySupplier;
 		this.bucketOpening = bucketOpenings;
-		this.environment = environment;
+		this.timer = timer;
 	}
 
 	@Override
@@ -180,17 +177,12 @@ public class WindowShiftWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	@Override
-	public final Environment getEnvironment() {
-		return environment;
-	}
-
-	@Override
-	public final ReactorProcessor getDispatcher() {
-		return dispatcher;
+	public final Timer getTimer() {
+		return timer;
 	}
 
 	protected Broadcaster<T> createWindowStream(T first) {
-		Broadcaster<T> action = BehaviorBroadcaster.first(first, environment, dispatcher);
+		Broadcaster<T> action = BehaviorBroadcaster.first(first, timer);
 		currentWindows.add(action);
 		broadcastNext(action);
 		return action;

@@ -22,6 +22,7 @@ import reactor.ReactorProcessor;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
@@ -34,10 +35,10 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 
 	private final Broadcaster<Long> throttleStream;
 
-	public ThrottleRequestWhenAction(ReactorProcessor dispatcher,
+	public ThrottleRequestWhenAction(Timer timer,
 	                                 Function<? super Stream<? extends Long>, ? extends Publisher<? extends Long>>
 			                                 predicate) {
-		this.throttleStream = Broadcaster.create(null, dispatcher);
+		this.throttleStream = Broadcaster.create(timer);
 		Publisher<? extends Long> afterRequestStream = predicate.apply(throttleStream);
 		afterRequestStream.subscribe(new ThrottleSubscriber());
 	}

@@ -20,14 +20,11 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
+import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.subscription.PushSubscription;
@@ -59,11 +56,10 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 
 	private final long             defaultTimeout;
 	private final Condition        pendingCondition;
-	private final ReactorProcessor dispatcher;
-	private final Environment      environment;
+	private final Timer      timer;
 	Action<O, O> outboundStream;
 
-	public static enum FinalState {
+	public enum FinalState {
 		ERROR,
 		COMPLETE
 	}
@@ -84,7 +80,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	 * the parent completes in error then so too will this Promise.
 	 */
 	public Promise() {
-		this(SynchronousDispatcher.INSTANCE, null);
+		this(null);
 	}
 
 
@@ -96,30 +92,23 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	 * default await timeout will be 30 seconds. This Promise will consumer errors from its {@code parent} such that if
 	 * the parent completes in error then so too will this Promise.
 	 *
-	 * @param dispatcher The Dispatcher to run any downstream subscribers
-	 * @param env        The Environment, if any, from which the default await timeout is obtained
+	 * @param timer        The default Timer for time-sensitive downstream actions if any.
 	 */
-	public Promise(ReactorProcessor dispatcher, @Nullable Environment env) {
-		this.dispatcher = dispatcher;
-		this.environment = env;
+	public Promise(@Nullable Timer timer) {
+		this.timer = timer;
 		this.defaultTimeout = env != null ? env.getLongProperty("reactor.await.defaultTimeout", 30000L) : 30000L;
 		this.pendingCondition = lock.newCondition();
 	}
 
 	/**
 	 * Creates a new promise that has been fulfilled with the given {@code value}.
-	 * <p>
-	 * The {@code observable} is used when notifying the Promise's consumers. The given {@code env} is used to
-	 * determine
-	 * the default await timeout. If {@code env} is {@code null} the default await timeout will be 30 seconds.
+	 *
 	 *
 	 * @param value      The value that fulfills the promise
-	 * @param dispatcher The Dispatcher to run any downstream subscribers
-	 * @param env        The Environment, if any, from which the default await timeout is obtained
+	 * @param timer        The default Timer for time-sensitive downstream actions if any.
 	 */
-	public Promise(O value, ReactorProcessor dispatcher,
-	               @Nullable Environment env) {
-		this(dispatcher, env);
+	public Promise(O value, @Nullable Timer timer) {
+		this(timer);
 		finalState = FinalState.COMPLETE;
 		this.value = value;
 	}
@@ -132,12 +121,10 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	 * default await timeout will be 30 seconds.
 	 *
 	 * @param error      The error the completed the promise
-	 * @param dispatcher The Dispatcher to run any downstream subscribers
-	 * @param env        The Environment, if any, from which the default await timeout is obtained
+	 * @param timer        The default Timer for time-sensitive downstream actions if any.
 	 */
-	public Promise(Throwable error, ReactorProcessor dispatcher,
-	               @Nullable Environment env) {
-		this(dispatcher, env);
+	public Promise(Throwable error, Timer timer) {
+		this(timer);
 		finalState = FinalState.ERROR;
 		this.error = error;
 	}
@@ -565,7 +552,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 		lock.lock();
 		try {
 			if (outboundStream == null) {
-				outboundStream = BehaviorBroadcaster.first(value, environment, dispatcher).capacity(1);
+				outboundStream = BehaviorBroadcaster.first(value, timer).capacity(1);
 				if (isSuccess()) {
 					outboundStream.onComplete();
 				} else if (isError()) {
@@ -584,8 +571,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 		stream().subscribe(subscriber);
 	}
 
-	public Environment getEnvironment() {
-		return environment;
+	public Timer getTimer() {
+		return timer;
 	}
 
 	@Override

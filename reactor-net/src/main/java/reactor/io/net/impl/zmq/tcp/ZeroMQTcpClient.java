@@ -93,7 +93,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	protected Promise<Void> doShutdown() {
-		final Promise<Void> promise = Promises.prepare();
+		final Promise<Void> promise = Promises.ready();
 
 		threadPool.shutdownNow();
 		promise.onComplete();
@@ -116,7 +116,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
 		final UUID id = UUIDUtils.random();
 
-		final Promise<Void> p = Promises.prepare();
+		final Promise<Void> p = Promises.ready();
 
 		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.DEALER);
 		final ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);

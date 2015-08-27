@@ -18,11 +18,10 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.ReactorProcessor;
 import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.Bounded;
-import reactor.core.error.Exceptions;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -32,14 +31,9 @@ import reactor.rx.broadcast.Broadcaster;
  */
 public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 
-	private final ReactorProcessor dispatcher;
-
 	private long pendingRequests = 0l;
 	private SwitchSubscriber switchSubscriber;
 
-	public SwitchAction(ReactorProcessor dispatcher) {
-		this.dispatcher = dispatcher;
-	}
 
 	public SwitchSubscriber getSwitchSubscriber() {
 		return switchSubscriber;
@@ -147,11 +141,6 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 		}
 	}
 
-	@Override
-	public final ReactorProcessor getDispatcher() {
-		return dispatcher;
-	}
-
 	public class SwitchSubscriber implements Bounded, Subscriber<T>, Subscription {
 		final Publisher<? extends T> publisher;
 
@@ -163,7 +152,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 
 		@Override
 		public boolean isExposedToOverflow(Bounded upstream) {
-			return SwitchAction.this.isReactivePull(dispatcher, producerCapacity);
+			return SwitchAction.this.isExposedToOverflow(upstream);
 		}
 
 		@Override

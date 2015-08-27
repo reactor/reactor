@@ -17,10 +17,6 @@ package reactor.rx.action.control;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 
@@ -33,10 +29,9 @@ public class RepeatAction<T> extends Action<T, T> {
 	private final long numRetries;
 	private long currentNumRetries = 0;
 	private final Publisher<? extends T> rootPublisher;
-	private       ReactorProcessor       dispatcher;
 	private long pendingRequests = 0l;
 
-	public RepeatAction(ReactorProcessor dispatcher, int numRetries, Publisher<? extends T> parentStream) {
+	public RepeatAction(int numRetries, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
 		if (SynchronousDispatcher.INSTANCE == dispatcher) {
 			this.dispatcher = Environment.tailRecurse();
@@ -64,11 +59,6 @@ public class RepeatAction<T> extends Action<T, T> {
 		if (pendingRequests > 0) {
 			subscription.request(pendingRequests);
 		}
-	}
-
-	@Override
-	public final ReactorProcessor getDispatcher() {
-		return dispatcher;
 	}
 
 	@Override

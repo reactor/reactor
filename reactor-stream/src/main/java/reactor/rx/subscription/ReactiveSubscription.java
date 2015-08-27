@@ -16,17 +16,18 @@
 package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.queue.CompletableLinkedQueue;
-import reactor.core.queue.CompletableQueue;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
+
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Relationship between a Stream (Publisher) and a Subscriber.
  * <p>
  * A Reactive Subscription using a pattern called "reactive-pull" to dynamically adapt to the downstream subscriber
  * capacity:
- * - If no capacity (no previous request or capacity drained), queue data into the buffer {@link CompletableQueue}
+ * - If no capacity (no previous request or capacity drained), queue data into the buffer {@link Queue}
  * - If capacity (previous request and capacity remaining), call subscriber onNext
  * <p>
  * Queued data will be polled when the next request(n) signal is received. If there is remaining requested volume,
@@ -39,7 +40,7 @@ import reactor.rx.action.Action;
 public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 
-	protected final CompletableQueue<O> buffer;
+	protected final Queue<O> buffer;
 
 	//Guarded by this
 	protected boolean draining = false;
@@ -51,10 +52,10 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	protected volatile long maxCapacity = Long.MAX_VALUE;
 
 	public ReactiveSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
-		this(publisher, subscriber, new CompletableLinkedQueue<O>());
+		this(publisher, subscriber, new ConcurrentLinkedQueue<O>());
 	}
 
-	public ReactiveSubscription(Stream<O> publisher, Subscriber<? super O> subscriber, CompletableQueue<O> buffer) {
+	public ReactiveSubscription(Stream<O> publisher, Subscriber<? super O> subscriber, Queue<O> buffer) {
 		super(publisher, subscriber);
 		this.buffer = buffer;
 	}
@@ -124,7 +125,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 				synchronized (this) {
 					draining = !buffer.isEmpty();
-					last = !draining && buffer.isComplete();
+					last = !draining && terminated == 1;
 				}
 
 				if (last) {
@@ -200,8 +201,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			return;
 
 		synchronized (this) {
-			buffer.complete();
-
 			if (buffer.isEmpty()) {
 				if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
 					complete = true;
@@ -254,14 +253,14 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		return pendingRequestSignals;
 	}
 
-	public final CompletableQueue<O> getBuffer() {
+	public final Queue<O> getBuffer() {
 		return buffer;
 	}
 
 	@Override
 	public final boolean isComplete() {
 		synchronized (this) {
-			return buffer.isEmpty() && buffer.isComplete();
+			return buffer.isEmpty() && terminated == 1;
 		}
 	}
 

@@ -17,9 +17,8 @@ package reactor.rx.action.terminal;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.error.Exceptions;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -34,7 +33,6 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;
 	private final Consumer<Void>              completeConsumer;
-	private final ReactorProcessor            dispatcher;
 
 	private final AtomicLongFieldUpdater<ConsumerAction> COUNTED = AtomicLongFieldUpdater.newUpdater(ConsumerAction
 	  .class, "count");
@@ -43,10 +41,9 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 	private          long pendingRequests;
 
 
-	public ConsumerAction(long capacity, ReactorProcessor dispatcher, Consumer<? super T> consumer,
+	public ConsumerAction(long capacity, Consumer<? super T> consumer,
 	                      Consumer<? super Throwable> errorConsumer, Consumer<Void> completeConsumer) {
 		this.consumer = consumer;
-		this.dispatcher = dispatcher;
 		this.errorConsumer = errorConsumer;
 		this.completeConsumer = completeConsumer;
 
@@ -67,7 +64,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 			if (COUNTED.addAndGet(this, toRequest) < 0l) {
 				COUNTED.set(this, Long.MAX_VALUE);
 			}
-			TailRecurseDispatcher.INSTANCE.dispatch(toRequest, upstreamSubscription, null);
+			upstreamSubscription.request(toRequest);
 		} else {
 			synchronized (this) {
 				if ((pendingRequests += n) < 0l) {
@@ -133,12 +130,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 
 	@Override
 	public boolean isExposedToOverflow(Bounded upstream) {
-		return producerCapacity != Long.MAX_VALUE && capacity != Long.MAX_VALUE;
-	}
-
-	@Override
-	public ReactorProcessor getDispatcher() {
-		return dispatcher;
+		return upstream.getCapacity() != Long.MAX_VALUE && capacity != Long.MAX_VALUE;
 	}
 
 	@Override

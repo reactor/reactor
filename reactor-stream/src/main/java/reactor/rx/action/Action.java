@@ -19,13 +19,8 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.error.CancelException;
-import reactor.core.queue.CompletableLinkedQueue;
-import reactor.core.queue.CompletableQueue;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.support.Bounded;
 import reactor.core.error.Exceptions;
 import reactor.core.support.Recyclable;
@@ -43,6 +38,9 @@ import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 /**
  * An Action is a reactive component to subscribe to a {@link org.reactivestreams.Publisher} and in particular
  * to a {@link reactor.rx.Stream}. Stream is usually the place where actions are created.
@@ -52,23 +50,15 @@ import reactor.rx.subscription.ReactiveSubscription;
  * reacts on various {@link org.reactivestreams.Subscriber} signals and produce an output data {@param O} for
  * any downstream subscription.
  * <p>
- * The implementation specifics of an Action lies in two core features:
- * - Its signal scheduler on {@link ReactorProcessor}
- * - Its smart capacity awareness to prevent {@link ReactorProcessor} overflow
+ * The implementation specifics of an Action allows in particular a smart capacity awareness {@link Bounded}} to 
+ * optimize overflow
+ * all along the chain.
  * <p>
  * Up to a maximum capacity defined with {@link this#capacity(long)} will be allowed to be dispatched by requesting
- * the tracked remaining slots to the upstream {@link org.reactivestreams.Subscription}. This maximum in-flight data
- * is a value to tune accordingly with the system and the requirements. An Action will bypass this feature anytime it is
- * not the root of stream processing chain e.g.:
+ * the matching demand to the upstream {@link org.reactivestreams.Subscription}. This maximum in-flight data
+ * is a value to tune accordingly with the system and the requirements.
  * <p>
- * stream.filter(..).map(..) :
- * <p>
- * In that Stream, filter is a FilterAction and has no upstream action, only the publisher it is attached to.
- * The FilterAction will decide to be capacity aware and will track demand.
- * The MapAction will however behave like a firehose and will not track the demand, passing any request upstream.
- * <p>
- * Implementing an Action is highly recommended to work with Stream without dealing with tracking issues and other
- * threading matters. Usually an implementation will override any doXXXXX method where 'do' is an hint that logic will
+ * Usually an implementation will override any doXXXXX method where 'do' is an hint that logic will
  * safely be dispatched to avoid race-conditions.
  *
  * @param <I> The input {@link this#onNext(Object)} signal
@@ -79,13 +69,7 @@ import reactor.rx.subscription.ReactiveSubscription;
 public abstract class Action<I, O> extends Stream<O>
   implements Processor<I, O>, Consumer<I>, Recyclable, Control {
 
-	/**
-	 * onComplete, onError, request, onSubscribe are dispatched events, therefore up to capacity + 4 events can be
-	 * in-flight
-	 * stacking into a Dispatcher.
-	 */
-	public static final int RESERVED_SLOTS = 4;
-	public static final int NO_CAPACITY    = -1;
+	public static final int NO_CAPACITY = -1;
 
 	/**
 	 * The upstream request tracker to avoid dispatcher overrun, based on the current {@link this#capacity}
@@ -99,12 +83,6 @@ public abstract class Action<I, O> extends Stream<O>
 		if (n <= 0l) {
 			throw SpecificationExceptions.spec_3_09_exception(n);
 		}
-	}
-
-	public static long evaluateCapacity(long n) {
-		return n != Long.MAX_VALUE ?
-		  Math.max(Action.RESERVED_SLOTS, n - Action.RESERVED_SLOTS) :
-		  Long.MAX_VALUE;
 	}
 
 	public Action() {
@@ -129,8 +107,7 @@ public abstract class Action<I, O> extends Stream<O>
 			  (Bounded) subscriber :
 			  null;
 
-			boolean isReactiveCapacity = null == asyncSubscriber || asyncSubscriber.isReactivePull(getDispatcher(),
-			  capacity);
+			boolean isReactiveCapacity = null == asyncSubscriber || asyncSubscriber.isExposedToOverflow(this);
 
 			final PushSubscription<O> subscription = createSubscription(subscriber,
 			  isReactiveCapacity);
@@ -235,13 +212,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public Action<I, O> capacity(long elements) {
-		ReactorProcessor dispatcher = getDispatcher();
-		if (dispatcher != SynchronousDispatcher.INSTANCE && dispatcher.getClass() != TailRecurseDispatcher.class) {
-			long dispatcherCapacity = evaluateCapacity(dispatcher.backlogSize());
-			capacity = elements > dispatcherCapacity ? dispatcherCapacity : elements;
-		} else {
-			capacity = elements;
-		}
+		capacity = elements;
 
 		if (upstreamSubscription != null) {
 			upstreamSubscription.maxCapacity(capacity);
@@ -288,10 +259,7 @@ public abstract class Action<I, O> extends Stream<O>
 		}*/
 
 		if (downstreamSubscription == null) {
-			if (Environment.alive()) {
-				Environment.get().routeError(throwable);
-			}
-			return;
+			throw ReactorFatalException.create(throwable);
 		}
 
 		downstreamSubscription.onError(throwable);
@@ -380,11 +348,11 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	@Override
-	public final Stream<O> onOverflowBuffer(final Supplier<? extends CompletableQueue<O>> queueSupplier) {
+	public final Stream<O> onOverflowBuffer(final Supplier<? extends Queue<O>> queueSupplier) {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				Broadcaster<O> newStream = Broadcaster.<O>create(getEnvironment(), getDispatcher()).capacity(capacity);
+				Broadcaster<O> newStream = Broadcaster.<O>create(getTimer()).capacity(capacity);
 				if (queueSupplier == null) {
 					subscribeWithSubscription(newStream, new DropSubscription<O>(Action.this, newStream) {
 						@Override
@@ -546,17 +514,17 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, boolean reactivePull) {
-		return createSubscription(subscriber, reactivePull ? new CompletableLinkedQueue<O>() : null);
+		return createSubscription(subscriber, reactivePull ? new ConcurrentLinkedQueue<O>() : null);
 	}
 
-	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, CompletableQueue<O>
+	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, Queue<O>
 	  queue) {
 		if (queue != null) {
 			return new ReactiveSubscription<O>(this, subscriber, queue) {
 
 				@Override
 				protected void onRequest(long elements) {
-					requestUpstream(capacity, buffer.isComplete(), elements);
+					requestUpstream(capacity, isComplete(), elements);
 				}
 			};
 		} else {
@@ -605,12 +573,10 @@ public abstract class Action<I, O> extends Stream<O>
 				downstreamSubscription.onError(ev);
 				return;
 			} catch (Throwable t) {
-				Environment.get().routeError(t);
+				throw ReactorFatalException.create(t);
 			}
-		}
-
-		if (Environment.alive()) {
-			Environment.get().routeError(ev);
+		} else {
+			throw ReactorFatalException.create(ev);
 		}
 	}
 
@@ -692,11 +658,7 @@ public abstract class Action<I, O> extends Stream<O>
 	public String toString() {
 		return "{" +
 		  (capacity != Long.MAX_VALUE || upstreamSubscription == null ?
-			"{dispatcher=" + getDispatcher() +
-			  ((!SynchronousDispatcher.class.isAssignableFrom(getDispatcher().getClass()) ? (":" + getDispatcher()
-				.remainingSlots()) :
-				"")) +
-			  ", max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) + "}"
+			  "max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) + "}"
 			: "") +
 		  (upstreamSubscription != null ? upstreamSubscription : "") + '}';
 	}

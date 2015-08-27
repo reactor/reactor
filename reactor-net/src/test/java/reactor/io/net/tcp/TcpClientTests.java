@@ -396,7 +396,7 @@ public class TcpClientTests {
 			.connect("127.0.0.1", port)
 		);
 
-		final Promise<Buffer> promise = Promises.prepare();
+		final Promise<Buffer> promise = Promises.ready();
 
 		zmqc.start(ch -> {
 			ch.log("zmq-c").subscribe(promise);

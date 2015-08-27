@@ -17,7 +17,7 @@ package reactor.rx.action.combination;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
-import reactor.ReactorProcessor;
+import reactor.core.support.Bounded;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
 import reactor.rx.subscription.PushSubscription;
@@ -39,10 +39,9 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 
 	Object[] toZip = new Object[1];
 
-	public CombineLatestAction(ReactorProcessor dispatcher,
-	                           Function<TUPLE, ? extends V> accumulator, List<? extends Publisher<? extends O>>
+	public CombineLatestAction(Function<TUPLE, ? extends V> accumulator, List<? extends Publisher<? extends O>>
 			composables) {
-		super(dispatcher, composables);
+		super(composables);
 		this.accumulator = accumulator;
 		this.toZip = new Object[composables != null ? composables.size() : 1];
 	}

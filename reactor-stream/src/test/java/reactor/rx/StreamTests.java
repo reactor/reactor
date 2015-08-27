@@ -27,15 +27,10 @@ import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
-import reactor.Environment;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
-import reactor.ReactorProcessor;
-import reactor.core.DispatcherSupplier;
-import reactor.core.config.DispatcherType;
-import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.NamedDaemonThreadFactory;
@@ -43,7 +38,6 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.core.subscriber.Tap;
 import reactor.io.IO;
-import reactor.io.codec.StringCodec;
 import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
@@ -300,7 +294,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void promiseAcceptCountCannotExceedOne() {
-		Promise<Object> deferred = Promises.<Object>prepare();
+		Promise<Object> deferred = Promises.<Object>ready();
 		deferred.onNext("alpha");
 		try {
 			deferred.onNext("bravo");
@@ -312,7 +306,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void promiseErrorCountCannotExceedOne() {
-		Promise<Object> deferred = Promises.prepare();
+		Promise<Object> deferred = Promises.ready();
 		Throwable error = new Exception();
 		deferred.onError(error);
 		try {
@@ -325,7 +319,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void promiseAcceptCountAndErrorCountCannotExceedOneInTotal() {
-		Promise<Object> deferred = Promises.prepare();
+		Promise<Object> deferred = Promises.ready();
 		Throwable error = new Exception();
 		deferred.onError(error);
 		try {
@@ -1378,13 +1372,11 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void barrierStreamWaitsForAllDelegatesToBeInvoked() throws Exception {
-		Environment.initializeIfEmpty().assignErrorJournal();
-
 		CountDownLatch latch1 = new CountDownLatch(1);
 		CountDownLatch latch2 = new CountDownLatch(1);
 		CountDownLatch latch3 = new CountDownLatch(1);
 
-		BarrierStream barrierStream = new BarrierStream(Environment.get(), Environment.cachedDispatcher());
+		BarrierStream barrierStream = new BarrierStream();
 
 		EventBus bus = EventBus.create(Environment.get());
 		bus.on($("hello"), barrierStream.wrap((Event<String> ev) -> {

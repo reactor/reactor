@@ -18,11 +18,8 @@ package reactor.rx.action.terminal;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.core.support.Bounded;
 import reactor.core.error.Exceptions;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -38,7 +35,6 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 
 	private final Consumer<? super T> consumer;
-	private final ReactorProcessor    dispatcher;
 	private final Broadcaster<Long>   requestMapperStream;
 
 	private final AtomicLongFieldUpdater<AdaptiveConsumerAction> COUNTED = AtomicLongFieldUpdater.newUpdater
@@ -54,8 +50,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 	private          long pendingRequests;
 
 
-	public AdaptiveConsumerAction(ReactorProcessor dispatcher,
-	                              long initCapacity,
+	public AdaptiveConsumerAction(long initCapacity,
 	                              Consumer<? super T> consumer,
 	                              Function<Stream<Long>, ? extends Publisher<? extends Long>>
 	                                requestMapper) {
@@ -76,11 +71,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 				}
 			}
 		});
-		if (SynchronousDispatcher.INSTANCE == dispatcher) {
-			this.dispatcher = TailRecurseDispatcher.INSTANCE;
-		} else {
-			this.dispatcher = dispatcher;
-		}
+
 		//TODO define option to choose ?
 		this.capacity = initCapacity;
 
@@ -160,11 +151,6 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	public ReactorProcessor getDispatcher() {
-		return dispatcher;
-	}
-
-	@Override
 	public String toString() {
 		return super.toString() + "{pending=" + pendingRequests + "}";
 	}
@@ -185,7 +171,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 			}
 			PushSubscription<T> upstreamSubscription = AdaptiveConsumerAction.this.upstreamSubscription;
 			if(upstreamSubscription != null) {
-				TailRecurseDispatcher.INSTANCE.dispatch(n, upstreamSubscription, null);
+				upstreamSubscription.request(n);
 			}
 			if (s != null) {
 				s.request(1l);
@@ -209,7 +195,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 
 		@Override
 		public boolean isExposedToOverflow(Bounded upstream) {
-			return AdaptiveConsumerAction.this.isReactivePull(dispatcher, producerCapacity);
+			return AdaptiveConsumerAction.this.isExposedToOverflow(upstream);
 		}
 
 		@Override

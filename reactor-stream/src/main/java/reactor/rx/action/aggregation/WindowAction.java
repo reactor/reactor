@@ -15,9 +15,6 @@
  */
 package reactor.rx.action.aggregation;
 
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.broadcast.Broadcaster;
@@ -34,18 +31,18 @@ import java.util.concurrent.TimeUnit;
  * @since 2.0
  */
 public class WindowAction<T> extends BatchAction<T, Stream<T>> {
-	private final Environment environment;
+	private final Timer timer;
 
 	private ReactiveSubscription<T> currentWindow;
 
-	public WindowAction(Environment environment, ReactorProcessor dispatcher, int backlog) {
-		super(dispatcher, backlog, true, true, true);
-		this.environment = environment;
+	public WindowAction(Timer timer, int backlog) {
+		super(backlog, true, true, true);
+		this.timer = timer;
 	}
 
-	public WindowAction(Environment environment, ReactorProcessor dispatcher, int backlog, long timespan, TimeUnit unit, Timer timer) {
-		super(dispatcher, backlog, true, true, true, timespan, unit, timer);
-		this.environment = environment;
+	public WindowAction(int backlog, long timespan, TimeUnit unit, Timer timer) {
+		super(backlog, true, true, true, timespan, unit, timer);
+		this.timer = timer;
 	}
 
 	public ReactiveSubscription<T> currentWindow() {
@@ -53,9 +50,7 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	}
 
 	protected Stream<T> createWindowStream() {
-		Broadcaster<T> action = timer != null && dispatcher == SynchronousDispatcher.INSTANCE ?
-				SerializedBroadcaster.<T>create(environment, dispatcher) :
-				Broadcaster.<T>create(environment, dispatcher);
+		Broadcaster<T> action = SerializedBroadcaster.create(timer);
 		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
 		currentWindow = _currentWindow;
 		action.onSubscribe(_currentWindow);
@@ -100,8 +95,8 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 	}
 
 	@Override
-	public final Environment getEnvironment() {
-		return environment;
+	public final Timer getTimer() {
+		return timer;
 	}
 
 }
