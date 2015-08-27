@@ -360,6 +360,7 @@ project('reactor-net') {
 		}
 
 		compile project(':reactor-stream')
+		compile project(':reactor-codec')
 
 		compile(files(project(":reactor-core").disruptorRepackJar))
 

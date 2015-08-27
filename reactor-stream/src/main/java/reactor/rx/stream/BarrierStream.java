@@ -1,8 +1,6 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -53,21 +51,6 @@ public class BarrierStream extends Stream<List<Object>> {
 	private final List<Object>  values     = new ArrayList<Object>();
 
 	private PushSubscription<List<Object>> downstream;
-
-	public BarrierStream() {
-	}
-
-	public BarrierStream(Environment env) {
-		dispatchOn(env);
-	}
-
-	public BarrierStream(ReactorProcessor dispatcher) {
-		dispatchOn(dispatcher);
-	}
-
-	public BarrierStream(Environment env, ReactorProcessor dispatcher) {
-		dispatchOn(env, dispatcher);
-	}
 
 	public <I, O> Function<I, O> wrap(final Function<I, O> fn) {
 		if (null != downstream && downstream.isComplete()) {

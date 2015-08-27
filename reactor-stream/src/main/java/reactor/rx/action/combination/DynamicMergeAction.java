@@ -18,7 +18,6 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 
@@ -49,7 +48,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	) {
 		this.fanInAction = fanInAction == null ?
 				(FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>>) new MergeAction<O>
-						(SynchronousDispatcher.INSTANCE) :
+						() :
 				fanInAction;
 
 		this.fanInAction.dynamicMergeAction = this;

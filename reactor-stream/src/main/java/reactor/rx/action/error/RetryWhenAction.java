@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.support.Bounded;
@@ -38,10 +37,9 @@ public class RetryWhenAction<T> extends Action<T, T> {
 
 	private final Broadcaster<Throwable> retryStream;
 	private final Publisher<? extends T> rootPublisher;
-	private       ReactorProcessor       dispatcher;
 
-	public RetryWhenAction(ReactorProcessor dispatcher,
-	                       Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate, Publisher<?
+	public RetryWhenAction(
+	  Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate, Publisher<?
 	  extends
 	  T> rootPublisher) {
 		this.retryStream = Broadcaster.create(null, dispatcher);
@@ -65,11 +63,6 @@ public class RetryWhenAction<T> extends Action<T, T> {
 	protected void doComplete() {
 		retryStream.onComplete();
 		super.doComplete();
-	}
-
-	@Override
-	public ReactorProcessor getDispatcher() {
-		return dispatcher;
 	}
 
 	protected void doRetry() {

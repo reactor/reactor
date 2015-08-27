@@ -16,8 +16,6 @@
 package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
@@ -42,25 +40,21 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 
 	private final Consumer<Long> timeshiftTask;
 	private final List<ReactiveSubscription<T>> currentWindows = new LinkedList<>();
-	private final int              skip;
-	private final int              batchSize;
-	private final long             timeshift;
-	private final TimeUnit         unit;
-	private final Timer            timer;
-	private final Environment      environment;
-	private final ReactorProcessor dispatcher;
-	private       int              index;
-	private       Pausable         timeshiftRegistration;
+	private final int      skip;
+	private final int      batchSize;
+	private final long     timeshift;
+	private final TimeUnit unit;
+	private final Timer    timer;
+	private       int      index;
+	private       Pausable timeshiftRegistration;
 
-	public WindowShiftAction(Environment environment, ReactorProcessor dispatcher, int size, int skip) {
-		this(environment, dispatcher, size, skip, -1l, -1l, null, null);
+	public WindowShiftAction(Timer timer, int size, int skip) {
+		this(size, skip, -1l, -1l, null, timer);
 	}
 
-	public WindowShiftAction(Environment environment, final ReactorProcessor dispatcher, int size, int skip,
+	public WindowShiftAction(int size, int skip,
 	                         final long timespan, final long timeshift, TimeUnit unit, final Timer timer) {
-		this.dispatcher = dispatcher;
 		this.skip = skip;
-		this.environment = environment;
 		this.batchSize = size;
 		if (timespan > 0 && timeshift > 0) {
 			final TimeUnit targetUnit = unit != null ? unit : TimeUnit.SECONDS;
@@ -85,19 +79,15 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 					if (!isPublishing()) {
 						return;
 					}
-					dispatcher.dispatch(null, new Consumer<Void>() {
-						@Override
-						public void accept(Void aVoid) {
-							final ReactiveSubscription<T> bucket = createWindowStream();
 
-							timer.submit(new Consumer<Long>() {
-								@Override
-								public void accept(Long aLong) {
-									dispatcher.dispatch(bucket, flushTimerTask, null);
-								}
-							}, timespan, targetUnit);
+					final ReactiveSubscription<T> bucket = createWindowStream();
+
+					timer.submit(new Consumer<Long>() {
+						@Override
+						public void accept(Long aLong) {
+							flushTimerTask.accept(bucket);
 						}
-					}, null);
+					}, timespan, targetUnit);
 				}
 			};
 
@@ -114,10 +104,10 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 
 	@Override
 	protected void doOnSubscribe(Subscription subscription) {
-		if(timer != null) {
+		if (timer != null) {
 			timeshiftRegistration = timer.schedule(timeshiftTask,
-					timeshift,
-					unit);
+			  timeshift,
+			  unit);
 		}
 	}
 
@@ -151,22 +141,19 @@ public class WindowShiftAction<T> extends Action<T, Stream<T>> {
 	}
 
 	protected ReactiveSubscription<T> createWindowStream() {
-		Action<T, T> action = Broadcaster.<T>create(environment, dispatcher);
+		Action<T, T> action = Broadcaster.<T>create(timer);
 		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
-		currentWindows.add(_currentWindow);
+		synchronized (currentWindows) {
+			currentWindows.add(_currentWindow);
+		}
 		action.onSubscribe(_currentWindow);
 		broadcastNext(action);
 		return _currentWindow;
 	}
 
 	@Override
-	public final Environment getEnvironment() {
-		return this.environment;
-	}
-
-	@Override
-	public final ReactorProcessor getDispatcher() {
-		return this.dispatcher;
+	public final Timer getTimer() {
+		return this.timer;
 	}
 
 	@Override

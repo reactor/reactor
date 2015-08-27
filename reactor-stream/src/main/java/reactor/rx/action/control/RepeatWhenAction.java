@@ -18,10 +18,6 @@ package reactor.rx.action.control;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -37,11 +33,9 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 
 	private final Broadcaster<Long>      retryStream;
 	private final Publisher<? extends T> rootPublisher;
-	private       ReactorProcessor       dispatcher;
 	private long pendingRequests = 0l;
 
-	public RepeatWhenAction(ReactorProcessor dispatcher,
-	                        Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
+	public RepeatWhenAction(Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
 	                        Publisher<? extends T> rootPublisher) {
 		this.retryStream = Broadcaster.create(null, dispatcher);
 		if (SynchronousDispatcher.INSTANCE == dispatcher) {
@@ -111,17 +105,12 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 		}
 	}
 
-	@Override
-	public final ReactorProcessor getDispatcher() {
-		return dispatcher;
-	}
-
 	private class RestartSubscriber implements Subscriber<Object>, Bounded {
 		Subscription s;
 
 		@Override
 		public boolean isExposedToOverflow(Bounded upstream) {
-			return RepeatWhenAction.this.isReactivePull(dispatcher, producerCapacity);
+			return RepeatWhenAction.this.isExposedToOverflow(upstream);
 		}
 
 		@Override

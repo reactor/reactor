@@ -16,8 +16,7 @@
 package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscription;
-import reactor.ReactorProcessor;
-import reactor.core.error.InsufficientCapacityException;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
@@ -33,35 +32,43 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class BatchAction<T, V> extends Action<T, V> {
 
-	protected final boolean          next;
-	protected final boolean          flush;
-	protected final boolean          first;
-	protected final int              batchSize;
-	protected final ReactorProcessor dispatcher;
-	protected final long             timespan;
-	protected final TimeUnit         unit;
-	protected final Timer            timer;
+	protected final boolean  next;
+	protected final boolean  flush;
+	protected final boolean  first;
+	protected final int      batchSize;
+	protected final long     timespan;
+	protected final TimeUnit unit;
+	protected final Timer    timer;
 	protected final Consumer<T> flushConsumer = new FlushConsumer();
+	protected final Consumer<Long> flushTask;
 
 	protected int index = 0;
 	private Pausable timespanRegistration;
 
 	public BatchAction(
-	  ReactorProcessor dispatcher, int batchSize, boolean next, boolean first, boolean flush) {
-		this(dispatcher, batchSize, next, first, flush, -1l, null, null);
+	  int batchSize, boolean next, boolean first, boolean flush) {
+		this(batchSize, next, first, flush, -1l, null, null);
 	}
 
-	public BatchAction(final ReactorProcessor dispatcher, int batchSize, boolean next, boolean first, boolean flush,
+	public BatchAction(int batchSize, boolean next, boolean first, boolean flush,
 	                   long timespan, TimeUnit unit, Timer timer) {
 		super(batchSize);
-		this.dispatcher = dispatcher;
 		if (timespan > 0) {
 			this.unit = unit != null ? unit : TimeUnit.SECONDS;
 			this.timespan = timespan;
 			this.timer = timer;
+			this.flushTask = new Consumer<Long>() {
+				@Override
+				public void accept(Long aLong) {
+					if (isPublishing()) {
+						flushConsumer.accept(null);
+					}
+				}
+			};
 		} else {
 			this.timespan = -1L;
 			this.timer = null;
+			this.flushTask = null;
 			this.unit = null;
 		}
 		this.first = first;
@@ -95,20 +102,9 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 		if (++index == 1) {
 			if (timer != null) {
-				timespanRegistration = timer.submit( new Consumer<Long>() {
-					@Override
-					public void accept(Long aLong) {
-						try {
-							if(isPublishing()) {
-								dispatcher.tryDispatch(null, flushConsumer, null);
-							}
-						} catch (InsufficientCapacityException e) {
-							//IGNORE
-						}
-					}
-				}, timespan, unit);
+				timespanRegistration = timer.submit(flushTask, timespan, unit);
 			}
-			if (first ) {
+			if (first) {
 				firstCallback(value);
 			}
 		}
@@ -124,7 +120,11 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			}
 			index = 0;
 			if (flush) {
-				flushConsumer.accept(value);
+				if (timer != null) {
+					timespanRegistration = timer.submit(flushTask);
+				} else {
+					flushConsumer.accept(value);
+				}
 			}
 		}
 	}
@@ -146,12 +146,9 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	public String toString() {
-		return super.toString() + "{" + (timer != null ? "timed - "+timespan+" "+unit : "") + " batchSize=" + index + "/" +
-				batchSize + " [" + (int) ((((float) index) / ((float) batchSize)) * 100) + "%]";
+		return super.toString() + "{" + (timer != null ? "timed - " + timespan + " " + unit : "") + " batchSize=" +
+		  index + "/" +
+		  batchSize + " [" + (int) ((((float) index) / ((float) batchSize)) * 100) + "%]";
 	}
 
-	@Override
-	public final ReactorProcessor getDispatcher() {
-		return dispatcher;
-	}
 }

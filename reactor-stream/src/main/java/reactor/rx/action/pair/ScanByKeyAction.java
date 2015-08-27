@@ -18,7 +18,6 @@ package reactor.rx.action.pair;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
 import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
@@ -54,9 +53,7 @@ public class ScanByKeyAction<K, V> extends Action<Tuple2<K, V>, Tuple2<K, V>> {
 				try {
 					mapStream = (MapStream<K, V>) this.store;
 				} catch (ClassCastException cce) {
-					if (Environment.alive()) {
-						Environment.get().routeError(cce);
-					}
+					//IGNORE
 				}
 			}
 			this.mapListener = mapStream;

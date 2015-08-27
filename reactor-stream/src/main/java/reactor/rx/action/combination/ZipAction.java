@@ -18,7 +18,7 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.ReactorProcessor;
+import reactor.core.support.Bounded;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
 import reactor.rx.subscription.PushSubscription;
@@ -52,10 +52,9 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
         };
     }
 
-    public ZipAction(ReactorProcessor dispatcher,
-                     Function<TUPLE, ? extends V> accumulator, List<? extends Publisher<? extends O>>
+    public ZipAction(Function<TUPLE, ? extends V> accumulator, List<? extends Publisher<? extends O>>
                        composables) {
-        super(dispatcher, composables);
+        super(composables);
         this.accumulator = accumulator;
         this.toZip = new Object[composables != null ? composables.size() : 1];
         capacity(toZip.length);

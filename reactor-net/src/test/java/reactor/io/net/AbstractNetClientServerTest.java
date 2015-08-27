@@ -147,7 +147,7 @@ public class AbstractNetClientServerTest {
 			.codec(elCodec)
 		);
 
-		final Promise<T> p = Promises.prepare();
+		final Promise<T> p = Promises.ready();
 
 		client.start(input -> {
 			input.log("echo-in").subscribe(p);

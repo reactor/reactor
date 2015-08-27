@@ -17,7 +17,7 @@ package reactor.rx.action.combination;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
-import reactor.ReactorProcessor;
+import reactor.core.support.Bounded;
 
 import java.util.List;
 
@@ -27,12 +27,12 @@ import java.util.List;
  */
 final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.InnerSubscriber<O>> {
 
-	public MergeAction(ReactorProcessor dispatcher) {
-		super(dispatcher);
+	public MergeAction() {
+		super();
 	}
 
-	public MergeAction(ReactorProcessor dispatcher, List<? extends Publisher<? extends O>> publishers) {
-		super(dispatcher, publishers);
+	public MergeAction(List<? extends Publisher<? extends O>> publishers) {
+		super(publishers);
 	}
 
 	@Override

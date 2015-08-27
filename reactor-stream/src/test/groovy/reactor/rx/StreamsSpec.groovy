@@ -377,7 +377,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the most recent value is retrieved'
 			def i = 0
-			def last = Promises.prepare()
+			def last = Promises.ready()
 			s
 					.take(4, TimeUnit.SECONDS)
 					.subscribeOn(Environment.workDispatcher())
@@ -1628,7 +1628,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected window stream'
 			def source = Broadcaster.<Integer> create(Environment.get())
-			def promise = Promises.prepare()
+			def promise = Promises.ready()
 
 			source.log("prewindow").window(10l, TimeUnit.SECONDS).consume {
 				it.log().buffer(2).consume { promise.onNext(it) }
@@ -1655,7 +1655,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'2 more values are accepted'
-			promise = Promises.prepare()
+			promise = Promises.ready()
 
 			sleep(2000)
 			source.onNext(3)

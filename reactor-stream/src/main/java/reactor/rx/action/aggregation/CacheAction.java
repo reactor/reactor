@@ -16,7 +16,6 @@
 package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.queue.CompletableQueue;
 import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
@@ -26,6 +25,7 @@ import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 
 /**
  * @author Stephane Maldini
@@ -36,7 +36,7 @@ public class CacheAction<T> extends Action<T, T> {
 	private final List<Signal<T>> values = new ArrayList<>();
 
 	@Override
-	protected PushSubscription<T> createSubscription(final Subscriber<? super T> subscriber, CompletableQueue<T> queue) {
+	protected PushSubscription<T> createSubscription(final Subscriber<? super T> subscriber, Queue<T> queue) {
 		final Consumer<Long> requestConsumer = new Consumer<Long>() {
 			int cursor = 0;
 

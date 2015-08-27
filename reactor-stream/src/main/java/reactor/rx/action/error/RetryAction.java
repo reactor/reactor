@@ -37,9 +37,8 @@ public class RetryAction<T> extends Action<T, T> {
 	private final Consumer<Throwable> throwableConsumer = new ThrowableConsumer();
 	private       long                currentNumRetries = 0;
 	private       long                pendingRequests   = 0l;
-	private ReactorProcessor dispatcher;
 
-	public RetryAction(ReactorProcessor dispatcher, int numRetries,
+	public RetryAction(int numRetries,
 	                   Predicate<Throwable> predicate, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
 		this.retryMatcher = predicate;
@@ -94,11 +93,6 @@ public class RetryAction<T> extends Action<T, T> {
 			}
 		}
 		super.requestMore(n);
-	}
-
-	@Override
-	public final ReactorProcessor getDispatcher() {
-		return dispatcher;
 	}
 
 	private class ThrowableConsumer implements Consumer<Throwable> {

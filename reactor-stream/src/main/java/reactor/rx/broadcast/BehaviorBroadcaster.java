@@ -16,16 +16,15 @@
 package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.core.error.CancelException;
-import reactor.core.queue.CompletableQueue;
 import reactor.core.support.Assert;
+import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
+
+import java.util.Queue;
 
 /**
  * A {@code Broadcaster} is a subclass of {@code Stream} which exposes methods for publishing values into the pipeline.
@@ -57,26 +56,6 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	/**
 	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value,
-	 * then ready to broadcast values with {@link
-	 * reactor.rx.broadcast.Broadcaster#onNext(Object)},
-	 * {@link reactor.rx.broadcast.Broadcaster#onError(Throwable)}, {@link reactor.rx.broadcast.Broadcaster#onComplete
-	 * ()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 * <p>
-	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to
-	 * broadcast at a time.
-	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
-	 *
-	 * @param env the Reactor {@link reactor.Environment} to use
-	 * @param <T> the type of values passing through the {@literal Broadcaster}
-	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
-	 */
-	public static <T> Broadcaster<T> first(T value, Environment env) {
-		return first(value, env, env.getDefaultDispatcher());
-	}
-
-	/**
-	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value,
 	 * then  ready to broadcast values with {@link
 	 * reactor.rx.action.Action#onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
@@ -86,47 +65,8 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 * @param <T>        the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> first(T value, ReactorProcessor dispatcher) {
-		return first(value, null, dispatcher);
-	}
-
-	/**
-	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value,
-	 * then ready to broadcast values with {@link Broadcaster#onNext
-	 * (Object)},
-	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
-	 * @param env        the Reactor {@link reactor.Environment} to use
-	 * @param dispatcher the {@link ReactorProcessor} to use
-	 * @param <T>        the type of values passing through the {@literal Stream}
-	 * @return a new {@link Broadcaster}
-	 */
-	public static <T> Broadcaster<T> first(T value, Environment env, ReactorProcessor dispatcher) {
-		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
-		  " For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
-		  "dispatchers");
-		return new BehaviorBroadcaster<>(env, dispatcher, Action.evaluateCapacity(dispatcher.backlogSize()), value);
-	}
-
-	/**
-	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then ready to broadcast values with
-	 * {@link
-	 * reactor.rx.broadcast.Broadcaster#onNext(Object)},
-	 * {@link reactor.rx.broadcast.Broadcaster#onError(Throwable)}, {@link reactor.rx.broadcast.Broadcaster#onComplete
-	 * ()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 * <p>
-	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to
-	 * broadcast at a time.
-	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
-	 *
-	 * @param env the Reactor {@link reactor.Environment} to use
-	 * @param <T> the type of values passing through the {@literal Broadcaster}
-	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
-	 */
-	public static <T> Broadcaster<T> create(Environment env) {
-		return first(null, env);
+	public static <T> Broadcaster<T> first(T value, Timer timer) {
+		return new BehaviorBroadcaster<>(timer, Action.evaluateCapacity(dispatcher.backlogSize()), value);
 	}
 
 	/**
@@ -140,24 +80,8 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 * @param <T>        the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> create(ReactorProcessor dispatcher) {
-		return first(null, dispatcher);
-	}
-
-	/**
-	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then
-	 * ready to broadcast values with {@link Broadcaster#onNext
-	 * (Object)},
-	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
-	 * @param env        the Reactor {@link reactor.Environment} to use
-	 * @param dispatcher the {@link ReactorProcessor} to use
-	 * @param <T>        the type of values passing through the {@literal Stream}
-	 * @return a new {@link Broadcaster}
-	 */
-	public static <T> Broadcaster<T> create(Environment env, ReactorProcessor dispatcher) {
-		return first(null, env, dispatcher);
+	public static <T> Broadcaster<T> create(Timer timer) {
+		return first(null, timer);
 	}
 
 	/**
@@ -166,8 +90,8 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	private final BufferedSignal<O> lastSignal = new BufferedSignal<O>(null);
 
-	private BehaviorBroadcaster(Environment environment, ReactorProcessor dispatcher, long capacity, O defaultVal) {
-		super(environment, dispatcher, capacity);
+	private BehaviorBroadcaster(Timer timer, long capacity, O defaultVal) {
+		super(timer, capacity);
 		if (defaultVal != null) {
 			lastSignal.type = Signal.Type.NEXT;
 			lastSignal.value = defaultVal;
@@ -232,7 +156,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	}
 
 	@Override
-	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, CompletableQueue<O>
+	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, Queue<O>
 	  queue) {
 		final BufferedSignal<O> withDefault;
 		synchronized (this) {
@@ -275,7 +199,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 						protected void onRequest(long elements) {
 							if (upstreamSubscription != null) {
 								super.onRequest(elements);
-								requestUpstream(capacity, buffer.isComplete(), elements);
+								requestUpstream(capacity, isComplete(), elements);
 							}
 						}
 					};

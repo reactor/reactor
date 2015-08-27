@@ -17,23 +17,15 @@
 package reactor.rx;
 
 import org.reactivestreams.Publisher;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.publisher.PublisherFactory;
+import reactor.Publishers;
+import reactor.Timers;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
-import reactor.fn.tuple.Tuple;
-import reactor.fn.tuple.Tuple2;
-import reactor.fn.tuple.Tuple3;
-import reactor.fn.tuple.Tuple4;
-import reactor.fn.tuple.Tuple5;
-import reactor.fn.tuple.Tuple6;
-import reactor.fn.tuple.Tuple7;
-import reactor.fn.tuple.Tuple8;
+import reactor.fn.timer.Timer;
+import reactor.fn.tuple.*;
 import reactor.rx.action.combination.MergeAction;
 
 import java.util.Arrays;
@@ -53,43 +45,19 @@ public final class Promises {
 	 * @param <T> type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> prepare() {
-		return ready(null, SynchronousDispatcher.INSTANCE);
+	public static <T> Promise<T> ready() {
+		return ready(Timers.globalOrNull());
 	}
 
 	/**
 	 * Create a {@link Promise}.
 	 *
-	 * @param env the {@link reactor.Environment} to use
-	 * @param <T> type of the expected value
-	 * @return a new {@link reactor.rx.Promise}
-	 */
-	public static <T> Promise<T> prepare(Environment env) {
-		return ready(env, env.getDefaultDispatcher());
-	}
-
-	/**
-	 * Create a {@link Promise}.
-	 *
-	 * @param env        the {@link reactor.Environment} to use
-	 * @param dispatcher the {@link ReactorProcessor} to use
+	 * @param timer        the {@link reactor.fn.timer.Timer} to use by default for scheduled operations
 	 * @param <T>        type of the expected value
 	 * @return a new {@link reactor.rx.Promise}
 	 */
-	public static <T> Promise<T> ready(Environment env, ReactorProcessor dispatcher) {
-		return new Promise<T>(dispatcher, env);
-	}
-
-	/**
-	 * Create a synchronous {@link Promise} producing the value for the {@link Promise} using the
-	 * given supplier.
-	 *
-	 * @param supplier {@link Supplier} that will produce the value
-	 * @param <T>      type of the expected value
-	 * @return A {@link Promise}.
-	 */
-	public static <T> Promise<T> syncTask(Supplier<T> supplier) {
-		return task(null, SynchronousDispatcher.INSTANCE, supplier);
+	public static <T> Promise<T> ready(Timer timer) {
+		return new Promise<T>(timer);
 	}
 
 	/**
@@ -97,26 +65,24 @@ public final class Promises {
 	 * given supplier.
 	 *
 	 * @param supplier {@link Supplier} that will produce the value
-	 * @param env      The assigned environment
 	 * @param <T>      type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> task(Environment env, Supplier<T> supplier) {
-		return task(env, env.getDefaultDispatcher(), supplier);
+	public static <T> Promise<T> task(Supplier<T> supplier) {
+		return task(Timers.globalOrNull(),  supplier);
 	}
 
 	/**
 	 * Create a {@link Promise} producing the value for the {@link Promise} using the
 	 * given supplier.
 	 *
-	 * @param supplier   {@link Supplier} that will produce the value
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the value
-	 * @param <T>        type of the expected value
+	 * @param timer        the {@link reactor.fn.timer.Timer} to use by default for scheduled operations
+	 * @param supplier {@link Supplier} that will produce the value
+	 * @param <T>      type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> task(Environment env, ReactorProcessor dispatcher, final Supplier<T> supplier) {
-		Publisher<T> p = PublisherFactory.create(new Consumer<SubscriberWithContext<T, Void>>() {
+	public static <T> Promise<T> task(Timer timer, Supplier<T> supplier) {
+		Publisher<T> p = Publishers.create(new Consumer<SubscriberWithContext<T, Void>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Void> sub) {
 				sub.onNext(supplier.get());
@@ -124,9 +90,17 @@ public final class Promises {
 			}
 		});
 		return Streams.wrap(p)
-		  .env(env)
-		  .subscribeOn(dispatcher)
+		  .timer(timer)
 		  .next();
+	}
+
+	/**
+	 * Create a {@link Promise} already completed without any data.
+	 *
+	 * @return A {@link Promise} that is completed
+	 */
+	public static Promise<Void> success() {
+		return success(null);
 	}
 
 	/**
@@ -138,16 +112,7 @@ public final class Promises {
 	 * @return A {@link Promise} that is completed with the given value
 	 */
 	public static <T> Promise<T> success(T value) {
-		return success(null, SynchronousDispatcher.INSTANCE, value);
-	}
-
-	/**
-	 * Create a {@link Promise} already completed without any data.
-	 *
-	 * @return A {@link Promise} that is completed
-	 */
-	public static Promise<Void> success() {
-		return success(null, SynchronousDispatcher.INSTANCE, null);
+		return success(Timers.globalOrNull(), value);
 	}
 
 	/**
@@ -155,26 +120,12 @@ public final class Promises {
 	 * immediately.
 	 *
 	 * @param value the value to complete the {@link Promise} with
-	 * @param env   The assigned environment
+	 * @param timer        the {@link reactor.fn.timer.Timer} to use by default for scheduled operations
 	 * @param <T>   the type of the value
 	 * @return A {@link Promise} that is completed with the given value
 	 */
-	public static <T> Promise<T> success(Environment env, T value) {
-		return success(env, env.getDefaultDispatcher(), value);
-	}
-
-	/**
-	 * Create a {@link Promise} using the given value to complete the {@link Promise}
-	 * immediately.
-	 *
-	 * @param value      the value to complete the {@link Promise} with
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the value
-	 * @param <T>        the type of the value
-	 * @return A {@link Promise} that is completed with the given value
-	 */
-	public static <T> Promise<T> success(Environment env, ReactorProcessor dispatcher, T value) {
-		return new Promise<T>(value, dispatcher, env);
+	public static <T> Promise<T> success(Timer timer, T value) {
+		return new Promise<T>(value, timer);
 	}
 
 	/**
@@ -186,7 +137,7 @@ public final class Promises {
 	 * @return A {@link Promise} that is completed with the given error
 	 */
 	public static <T> Promise<T> error(Throwable error) {
-		return error(null, SynchronousDispatcher.INSTANCE, error);
+		return error(Timers.globalOrNull(), error);
 	}
 
 	/**
@@ -194,26 +145,12 @@ public final class Promises {
 	 * immediately.
 	 *
 	 * @param error the error to complete the {@link Promise} with
-	 * @param env   The assigned environment
+	 * @param timer        the {@link reactor.fn.timer.Timer} to use by default for scheduled operations
 	 * @param <T>   the type of the value
 	 * @return A {@link Promise} that is completed with the given error
 	 */
-	public static <T> Promise<T> error(Environment env, Throwable error) {
-		return error(env, env.getDefaultDispatcher(), error);
-	}
-
-	/**
-	 * Create a {@link Promise} and use the given error to complete the {@link Promise}
-	 * immediately.
-	 *
-	 * @param error      the error to complete the {@link Promise} with
-	 * @param env        The assigned environment
-	 * @param dispatcher The dispatcher to schedule the value
-	 * @param <T>        the type of the value
-	 * @return A {@link Promise} that is completed with the given error
-	 */
-	public static <T> Promise<T> error(Environment env, ReactorProcessor dispatcher, Throwable error) {
-		return new Promise<T>(error, dispatcher, env);
+	public static <T> Promise<T> error(Timer timer, Throwable error) {
+		return new Promise<T>(error, timer);
 	}
 
 
@@ -396,7 +333,7 @@ public final class Promises {
 	public static <T> Promise<List<T>> when(final List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises)
+		return new MergeAction<T>(promises)
 		  .buffer(promises.size())
 		  .next();
 	}
@@ -424,10 +361,7 @@ public final class Promises {
 	@SuppressWarnings("unchecked")
 	public static <T> Promise<T> any(List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
-
-		MergeAction<T> mergeAction = new MergeAction<T>(SynchronousDispatcher.INSTANCE, promises);
-
-		return mergeAction.next();
+		return new MergeAction<T>(promises).next();
 	}
 
 

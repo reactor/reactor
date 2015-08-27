@@ -25,6 +25,7 @@ import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.rx.Stream;
@@ -42,23 +43,18 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	protected static final Logger log = LoggerFactory.getLogger(ChannelStream.class);
 
 
-	private final Environment env;
-
-	private final ReactorProcessor eventsDispatcher;
+	private final Timer timer;
 
 	private final Function<Buffer, IN>  decoder;
 	private final Function<OUT, Buffer> encoder;
 	private final long                  prefetch;
 
-	protected ChannelStream(final Environment env,
+	protected ChannelStream(final Timer timer,
 	                        Codec<Buffer, IN, OUT> codec,
-	                        long prefetch,
-	                        ReactorProcessor eventsDispatcher) {
+	                        long prefetch) {
 
-		Assert.notNull(eventsDispatcher, "Events Reactor cannot be null");
-		this.env = env;
+		this.timer = timer;
 		this.prefetch = prefetch;
-		this.eventsDispatcher = eventsDispatcher;
 
 		if (null != codec) {
 			this.decoder = codec.decoder(new Consumer<IN>() {
@@ -127,13 +123,8 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	}
 
 	@Override
-	public final Environment getEnvironment() {
-		return env;
-	}
-
-	@Override
-	public final ReactorProcessor getDispatcher() {
-		return eventsDispatcher;
+	public final Timer getTimer() {
+		return timer;
 	}
 
 	@Override

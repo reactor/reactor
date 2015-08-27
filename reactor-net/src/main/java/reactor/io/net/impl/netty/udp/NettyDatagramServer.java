@@ -165,7 +165,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	@Override
 	@SuppressWarnings("unchecked")
 	protected Promise<Void> doShutdown() {
-		final Promise<Void> d = Promises.prepare();
+		final Promise<Void> d = Promises.ready();
 
 		ChannelFuture future = channel.close();
 		final GenericFutureListener listener = new GenericFutureListener() {
