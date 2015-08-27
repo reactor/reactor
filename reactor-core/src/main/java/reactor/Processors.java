@@ -23,10 +23,16 @@ import reactor.core.error.Exceptions;
 import reactor.core.processor.*;
 import reactor.core.processor.simple.SimpleSignal;
 import reactor.core.publisher.LogPublisher;
+import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.internal.MpscLinkedQueue;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.Supplier;
+
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * Main gateway to build various asynchronous {@link Processor} or "pool" services that allow their reuse.
@@ -208,6 +214,14 @@ public final class Processors {
 	}
 
 	/**
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorService<E> asyncService() {
+		return asyncService(null, BaseProcessor.MEDIUM_BUFFER_SIZE);
+	}
+
+	/**
 	 * @param name
 	 * @param <E>
 	 * @return
@@ -230,6 +244,18 @@ public final class Processors {
 	/**
 	 * @param name
 	 * @param bufferSize
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorService<E> asyncService(String name,
+	                                                   int bufferSize,
+	                                                   int concurrency) {
+		return asyncService(name, bufferSize, concurrency, null);
+	}
+
+	/**
+	 * @param name
+	 * @param bufferSize
 	 * @param uncaughtExceptionHandler
 	 * @param <E>
 	 * @return
@@ -238,6 +264,21 @@ public final class Processors {
 	                                                   int bufferSize,
 	                                                   Consumer<Throwable> uncaughtExceptionHandler) {
 		return asyncService(name, bufferSize, uncaughtExceptionHandler, null);
+	}
+
+
+	/**
+	 * @param name
+	 * @param bufferSize
+	 * @param uncaughtExceptionHandler
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorService<E> asyncService(String name,
+	                                                   int bufferSize,
+	                                                   int concurrency,
+	                                                   Consumer<Throwable> uncaughtExceptionHandler) {
+		return asyncService(name, bufferSize, concurrency, uncaughtExceptionHandler, null);
 	}
 
 	/**
@@ -256,6 +297,24 @@ public final class Processors {
 		return asyncService(name, bufferSize, uncaughtExceptionHandler, shutdownHandler, true);
 	}
 
+
+	/**
+	 * @param name
+	 * @param bufferSize
+	 * @param uncaughtExceptionHandler
+	 * @param shutdownHandler
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorService<E> asyncService(String name,
+	                                                   int bufferSize,
+	                                                   int concurrency,
+	                                                   Consumer<Throwable> uncaughtExceptionHandler,
+	                                                   Consumer<Void> shutdownHandler
+	) {
+		return asyncService(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
+	}
+
 	/**
 	 * @param name
 	 * @param bufferSize
@@ -270,12 +329,36 @@ public final class Processors {
 	                                                   Consumer<Throwable> uncaughtExceptionHandler,
 	                                                   Consumer<Void> shutdownHandler,
 	                                                   boolean autoShutdown) {
+		return asyncService(name, bufferSize, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+	}
+
+	/**
+	 * @param name
+	 * @param bufferSize
+	 * @param uncaughtExceptionHandler
+	 * @param shutdownHandler
+	 * @param autoShutdown
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorService<E> asyncService(final String name,
+	                                                   final int bufferSize,
+	                                                   int concurrency,
+	                                                   Consumer<Throwable> uncaughtExceptionHandler,
+	                                                   Consumer<Void> shutdownHandler,
+	                                                   boolean autoShutdown) {
 
 		return ProcessorService.create(
-		  PlatformDependent.hasUnsafe()
-			? RingBufferProcessor.share(name, bufferSize, ProcessorService.DEFAULT_TASK_PROVIDER)
-			: SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.<SimpleSignal<ProcessorService.Task>>create
-			()),
+		  new Supplier<Processor<ProcessorService.Task, ProcessorService.Task>>() {
+			  @Override
+			  public Processor<ProcessorService.Task, ProcessorService.Task> get() {
+				  return  PlatformDependent.hasUnsafe()
+				    ? RingBufferProcessor.share(name, bufferSize, ProcessorService.DEFAULT_TASK_PROVIDER)
+				    : SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.<SimpleSignal<ProcessorService.Task>>create
+				    ());
+			  }
+		  },
+		  concurrency,
 		  uncaughtExceptionHandler,
 		  shutdownHandler,
 		  autoShutdown
@@ -359,16 +442,22 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> workService(String name,
-	                                                  int bufferSize,
+	public static <E> ProcessorService<E> workService(final String name,
+	                                                  final int bufferSize,
 	                                                  int concurrency,
 	                                                  Consumer<Throwable> uncaughtExceptionHandler,
 	                                                  Consumer<Void> shutdownHandler,
 	                                                  boolean autoShutdown) {
 		return ProcessorService.create(
-		  PlatformDependent.hasUnsafe()
-			? RingBufferWorkProcessor.<ProcessorService.Task>share(name, bufferSize)
-			: SimpleWorkProcessor.<ProcessorService.Task>create(name, bufferSize),
+		  new Supplier<Processor<ProcessorService.Task, ProcessorService.Task>>() {
+			  @Override
+			  public Processor<ProcessorService.Task, ProcessorService.Task> get() {
+				  return PlatformDependent.hasUnsafe()
+				    ? RingBufferWorkProcessor.<ProcessorService.Task>share(name, bufferSize)
+				    : SimpleWorkProcessor.<ProcessorService.Task>create(name, bufferSize);
+			  }
+		  }
+		  ,
 		  concurrency,
 		  uncaughtExceptionHandler,
 		  shutdownHandler,
@@ -401,6 +490,31 @@ public final class Processors {
 			}
 		});
 	}
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> BlockingQueue<IN> queue(Processor<IN, IN> source) {
+		return queue(source, BaseProcessor.SMALL_BUFFER_SIZE);
+	}
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> BlockingQueue<IN> queue(Processor<IN, IN> source, int size) {
+		return queue(source, size, new ArrayBlockingQueue<IN>(size));
+	}
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> BlockingQueue<IN> queue(Processor<IN, IN> source, int size, Queue<IN> store) {
+		return new BlockingQueueSubscriber<>(source, source, store, size);
+	}
+
 
 	/**
 	 * @param processor

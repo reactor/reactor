@@ -15,13 +15,11 @@
  */
 package reactor.io.net;
 
-import reactor.Environment;
-import reactor.bus.spec.ProcessorComponentSpec;
-import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
+import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
@@ -80,11 +78,12 @@ public interface Spec {
 	  CONN extends ChannelStream<IN, OUT>,
 	  S extends PeerSpec<IN, OUT, CONN, S, N>,
 	  N extends ReactorPeer<IN, OUT, CONN>>
-	  extends ProcessorComponentSpec<S, N> {
+	  implements Supplier<N> {
 
 		protected ServerSocketOptions options = new ServerSocketOptions();
 		protected InetSocketAddress      listenAddress;
 		protected Codec<Buffer, IN, OUT> codec;
+		protected Timer                  timer;
 
 		/**
 		 * Set the common {@link reactor.io.net.config.ServerSocketOptions} for channels made in this server.
@@ -151,6 +150,18 @@ public interface Spec {
 		}
 
 		/**
+		 * Set the default {@link reactor.fn.timer.Timer} for timed operations.
+		 *
+		 * @param timer The timer to assign by default
+		 * @return {@literal this}
+		 */
+		@SuppressWarnings("unchecked")
+		public S timer(Timer timer) {
+			this.timer = timer;
+			return (S)this;
+		}
+
+		/**
 		 * Bypass any Reactor Buffer encoding for received data
 		 *
 		 * @param israw to enable raw data transfer from the server (e.g. ByteBuf from Netty).
@@ -173,7 +184,7 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class TcpClientSpec<IN, OUT> extends ProcessorComponentSpec<TcpClientSpec<IN, OUT>,TcpClient<IN, OUT>> {
+	class TcpClientSpec<IN, OUT> implements Supplier<TcpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.tcp.TcpClient> clientImplConstructor;
 
@@ -182,6 +193,7 @@ public interface Spec {
 		private ClientSocketOptions options = new ClientSocketOptions();
 
 		private SslOptions sslOptions = null;
+		private Timer      timer      = null;
 		private Codec<Buffer, IN, OUT> codec;
 
 		/**
@@ -195,13 +207,12 @@ public interface Spec {
 			try {
 				this.clientImplConstructor = (Constructor<reactor.io.net.tcp.TcpClient>) clientImpl
 				  .getDeclaredConstructor(
-				  Environment.class,
-				  ReactorProcessor.class,
-				  InetSocketAddress.class,
-				  ClientSocketOptions.class,
-				  SslOptions.class,
-				  Codec.class
-				);
+					Timer.class,
+					InetSocketAddress.class,
+					ClientSocketOptions.class,
+					SslOptions.class,
+					Codec.class
+				  );
 				this.clientImplConstructor.setAccessible(true);
 			} catch (NoSuchMethodException e) {
 				throw new IllegalArgumentException(
@@ -217,6 +228,17 @@ public interface Spec {
 		 */
 		public TcpClientSpec<IN, OUT> options(ClientSocketOptions options) {
 			this.options = options;
+			return this;
+		}
+
+		/**
+		 * Set the default {@link reactor.fn.timer.Timer} for timed operations.
+		 *
+		 * @param timer The timer to assign by default
+		 * @return {@literal this}
+		 */
+		public TcpClientSpec<IN, OUT> timer(Timer timer) {
+			this.timer = timer;
 			return this;
 		}
 
@@ -283,12 +305,10 @@ public interface Spec {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		protected reactor.io.net.tcp.TcpClient<IN, OUT> configure(ReactorProcessor dispatcher, Environment
-		  environment) {
+		public reactor.io.net.tcp.TcpClient<IN, OUT> get() {
 			try {
 				return clientImplConstructor.newInstance(
-				  environment,
-				  dispatcher,
+				  timer,
 				  connectAddress,
 				  options,
 				  sslOptions,
@@ -326,8 +346,7 @@ public interface Spec {
 			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
 			try {
 				this.serverImplConstructor = serverImpl.getDeclaredConstructor(
-				  Environment.class,
-				  ReactorProcessor.class,
+				  Timer.class,
 				  InetSocketAddress.class,
 				  ServerSocketOptions.class,
 				  SslOptions.class,
@@ -354,11 +373,10 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.tcp.TcpServer<IN, OUT> configure(ReactorProcessor dispatcher, Environment env) {
+		public reactor.io.net.tcp.TcpServer<IN, OUT> get() {
 			try {
 				return serverImplConstructor.newInstance(
-				  env,
-				  dispatcher,
+				  timer,
 				  listenAddress,
 				  options,
 				  sslOptions,
@@ -386,8 +404,7 @@ public interface Spec {
 			Assert.notNull(serverImpl, "NetServer implementation class cannot be null.");
 			try {
 				this.serverImplCtor = serverImpl.getDeclaredConstructor(
-				  Environment.class,
-				  ReactorProcessor.class,
+				  Timer.class,
 				  InetSocketAddress.class,
 				  NetworkInterface.class,
 				  ServerSocketOptions.class,
@@ -396,8 +413,9 @@ public interface Spec {
 				this.serverImplCtor.setAccessible(true);
 			} catch (NoSuchMethodException e) {
 				throw new IllegalArgumentException(
-				  "No public constructor found that matches the signature of the one found in the DatagramServer class" +
-				    ".");
+				  "No public constructor found that matches the signature of the one found in the DatagramServer " +
+					"class" +
+					".");
 			}
 		}
 
@@ -414,12 +432,10 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.udp.DatagramServer<IN, OUT> configure(ReactorProcessor dispatcher, Environment
-		  environment) {
+		public reactor.io.net.udp.DatagramServer<IN, OUT> get() {
 			try {
 				return serverImplCtor.newInstance(
-				  environment,
-				  dispatcher,
+				  timer,
 				  listenAddress,
 				  multicastInterface,
 				  options,
@@ -457,8 +473,7 @@ public interface Spec {
 			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
 			try {
 				this.serverImplConstructor = serverImpl.getDeclaredConstructor(
-				  Environment.class,
-				  ReactorProcessor.class,
+				  Timer.class,
 				  InetSocketAddress.class,
 				  ServerSocketOptions.class,
 				  SslOptions.class,
@@ -485,11 +500,10 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.http.HttpServer<IN, OUT> configure(ReactorProcessor dispatcher, Environment env) {
+		public reactor.io.net.http.HttpServer<IN, OUT> get() {
 			try {
 				return serverImplConstructor.newInstance(
-				  env,
-				  dispatcher,
+				  timer,
 				  listenAddress,
 				  options,
 				  sslOptions,
@@ -509,7 +523,7 @@ public interface Spec {
 	 * @param <OUT> The type that will be sent by the client
 	 * @author Stephane Maldini
 	 */
-	class HttpClientSpec<IN, OUT> extends ProcessorComponentSpec<HttpClientSpec<IN, OUT>,HttpClient<IN, OUT>> {
+	class HttpClientSpec<IN, OUT> implements Supplier<HttpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.http.HttpClient> clientImplConstructor;
 
@@ -517,6 +531,7 @@ public interface Spec {
 		private ClientSocketOptions options    = new ClientSocketOptions();
 		private SslOptions          sslOptions = null;
 		private Codec<Buffer, IN, OUT> codec;
+		private Timer timer = null;
 
 		/**
 		 * Create a {@code TcpClient.Spec} using the given implementation class.
@@ -529,13 +544,12 @@ public interface Spec {
 			try {
 				this.clientImplConstructor = (Constructor<reactor.io.net.http.HttpClient>) clientImpl
 				  .getDeclaredConstructor(
-				  Environment.class,
-				  ReactorProcessor.class,
-				  InetSocketAddress.class,
-				  ClientSocketOptions.class,
-				  SslOptions.class,
-				  Codec.class
-				);
+					Timer.class,
+					InetSocketAddress.class,
+					ClientSocketOptions.class,
+					SslOptions.class,
+					Codec.class
+				  );
 				this.clientImplConstructor.setAccessible(true);
 			} catch (NoSuchMethodException e) {
 				throw new IllegalArgumentException(
@@ -601,14 +615,23 @@ public interface Spec {
 			return this;
 		}
 
+		/**
+		 * Set the default {@link reactor.fn.timer.Timer} for timed operations.
+		 *
+		 * @param timer The timer to assign by default
+		 * @return {@literal this}
+		 */
+		public HttpClientSpec<IN, OUT> timer(Timer timer) {
+			this.timer = timer;
+			return this;
+		}
+
 		@Override
 		@SuppressWarnings("unchecked")
-		protected reactor.io.net.http.HttpClient<IN, OUT> configure(ReactorProcessor dispatcher, Environment
-		  environment) {
+		public reactor.io.net.http.HttpClient<IN, OUT> get() {
 			try {
 				return clientImplConstructor.newInstance(
-				  environment,
-				  dispatcher,
+				  timer,
 				  connectAddress,
 				  options,
 				  sslOptions,

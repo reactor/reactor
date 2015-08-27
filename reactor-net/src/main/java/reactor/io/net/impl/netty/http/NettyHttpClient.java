@@ -25,9 +25,8 @@ import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
+import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -71,28 +70,25 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	 * reactor} to
 	 * send events. The number of IO threads used by the client is configured by the environment's {@code
 	 * reactor.tcp.ioThreadCount} property. In its absence the number of IO threads will be equal to the {@link
-	 * reactor.Environment#PROCESSORS number of available processors}. </p> The client will connect to the given {@code
+	 * reactor.Processors#DEFAULT_POOL_SIZE number of available processors}. </p> The client will connect to the given {@code
 	 * connectAddress}, configuring its socket using the given {@code opts}. The given {@code codec} will be used for
 	 * encoding and decoding of data.
 	 *
-	 * @param env            The configuration environment
-	 * @param dispatcher     The dispatcher used to send events
+	 * @param timer     The default timer configured
 	 * @param connectAddress The root host and port to connect relatively from in http handlers
 	 * @param options        The configuration options for the client's socket
 	 * @param sslOptions     The SSL configuration options for the client's socket
 	 * @param codec          The codec used to encode and decode data
 	 */
-	public NettyHttpClient(final Environment env,
-	                       final ReactorProcessor dispatcher,
+	public NettyHttpClient(final Timer timer,
 	                       final InetSocketAddress connectAddress,
 	                       final ClientSocketOptions options,
 	                       final SslOptions sslOptions,
 	                       final Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec, options);
+		super(timer, codec, options);
 
 		this.client = new NettyTcpClient<IN, OUT>(
-				env,
-				dispatcher,
+				timer,
 				connectAddress,
 				options,
 				sslOptions,
@@ -234,10 +230,9 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 		SocketChannel ch = (SocketChannel) nativeChannel;
 
 		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getDefaultEnvironment(),
+				getDefaultTimer(),
 				getDefaultCodec(),
 				getDefaultPrefetchSize(),
-				getDefaultDispatcher(),
 				ch
 		);
 

@@ -23,11 +23,10 @@ import org.zeromq.ZContext;
 import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
-import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
+import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -47,8 +46,6 @@ import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.broadcast.SerializedBroadcaster;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -67,13 +64,12 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final ZeroMQClientSocketOptions zmqOpts;
 	private final ExecutorService           threadPool;
 
-	public ZeroMQTcpClient(@Nonnull Environment env,
-	                       @Nonnull ReactorProcessor eventsDispatcher,
-	                       @Nonnull InetSocketAddress connectAddress,
-	                       @Nullable ClientSocketOptions options,
-	                       @Nullable SslOptions sslOptions,
-	                       @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, eventsDispatcher, connectAddress, options, sslOptions, codec);
+	public ZeroMQTcpClient(Timer timer,
+	                       InetSocketAddress connectAddress,
+	                       ClientSocketOptions options,
+	                       SslOptions sslOptions,
+	                       Codec<Buffer, IN, OUT> codec) {
+		super(timer, connectAddress, options, sslOptions, codec);
 
 		this.ioThreadCount = getDefaultEnvironment().getIntProperty("reactor.zmq.ioThreadCount", 1);
 
@@ -104,9 +100,8 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	protected ZeroMQChannelStream<IN, OUT> bindChannel() {
 
 		return new ZeroMQChannelStream<IN, OUT>(
-				getDefaultEnvironment(),
+				getDefaultTimer(),
 				getDefaultPrefetchSize(),
-				getDefaultDispatcher(),
 				getConnectAddress(),
 				getDefaultCodec()
 		);
@@ -121,7 +116,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.DEALER);
 		final ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
 
-		final Broadcaster<ZMsg> broadcaster = SerializedBroadcaster.create(getDefaultEnvironment());
+		final Broadcaster<ZMsg> broadcaster = SerializedBroadcaster.create(getDefaultTimer());
 
 		ZeroMQWorker worker = new ZeroMQWorker(id, socketType, ioThreadCount, zmq, broadcaster) {
 			@Override

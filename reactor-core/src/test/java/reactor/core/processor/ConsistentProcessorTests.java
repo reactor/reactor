@@ -37,7 +37,6 @@ import static org.junit.Assert.assertTrue;
 /**
  * @author Stephane Maldini
  */
-@Ignore
 public class ConsistentProcessorTests {
 	private Processor<String, String> processor;
 	private Processor<String, String> workProcessor;
@@ -45,6 +44,7 @@ public class ConsistentProcessorTests {
 	private AtomicInteger integer = new AtomicInteger();
 
 	@Test
+	@Ignore
 	public void testMultipleConsumersMultipleTimes() throws Exception {
 		Sender sender = new Sender();
 

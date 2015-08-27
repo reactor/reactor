@@ -16,8 +16,7 @@
 
 package reactor.io.net.http;
 
-import reactor.Environment;
-import reactor.ReactorProcessor;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ReactorChannelHandler;
@@ -37,11 +36,10 @@ import reactor.rx.Promise;
 public abstract class HttpClient<IN, OUT>
   extends ReactorClient<IN, OUT, HttpChannel<IN, OUT>> {
 
-	protected HttpClient(Environment env,
-	                     ReactorProcessor dispatcher,
+	protected HttpClient(Timer timer,
 	                     Codec<Buffer, IN, OUT> codec,
 	                     ClientSocketOptions options) {
-		super(env, dispatcher, codec, options.prefetch());
+		super(timer, codec, options.prefetch());
 	}
 
 	/**

@@ -81,7 +81,7 @@ public final class Promises {
 	 * @param <T>      type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> task(Timer timer, Supplier<T> supplier) {
+	public static <T> Promise<T> task(Timer timer, final Supplier<T> supplier) {
 		Publisher<T> p = Publishers.create(new Consumer<SubscriberWithContext<T, Void>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Void> sub) {

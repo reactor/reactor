@@ -17,9 +17,7 @@ package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.support.Assert;
 import reactor.core.error.Exceptions;
-import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -59,7 +57,7 @@ public class Broadcaster<O> extends Action<O, O> {
 	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
 	 */
 	public static <T> Broadcaster<T> create() {
-		return new Broadcaster<T>(null, Long.MAX_VALUE);
+		return new Broadcaster<T>(null);
 	}
 
 	/**
@@ -68,12 +66,12 @@ public class Broadcaster<O> extends Action<O, O> {
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
-	 * @param env the Reactor {@link reactor.Environment} to use
+	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
 	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> create(Timer timer) {
-		return new Broadcaster<T>(timer, Action.evaluateCapacity(dispatcher.backlogSize()));
+		return new Broadcaster<T>(timer);
 	}
 
 	/**
@@ -83,8 +81,8 @@ public class Broadcaster<O> extends Action<O, O> {
 	private final Timer timer;
 
 	@SuppressWarnings("unchecked")
-	protected Broadcaster(Timer timer, long capacity) {
-		super(capacity);
+	protected Broadcaster(Timer timer) {
+		super();
 		this.timer = timer;
 
 		//start broadcaster
@@ -95,18 +93,6 @@ public class Broadcaster<O> extends Action<O, O> {
 	@Override
 	protected void doNext(O ev) {
 		broadcastNext(ev);
-	}
-
-	@Override
-	public void onNext(O ev) {
-		if (ev == null) {
-			throw new NullPointerException("Spec 2.13: Signal cannot be null");
-		}
-		if (!dispatcher.inContext()) {
-			dispatcher.dispatch(ev, this, null);
-		} else {
-			super.onNext(ev);
-		}
 	}
 
 	@Override
@@ -126,37 +112,6 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
-	public void onError(Throwable cause) {
-		if (cause == null) {
-			throw new NullPointerException("Spec 2.13: Signal cannot be null");
-		}
-		if (!dispatcher.inContext()) {
-			dispatcher.dispatch(cause, new Consumer<Throwable>() {
-				@Override
-				public void accept(Throwable throwable) {
-					Broadcaster.super.doError(throwable);
-				}
-			}, null);
-		} else {
-			super.onError(cause);
-		}
-	}
-
-	@Override
-	public void onComplete() {
-		if (!dispatcher.inContext()) {
-			dispatcher.dispatch(null, new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					Broadcaster.super.onComplete();
-				}
-			}, null);
-		} else {
-			super.onComplete();
-		}
-	}
-
-	@Override
 	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, Queue<O> queue) {
 		if (queue != null) {
 			return new ReactiveSubscription<O>(this, subscriber, queue) {
@@ -171,17 +126,6 @@ public class Broadcaster<O> extends Action<O, O> {
 			};
 		} else {
 			return super.createSubscription(subscriber, null);
-		}
-	}
-
-	@Override
-	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
-		if (reactivePull) {
-			return super.createSubscription(subscriber, true);
-		} else {
-			return super.createSubscription(subscriber,
-			  dispatcher != SynchronousDispatcher.INSTANCE &&
-				(upstreamSubscription != null && !upstreamSubscription.hasPublisher()));
 		}
 	}
 

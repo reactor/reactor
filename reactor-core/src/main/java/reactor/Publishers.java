@@ -18,11 +18,17 @@ package reactor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
+import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.LogPublisher;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolinePublisher;
 import reactor.core.subscriber.Tap;
+import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.fn.Supplier;
+
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * @author Stephane Maldini
@@ -51,6 +57,30 @@ public final class Publishers extends PublisherFactory {
 				s.onComplete();
 			}
 		};
+	}
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> BlockingQueue<IN> readQueue(Publisher<IN> source) {
+		return readQueue(source, BaseProcessor.SMALL_BUFFER_SIZE);
+	}
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> BlockingQueue<IN> readQueue(Publisher<IN> source, int size) {
+		return readQueue(source, size, new ArrayBlockingQueue<IN>(size));
+	}
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> BlockingQueue<IN> readQueue(Publisher<IN> source, int size, Queue<IN> store) {
+		return new BlockingQueueSubscriber<>(source, null, store, size);
 	}
 
 	/**
@@ -85,8 +115,7 @@ public final class Publishers extends PublisherFactory {
 	 * Monitor the most recent value of this publisher sequence to be returned by {@link Supplier#get}
 	 *
 	 * @param publisher the sequence to monitor
-	 * @param <IN> the sequence type
-	 *
+	 * @param <IN>      the sequence type
 	 * @return a new {@link Supplier} tapping into publisher (requesting an unbounded demand of Long.MAX_VALUE)
 	 */
 	public static <IN> Supplier<IN> tap(Publisher<IN> publisher) {

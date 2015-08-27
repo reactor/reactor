@@ -15,8 +15,15 @@
  */
 package reactor;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.core.processor.BaseProcessor;
+import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.SubscriberFactory;
+
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * @author Stephane Maldini
@@ -43,6 +50,30 @@ public final class Subscribers extends SubscriberFactory {
 	 */
 	public static <T> Subscriber<T> group(Subscriber<T> source) {
 		return source;
+	}
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> BlockingQueue<IN> writeQueue(Subscriber<IN> target) {
+		return writeQueue(target, BaseProcessor.SMALL_BUFFER_SIZE);
+	}
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> BlockingQueue<IN> writeQueue(Subscriber<IN> target, int size) {
+		return writeQueue(target, size, new ArrayBlockingQueue<IN>(size));
+	}
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> BlockingQueue<IN> writeQueue(Subscriber<IN> target, int size, Queue<IN> store) {
+		return new BlockingQueueSubscriber<>(null, target, store, size);
 	}
 
 

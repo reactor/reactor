@@ -17,12 +17,11 @@
 package reactor.io.net.http;
 
 import org.reactivestreams.Publisher;
-import reactor.Environment;
 import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.selector.Selector;
-import reactor.ReactorProcessor;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.NetSelectors;
@@ -49,8 +48,8 @@ public abstract class HttpServer<IN, OUT>
 
 	private boolean hasWebsocketEndpoints = false;
 
-	protected HttpServer(Environment env, ReactorProcessor dispatcher, Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec);
+	protected HttpServer(Timer timer, Codec<Buffer, IN, OUT> codec) {
+		super(timer, codec);
 		this.routedWriters = Registries.create();
 	}
 

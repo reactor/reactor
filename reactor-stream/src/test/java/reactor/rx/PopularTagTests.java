@@ -28,8 +28,6 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static reactor.Environment.cachedDispatcher;
-import static reactor.Environment.sharedDispatcher;
 
 /**
  * @author Stephane Maldini
@@ -53,8 +51,6 @@ public class PopularTagTests extends AbstractReactorTest {
 	public void sampleTest() throws Exception {
 		CountDownLatch latch = new CountDownLatch(1);
 
-		MapStream<String, Integer> persistentMap = IOStreams.persistentMap("popularTags", true);
-
 		Control top10every1second =
 		  Streams.from(PULP_SAMPLE)
 			.dispatchOn(sharedDispatcher())
@@ -68,7 +64,7 @@ public class PopularTagTests extends AbstractReactorTest {
 			.map(w -> Tuple.of(w, 1))
 			.window(1, SECONDS)
 			.flatMap(s ->
-				BiStreams.reduceByKey(s, persistentMap, (acc, next) -> acc + next)
+				BiStreams.reduceByKey(s, (acc, next) -> acc + next)
 				  .sort((a, b) -> -a.t2.compareTo(b.t2))
 				  .take(10)
 				  .finallyDo(_s -> LOG.info("------------------------ window complete! ----------------------"))

@@ -403,7 +403,14 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control consume(final Consumer<? super O> consumer) {
-		return consumeOn( consumer);
+		ConsumerAction<O> consumerAction = new ConsumerAction<O>(
+		  getCapacity(),
+		  consumer,
+		  null,
+		  null
+		);
+		subscribe(consumerAction);
+		return consumerAction;
 	}
 
 	/**
@@ -413,21 +420,16 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * <p>
 	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 *
-	 * @param dispatcher the dispatcher to run the consumer
+	 * @param concurrency    the concurrent subscribers to run the consumer (result in N subscribe())
 	 * @param consumer   the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control consumeOn(ReactorProcessor dispatcher, final Consumer<? super O> consumer) {
-		ConsumerAction<O> consumerAction = new ConsumerAction<O>(
-		  SynchronousDispatcher.INSTANCE != dispatcher && PROCESSOR_SYNC != dispatcher &&
-			dispatcher == getDispatcher() ? Long.MAX_VALUE : getCapacity(),
-		  dispatcher,
-		  consumer,
-		  null,
-		  null
-		);
-		subscribe(consumerAction);
-		return consumerAction;
+	public final Control[] multiConsume(int concurrency, final Consumer<? super O> consumer) {
+		Control[] controls = new Control[concurrency];
+		for(int i = 0; i < concurrency; i++){
+			controls[i] = consume(consumer);
+		}
+		return controls;
 	}
 
 	/**
@@ -443,7 +445,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	public final Control consume(final Consumer<? super O> consumer,
 	                             Consumer<? super Throwable> errorConsumer) {
-		return consumeOn( consumer, errorConsumer);
+		return consume(consumer, errorConsumer, null);
 	}
 
 	/**
@@ -453,14 +455,14 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * It will also eagerly prefetch upstream publisher.
 	 * <p>
 	 *
+	 * @param concurrency    the concurrent subscribers to run the consumer (result in N subscribe())
 	 * @param consumer      the consumer to invoke on each next signal
 	 * @param errorConsumer the consumer to invoke on each error signal
-	 * @param dispatcher    the dispatcher to run the consumer
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control consumeOn(ReactorProcessor dispatcher, final Consumer<? super O> consumer,
-	                               Consumer<? super Throwable> errorConsumer) {
-		return consumeOn(dispatcher, consumer, errorConsumer, null);
+	public final Control[] multiConsume(int concurrency, final Consumer<? super O> consumer,
+	                                  Consumer<? super Throwable> errorConsumer) {
+		return multiConsume(concurrency, consumer, errorConsumer, null);
 	}
 
 	/**
@@ -479,7 +481,15 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	public final Control consume(final Consumer<? super O> consumer,
 	                             Consumer<? super Throwable> errorConsumer,
 	                             Consumer<Void> completeConsumer) {
-		return consumeOn( consumer, errorConsumer, completeConsumer);
+		ConsumerAction<O> consumerAction =
+		  new ConsumerAction<O>(
+			getCapacity(),
+			consumer,
+			errorConsumer,
+			completeConsumer);
+
+		subscribe(consumerAction);
+		return consumerAction;
 	}
 
 	/**
@@ -490,25 +500,20 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Only error and complete signal will be signaled downstream. It will also eagerly prefetch upstream publisher.
 	 * <p>
 	 *
+	 * @param concurrency    the concurrent subscribers to run the consumer (result in N subscribe())
 	 * @param consumer         the consumer to invoke on each value
 	 * @param errorConsumer    the consumer to invoke on each error signal
 	 * @param completeConsumer the consumer to invoke on complete signal
-	 * @param dispatcher       the dispatcher to run the consumer
 	 * @return {@literal new Stream}
 	 */
-	public final Control consumeOn(ReactorProcessor dispatcher, final Consumer<? super O> consumer,
-	                               Consumer<? super Throwable> errorConsumer,
-	                               Consumer<Void> completeConsumer) {
-		ConsumerAction<O> consumerAction =
-		  new ConsumerAction<O>(
-			getCapacity(),
-			dispatcher,
-			consumer,
-			errorConsumer,
-			completeConsumer);
-
-		subscribe(consumerAction);
-		return consumerAction;
+	public final Control[] multiConsume(int concurrency, final Consumer<? super O> consumer,
+	                                  Consumer<? super Throwable> errorConsumer,
+	                                  Consumer<Void> completeConsumer) {
+		Control[] controls = new Control[concurrency];
+		for(int i = 0; i < concurrency; i++){
+			controls[i] = consume(consumer, errorConsumer, completeConsumer);
+		}
+		return controls;
 	}
 
 
@@ -531,7 +536,12 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	public final Control batchConsume(final Consumer<? super O> consumer,
 	                                  final Function<Long, ? extends Long> requestMapper) {
-		return batchConsumeOn(consumer, requestMapper);
+		return adaptiveConsume(consumer, new Function<Stream<Long>, Publisher<? extends Long>>() {
+			@Override
+			public Publisher<? extends Long> apply(Stream<Long> longStream) {
+				return longStream.map(requestMapper);
+			}
+		});
 	}
 
 	/**
@@ -553,7 +563,14 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	public final Control adaptiveConsume(final Consumer<? super O> consumer,
 	                                     final Function<Stream<Long>, ? extends Publisher<? extends Long>>
 	                                       requestMapper) {
-		return adaptiveConsumeOn( consumer, requestMapper);
+		AdaptiveConsumerAction<O> consumerAction =
+		  new AdaptiveConsumerAction<O>(getTimer(), getCapacity(), consumer, requestMapper);
+
+		subscribe(consumerAction);
+		if (consumer != null) {
+			consumerAction.requestMore(consumerAction.getCapacity());
+		}
+		return consumerAction;
 	}
 
 
@@ -571,14 +588,16 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * <p>
 	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 *
+	 * @param concurrency    the concurrent subscribers to run the consumer (result in N subscribe())
 	 * @param consumer the consumer to invoke on each value
+	 * @param requestMapper the function evaluating each request
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control batchConsumeOn(final ReactorProcessor dispatcher,
-	                                    final Consumer<? super O> consumer,
-	                                    final Function<Long, ? extends Long>
-	                                      requestMapper) {
-		return adaptiveConsumeOn(dispatcher, consumer, new Function<Stream<Long>, Publisher<? extends Long>>() {
+	public final Control[] multiBatchConsume(final int concurrency,
+	                                       final Consumer<? super O> consumer,
+	                                       final Function<Long, ? extends Long>
+	                                         requestMapper) {
+		return multiAdaptiveConsume(concurrency, consumer, new Function<Stream<Long>, Publisher<? extends Long>>() {
 			@Override
 			public Publisher<? extends Long> apply(Stream<Long> longStream) {
 				return longStream.map(requestMapper);
@@ -606,18 +625,15 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control adaptiveConsumeOn(final ReactorProcessor dispatcher,
-	                                       final Consumer<? super O> consumer,
-	                                       final Function<Stream<Long>, ? extends Publisher<? extends Long>>
-	                                         requestMapper) {
-		AdaptiveConsumerAction<O> consumerAction =
-		  new AdaptiveConsumerAction<O>(dispatcher, getCapacity(), consumer, requestMapper);
-
-		subscribe(consumerAction);
-		if (consumer != null) {
-			consumerAction.requestMore(consumerAction.getCapacity());
+	public final Control[] multiAdaptiveConsume(final int concurrency,
+	                                          final Consumer<? super O> consumer,
+	                                          final Function<Stream<Long>, ? extends Publisher<? extends Long>>
+	                                            requestMapper) {
+		Control[] controls = new Control[concurrency];
+		for(int i = 0; i < concurrency; i++){
+			controls[i] = adaptiveConsume(consumer, requestMapper);
 		}
-		return consumerAction;
+		return controls;
 	}
 
 
@@ -1301,7 +1317,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new RetryAction<O>( numRetries, retryMatcher, Stream.this);
+				return new RetryAction<O>(numRetries, retryMatcher, Stream.this);
 			}
 		});
 	}
@@ -1367,7 +1383,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new RetryWhenAction<O>( backOffStream, Stream.this);
+				return new RetryWhenAction<O>(getTimer(), backOffStream, Stream.this);
 			}
 		});
 	}
@@ -1417,7 +1433,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new RepeatWhenAction<O>(backOffStream, Stream.this);
+				return new RepeatWhenAction<O>(getTimer(), backOffStream, Stream.this);
 			}
 		});
 	}
@@ -1671,7 +1687,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new SampleAction<O>( batchSize, true);
+				return new SampleAction<O>(batchSize, true);
 			}
 		});
 	}
@@ -1715,7 +1731,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new SampleAction<O>( true, maxSize, timespan, unit, timer);
+				return new SampleAction<O>(true, maxSize, timespan, unit, timer);
 			}
 		});
 	}
@@ -1742,7 +1758,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new SampleAction<O>( batchSize);
+				return new SampleAction<O>(batchSize);
 			}
 		});
 	}
@@ -1989,7 +2005,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(new Supplier<Action<O, List<O>>>() {
 			@Override
 			public Action<O, List<O>> get() {
-				return new BufferShiftAction<O>( maxSize, skip);
+				return new BufferShiftAction<O>(maxSize, skip);
 			}
 		});
 	}
@@ -2054,7 +2070,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(new Supplier<Action<O, List<O>>>() {
 			@Override
 			public Action<O, List<O>> get() {
-				return new BufferShiftAction<O>( Integer.MAX_VALUE, Integer.MAX_VALUE, timeshift,
+				return new BufferShiftAction<O>(Integer.MAX_VALUE, Integer.MAX_VALUE, timeshift,
 				  timespan,
 				  unit,
 				  timer);
@@ -2091,7 +2107,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(new Supplier<Action<O, List<O>>>() {
 			@Override
 			public Action<O, List<O>> get() {
-				return new BufferAction<O>( maxSize, timespan, unit, timer);
+				return new BufferAction<O>(maxSize, timespan, unit, timer);
 			}
 		});
 	}
@@ -2152,7 +2168,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new SortAction<O>( maxCapacity, comparator);
+				return new SortAction<O>(maxCapacity, comparator);
 			}
 		});
 	}
@@ -2252,7 +2268,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<Stream<O>> window(long timespan, TimeUnit unit) {
-		return window(Integer.MAX_VALUE, timespan, unit );
+		return window(Integer.MAX_VALUE, timespan, unit);
 	}
 
 
@@ -2266,7 +2282,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
-	public final Stream<Stream<O>> window(int maxSize, long timespan, TimeUnit unit) {
+	public final Stream<Stream<O>> window(final int maxSize, final long timespan, final TimeUnit unit) {
 		return lift(new Supplier<Action<O, Stream<O>>>() {
 			@Override
 			public Action<O, Stream<O>> get() {
@@ -2439,8 +2455,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> throttle(long period) {
-		Timer timer = getTimer();
+	public final Stream<O> throttle(final long period) {
+		final Timer timer = getTimer();
 		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " +
 		  "Stream");
 
@@ -2520,8 +2536,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> timeout(long timeout, TimeUnit unit, Publisher<? extends O> fallback) {
-		Timer timer = getTimer();
+	public final Stream<O> timeout(final long timeout, final TimeUnit unit, final Publisher<? extends O> fallback) {
+		final Timer timer = getTimer();
 		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " +
 		  "Stream");
 
@@ -2639,35 +2655,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final BlockingQueue<O> toBlockingQueue(int maximum) {
-		final BlockingQueue<O> blockingQueue;
-		Stream<O> tail = this;
-		if (maximum > 0) {
-			blockingQueue = new ArrayBlockingQueue<O>(maximum);
-			tail = take(maximum);
-		} else {
-			blockingQueue = new ArrayBlockingQueue<O>(1);
-		}
-
-		Consumer terminalConsumer = new Consumer<Object>() {
-			@Override
-			public void accept(Object o) {
-				blockingQueue.complete();
-			}
-		};
-
-		consume(
-		  new Consumer<O>() {
-			  @Override
-			  public void accept(O o) {
-				  try {
-					  blockingQueue.put(o);
-				  } catch (InterruptedException e) {
-					  throw new RuntimeException(e);
-				  }
-			  }
-		  }, terminalConsumer, terminalConsumer);
-
-		return blockingQueue;
+		return Publishers.readQueue(this, maximum);
 	}
 
 	/**

@@ -362,6 +362,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 		private final SimpleWorkProcessor<IN> processor;
 
 		public SubscriberWorker(SimpleWorkProcessor<IN> workProcessor, Subscriber<? super IN> s) {
+			super(Long.MIN_VALUE);
 			this.subscriber = s;
 			this.processor = workProcessor;
 		}

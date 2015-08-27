@@ -15,7 +15,6 @@
  */
 package reactor.rx
 
-import reactor.Environment
 import reactor.bus.EventBus
 import reactor.bus.selector.Selectors
 import reactor.rx.broadcast.Broadcaster

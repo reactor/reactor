@@ -15,8 +15,8 @@
  */
 package reactor.core.processor;
 
-import reactor.core.support.SingleUseExecutor;
 import reactor.core.error.Exceptions;
+import reactor.core.support.SingleUseExecutor;
 import reactor.fn.Consumer;
 import reactor.fn.timer.GlobalTimer;
 import reactor.fn.timer.Timer;
@@ -36,29 +36,18 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	protected final ExecutorService executor;
 
-	private final ClassLoader contextClassLoader;
-
 	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {
-		super(autoCancel);
+		super(
+		  executor == null ?
+		  new ClassLoader(Thread.currentThread().getContextClassLoader()) {} :
+		  null,
+		  autoCancel);
 		if (executor == null) {
-			this.contextClassLoader =
-			  new ClassLoader(Thread.currentThread().getContextClassLoader()) {
-			  };
-
 			this.executor = SingleUseExecutor.create(name, contextClassLoader);
 		} else {
-			this.contextClassLoader = null;
 			this.executor = executor;
 		}
 	}
-
-	/**
-	 * @return true if the classLoader marker is detected in the current thread
-	 */
-	public boolean isInContext() {
-		return Thread.currentThread().getContextClassLoader() == contextClassLoader;
-	}
-
 
 	@Override
 	public void onComplete() {

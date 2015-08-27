@@ -16,9 +16,8 @@
 
 package reactor.io.net.tcp;
 
-import reactor.Environment;
-import reactor.ReactorProcessor;
 import reactor.core.support.Assert;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -46,13 +45,12 @@ public abstract class TcpServer<IN, OUT>
 	//Carefully reset
 	protected InetSocketAddress listenAddress;
 
-	protected TcpServer(Environment env,
-	                    ReactorProcessor dispatcher,
+	protected TcpServer(Timer timer,
 	                    InetSocketAddress listenAddress,
 	                    ServerSocketOptions options,
 	                    SslOptions sslOptions,
 	                    Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec, options.prefetch());
+		super(timer, codec, options.prefetch());
 		this.listenAddress = listenAddress;
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.options = options;

@@ -24,9 +24,7 @@ import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
-import reactor.Environment;
-import reactor.ReactorProcessor;
-import reactor.core.DispatcherSupplier;
+import reactor.Timers;
 import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
@@ -51,7 +49,6 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	private final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
 	private DispatcherSupplier dispatchers;
-	private Environment        env;
 	private ReactorProcessor   subscriberDispatcher;
 	private int batch = 1024;
 
@@ -78,7 +75,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@BeforeTest
 	@Before
 	public void startEnv() {
-		env = Environment.initializeIfEmpty().assignErrorJournal();
+		Timers.global();
 		dispatchers = Environment.newCachedDispatchers(2, "test-partition");
 
 		//preinit the two dispatchers
@@ -92,6 +89,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	public void afterEnv() {
 		dispatchers.shutdown();
 		subscriberDispatcher.shutdown();
+		Timers.unregisterGlobal();
 	}
 
 	@Override
@@ -103,7 +101,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		System.out.println("Providing new processor");
 
 		/*Streams.period(env.getTimer(), 2, 1)
-	            .takeWhile(i -> integerIntegerCombineAction.isPublishing())
+		        .takeWhile(i -> integerIntegerCombineAction.isPublishing())
 				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );
 */
 		return Broadcaster.<Integer>

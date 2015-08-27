@@ -18,9 +18,10 @@ package reactor.rx.action.control;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.core.support.Bounded;
-import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
@@ -35,16 +36,10 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 	private final Publisher<? extends T> rootPublisher;
 	private long pendingRequests = 0l;
 
-	public RepeatWhenAction(Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
+	public RepeatWhenAction(Timer timer, Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
 	                        Publisher<? extends T> rootPublisher) {
-		this.retryStream = Broadcaster.create(null, dispatcher);
-		if (SynchronousDispatcher.INSTANCE == dispatcher) {
-			this.dispatcher = Environment.tailRecurse();
-		} else {
-			this.dispatcher = dispatcher;
-		}
-
-		this.rootPublisher = rootPublisher;
+		this.retryStream = Broadcaster.create(timer);
+		this.rootPublisher = rootPublisher != null ? Publishers.trampoline(rootPublisher) : null;
 		Publisher<?> afterRetryPublisher = predicate.apply(retryStream);
 		afterRetryPublisher.subscribe(new RestartSubscriber());
 	}
@@ -80,19 +75,7 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 
 
 	protected void doRetry() {
-		dispatcher.dispatch(null, new Consumer<Void>() {
-			@Override
-			public void accept(Void aVoid) {
-				if (rootPublisher != null) {
-					if (TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())) {
-						dispatcher.shutdown();
-						dispatcher = Environment.tailRecurse();
-					}
-					rootPublisher.subscribe(RepeatWhenAction.this);
-				}
-			}
-		}, null);
-
+		rootPublisher.subscribe(RepeatWhenAction.this);
 	}
 
 	@Override
@@ -100,7 +83,7 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 		try {
 			cancel();
 			retryStream.onNext(System.currentTimeMillis());
-		}catch(Exception e){
+		} catch (Exception e) {
 			doError(e);
 		}
 	}

@@ -52,7 +52,7 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 	}
 
 	public AbstractProcessorTests() {
-		super(new TestEnvironment(500), 1000);
+		super(new TestEnvironment(500)., 1000);
 	}
 
 	@BeforeClass
