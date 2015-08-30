@@ -50,7 +50,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * reacts on various {@link org.reactivestreams.Subscriber} signals and produce an output data {@param O} for
  * any downstream subscription.
  * <p>
- * The implementation specifics of an Action allows in particular a smart capacity awareness {@link Bounded}} to 
+ * The implementation specifics of an Action allows in particular a smart capacity awareness {@link Bounded}} to
  * optimize overflow
  * all along the chain.
  * <p>
@@ -180,6 +180,7 @@ public abstract class Action<I, O> extends Stream<O>
 		} catch (CancelException uae) {
 			throw uae;
 		} catch (Throwable cause) {
+			Exceptions.throwIfFatal(cause);
 			doError(Exceptions.addValueAsLastCause(cause, ev));
 		}
 	}
@@ -189,6 +190,8 @@ public abstract class Action<I, O> extends Stream<O>
 		try {
 			doComplete();
 			doShutdown();
+		} catch (CancelException uae) {
+			//ignore;
 		} catch (Throwable t) {
 			doError(t);
 		}
@@ -239,6 +242,7 @@ public abstract class Action<I, O> extends Stream<O>
 		} catch (CancelException ce) {
 			throw ce;
 		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
 			doError(Exceptions.addValueAsLastCause(throwable, ev));
 		}
 	}
@@ -573,9 +577,11 @@ public abstract class Action<I, O> extends Stream<O>
 				downstreamSubscription.onError(ev);
 				return;
 			} catch (Throwable t) {
+				Exceptions.throwIfFatal(t);
 				throw ReactorFatalException.create(t);
 			}
 		} else {
+			Exceptions.throwIfFatal(ev);
 			throw ReactorFatalException.create(ev);
 		}
 	}
@@ -658,7 +664,7 @@ public abstract class Action<I, O> extends Stream<O>
 	public String toString() {
 		return "{" +
 		  (capacity != Long.MAX_VALUE || upstreamSubscription == null ?
-			  "max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) + "}"
+			"max-capacity=" + (capacity == Long.MAX_VALUE ? "infinite" : capacity) + "}"
 			: "") +
 		  (upstreamSubscription != null ? upstreamSubscription : "") + '}';
 	}

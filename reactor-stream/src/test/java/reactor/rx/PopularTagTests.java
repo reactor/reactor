@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.fn.tuple.Tuple;
 import reactor.rx.action.Control;
-import reactor.rx.stream.MapStream;
 
 import java.util.Arrays;
 import java.util.List;
@@ -53,16 +52,16 @@ public class PopularTagTests extends AbstractReactorTest {
 
 		Control top10every1second =
 		  Streams.from(PULP_SAMPLE)
-			.dispatchOn(sharedDispatcher())
+		    .run(asyncService)
 			.flatMap(samuelJackson ->
 				Streams
 				  .from(samuelJackson.split(" "))
-				  .dispatchOn(cachedDispatcher())
+				  .run(asyncService)
 				  .filter(w -> !w.trim().isEmpty())
 				  .observe(i -> simulateLatency())
 			)
 			.map(w -> Tuple.of(w, 1))
-			.window(1, SECONDS)
+		    .window(2, SECONDS)
 			.flatMap(s ->
 				BiStreams.reduceByKey(s, (acc, next) -> acc + next)
 				  .sort((a, b) -> -a.t2.compareTo(b.t2))

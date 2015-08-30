@@ -16,7 +16,10 @@
 package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
+import reactor.Timers;
 import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Signal;
 import reactor.rx.subscription.PushSubscription;
@@ -149,7 +152,14 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 			lastSignal.error = ev;
 			lastSignal.type = Signal.Type.ERROR;
 		}
-		super.doError(ev);
+		if (downstreamSubscription != null) {
+			try {
+				downstreamSubscription.onError(ev);
+			} catch (Throwable t) {
+				Exceptions.throwIfFatal(t);
+				throw ReactorFatalException.create(t);
+			}
+		}
 	}
 
 	@Override

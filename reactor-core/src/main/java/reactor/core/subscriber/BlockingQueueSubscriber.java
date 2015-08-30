@@ -18,6 +18,10 @@ package reactor.core.subscriber;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
+import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.Assert;
 
 import java.util.Collection;
@@ -26,6 +30,7 @@ import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * @author Stephane Maldini
@@ -60,16 +65,42 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements S
 
 	@Override
 	public void request(long n) {
+		if( n <= 0){
+			throw SpecificationExceptions.spec_3_09_exception(n);
+		}
+
+		long toRequest = n;
+		if(target != null) {
+			IN polled;
+			while ((n == Long.MAX_VALUE || toRequest-- > 0) && (polled = store.poll()) != null) {
+				target.onNext(polled);
+			}
+		}
+
 		Subscription subscription = this.subscription;
 		if (subscription != null) {
-			subscription.request(n);
+			subscription.request(toRequest);
 		}
+	}
+
+	private boolean terminate(){
+		boolean cancel = false;
+		if(!terminated){
+			synchronized (this){
+				if(!terminated){
+					cancel = true;
+					terminated = true;
+				}
+			}
+		}
+		return cancel;
 	}
 
 	@Override
 	public void cancel() {
 		Subscription subscription = this.subscription;
-		if (subscription != null) {
+
+		if (terminate() && subscription != null) {
 			subscription.cancel();
 			this.subscription = null;
 		}
@@ -79,14 +110,25 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements S
 	public void onSubscribe(Subscription s) {
 		super.onSubscribe(s);
 		this.subscription = s;
+		if (source == null && target != null) {
+			target.onSubscribe(this);
+		}else{
+			s.request(Long.MAX_VALUE);
+		}
 	}
 
 	@Override
 	public void onNext(IN in) {
 		super.onNext(in);
+		if(terminated) throw CancelException.get();
+
 		if (source == null && target != null) {
 			target.onNext(in);
 		} else {
+			while(REMAINING.decrementAndGet(this) < 0){
+				REMAINING.incrementAndGet(this);
+				if(terminated) throw CancelException.get();
+			}
 			store.offer(in);
 		}
 	}
@@ -94,18 +136,17 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements S
 	@Override
 	public void onError(Throwable t) {
 		super.onError(t);
-		terminated = true;
-		endError = t;
-		if (source == null && target != null) {
-			target.onError(t);
+		if(terminate()) {
+			endError = t;
+			if (source == null && target != null) {
+				target.onError(t);
+			}
 		}
 	}
 
 	@Override
 	public void onComplete() {
-		super.onComplete();
-		terminated = true;
-		if (source == null && target != null) {
+		if (terminate() && source == null && target != null) {
 			target.onComplete();
 		}
 	}
@@ -146,12 +187,39 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements S
 		return false;
 	}
 
+	private boolean blockingTerminatedCheck(){
+		if(terminated) {
+			if(endError != null){
+				Exceptions.throwIfFatal(endError);
+				throw ReactorFatalException.create(endError);
+			}
+			return true;
+		}
+		return false;
+	}
+
 	@Override
+	@SuppressWarnings("unchecked")
 	public IN take() throws InterruptedException {
 		if (source == null) {
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
-		return null;
+
+		if(blockingTerminatedCheck() && remainingCapacity == capacity) return null;
+
+		IN res;
+
+		if(BlockingQueue.class.isAssignableFrom(store.getClass())){
+			res = ((BlockingQueue<IN>)store).take();
+		}else{
+			while ((res = store.poll()) == null){
+				if(blockingTerminatedCheck() && remainingCapacity == capacity) return null;
+				Thread.sleep(10);
+			}
+		}
+		REMAINING.incrementAndGet(this);
+
+		return res;
 	}
 
 	@Override

@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 
@@ -68,12 +69,24 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		Publishers.trampoline(new Publisher<O>() {
+		Publishers.trampoline(new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
 				FanInAction.super.subscribe(s);
 				doOnSubscribe(innerSubscriptions);
 			}
+
+			@Override
+			public long getCapacity() {
+				return FanInAction.this.getCapacity();
+			}
+
+			@Override
+			public Timer getTimer() {
+				return FanInAction.this.getTimer();
+			}
+
+
 		}).subscribe(subscriber);
 	}
 

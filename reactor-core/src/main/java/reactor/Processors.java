@@ -36,7 +36,7 @@ import java.util.concurrent.BlockingQueue;
 
 /**
  * Main gateway to build various asynchronous {@link Processor} or "pool" services that allow their reuse.
- * Reactor offers a few management API via the subclassed {@link ExecutorPoweredProcessor} for the underlying {@link
+ * Reactor offers a few management API via the subclassed {@link BaseProcessor} for the underlying {@link
  * java.util.concurrent.Executor} in use.
  *
  * @author Stephane Maldini
@@ -52,7 +52,7 @@ public final class Processors {
 	public static final int DEFAULT_POOL_SIZE = Math.min(Runtime.getRuntime().availableProcessors(), 2);
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy
 	 * and auto-cancel.
 	 * <p>
@@ -64,12 +64,12 @@ public final class Processors {
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> ExecutorPoweredProcessor<E, E> async() {
+	public static <E> BaseProcessor<E, E> async() {
 		return async("async", BaseProcessor.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
@@ -82,12 +82,12 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> ExecutorPoweredProcessor<E, E> async(boolean autoCancel) {
+	public static <E> BaseProcessor<E, E> async(boolean autoCancel) {
 		return async(Processors.class.getSimpleName(), BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
@@ -102,12 +102,12 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> ExecutorPoweredProcessor<E, E> async(String name, int bufferSize) {
+	public static <E> BaseProcessor<E, E> async(String name, int bufferSize) {
 		return async(name, bufferSize, true);
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using the blockingWait Strategy, passed backlog size,
+	 * Create a new {@link BaseProcessor} using the blockingWait Strategy, passed backlog size,
 	 * and auto-cancel settings.
 	 * <p>
 	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
@@ -122,8 +122,8 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> ExecutorPoweredProcessor<E, E> async(String name, int bufferSize, boolean autoCancel) {
-		final ExecutorPoweredProcessor<E, E> processor;
+	public static <E> BaseProcessor<E, E> async(String name, int bufferSize, boolean autoCancel) {
+		final BaseProcessor<E, E> processor;
 
 		if (PlatformDependent.hasUnsafe()) {
 			processor = RingBufferProcessor.create(name, bufferSize, autoCancel);
@@ -135,7 +135,7 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy
 	 * and auto-cancel.
 	 * <p>
@@ -147,12 +147,12 @@ public final class Processors {
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> ExecutorPoweredProcessor<E, E> work() {
+	public static <E> BaseProcessor<E, E> work() {
 		return work("worker", BaseProcessor.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
@@ -165,12 +165,12 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> ExecutorPoweredProcessor<E, E> work(boolean autoCancel) {
+	public static <E> BaseProcessor<E, E> work(boolean autoCancel) {
 		return work(Processors.class.getSimpleName(), BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy
 	 * and the passed auto-cancel setting.
 	 * <p>
@@ -185,12 +185,12 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> ExecutorPoweredProcessor<E, E> work(String name, int bufferSize) {
+	public static <E> BaseProcessor<E, E> work(String name, int bufferSize) {
 		return work(name, bufferSize, true);
 	}
 
 	/**
-	 * Create a new {@link ExecutorPoweredProcessor} using the passed buffer size
+	 * Create a new {@link BaseProcessor} using the passed buffer size
 	 * and auto-cancel settings.
 	 * <p>
 	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
@@ -202,8 +202,8 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> ExecutorPoweredProcessor<E, E> work(String name, int bufferSize, boolean autoCancel) {
-		final ExecutorPoweredProcessor<E, E> processor;
+	public static <E> BaseProcessor<E, E> work(String name, int bufferSize, boolean autoCancel) {
+		final BaseProcessor<E, E> processor;
 
 		if (PlatformDependent.hasUnsafe()) {
 			processor = RingBufferWorkProcessor.create(name, bufferSize, autoCancel);
@@ -449,15 +449,9 @@ public final class Processors {
 	                                                  Consumer<Void> shutdownHandler,
 	                                                  boolean autoShutdown) {
 		return ProcessorService.create(
-		  new Supplier<Processor<ProcessorService.Task, ProcessorService.Task>>() {
-			  @Override
-			  public Processor<ProcessorService.Task, ProcessorService.Task> get() {
-				  return PlatformDependent.hasUnsafe()
+				  PlatformDependent.hasUnsafe()
 				    ? RingBufferWorkProcessor.<ProcessorService.Task>share(name, bufferSize)
-				    : SimpleWorkProcessor.<ProcessorService.Task>create(name, bufferSize);
-			  }
-		  }
-		  ,
+				    : SimpleWorkProcessor.<ProcessorService.Task>create(name, bufferSize),
 		  concurrency,
 		  uncaughtExceptionHandler,
 		  shutdownHandler,

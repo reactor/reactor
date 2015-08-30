@@ -15,6 +15,7 @@
  */
 package reactor.rx
 
+import reactor.Processors
 import reactor.bus.EventBus
 import reactor.bus.selector.Selectors
 import reactor.rx.broadcast.Broadcaster
@@ -30,17 +31,6 @@ import java.util.concurrent.TimeUnit
  * @author Jon Brisbin
  */
 class PromisesSpec extends Specification {
-
-	@Shared
-	Environment env
-
-	void setupSpec() {
-		env = Environment.initializeIfEmpty()
-	}
-
-	def cleanupSpec() {
-		env.shutdown()
-	}
 
 	def "An onComplete consumer is called when a promise is rejected"() {
 		given:
@@ -616,8 +606,9 @@ class PromisesSpec extends Specification {
 	def "A combined promise through 'any' is fulfilled with the first component result when using asynchronously"() {
 		given:
 			"two fulfilled promises"
-			def promise1 = Promises.task(reactor.Environment.get(), reactor.Environment.cachedDispatcher(), { sleep(500); 1 })
-			def promise2 = Promises.task(reactor.Environment.get(), reactor.Environment.cachedDispatcher(), { sleep(250); 2 })
+		def workService = Processors.workService("promise-task", 8, 2)
+			def promise1 = Promises.task{ sleep(1000); 1 }.stream().run(workService).next()
+			def promise2 = Promises.task{ sleep(250); 2 }.stream().run(workService).next()
 
 		when:
 			"a combined promise is first created"
@@ -775,7 +766,7 @@ class PromisesSpec extends Specification {
 	def "Errors stop compositions"() {
 		given:
 			"a promise"
-			def p1 = Promises.<String> ready(env)
+			def p1 = Promises.<String> ready()
 
 			final latch = new CountDownLatch(1)
 
@@ -799,7 +790,7 @@ class PromisesSpec extends Specification {
 	def "Can poll instead of await to automatically handle InterruptedException"() {
 		given:
 			"a promise"
-			def p1 = Promises.<String> ready(env)
+			def p1 = Promises.<String> ready()
 
 		when:
 			"p1 is consumed by p2"

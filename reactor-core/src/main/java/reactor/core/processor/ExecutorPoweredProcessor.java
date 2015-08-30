@@ -31,9 +31,6 @@ import java.util.concurrent.TimeUnit;
  */
 public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN, OUT> {
 
-	public static final int CANCEL_TIMEOUT = Integer.parseInt(System.getProperty("reactor.processor.cancel.timeout",
-	  "3"));
-
 	protected final ExecutorService executor;
 
 	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {

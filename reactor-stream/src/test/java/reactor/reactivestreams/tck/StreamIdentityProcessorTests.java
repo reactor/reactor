@@ -24,7 +24,9 @@ import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
+import reactor.Processors;
 import reactor.Timers;
+import reactor.core.processor.ProcessorService;
 import reactor.core.support.Assert;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
@@ -48,12 +50,10 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 	private final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
-	private DispatcherSupplier dispatchers;
-	private ReactorProcessor   subscriberDispatcher;
 	private int batch = 1024;
 
 	public StreamIdentityProcessorTests() {
-		super(new TestEnvironment(2500, true), 3500);
+		super(new TestEnvironment(500, true));
 	}
 
 	@Override
@@ -76,19 +76,11 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 	@Before
 	public void startEnv() {
 		Timers.global();
-		dispatchers = Environment.newCachedDispatchers(2, "test-partition");
-
-		//preinit the two dispatchers
-		dispatchers.get();
-		dispatchers.get();
-		subscriberDispatcher = Environment.newDispatcher();
 	}
 
 	@AfterTest
 	@After
 	public void afterEnv() {
-		dispatchers.shutdown();
-		subscriberDispatcher.shutdown();
 		Timers.unregisterGlobal();
 	}
 
@@ -100,16 +92,20 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		AtomicLong total = new AtomicLong();
 		System.out.println("Providing new processor");
 
+		ProcessorService<Integer> asyncService =
+		  Processors.asyncService("stream-tck", 32, 8, Throwable::printStackTrace);
+
 		/*Streams.period(env.getTimer(), 2, 1)
 		        .takeWhile(i -> integerIntegerCombineAction.isPublishing())
 				.consume(i -> System.out.println(integerIntegerCombineAction.debug()) );
 */
 		return Broadcaster.<Integer>
-		  create(Environment.get())
+		  create()
+		  .run(asyncService)
 		  .capacity(bufferSize)
 		  .partition(2)
 		  .flatMap(stream -> stream
-			  .dispatchOn(env, dispatchers.get())
+			  .run(asyncService)
 			  .scan((prev, next) -> next)
 			  .map(integer -> -integer)
 			  .filter(integer -> integer <= 0)
@@ -120,7 +116,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 			  .observe(this::monitorThreadUse)
 			  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 		  )
-		  .dispatchOn(subscriberDispatcher)
+		  .run(asyncService)
 			//.log("end")
 		  .when(Throwable.class, Throwable::printStackTrace)
 		  .combine();
@@ -216,8 +212,8 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		System.out.println(counters);
 		long count = latch.getCount();
-		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " (" + list + ")  , Running on " + Environment
-		  .PROCESSORS + " CPU");
+		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " (" + list + ")  , Running on " + Processors
+		  .DEFAULT_POOL_SIZE + " CPU");
 	}
 
 	/*@Test
@@ -273,7 +269,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 
 		System.out.println(counters);
 		long count = latch.getCount();
-		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " , Running on " + Environment.PROCESSORS + " " +
+		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " , Running on " + Processors.DEFAULT_POOL_SIZE + " " +
 		  "CPU");
 
 	}

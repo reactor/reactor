@@ -21,12 +21,9 @@ import reactor.AbstractReactorTest;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.selector.Selectors;
-import reactor.ReactorProcessor;
-import reactor.core.dispatch.RingBufferDispatcher;
-import reactor.core.dispatch.ThreadPoolExecutorDispatcher;
+import reactor.core.processor.RingBufferProcessor;
+import reactor.core.processor.SimpleWorkProcessor;
 import reactor.fn.Consumer;
-import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
-import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.broadcast.Broadcaster;
 
 import java.util.List;
@@ -43,12 +40,11 @@ public class AwaitTests extends AbstractReactorTest {
 
 	@Test
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
-		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64);
-
-		EventBus innerReactor = EventBus.config().env(env).dispatcher(dispatcher).get();
+		EventBus innerReactor = EventBus.config().concurrency(4).processor(SimpleWorkProcessor.create("simple-work",
+		  64)).get();
 
 		for (int i = 0; i < 10000; i++) {
-			final Promise<String> deferred = Promises.<String>ready(env);
+			final Promise<String> deferred = Promises.<String>ready(timer);
 
 			innerReactor.schedule(new Consumer() {
 
@@ -68,9 +64,7 @@ public class AwaitTests extends AbstractReactorTest {
 	@Test
 	public void testDoesntDeadlockOnError() throws InterruptedException {
 
-		ReactorProcessor dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new
-		  BlockingWaitStrategy());
-		EventBus r = new EventBus(dispatcher);
+		EventBus r = EventBus.create(RingBufferProcessor.create("rb", 8));
 
 		Broadcaster<Event<Throwable>> stream = Broadcaster.<Event<Throwable>>create();
 		Promise<List<Long>> promise = stream.take(16).count().toList();
@@ -90,6 +84,7 @@ public class AwaitTests extends AbstractReactorTest {
 		promise.await(5, TimeUnit.SECONDS);
 
 		assert promise.get().get(0) == 16;
+		r.getProcessor().onComplete();
 
 	}
 

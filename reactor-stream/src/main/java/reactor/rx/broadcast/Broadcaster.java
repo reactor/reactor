@@ -17,6 +17,7 @@ package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Timers;
 import reactor.core.error.Exceptions;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
@@ -130,6 +131,16 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
+	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
+		if (reactivePull) {
+			return super.createSubscription(subscriber, true);
+		} else {
+			return super.createSubscription(subscriber,
+				(upstreamSubscription == null || !upstreamSubscription.hasPublisher()));
+		}
+	}
+
+	@Override
 	protected void subscribeWithSubscription(Subscriber<? super O> subscriber, PushSubscription<O> subscription) {
 		try {
 			if (!addSubscription(subscription)) {
@@ -162,7 +173,7 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	@Override
 	public Timer getTimer() {
-		return timer;
+		return timer != null ? timer : Timers.globalOrNull();
 	}
 
 	@Override

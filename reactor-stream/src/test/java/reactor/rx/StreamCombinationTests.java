@@ -21,7 +21,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
-import reactor.Environment;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple2;
@@ -55,8 +54,6 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@After
 	public void after() {
-		sensorEven.getDispatcher().awaitAndShutdown();
-		sensorOdd.getDispatcher().awaitAndShutdown();
 	}
 
 	public Consumer<Object> loggingConsumer() {
@@ -73,25 +70,25 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public Stream<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
-			this.sensorOdd = Broadcaster.<SensorData>create(Environment.newDispatcher());
+			this.sensorOdd = Broadcaster.<SensorData>create();
 
 			// add substream to "master" list
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
 		}
 
-		return sensorOdd.log("odd");
+		return sensorOdd.run(asyncService).log("odd");
 	}
 
 	public Stream<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
-			this.sensorEven = Broadcaster.<SensorData>create(Environment.newDispatcher());
+			this.sensorEven = Broadcaster.<SensorData>create();
 
 			// add substream to "master" list
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
 		}
 
-		return sensorEven.log("even");
+		return sensorEven.run(asyncService).log("even");
 	}
 
 	@Test
@@ -259,8 +256,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	@SuppressWarnings("unchecked")
 	private void awaitLatch(Control tail, CountDownLatch latch) throws Exception {
 		if (!latch.await(10, TimeUnit.SECONDS)) {
-			throw new Exception("Never completed: (" + latch.getCount() + ") "
-			  + tail.debug());
+			throw new Exception("Never completed: (" + latch.getCount() + ") "  + tail.debug());
 		}
 	}
 

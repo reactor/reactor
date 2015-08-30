@@ -17,6 +17,7 @@ package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Timers;
 import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.error.Exceptions;
 import reactor.fn.timer.Timer;
@@ -70,7 +71,6 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		super.onSubscribe(subscription);
 		serializer.onSubscribe(subscription);
 	}
 
