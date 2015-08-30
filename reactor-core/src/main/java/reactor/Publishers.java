@@ -19,11 +19,12 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.publisher.LogPublisher;
+import reactor.core.publisher.LogOperator;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.TrampolinePublisher;
+import reactor.core.publisher.TrampolineOperator;
 import reactor.core.subscriber.Tap;
 import reactor.core.subscriber.BlockingQueueSubscriber;
+import reactor.fn.Function;
 import reactor.fn.Supplier;
 
 import java.util.Queue;
@@ -99,7 +100,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
-		return LogPublisher.log(publisher, category);
+		return Publishers.lift(publisher, new LogOperator<>(category));
 	}
 
 	/**
@@ -107,8 +108,9 @@ public final class Publishers extends PublisherFactory {
 	 * @param <IN>
 	 * @return
 	 */
+	@SuppressWarnings("unchecked")
 	public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher) {
-		return TrampolinePublisher.create(publisher);
+		return lift(publisher, TrampolineOperator.INSTANCE);
 	}
 
 	/**

@@ -16,6 +16,7 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
@@ -598,7 +599,8 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 	  Processor<V, V>,
 	  Executor,
 	  Subscription,
-	  Bounded {
+	  Bounded,
+	  WithPublisher<V>{
 
 
 		protected final ProcessorService service;
@@ -610,6 +612,11 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		public ProcessorBarrier(ProcessorService service) {
 			this.service = service;
 			this.terminated = service != null && service.processor == null ? null : new AtomicBoolean(false);
+		}
+
+		@Override
+		public Publisher<V> upstream() {
+			return WithPublisher.fromSubscription(subscription);
 		}
 
 		@Override

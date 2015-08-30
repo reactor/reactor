@@ -24,6 +24,7 @@ import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.support.SignalType;
+import reactor.core.support.WithPublisher;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
@@ -593,13 +594,18 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		  '}';
 	}
 
-	private final class RingBufferSubscription implements Subscription {
+	private final class RingBufferSubscription implements Subscription, WithPublisher<E> {
 		private final Subscriber<? super E> subscriber;
 		private final WorkSignalProcessor   eventProcessor;
 
 		public RingBufferSubscription(Subscriber<? super E> subscriber, WorkSignalProcessor eventProcessor) {
 			this.subscriber = subscriber;
 			this.eventProcessor = eventProcessor;
+		}
+
+		@Override
+		public Publisher<E> upstream() {
+			return RingBufferWorkProcessor.this;
 		}
 
 		@Override

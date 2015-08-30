@@ -15,6 +15,7 @@
  */
 package reactor.core.processor;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
@@ -24,6 +25,7 @@ import reactor.core.processor.simple.SimpleSignal;
 import reactor.core.processor.simple.SimpleSubscriberUtils;
 import reactor.core.support.Assert;
 import reactor.core.support.SignalType;
+import reactor.core.support.WithPublisher;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -356,7 +358,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 		return true;
 	}
 
-	private static class SubscriberWorker<IN> extends AtomicLong implements Subscription, Runnable {
+	private static class SubscriberWorker<IN> extends AtomicLong implements WithPublisher<IN>, Subscription, Runnable {
 
 		private final Subscriber<? super IN>  subscriber;
 		private final SimpleWorkProcessor<IN> processor;
@@ -480,6 +482,11 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 
 		private void halt(){
 			set(Long.MIN_VALUE / 2);
+		}
+
+		@Override
+		public Publisher<IN> upstream() {
+			return processor;
 		}
 	}
 }

@@ -15,7 +15,6 @@
  */
 package reactor.core.publisher;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Function;
@@ -25,50 +24,30 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
- * A logging interceptor that intercepts all reactive calls and trace them
+ * A signal interceptor that intercepts all reactive calls and recurse them if a previous signal is still in-flight
+ * downstream.
  *
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class TrampolinePublisher<IN> implements Publisher<IN> {
+public final class TrampolineOperator<IN> implements Function<Subscriber<? super IN>, Subscriber<? super IN>> {
 
-	/**
-	 * @param publisher
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> create(Publisher<? extends IN> publisher) {
-		return new TrampolinePublisher<>(publisher);
-	}
-
-	private final Publisher<IN> wrappedPublisher;
-
-	protected TrampolinePublisher(final Publisher<? extends IN> source) {
-
-		this.wrappedPublisher = PublisherFactory.lift(
-		  source,
-		  new Function<Subscriber<? super IN>, SubscriberBarrier<IN, IN>>() {
-			  @Override
-			  public SubscriberBarrier<IN, IN> apply(Subscriber<? super IN> subscriber) {
-				  return new TrampolineBarrier<>(subscriber);
-			  }
-		  });
-	}
+	public static final TrampolineOperator INSTANCE = new TrampolineOperator();
 
 	@Override
-	public void subscribe(Subscriber<? super IN> s) {
-		wrappedPublisher.subscribe(s);
+	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
+		return new TrampolineBarrier<>(subscriber);
 	}
 
 	private static class TrampolineBarrier<IN> extends SubscriberBarrier<IN, IN> {
 
-		private final        PriorityBlockingQueue<Task>                  queue           = new
-		  PriorityBlockingQueue<Task>();
+		private final        PriorityBlockingQueue<Task>                  queue           = new PriorityBlockingQueue();
 		private final        AtomicInteger                                wip             = new AtomicInteger();
 		private static final AtomicIntegerFieldUpdater<TrampolineBarrier> COUNTER_UPDATER =
 		  AtomicIntegerFieldUpdater.newUpdater
 			(TrampolineBarrier.class, "counter");
 
+		@SuppressWarnings("unused")
 		private volatile int counter;
 
 		public TrampolineBarrier(Subscriber<? super IN> subscriber) {

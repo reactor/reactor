@@ -15,9 +15,11 @@
  */
 package reactor.core.subscriber;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.support.Bounded;
+import reactor.core.support.WithPublisher;
 
 /**
  * Enforces single-threaded, serialized, ordered execution of {@link #onNext}, {@link #onComplete},
@@ -34,7 +36,7 @@ import reactor.core.support.Bounded;
  *            <p>
  *            Port from RxJava's SerializedObserver applied to Reactive Stream
  */
-public class SerializedSubscriber<T> implements Subscriber<T>, Subscription, Bounded {
+public class SerializedSubscriber<T> implements Subscriber<T>, Subscription, Bounded, WithPublisher<T> {
 	private final Subscriber<? super T> delegate;
 
 	private boolean emitting   = false;
@@ -67,12 +69,9 @@ public class SerializedSubscriber<T> implements Subscriber<T>, Subscription, Bou
 		}
 	}
 
-	private static final class RequestSentinel {
-		final long n;
-
-		RequestSentinel(long n) {
-			this.n = n;
-		}
+	@Override
+	public Publisher<T> upstream() {
+		return WithPublisher.fromSubscription(subscription);
 	}
 
 	private static final class ErrorSentinel {
