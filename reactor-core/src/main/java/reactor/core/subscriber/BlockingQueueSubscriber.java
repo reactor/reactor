@@ -23,6 +23,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.Assert;
+import reactor.core.support.WithPublisher;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -30,12 +31,12 @@ import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.locks.LockSupport;
 
 /**
  * @author Stephane Maldini
  */
-public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements Subscription, BlockingQueue<IN> {
+public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements WithPublisher<IN>, Subscription,
+  BlockingQueue<IN> {
 
 	private final Publisher<IN>  source;
 	private final Subscriber<IN> target;
@@ -65,12 +66,12 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements S
 
 	@Override
 	public void request(long n) {
-		if( n <= 0){
+		if (n <= 0) {
 			throw SpecificationExceptions.spec_3_09_exception(n);
 		}
 
 		long toRequest = n;
-		if(target != null) {
+		if (target != null) {
 			IN polled;
 			while ((n == Long.MAX_VALUE || toRequest-- > 0) && (polled = store.poll()) != null) {
 				target.onNext(polled);
@@ -83,11 +84,11 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements S
 		}
 	}
 
-	private boolean terminate(){
+	private boolean terminate() {
 		boolean cancel = false;
-		if(!terminated){
-			synchronized (this){
-				if(!terminated){
+		if (!terminated) {
+			synchronized (this) {
+				if (!terminated) {
 					cancel = true;
 					terminated = true;
 				}
@@ -112,7 +113,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements S
 		this.subscription = s;
 		if (source == null && target != null) {
 			target.onSubscribe(this);
-		}else{
+		} else {
 			s.request(Long.MAX_VALUE);
 		}
 	}
@@ -120,23 +121,29 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements S
 	@Override
 	public void onNext(IN in) {
 		super.onNext(in);
-		if(terminated) throw CancelException.get();
+		if (terminated) throw CancelException.get();
 
 		if (source == null && target != null) {
 			target.onNext(in);
 		} else {
-			while(REMAINING.decrementAndGet(this) < 0){
+			while (REMAINING.decrementAndGet(this) < 0) {
 				REMAINING.incrementAndGet(this);
-				if(terminated) throw CancelException.get();
+				if (terminated) throw CancelException.get();
 			}
 			store.offer(in);
 		}
 	}
 
+
+	@Override
+	public Publisher<IN> upstream() {
+		return WithPublisher.fromSubscription(subscription);
+	}
+
 	@Override
 	public void onError(Throwable t) {
 		super.onError(t);
-		if(terminate()) {
+		if (terminate()) {
 			endError = t;
 			if (source == null && target != null) {
 				target.onError(t);
@@ -187,9 +194,9 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements S
 		return false;
 	}
 
-	private boolean blockingTerminatedCheck(){
-		if(terminated) {
-			if(endError != null){
+	private boolean blockingTerminatedCheck() {
+		if (terminated) {
+			if (endError != null) {
 				Exceptions.throwIfFatal(endError);
 				throw ReactorFatalException.create(endError);
 			}
@@ -205,15 +212,15 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements S
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
 
-		if(blockingTerminatedCheck() && remainingCapacity == capacity) return null;
+		if (blockingTerminatedCheck() && remainingCapacity == capacity) return null;
 
 		IN res;
 
-		if(BlockingQueue.class.isAssignableFrom(store.getClass())){
-			res = ((BlockingQueue<IN>)store).take();
-		}else{
-			while ((res = store.poll()) == null){
-				if(blockingTerminatedCheck() && remainingCapacity == capacity) return null;
+		if (BlockingQueue.class.isAssignableFrom(store.getClass())) {
+			res = ((BlockingQueue<IN>) store).take();
+		} else {
+			while ((res = store.poll()) == null) {
+				if (blockingTerminatedCheck() && remainingCapacity == capacity) return null;
 				Thread.sleep(10);
 			}
 		}

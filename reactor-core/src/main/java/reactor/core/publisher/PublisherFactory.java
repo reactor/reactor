@@ -217,7 +217,7 @@ public abstract class PublisherFactory {
 	                                      final Consumer<Subscriber<? super O>> completeConsumer) {
 		return lift(
 		  source,
-		  new Function<Subscriber<? super O>, SubscriberBarrier<I, O>>() {
+		  new Function<Subscriber<? super O>, Subscriber<? super I>>() {
 			  @Override
 			  public SubscriberBarrier<I, O> apply(final Subscriber<? super O> subscriber) {
 				  return new ConsumerSubscriberBarrier<>(subscriber, dataConsumer, errorConsumer, completeConsumer);
@@ -227,18 +227,18 @@ public abstract class PublisherFactory {
 	}
 
 	/**
-	 * Create a {@link Publisher} intercepting all source signals with a {@link SubscriberBarrier} per Subscriber
-	 * provided by the given barrierProvider.
+	 * Create a {@link Publisher} intercepting all source signals with the returned Subscriber that might choose to pass
+	 * them alone to the provided Subscriber (given to the returned {@link Publisher#subscribe(Subscriber)}.
 	 *
 	 * @param source          A {@link Publisher} source delegate
 	 * @param barrierProvider A {@link Function} called once for every new subscriber returning a unique {@link
-	 *                        SubscriberBarrier}
+	 *                        Subscriber} to intercept upstream signals
 	 * @param <I>             The type of the data sequence
 	 * @param <O>             The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Publisher<O> lift(Publisher<? extends I> source,
-	                                       Function<Subscriber<? super O>, SubscriberBarrier<I, O>>
+	                                       Function<Subscriber<? super O>, Subscriber<? super I>>
 	                                         barrierProvider) {
 		Assert.notNull(source, "A data source must be provided");
 		Assert.notNull(barrierProvider, "A lift interceptor must be provided");
@@ -438,10 +438,10 @@ public abstract class PublisherFactory {
 	private final static class ProxyPublisher<I, O> implements Publisher<O>, Bounded {
 
 		final private Publisher<? extends I>                                   source;
-		final private Function<Subscriber<? super O>, SubscriberBarrier<I, O>> barrierProvider;
+		final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
 
 		public ProxyPublisher(Publisher<? extends I> source,
-		                      Function<Subscriber<? super O>, SubscriberBarrier<I, O>> barrierProvider) {
+		                      Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider) {
 			this.source = source;
 			this.barrierProvider = barrierProvider;
 		}

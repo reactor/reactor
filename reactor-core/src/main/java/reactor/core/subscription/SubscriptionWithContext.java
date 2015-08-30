@@ -15,7 +15,9 @@
  */
 package reactor.core.subscription;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
+import reactor.core.support.WithPublisher;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -27,7 +29,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * @author Stephane Maldini
  * @since 2.0.2
  */
-public class SubscriptionWithContext<C> implements Subscription {
+public class SubscriptionWithContext<C> implements Subscription, WithPublisher {
 
 	private volatile       long                                            pending         = 0;
 	protected static final AtomicLongFieldUpdater<SubscriptionWithContext> PENDING_UPDATER = AtomicLongFieldUpdater
@@ -58,6 +60,12 @@ public class SubscriptionWithContext<C> implements Subscription {
 	protected SubscriptionWithContext(C context, Subscription subscription) {
 		this.context = context;
 		this.subscription = subscription;
+	}
+
+
+	@Override
+	public Publisher upstream() {
+		return WithPublisher.fromSubscription(subscription);
 	}
 
 	/**

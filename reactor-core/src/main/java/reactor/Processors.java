@@ -22,7 +22,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.*;
 import reactor.core.processor.simple.SimpleSignal;
-import reactor.core.publisher.LogPublisher;
+import reactor.core.publisher.LogOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.internal.MpscLinkedQueue;
 import reactor.core.support.internal.PlatformDependent;
@@ -480,7 +480,7 @@ public final class Processors {
 		return lift(processor, new Function<Processor<IN, OUT>, Publisher<OUT>>() {
 			@Override
 			public Publisher<OUT> apply(Processor<IN, OUT> processor) {
-				return LogPublisher.log(processor, category);
+				return Publishers.lift(processor, new LogOperator<>(category));
 			}
 		});
 	}

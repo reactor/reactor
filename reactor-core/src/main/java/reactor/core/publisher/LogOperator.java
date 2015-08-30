@@ -15,7 +15,6 @@
  */
 package reactor.core.publisher;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -29,44 +28,24 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class LogPublisher<IN> implements Publisher<IN> {
-
-	/**
-	 * @param publisher
-	 * @param category
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> log(Publisher<? extends IN> publisher, String category) {
-		return new LogPublisher<>(publisher, category);
-	}
-
-
-	private final Publisher<IN> wrappedPublisher;
-
-	protected LogPublisher(final Publisher<? extends IN> source,
-	                       final String category) {
-
-		final Logger log = category != null && !category.isEmpty() ?
-		  LoggerFactory.getLogger(category) :
-		  LoggerFactory.getLogger(LogPublisher.class);
-
-		this.wrappedPublisher = PublisherFactory.lift(
-		  source,
-		  new Function<Subscriber<? super IN>, SubscriberBarrier<IN, IN>>() {
-			  @Override
-			  public SubscriberBarrier<IN, IN> apply(Subscriber<? super IN> subscriber) {
-				  if (log.isTraceEnabled()) {
-					  log.trace("subscribe: {}", subscriber.getClass().getSimpleName());
-				  }
-				  return new LoggerBarrier<>(log, subscriber);
-			  }
-		  });
-	}
+public final class LogOperator<IN> implements Function<Subscriber<? super IN>, Subscriber<? super IN>>{
 
 	@Override
-	public void subscribe(Subscriber<? super IN> s) {
-		wrappedPublisher.subscribe(s);
+	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
+		if (log.isTraceEnabled()) {
+			log.trace("subscribe: {}", subscriber.getClass().getSimpleName());
+		}
+		return new LoggerBarrier<>(log, subscriber);
+	}
+
+	private final Logger log;
+
+	public LogOperator(final String category) {
+
+		this.log = category != null && !category.isEmpty() ?
+		  LoggerFactory.getLogger(category) :
+		  LoggerFactory.getLogger(LogOperator.class);
+
 	}
 
 	private static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> {
