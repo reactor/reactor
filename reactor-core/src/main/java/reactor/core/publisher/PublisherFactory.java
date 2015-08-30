@@ -23,6 +23,7 @@ import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.Assert;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.support.Bounded;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -434,7 +435,7 @@ public abstract class PublisherFactory {
 		}
 	}
 
-	private final static class ProxyPublisher<I, O> implements Publisher<O> {
+	private final static class ProxyPublisher<I, O> implements Publisher<O>, Bounded {
 
 		final private Publisher<? extends I>                                   source;
 		final private Function<Subscriber<? super O>, SubscriberBarrier<I, O>> barrierProvider;
@@ -458,6 +459,18 @@ public abstract class PublisherFactory {
 			return "ProxyPublisher{" +
 			  "source=" + source +
 			  '}';
+		}
+
+		@Override
+		public boolean isExposedToOverflow(Bounded parentPublisher) {
+			return Bounded.class.isAssignableFrom(source.getClass()) && ((Bounded)source).isExposedToOverflow(parentPublisher);
+		}
+
+		@Override
+		public long getCapacity() {
+			return Bounded.class.isAssignableFrom(source.getClass()) ?
+			  ((Bounded)source).getCapacity() :
+			  Long.MAX_VALUE;
 		}
 	}
 

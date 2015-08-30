@@ -18,6 +18,7 @@ package reactor.rx.action.terminal;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
@@ -105,8 +106,8 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 			errorConsumer.accept(ev);
 		}else{
 			Exceptions.throwIfFatal(ev);
+			throw ReactorFatalException.create(ev);
 		}
-		super.doError(ev);
 	}
 
 	@Override
@@ -115,7 +116,6 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 		if (completeConsumer != null) {
 			completeConsumer.accept(null);
 		}
-		super.doComplete();
 	}
 
 	@Override

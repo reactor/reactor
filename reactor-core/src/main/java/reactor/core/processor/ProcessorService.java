@@ -25,10 +25,7 @@ import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.subscriber.BaseSubscriber;
-import reactor.core.support.Assert;
-import reactor.core.support.Recyclable;
-import reactor.core.support.Resource;
-import reactor.core.support.SignalType;
+import reactor.core.support.*;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -134,12 +131,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 	                                             Consumer<Throwable> uncaughtExceptionHandler,
 	                                             Consumer<Void> shutdownHandler,
 	                                             boolean autoShutdown) {
-		return create(new Supplier<Processor<Task, Task>>() {
-			@Override
-			public Processor<Task, Task> get() {
-				return p;
-			}
-		}, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		return create(p, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**
@@ -157,15 +149,37 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 	                                             Consumer<Throwable> uncaughtExceptionHandler,
 	                                             Consumer<Void> shutdownHandler,
 	                                             boolean autoShutdown) {
-		if (p != null && concurrency > 1 &&
-		  (!ExecutorPoweredProcessor.class.isAssignableFrom(p.getClass()) ||
-			!((ExecutorPoweredProcessor) p).isWork())) {
+		if (p != null && concurrency > 1) {
 			return new PooledProcessorService<>(p, concurrency, uncaughtExceptionHandler, shutdownHandler,
 			  autoShutdown);
 		} else {
 			return new SingleProcessorService<E>(p, concurrency, uncaughtExceptionHandler, shutdownHandler,
 			  autoShutdown);
 		}
+	}
+
+	/**
+	 * @param p
+	 * @param concurrency
+	 * @param uncaughtExceptionHandler
+	 * @param shutdownHandler
+	 * @param autoShutdown
+	 * @param <E>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <E> ProcessorService<E> create(final Processor<Task, Task> p,
+	                                             int concurrency,
+	                                             Consumer<Throwable> uncaughtExceptionHandler,
+	                                             Consumer<Void> shutdownHandler,
+	                                             boolean autoShutdown) {
+		return new SingleProcessorService<E>(new Supplier<Processor<Task, Task>>() {
+			@Override
+			public Processor<Task, Task> get() {
+				return p;
+			}
+		}, concurrency, uncaughtExceptionHandler, shutdownHandler,
+		  autoShutdown);
 	}
 
 	/**
@@ -191,10 +205,10 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 	final private TailRecurser tailRecurser;
 
 
-	final private   Processor<Task, Task>                processor;
-	final protected boolean                              autoShutdown;
-	final protected int                                  concurrency;
-	final           ExecutorPoweredProcessor<Task, Task> managedProcessor;
+	final private   Processor<Task, Task>     processor;
+	final protected boolean                   autoShutdown;
+	final protected int                       concurrency;
+	final           BaseProcessor<Task, Task> managedProcessor;
 
 	@SuppressWarnings("unused")
 	private volatile int refCount = 0;
@@ -214,7 +228,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <V extends T> Processor<V, V> directProcessor(Class<V> clazz) {
+	public <V> Processor<V, V> directProcessor(Class<V> clazz) {
 		return (Processor<V, V>) get();
 	}
 
@@ -235,7 +249,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <V extends T> BiConsumer<V, Consumer<? super V>> dataDispatcher(Class<V> clazz) {
+	public <V> BiConsumer<V, Consumer<? super V>> dataDispatcher(Class<V> clazz) {
 		if (processor == null) {
 			return (BiConsumer<V, Consumer<? super V>>) SYNC_DATA_DISPATCHER;
 		}
@@ -440,9 +454,9 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 			Assert.isTrue(this.processor != null);
 
 			// Managed Processor, providing for tail recursion,
-			if (ExecutorPoweredProcessor.class.isAssignableFrom(this.processor.getClass())) {
+			if (BaseProcessor.class.isAssignableFrom(this.processor.getClass())) {
 
-				this.managedProcessor = (ExecutorPoweredProcessor<Task, Task>) this.processor;
+				this.managedProcessor = (BaseProcessor<Task, Task>) this.processor;
 
 				if (concurrency == 1) {
 					int bufferSize = (int) Math.min(
@@ -477,22 +491,22 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 	}
 
 	protected void decrementReference() {
-		if (processor != null && REF_COUNT.decrementAndGet(this) <= 0
+		if ((processor != null || concurrency > 1) && REF_COUNT.decrementAndGet(this) <= 0
 		  && autoShutdown) {
 
-			if (ExecutorPoweredProcessor.CANCEL_TIMEOUT > 0) {
+			if (BaseProcessor.CANCEL_TIMEOUT > 0) {
 				final Timer timer = GlobalTimer.globalOrNew();
 				timer.submit(new Consumer<Long>() {
 					@Override
 					public void accept(Long aLong) {
 						if (refCount == 0) {
-							processor.onComplete();
+							shutdown();
 						}
 						timer.cancel();
 					}
-				}, ExecutorPoweredProcessor.CANCEL_TIMEOUT, TimeUnit.SECONDS);
+				}, BaseProcessor.CANCEL_TIMEOUT, TimeUnit.SECONDS);
 			} else {
-				processor.onComplete();
+				shutdown();
 			}
 		}
 	}
@@ -508,8 +522,8 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 			return new SyncProcessorBarrier<>(null);
 		}
 
-		if (ExecutorPoweredProcessor.class.isAssignableFrom(processor.getClass())
-		  && !((ExecutorPoweredProcessor) processor).alive()) {
+		if (BaseProcessor.class.isAssignableFrom(processor.getClass())
+		  && !((BaseProcessor) processor).alive()) {
 			throw new IllegalStateException("Internal Processor is shutdown");
 		}
 
@@ -583,7 +597,8 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 	  BiConsumer<V, Consumer<? super V>>,
 	  Processor<V, V>,
 	  Executor,
-	  Subscription {
+	  Subscription,
+	  Bounded {
 
 
 		protected final ProcessorService service;
@@ -716,18 +731,17 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		public void cancel() {
 			Subscription subscription = this.subscription;
 			if (subscription != null) {
-				synchronized (this) {
-					this.subscription = null;
-					this.subscriber = null;
-				}
+				this.subscription = null;
+				this.subscriber = null;
+
 				subscription.cancel();
 			}
 			handleTerminalSignal();
 		}
 
 		protected void handleTerminalSignal() {
-			if (service != null && terminated != null
-			  && terminated.compareAndSet(false, true)) {
+			if (terminated != null && terminated.compareAndSet(false, true) &&
+			  service != null) {
 				service.decrementReference();
 			}
 		}
@@ -737,7 +751,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		}
 
 		protected boolean shouldTailRecruse() {
-			return service.tailRecurser != null &&
+			return service != null && service.tailRecurser != null &&
 			  service.managedProcessor != null &&
 			  service.managedProcessor.isInContext();
 		}
@@ -757,6 +771,16 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 				task.subscriber = subscriber;
 				service.processor.onNext(task);
 			}
+		}
+
+		@Override
+		public boolean isExposedToOverflow(Bounded parentPublisher) {
+			return service != null && service.managedProcessor != null && service.managedProcessor.isExposedToOverflow(parentPublisher);
+		}
+
+		@Override
+		public long getCapacity() {
+			return service != null && service.managedProcessor != null ? service.managedProcessor.getCapacity() : Long.MAX_VALUE;
 		}
 	}
 
@@ -788,10 +812,13 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 				RingBufferSubscriberUtils.publish(ringBuffer, signal);
 			}
 		}
-
 	}
 
 	private static final class WorkProcessorBarrier<V> extends ProcessorBarrier<V> {
+
+		private volatile     int                                             start   = 0;
+		private static final AtomicIntegerFieldUpdater<WorkProcessorBarrier> STARTED =
+		  AtomicIntegerFieldUpdater.newUpdater(WorkProcessorBarrier.class, "start");
 
 		public WorkProcessorBarrier(ProcessorService service) {
 			super(service);
@@ -800,6 +827,32 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		@Override
 		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
 			route(data, subscriber, type);
+		}
+
+		@Override
+		public void request(final long n) {
+			if (STARTED.compareAndSet(this, 0, 1) &&
+			  service.managedProcessor != null &&
+			  !service.managedProcessor.isInContext()) {
+				dispatch(n, new BaseSubscriber<Long>() {
+					@Override
+					public void onNext(Long aLong) {
+						WorkProcessorBarrier.super.request(n);
+					}
+				}, SignalType.NEXT);
+			} else {
+				super.request(n);
+			}
+		}
+
+		@Override
+		public boolean isExposedToOverflow(Bounded parentPublisher) {
+			return false;
+		}
+
+		@Override
+		public long getCapacity() {
+			return Long.MAX_VALUE;
 		}
 	}
 
@@ -812,6 +865,16 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		@Override
 		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
 			route(data, subscriber, type);
+		}
+
+		@Override
+		public boolean isExposedToOverflow(Bounded parentPublisher) {
+			return false;
+		}
+
+		@Override
+		public long getCapacity() {
+			return Long.MAX_VALUE;
 		}
 	}
 
@@ -872,7 +935,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		@Override
 		public void onNext(Task task) {
 			routeTask(task);
-			if(tailRecurser != null) {
+			if (tailRecurser != null) {
 				tailRecurser.consumeTasks();
 			}
 		}
@@ -949,7 +1012,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		@Override
 		public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 			for (ProcessorService processorService : processorServices) {
-				if(!processorService.awaitAndShutdown(timeout, timeUnit)) return false;
+				if (!processorService.awaitAndShutdown(timeout, timeUnit)) return false;
 			}
 			return true;
 		}
@@ -971,6 +1034,8 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 
 		@SuppressWarnings("unchecked")
 		private ProcessorService<T> next() {
+			int index = this.index++;
+			if (index == Integer.MAX_VALUE) this.index -= Integer.MAX_VALUE;
 			return (ProcessorService<T>) processorServices[index % concurrency];
 		}
 
@@ -985,12 +1050,12 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		}
 
 		@Override
-		public <V extends T> BiConsumer<V, Consumer<? super V>> dataDispatcher(Class<V> clazz) {
+		public <V> BiConsumer<V, Consumer<? super V>> dataDispatcher(Class<V> clazz) {
 			return next().dataDispatcher(clazz);
 		}
 
 		@Override
-		public <V extends T> Processor<V, V> directProcessor(Class<V> clazz) {
+		public <V> Processor<V, V> directProcessor(Class<V> clazz) {
 			return next().directProcessor(clazz);
 		}
 
@@ -1001,7 +1066,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 
 		@Override
 		public Processor<T, T> get() {
-			return super.get();
+			return next().get();
 		}
 	}
 }

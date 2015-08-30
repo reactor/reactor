@@ -23,6 +23,7 @@ import org.reactivestreams.Subscription;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Timers;
+import reactor.core.processor.BaseProcessor;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
 import reactor.core.error.Exceptions;
@@ -313,12 +314,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a {@link Tap} that maintains a reference to the last value seen by this {@code
-	 * Stream}. The {@link Tap} is
-	 * continually updated when new values pass through the {@code Stream}.
-	 *
-	 * @return the new {@link Tap}
-	 * @see Consumer
+
 	 */
 	@SuppressWarnings("unchecked")
 	public final <E> Stream<E> process(final Processor<O, E> processor) {
@@ -344,6 +340,36 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			@Override
 			public void subscribe(Subscriber<? super E> s) {
 				try {
+					processor.subscribe(s);
+				} catch (Throwable t) {
+					s.onError(t);
+				}
+			}
+		};
+	}
+	/**
+	 */
+	public final Stream<O> run(final Supplier<? extends Processor> processorProvider) {
+		final long capacity = getCapacity();
+
+		return new Stream<O>() {
+
+			@Override
+			public long getCapacity() {
+				return capacity;
+			}
+
+			@Override
+			public Timer getTimer() {
+				return Stream.this.getTimer();
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public void subscribe(Subscriber<? super O> s) {
+				try {
+					Processor<O, O> processor = processorProvider.get();
+					Stream.this.subscribe(processor);
 					processor.subscribe(s);
 				} catch (Throwable t) {
 					s.onError(t);
@@ -688,7 +714,23 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> log(final String name) {
-		return Streams.wrap(Publishers.log(this, name));
+		final Publisher<O> logger = Publishers.log(this, name);
+		return new Stream<O>(){
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+
+			@Override
+			public Timer getTimer() {
+				return Stream.this.getTimer();
+			}
+
+			@Override
+			public void subscribe(Subscriber<? super O> s) {
+				logger.subscribe(s);
+			}
+		};
 	}
 
 	/**
@@ -843,8 +885,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream} containing the transformed values
 	 * @since 1.1, 2.0
 	 */
-	public final <V> Stream<V> flatMap(@Nonnull final Function<? super O,
-	  ? extends Publisher<? extends V>> fn) {
+	public final <V> Stream<V> flatMap(@Nonnull
+	                                   final Function<? super O, ? extends Publisher<? extends V>> fn) {
 		return map(fn).merge();
 	}
 
@@ -2642,7 +2684,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final BlockingQueue<O> toBlockingQueue() {
-		return toBlockingQueue(-1);
+		return toBlockingQueue(BaseProcessor.SMALL_BUFFER_SIZE);
 	}
 
 
