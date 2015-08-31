@@ -24,7 +24,7 @@ import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.support.SignalType;
-import reactor.core.support.WithPublisher;
+import reactor.core.support.Publishable;
 import reactor.fn.Supplier;
 import reactor.jarjar.com.lmax.disruptor.*;
 import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
@@ -668,7 +668,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		return ringBuffer.remainingCapacity();
 	}
 
-	private final class RingBufferSubscription implements Subscription, WithPublisher<E> {
+	private final class RingBufferSubscription implements Subscription, Publishable<E> {
 		private final Sequence                pendingRequest;
 		private final Subscriber<? super E>   subscriber;
 		private final BatchSignalProcessor<E> eventProcessor;

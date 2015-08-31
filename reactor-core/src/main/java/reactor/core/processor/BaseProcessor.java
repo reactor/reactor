@@ -18,10 +18,11 @@ package reactor.core.processor;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
+import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.Bounded;
 import reactor.core.support.Resource;
-import reactor.core.support.WithPublisher;
+import reactor.core.support.Publishable;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -33,7 +34,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Stephane Maldini
  */
 public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implements
-  Processor<IN, OUT>, Consumer<IN>, Bounded, Resource, WithPublisher<IN> {
+  Processor<IN, OUT>, Consumer<IN>, Bounded, Resource, Publishable<IN> {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -125,6 +126,6 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 
 	@Override
 	public Publisher<IN> upstream() {
-		return WithPublisher.fromSubscription(upstreamSubscription);
+		return PublisherFactory.fromSubscription(upstreamSubscription);
 	}
 }

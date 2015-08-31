@@ -220,6 +220,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		  .log("zipWithIterableTest")
 		  .consume(i -> latch.countDown());
 
+		System.out.println(tail.debug());
 		generateData(elements);
 
 		awaitLatch(tail, latch);
@@ -272,7 +273,9 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			} else {
 				upstream = sensorOdd;
 			}
-			upstream.onNext(data);
+			if(upstream.downstreamSubscription() != null) {
+				upstream.onNext(data);
+			}
 		}
 
 	}

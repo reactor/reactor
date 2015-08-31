@@ -22,8 +22,10 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Assert;
-import reactor.core.support.WithPublisher;
+import reactor.core.support.Publishable;
+import reactor.core.support.Subscribable;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -35,7 +37,8 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 /**
  * @author Stephane Maldini
  */
-public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements WithPublisher<IN>, Subscription,
+public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements Publishable<IN>, Subscribable<IN>,
+  Subscription,
   BlockingQueue<IN> {
 
 	private final Publisher<IN>  source;
@@ -134,10 +137,14 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements W
 		}
 	}
 
+	@Override
+	public Subscriber<? super IN> downstream() {
+		return target;
+	}
 
 	@Override
 	public Publisher<IN> upstream() {
-		return WithPublisher.fromSubscription(subscription);
+		return PublisherFactory.fromSubscription(subscription);
 	}
 
 	@Override

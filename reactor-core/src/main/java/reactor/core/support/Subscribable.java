@@ -15,35 +15,20 @@
  */
 package reactor.core.support;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscription;
+import org.reactivestreams.Subscriber;
 
 /**
- * A component that is linked to a source {@link Publisher}.
+ * A component that is linked to a target {@link Subscriber}.
  * Useful to traverse from right to left a pipeline of reactive actions implementing this interface.
  *
  * @author Stephane Maldini
  * @since 2.1
  */
-public interface WithPublisher<T> {
+public interface Subscribable<T> {
 
 	/**
 	 * Return a source of data
 	 */
-	Publisher<T> upstream();
-
-	/**
-	 * Check if the subscription is bound to a Publisher.
-	 *
-	 * @param subscription the sub to check
-	 * @param <T>
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	static <T> Publisher<T> fromSubscription(Subscription subscription){
-		return subscription != null && WithPublisher.class.isAssignableFrom(subscription.getClass()) ?
-		  ((WithPublisher<T>)subscription).upstream():
-		  null;
-	}
+	Subscriber<? super T> downstream();
 
 }

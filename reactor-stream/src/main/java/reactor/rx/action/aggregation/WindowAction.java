@@ -51,7 +51,25 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
 	protected Stream<T> createWindowStream() {
 		Broadcaster<T> action = SerializedBroadcaster.create(timer);
-		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
+		ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action) {
+
+			@Override
+			public void cancel() {
+				super.cancel();
+				currentWindow = null;
+			}
+
+			@Override
+			public void onComplete() {
+				super.onComplete();
+				currentWindow = null;
+			}
+
+			@Override
+			protected void onRequest(long n) {
+				WindowAction.this.requestMore(n);
+			}
+		};
 		currentWindow = _currentWindow;
 		action.onSubscribe(_currentWindow);
 		return action;

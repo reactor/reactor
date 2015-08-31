@@ -1904,10 +1904,11 @@ class StreamsSpec extends Specification {
 		when:
 			'consuming periodic'
 			def i = []
-			Streams.period(0, 1).log().consume {
+			c = Streams.period(0, 1).log().consume {
 				i << it
 			}
 			sleep(2500)
+			c.cancel()
 
 		then:
 			'ready'

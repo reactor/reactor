@@ -25,7 +25,7 @@ import reactor.core.processor.simple.SimpleSignal;
 import reactor.core.processor.simple.SimpleSubscriberUtils;
 import reactor.core.support.Assert;
 import reactor.core.support.SignalType;
-import reactor.core.support.WithPublisher;
+import reactor.core.support.Publishable;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -358,7 +358,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 		return true;
 	}
 
-	private static class SubscriberWorker<IN> extends AtomicLong implements WithPublisher<IN>, Subscription, Runnable {
+	private static class SubscriberWorker<IN> extends AtomicLong implements Publishable<IN>, Subscription, Runnable {
 
 		private final Subscriber<? super IN>  subscriber;
 		private final SimpleWorkProcessor<IN> processor;

@@ -20,10 +20,11 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
+import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscription.SubscriptionWithContext;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
-import reactor.core.support.WithPublisher;
+import reactor.core.support.Publishable;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -232,7 +233,7 @@ public abstract class SubscriberFactory {
 		}
 	};
 
-	private static final class ReactorSubscriber<T, C> extends BaseSubscriber<T> implements Bounded, WithPublisher<T> {
+	private static final class ReactorSubscriber<T, C> extends BaseSubscriber<T> implements Bounded, Publishable<T> {
 
 		protected final Function<Subscription, C>                 subscriptionHandler;
 		protected final BiConsumer<T, SubscriptionWithContext<C>> dataConsumer;
@@ -255,7 +256,7 @@ public abstract class SubscriberFactory {
 
 		@Override
 		public Publisher<T> upstream() {
-			return WithPublisher.fromSubscription(subscriptionWithContext);
+			return PublisherFactory.fromSubscription(subscriptionWithContext);
 		}
 
 		@Override

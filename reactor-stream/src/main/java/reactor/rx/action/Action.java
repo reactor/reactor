@@ -25,6 +25,8 @@ import reactor.core.support.Bounded;
 import reactor.core.error.Exceptions;
 import reactor.core.support.Recyclable;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.support.Publishable;
+import reactor.core.support.Subscribable;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
@@ -67,7 +69,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * @since 1.1, 2.0
  */
 public abstract class Action<I, O> extends Stream<O>
-  implements Processor<I, O>, Consumer<I>, Recyclable, Control {
+  implements Processor<I, O>, Consumer<I>, Recyclable, Control, Publishable<I> {
 
 	public static final int NO_CAPACITY = -1;
 
@@ -91,6 +93,12 @@ public abstract class Action<I, O> extends Stream<O>
 
 	public Action(long batchSize) {
 		this.capacity = batchSize;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public Publisher<I> upstream() {
+		return upstreamSubscription != null ? upstreamSubscription.upstream() : null;
 	}
 
 	/**
@@ -318,7 +326,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 */
 	@SuppressWarnings("unchecked")
 	public StreamUtils.StreamVisitor debug() {
-		return StreamUtils.browse(findOldestUpstream(Action.class));
+		return StreamUtils.browse(findOldestUpstream(this, Action.class));
 	}
 
 	/**
@@ -377,7 +385,7 @@ public abstract class Action<I, O> extends Stream<O>
 	@SuppressWarnings("unchecked")
 	@Override
 	public final <E> CompositeAction<E, O> combine() {
-		final Action<E, ?> subscriber = (Action<E, ?>) findOldestUpstream(Action.class);
+		final Action<E, ?> subscriber = (Action<E, ?>) findOldestUpstream(this, Action.class);
 		subscriber.upstreamSubscription = null;
 		return new CompositeAction<E, O>(subscriber, this);
 	}
@@ -435,27 +443,26 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <P extends Publisher<?>> P findOldestUpstream(Class<P> clazz) {
-		Action<?, ?> that = this;
+	public static <P extends Publisher<?>> P findOldestUpstream(Publishable<?> mostRightOp, Class<P> clazz) {
+		P next, last = null;
+		Publishable<?> traversed = mostRightOp;
 
-		while (inspectPublisher(that, Action.class)) {
+		if(clazz.isAssignableFrom(mostRightOp.getClass())){
+			last = (P) mostRightOp;
+		}
 
-			that = (Action<?, ?>) that.upstreamSubscription.getPublisher();
-
-			if (that != null) {
-
-				if (FanInAction.class.isAssignableFrom(that.getClass())) {
-					that = ((FanInAction) that).dynamicMergeAction() != null ? ((FanInAction) that).dynamicMergeAction
-					  () : that;
-				}
+		while ((next = findNextAction(traversed, clazz)) != null && next != last) {
+			last = next;
+			if (FanInAction.class.isAssignableFrom(next.getClass()) && ((FanInAction) next).dynamicMergeAction() !=
+			  null) {
+				traversed = ((FanInAction) next).dynamicMergeAction();
+			} else if (Publishable.class.isAssignableFrom(next.getClass())) {
+				traversed = (Publishable) next;
+			} else {
+				break;
 			}
 		}
-
-		if (inspectPublisher(that, clazz)) {
-			return (P) ((PushSubscription<?>) that.upstreamSubscription).getPublisher();
-		} else {
-			return (P) that;
-		}
+		return last;
 	}
 
 	/**
@@ -647,10 +654,24 @@ public abstract class Action<I, O> extends Stream<O>
 		//recycle();
 	}
 
-	private boolean inspectPublisher(Action<?, ?> that, Class<?> actionClass) {
-		return that.upstreamSubscription != null
-		  && ((PushSubscription<?>) that.upstreamSubscription).getPublisher() != null
-		  && actionClass.isAssignableFrom(((PushSubscription<?>) that.upstreamSubscription).getPublisher().getClass());
+	@SuppressWarnings("unchecked")
+	private static <E> E findNextAction(Publishable<?> that, Class<E> actionClass) {
+		Publishable<?> next = that;
+		Publisher<?> upstream;
+		while (next != null) {
+			upstream = next.upstream();
+			if (upstream != null && upstream != next) {
+
+				if (actionClass.isAssignableFrom(upstream.getClass())) {
+					return (E) upstream;
+				} else if (Publishable.class.isAssignableFrom(upstream.getClass())) {
+					next = (Publishable) upstream;
+					continue;
+				}
+			}
+			break;
+		}
+		return null;
 	}
 
 	@Override

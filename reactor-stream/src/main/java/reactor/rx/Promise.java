@@ -20,7 +20,9 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Bounded;
+import reactor.core.support.Publishable;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -50,7 +52,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author Stephane Maldini
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
-public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bounded {
+public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bounded, Publishable<O> {
 
 	public static final long DEFAULT_TIMEOUT = Long.parseLong(System.getProperty("reactor.await.defaultTimeout",
 	  "30000"));
@@ -201,6 +203,12 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 		return stream().after().next();
 	}
 
+
+	@Override
+	public Publisher<O> upstream() {
+		return PublisherFactory.fromSubscription(subscription);
+	}
+
 	/**
 	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is successfully completed
 	 * with
@@ -313,6 +321,26 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 		}
 
 		return stream().when(Throwable.class, onError).next();
+	}
+
+	/**
+
+	 */
+	@SuppressWarnings("unchecked")
+	public final <E> Promise<E> process(final Processor<O, E> processor) {
+		subscribe(processor);
+		if (Promise.class.isAssignableFrom(processor.getClass())) {
+			return (Promise<E>) processor;
+		}
+		Promise<E> promise = Promises.ready(getTimer());
+		processor.subscribe(promise);
+		return promise;
+	}
+	/**
+	 */
+	@SuppressWarnings("unchecked")
+	public final Promise<O> run(final Supplier<? extends Processor> processorProvider) {
+		return process(processorProvider.get());
 	}
 
 	/**
@@ -591,31 +619,13 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 
 
 	public StreamUtils.StreamVisitor debug() {
-		Action<?, ?> debugged = findOldestStream();
+		Action<?, ?> debugged = Action.findOldestUpstream(this, Action.class);
 		if (subscription == null || debugged == null) {
 			return outboundStream != null ? outboundStream.debug() : null;
 		}
 
 		return debugged.debug();
 	}
-
-	@SuppressWarnings("unchecked")
-	public Action<?, ?> findOldestStream() {
-		Subscription sub = subscription;
-		Action<?, ?> that = null;
-
-		while (sub != null
-		  && PushSubscription.class.isAssignableFrom(sub.getClass())
-		  && ((PushSubscription<?>) sub).getPublisher() != null
-		  && Action.class.isAssignableFrom(((PushSubscription<?>) sub).getPublisher().getClass())
-		  ) {
-
-			that = (Action<?, ?>) ((PushSubscription<?>) sub).getPublisher();
-			sub = that.getSubscription();
-		}
-		return that;
-	}
-
 
 	protected void errorAccepted(Throwable error) {
 		lock.lock();

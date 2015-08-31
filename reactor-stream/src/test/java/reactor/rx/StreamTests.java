@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
-import reactor.Timers;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.selector.Selector;
@@ -36,14 +35,12 @@ import reactor.bus.selector.Selectors;
 import reactor.core.processor.ProcessorService;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.Tap;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.core.subscriber.Tap;
 import reactor.io.IO;
 import reactor.io.buffer.Buffer;
-import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
-import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
 import reactor.rx.broadcast.BehaviorBroadcaster;
@@ -386,7 +383,7 @@ public class StreamTests extends AbstractReactorTest {
 		T result = null;
 		try {
 			latch.await(10, TimeUnit.SECONDS);
-			System.out.println(control.debug());
+
 			result = ref.get();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -936,10 +933,10 @@ public class StreamTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(numOps);
 
 		Stream<String> operationStream =
-		  Streams.defer(() -> Broadcaster.<String>create())
+		  Streams.defer(Broadcaster::<String>create)
 		    .run(asyncService)
 			.throttle(100)
-			.map(s -> Thread.currentThread() + s + " MODIFIED")
+			.map(s -> s + " MODIFIED")
 			.map(s -> {
 				latch.countDown();
 				return s;

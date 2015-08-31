@@ -206,7 +206,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 						protected void onRequest(long elements) {
 							if (upstreamSubscription != null) {
 								super.onRequest(elements);
-								requestUpstream(capacity, isComplete(), elements);
+								requestUpstream(capacity, terminalSignalled, elements);
 							}
 						}
 					};

@@ -16,6 +16,7 @@
 
 package reactor.rx;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import reactor.Publishers;
 import reactor.Timers;
@@ -69,7 +70,20 @@ public final class Promises {
 	 * @return A {@link Promise}.
 	 */
 	public static <T> Promise<T> task(Supplier<T> supplier) {
-		return task(Timers.globalOrNull(),  supplier);
+		return task(null, Timers.globalOrNull(),  supplier);
+	}
+
+	/**
+	 * Create a {@link Promise} producing the value for the {@link Promise} using the
+	 * given supplier.
+	 *
+	 * @param processor {@link Processor} that will execute the signals possibly asynchronously
+	 * @param supplier {@link Supplier} that will produce the value
+	 * @param <T>      type of the expected value
+	 * @return A {@link Promise}.
+	 */
+	public static <T> Promise<T> task(Processor<T, T> processor, Supplier<T> supplier) {
+		return task(processor, Timers.globalOrNull(),  supplier);
 	}
 
 	/**
@@ -81,7 +95,7 @@ public final class Promises {
 	 * @param <T>      type of the expected value
 	 * @return A {@link Promise}.
 	 */
-	public static <T> Promise<T> task(Timer timer, final Supplier<T> supplier) {
+	public static <T> Promise<T> task(Processor<T, T> processor, Timer timer, final Supplier<T> supplier) {
 		Publisher<T> p = Publishers.create(new Consumer<SubscriberWithContext<T, Void>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Void> sub) {
@@ -89,9 +103,17 @@ public final class Promises {
 				sub.onComplete();
 			}
 		});
-		return Streams.wrap(p)
-		  .timer(timer)
-		  .next();
+
+		if(processor == null) {
+			return Streams.wrap(p)
+			  .timer(timer)
+			  .next();
+		}else {
+			return Streams.wrap(p)
+			  .timer(timer)
+			  .process(processor)
+			  .next();
+		}
 	}
 
 	/**

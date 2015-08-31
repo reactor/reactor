@@ -46,4 +46,8 @@ public abstract class AbstractReactorTest {
 		asyncService.shutdown();
 	}
 
+	static {
+		System.setProperty("reactor.trace.cancel", "true");
+	}
+
 }

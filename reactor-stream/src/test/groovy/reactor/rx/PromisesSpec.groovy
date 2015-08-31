@@ -607,8 +607,8 @@ class PromisesSpec extends Specification {
 		given:
 			"two fulfilled promises"
 		def workService = Processors.workService("promise-task", 8, 2)
-			def promise1 = Promises.task{ sleep(1000); 1 }.stream().run(workService).next()
-			def promise2 = Promises.task{ sleep(250); 2 }.stream().run(workService).next()
+			def promise1 = Promises.task(workService.get()){ sleep(10000); 1 }
+			def promise2 = Promises.task(workService.get()){ sleep(250); 2 }
 
 		when:
 			"a combined promise is first created"
@@ -795,8 +795,9 @@ class PromisesSpec extends Specification {
 		when:
 			"p1 is consumed by p2"
 			Promise p2 = p1
-					.onSuccess({ Integer.parseInt it }).
-					map { sleep(3000); it }
+					.onSuccess({ Integer.parseInt it })
+					.run(Processors.asyncService('test'))
+					.map { sleep(3000); it }
 
 		and:
 			"setting a value"

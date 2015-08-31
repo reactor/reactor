@@ -164,6 +164,9 @@ public final class Exceptions {
 		return new Publisher<IN>() {
 			@Override
 			public void subscribe(Subscriber<? super IN> s) {
+				if(s == null){
+					throw SpecificationExceptions.spec_2_13_exception();
+				}
 				s.onSubscribe(ERROR_SUBSCRIPTION);
 				s.onError(error);
 			}
