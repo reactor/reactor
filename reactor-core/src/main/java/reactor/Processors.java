@@ -49,7 +49,7 @@ public final class Processors {
 	 *
 	 * @see Runtime#availableProcessors()
 	 */
-	public static final int DEFAULT_POOL_SIZE = Math.min(Runtime.getRuntime().availableProcessors(), 2);
+	public static final int DEFAULT_POOL_SIZE = Math.max(Runtime.getRuntime().availableProcessors(), 2);
 
 	/**
 	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
@@ -480,7 +480,7 @@ public final class Processors {
 		return lift(processor, new Function<Processor<IN, OUT>, Publisher<OUT>>() {
 			@Override
 			public Publisher<OUT> apply(Processor<IN, OUT> processor) {
-				return Publishers.lift(processor, new LogOperator<>(category));
+				return Publishers.lift(processor, new LogOperator<OUT>(category));
 			}
 		});
 	}

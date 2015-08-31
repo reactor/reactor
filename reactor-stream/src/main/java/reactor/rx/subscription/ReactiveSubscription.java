@@ -47,6 +47,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	//Only read from subscriber context
 	protected volatile long currentNextSignals = 0l;
+	protected boolean terminalSignalled = false;
 
 	//Can be set outside of publisher and subscriber contexts
 	protected volatile long maxCapacity = Long.MAX_VALUE;
@@ -125,7 +126,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 				synchronized (this) {
 					draining = !buffer.isEmpty();
-					last = !draining && terminated == 1;
+					last = !draining && terminalSignalled;
 				}
 
 				if (last) {
@@ -201,6 +202,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			return;
 
 		synchronized (this) {
+			terminalSignalled = true;
+
 			if (buffer.isEmpty()) {
 				if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
 					complete = true;
@@ -260,7 +263,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	@Override
 	public final boolean isComplete() {
 		synchronized (this) {
-			return buffer.isEmpty() && terminated == 1;
+			return buffer.isEmpty() && terminalSignalled;
 		}
 	}
 

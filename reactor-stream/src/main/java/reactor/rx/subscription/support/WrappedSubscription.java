@@ -15,8 +15,10 @@
  */
 package reactor.rx.subscription.support;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.Publishable;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 
@@ -55,11 +57,10 @@ public class WrappedSubscription<O> extends PushSubscription<O> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public final Stream<O> getPublisher() {
-		return PushSubscription.class.isAssignableFrom(this.subscription.getClass()) ?
-				((PushSubscription<O>)this.subscription).getPublisher() :
-				null;
+	public Publisher upstream() {
+		return Publishable.class.isAssignableFrom(this.subscription.getClass()) ?
+		 ( (Publishable)this.subscription).upstream() :
+		  null;
 	}
 
 	@Override

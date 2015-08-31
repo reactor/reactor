@@ -93,7 +93,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		System.out.println("Providing new processor");
 
 		ProcessorService<Integer> asyncService =
-		  Processors.asyncService("stream-tck", 32, 8, Throwable::printStackTrace);
+		  Processors.asyncService("stream-tck", bufferSize, 8, Throwable::printStackTrace);
 
 		/*Streams.period(env.getTimer(), 2, 1)
 		        .takeWhile(i -> integerIntegerCombineAction.isPublishing())
@@ -104,6 +104,7 @@ public class StreamIdentityProcessorTests extends org.reactivestreams.tck.Identi
 		  .run(asyncService)
 		  .capacity(bufferSize)
 		  .partition(2)
+		  .log("fl")
 		  .flatMap(stream -> stream
 			  .run(asyncService)
 			  .scan((prev, next) -> next)

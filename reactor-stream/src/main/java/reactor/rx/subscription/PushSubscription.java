@@ -15,8 +15,10 @@
  */
 package reactor.rx.subscription;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.Publishable;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.subscription.support.WrappedSubscription;
@@ -32,7 +34,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  *
  * @author Stephane Maldini
  */
-public class PushSubscription<O> implements Subscription, Consumer<Long> {
+public class PushSubscription<O> implements Subscription, Consumer<Long>, Publishable {
 	protected final Subscriber<? super O> subscriber;
 	protected final Stream<O>             publisher;
 
@@ -61,6 +63,11 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	public PushSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
 		this.subscriber = subscriber;
 		this.publisher = publisher;
+	}
+
+	@Override
+	public Publisher upstream() {
+		return publisher;
 	}
 
 	@Override
@@ -116,10 +123,6 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
 			subscriber.onError(throwable);
 		}
-	}
-
-	public Stream<O> getPublisher() {
-		return publisher;
 	}
 
 	public boolean hasPublisher() {

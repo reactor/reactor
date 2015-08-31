@@ -19,9 +19,11 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Bounded;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.support.WithPublisher;
+import reactor.core.support.Publishable;
+import reactor.core.support.Subscribable;
 
 /**
  * A {@link Subscriber} with an asymetric typed wrapped subscriber. Yet it represents a unique relationship between
@@ -31,7 +33,7 @@ import reactor.core.support.WithPublisher;
  * @author Stephane Maldini
  * @since 2.0.4
  */
-public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription, Bounded, WithPublisher<I> {
+public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription, Bounded, Subscribable<O>, Publishable<I> {
 
 	protected final Subscriber<? super O> subscriber;
 
@@ -43,7 +45,12 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 
 	@Override
 	public Publisher<I> upstream() {
-		return WithPublisher.fromSubscription(subscription);
+		return PublisherFactory.fromSubscription(subscription);
+	}
+
+	@Override
+	public Subscriber<? super O> downstream() {
+		return subscriber;
 	}
 
 	@Override

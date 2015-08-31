@@ -24,6 +24,7 @@ import reactor.core.support.Assert;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.Bounded;
+import reactor.core.support.Publishable;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -237,7 +238,7 @@ public abstract class PublisherFactory {
 	 * @param <O>             The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> lift(Publisher<? extends I> source,
+	public static <I, O> Publisher<O> lift(Publisher<I> source,
 	                                       Function<Subscriber<? super O>, Subscriber<? super I>>
 	                                         barrierProvider) {
 		Assert.notNull(source, "A data source must be provided");
@@ -257,6 +258,20 @@ public abstract class PublisherFactory {
 		public void cancel() {
 		}
 	};
+
+	/**
+	 * Check if the subscription is bound to a Publisher.
+	 *
+	 * @param subscription the sub to check
+	 * @param <T>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Publisher<T> fromSubscription(Subscription subscription){
+		return subscription != null && Publishable.class.isAssignableFrom(subscription.getClass()) ?
+		  ((Publishable<T>)subscription).upstream():
+		  null;
+	}
 
 	private static class ReactorPublisher<T, C> implements Publisher<T> {
 
@@ -285,7 +300,7 @@ public abstract class PublisherFactory {
 		}
 
 		protected Subscription createSubscription(Subscriber<? super T> subscriber, C context) {
-			return new SubscriberProxy<>(subscriber, context, requestConsumer, shutdownConsumer);
+			return new SubscriberProxy<>(this, subscriber, context, requestConsumer, shutdownConsumer);
 		}
 	}
 
@@ -302,25 +317,35 @@ public abstract class PublisherFactory {
 
 		@Override
 		protected Subscription createSubscription(Subscriber<? super T> subscriber, C context) {
-			return new SubscriberProxy<>(subscriber, context, new ForEachBiConsumer<>(forEachConsumer),
+			return new SubscriberProxy<>(this, subscriber, context, new ForEachBiConsumer<>(forEachConsumer),
 			  shutdownConsumer);
 		}
 	}
 
-	private final static class SubscriberProxy<T, C> extends SubscriberWithContext<T, C> implements Subscription {
+	private final static class SubscriberProxy<T, C> extends SubscriberWithContext<T, C>
+	  implements Subscription, Publishable<T> {
 
 		private final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
 		private final Consumer<C>                                   shutdownConsumer;
 
+		private final Publisher<T> source;
 
-		public SubscriberProxy(Subscriber<? super T> subscriber,
+
+		public SubscriberProxy(Publisher<T> source,
+		                       Subscriber<? super T> subscriber,
 		                       C context,
 		                       BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 		                       Consumer<C> shutdownConsumer
 		) {
 			super(context, subscriber);
+			this.source = source;
 			this.requestConsumer = requestConsumer;
 			this.shutdownConsumer = shutdownConsumer;
+		}
+
+		@Override
+		public Publisher<T> upstream() {
+			return source;
 		}
 
 		@Override

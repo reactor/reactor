@@ -100,7 +100,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
-		return Publishers.lift(publisher, new LogOperator<>(category));
+		return Publishers.lift(publisher, new LogOperator<IN>(category));
 	}
 
 	/**

@@ -25,6 +25,7 @@ import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
+import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.*;
 import reactor.fn.BiConsumer;
@@ -600,7 +601,8 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 	  Executor,
 	  Subscription,
 	  Bounded,
-	  WithPublisher<V>{
+	  Publishable<V>,
+	  Subscribable<V> {
 
 
 		protected final ProcessorService service;
@@ -616,7 +618,12 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 
 		@Override
 		public Publisher<V> upstream() {
-			return WithPublisher.fromSubscription(subscription);
+			return PublisherFactory.fromSubscription(subscription);
+		}
+
+		@Override
+		public Subscriber<? super V> downstream() {
+			return subscriber;
 		}
 
 		@Override
@@ -782,12 +789,21 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 
 		@Override
 		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return service != null && service.managedProcessor != null && service.managedProcessor.isExposedToOverflow(parentPublisher);
+			return service != null && service.managedProcessor != null && service.managedProcessor.isExposedToOverflow
+			  (parentPublisher);
 		}
 
 		@Override
 		public long getCapacity() {
-			return service != null && service.managedProcessor != null ? service.managedProcessor.getCapacity() : Long.MAX_VALUE;
+			return service != null && service.managedProcessor != null ? service.managedProcessor.getCapacity() : Long
+			  .MAX_VALUE;
+		}
+
+		@Override
+		public String toString() {
+			return getClass().getSimpleName()+"{" +
+			  "subscription=" + subscription +
+			  '}';
 		}
 	}
 
@@ -835,6 +851,8 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
 			route(data, subscriber, type);
 		}
+
+
 
 		@Override
 		public void request(final long n) {

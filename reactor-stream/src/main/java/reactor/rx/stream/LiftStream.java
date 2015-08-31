@@ -23,6 +23,8 @@ import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.CompositeAction;
 
+import java.util.concurrent.locks.LockSupport;
+
 /**
  * A Stream wrapper that defers a parent stream subscription to the child action subscribe() call.
  *
@@ -52,7 +54,9 @@ public class LiftStream<O, V> extends Stream<V> {
 		}
 
 		producer.subscribe(action);
-
+		while(action.getSubscription() == null){
+			LockSupport.parkNanos(1L);
+		}
 		return action.combine();
 	}
 

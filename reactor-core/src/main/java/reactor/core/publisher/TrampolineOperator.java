@@ -41,7 +41,7 @@ public final class TrampolineOperator<IN> implements Function<Subscriber<? super
 
 	private static class TrampolineBarrier<IN> extends SubscriberBarrier<IN, IN> {
 
-		private final        PriorityBlockingQueue<Task>                  queue           = new PriorityBlockingQueue();
+		private final        PriorityBlockingQueue<Task>                  queue           = new PriorityBlockingQueue<>();
 		private final        AtomicInteger                                wip             = new AtomicInteger();
 		private static final AtomicIntegerFieldUpdater<TrampolineBarrier> COUNTER_UPDATER =
 		  AtomicIntegerFieldUpdater.newUpdater
@@ -80,7 +80,7 @@ public final class TrampolineOperator<IN> implements Function<Subscriber<? super
 
 		@Override
 		public String toString() {
-			return super.toString() + "{trampoline=" + queue.toString() + "}";
+			return "{trampoline=" + queue.toString() + "}";
 		}
 	}
 

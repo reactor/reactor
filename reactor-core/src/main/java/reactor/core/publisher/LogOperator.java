@@ -30,14 +30,6 @@ import reactor.fn.Function;
  */
 public final class LogOperator<IN> implements Function<Subscriber<? super IN>, Subscriber<? super IN>>{
 
-	@Override
-	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
-		if (log.isTraceEnabled()) {
-			log.trace("subscribe: {}", subscriber.getClass().getSimpleName());
-		}
-		return new LoggerBarrier<>(log, subscriber);
-	}
-
 	private final Logger log;
 
 	public LogOperator(final String category) {
@@ -46,6 +38,14 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 		  LoggerFactory.getLogger(category) :
 		  LoggerFactory.getLogger(LogOperator.class);
 
+	}
+
+	@Override
+	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
+		if (log.isTraceEnabled()) {
+			log.trace("subscribe: {}", subscriber.getClass().getSimpleName());
+		}
+		return new LoggerBarrier<>(log, subscriber);
 	}
 
 	private static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> {
@@ -109,7 +109,7 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 
 		@Override
 		public String toString() {
-			return super.toString() + "{logger=" + log.getName() + "}";
+			return "{logger=" + log.getName() + "}";
 		}
 	}
 
