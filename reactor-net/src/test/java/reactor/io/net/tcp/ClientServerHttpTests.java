@@ -20,7 +20,8 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Processor;
-import reactor.Environment;
+import reactor.Processors;
+import reactor.Timers;
 import reactor.core.processor.RingBufferWorkProcessor;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -31,7 +32,6 @@ import reactor.io.net.NetStreams;
 import reactor.io.net.http.HttpClient;
 import reactor.rx.Promise;
 import reactor.rx.Streams;
-import reactor.rx.broadcast.Broadcaster;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -46,7 +46,7 @@ import static org.junit.Assert.assertThat;
 @Ignore
 public class ClientServerHttpTests {
 	private reactor.io.net.http.HttpServer<List<String>, List<String>> httpServer;
-	private Broadcaster<String>                                        broadcaster;
+	private Processor<String, String>                                  broadcaster;
 
 	@Test
 	public void testSingleConsumerWithOneSession() throws Exception {
@@ -218,13 +218,14 @@ public class ClientServerHttpTests {
 
 	@Before
 	public void loadEnv() throws Exception {
-		Environment.initializeIfEmpty().assignErrorJournal();
+		Timers.global();
 		setupFakeProtocolListener();
 	}
 
 	@After
 	public void clean() throws Exception {
 		httpServer.shutdown().awaitSuccess();
+		Timers.unregisterGlobal();
 	}
 
 	public Set<Integer> findDuplicates(List<Integer> listContainingDuplicates) {
@@ -240,13 +241,13 @@ public class ClientServerHttpTests {
 	}
 
 	private void setupFakeProtocolListener() throws Exception {
-		broadcaster = Broadcaster.<String>create(Environment.sharedDispatcher());
+		broadcaster = Processors.async();
 		final Processor<List<String>, List<String>> processor = RingBufferWorkProcessor.create(false);
-		broadcaster.buffer(5).subscribe(processor);
+		Streams.wrap(broadcaster).buffer(5).subscribe(processor);
 
 		DummyListCodec codec = new DummyListCodec();
 		httpServer = NetStreams.httpServer(server -> server
-		  .codec(codec).listen(0).dispatcher(Environment.sharedDispatcher()));
+		  .codec(codec).listen(0));
 
 		httpServer.get("/data", (request) -> {
 			request.responseHeaders().removeTransferEncodingChunked();

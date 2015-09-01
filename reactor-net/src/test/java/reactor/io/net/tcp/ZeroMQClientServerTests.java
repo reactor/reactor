@@ -4,8 +4,7 @@ import com.esotericsoftware.kryo.Kryo;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import reactor.Environment;
-import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.Timers;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.json.JacksonJsonCodec;
 import reactor.io.codec.kryo.KryoCodec;
@@ -26,7 +25,6 @@ import static org.junit.Assert.assertTrue;
  */
 public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
-	static Environment           ENV;
 	static Kryo                  KRYO;
 	static KryoCodec<Data, Data> KRYO_CODEC;
 	static ZeroMQ<Data>          ZMQ;
@@ -35,10 +33,9 @@ public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 	@BeforeClass
 	public static void classSetup() {
-		ENV = Environment.initializeIfEmpty().assignErrorJournal();
 		KRYO = new Kryo();
 		KRYO_CODEC = new KryoCodec<>(KRYO, false);
-		ZMQ = new ZeroMQ<Data>(ENV, SynchronousDispatcher.INSTANCE).codec(KRYO_CODEC);
+		ZMQ = new ZeroMQ<Data>(Timers.global()).codec(KRYO_CODEC);
 	}
 
 	@AfterClass

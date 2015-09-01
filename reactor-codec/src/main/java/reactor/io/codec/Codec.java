@@ -70,11 +70,11 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 * @return The decoded object.
 	 * @since 2.0.4
 	 */
-	public Publisher<IN> decode(final Publisher<? extends SRC> publisherToDecode) {
+	public Publisher<IN> decode(final Publisher<SRC> publisherToDecode) {
 		return PublisherFactory.lift(publisherToDecode,
-		  new Function<Subscriber<? super IN>, SubscriberBarrier<SRC, IN>>() {
+		  new Function<Subscriber<? super IN>, Subscriber<? super SRC>>() {
 			  @Override
-			  public SubscriberBarrier<SRC, IN> apply(final Subscriber<? super IN> subscriber) {
+			  public Subscriber<? super SRC> apply(final Subscriber<? super IN> subscriber) {
 				  return new DecoderBarrier(subscriber);
 			  }
 		  });
@@ -106,11 +106,11 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 * @return The encoded source sequence.
 	 * @since 2.0.4
 	 */
-	public Publisher<SRC> encode(Publisher<? extends OUT> publisherToEncode) {
+	public Publisher<SRC> encode(Publisher<OUT> publisherToEncode) {
 		return PublisherFactory.lift(publisherToEncode,
-		  new Function<Subscriber<? super SRC>, SubscriberBarrier<OUT, SRC>>() {
+		  new Function<Subscriber<? super SRC>, Subscriber<? super OUT>>() {
 			  @Override
-			  public SubscriberBarrier<OUT, SRC> apply(final Subscriber<? super SRC> subscriber) {
+			  public Subscriber<? super OUT> apply(final Subscriber<? super SRC> subscriber) {
 				  return new EncoderBarrier(subscriber);
 			  }
 		  });

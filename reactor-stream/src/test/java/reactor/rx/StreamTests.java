@@ -838,6 +838,12 @@ public class StreamTests extends AbstractReactorTest {
 			}));
 
 		testDataset.forEach(batchingStreamDef::onNext);
+
+
+		System.out.println(batchingStreamDef.debug());
+
+		System.out.println(batchesDistribution);
+
 		if (!latch.await(10, TimeUnit.SECONDS)) {
 			throw new RuntimeException(latch.getCount() + " " + batchingStreamDef.debug().toString());
 
@@ -849,10 +855,7 @@ public class StreamTests extends AbstractReactorTest {
 		    .getValue())
 		  .reduce(Integer::sum).getAsInt();
 
-		System.out.println(batchingStreamDef.debug());
-
 		assertEquals(NUM_MESSAGES, messagesProcessed);
-		System.out.println(batchesDistribution);
 		assertTrue("Less than 90% (" + NUM_MESSAGES / BATCH_SIZE * TOLERANCE +
 			") of the batches are matching the buffer() size: " + batchesDistribution.get(BATCH_SIZE),
 		  NUM_MESSAGES / BATCH_SIZE * TOLERANCE >= batchesDistribution.get(BATCH_SIZE) * TOLERANCE);

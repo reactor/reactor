@@ -59,7 +59,7 @@ public class FlowControlAction<O> extends Action<O, O> {
 				@Override
 				public void onRequest(long elements) {
 					super.onRequest(elements);
-					requestUpstream(capacity, isComplete(), capacity);
+					requestUpstream(capacity, terminalSignalled, capacity);
 				}
 			};
 		} else {

@@ -25,10 +25,9 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
 import reactor.core.error.CancelException;
-import reactor.core.support.Bounded;
 import reactor.core.error.Exceptions;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
@@ -141,11 +140,12 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					ctx.read();
 				}
 			}
-		} catch (Throwable throwable) {
+		} catch (Throwable err) {
+			Exceptions.throwIfFatal(err);
 			if (channelSubscription != null) {
-				channelSubscription.onError(throwable);
-			} else if (Environment.alive()) {
-				Environment.get().routeError(throwable);
+				channelSubscription.onError(err);
+			} else {
+				throw err;
 			}
 		}
 	}
@@ -159,10 +159,11 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 			}
 			super.channelInactive(ctx);
 		} catch (Throwable err) {
+			Exceptions.throwIfFatal(err);
 			if (channelSubscription != null) {
 				channelSubscription.onError(err);
-			} else if (Environment.alive()) {
-				Environment.get().routeError(err);
+			} else {
+				throw err;
 			}
 		}
 	}
@@ -225,11 +226,12 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					remainder = null;
 				}
 			}
-		} catch (Throwable t) {
+		} catch (Throwable err) {
+			Exceptions.throwIfFatal(err);
 			if (channelSubscription != null) {
-				channelSubscription.onError(t);
-			} else if (Environment.alive()) {
-				Environment.get().routeError(t);
+				channelSubscription.onError(err);
+			} else {
+				throw err;
 			}
 		}
 
@@ -254,13 +256,12 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 
 	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable err) throws Exception {
+		Exceptions.throwIfFatal(err);
 		if (channelSubscription != null) {
-			channelSubscription.onError(cause);
-		} else if (Environment.alive()) {
-			Environment.get().routeError(cause);
+			channelSubscription.onError(err);
 		} else {
-			log.error("Unexpected issue", cause);
+			log.error("Unexpected issue", err);
 		}
 	}
 

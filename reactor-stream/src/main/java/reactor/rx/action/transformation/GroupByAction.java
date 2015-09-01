@@ -111,11 +111,6 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 								removeGroupedStream(key);
 							}
 						}
-
-						@Override
-						protected void onRequest(long n) {
-							serialized.onNext(n);
-						}
 					};
 					//finalSub.maxCapacity(capacity);
 					groupByMap.put(key, finalSub);

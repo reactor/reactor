@@ -2169,7 +2169,6 @@ class StreamsSpec extends Specification {
 
 		then:
 			'last value known is 5 and stream is in error state'
-			thrown CancelException
 			error in TimeoutException
 			value.get() == 5
 	}
@@ -2199,7 +2198,6 @@ class StreamsSpec extends Specification {
 
 		then:
 			'last value known is 10 as the stream has used its fallback'
-			thrown CancelException
 			!error
 			value.get() == 10
 	}
@@ -2908,7 +2906,6 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the second is the last available'
-			thrown CancelException
 			value2.get() == 'test1'
 	}
 
