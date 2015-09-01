@@ -20,13 +20,12 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
-import reactor.core.error.ReactorFatalException;
-import reactor.core.support.Bounded;
 import reactor.core.error.Exceptions;
-import reactor.core.support.Recyclable;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
-import reactor.core.support.Subscribable;
+import reactor.core.support.Recyclable;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
@@ -535,7 +534,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 				@Override
 				protected void onRequest(long elements) {
-					requestUpstream(capacity, isComplete(), elements);
+					requestUpstream(capacity, terminalSignalled, elements);
 				}
 			};
 		} else {

@@ -15,7 +15,6 @@
  */
 package reactor.io.net.http
 
-import reactor.Environment
 import reactor.io.codec.StandardCodecs
 import reactor.io.net.NetStreams
 import reactor.rx.Streams
@@ -28,18 +27,12 @@ import java.util.concurrent.TimeUnit
  */
 class HttpSpec extends Specification {
 
-	Environment env
-
-	def setup() {
-		env = Environment.initializeIfEmpty().assignErrorJournal()
-	}
-
 	def "http responds to requests from clients"() {
 		given: "a simple HttpServer"
 
 			//Listen on localhost using default impl (Netty) and assign a global codec to receive/reply String data
 			def server = NetStreams.httpServer {
-				it.codec(StandardCodecs.STRING_CODEC).listen(0).dispatcher(Environment.sharedDispatcher())
+				it.codec(StandardCodecs.STRING_CODEC).listen(0)
 			}
 
 		when: "the server is prepared"
@@ -67,7 +60,7 @@ class HttpSpec extends Specification {
 
 			//Prepare a client using default impl (Netty) to connect on http://localhost:port/ and assign global codec to send/receive String data
 			def client = NetStreams.httpClient {
-				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port).dispatcher(Environment.sharedDispatcher())
+				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port)
 			}
 
 			//prepare an http post request-reply flow
@@ -108,7 +101,7 @@ class HttpSpec extends Specification {
 
 			//Listen on localhost using default impl (Netty) and assign a global codec to receive/reply String data
 			def server = NetStreams.httpServer {
-				it.codec(StandardCodecs.STRING_CODEC).listen(0).dispatcher(Environment.sharedDispatcher())
+				it.codec(StandardCodecs.STRING_CODEC).listen(0)
 			}
 
 		when: "the server is prepared"
@@ -137,7 +130,7 @@ class HttpSpec extends Specification {
 
 			//Prepare a client using default impl (Netty) to connect on http://localhost:port/ and assign global codec to send/receive String data
 			def client = NetStreams.httpClient {
-				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port).dispatcher(Environment.sharedDispatcher())
+				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port)
 			}
 
 			//prepare an http websocket request-reply flow

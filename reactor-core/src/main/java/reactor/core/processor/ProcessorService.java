@@ -482,6 +482,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 			}
 
 			for (int i = 0; i < concurrency; i++) {
+				this.processor.onSubscribe(BaseSubscriber.NOOP_SUBSCRIPTION);
 				this.processor.subscribe(new TaskSubscriber(uncaughtExceptionHandler, shutdownHandler));
 			}
 
@@ -608,7 +609,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		protected final ProcessorService service;
 		protected final AtomicBoolean    terminated;
 
-		Subscription          subscription;
+		volatile Subscription          subscription;
 		Subscriber<? super V> subscriber;
 
 		public ProcessorBarrier(ProcessorService service) {
@@ -680,7 +681,9 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		public final void onSubscribe(Subscription s) {
 			super.onSubscribe(s);
 
-			final boolean set, subscribed;
+			final boolean set;
+			final Subscriber<? super V> subscriber;
+
 			synchronized (this) {
 				if (subscription == null) {
 					subscription = s;
@@ -688,12 +691,12 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 				} else {
 					set = false;
 				}
-				subscribed = this.subscriber != null;
+				subscriber = this.subscriber != null ? this.subscriber : null;
 			}
 
 			if (!set) {
 				s.cancel();
-			} else if (subscribed) {
+			} else if (subscriber != null) {
 				dispatch(this, subscriber, SignalType.SUBSCRIPTION);
 			}
 		}
@@ -745,12 +748,13 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 		public void cancel() {
 			Subscription subscription = this.subscription;
 			if (subscription != null) {
-				this.subscription = null;
-				this.subscriber = null;
-
+				synchronized (this) {
+					this.subscription = null;
+					this.subscriber = null;
+				}
 				subscription.cancel();
+				handleTerminalSignal();
 			}
-			handleTerminalSignal();
 		}
 
 		protected void handleTerminalSignal() {

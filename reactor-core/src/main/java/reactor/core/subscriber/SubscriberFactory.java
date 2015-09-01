@@ -212,19 +212,6 @@ public abstract class SubscriberFactory {
 		return new ReactorSubscriber<T, C>(dataConsumer, subscriptionHandler, errorConsumer, completeConsumer);
 	}
 
-	/**
-	 * A singleton noop subscription
-	 */
-	protected static final Subscription NOOP_SUBSCRIPTION = new Subscription() {
-		@Override
-		public void request(long n) {
-		}
-
-		@Override
-		public void cancel() {
-		}
-	};
-
 	private static final Function<Subscription, Void> UNBOUNDED_REQUEST_FUNCTION = new Function<Subscription, Void>() {
 		@Override
 		public Void apply(Subscription subscription) {

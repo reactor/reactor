@@ -22,7 +22,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Processor;
-import reactor.Environment;
+import reactor.Timers;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.processor.RingBufferWorkProcessor;
 import reactor.fn.Consumer;
@@ -89,8 +89,7 @@ public class SmokeTests {
 	  spec -> spec
 		.options(nettyOptions)
 		.codec(new StringCodec())
-		.connect("localhost", httpServer.getListenAddress().getPort())
-		.dispatcher(Environment.sharedDispatcher());
+		.connect("localhost", httpServer.getListenAddress().getPort());
 
 	@SuppressWarnings("unchecked")
 	private List<Integer> windowsData = SynchronizedList.decorate(new ArrayList<>());
@@ -100,7 +99,7 @@ public class SmokeTests {
 
 	@Before
 	public void loadEnv() throws Exception {
-		Environment.initializeIfEmpty().assignErrorJournal();
+		Timers.global();
 		setupFakeProtocolListener();
 	}
 
@@ -108,6 +107,7 @@ public class SmokeTests {
 	public void clean() throws Exception {
 		processor.onComplete();
 		httpServer.shutdown().awaitSuccess();
+		Timers.unregisterGlobal();
 	}
 
 	public Sender newSender() {
@@ -273,7 +273,7 @@ public class SmokeTests {
 		  .process(workProcessor);
 
 		httpServer = NetStreams.httpServer(server -> server
-			.codec(codec).listen(port).dispatcher(Environment.sharedDispatcher())
+			.codec(codec).listen(port)
 		);
 
 

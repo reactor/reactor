@@ -77,6 +77,11 @@ public final class IterableStream<T> {
 					subscriber.onComplete();
 				}
 			}
+
+			@Override
+			public String toString() {
+				return "IterableStream="+defaultValues;
+			}
 		}, new Function<Subscriber<? super T>, Iterator<? extends T>>() {
 			@Override
 			public Iterator<? extends T> apply(Subscriber<? super T> subscriber) {
@@ -85,6 +90,11 @@ public final class IterableStream<T> {
 					throw PublisherFactory.PrematureCompleteException.INSTANCE;
 				}
 				return defaultValues.iterator();
+			}
+
+			@Override
+			public String toString() {
+				return "cold="+defaultValues;
 			}
 		}));
 	}

@@ -6,7 +6,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
+import reactor.Processors;
+import reactor.Timers;
 import reactor.io.codec.StandardCodecs;
 import reactor.io.net.NetStreams;
 import reactor.io.net.config.ServerSocketOptions;
@@ -36,12 +37,11 @@ public class UdpServerTests {
 
 	final Logger log = LoggerFactory.getLogger(getClass());
 
-	Environment     env;
 	ExecutorService threadPool;
 
 	@Before
 	public void setup() {
-		env = Environment.initializeIfEmpty().assignErrorJournal();
+		Timers.global();
 		threadPool = Executors.newCachedThreadPool();
 	}
 
@@ -49,6 +49,7 @@ public class UdpServerTests {
 	public void cleanup() throws InterruptedException {
 		threadPool.shutdown();
 		threadPool.awaitTermination(5, TimeUnit.SECONDS);
+		Timers.unregisterGlobal();
 	}
 
 	@Test
@@ -58,8 +59,7 @@ public class UdpServerTests {
 		final CountDownLatch latch = new CountDownLatch(4);
 
 		final DatagramServer<byte[], byte[]> server = NetStreams.udpServer(
-		  s -> s.env(env)
-			.listen(port)
+		  s -> s.listen(port)
 			.codec(StandardCodecs.BYTE_ARRAY_CODEC)
 		);
 
@@ -96,18 +96,17 @@ public class UdpServerTests {
 	//@Ignore
 	public void supportsUdpMulticast() throws Exception {
 		final int port = SocketUtils.findAvailableUdpPort();
-		final CountDownLatch latch = new CountDownLatch(Environment.PROCESSORS ^ 2);
+		final CountDownLatch latch = new CountDownLatch(Processors.DEFAULT_POOL_SIZE ^ 2);
 
 		final InetAddress multicastGroup = InetAddress.getByName("230.0.0.1");
 		final NetworkInterface multicastInterface = findMulticastEnabledIPv4Interface();
 		log.info("Using network interface '{}' for multicast", multicastInterface);
 		final Collection<DatagramServer<byte[], byte[]>> servers = new ArrayList<>();
 
-		for (int i = 0; i < Environment.PROCESSORS; i++) {
+		for (int i = 0; i < Processors.DEFAULT_POOL_SIZE; i++) {
 			DatagramServer<byte[], byte[]> server = NetStreams.<byte[], byte[]>udpServer(
 			  NettyDatagramServer.class,
-			  spec -> spec.env(env)
-				.dispatcher(Environment.SHARED)
+			  spec -> spec
 				.listen(port)
 				.options(new ServerSocketOptions()
 				  .reuseAddr(true)
@@ -140,7 +139,7 @@ public class UdpServerTests {
 			servers.add(server);
 		}
 
-		for (int i = 0; i < Environment.PROCESSORS; i++) {
+		for (int i = 0; i < Processors.DEFAULT_POOL_SIZE; i++) {
 			threadPool.submit(() -> {
 				try {
 					MulticastSocket multicast = new MulticastSocket();

@@ -18,6 +18,7 @@ package reactor.rx.broadcast;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Timers;
+import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
@@ -136,7 +137,7 @@ public class Broadcaster<O> extends Action<O, O> {
 			return super.createSubscription(subscriber, true);
 		} else {
 			return super.createSubscription(subscriber,
-				(upstreamSubscription == null || !upstreamSubscription.hasPublisher()));
+				(upstreamSubscription == null || upstreamSubscription == HOT_SUBSCRIPTION));
 		}
 	}
 
@@ -151,6 +152,38 @@ public class Broadcaster<O> extends Action<O, O> {
 		} catch (Exception e) {
 			Exceptions.throwIfFatal(e);
 			subscriber.onError(e);
+		}
+	}
+
+	@Override
+	protected void broadcastNext(O ev) {
+		PushSubscription<O> downstreamSubscription = this.downstreamSubscription;
+		if (downstreamSubscription == null) {
+			return;
+		}
+
+		try {
+			downstreamSubscription.onNext(ev);
+		} catch (CancelException ce) {
+			throw ce;
+		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
+			doError(Exceptions.addValueAsLastCause(throwable, ev));
+		}
+	}
+
+	@Override
+	public void onNext(O ev) {
+		if(ev == null){
+			throw new NullPointerException("Spec 2.13: Signal cannot be null");
+		}
+		try {
+			doNext(ev);
+		} catch (CancelException uae) {
+			throw uae;
+		} catch (Throwable cause) {
+			Exceptions.throwIfFatal(cause);
+			doError(Exceptions.addValueAsLastCause(cause, ev));
 		}
 	}
 

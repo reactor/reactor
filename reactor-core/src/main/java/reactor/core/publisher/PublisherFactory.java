@@ -302,6 +302,7 @@ public abstract class PublisherFactory {
 		protected Subscription createSubscription(Subscriber<? super T> subscriber, C context) {
 			return new SubscriberProxy<>(this, subscriber, context, requestConsumer, shutdownConsumer);
 		}
+
 	}
 
 	private static final class ForEachPublisher<T, C> extends ReactorPublisher<T, C> {
@@ -319,6 +320,11 @@ public abstract class PublisherFactory {
 		protected Subscription createSubscription(Subscriber<? super T> subscriber, C context) {
 			return new SubscriberProxy<>(this, subscriber, context, new ForEachBiConsumer<>(forEachConsumer),
 			  shutdownConsumer);
+		}
+
+		@Override
+		public String toString() {
+			return forEachConsumer.toString();
 		}
 	}
 
@@ -410,10 +416,7 @@ public abstract class PublisherFactory {
 
 		@Override
 		public String toString() {
-			return context != null ? context.toString() : ("SubscriberProxy{" +
-			  "requestConsumer=" + requestConsumer +
-			  ", shutdownConsumer=" + shutdownConsumer +
-			  '}');
+			return source.toString();
 		}
 	}
 

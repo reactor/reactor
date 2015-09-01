@@ -17,6 +17,7 @@
 package reactor.fn.timer;
 
 import org.reactivestreams.Processor;
+import reactor.core.error.CancelException;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
@@ -325,7 +326,11 @@ public class HashWheelTimer implements Timer {
 		 */
 		@Override
 		public void run() {
-			delegate.accept(TimeUtils.approxCurrentTimeMillis());
+			try {
+				delegate.accept(TimeUtils.approxCurrentTimeMillis());
+			} catch(CancelException e){
+				cancel();
+			}
 		}
 
 		/**

@@ -120,11 +120,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 			}
 			index = 0;
 			if (flush) {
-				if (timer != null) {
-					timespanRegistration = timer.submit(flushTask);
-				} else {
-					flushConsumer.accept(value);
-				}
+				flushConsumer.accept(value);
 			}
 		}
 	}

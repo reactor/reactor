@@ -631,6 +631,11 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 		@Override
 		public void cancel() {
+			Subscription subscription = upstreamSubscription;
+			if (subscription != null && autoCancel && SUBSCRIBER_COUNT.get(RingBufferWorkProcessor.this) - 1 == 0) {
+				upstreamSubscription = null;
+				subscription.cancel();
+			}
 			eventProcessor.halt();
 		}
 	}

@@ -47,7 +47,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	//Only read from subscriber context
 	protected volatile long currentNextSignals = 0l;
-	protected boolean terminalSignalled = false;
+	protected volatile boolean terminalSignalled = false;
 
 	//Can be set outside of publisher and subscriber contexts
 	protected volatile long maxCapacity = Long.MAX_VALUE;

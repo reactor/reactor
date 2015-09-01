@@ -97,6 +97,17 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	}
 
 	/**
+	 * @see {@link Codec#decode(Publisher)}
+	 *
+	 * @param decoder
+	 * @param <T>
+	 * @return
+	 */
+	final public <T> Stream<T> decode(Codec<IN, T, ?> decoder){
+		return Streams.wrap(decoder.decode(this));
+	}
+
+	/**
 	 * Write Buffer directly to be encoded if any codec has been setup
 	 *
 	 * @param source the raw source to encode

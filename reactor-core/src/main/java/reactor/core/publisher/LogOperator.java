@@ -93,7 +93,7 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 		@Override
 		protected void doRequest(long n) {
 			if (log.isInfoEnabled()) {
-				log.info("⇡ request({})", n);
+				log.info("⇡ request({})", Long.MAX_VALUE == n ? "unbounded" : n);
 			}
 			super.doRequest(n);
 		}

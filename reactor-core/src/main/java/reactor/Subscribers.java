@@ -18,6 +18,7 @@ package reactor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.SubscriberFactory;
 
@@ -84,7 +85,7 @@ public final class Subscribers extends SubscriberFactory {
 	 * @return
 	 */
 	public <I, E extends Subscriber<I>> E start(E subscriber) {
-		subscriber.onSubscribe(NOOP_SUBSCRIPTION);
+		subscriber.onSubscribe(BaseSubscriber.NOOP_SUBSCRIPTION);
 		return subscriber;
 	}
 }

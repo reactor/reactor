@@ -28,8 +28,7 @@ import org.slf4j.LoggerFactory;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
-import reactor.Environment;
-import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.Timers;
 import reactor.core.processor.RingBufferWorkProcessor;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
@@ -80,7 +79,6 @@ public class TcpServerTests {
 	final int msgs    = 10;
 	final int threads = 4;
 
-	Environment    env;
 	CountDownLatch latch;
 	AtomicLong count = new AtomicLong();
 	AtomicLong start = new AtomicLong();
@@ -88,7 +86,7 @@ public class TcpServerTests {
 
 	@Before
 	public void loadEnv() {
-		env = Environment.initializeIfEmpty().assignErrorJournal();
+		Timers.global();
 		latch = new CountDownLatch(msgs * threads);
 		threadPool = Executors.newCachedThreadPool();
 	}
@@ -96,6 +94,7 @@ public class TcpServerTests {
 	@After
 	public void cleanup() {
 		threadPool.shutdownNow();
+		Timers.unregisterGlobal();
 	}
 
 	@Test
@@ -139,7 +138,6 @@ public class TcpServerTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 		final TcpClient<Pojo, Pojo> client = NetStreams.tcpClient(s ->
 			s
-			  .env(env)
 			  .ssl(clientOpts)
 			  .codec(codec)
 			  .connect("localhost", port)
@@ -147,7 +145,6 @@ public class TcpServerTests {
 
 		final TcpServer<Pojo, Pojo> server = NetStreams.tcpServer(s ->
 			s
-			  .env(env)
 			  .ssl(serverOpts)
 			  .listen("localhost", port)
 			  .codec(codec)
@@ -176,8 +173,7 @@ public class TcpServerTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 
 		TcpServer<byte[], byte[]> server = NetStreams.tcpServer(s ->
-			s.env(env)
-			  .dispatcher(env.getDefaultDispatcher())
+			s
 			  .options(new ServerSocketOptions()
 				.backlog(1000)
 				.reuseAddr(true)
@@ -235,12 +231,10 @@ public class TcpServerTests {
 
 		TcpServer<Frame, Frame> server = NetStreams.tcpServer(spec ->
 			spec
-			  .env(env)
-			  .dispatcher(env.getDefaultDispatcher())
 			  .options(new ServerSocketOptions()
-				.backlog(1000)
-				.reuseAddr(true)
-				.tcpNoDelay(true))
+			    .backlog(1000)
+			    .reuseAddr(true)
+			    .tcpNoDelay(true))
 			  .listen(port)
 			  .codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
 		);
@@ -279,15 +273,11 @@ public class TcpServerTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 
 		TcpClient<Buffer, Buffer> client = NetStreams.<Buffer, Buffer>tcpClient(NettyTcpClient.class, s ->
-			s.env(env)
-			  .synchronousDispatcher()
-			  .connect("localhost", port)
+			s.connect("localhost", port)
 		);
 
 		TcpServer<Buffer, Buffer> server = NetStreams.tcpServer(s ->
-			s.env(env)
-			  .synchronousDispatcher()
-			  .listen(port)
+			s.listen(port)
 			  .codec(new PassThroughCodec<Buffer>())
 		);
 
@@ -312,7 +302,7 @@ public class TcpServerTests {
 		final CountDownLatch latch = new CountDownLatch(2);
 
 		final TcpClient<String, String> client = NetStreams.tcpClient(s ->
-			s.env(env)
+			s
 			  .connect("localhost", port)
 			  .codec(StandardCodecs.LINE_FEED_CODEC)
 		);
@@ -327,9 +317,8 @@ public class TcpServerTests {
 
 		TcpServer<String, String> server = NetStreams.tcpServer(s ->
 			s
-			  .env(env)
 			  .options(new NettyServerSocketOptions()
-				.pipelineConfigurer(pipeline -> pipeline.addLast(new LineBasedFrameDecoder(8 * 1024))))
+			    .pipelineConfigurer(pipeline -> pipeline.addLast(new LineBasedFrameDecoder(8 * 1024))))
 			  .listen(port)
 			  .codec(StandardCodecs.STRING_CODEC)
 		);
@@ -350,10 +339,8 @@ public class TcpServerTests {
 		final CountDownLatch latch = new CountDownLatch(msgs);
 
 		TcpServer<ByteBuf, ByteBuf> server = NetStreams.tcpServer(spec -> spec
-			.env(env)
 			.listen(port)
 			.rawData(true)
-			.dispatcher(SynchronousDispatcher.INSTANCE)
 		);
 
 		log.info("Starting raw server on tcp://localhost:{}", port);
@@ -390,7 +377,6 @@ public class TcpServerTests {
 		ZContext zmq = new ZContext();
 
 		TcpServer<Buffer, Buffer> server = NetStreams.tcpServer(ZeroMQTcpServer.class, spec -> spec
-			.env(env)
 			.listen("127.0.0.1", port)
 		);
 
@@ -423,7 +409,7 @@ public class TcpServerTests {
 	@Ignore
 	public void test5() throws Exception {
 		//Hot stream of data, could be injected from anywhere
-		Broadcaster<String> broadcaster = Broadcaster.<String>create(Environment.sharedDispatcher());
+		Broadcaster<String> broadcaster = Broadcaster.<String>create();
 
 		//Get a reference to the tail of the operation pipeline (microbatching + partitioning)
 		final Processor<List<String>, List<String>> processor = RingBufferWorkProcessor.create(false);
@@ -440,7 +426,7 @@ public class TcpServerTests {
 		HttpServer<String, String> httpServer = NetStreams.httpServer(server -> server
 		  .codec(StandardCodecs.STRING_CODEC)
 		  .listen(0)
-		  .dispatcher(Environment.sharedDispatcher()));
+		  );
 
 		//Listen for anything exactly hitting the root URI and route the incoming connection request to the callback
 		httpServer.get("/", (request) -> {

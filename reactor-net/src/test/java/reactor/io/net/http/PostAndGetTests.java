@@ -19,7 +19,6 @@ import org.apache.http.HttpException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import reactor.Environment;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.NetStreams;
 import reactor.io.net.ReactorChannelHandler;
@@ -39,12 +38,11 @@ public class PostAndGetTests {
 
 	@Before
 	public void setup() throws InterruptedException {
-		Environment.initializeIfEmpty().assignErrorJournal();
 		setupServer();
 	}
 
 	private void setupServer() throws InterruptedException {
-		httpServer = NetStreams.httpServer(server -> server.listen(0).dispatcher(Environment.sharedDispatcher()));
+		httpServer = NetStreams.httpServer(server -> server.listen(0));
 		httpServer.get("/get/{name}", getHandler());
 		httpServer.post("/post", postHandler());
 		httpServer.start().awaitSuccess();

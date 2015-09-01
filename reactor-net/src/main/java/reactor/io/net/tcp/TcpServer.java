@@ -16,6 +16,7 @@
 
 package reactor.io.net.tcp;
 
+import reactor.Processors;
 import reactor.core.support.Assert;
 import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
@@ -37,6 +38,16 @@ import java.net.InetSocketAddress;
  */
 public abstract class TcpServer<IN, OUT>
   extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
+
+	public static final int DEFAULT_TCP_THREAD_COUNT = Integer.parseInt(
+	  System.getProperty("reactor.tcp.selectThreadCount",
+		""+Processors.DEFAULT_POOL_SIZE / 2)
+	);
+
+	public static final int DEFAULT_TCP_SELECT_COUNT = Integer.parseInt(
+	  System.getProperty("reactor.tcp.selectThreadCount",
+		""+DEFAULT_TCP_THREAD_COUNT)
+	);
 
 	private final ServerSocketOptions options;
 	private final SslOptions          sslOptions;

@@ -4,7 +4,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
+import reactor.Processors;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Predicate;
 import reactor.io.buffer.Buffer;
@@ -38,12 +38,10 @@ public class AbstractNetClientServerTest {
 
 	protected final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final int senderThreads = Environment.PROCESSORS;
+	private final int senderThreads = Processors.DEFAULT_POOL_SIZE;
 	protected Data            data;
 	private   ExecutorService serverPool;
 	private   ExecutorService clientPool;
-	private   Environment     env1;
-	private   Environment     env2;
 	private   int             port;
 
 	protected static Data generateData() {
@@ -60,9 +58,6 @@ public class AbstractNetClientServerTest {
 		  "-server"));
 		serverPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(getClass().getSimpleName() +
 		  "-client"));
-
-		env1 = new Environment();
-		env2 = new Environment();
 
 		port = SocketUtils.findAvailableTcpPort();
 
@@ -93,7 +88,7 @@ public class AbstractNetClientServerTest {
 	protected <IN, OUT> Spec.TcpServerSpec<IN, OUT> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
 	                                                                Class<? extends IN> inType,
 	                                                                Class<? extends OUT> outType) {
-		return new Spec.TcpServerSpec<IN, OUT>(type).env(env1).dispatcher("sync").listen(LOCALHOST, port);
+		return new Spec.TcpServerSpec<IN, OUT>(type).listen(LOCALHOST, port);
 	}
 
 	protected <T> Spec.TcpClientSpec<T, T> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
@@ -104,7 +99,7 @@ public class AbstractNetClientServerTest {
 	protected <IN, OUT> Spec.TcpClientSpec<IN, OUT> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
 	                                                                Class<? extends IN> inType,
 	                                                                Class<? extends OUT> outType) {
-		return new Spec.TcpClientSpec<IN, OUT>(type).env(env2).dispatcher("sync").connect(LOCALHOST, port);
+		return new Spec.TcpClientSpec<IN, OUT>(type).connect(LOCALHOST, port);
 	}
 
 	protected <T> void assertTcpClientServerExchangedData(Class<? extends reactor.io.net.tcp.TcpServer> serverType,
@@ -134,7 +129,6 @@ public class AbstractNetClientServerTest {
 		  codec;
 
 		TcpServer<T, T> server = NetStreams.tcpServer(serverType, s -> s
-			.env(env1)
 			.listen(LOCALHOST, getPort())
 			.codec(elCodec)
 		);
@@ -142,7 +136,6 @@ public class AbstractNetClientServerTest {
 		server.start(ch -> ch.writeWith(ch.take(1))).await();
 
 		TcpClient<T, T> client = NetStreams.tcpClient(clientType, s -> s
-			.env(env2)
 			.connect(LOCALHOST, getPort())
 			.codec(elCodec)
 		);
@@ -222,4 +215,9 @@ public class AbstractNetClientServerTest {
 		}
 	}
 
+	static {
+		System.setProperty("reactor.tcp.selectThreadCount", "2");
+		System.setProperty("reactor.tcp.ioThreadCount", "4");
+		System.setProperty("eactor.tcp.connectionReactorBacklog", "128");
+	}
 }

@@ -18,11 +18,9 @@ package reactor.rx;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
 import reactor.fn.Consumer;
-import reactor.rx.action.Action;
 import reactor.rx.action.CompositeAction;
 import reactor.rx.action.aggregation.WindowAction;
 import reactor.rx.action.combination.DynamicMergeAction;
@@ -107,23 +105,27 @@ public abstract class StreamUtils {
 		}
 
 		@Override
+		@SuppressWarnings("unchecked")
 		public void accept(Publishable<?> composable) {
-			if(composable == null) return;
+			if (composable == null) return;
 
-			Publisher upstream;
+			Publisher upstream = null;
 			Publishable<?> next = composable;
 			while (next != null) {
 				upstream = next.upstream();
 				if (upstream != null) {
-					if (Stream.class.isAssignableFrom(upstream.getClass())) {
-						parseComposable((Stream) upstream, null);
-					} else if (Publishable.class.isAssignableFrom(upstream.getClass())) {
+					if (Publishable.class.isAssignableFrom(upstream.getClass())) {
 						next = (Publishable) upstream;
 						continue;
 					}
 				}
 				next = null;
-
+			}
+			if (upstream != null && upstream != composable) {
+				if (debugVisitor != null) {
+					debugVisitor.newLine(debugVisitor.d);
+					debugVisitor.appender.append(upstream);
+				}
 			}
 			if (Stream.class.isAssignableFrom(composable.getClass())) {
 				parseComposable((Stream) composable, null);
@@ -134,7 +136,7 @@ public abstract class StreamUtils {
 		private <O> void parseComposable(Stream<O> composable, final List<Object> streamTree) {
 			if (composable == null) return;
 
-			Map<Object, Object> freshNestedStreams = new HashMap<Object, Object>();
+			Map<Object, Object> freshNestedStreams = new HashMap<>();
 			freshNestedStreams.put("id", new StreamKey(composable).toString());
 
 			if (streamTree != null) {
@@ -148,8 +150,13 @@ public abstract class StreamUtils {
 			freshNestedStreams.put("info", composable.toString());
 			references.add(composable);
 
-			if (debugVisitor != null && Publishable.class.isAssignableFrom(composable.getClass())) {
-				debugVisitor.accept((Publishable) composable);
+			if (debugVisitor != null) {
+				if(Publishable.class.isAssignableFrom(composable.getClass())) {
+					debugVisitor.accept((Publishable) composable);
+				}else{
+					debugVisitor.newLine(debugVisitor.d);
+					debugVisitor.appender.append(composable);
+				}
 				debugVisitor.d += 2;
 			}
 
@@ -212,7 +219,7 @@ public abstract class StreamUtils {
 						unproxy = ((Subscribable<?>) unproxy).downstream();
 					}
 
-					if(unproxy != null) {
+					if (unproxy != null) {
 						subscriber = unproxy;
 					}
 
@@ -344,11 +351,10 @@ public abstract class StreamUtils {
 						  if (Publishable.class.isAssignableFrom(delegateSubscription.getClass())) {
 							  Publisher<?> publisher = ((Publishable) delegateSubscription).upstream();
 							  if (publisher == null || references.contains(publisher)) return;
-							  if (Action.class.isAssignableFrom(publisher.getClass())) {
-								  parseComposable(Action.findOldestUpstream((Publishable)publisher, Stream.class),
-									streamTree);
-							  } else if (Stream.class.isAssignableFrom(publisher.getClass())) {
+							  if (Stream.class.isAssignableFrom(publisher.getClass())) {
 								  parseComposable((Stream<?>) publisher, streamTree);
+							  } else if (Publishable.class.isAssignableFrom(publisher.getClass())) {
+								  StreamVisitor.this.accept((Publishable) publisher);
 							  }
 						  }
 					  }

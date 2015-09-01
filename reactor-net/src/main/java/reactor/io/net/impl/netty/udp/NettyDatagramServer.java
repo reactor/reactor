@@ -79,8 +79,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
-			int ioThreadCount = getDefaultEnvironment().getIntProperty("reactor.udp.ioThreadCount",
-					Environment.PROCESSORS);
+			int ioThreadCount = DEFAULT_UDP_THREAD_COUNT;
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-udp-io"));
 		}
 

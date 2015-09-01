@@ -80,7 +80,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	@Override
 	protected int decrementSubscribers() {
 		int subs = super.decrementSubscribers();
-		if (autoCancel &&  subs == 0 && executor.getClass() == SingleUseExecutor.class) {
+		if (autoCancel && upstreamSubscription == null && subs == 0 && executor.getClass() == SingleUseExecutor.class) {
 			if (CANCEL_TIMEOUT > 0) {
 				final Timer timer = GlobalTimer.globalOrNew();
 				timer.submit(new Consumer<Long>() {

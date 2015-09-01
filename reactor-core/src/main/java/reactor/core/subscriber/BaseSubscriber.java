@@ -17,7 +17,6 @@ package reactor.core.subscriber;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Subscribers;
 import reactor.core.error.SpecificationExceptions;
 
 /**
@@ -29,6 +28,19 @@ import reactor.core.error.SpecificationExceptions;
 public class BaseSubscriber<T> implements Subscriber<T> {
 
 	/**
+	 * A singleton noop subscription
+	 */
+	public static final Subscription NOOP_SUBSCRIPTION = new Subscription() {
+		@Override
+		public void request(long n) {
+		}
+
+		@Override
+		public void cancel() {
+		}
+	};
+
+	/**
 	 * Trigger onSubscribe with a stateless subscription to signal this subscriber it can start receiving
 	 * onNext, onComplete and onError calls.
 	 * <p>
@@ -38,7 +50,7 @@ public class BaseSubscriber<T> implements Subscriber<T> {
 	 * Note that {@link org.reactivestreams.Processor} can extend this behavior to effectively start its subscribers.
 	 */
 	public BaseSubscriber<T> start() {
-		onSubscribe(Subscribers.NOOP_SUBSCRIPTION);
+		onSubscribe(NOOP_SUBSCRIPTION);
 		return this;
 	}
 
