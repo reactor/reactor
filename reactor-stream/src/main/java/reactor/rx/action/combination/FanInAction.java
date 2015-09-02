@@ -18,11 +18,12 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.processor.BaseProcessor;
+import reactor.core.error.Exceptions;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
+import reactor.rx.subscription.PushSubscription;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,16 +61,35 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		super();
 		this.publishers = publishers;
 
-		this.upstreamSubscription = this.innerSubscriptions = createFanInSubscription();
+		this.innerSubscriptions = createFanInSubscription();
 		if (publishers != null) {
 			FanInSubscription.RUNNING_COMPOSABLE_UPDATER.set(innerSubscriptions, publishers.size());
+			this.upstreamSubscription = innerSubscriptions;
 		}
 	}
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
 		super.subscribe(subscriber);
-		doOnSubscribe(innerSubscriptions);
+		if(dynamicMergeAction == null){
+			start();
+		}
+	}
+
+	@Override
+	protected void subscribeWithSubscription(Subscriber<? super O> subscriber, PushSubscription<O> subscription) {
+		try {
+			if (!addSubscription(subscription)) {
+				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
+			} else {
+				subscription.markAsDeferredStart();
+				if (dynamicMergeAction == null || status.get() == RUNNING) {
+					subscription.start();
+				}
+			}
+		} catch (Exception e) {
+			Exceptions.<O>publisher(e).subscribe(subscriber);
+		}
 	}
 
 	public void addPublisher(Publisher<? extends I> publisher) {
@@ -97,12 +117,14 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		return dynamicMergeAction;
 	}
 
-	@Override
-	protected void doOnSubscribe(Subscription subscription) {
+	public void start() {
 		if (status.compareAndSet(NOT_STARTED, RUNNING)) {
 			innerSubscriptions.maxCapacity(capacity);
 			if (publishers != null) {
 				capacity(initUpstreamPublisherAndCapacity());
+			}
+			if(publishers == null) {
+				onSubscribe(innerSubscriptions);
 			}
 		}
 	}
@@ -207,8 +229,9 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 					pendingRequests = 1;
 				}
 			} else {
-				pendingRequests =
-				  toRequest / Math.max(outerAction.innerSubscriptions.runningComposables, 1);
+				pendingRequests = toRequest != 0 ?
+				  Math.max(1, toRequest / Math.max(outerAction.innerSubscriptions.runningComposables, 1)) :
+				0;
 			}
 		}
 

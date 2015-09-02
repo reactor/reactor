@@ -94,7 +94,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	private final BufferedSignal<O> lastSignal = new BufferedSignal<O>(null);
 
 	private BehaviorBroadcaster(Timer timer, O defaultVal) {
-		super(timer);
+		super(timer, false);
 		if (defaultVal != null) {
 			lastSignal.type = Signal.Type.NEXT;
 			lastSignal.value = defaultVal;

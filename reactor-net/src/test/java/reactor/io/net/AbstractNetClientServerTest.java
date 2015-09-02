@@ -218,6 +218,6 @@ public class AbstractNetClientServerTest {
 	static {
 		System.setProperty("reactor.tcp.selectThreadCount", "2");
 		System.setProperty("reactor.tcp.ioThreadCount", "4");
-		System.setProperty("eactor.tcp.connectionReactorBacklog", "128");
+		System.setProperty("reactor.tcp.connectionReactorBacklog", "128");
 	}
 }

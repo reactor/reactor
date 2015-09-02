@@ -17,6 +17,7 @@ package reactor.core.subscriber;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.support.Subscribable;
 
@@ -88,6 +89,7 @@ public class SubscriberWithContext<T, C> implements Subscriber<T>, Subscribable<
 		try {
 			subscriber.onNext(t);
 		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(Exceptions.addValueAsLastCause(throwable, t));
 		}
 	}

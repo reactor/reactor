@@ -125,16 +125,15 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		cancel();
+		recycle();
 		requestMapperStream.onError(ev);
 		super.doError(ev);
 	}
 
 	@Override
 	protected void doShutdown() {
-		cancel();
-		requestMapperStream.onComplete();
 		super.doShutdown();
+		requestMapperStream.onComplete();
 	}
 
 	@Override
@@ -175,6 +174,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 			if(upstreamSubscription != null) {
 				upstreamSubscription.request(n);
 			}
+			Subscription s = this.s;
 			if (s != null) {
 				s.request(1l);
 			}
@@ -182,17 +182,13 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 
 		@Override
 		public void onError(Throwable t) {
-			if (s != null) {
-				s.cancel();
-			}
+			s = null;
 			Exceptions.throwIfFatal(t);
 		}
 
 		@Override
 		public void onComplete() {
-			if (s != null) {
-				s.cancel();
-			}
+			s = null;
 		}
 
 		@Override

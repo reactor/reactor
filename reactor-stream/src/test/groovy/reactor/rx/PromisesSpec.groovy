@@ -18,6 +18,7 @@ package reactor.rx
 import reactor.Processors
 import reactor.bus.EventBus
 import reactor.bus.selector.Selectors
+import reactor.core.error.CancelException
 import reactor.rx.broadcast.Broadcaster
 import spock.lang.Shared
 import spock.lang.Specification
@@ -463,8 +464,8 @@ class PromisesSpec extends Specification {
 			promise.onNext 1
 
 		then:
-			"an IllegalStateException is thrown"
-			thrown(IllegalStateException)
+			"an CancelException is thrown"
+			thrown(CancelException)
 	}
 
 	def "An IllegalStateException is thrown if an attempt is made to reject a rejected promise"() {
@@ -479,7 +480,7 @@ class PromisesSpec extends Specification {
 
 		then:
 			"an IllegalStateException is thrown"
-			thrown(IllegalStateException)
+			thrown(CancelException)
 	}
 
 	def "An IllegalStateException is thrown if an attempt is made to reject a fulfilled promise"() {
@@ -494,7 +495,7 @@ class PromisesSpec extends Specification {
 
 		then:
 			"an IllegalStateException is thrown"
-			thrown(IllegalStateException)
+			thrown(CancelException)
 	}
 
 	def "Multiple promises can be combined"() {

@@ -64,7 +64,7 @@ public class SmokeTests {
 	private final AtomicInteger integerPostTake    = new AtomicInteger();
 	private final AtomicInteger integerPostConcat  = new AtomicInteger();
 
-	private final int     count           = 100_000_000;
+	private final int     count           = 20_000_000;
 	private final int     threads         = 6;
 	private final int     iter            = 20;
 	private final int     windowBatch     = 200;

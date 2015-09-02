@@ -88,7 +88,7 @@ public class HashWheelTimer implements Timer {
 	 */
 	public HashWheelTimer(int res, int wheelSize, WaitStrategy waitStrategy) {
 		this(DEFAULT_TIMER_NAME, res, wheelSize, waitStrategy, Executors.newFixedThreadPool(1, new
-		  NamedDaemonThreadFactory(DEFAULT_TIMER_NAME + "-run")));
+		  NamedDaemonThreadFactory(DEFAULT_TIMER_NAME + "-run", null)));
 	}
 
 	/**

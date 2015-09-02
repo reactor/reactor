@@ -378,6 +378,8 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 			} else {
 				subscriber.onError((Throwable) payload);
 			}
+		} catch (CancelException c){
+			//IGNORE
 		} catch (Throwable t) {
 			if (type != SignalType.ERROR) {
 				Exceptions.throwIfFatal(t);
@@ -793,8 +795,9 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 
 		@Override
 		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return service != null && service.managedProcessor != null && service.managedProcessor.isExposedToOverflow
-			  (parentPublisher);
+			Subscriber sub = subscriber;
+			return sub != null && Bounded.class.isAssignableFrom(sub.getClass()) &&
+			  ((Bounded)sub).isExposedToOverflow(parentPublisher);
 		}
 
 		@Override

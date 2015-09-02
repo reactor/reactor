@@ -36,12 +36,11 @@ final public class IgnoreErrorAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	protected void doError(Throwable cause) {
+	public void onError(Throwable cause) {
 		if (!ignorePredicate.test(cause)) {
-			super.doError(cause);
+			super.onError(cause);
 		}else{
-			doComplete();
+			onComplete();
 		}
 	}
 

@@ -84,7 +84,7 @@ public final class Subscribers extends SubscriberFactory {
 	 * @param <I>
 	 * @return
 	 */
-	public <I, E extends Subscriber<I>> E start(E subscriber) {
+	public static <I, E extends Subscriber<I>> E start(E subscriber) {
 		subscriber.onSubscribe(BaseSubscriber.NOOP_SUBSCRIPTION);
 		return subscriber;
 	}

@@ -95,13 +95,6 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public void testMerge1ToN() throws Exception {
 		final int n = 1000;
 
-		LOG.info(Streams.just(1).map(new Function<Integer, Object>() {
-			@Override
-			public Object apply(Integer integer) {
-				return integer;
-			}
-		}).consume().debug().toString());
-
 
 		Stream<Long> stream = Streams.merge(
 		  Streams.just(1)

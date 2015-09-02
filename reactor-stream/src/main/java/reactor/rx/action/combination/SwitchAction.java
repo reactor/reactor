@@ -23,7 +23,6 @@ import reactor.core.error.Exceptions;
 import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.Bounded;
 import reactor.rx.action.Action;
-import reactor.rx.broadcast.Broadcaster;
 
 /**
  * @author Stephane Maldini
@@ -78,7 +77,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 			subscriber.cancel();
 		}
 
-		if (upstreamSubscription != Broadcaster.HOT_SUBSCRIPTION) {
+		if (upstreamSubscription != HOT_SUBSCRIPTION) {
 			super.cancel();
 		}
 	}

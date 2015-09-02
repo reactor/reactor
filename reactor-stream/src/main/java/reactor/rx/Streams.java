@@ -31,7 +31,6 @@ import reactor.fn.tuple.*;
 import reactor.rx.action.Action;
 import reactor.rx.action.combination.*;
 import reactor.rx.action.support.DefaultSubscriber;
-import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.*;
 
 import java.util.ArrayList;
@@ -301,7 +300,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> timer(long delay) {
-		return timer(Timers.globalOrNull(), delay, TimeUnit.SECONDS);
+		return timer(Timers.globalOrNew(), delay, TimeUnit.SECONDS);
 	}
 
 
@@ -325,7 +324,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> timer(long delay, TimeUnit unit) {
-		return new SingleTimerStream(delay, unit, Timers.globalOrNull());
+		return timer(Timers.globalOrNew(), delay, unit);
 	}
 
 	/**
@@ -428,7 +427,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long delay, long period, TimeUnit unit) {
-		return period(Timers.globalOrNull(), delay, period, unit);
+		return period(Timers.globalOrNew(), delay, period, unit);
 	}
 
 	/**
@@ -632,7 +631,7 @@ public class Streams {
 	 */
 	public static <T> Action<Publisher<? extends T>, T> switchOnNext() {
 		SwitchAction<T> switchAction = new SwitchAction<>();
-		switchAction.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
+		switchAction.onSubscribe(Action.HOT_SUBSCRIPTION);
 		return switchAction;
 	}
 
@@ -906,7 +905,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T, E extends T> Stream<E> merge(Publisher<? extends Publisher<E>> mergedPublishers) {
-		final Action<Publisher<? extends E>, E> mergeAction = new DynamicMergeAction<E, E>(null);
+		final Action<Publisher<? extends E>, E> mergeAction = new DynamicMergeAction<>();
 
 		mergedPublishers.subscribe(mergeAction);
 		return mergeAction;
@@ -1866,19 +1865,21 @@ public class Streams {
 
 			@Override
 			public void onError(Throwable throwable) {
+				s = null;
 				exception.set(throwable);
-				cancel();
 				latch.countDown();
 			}
 
 			@Override
 			public void onComplete() {
-				cancel();
+				s = null;
 				latch.countDown();
 			}
 
 			void cancel() {
+				Subscription s = this.s;
 				if (s != null) {
+					this.s = null;
 					try {
 						s.cancel();
 					} catch (Throwable t) {

@@ -34,8 +34,8 @@ public abstract class AbstractReactorTest {
 	@BeforeClass
 	public static void loadEnv() {
 		timer = Timers.global();
-		workService = Processors.workService("work", 2048, 8, Throwable::printStackTrace, null, false);
-		asyncService = Processors.asyncService("async", 2048, 8, Throwable::printStackTrace, null, false);
+		workService = Processors.workService("work", 2048, 4, Throwable::printStackTrace, null, false);
+		asyncService = Processors.asyncService("async", 2048, 4, Throwable::printStackTrace, null, false);
 	}
 
 	@AfterClass

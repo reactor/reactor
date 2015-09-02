@@ -18,6 +18,7 @@ package reactor.core.publisher;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.Assert;
@@ -383,7 +384,9 @@ public abstract class PublisherFactory {
 		public void onError(Throwable t) {
 			if (TERMINAL_UPDATER.compareAndSet(this, 0, 1)) {
 				doShutdown();
-				subscriber.onError(t);
+				if(CancelException.class != t.getClass()) {
+					subscriber.onError(t);
+				}
 			}
 		}
 

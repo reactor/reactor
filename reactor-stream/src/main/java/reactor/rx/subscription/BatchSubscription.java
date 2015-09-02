@@ -35,6 +35,7 @@ public final class BatchSubscription<T> extends WrappedSubscription<T> {
 
 	@Override
 	public void request(long n) {
+		n = batchSize == Integer.MAX_VALUE ? Long.MAX_VALUE : n;
 		if (pushSubscription != null) {
 			if (n == Long.MAX_VALUE) {
 				pushSubscription.request(Long.MAX_VALUE);
