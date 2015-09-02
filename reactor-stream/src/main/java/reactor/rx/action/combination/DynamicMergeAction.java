@@ -42,6 +42,10 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 			.newUpdater(DynamicMergeAction.class, "requested");
 
 
+	public DynamicMergeAction(){
+		this(null);
+	}
+
 	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
 			FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction
@@ -83,6 +87,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	@Override
 	public void onSubscribe(Subscription subscription) {
 		super.onSubscribe(subscription);
+		fanInAction.start();
 		long toRequest = REQUESTED_UPDATER.getAndSet(this, 0l);
 		if(toRequest > 0l){
 			requestMore(toRequest);

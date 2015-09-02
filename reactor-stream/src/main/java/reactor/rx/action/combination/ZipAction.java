@@ -61,12 +61,14 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
     }
 
     @Override
-    protected void doOnSubscribe(Subscription subscription) {
+    public void start() {
         if (status.compareAndSet(NOT_STARTED, RUNNING)) {
             if (publishers != null) {
                 for (Publisher<? extends O> publisher : publishers) {
                     addPublisher(publisher);
                 }
+            } else {
+                onSubscribe(innerSubscriptions);
             }
         }
     }
@@ -87,8 +89,8 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
             if (res != null) {
                 broadcastNext(res);
 
-                if (!isFinishing && upstreamSubscription.pendingRequestSignals() > 0) {
-                    upstreamSubscription.accept(capacity);
+                if (!isFinishing && innerSubscriptions.pendingRequestSignals() > 0) {
+                    innerSubscriptions.accept(capacity);
                 }
             }
         }
@@ -188,7 +190,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
             if (pendingRequests > 0) {
                 pendingRequests = 0;
-                request(1);
+                request(newSize);
             }
             if (outerAction.dynamicMergeAction != null) {
                 outerAction.dynamicMergeAction.decrementWip();

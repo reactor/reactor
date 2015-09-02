@@ -15,6 +15,7 @@
  */
 package reactor.reactivestreams.tck;
 
+import org.junit.Test;
 import reactor.Processors;
 import reactor.core.processor.ProcessorService;
 import reactor.fn.tuple.Tuple1;
@@ -41,7 +42,7 @@ public class StreamAndProcessorServiceTests extends AbstractStreamVerification {
 		  Processors.asyncService("stream-tck", bufferSize, 4, Throwable::printStackTrace);
 
 		return Broadcaster.<Integer>
-		  create()
+		  passthrough()
 		  .run(asyncService)
 		  .partition(2)
 		  .flatMap(stream -> stream
@@ -62,4 +63,15 @@ public class StreamAndProcessorServiceTests extends AbstractStreamVerification {
 		  .combine();
 	}
 
+	@Override
+	@Test
+	public void testHotIdentityProcessor() throws InterruptedException {
+		super.testHotIdentityProcessor();
+	}
+
+	@Override
+	@Test
+	public void testColdIdentityProcessor() throws InterruptedException {
+		super.testColdIdentityProcessor();
+	}
 }

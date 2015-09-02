@@ -70,12 +70,15 @@ public class ScanByKeyAction<K, V> extends Action<Tuple2<K, V>, Tuple2<K, V>> {
 				PushSubscription<Tuple2<K, V>> child;
 
 				@Override
-				public void onSubscribe(final Subscription s) {
-					this.s = s;
+				public void onSubscribe(final Subscription sub) {
+					this.s = sub;
 					child = new PushSubscription<Tuple2<K, V>>(ScanByKeyAction.this, subscriber) {
 						@Override
 						protected void onRequest(long elements) {
-							s.request(elements);
+							Subscription _s = s;
+							if(_s != null) {
+								_s.request(elements);
+							}
 							if (upstreamSubscription == null) {
 								updatePendingRequests(elements);
 							} else {
@@ -86,7 +89,11 @@ public class ScanByKeyAction<K, V> extends Action<Tuple2<K, V>, Tuple2<K, V>> {
 						@Override
 						public void cancel() {
 							super.cancel();
-							s.cancel();
+							Subscription _s = s;
+							if(_s != null) {
+								s = null;
+								_s.cancel();
+							}
 						}
 					};
 
@@ -103,9 +110,7 @@ public class ScanByKeyAction<K, V> extends Action<Tuple2<K, V>, Tuple2<K, V>> {
 
 				@Override
 				public void onError(Throwable t) {
-					if (s != null) {
-						s.cancel();
-					}
+					s = null;
 					if (child != null) {
 						child.onError(t);
 					}
@@ -113,9 +118,7 @@ public class ScanByKeyAction<K, V> extends Action<Tuple2<K, V>, Tuple2<K, V>> {
 
 				@Override
 				public void onComplete() {
-					if (s != null) {
-						s.cancel();
-					}
+					s = null;
 					if (child != null) {
 						child.onComplete();
 					}

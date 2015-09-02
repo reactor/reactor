@@ -49,7 +49,7 @@ class StreamsSpec extends Specification {
 
 	def cleanupSpec() {
 		Timers.unregisterGlobal()
-		asyncService.shutdown()
+		asyncService.forceShutdown()
 		asyncService = null
 	}
 
@@ -236,8 +236,8 @@ class StreamsSpec extends Specification {
 			def res
 			def result = []
 
-			while ( res = queue.take() ) {
-					result << res
+			while (res = queue.take()) {
+				result << res
 			}
 
 		then:
@@ -339,8 +339,8 @@ class StreamsSpec extends Specification {
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
 					.log()
-					.run(Processors.workService("work", 8, 4))
 					.run(asyncService)
+					.run(Processors.workService("work", 8, 4))
 					.log()
 					.next()
 
@@ -363,14 +363,15 @@ class StreamsSpec extends Specification {
 			s
 					.take(4, TimeUnit.SECONDS)
 					.run(Processors.workService("work", 8, 4))
-					.consume({
-				i++
-			}, null, {
-				last.onNext(i)
-			})
+					.last()
+					.consume(
+							{ i = it },
+							{ it.printStackTrace() },
+							{ last.onNext(i) }
+					)
 
 		then:
-			last.await(5, TimeUnit.SECONDS) > 20_000
+			last.await() > 20_000
 	}
 
 	def 'A Stream can be enforced to dispatch values distinct from their immediate predecessors'() {
@@ -597,6 +598,7 @@ class StreamsSpec extends Specification {
 					.observe { if (it > 1) throw new RuntimeException() }
 					.observeError(RuntimeException) { data, error -> res << data }
 					.retry()
+					.log()
 					.consume()
 			println tail.debug()
 
@@ -1866,7 +1868,6 @@ class StreamsSpec extends Specification {
 
 					@Override
 					void cancel() {
-						terminated = true
 					}
 				})
 			}.log()
@@ -1879,7 +1880,6 @@ class StreamsSpec extends Specification {
 		then:
 			'dispatching works'
 			res == [1, 2, 3]
-			terminated
 	}
 
 	def 'Creating Stream from Timer'() {
@@ -2169,6 +2169,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'last value known is 5 and stream is in error state'
+			thrown CancelException
 			error in TimeoutException
 			value.get() == 5
 	}
@@ -2199,6 +2200,7 @@ class StreamsSpec extends Specification {
 		then:
 			'last value known is 10 as the stream has used its fallback'
 			!error
+			thrown CancelException
 			value.get() == 10
 	}
 
@@ -2907,6 +2909,7 @@ class StreamsSpec extends Specification {
 		then:
 			'the second is the last available'
 			value2.get() == 'test1'
+			thrown CancelException
 	}
 
 

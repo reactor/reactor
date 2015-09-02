@@ -16,6 +16,7 @@
 package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
@@ -49,7 +50,7 @@ public class CacheAction<T> extends Action<T, T> {
 					}
 				}
 
-				if(upstream != null) {
+				if (upstream != null) {
 					upstreamSubscription.request(elem);
 					return;
 				}
@@ -59,11 +60,11 @@ public class CacheAction<T> extends Action<T, T> {
 				synchronized (values) {
 					if (cursor < values.size()) {
 						toSend = elem == Long.MAX_VALUE ? new ArrayList<>(values) :
-								values.subList(cursor, Math.max(cursor + elem.intValue(), values.size()));
+						  values.subList(cursor, Math.max(cursor + elem.intValue(), values.size()));
 					}
 				}
 
-				if(toSend != null) {
+				if (toSend != null) {
 
 					for (Signal<T> signal : toSend) {
 						cursor++;
@@ -82,8 +83,8 @@ public class CacheAction<T> extends Action<T, T> {
 
 
 				if (toRequest > 0 && upstreamSubscription != null) {
-						upstreamSubscription.request(toRequest);
-					}
+					upstreamSubscription.request(toRequest);
+				}
 			}
 		};
 
@@ -135,7 +136,7 @@ public class CacheAction<T> extends Action<T, T> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		synchronized (values){
+		synchronized (values) {
 			values.add(Signal.<T>error(ev));
 		}
 		super.doError(ev);
@@ -146,6 +147,10 @@ public class CacheAction<T> extends Action<T, T> {
 		synchronized (values) {
 			values.add(Signal.next(value));
 		}
-		broadcastNext(value);
+		try {
+			broadcastNext(value);
+		} catch (CancelException c) {
+			//ignore since cached
+		}
 	}
 }

@@ -80,6 +80,7 @@ public final class SingleTimerStream extends Stream<Long> {
 			public void accept(Long aLong) {
 				subscriber.onNext(0l);
 				subscriber.onComplete();
+				timer.cancel();
 			}
 		}, delay, unit);
 
@@ -90,6 +91,7 @@ public final class SingleTimerStream extends Stream<Long> {
 		@Override
 		public void cancel() {
 			registration.cancel();
+			timer.cancel();
 			super.cancel();
 		}
 	}

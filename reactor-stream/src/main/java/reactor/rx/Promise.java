@@ -20,6 +20,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
@@ -29,7 +30,6 @@ import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.BehaviorBroadcaster;
-import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -157,7 +157,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 			lock.unlock();
 		}
 
-		return stream().lift(new Supplier<Action<O, O>>() {
+		return stream().liftAction(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
 				return new Action<O, O>() {
@@ -573,6 +573,8 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 					outboundStream.onComplete();
 				} else if (isError()) {
 					outboundStream.onError(error);
+				} else if ( subscription != null){
+					outboundStream.onSubscribe(subscription);
 				}
 			}
 
@@ -594,7 +596,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	@Override
 	public void onSubscribe(Subscription subscription) {
 		this.subscription = subscription;
-		subscription.request(Long.MAX_VALUE);
+		subscription.request(1L);
 	}
 
 	@Override
@@ -631,18 +633,13 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 		lock.lock();
 		try {
 			if (!isPending()) {
-				if (isSuccess())
-					throw new IllegalStateException(finalState.toString() + " : " + value, error);
-				else
-					throw new IllegalStateException(finalState.toString(), error);
+				throw CancelException.get();
 			}
 
 			this.error = error;
 			this.finalState = FinalState.ERROR;
 
-			if (subscription != null) {
-				subscription.cancel();
-			}
+			subscription = null;
 
 			if (outboundStream != null) {
 				outboundStream.onError(error);
@@ -661,20 +658,13 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 		lock.lock();
 		try {
 			if (!isPending()) {
-				if (isError())
-					throw new IllegalStateException(value + " >> " + finalState.toString(), error);
-				else if (isSuccess())
-					throw new IllegalStateException(value + " >> " + finalState.toString() + " : " + value);
-				else
-					throw new IllegalStateException(value + " >> " + finalState.toString());
+				throw CancelException.get();
 			}
 			this.value = value;
 			this.finalState = FinalState.COMPLETE;
 
 
-			if (subscription != null) {
-				subscription.cancel();
-			}
+			subscription = null;
 
 			if (outboundStream != null) {
 				if (value != null) {
@@ -699,10 +689,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 				valueAccepted(null);
 			}
 
-			if (subscription != null) {
-				subscription.cancel();
-				subscription = null;
-			}
+			subscription = null;
 		} finally {
 			lock.unlock();
 		}

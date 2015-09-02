@@ -70,7 +70,19 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public abstract class Action<I, O> extends Stream<O>
   implements Processor<I, O>, Consumer<I>, Recyclable, Control, Publishable<I> {
 
-	public static final int NO_CAPACITY = -1;
+	public static final int          NO_CAPACITY      = -1;
+	@SuppressWarnings("unchecked")
+	static public final Subscription HOT_SUBSCRIPTION = new PushSubscription(null, null) {
+		@Override
+		public void request(long n) {
+			//IGNORE
+		}
+
+		@Override
+		public void cancel() {
+			//IGNORE
+		}
+	};
 
 	/**
 	 * The upstream request tracker to avoid dispatcher overrun, based on the current {@link this#capacity}
@@ -116,8 +128,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 			boolean isReactiveCapacity = null == asyncSubscriber || asyncSubscriber.isExposedToOverflow(this);
 
-			final PushSubscription<O> subscription = createSubscription(subscriber,
-			  isReactiveCapacity);
+			final PushSubscription<O> subscription = createSubscription(subscriber, isReactiveCapacity);
 
 			if (subscription == null)
 				return;
@@ -269,11 +280,14 @@ public abstract class Action<I, O> extends Stream<O>
 			}
 		}*/
 
-		if (downstreamSubscription == null) {
+		PushSubscription<O> down = downstreamSubscription;
+
+		if (down == null) {
 			throw ReactorFatalException.create(throwable);
 		}
 
-		downstreamSubscription.onError(throwable);
+		downstreamSubscription = null;
+		down.onError(throwable);
 	}
 
 	/**
@@ -284,12 +298,14 @@ public abstract class Action<I, O> extends Stream<O>
 	 */
 	protected void broadcastComplete() {
 		//log.debug("event [complete] by: " + getClass().getSimpleName());
-		if (downstreamSubscription == null) {
+		PushSubscription<O> down = downstreamSubscription;
+		if (down == null) {
 			return;
 		}
 
 		try {
-			downstreamSubscription.onComplete();
+			downstreamSubscription = null;
+			down.onComplete();
 		} catch (Throwable throwable) {
 			doError(throwable);
 		}
@@ -304,7 +320,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	public void cancel() {
 		PushSubscription<I> parentSub = upstreamSubscription;
-		if (parentSub != null) {
+		if (parentSub != null && parentSub != HOT_SUBSCRIPTION) {
 			upstreamSubscription = null;
 			parentSub.cancel();
 		}
@@ -360,7 +376,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public final Stream<O> onOverflowBuffer(final Supplier<? extends Queue<O>> queueSupplier) {
-		return lift(new Supplier<Action<O, O>>() {
+		return liftAction(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
 				Broadcaster<O> newStream = Broadcaster.<O>create(getTimer()).capacity(capacity);
@@ -385,7 +401,7 @@ public abstract class Action<I, O> extends Stream<O>
 	@Override
 	public final <E> CompositeAction<E, O> combine() {
 		final Action<E, ?> subscriber = (Action<E, ?>) findOldestUpstream(this, Action.class);
-		subscriber.upstreamSubscription = null;
+		subscriber.cancel();
 		return new CompositeAction<E, O>(subscriber, this);
 	}
 
@@ -446,7 +462,7 @@ public abstract class Action<I, O> extends Stream<O>
 		P next, last = null;
 		Publishable<?> traversed = mostRightOp;
 
-		if(clazz.isAssignableFrom(mostRightOp.getClass())){
+		if (clazz.isAssignableFrom(mostRightOp.getClass())) {
 			last = (P) mostRightOp;
 		}
 
@@ -502,7 +518,10 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public boolean cancelSubscription(final PushSubscription<O> subscription) {
-		if (this.downstreamSubscription == null) return false;
+		if (this.downstreamSubscription == null){
+			cancel();
+			return false;
+		}
 
 		if (subscription == this.downstreamSubscription) {
 			this.downstreamSubscription = null;
@@ -578,10 +597,11 @@ public abstract class Action<I, O> extends Stream<O>
 	abstract protected void doNext(I ev);
 
 	protected void doError(Throwable ev) {
-		if (downstreamSubscription != null) {
+		PushSubscription<O> down = downstreamSubscription;
+		if (down != null) {
 			try {
-				downstreamSubscription.onError(ev);
-				return;
+				downstreamSubscription = null;
+				down.onError(ev);
 			} catch (Throwable t) {
 				Exceptions.throwIfFatal(t);
 				throw ReactorFatalException.create(t);
@@ -604,7 +624,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * Subscribe a given subscriber and pairs it with a given subscription instead of letting the Stream pick it
 	 * automatically.
 	 * <p>
-	 * This is mainly useful for libraries implementors, usually {@link this#lift(reactor.fn.Supplier)} and
+	 * This is mainly useful for libraries implementors, usually {@link this#liftAction(reactor.fn.Supplier)} and
 	 * {@link this#subscribe(org.reactivestreams.Subscriber)} are just fine.
 	 *
 	 * @param subscriber
@@ -675,8 +695,10 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void recycle() {
+		if(HOT_SUBSCRIPTION != upstreamSubscription) {
+			upstreamSubscription = null;
+		}
 		downstreamSubscription = null;
-		upstreamSubscription = null;
 	}
 
 	@Override

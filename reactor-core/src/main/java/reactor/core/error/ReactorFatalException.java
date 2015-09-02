@@ -22,7 +22,7 @@ package reactor.core.error;
  * @since 2.0.2
  */
 public class ReactorFatalException extends RuntimeException {
-	public static final ReactorFatalException INSTANCE = new ReactorFatalException(null);
+	public static final ReactorFatalException INSTANCE = new ReactorFatalException("Uncaught exception");
 
 	public static ReactorFatalException instance() {
 		return INSTANCE;
@@ -30,6 +30,10 @@ public class ReactorFatalException extends RuntimeException {
 
 	public static ReactorFatalException create(Throwable root) {
 		return new ReactorFatalException(root);
+	}
+
+	public ReactorFatalException(String message) {
+		super(message);
 	}
 
 	private ReactorFatalException(Throwable root) {

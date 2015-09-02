@@ -20,7 +20,7 @@ package reactor.core.error;
  *
  * @author Stephane Maldini
  */
-public final class CancelException extends RuntimeException {
+public final class CancelException extends ReactorFatalException {
 	public static final CancelException INSTANCE = new CancelException();
 
 	public static final boolean TRACE_CANCEL = Boolean.parseBoolean(System.getProperty("reactor.trace.cancel",

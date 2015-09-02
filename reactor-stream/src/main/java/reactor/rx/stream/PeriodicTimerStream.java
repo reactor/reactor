@@ -76,6 +76,11 @@ public final class PeriodicTimerStream extends Stream<Long> {
 		}
 	}
 
+	@Override
+	public Timer getTimer() {
+		return timer;
+	}
+
 	private class TimerSubscription extends PushSubscription<Long> {
 
 		long counter = 0l;
@@ -93,6 +98,7 @@ public final class PeriodicTimerStream extends Stream<Long> {
 		@Override
 		public void cancel() {
 			registration.cancel();
+			timer.cancel();
 			super.cancel();
 		}
 	}

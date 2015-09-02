@@ -383,7 +383,7 @@ public final class Promises {
 	@SuppressWarnings("unchecked")
 	public static <T> Promise<T> any(List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
-		return new MergeAction<T>(promises).next();
+		return new MergeAction<>(promises).next();
 	}
 
 

@@ -127,6 +127,13 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 	@Override
 	public void cancel() {
 		queue.clear();
+		ConcatInnerSubscriber subscriber = currentSubscriber;
+		if(subscriber != null){
+			Subscription s = subscriber.s;
+			if(s != null){
+				s.cancel();
+			}
+		}
 		super.cancel();
 	}
 
@@ -190,19 +197,13 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 
 		@Override
 		public void onError(Throwable e) {
-			Subscription s = this.s;
-			if(s != null){
-				s.cancel();
-			}
+			this.s = null;
 			ConcatAction.this.onError(e);
 		}
 
 		@Override
 		public void onComplete() {
-			Subscription s = this.s;
-			if(s != null) {
-				s.cancel();
-			}
+			this.s = null;
 			ConcatAction.this.completeInner();
 		}
 

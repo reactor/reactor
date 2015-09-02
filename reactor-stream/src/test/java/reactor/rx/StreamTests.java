@@ -32,6 +32,7 @@ import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
+import reactor.core.error.CancelException;
 import reactor.core.processor.ProcessorService;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.publisher.PublisherFactory;
@@ -293,7 +294,7 @@ public class StreamTests extends AbstractReactorTest {
 		deferred.onNext("alpha");
 		try {
 			deferred.onNext("bravo");
-		} catch (IllegalStateException ise) {
+		} catch (CancelException ise) {
 			// Swallow
 		}
 		assertEquals(deferred.get(), "alpha");
@@ -306,7 +307,7 @@ public class StreamTests extends AbstractReactorTest {
 		deferred.onError(error);
 		try {
 			deferred.onNext(error);
-		} catch (IllegalStateException ise) {
+		} catch (CancelException ise) {
 			// Swallow
 		}
 		assertTrue(deferred.reason() instanceof Exception);
@@ -320,7 +321,7 @@ public class StreamTests extends AbstractReactorTest {
 		try {
 			deferred.onNext("alpha");
 			fail();
-		} catch (IllegalStateException ise) {
+		} catch (CancelException ise) {
 		}
 		assertTrue(deferred.reason() instanceof Exception);
 	}
@@ -371,12 +372,13 @@ public class StreamTests extends AbstractReactorTest {
 	<T> void await(int count, final Stream<T> s, Matcher<T> expected) throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(count);
 		final AtomicReference<T> ref = new AtomicReference<T>();
-		Control control = s.when(Exception.class, e -> {
-			e.printStackTrace();
-			latch.countDown();
-		}).consume(t -> {
-			ref.set(t);
-			latch.countDown();
+		Control control = s
+		  .consume(t -> {
+			  ref.set(t);
+			  latch.countDown();
+		  }, t -> {
+			  t.printStackTrace();
+			  latch.countDown();
 		});
 
 		long startTime = System.currentTimeMillis();
@@ -489,6 +491,7 @@ public class StreamTests extends AbstractReactorTest {
 		long avgTime = 50l;
 
 		Promise<Long> result = source
+		  .onOverflowBuffer()
 		  .run(asyncService)
 		  .throttle(avgTime)
 		  .elapsed()
@@ -578,7 +581,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Promise<List<String>> promise =
 		  circuitSwitcher
-			.observe(d -> successes.incrementAndGet())
+		    .observe(d -> successes.incrementAndGet())
 			.when(Throwable.class, error -> failures.incrementAndGet())
 			.observeStart(s -> {
 				System.out.println("failures: " + failures + " successes:" + successes);
@@ -589,7 +592,8 @@ public class StreamTests extends AbstractReactorTest {
 					  .consume(ignore -> circuitSwitcher.onNext(closeCircuit));
 				}
 			})
-			.retry()
+		    .log()
+		    .retry()
 			.toList();
 
 		circuitSwitcher.onNext(closeCircuit);
@@ -1576,18 +1580,10 @@ public class StreamTests extends AbstractReactorTest {
 
 		// Chained calls don't work.
 		final Stream<String> observedSplitStream = splitStream
-		  .observe(s -> println("observedSplitStream#observe ", s))
-		  .observeComplete(Ø -> {
-			  println("observedSplitStream#observeComplete");
-			  doneSemaphore.release();
-		  })
-		  .observeError(
-		    Throwable.class,
-		    (Ø, t) -> println("observedSplitStream#observeError ", t.getMessage())
-		  );
+		  .log("splitStream");
 
-		final Promise<List<String>> listPromise = observedSplitStream.toList();
-		System.out.println(listPromise.debug());
+		final Promise<List<String>> listPromise = observedSplitStream.toList().onComplete( v -> doneSemaphore.release() );
+		System.out.println(forkBroadcaster.debug());
 
 
 		forkBroadcaster.onNext(1);
@@ -1596,7 +1592,7 @@ public class StreamTests extends AbstractReactorTest {
 		forkBroadcaster.onComplete();
 
 		listPromise.awaitSuccess(5, TimeUnit.SECONDS);
-		System.out.println(listPromise.debug());
+		System.out.println(forkBroadcaster.debug());
 		assertEquals(Arrays.asList("i0", "done1", "i0", "i1", "done2", "i0", "i1", "i2", "done3"), listPromise.get());
 	}
 

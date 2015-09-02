@@ -101,7 +101,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		cancel();
+		recycle();
 		if (errorConsumer != null) {
 			errorConsumer.accept(ev);
 		}else{
@@ -112,7 +112,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doComplete() {
-		cancel();
+		recycle();
 		if (completeConsumer != null) {
 			completeConsumer.accept(null);
 		}
@@ -126,11 +126,6 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 				//IGNORE
 			}
 		};
-	}
-
-	@Override
-	public boolean isExposedToOverflow(Bounded upstream) {
-		return upstream.getCapacity() != Long.MAX_VALUE && capacity != Long.MAX_VALUE;
 	}
 
 	@Override

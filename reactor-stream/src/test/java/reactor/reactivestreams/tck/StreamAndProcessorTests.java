@@ -38,12 +38,12 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		System.out.println("Providing new processor");
 
 		return Broadcaster.<Integer>
-		  create()
-		  .process(Processors.async("stream-raw-tck", bufferSize))
+		  passthrough()
+		  .process(Processors.async("stream-raw-fork", bufferSize))
 		  .partition(2)
 
 		  .flatMap(stream -> stream
-			  .process(Processors.async("stream-raw-tck", bufferSize))
+			  .process(Processors.async("stream-raw-flatmap", bufferSize))
 			  .observe(this::monitorThreadUse)
 			  .scan((prev, next) -> next)
 			  .map(integer -> -integer)
@@ -54,10 +54,19 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 			  .<Integer>split()
 			  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 		  )
-		  .process(Processors.async("stream-raw-tck", bufferSize))
+		  .process(Processors.async("stream-raw-join", bufferSize))
 		  //.log("end")
 		  .when(Throwable.class, Throwable::printStackTrace)
 		  .combine();
 	}
 
+	@Override
+	public void testHotIdentityProcessor() throws InterruptedException {
+		super.testHotIdentityProcessor();
+	}
+
+	@Override
+	public void testColdIdentityProcessor() throws InterruptedException {
+		super.testColdIdentityProcessor();
+	}
 }
