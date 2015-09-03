@@ -114,7 +114,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	 * @return the acknowledgement publisher from {@link #writeWith(Publisher)}
 	 */
 	final public Stream<Void> writeBufferWith(Publisher<? extends Buffer> source) {
-		Stream<OUT> encodedSource = Streams.create(source).map(new Function<Buffer, OUT>() {
+		Stream<OUT> encodedSource = Streams.wrap(source).map(new Function<Buffer, OUT>() {
 			@Override
 			@SuppressWarnings("unchecked")
 			public OUT apply(Buffer data) {
