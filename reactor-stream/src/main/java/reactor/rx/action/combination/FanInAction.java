@@ -272,7 +272,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				left = left < 0l ? 0l : left;
 
 				outerAction.innerSubscriptions.remove(sequenceId);
-				if (pendingRequests > 0) {
+				if (outerAction.innerSubscriptions.pendingRequestSignals() != Long.MAX_VALUE && pendingRequests > 0) {
 					outerAction.requestMore(pendingRequests);
 				}
 				if (left == 0 && !outerAction.checkDynamicMerge()) {
