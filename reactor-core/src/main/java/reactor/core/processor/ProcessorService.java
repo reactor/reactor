@@ -33,7 +33,7 @@ import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.timer.GlobalTimer;
 import reactor.fn.timer.Timer;
-import reactor.jarjar.com.lmax.disruptor.RingBuffer;
+import reactor.core.processor.rb.disruptor.RingBuffer;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -978,7 +978,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 			if (uncaughtExceptionHandler != null) {
 				uncaughtExceptionHandler.accept(t);
 			}
-			throw new UnsupportedOperationException("No error handler provided for this exception", t);
+			throw new UnsupportedOperationException("No error handler provided for this ProcessorService", t);
 		}
 
 		@Override

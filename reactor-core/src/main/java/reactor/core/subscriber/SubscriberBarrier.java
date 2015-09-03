@@ -18,6 +18,7 @@ package reactor.core.subscriber;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Bounded;
@@ -33,7 +34,8 @@ import reactor.core.support.Subscribable;
  * @author Stephane Maldini
  * @since 2.0.4
  */
-public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription, Bounded, Subscribable<O>, Publishable<I> {
+public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription, Bounded, Subscribable<O>,
+  Publishable<I> {
 
 	protected final Subscriber<? super O> subscriber;
 
@@ -79,6 +81,13 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 		super.onNext(i);
 		try {
 			doNext(i);
+		} catch (CancelException c) {
+			Subscription s = this.subscription;
+			if (s != null) {
+				cancel();
+			} else {
+				throw c;
+			}
 		} catch (Throwable throwable) {
 			doError(throwable);
 		}

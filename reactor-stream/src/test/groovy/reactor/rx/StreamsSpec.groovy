@@ -49,7 +49,7 @@ class StreamsSpec extends Specification {
 
 	def cleanupSpec() {
 		Timers.unregisterGlobal()
-		asyncService.forceShutdown()
+		asyncService.shutdown()
 		asyncService = null
 	}
 
@@ -338,7 +338,6 @@ class StreamsSpec extends Specification {
 			'the most recent value is retrieved'
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
-					.log()
 					.run(asyncService)
 					.run(Processors.workService("work", 8, 4))
 					.log()
@@ -346,9 +345,6 @@ class StreamsSpec extends Specification {
 
 		then:
 			last.await(5, TimeUnit.SECONDS) > 20_000
-
-		cleanup:
-			println last.debug()
 	}
 
 	def 'A Stream can sample values over time with consumeOn'() {

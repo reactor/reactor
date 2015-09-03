@@ -29,7 +29,6 @@ ext {
 	logbackVersion = '1.1.2'
 
 	// Libraries
-	disruptorVersion = '3.3.2'
 	gsCollectionsVersion = '5.1.0'
 	nettyVersion = '4.0.27.Final'
 	jeromqVersion = '0.3.4'
@@ -203,31 +202,7 @@ project('reactor-core') {
 		useTestNG()
 	}
 
-	task disruptorRepackJar(type: Jar) { repackJar ->
-		repackJar.baseName = "reactor-disruptor-repack"
-		repackJar.version = disruptorVersion
-
-		doLast() {
-			project.ant {
-				taskdef name: "jarjar", classname: "com.tonicsystems.jarjar.JarJarTask",
-						classpath: configurations.jarjar.asPath
-				jarjar(destfile: repackJar.archivePath) {
-					configurations.disruptor.each { originalJar ->
-						zipfileset(src: originalJar)
-					}
-					rule(pattern: "com.lmax.disruptor.**", result: "reactor.jarjar.com.lmax.disruptor.@1")
-				}
-			}
-		}
-	}
-
 	dependencies {
-		jarjar("com.googlecode.jarjar:jarjar:1.3")
-
-		// High-speed Dispatching
-		disruptor "com.lmax:disruptor:$disruptorVersion@jar"
-		compile(files(disruptorRepackJar))
-
 		// Reactive Streams
 		compile "org.reactivestreams:reactive-streams:1.0.0"
 
@@ -238,12 +213,6 @@ project('reactor-core') {
 		manifest {
 			instruction 'Import-Package', bundleImportPackages.join(',')
 		}
-
-		dependsOn disruptorRepackJar
-		from(zipTree(disruptorRepackJar.archivePath)) {
-			include "reactor/jarjar/com/lmax/disruptor/**"
-		}
-
 	}
 
 }
@@ -362,8 +331,6 @@ project('reactor-net') {
 		compile project(':reactor-stream')
 		compile project(':reactor-codec')
 
-		compile(files(project(":reactor-core").disruptorRepackJar))
-
 		optional "io.netty:netty-all:$nettyVersion"
 
 		optional "org.zeromq:jeromq:$jeromqVersion",
@@ -390,7 +357,6 @@ project('reactor-alloc') {
 	description = 'Pooling utilities'
 
 	dependencies {
-		compile(files(project(":reactor-core").disruptorRepackJar))
 		compile project(':reactor-core')
 
 		optional project(':reactor-bus')
@@ -423,7 +389,6 @@ project('reactor-logback') {
 	ext.baseName = "${archivesBaseName}-${version}"
 
 	dependencies {
-		compile(files(project(":reactor-core").disruptorRepackJar))
 		compile project(':reactor-core')
 
 		compile "ch.qos.logback:logback-classic:$logbackVersion",

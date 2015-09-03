@@ -22,8 +22,8 @@ import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
-import reactor.jarjar.com.lmax.disruptor.EventFactory;
-import reactor.jarjar.com.lmax.disruptor.RingBuffer;
+import reactor.core.processor.rb.disruptor.EventFactory;
+import reactor.core.processor.rb.disruptor.RingBuffer;
 
 import java.util.Set;
 import java.util.concurrent.*;

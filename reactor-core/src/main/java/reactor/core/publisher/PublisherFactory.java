@@ -397,6 +397,7 @@ public abstract class PublisherFactory {
 				try {
 					subscriber.onComplete();
 				} catch (Throwable t) {
+					Exceptions.throwIfFatal(t);
 					subscriber.onError(t);
 				}
 			}
@@ -408,6 +409,7 @@ public abstract class PublisherFactory {
 			try {
 				shutdownConsumer.accept(context);
 			} catch (Throwable t) {
+				Exceptions.throwIfFatal(t);
 				subscriber.onError(t);
 			}
 		}

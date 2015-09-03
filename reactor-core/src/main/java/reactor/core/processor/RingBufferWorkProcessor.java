@@ -23,10 +23,10 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
-import reactor.core.support.SignalType;
+import reactor.core.processor.rb.disruptor.*;
 import reactor.core.support.Publishable;
-import reactor.jarjar.com.lmax.disruptor.*;
-import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
+import reactor.core.support.SignalType;
+import reactor.fn.Consumer;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -510,18 +510,34 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	                                boolean autoCancel) {
 		super(name, executor, autoCancel);
 
-		this.ringBuffer = RingBuffer.create(
-		  share ? ProducerType.MULTI : ProducerType.SINGLE,
-		  new EventFactory<MutableSignal<E>>() {
+		EventFactory<MutableSignal<E>> factory =  new EventFactory<MutableSignal<E>>() {
 			  @Override
 			  public MutableSignal<E> newInstance() {
-				  return new MutableSignal<E>();
+				  return new MutableSignal<>();
 			  }
-		  },
-		  bufferSize,
-		  waitStrategy
-		);
+		  };
+		Consumer<Void> spinObserver = new Consumer<Void>(){
+			@Override
+			public void accept(Void aVoid) {
+				if(!alive()) throw CancelException.get();
+			}
+		};
 
+		if(share) {
+			this.ringBuffer = RingBuffer.createMultiProducer(
+			  factory,
+			  bufferSize,
+			  waitStrategy,
+			  spinObserver
+			);
+		}else{
+			this.ringBuffer = RingBuffer.createSingleProducer(
+			  factory,
+			  bufferSize,
+			  waitStrategy,
+			  spinObserver
+			);
+		}
 		ringBuffer.addGatingSequences(workSequence);
 
 	}
@@ -657,13 +673,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	/**
 	 * Disruptor WorkProcessor port that deals with pending demand.
 	 * <p>
-	 * Convenience class for handling the batching semantics of consuming entries from a {@link com.lmax.disruptor
+	 * Convenience class for handling the batching semantics of consuming entries from a {@link reactor.core.processor.rb.disruptor
 	 * .RingBuffer}
-	 * and delegating the available events to an {@link com.lmax.disruptor.EventHandler}.
+	 * and delegating the available events to an {@link reactor.core.processor.rb.disruptor.EventHandler}.
 	 * <p>
-	 * If the {@link com.lmax.disruptor.EventHandler} also implements {@link com.lmax.disruptor.LifecycleAware} it will
-	 * be notified just after the thread
-	 * is started and just before the thread is shutdown.
 	 *
 	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an
 	 *            event.
@@ -682,7 +695,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		private Subscription subscription;
 
 		/**
-		 * Construct a {@link com.lmax.disruptor.EventProcessor} that will automatically track the progress by updating
+		 * Construct a {@link reactor.core.processor.rb.disruptor.EventProcessor} that will automatically track the progress by updating
 		 * its
 		 * sequence
 		 */

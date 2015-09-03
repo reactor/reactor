@@ -655,6 +655,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 	}
 
 	protected void valueAccepted(O value) {
+		Subscriber<O> subscriber;
 		lock.lock();
 		try {
 			if (!isPending()) {
@@ -663,15 +664,7 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 			this.value = value;
 			this.finalState = FinalState.COMPLETE;
 
-
-			subscription = null;
-
-			if (outboundStream != null) {
-				if (value != null) {
-					outboundStream.onNext(value);
-				}
-				outboundStream.onComplete();
-			}
+			subscriber = outboundStream;
 
 			if (hasBlockers) {
 				pendingCondition.signalAll();
@@ -679,6 +672,21 @@ public class Promise<O> implements Supplier<O>, Processor<O, O>, Consumer<O>, Bo
 			}
 		} finally {
 			lock.unlock();
+		}
+
+		if (subscriber != null) {
+			if (value != null) {
+				subscriber.onNext(value);
+			}
+			subscriber.onComplete();
+		}
+
+		if(value != null) {
+			Subscription s = subscription;
+			if (s != null) {
+				subscription = null;
+				s.cancel();
+			}
 		}
 	}
 

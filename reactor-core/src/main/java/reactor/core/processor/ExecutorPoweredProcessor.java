@@ -48,6 +48,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	@Override
 	public void onComplete() {
+		super.onComplete();
 		if (executor.getClass() == SingleUseExecutor.class) {
 			executor.shutdown();
 		}
@@ -55,10 +56,10 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	@Override
 	public void onError(Throwable error) {
+		super.onError(error);
 		if (executor.getClass() == SingleUseExecutor.class) {
 			executor.shutdown();
 		}
-		super.onError(error);
 	}
 
 	@Override
@@ -81,21 +82,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	protected int decrementSubscribers() {
 		int subs = super.decrementSubscribers();
 		if (autoCancel && upstreamSubscription == null && subs == 0 && executor.getClass() == SingleUseExecutor.class) {
-			if (CANCEL_TIMEOUT > 0) {
-				final Timer timer = GlobalTimer.globalOrNew();
-				timer.submit(new Consumer<Long>() {
-					@Override
-					public void accept(Long aLong) {
-						if (SUBSCRIBER_COUNT.get(ExecutorPoweredProcessor.this) == 0) {
-							executor.shutdown();
-						}
-						timer.cancel();
-					}
-				}, CANCEL_TIMEOUT, TimeUnit.SECONDS);
-			} else {
-				executor.shutdown();
-			}
-
+			executor.shutdown();
 		}
 		return subs;
 	}
