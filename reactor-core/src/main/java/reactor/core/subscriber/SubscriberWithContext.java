@@ -97,6 +97,7 @@ public class SubscriberWithContext<T, C> implements Subscriber<T>, Subscribable<
 	@Override
 	public void onError(Throwable t) {
 		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1)) {
+			Exceptions.throwIfFatal(t);
 			subscriber.onError(t);
 		}
 	}
@@ -108,6 +109,7 @@ public class SubscriberWithContext<T, C> implements Subscriber<T>, Subscribable<
 				subscriber.onComplete();
 			}
 		} catch (Throwable throwable) {
+			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);
 		}
 	}

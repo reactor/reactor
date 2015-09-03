@@ -6,14 +6,14 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.support.Bounded;
 import reactor.core.support.SignalType;
-import reactor.jarjar.com.lmax.disruptor.*;
+import reactor.core.processor.rb.disruptor.*;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
 /**
  * Utility methods to perform common tasks associated with {@link org.reactivestreams.Subscriber} handling when the
- * signals are stored in a {@link com.lmax.disruptor.RingBuffer}.
+ * signals are stored in a {@link reactor.core.processor.rb.disruptor.RingBuffer}.
  */
 public final class RingBufferSubscriberUtils {
 

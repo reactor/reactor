@@ -102,6 +102,17 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	}
 
 	@Override
+	public void onComplete() {
+		this.upstreamSubscription = null;
+	}
+
+	@Override
+	public void onError(Throwable t) {
+		super.onError(t);
+		this.upstreamSubscription = null;
+	}
+
+	@Override
 	public boolean isExposedToOverflow(Bounded parentPublisher) {
 		return false;
 	}

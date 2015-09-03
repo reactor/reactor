@@ -23,11 +23,11 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
-import reactor.core.support.SignalType;
+import reactor.core.processor.rb.disruptor.*;
 import reactor.core.support.Publishable;
+import reactor.core.support.SignalType;
+import reactor.fn.Consumer;
 import reactor.fn.Supplier;
-import reactor.jarjar.com.lmax.disruptor.*;
-import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -559,21 +559,39 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	                            final Supplier<E> signalSupplier) {
 		super(name, executor, autoCancel);
 
-		this.ringBuffer = RingBuffer.create(
-		  shared ? ProducerType.MULTI : ProducerType.SINGLE,
-		  new EventFactory<MutableSignal<E>>() {
-			  @Override
-			  public MutableSignal<E> newInstance() {
-				  MutableSignal<E> signal = new MutableSignal<>();
-				  if (signalSupplier != null) {
-					  signal.value = signalSupplier.get();
-				  }
-				  return signal;
-			  }
-		  },
-		  bufferSize,
-		  waitStrategy
-		);
+		EventFactory<MutableSignal<E>> factory =  new EventFactory<MutableSignal<E>>() {
+			@Override
+			public MutableSignal<E> newInstance() {
+				MutableSignal<E> signal = new MutableSignal<>();
+				if (signalSupplier != null) {
+					signal.value = signalSupplier.get();
+				}
+				return signal;
+			}
+		};
+
+		Consumer<Void> spinObserver = new Consumer<Void>(){
+			@Override
+			public void accept(Void aVoid) {
+				if(!alive()) throw CancelException.get();
+			}
+		};
+
+		if(shared) {
+			this.ringBuffer = RingBuffer.createMultiProducer(
+			  factory,
+			  bufferSize,
+			  waitStrategy,
+			  spinObserver
+			);
+		}else{
+			this.ringBuffer = RingBuffer.createSingleProducer(
+			  factory,
+			  bufferSize,
+			  waitStrategy,
+			  spinObserver
+			);
+		}
 
 		this.recentSequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
 		this.barrier = ringBuffer.newBarrier();
@@ -752,13 +770,11 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	/**
 	 * Disruptor BatchEventProcessor port that deals with pending demand.
 	 * <p>
-	 * Convenience class for handling the batching semantics of consuming entries from a {@link com.lmax.disruptor
+	 * Convenience class for handling the batching semantics of consuming entries from a {@link reactor.core.processor.rb.disruptor
 	 * .RingBuffer}
-	 * and delegating the available events to an {@link com.lmax.disruptor.EventHandler}.
+	 * and delegating the available events to an {@link reactor.core.processor.rb.disruptor.EventHandler}.
 	 * <p>
-	 * If the {@link com.lmax.disruptor.EventHandler} also implements {@link com.lmax.disruptor.LifecycleAware} it will
-	 * be notified just after the thread
-	 * is started and just before the thread is shutdown.
+	 * If the {@link reactor.core.processor.rb.disruptor.EventHandler} .
 	 *
 	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an
 	 *            event.
@@ -776,7 +792,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		long nextSequence = -1l;
 
 		/**
-		 * Construct a {@link com.lmax.disruptor.EventProcessor} that will automatically track the progress by updating
+		 * Construct a {@link reactor.core.processor.rb.disruptor.EventProcessor} that will automatically track the progress by updating
 		 * its
 		 * sequence
 		 */
