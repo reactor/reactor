@@ -379,7 +379,7 @@ public class StreamTests extends AbstractReactorTest {
 		  }, t -> {
 			  t.printStackTrace();
 			  latch.countDown();
-		});
+		  });
 
 		long startTime = System.currentTimeMillis();
 		T result = null;
@@ -1253,8 +1253,8 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void consistentMultithreadingWithPartition() throws InterruptedException {
-		ProcessorService<Long> supplier1 = Processors.asyncService("groupByPool", 32, 2);
-		ProcessorService<Long> supplier2 = Processors.asyncService("partitionPool", 32, 5);
+		ProcessorService<Long> supplier1 = Processors.asyncService("groupByPool", 32, 2, null, null, false);
+		ProcessorService<Long> supplier2 = Processors.asyncService("partitionPool", 32, 5, null, null, false);
 
 		CountDownLatch latch = new CountDownLatch(10);
 
@@ -1278,6 +1278,8 @@ public class StreamTests extends AbstractReactorTest {
 
 
 		assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
+		supplier1.shutdown();
+		supplier2.shutdown();
 	}
 
 	@Test
@@ -1350,7 +1352,7 @@ public class StreamTests extends AbstractReactorTest {
 		  .period(delayMS, TimeUnit.MILLISECONDS)
 		  .map((signal) -> {
 			  return TimeUnit.NANOSECONDS.toMillis(System.nanoTime()
-			    - elapsed);
+				- elapsed);
 		  }).observe((elapsedMillis) -> {
 			  times.add(localTime + elapsedMillis);
 			  barrier.arrive();
