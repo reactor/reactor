@@ -15,6 +15,7 @@
  */
 package reactor.reactivestreams.tck;
 
+import org.junit.Ignore;
 import reactor.Processors;
 import reactor.core.processor.ProcessorService;
 import reactor.fn.tuple.Tuple1;
@@ -60,12 +61,12 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		  .combine();
 	}
 
-	@Override
+	@Ignore
 	public void testHotIdentityProcessor() throws InterruptedException {
 		super.testHotIdentityProcessor();
 	}
 
-	@Override
+	@Ignore
 	public void testColdIdentityProcessor() throws InterruptedException {
 		super.testColdIdentityProcessor();
 	}

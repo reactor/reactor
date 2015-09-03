@@ -1783,7 +1783,7 @@ class StreamsSpec extends Specification {
 	def 'Creating Stream from publisher'() {
 		given:
 			'a source stream with a given publisher'
-			def s = Streams.<String> create {
+			def s = Streams.<String> withOverflowSupport {
 				it.onNext('test1')
 				it.onNext('test2')
 				it.onNext('test3')
@@ -1953,7 +1953,7 @@ class StreamsSpec extends Specification {
 	def 'Caching Stream from publisher'() {
 		given:
 			'a slow source stream'
-			def s = Streams.<Integer> create {
+			def s = Streams.<Integer> withOverflowSupport {
 				it.onNext(1)
 				sleep(200)
 				it.onNext(2)
@@ -2204,7 +2204,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.create { aSubscriber ->
+			def myStream = Streams.withOverflowSupport { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -2214,7 +2214,7 @@ class StreamsSpec extends Specification {
 
 		and:
 			'A fallback stream will emit values and complete'
-			def myFallback = Streams.create { aSubscriber ->
+			def myFallback = Streams.withOverflowSupport { aSubscriber ->
 				aSubscriber.onNext('0')
 				aSubscriber.onNext('1')
 				aSubscriber.onNext('2')
@@ -2239,7 +2239,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.create { aSubscriber ->
+			def myStream = Streams.withOverflowSupport { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -2262,7 +2262,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by complete'
 			List res = []
-			def myStream = Streams.create { aSubscriber ->
+			def myStream = Streams.withOverflowSupport { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -2284,7 +2284,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by complete'
 			res = []
-			myStream = Streams.create { aSubscriber ->
+			myStream = Streams.withOverflowSupport { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onError(new Exception())
 			}
@@ -2305,7 +2305,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by complete'
 			def res = []
-			def myStream = Streams.create { aSubscriber ->
+			def myStream = Streams.withOverflowSupport { aSubscriber ->
 				aSubscriber.onNext(Signal.next(1))
 				aSubscriber.onNext(Signal.next(2))
 				aSubscriber.onNext(Signal.next(3))
@@ -2330,7 +2330,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.create { aSubscriber ->
+			def myStream = Streams.withOverflowSupport { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -2338,7 +2338,7 @@ class StreamsSpec extends Specification {
 
 		and:
 			'Another stream will emit values and complete'
-			def myFallback = Streams.create { aSubscriber ->
+			def myFallback = Streams.withOverflowSupport { aSubscriber ->
 				aSubscriber.onNext('0')
 				aSubscriber.onNext('1')
 				aSubscriber.onNext('2')
@@ -2362,7 +2362,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.<Integer> create { aSubscriber ->
+			def myStream = Streams.<Integer> withOverflowSupport { aSubscriber ->
 				aSubscriber.onNext(1)
 				aSubscriber.onNext(2)
 				aSubscriber.onNext(3)
@@ -2720,7 +2720,7 @@ class StreamsSpec extends Specification {
 		when:
 			'when composable with an initial value'
 			def counter = 0
-			def value = Streams.create {
+			def value = Streams.withOverflowSupport {
 				counter++
 				it.onError(new RuntimeException("always fails $counter"))
 			}.retryWhen { attempts ->
@@ -2783,7 +2783,7 @@ class StreamsSpec extends Specification {
 		when:
 			'when composable with an initial value'
 			def counter = 0
-			def value = Streams.create {
+			def value = Streams.withOverflowSupport {
 				counter++
 				it.onComplete()
 			}.log().repeatWhen { attempts ->
@@ -2990,13 +2990,13 @@ class StreamsSpec extends Specification {
 	}
 */
 
-	def 'Creating Stream from observable'() {
+	def 'Creating Stream from event bus'() {
 		given:
-			'a source stream with a given observable'
+			'a source stream with a given event bus'
 			def r = EventBus.config().get()
 			def selector = anonymous()
 			int event = 0
-			def s = Streams.create(r.on(selector)).map { it.data }.consume { event = it }
+			def s = Streams.withOverflowSupport(r.on(selector)).map { it.data }.consume { event = it }
 			println s.debug()
 
 		when:
@@ -3012,9 +3012,7 @@ class StreamsSpec extends Specification {
 			"multithreaded bus can be serialized"
 			r = EventBus.create(Processors.work("bus", 8), 4)
 			s = SerializedBroadcaster.<Event<Integer>> create()
-			def tail = s.map { it.data }.observe { sleep(100) }.elapsed().log().take(1500, TimeUnit.MILLISECONDS).toList()
-
-			r.on(selector, s)
+			def tail = Streams.wrap(r.on(selector)).map { it.data }.observe { sleep(100) }.elapsed().log().take(10).toList()
 
 			10.times {
 				r.notify(selector.object, Event.wrap(it))

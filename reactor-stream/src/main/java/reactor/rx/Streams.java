@@ -55,7 +55,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * strean.map(i -> i*2).consume(System.out::println);
  * stream.onNext("hello");
  *
- * Stream.create( subscriber -> {
+ * Stream.withOverflowSupport( subscriber -> {
  *   subscriber.onNext(1);
  *   subscriber.onNext(2);
  *   subscriber.onNext(3);
@@ -98,7 +98,7 @@ public class Streams {
 	 * @param <T>       the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <T> Stream<T> create(Publisher<T> publisher) {
+	public static <T> Stream<T> withOverflowSupport(Publisher<T> publisher) {
 		if (Stream.class.isAssignableFrom(publisher.getClass())) {
 			return (Stream<T>) publisher;
 		}
@@ -602,7 +602,8 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8, T... rest) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8)).concatWith(from(Arrays.asList(rest)));
+		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8)).concatWith(from
+		  (Arrays.asList(rest)));
 	}
 
 
