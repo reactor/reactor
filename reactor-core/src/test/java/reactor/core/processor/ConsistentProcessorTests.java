@@ -22,8 +22,7 @@ import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.AbstractReactorTest;
-import reactor.Environment;
+import reactor.Timers;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -38,202 +37,201 @@ import static org.junit.Assert.assertTrue;
 /**
  * @author Stephane Maldini
  */
-@Ignore
-public class ConsistentProcessorTests extends AbstractReactorTest {
-    private Processor<String, String> processor;
-    private Processor<String, String> workProcessor;
+public class ConsistentProcessorTests {
+	private Processor<String, String> processor;
+	private Processor<String, String> workProcessor;
 
-    private AtomicInteger integer = new AtomicInteger();
+	private AtomicInteger integer = new AtomicInteger();
 
-    @Test
-    public void testMultipleConsumersMultipleTimes() throws Exception {
-        Sender sender = new Sender();
+	@Test
+	@Ignore
+	public void testMultipleConsumersMultipleTimes() throws Exception {
+		Sender sender = new Sender();
 
-        int count = 1000;
-        int threads = 6;
-        int fulltotaltext = 0;
-        int fulltotalints = 0;
-        int iter = 10;
+		int count = 1000;
+		int threads = 6;
+		int fulltotaltext = 0;
+		int fulltotalints = 0;
+		int iter = 10;
 
-        List<Integer> total = new ArrayList<Integer>();
-        for (int t = 0; t < iter; t++) {
-            List<List<String>> clientDatas = getClientDatas(threads, sender, count);
+		List<Integer> total = new ArrayList<Integer>();
+		for (int t = 0; t < iter; t++) {
+			List<List<String>> clientDatas = getClientDatas(threads, sender, count);
 
-            assertThat(clientDatas.size(), is(threads));
+			assertThat(clientDatas.size(), is(threads));
 
-            List<String> numbersNoEnds = new ArrayList<String>();
-            List<Integer> numbersNoEndsInt = new ArrayList<Integer>();
-            for (int i = 0; i < clientDatas.size(); i++) {
-                List<String> datas = clientDatas.get(i);
-                assertThat(datas, notNullValue());
-                StringBuffer buf = new StringBuffer();
-                for (int j = 0; j < datas.size(); j++) {
-                    buf.append(datas.get(j));
-                }
+			List<String> numbersNoEnds = new ArrayList<String>();
+			List<Integer> numbersNoEndsInt = new ArrayList<Integer>();
+			for (int i = 0; i < clientDatas.size(); i++) {
+				List<String> datas = clientDatas.get(i);
+				assertThat(datas, notNullValue());
+				StringBuffer buf = new StringBuffer();
+				for (int j = 0; j < datas.size(); j++) {
+					buf.append(datas.get(j));
+				}
 
-                List<String> split = split(buf.toString());
-                for (int x = 0; x < split.size(); x++) {
-                    String d = split.get(x);
-                    if (d!= null && !d.trim().isEmpty() && !d.contains("END")) {
-                        fulltotaltext += 1;
-                        numbersNoEnds.add(d);
-                        int intnum = Integer.parseInt(d);
-                        total.add(intnum);
-                        if (!numbersNoEndsInt.contains(intnum)) {
-                            numbersNoEndsInt.add(intnum);
-                            fulltotalints += 1;
-                        }
-                    }
-                }
-            }
+				List<String> split = split(buf.toString());
+				for (int x = 0; x < split.size(); x++) {
+					String d = split.get(x);
+					if (d != null && !d.trim().isEmpty() && !d.contains("END")) {
+						fulltotaltext += 1;
+						numbersNoEnds.add(d);
+						int intnum = Integer.parseInt(d);
+						total.add(intnum);
+						if (!numbersNoEndsInt.contains(intnum)) {
+							numbersNoEndsInt.add(intnum);
+							fulltotalints += 1;
+						}
+					}
+				}
+			}
 
-            String msg = "Run number " + t;
-            Collections.sort(numbersNoEndsInt);
-            System.out.println(msg + " with received :" + numbersNoEndsInt.size());
-            System.out.println("dups:" + findDuplicates(numbersNoEndsInt));
-            // we can't measure individual session anymore so just
-            // check that below lists match.
-            assertThat(msg, numbersNoEndsInt.size(), is(numbersNoEnds.size()));
-        }
-        Set<Integer> dups = findDuplicates(total);
-        System.out.println("total dups:" + dups);
-        System.out.println("total int:" + fulltotalints);
-        System.out.println("total text:" + fulltotaltext);
-        // check full totals because we know what this should be
-        assertThat(fulltotalints, is(count * iter));
-        assertThat(fulltotaltext, is(count * iter));
-        assertTrue(dups.isEmpty());
-    }
+			String msg = "Run number " + t;
+			Collections.sort(numbersNoEndsInt);
+			System.out.println(msg + " with received :" + numbersNoEndsInt.size());
+			System.out.println("dups:" + findDuplicates(numbersNoEndsInt));
+			// we can't measure individual session anymore so just
+			// check that below lists match.
+			assertThat(msg, numbersNoEndsInt.size(), is(numbersNoEnds.size()));
+		}
+		Set<Integer> dups = findDuplicates(total);
+		System.out.println("total dups:" + dups);
+		System.out.println("total int:" + fulltotalints);
+		System.out.println("total text:" + fulltotaltext);
+		// check full totals because we know what this should be
+		assertThat(fulltotalints, is(count * iter));
+		assertThat(fulltotaltext, is(count * iter));
+		assertTrue(dups.isEmpty());
+	}
 
-    @Before
-    public void loadEnv() {
-        super.loadEnv();
-        setupPipeline();
-    }
+	@Before
+	public void loadEnv() {
+		setupPipeline();
+	}
 
-    @After
-    public void clean() throws Exception {
-    }
+	@After
+	public void clean() throws Exception {
+	}
 
-    public Set<Integer> findDuplicates(List<Integer> listContainingDuplicates) {
-        final Set<Integer> setToReturn = new HashSet<Integer>();
-        final Set<Integer> set1 = new HashSet<Integer>();
+	public Set<Integer> findDuplicates(List<Integer> listContainingDuplicates) {
+		final Set<Integer> setToReturn = new HashSet<Integer>();
+		final Set<Integer> set1 = new HashSet<Integer>();
 
-        for (Integer yourInt : listContainingDuplicates) {
-            if (!set1.add(yourInt)) {
-                setToReturn.add(yourInt);
-            }
-        }
-        return setToReturn;
-    }
+		for (Integer yourInt : listContainingDuplicates) {
+			if (!set1.add(yourInt)) {
+				setToReturn.add(yourInt);
+			}
+		}
+		return setToReturn;
+	}
 
-    private void setupPipeline() {
-        processor = RingBufferProcessor.create(false);
-        workProcessor = RingBufferWorkProcessor.create(false);
-        processor.subscribe(workProcessor);
-    }
+	private void setupPipeline() {
+		processor = RingBufferProcessor.create(false);
+		workProcessor = RingBufferWorkProcessor.create(false);
+		processor.subscribe(workProcessor);
+	}
 
-    private Receiver getClientDataPromise() throws Exception {
-        Receiver r = new Receiver();
-        workProcessor.subscribe(r);
-        return r;
-    }
+	private Receiver getClientDataPromise() throws Exception {
+		Receiver r = new Receiver();
+		workProcessor.subscribe(r);
+		return r;
+	}
 
-    private List<List<String>> getClientDatas(int threadCount, final Sender sender, int count) throws Exception {
-        final CountDownLatch promiseLatch = new CountDownLatch(threadCount);
+	private List<List<String>> getClientDatas(int threadCount, final Sender sender, int count) throws Exception {
+		final CountDownLatch promiseLatch = new CountDownLatch(threadCount);
 
-        final ArrayList<List<String>> datas = new ArrayList<List<String>>();
-
-
-        Runnable srunner = new Runnable() {
-            public void run() {
-                try {
-                    sender.sendNext(count);
-                } catch (Exception ie) {
-                    ie.printStackTrace();
-                }
-            }
-        };
-        Thread st = new Thread(srunner, "SenderThread");
-
-        st.start();
-
-        final Random r = new Random();
-
-        for (int i = 0; i < threadCount; ++i) {
-            Runnable runner = new Runnable() {
-                public void run() {
-                    try {
-                        Thread.sleep(r.nextInt(2000) + 500);
-                        Receiver clientDataPromise = getClientDataPromise();
-                        clientDataPromise.latch.await(20, TimeUnit.SECONDS);
-                        datas.add(clientDataPromise.data);
-                        promiseLatch.countDown();
-                    } catch (Exception ie) {
-                        ie.printStackTrace();
-                    }
-                }
-            };
-            Thread t = new Thread(runner, "SmokeThread" + i);
-
-            t.start();
-        }
-        promiseLatch.await();
+		final ArrayList<List<String>> datas = new ArrayList<List<String>>();
 
 
-        return datas;
-    }
+		Runnable srunner = new Runnable() {
+			public void run() {
+				try {
+					sender.sendNext(count);
+				} catch (Exception ie) {
+					ie.printStackTrace();
+				}
+			}
+		};
+		Thread st = new Thread(srunner, "SenderThread");
 
-    private static List<String> split(String data) {
-        return Arrays.asList(data.split("\\r?\\n"));
-    }
+		st.start();
 
-    class Sender {
-        int x = 0;
+		final Random r = new Random();
 
-        void sendNext(int count) {
-            for (int i = 0; i < count; i++) {
+		for (int i = 0; i < threadCount; ++i) {
+			Runnable runner = new Runnable() {
+				public void run() {
+					try {
+						Thread.sleep(r.nextInt(2000) + 500);
+						Receiver clientDataPromise = getClientDataPromise();
+						clientDataPromise.latch.await(20, TimeUnit.SECONDS);
+						datas.add(clientDataPromise.data);
+						promiseLatch.countDown();
+					} catch (Exception ie) {
+						ie.printStackTrace();
+					}
+				}
+			};
+			Thread t = new Thread(runner, "SmokeThread" + i);
+
+			t.start();
+		}
+		promiseLatch.await();
+
+
+		return datas;
+	}
+
+	private static List<String> split(String data) {
+		return Arrays.asList(data.split("\\r?\\n"));
+	}
+
+	class Sender {
+		int x = 0;
+
+		void sendNext(int count) {
+			for (int i = 0; i < count; i++) {
 //				System.out.println("XXXX " + x);
-                processor.onNext((x++) + "\n");
-            }
-        }
-    }
+				processor.onNext((x++) + "\n");
+			}
+		}
+	}
 
-    static int subCount = 0;
+	static int subCount = 0;
 
-    class Receiver implements Subscriber<String> {
+	class Receiver implements Subscriber<String> {
 
-        final int            id    = ++subCount;
-        final List<String>   data  = new ArrayList<>();
-        final CountDownLatch latch = new CountDownLatch(1);
+		final int            id    = ++subCount;
+		final List<String>   data  = new ArrayList<>();
+		final CountDownLatch latch = new CountDownLatch(1);
 
-        @Override
-        public void onSubscribe(Subscription s) {
-            Environment.timer().submit(time -> finish(s), 5, TimeUnit.SECONDS);
-            s.request(Long.MAX_VALUE);
-        }
+		@Override
+		public void onSubscribe(Subscription s) {
+			Timers.global().submit(time -> finish(s), 5, TimeUnit.SECONDS);
+			s.request(Long.MAX_VALUE);
+		}
 
-        @Override
-        public void onNext(String s) {
-            data.add(s);
-        }
+		@Override
+		public void onNext(String s) {
+			data.add(s);
+		}
 
-        @Override
-        public void onError(Throwable t) {
-            t.printStackTrace();
-        }
+		@Override
+		public void onError(Throwable t) {
+			t.printStackTrace();
+		}
 
-        @Override
-        public void onComplete() {
-            finish(null);
-        }
+		@Override
+		public void onComplete() {
+			finish(null);
+		}
 
-        void finish(Subscription s) {
-            if (s != null) {
-                s.cancel();
-            }
-            latch.countDown();
-            System.out.println("Receiver " + id + " completed");
-        }
-    }
+		void finish(Subscription s) {
+			if (s != null) {
+				s.cancel();
+			}
+			latch.countDown();
+			System.out.println("Receiver " + id + " completed");
+		}
+	}
 }

@@ -28,8 +28,8 @@ import reactor.io.net.http.model.Protocol;
  */
 public class HttpSelector implements Selector<HttpChannel> {
 
-	final protected Protocol protocol;
-	final protected Method   method;
+	final protected Protocol        protocol;
+	final protected Method          method;
 	final protected UriPathSelector uriPathSelector;
 
 	@SuppressWarnings("unused")
@@ -67,8 +67,8 @@ public class HttpSelector implements Selector<HttpChannel> {
 
 	@Override
 	public boolean matches(HttpChannel key) {
-	return (protocol == null || protocol.equals(key.protocol()))
-				&& (method == null || method.equals(key.method()) )
-				&& (uriPathSelector == null || uriPathSelector.matches(key.uri()));
+		return (protocol == null || protocol.equals(key.protocol()))
+		  && (method == null || method.equals(key.method()))
+		  && (uriPathSelector == null || uriPathSelector.matches(key.uri()));
 	}
 }

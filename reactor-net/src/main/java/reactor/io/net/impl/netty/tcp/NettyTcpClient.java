@@ -28,11 +28,10 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.FutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
-import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
+import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
@@ -46,6 +45,7 @@ import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.io.net.impl.netty.NettyClientSocketOptions;
 import reactor.io.net.tcp.TcpClient;
+import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
@@ -82,24 +82,22 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	 * reactor} to
 	 * send events. The number of IO threads used by the client is configured by the environment's {@code
 	 * reactor.tcp.ioThreadCount} property. In its absence the number of IO threads will be equal to the {@link
-	 * Environment#PROCESSORS number of available processors}. </p> The client will connect to the given {@code
+	 * reactor.Processors#DEFAULT_POOL_SIZE number of available processors}. </p> The client will connect to the given {@code
 	 * connectAddress}, configuring its socket using the given {@code opts}. The given {@code codec} will be used for
 	 * encoding and decoding of data.
 	 *
-	 * @param env            The configuration environment
-	 * @param dispatcher     The dispatcher used to send events
+	 * @param timer            The configuration timer
 	 * @param connectAddress The address the client will connect to
 	 * @param options        The configuration options for the client's socket
 	 * @param sslOptions     The SSL configuration options for the client's socket
 	 * @param codec          The codec used to encode and decode data
 	 */
-	public NettyTcpClient(Environment env,
-	                      Dispatcher dispatcher,
+	public NettyTcpClient(Timer timer,
 	                      InetSocketAddress connectAddress,
 	                      final ClientSocketOptions options,
 	                      final SslOptions sslOptions,
 	                      Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, connectAddress, options, sslOptions, codec);
+		super(timer, connectAddress, options, sslOptions, codec);
 		this.connectAddress = connectAddress;
 
 		if (options instanceof NettyClientSocketOptions) {
@@ -111,8 +109,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
-			int ioThreadCount = env != null ? env.getIntProperty("reactor.tcp.ioThreadCount", Environment
-					.PROCESSORS) : Environment.PROCESSORS;
+			int ioThreadCount = TcpServer.DEFAULT_TCP_THREAD_COUNT;
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 		}
 
@@ -144,7 +141,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
 
-		final Promise<Void> promise = Promises.prepare();
+		final Promise<Void> promise = Promises.ready();
 
 		ChannelFutureListener listener = new ChannelFutureListener() {
 			@Override
@@ -213,7 +210,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			return Promises.success();
 		}
 
-		final Promise<Void> promise = Promises.prepare();
+		final Promise<Void> promise = Promises.ready();
 
 		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
 			@Override
@@ -231,10 +228,9 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel nativeChannel) {
 
 		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getDefaultEnvironment(),
+				getDefaultTimer(),
 				getDefaultCodec(),
 				getDefaultPrefetchSize(),
-				getDefaultDispatcher(),
 				nativeChannel
 		);
 
@@ -259,7 +255,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		private final AtomicInteger attempts = new AtomicInteger(0);
 		private final Reconnect reconnect;
 		private final Broadcaster<Tuple2<InetSocketAddress, Integer>> broadcaster =
-				BehaviorBroadcaster.create(getDefaultEnvironment(), getDefaultDispatcher());
+				BehaviorBroadcaster.create(getDefaultTimer());
 
 		private volatile InetSocketAddress connectAddress;
 
@@ -326,7 +322,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				log.info("Failed to connect to {}. Attempting reconnect in {}ms.", connectAddress, delay);
 			}
 
-			getDefaultEnvironment().getTimer()
+			getDefaultTimer()
 					.submit(
 							new Consumer<Long>() {
 								@Override

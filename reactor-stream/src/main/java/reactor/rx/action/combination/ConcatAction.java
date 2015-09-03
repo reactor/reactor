@@ -18,10 +18,9 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.core.reactivestreams.SerializedSubscriber;
-import reactor.core.support.Exceptions;
-import reactor.core.support.NonBlocking;
+import reactor.core.error.Exceptions;
+import reactor.core.subscriber.SerializedSubscriber;
+import reactor.core.support.Bounded;
 import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
 import reactor.rx.subscription.PushSubscription;
@@ -128,6 +127,13 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 	@Override
 	public void cancel() {
 		queue.clear();
+		ConcatInnerSubscriber subscriber = currentSubscriber;
+		if(subscriber != null){
+			Subscription s = subscriber.s;
+			if(s != null){
+				s.cancel();
+			}
+		}
 		super.cancel();
 	}
 
@@ -165,7 +171,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 		}
 	}
 
-	class ConcatInnerSubscriber implements Subscriber<T>, NonBlocking {
+	class ConcatInnerSubscriber implements Subscriber<T>, Bounded {
 
 		private Subscription s;
 
@@ -191,19 +197,13 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 
 		@Override
 		public void onError(Throwable e) {
-			Subscription s = this.s;
-			if(s != null){
-				s.cancel();
-			}
+			this.s = null;
 			ConcatAction.this.onError(e);
 		}
 
 		@Override
 		public void onComplete() {
-			Subscription s = this.s;
-			if(s != null) {
-				s.cancel();
-			}
+			this.s = null;
 			ConcatAction.this.completeInner();
 		}
 
@@ -213,7 +213,7 @@ final public class ConcatAction<T> extends Action<Publisher<? extends T>, T> {
 		}
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isExposedToOverflow(Bounded upstream) {
 			return false;
 		}
 	}

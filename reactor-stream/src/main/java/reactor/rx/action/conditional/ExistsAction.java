@@ -38,7 +38,7 @@ public class ExistsAction<T> extends Action<T, Boolean> {
             elementFound = true;
             cancel();
             broadcastNext(true);
-            broadcastComplete();
+            onComplete();
         }
     }
 

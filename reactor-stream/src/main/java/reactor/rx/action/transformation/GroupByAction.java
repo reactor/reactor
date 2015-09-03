@@ -16,12 +16,10 @@
 package reactor.rx.action.transformation;
 
 import org.reactivestreams.Subscriber;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.queue.CompletableQueue;
-import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.Assert;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.stream.GroupedStream;
@@ -29,6 +27,7 @@ import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -43,29 +42,27 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 	private final Function<? super T, ? extends K> fn;
-	private final Environment                      environment;
-	private final Dispatcher                       dispatcher;
+	private final Timer                      timer;
 
 	private final Map<K, ReactiveSubscription<T>> groupByMap = new ConcurrentHashMap<>();
 	private final SerializedSubscriber<Long>      serialized = SerializedSubscriber.create(new DefaultSubscriber<Long>
-			() {
+	  () {
 
 		@Override
 		public void onNext(Long aLong) {
 			checkRequest(aLong);
-			if(upstreamSubscription != null){
-				upstreamSubscription.request(aLong );
+			if (upstreamSubscription != null) {
+				upstreamSubscription.request(aLong);
 			}
 		}
 
 	});
 
 
-	public GroupByAction(Environment environment, Function<? super T, ? extends K> fn, Dispatcher dispatcher) {
+	public GroupByAction(Timer timer, Function<? super T, ? extends K> fn) {
 		Assert.notNull(fn, "Key mapping function cannot be null.");
-		this.dispatcher = dispatcher;
 		this.fn = fn;
-		this.environment = environment;
+		this.timer = timer;
 	}
 
 	public Map<K, ReactiveSubscription<T>> groupByMap() {
@@ -81,7 +78,7 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 			child.getBuffer().add(value);
 			groupByMap.put(key, child);
 
-			final CompletableQueue<T> queue = child.getBuffer();
+			final Queue<T> queue = child.getBuffer();
 			GroupedStream<K, T> action = new GroupedStream<K, T>(key) {
 
 				@Override
@@ -90,13 +87,8 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 				}
 
 				@Override
-				public Dispatcher getDispatcher() {
-					return dispatcher;
-				}
-
-				@Override
-				public Environment getEnvironment() {
-					return environment;
+				public Timer getTimer() {
+					return timer;
 				}
 
 				@Override
@@ -118,11 +110,6 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 							if (last.compareAndSet(false, true)) {
 								removeGroupedStream(key);
 							}
-						}
-
-						@Override
-						protected void onRequest(long n) {
-							serialized.onNext(n);
 						}
 					};
 					//finalSub.maxCapacity(capacity);
@@ -169,13 +156,8 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 	}
 
 	@Override
-	public final Dispatcher getDispatcher() {
-		return dispatcher;
-	}
-
-	@Override
-	public final Environment getEnvironment() {
-		return environment;
+	public final Timer getTimer() {
+		return timer;
 	}
 
 }

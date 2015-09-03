@@ -22,16 +22,15 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.processor.CancelException;
+import reactor.core.error.CancelException;
 import reactor.fn.Consumer;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannel;
 import reactor.rx.Streams;
-import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 
 import java.net.InetSocketAddress;
@@ -47,12 +46,11 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	private final Channel ioChannel;
 
-	public NettyChannelStream(Environment env,
+	public NettyChannelStream(Timer timer,
 	                          Codec<Buffer, IN, OUT> codec,
 	                          long prefetch,
-	                          Dispatcher eventsDispatcher,
 	                          Channel ioChannel) {
-		super(env, codec, prefetch, eventsDispatcher);
+		super(timer, codec, prefetch);
 		this.ioChannel = ioChannel;
 	}
 
@@ -76,7 +74,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
 				if (future.isSuccess()) {
-					postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
+					postWriter.onSubscribe(Action.HOT_SUBSCRIPTION);
 					postWriter.onComplete();
 				} else {
 					postWriter.onError(future.cause());

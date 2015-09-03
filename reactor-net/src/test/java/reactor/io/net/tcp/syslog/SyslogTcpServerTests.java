@@ -29,7 +29,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import reactor.Environment;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.NetStreams;
@@ -63,7 +62,6 @@ public class SyslogTcpServerTests {
 	final int msgs    = 2000000;
 	final int threads = 4;
 
-	Environment    env;
 	CountDownLatch latch;
 	AtomicLong count = new AtomicLong();
 	AtomicLong start = new AtomicLong();
@@ -71,7 +69,6 @@ public class SyslogTcpServerTests {
 
 	@Before
 	public void loadEnv() {
-		env = new Environment();
 		latch = new CountDownLatch(msgs * threads);
 	}
 
@@ -143,10 +140,8 @@ public class SyslogTcpServerTests {
 
 		TcpServer<SyslogMessage, Void> server = NetStreams.tcpServer(spec ->
 						spec
-								.env(env)
 										//.using(SynchronousDispatcher.INSTANCE)
 										//.dispatcher(Environment.DISPATCHER_GROUP)
-								.dispatcher(Environment.SHARED)
 								.codec(new SyslogCodec())
 		);
 

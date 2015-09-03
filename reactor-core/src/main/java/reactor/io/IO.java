@@ -17,9 +17,9 @@ package reactor.io;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.reactivestreams.PublisherFactory;
-import reactor.core.reactivestreams.SubscriberWithContext;
-import reactor.core.support.ReactorFatalException;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.error.ReactorFatalException;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -45,7 +45,7 @@ public final class IO {
 	/**
 	 * Transform a {@link ReadableByteChannel} into a {@link Publisher} of {@link Buffer} with a max chunk size of
 	 * {@link Buffer.SMALL_BUFFER_SIZE}.
-	 *
+	 * <p>
 	 * Complete when channel read is negative. The read sequence is unique per subscriber.
 	 *
 	 * @param channel The Readable Channel to publish
@@ -64,22 +64,22 @@ public final class IO {
 	 * @return a Publisher of Buffer values
 	 */
 	public static Publisher<Buffer> read(final ReadableByteChannel channel, int chunkSize) {
-		return PublisherFactory.forEach(
-				chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
-				new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {
-					@Override
-					public ReadableByteChannel apply(Subscriber<? super Buffer> subscriber) {
-						return channel;
-					}
-				},
-				channelCloseConsumer
+		return PublisherFactory.create(
+		  chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
+		  new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {
+			  @Override
+			  public ReadableByteChannel apply(Subscriber<? super Buffer> subscriber) {
+				  return channel;
+			  }
+		  },
+		  channelCloseConsumer
 		);
 	}
 
 	/**
 	 * Read bytes as {@link Buffer} from file specified by the {@link Path} argument with a max chunk size of
 	 * {@link Buffer.SMALL_BUFFER_SIZE}.
-	 *
+	 * <p>
 	 * Complete when channel read is negative. The read sequence is unique per subscriber.
 	 *
 	 * @param path the {@link Path} locating the file to read
@@ -92,7 +92,7 @@ public final class IO {
 
 	/**
 	 * Read bytes as {@link Buffer} from file specified by the {@link Path} argument with a max {@code chunkSize}
-	 *
+	 * <p>
 	 * Complete when channel read is negative. The read sequence is unique per subscriber.
 	 *
 	 * @param path the {@link Path} locating the file to read
@@ -105,7 +105,7 @@ public final class IO {
 	/**
 	 * Read bytes as {@link Buffer} from file specified by the {@link Path} argument with a max chunk size of
 	 * {@link Buffer.SMALL_BUFFER_SIZE}.
-	 *
+	 * <p>
 	 * Complete when channel read is negative. The read sequence is unique per subscriber.
 	 *
 	 * @param path the absolute String path to the read file
@@ -117,38 +117,38 @@ public final class IO {
 
 	/**
 	 * Read bytes as {@link Buffer} from file specified by the {@link Path} argument with a max {@code chunkSize}
-	 *
+	 * <p>
 	 * Complete when channel read is negative. The read sequence is unique per subscriber.
 	 *
 	 * @param path the absolute String path to the read file
 	 * @return a Publisher of Buffer values read from file sequentially
 	 */
 	public static Publisher<Buffer> readFile(final String path, int chunkSize) {
-		return PublisherFactory.forEach(
-				chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
-				new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {
-					@Override
-					public ReadableByteChannel apply(Subscriber<? super Buffer> subscriber) {
-						try{
-							RandomAccessFile file = new RandomAccessFile(path, "r");
-							return new FileContext(file);
-						}catch (FileNotFoundException e){
-							throw ReactorFatalException.create(e);
-						}
-					}
-				},
-				channelCloseConsumer);
+		return PublisherFactory.create(
+		  chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
+		  new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {
+			  @Override
+			  public ReadableByteChannel apply(Subscriber<? super Buffer> subscriber) {
+				  try {
+					  RandomAccessFile file = new RandomAccessFile(path, "r");
+					  return new FileContext(file);
+				  } catch (FileNotFoundException e) {
+					  throw ReactorFatalException.create(e);
+				  }
+			  }
+		  },
+		  channelCloseConsumer);
 	}
 
 	private static final ChannelCloseConsumer channelCloseConsumer       = new ChannelCloseConsumer();
 	private static final ChannelReadConsumer  defaultChannelReadConsumer = new ChannelReadConsumer(Buffer
-			.SMALL_BUFFER_SIZE);
+	  .SMALL_BUFFER_SIZE);
 
 	/**
 	 * A read access to the source file
 	 */
-	public static final class FileContext implements ReadableByteChannel{
-		private final RandomAccessFile file;
+	public static final class FileContext implements ReadableByteChannel {
+		private final RandomAccessFile    file;
 		private final ReadableByteChannel channel;
 
 		public FileContext(RandomAccessFile file) {
@@ -156,7 +156,7 @@ public final class IO {
 			this.channel = file.getChannel();
 		}
 
-		public RandomAccessFile file(){
+		public RandomAccessFile file() {
 			return file;
 		}
 
@@ -177,7 +177,7 @@ public final class IO {
 	}
 
 	private static final class ChannelReadConsumer implements Consumer<SubscriberWithContext<Buffer,
-			ReadableByteChannel>> {
+	  ReadableByteChannel>> {
 
 		private final int bufferSize;
 

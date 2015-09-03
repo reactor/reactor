@@ -23,11 +23,10 @@ import org.zeromq.ZContext;
 import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
-import reactor.Environment;
-import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
+import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -47,8 +46,6 @@ import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.broadcast.SerializedBroadcaster;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.net.InetSocketAddress;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -62,20 +59,22 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	private final static Logger log = LoggerFactory.getLogger(ZeroMQTcpClient.class);
 
+	public static final int DEFAULT_ZMQ_THREAD_COUNT = Integer.parseInt(
+	  System.getProperty("reactor.zmq.ioThreadCount", "1")
+	);
 
 	private final int                       ioThreadCount;
 	private final ZeroMQClientSocketOptions zmqOpts;
 	private final ExecutorService           threadPool;
 
-	public ZeroMQTcpClient(@Nonnull Environment env,
-	                       @Nonnull Dispatcher eventsDispatcher,
-	                       @Nonnull InetSocketAddress connectAddress,
-	                       @Nullable ClientSocketOptions options,
-	                       @Nullable SslOptions sslOptions,
-	                       @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, eventsDispatcher, connectAddress, options, sslOptions, codec);
+	public ZeroMQTcpClient(Timer timer,
+	                       InetSocketAddress connectAddress,
+	                       ClientSocketOptions options,
+	                       SslOptions sslOptions,
+	                       Codec<Buffer, IN, OUT> codec) {
+		super(timer, connectAddress, options, sslOptions, codec);
 
-		this.ioThreadCount = getDefaultEnvironment().getIntProperty("reactor.zmq.ioThreadCount", 1);
+		this.ioThreadCount = DEFAULT_ZMQ_THREAD_COUNT;
 
 		if (options instanceof ZeroMQClientSocketOptions) {
 			this.zmqOpts = (ZeroMQClientSocketOptions) options;
@@ -93,7 +92,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	protected Promise<Void> doShutdown() {
-		final Promise<Void> promise = Promises.prepare();
+		final Promise<Void> promise = Promises.ready();
 
 		threadPool.shutdownNow();
 		promise.onComplete();
@@ -104,11 +103,10 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	protected ZeroMQChannelStream<IN, OUT> bindChannel() {
 
 		return new ZeroMQChannelStream<IN, OUT>(
-				getDefaultEnvironment(),
-				getDefaultPrefetchSize(),
-				getDefaultDispatcher(),
-				getConnectAddress(),
-				getDefaultCodec()
+		  getDefaultTimer(),
+		  getDefaultPrefetchSize(),
+		  getConnectAddress(),
+		  getDefaultCodec()
 		);
 	}
 
@@ -116,12 +114,12 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
 		final UUID id = UUIDUtils.random();
 
-		final Promise<Void> p = Promises.prepare();
+		final Promise<Void> p = Promises.ready();
 
 		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.DEALER);
 		final ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
 
-		final Broadcaster<ZMsg> broadcaster = SerializedBroadcaster.create(getDefaultEnvironment());
+		final Broadcaster<ZMsg> broadcaster = SerializedBroadcaster.create(getDefaultTimer());
 
 		ZeroMQWorker worker = new ZeroMQWorker(id, socketType, ioThreadCount, zmq, broadcaster) {
 			@Override

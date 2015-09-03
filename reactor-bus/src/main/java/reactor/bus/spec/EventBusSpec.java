@@ -15,7 +15,6 @@
  */
 package reactor.bus.spec;
 
-import reactor.Environment;
 import reactor.bus.EventBus;
 
 /**
@@ -26,7 +25,7 @@ import reactor.bus.EventBus;
 public class EventBusSpec extends EventRoutingComponentSpec<EventBusSpec, EventBus> {
 
 	@Override
-	protected final EventBus configure(EventBus reactor, Environment environment) {
+	protected final EventBus configure(EventBus reactor) {
 		return reactor;
 	}
 

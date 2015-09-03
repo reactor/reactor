@@ -40,18 +40,19 @@ public class CachingRegistry<K, V> implements Registry<K, V> {
 
 	private final NewThreadLocalRegsFn newThreadLocalRegsFn = new NewThreadLocalRegsFn();
 
-	private final boolean                                                                        useCache;
-	private final boolean                                                                        cacheNotFound;
-	private final Consumer<K>                                                               onNotFound;
+	private final boolean                                                                           useCache;
+	private final boolean                                                                           cacheNotFound;
+	private final Consumer<K>                                                                       onNotFound;
 	private final MultiReaderFastList<Registration<K, ? extends V>>                                 registrations;
 	private final ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<K, ? extends V>>>> threadLocalCache;
 
-	 CachingRegistry(boolean useCache, boolean cacheNotFound, Consumer<K> onNotFound) {
+	CachingRegistry(boolean useCache, boolean cacheNotFound, Consumer<K> onNotFound) {
 		this.useCache = useCache;
 		this.cacheNotFound = cacheNotFound;
 		this.onNotFound = onNotFound;
 		this.registrations = MultiReaderFastList.newList();
-		this.threadLocalCache = new ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<K, ? extends V>>>>();
+		this.threadLocalCache = new ConcurrentHashMapV8<Long, UnifiedMap<Object, List<Registration<K, ? extends
+		  V>>>>();
 	}
 
 	@Override
@@ -170,7 +171,7 @@ public class CachingRegistry<K, V> implements Registry<K, V> {
 	}
 
 	private final class NewThreadLocalRegsFn
-			implements ConcurrentHashMapV8.Fun<Long, UnifiedMap<Object, List<Registration<K, ? extends V>>>> {
+	  implements ConcurrentHashMapV8.Fun<Long, UnifiedMap<Object, List<Registration<K, ? extends V>>>> {
 		@Override
 		public UnifiedMap<Object, List<Registration<K, ? extends V>>> apply(Long aLong) {
 			return UnifiedMap.newMap();

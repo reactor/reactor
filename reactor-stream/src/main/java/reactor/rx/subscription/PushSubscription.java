@@ -15,8 +15,10 @@
  */
 package reactor.rx.subscription;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.Publishable;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.subscription.support.WrappedSubscription;
@@ -32,20 +34,20 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  *
  * @author Stephane Maldini
  */
-public class PushSubscription<O> implements Subscription, Consumer<Long> {
+public class PushSubscription<O> implements Subscription, Consumer<Long>, Publishable {
 	protected final Subscriber<? super O> subscriber;
 	protected final Stream<O>             publisher;
 
 	protected volatile int terminated = 0;
 
 	protected static final AtomicIntegerFieldUpdater<PushSubscription> TERMINAL_UPDATER = AtomicIntegerFieldUpdater
-			.newUpdater(PushSubscription.class, "terminated");
+	  .newUpdater(PushSubscription.class, "terminated");
 
 
 	protected volatile long pendingRequestSignals = 0l;
 
 	protected static final AtomicLongFieldUpdater<PushSubscription> PENDING_UPDATER = AtomicLongFieldUpdater
-			.newUpdater(PushSubscription.class, "pendingRequestSignals");
+	  .newUpdater(PushSubscription.class, "pendingRequestSignals");
 
 
 	/**
@@ -61,6 +63,11 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	public PushSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
 		this.subscriber = subscriber;
 		this.publisher = publisher;
+	}
+
+	@Override
+	public Publisher upstream() {
+		return publisher;
 	}
 
 	@Override
@@ -116,10 +123,6 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
 			subscriber.onError(throwable);
 		}
-	}
-
-	public Stream<O> getPublisher() {
-		return publisher;
 	}
 
 	public boolean hasPublisher() {
@@ -214,9 +217,9 @@ public class PushSubscription<O> implements Subscription, Consumer<Long> {
 	@Override
 	public String toString() {
 		return "{push" +
-				(pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE ? ",pending=" + pendingRequestSignals :
-						"")
-				+ "}";
+		  (pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE ? ",pending=" + pendingRequestSignals :
+			"")
+		  + "}";
 	}
 
 

@@ -26,7 +26,6 @@ import java.util.Iterator;
  *
  * @param <T1> The type of the first value held by this tuple
  * @param <T2> The type of the second balue held by this tuple
- *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -53,9 +52,11 @@ public class Tuple2<T1, T2> extends Tuple1<T1> {
 	@Nullable
 	@Override
 	public Object get(int index) {
-		switch(index){
-			case 0: return t1;
-			case 1: return t2;
+		switch (index) {
+			case 0:
+				return t1;
+			case 1:
+				return t2;
 			default:
 				return null;
 		}
@@ -94,7 +95,7 @@ public class Tuple2<T1, T2> extends Tuple1<T1> {
 
 	@Override
 	public String toString() {
-		return super.toString()+
-		  (t2 != null ? ","+t2.toString() : "");
+		return super.toString() +
+		  (t2 != null ? "," + t2.toString() : "");
 	}
 }

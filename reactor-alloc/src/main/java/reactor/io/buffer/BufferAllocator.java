@@ -43,24 +43,21 @@ public class BufferAllocator implements Allocator<Buffer> {
 	/**
 	 * Create a {@code BufferAllocator}.
 	 *
-	 * @param poolSize
-	 * 		The number of Buffers to keep on hand.
-	 * @param direct
-	 * 		Whether or not to use direct buffers.
-	 * @param bufferSize
-	 * 		The size of the buffers.
+	 * @param poolSize   The number of Buffers to keep on hand.
+	 * @param direct     Whether or not to use direct buffers.
+	 * @param bufferSize The size of the buffers.
 	 */
 	public BufferAllocator(int poolSize, final boolean direct, final int bufferSize) {
 		this.delegate = new ReferenceCountingAllocator<Buffer>(
-				poolSize,
-				new Supplier<Buffer>() {
-					@Override
-					public Buffer get() {
-						return new Buffer(direct
-						                  ? ByteBuffer.allocateDirect(bufferSize)
-						                  : ByteBuffer.allocate(bufferSize));
-					}
-				}
+		  poolSize,
+		  new Supplier<Buffer>() {
+			  @Override
+			  public Buffer get() {
+				  return new Buffer(direct
+					? ByteBuffer.allocateDirect(bufferSize)
+					: ByteBuffer.allocate(bufferSize));
+			  }
+		  }
 		);
 	}
 

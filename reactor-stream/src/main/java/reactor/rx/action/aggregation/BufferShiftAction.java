@@ -16,8 +16,7 @@
 package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.core.processor.InsufficientCapacityException;
+import reactor.core.error.InsufficientCapacityException;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
@@ -48,11 +47,11 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 	private Pausable timeshiftRegistration;
 	private int      index;
 
-	public BufferShiftAction(Dispatcher dispatcher, int size, int skip) {
-		this(dispatcher, size, skip, -1l, -1l, null, null);
+	public BufferShiftAction(int size, int skip) {
+		this(size, skip, -1l, -1l, null, null);
 	}
 
-	public BufferShiftAction(final Dispatcher dispatcher, int size, int skip,
+	public BufferShiftAction(int size, int skip,
 	                         final long timeshift, final long timespan, TimeUnit unit, final Timer timer) {
 		super(size);
 		this.skip = skip;
@@ -82,20 +81,16 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 							return;
 						}
 
-						dispatcher.tryDispatch(null, new Consumer<Void>() {
-							@Override
-							public void accept(Void aVoid) {
-								final List<T> bucket = new ArrayList<T>();
-								buckets.add(bucket);
+						final List<T> bucket = new ArrayList<T>();
+						buckets.add(bucket);
 
-								timer.submit(new Consumer<Long>() {
-									@Override
-									public void accept(Long aLong) {
-										dispatcher.dispatch(bucket, flushTimerTask, null);
-									}
-								}, timespan, targetUnit);
+						timer.submit(new Consumer<Long>() {
+							@Override
+							public void accept(Long aLong) {
+								flushTimerTask.accept(bucket);
 							}
-						}, null);
+						}, timespan, targetUnit);
+
 					} catch (InsufficientCapacityException e) {
 						//IGNORE
 					}
@@ -115,10 +110,10 @@ public final class BufferShiftAction<T> extends Action<T, List<T>> {
 
 	@Override
 	protected void doOnSubscribe(Subscription subscription) {
-		if(timer != null) {
+		if (timer != null) {
 			timeshiftRegistration = timer.schedule(timeshiftTask,
-					timeshift,
-					unit);
+			  timeshift,
+			  unit);
 		}
 	}
 

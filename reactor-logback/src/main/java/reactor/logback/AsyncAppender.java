@@ -40,16 +40,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Stephane Maldini
  */
 public class AsyncAppender
-		extends ContextAwareBase
-		implements Appender<ILoggingEvent>,
-		AppenderAttachable<ILoggingEvent>,
-		Subscriber<ILoggingEvent> {
+  extends ContextAwareBase
+  implements Appender<ILoggingEvent>,
+  AppenderAttachable<ILoggingEvent>,
+  Subscriber<ILoggingEvent> {
 
 	private final AppenderAttachableImpl<ILoggingEvent>    aai      = new AppenderAttachableImpl<ILoggingEvent>();
 	private final FilterAttachableImpl<ILoggingEvent>      fai      = new FilterAttachableImpl<ILoggingEvent>();
 	private final AtomicReference<Appender<ILoggingEvent>> delegate = new AtomicReference<Appender<ILoggingEvent>>();
 
-	private String                        name;
+	private String                                  name;
 	private Processor<ILoggingEvent, ILoggingEvent> processor;
 
 	private int     backlog           = 1024 * 1024;

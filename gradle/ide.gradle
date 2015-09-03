@@ -15,9 +15,9 @@ eclipse.jdt {
 // Replace classpath entries with project dependencies (GRADLE-1116)
 eclipse.classpath.file.whenMerged { classpath ->
 	def regexp = /.*?\/([^\/]+)\/build\/[^\/]+\/(?:main|test)/ // only match those that end in main or test (avoids removing necessary entries like build/classes/jaxb)
-	def projectOutputDependencies = classpath.entries.findAll { entry -> entry.path=~regexp }
+	def projectOutputDependencies = classpath.entries.findAll { entry -> entry.path =~ regexp }
 	projectOutputDependencies.each { entry ->
-		def matcher = (entry.path=~regexp)
+		def matcher = (entry.path =~ regexp)
 		if (matcher) {
 			def projectName = matcher[0][1]
 			def path = "/${projectName}"
@@ -29,7 +29,7 @@ eclipse.classpath.file.whenMerged { classpath ->
 			classpath.entries.remove(entry)
 		}
 	}
-	classpath.entries.removeAll { entry -> (entry.path=~/(?!.*?repack.*\.jar).*?\/([^\/]+)\/build\/libs\/[^\/]+\.jar/) }
+	classpath.entries.removeAll { entry -> (entry.path =~ /(?!.*?repack.*\.jar).*?\/([^\/]+)\/build\/libs\/[^\/]+\.jar/) }
 }
 
 // Use separate main/test outputs (prevents WTP from packaging test classes)

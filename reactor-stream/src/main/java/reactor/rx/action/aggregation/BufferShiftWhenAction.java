@@ -63,6 +63,7 @@ public class BufferShiftWhenAction<T> extends Action<T, List<T>> {
 				}
 				bucketClosing.get().subscribe(new BucketConsumer(newBucket));
 
+				Subscription s = this.s;
 				if (s != null) {
 					s.request(1);
 				}
@@ -70,17 +71,13 @@ public class BufferShiftWhenAction<T> extends Action<T, List<T>> {
 
 			@Override
 			public void onError(Throwable t) {
-				if (s != null) {
-					s.cancel();
-				}
+				s = null;
 				BufferShiftWhenAction.this.onError(t);
 			}
 
 			@Override
 			public void onComplete() {
-				if (s != null) {
-					s.cancel();
-				}
+				s = null;
 				BufferShiftWhenAction.this.onComplete();
 			}
 		});

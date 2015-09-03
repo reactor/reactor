@@ -1,9 +1,7 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -22,26 +20,27 @@ import java.util.concurrent.atomic.AtomicInteger;
  * callbacks and aggregate the results into a single value.
  * <pre><code>
  * BarrierStream barrierStream = new BarrierStream();
- *
+ * <p>
  * EventBus bus = EventBus.create(Environment.get());
  * bus.on($("hello"), barrierStream.wrap((Event<String> ev) -> {
  *   System.out.println("got in bus: " + ev.getData());
  * }));
- *
+ * <p>
  * Streams.just("Hello World!")
  *        .map(barrierStream.wrap((Function<String, String>) String::toUpperCase))
  *        .consume(s -> {
  *          System.out.println("got in stream: " + s);
  *        });
- *
+ * <p>
  * barrierStream.consume(vals -> {
  *   System.out.println("got vals: " + vals);
  * });
- *
+ * <p>
  * bus.notify("hello", Event.wrap("Hello World!"));
  * </code></pre>
  * <p>
- * NOTE: To get blocking semantics for the calling thread, you only need to call {@link reactor.rx.Stream#next()} to return a
+ * NOTE: To get blocking semantics for the calling thread, you only need to call {@link reactor.rx.Stream#next()} to
+ * return a
  * {@code Promise}.
  * </p>
  */
@@ -52,21 +51,6 @@ public class BarrierStream extends Stream<List<Object>> {
 	private final List<Object>  values     = new ArrayList<Object>();
 
 	private PushSubscription<List<Object>> downstream;
-
-	public BarrierStream() {
-	}
-
-	public BarrierStream(Environment env) {
-		dispatchOn(env);
-	}
-
-	public BarrierStream(Dispatcher dispatcher) {
-		dispatchOn(dispatcher);
-	}
-
-	public BarrierStream(Environment env, Dispatcher dispatcher) {
-		dispatchOn(env, dispatcher);
-	}
 
 	public <I, O> Function<I, O> wrap(final Function<I, O> fn) {
 		if (null != downstream && downstream.isComplete()) {
@@ -124,7 +108,7 @@ public class BarrierStream extends Stream<List<Object>> {
 		};
 		try {
 			s.onSubscribe(downstream);
-		}catch (Throwable throwable){
+		} catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			s.onError(throwable);
 		}
@@ -144,8 +128,8 @@ public class BarrierStream extends Stream<List<Object>> {
 			}
 		}
 		if (resultCnt.incrementAndGet() == wrappedCnt.get()
-		    && null != downstream
-		    && !downstream.isComplete()) {
+		  && null != downstream
+		  && !downstream.isComplete()) {
 			downstream.onNext(values);
 			downstream.onComplete();
 		}

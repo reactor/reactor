@@ -22,11 +22,8 @@ import reactor.fn.Predicate;
  * {@link Selector} implementation that uses the {@link #hashCode()} and {@link #equals(Object)}
  * methods of the internal object to determine a match.
  *
- * @param <K>
- * 		The type of object held by the selector
- * @param <T>
- * 		The type of object held by the selector
- *
+ * @param <K> The type of object held by the selector
+ * @param <T> The type of object held by the selector
  * @author Jon Brisbin
  * @author Andy Wilkinson
  * @author Stephane Maldini
@@ -39,8 +36,7 @@ public class ObjectSelector<K, T> implements Selector<K>, Predicate<K> {
 	/**
 	 * Create a new {@link Selector} instance from the given object.
 	 *
-	 * @param object
-	 * 		The object to wrap.
+	 * @param object The object to wrap.
 	 */
 	public ObjectSelector(T object) {
 		this.object = object;
@@ -49,11 +45,8 @@ public class ObjectSelector<K, T> implements Selector<K>, Predicate<K> {
 	/**
 	 * Helper method to create a {@link Selector} from the given object.
 	 *
-	 * @param obj
-	 * 		The object to wrap.
-	 * @param <T>
-	 * 		The type of the object.
-	 *
+	 * @param obj The object to wrap.
+	 * @param <T> The type of the object.
 	 * @return The new {@link Selector}.
 	 */
 	public static <T> Selector<T> objectSelector(T obj) {
@@ -87,10 +80,10 @@ public class ObjectSelector<K, T> implements Selector<K>, Predicate<K> {
 
 	@Override
 	public String toString() {
-		synchronized(monitor) {
+		synchronized (monitor) {
 			return "Selector{" +
-					"object=" + object +
-					'}';
+			  "object=" + object +
+			  '}';
 		}
 	}
 

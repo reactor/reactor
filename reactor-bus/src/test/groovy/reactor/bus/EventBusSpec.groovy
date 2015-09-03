@@ -18,13 +18,10 @@
 package reactor.bus
 
 import groovy.transform.CompileStatic
-import reactor.Environment
 import reactor.bus.filter.RoundRobinFilter
 import reactor.bus.routing.ConsumerFilteringRouter
-import reactor.core.dispatch.SynchronousDispatcher
+import reactor.core.processor.ProcessorService
 import reactor.fn.Consumer
-import reactor.rx.Streams
-import reactor.rx.broadcast.SerializedBroadcaster
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -40,23 +37,15 @@ import static reactor.bus.selector.Selectors.*
  */
 class EventBusSpec extends Specification {
 
-	void setup() {
-		Environment.initializeIfEmpty().assignErrorJournal()
-	}
-
-	def cleanup() {
-		Environment.terminate()
-	}
-
 	def "A Reactor can be configured with EventBus.create()"() {
 
 		when:
 			"Building a Synchronous EventBus"
-			def reactor = EventBus.config().synchronousDispatcher().get()
+			def reactor = EventBus.config().sync().get()
 
 		then:
 			"Dispatcher has been set to Synchronous"
-			reactor.dispatcher instanceof SynchronousDispatcher
+			reactor.processor instanceof Consumer
 
 		when:
 			"Building a RoundRobin EventBus"
@@ -72,7 +61,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a plain Reactor and a simple consumer on \$('test')"
-			def reactor = EventBus.config().synchronousDispatcher().get()
+			def reactor = EventBus.config().sync().get()
 			def data = ""
 			Thread t = null
 			reactor.on($("test"), { ev ->
@@ -109,11 +98,12 @@ class EventBusSpec extends Specification {
 			!data
 	}
 
-	class Foo{}
-	class Bar{}
+	class Foo {}
+
+	class Bar {}
 
 	@CompileStatic
-	class TestConsumer implements Consumer<Event<Foo>>{
+	class TestConsumer implements Consumer<Event<Foo>> {
 		final AtomicInteger value = new AtomicInteger()
 
 		@Override
@@ -127,7 +117,7 @@ class EventBusSpec extends Specification {
 		given:
 			"a plain Reactor and a simple consumer on \$('test')"
 			def reactor = EventBus.create()
-		def c = new TestConsumer()
+			def c = new TestConsumer()
 			reactor.on($("test"), c)
 
 		when:
@@ -143,7 +133,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a simple eventBus implementation"
-			def reactor = EventBus.config().synchronousDispatcher().get()
+			def reactor = EventBus.config().sync().get()
 			def data = ""
 			def reg = reactor.on($("test"), { ev ->
 				data = ev.data
@@ -172,7 +162,7 @@ class EventBusSpec extends Specification {
 
 	def "A Reactor can reply to events"() {
 
-		def r = EventBus.config().synchronousDispatcher().get()
+		def r = EventBus.config().sync().get()
 
 		given:
 			"a simple consumer"
@@ -279,7 +269,7 @@ class EventBusSpec extends Specification {
 
 
 		when:
-			"a registered function rises exception"
+			"a registered function rises error"
 			r.receive($('test4'), function { s ->
 				throw new Exception()
 			})
@@ -299,7 +289,7 @@ class EventBusSpec extends Specification {
 			r.send 'test4', Event.wrap('anything', 'testReply4')
 
 		then:
-			"result should not be null and exception called"
+			"result should not be null and error called"
 			result
 			e
 	}
@@ -308,7 +298,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a normal eventBus"
-			def reactor = EventBus.config().synchronousDispatcher().get()
+			def reactor = EventBus.config().sync().get()
 
 		when:
 			"registering few handlers"
@@ -329,7 +319,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a normal synchronous eventBus"
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.config().sync().get()
 			def d1, d2
 			def selector = $("test")
 
@@ -354,8 +344,8 @@ class EventBusSpec extends Specification {
 
 		when:
 			"the consumer is invoked several times"
-			r.notify('test',Event.wrap(null))
-			r.notify('test',Event.wrap(null))
+			r.notify('test', Event.wrap(null))
+			r.notify('test', Event.wrap(null))
 
 		then:
 			"the count is only 1"
@@ -367,7 +357,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a synchronous Reactor"
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.config().sync().get()
 
 		when:
 			"an error consumer is registered"
@@ -375,19 +365,19 @@ class EventBusSpec extends Specification {
 			def e = null
 			r.on(T(Exception),
 					consumer { Exception ex -> e = ex; latch.countDown() }
-					as Consumer<Exception>
+							as Consumer<Exception>
 			)
 
 		and:
 			"a normal consumer that rise exceptions"
-			r.on($('test'),consumer { throw new Exception('bad') })
+			r.on($('test'), consumer { throw new Exception('bad') })
 
 		and:
 			"the consumer is invoked"
-			r.notify('test',Event.wrap(null))
+			r.notify('test', Event.wrap(null))
 
 		then:
-			"consumer has been invoked and e is an exception"
+			"consumer has been invoked and e is an error"
 			latch.await(3, TimeUnit.SECONDS)
 			e && e instanceof Exception
 
@@ -398,7 +388,7 @@ class EventBusSpec extends Specification {
 
 		given:
 			"a synchronous Reactor"
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.config().sync().get()
 
 		when:
 			"the Reactor default Selector is notified with a tuple of consumer and data"
@@ -417,7 +407,7 @@ class EventBusSpec extends Specification {
 			latch = new CountDownLatch(1)
 			r.on(T(Exception),
 					consumer { latch.countDown() }
-					as Consumer<Exception>)
+							as Consumer<Exception>)
 
 		and:
 			"the arbitrary consumer fails"
@@ -436,7 +426,7 @@ class EventBusSpec extends Specification {
 			"a synchronous Reactor with a dispatch error handler"
 			def count = 0
 			def r = EventBus.config().
-					synchronousDispatcher().
+					sync().
 					dispatchErrorHandler(consumer { t -> count++ }).
 					uncaughtErrorHandler(consumer { t -> count++ }).
 					get()
@@ -457,44 +447,6 @@ class EventBusSpec extends Specification {
 		then:
 			"the count has increased"
 			count == 2
-
-	}
-
-
-	def 'Creating Stream from observable'() {
-		given:
-			'a source stream with a given observable'
-			def r = EventBus.config().get()
-			def selector = anonymous()
-			int event = 0
-			def s = Streams.create(r.on(selector)).map { it.data }.consume { event = it }
-			println s.debug()
-
-		when:
-			'accept a value'
-			r.notify(selector.object, Event.wrap(1))
-			println s.debug()
-
-		then:
-			'dispatching works'
-			event == 1
-
-		when:
-			"multithreaded bus can be serialized"
-			r = EventBus.create(Environment.dispatcher("workQueue"))
-			s = SerializedBroadcaster.<Event<Integer>> create()
-			def tail = s.map { it.data }.observe { sleep(100) }.elapsed().log().take(1500, TimeUnit.MILLISECONDS).toList()
-
-			r.on(selector, s)
-
-			10.times {
-				r.notify(selector.object, Event.wrap(it))
-			}
-
-		then:
-			tail.await().size() == 10
-			tail.get().sum { it.t1 } >= 1000 //correctly serialized
-
 
 	}
 

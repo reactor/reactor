@@ -15,13 +15,11 @@
  */
 package reactor.io.net;
 
-import reactor.Environment;
-import reactor.bus.spec.DispatcherComponentSpec;
-import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
+import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
@@ -30,7 +28,9 @@ import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.http.HttpChannel;
+import reactor.io.net.http.HttpClient;
 import reactor.io.net.http.HttpServer;
+import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.udp.DatagramServer;
 
@@ -75,14 +75,15 @@ public interface Spec {
 	//   Client and Server Specifications
 	//
 	abstract class PeerSpec<IN, OUT,
-			CONN extends ChannelStream<IN, OUT>,
-			S extends PeerSpec<IN, OUT, CONN, S, N>,
-			N extends ReactorPeer<IN, OUT, CONN>>
-			extends DispatcherComponentSpec<S, N> {
+	  CONN extends ChannelStream<IN, OUT>,
+	  S extends PeerSpec<IN, OUT, CONN, S, N>,
+	  N extends ReactorPeer<IN, OUT, CONN>>
+	  implements Supplier<N> {
 
 		protected ServerSocketOptions options = new ServerSocketOptions();
 		protected InetSocketAddress      listenAddress;
 		protected Codec<Buffer, IN, OUT> codec;
+		protected Timer                  timer;
 
 		/**
 		 * Set the common {@link reactor.io.net.config.ServerSocketOptions} for channels made in this server.
@@ -149,6 +150,18 @@ public interface Spec {
 		}
 
 		/**
+		 * Set the default {@link reactor.fn.timer.Timer} for timed operations.
+		 *
+		 * @param timer The timer to assign by default
+		 * @return {@literal this}
+		 */
+		@SuppressWarnings("unchecked")
+		public S timer(Timer timer) {
+			this.timer = timer;
+			return (S)this;
+		}
+
+		/**
 		 * Bypass any Reactor Buffer encoding for received data
 		 *
 		 * @param israw to enable raw data transfer from the server (e.g. ByteBuf from Netty).
@@ -156,7 +169,7 @@ public interface Spec {
 		 */
 		@SuppressWarnings("unchecked")
 		public S rawData(boolean israw) {
-			if(israw){
+			if (israw) {
 				this.codec = NOOP_CODEC;
 			}
 			return (S) this;
@@ -166,15 +179,12 @@ public interface Spec {
 	/**
 	 * A helper class for specifying a {@code TcpClient}
 	 *
-	 * @param <IN>
-	 * 		The type that will be received by the client
-	 * @param <OUT>
-	 * 		The type that will be sent by the client
-	 *
+	 * @param <IN>  The type that will be received by the client
+	 * @param <OUT> The type that will be sent by the client
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class TcpClientSpec<IN, OUT> extends DispatcherComponentSpec<TcpClientSpec<IN, OUT>, reactor.io.net.tcp.TcpClient<IN, OUT>> {
+	class TcpClientSpec<IN, OUT> implements Supplier<TcpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.tcp.TcpClient> clientImplConstructor;
 
@@ -183,39 +193,37 @@ public interface Spec {
 		private ClientSocketOptions options = new ClientSocketOptions();
 
 		private SslOptions sslOptions = null;
+		private Timer      timer      = null;
 		private Codec<Buffer, IN, OUT> codec;
 
 		/**
 		 * Create a {@code TcpClient.Spec} using the given implementation class.
 		 *
-		 * @param clientImpl
-		 * 		The concrete implementation of {@link reactor.io.net.tcp.TcpClient} to instantiate.
+		 * @param clientImpl The concrete implementation of {@link reactor.io.net.tcp.TcpClient} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
 		TcpClientSpec(@Nonnull Class<? extends reactor.io.net.tcp.TcpClient> clientImpl) {
 			Assert.notNull(clientImpl, "TcpClient implementation class cannot be null.");
 			try {
-				this.clientImplConstructor = (Constructor<reactor.io.net.tcp.TcpClient>) clientImpl.getDeclaredConstructor(
-						Environment.class,
-						Dispatcher.class,
-						InetSocketAddress.class,
-						ClientSocketOptions.class,
-						SslOptions.class,
-						Codec.class
-				);
+				this.clientImplConstructor = (Constructor<reactor.io.net.tcp.TcpClient>) clientImpl
+				  .getDeclaredConstructor(
+					Timer.class,
+					InetSocketAddress.class,
+					ClientSocketOptions.class,
+					SslOptions.class,
+					Codec.class
+				  );
 				this.clientImplConstructor.setAccessible(true);
 			} catch (NoSuchMethodException e) {
 				throw new IllegalArgumentException(
-						"No public constructor found that matches the signature of the one found in the TcpClient class.");
+				  "No public constructor found that matches the signature of the one found in the TcpClient class.");
 			}
 		}
 
 		/**
 		 * Set the common {@link reactor.io.net.config.ClientSocketOptions} for connections made in this client.
 		 *
-		 * @param options
-		 * 		The socket options to apply to new connections.
-		 *
+		 * @param options The socket options to apply to new connections.
 		 * @return {@literal this}
 		 */
 		public TcpClientSpec<IN, OUT> options(ClientSocketOptions options) {
@@ -224,12 +232,21 @@ public interface Spec {
 		}
 
 		/**
+		 * Set the default {@link reactor.fn.timer.Timer} for timed operations.
+		 *
+		 * @param timer The timer to assign by default
+		 * @return {@literal this}
+		 */
+		public TcpClientSpec<IN, OUT> timer(Timer timer) {
+			this.timer = timer;
+			return this;
+		}
+
+		/**
 		 * Set the options to use for configuring SSL. Setting this to {@code null} means don't use SSL at all (the
 		 * default).
 		 *
-		 * @param sslOptions
-		 * 		The options to set when configuring SSL
-		 *
+		 * @param sslOptions The options to set when configuring SSL
 		 * @return {@literal this}
 		 */
 		public TcpClientSpec<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
@@ -240,11 +257,8 @@ public interface Spec {
 		/**
 		 * The host and port to which this client should connect.
 		 *
-		 * @param host
-		 * 		The host to connect to.
-		 * @param port
-		 * 		The port to connect to.
-		 *
+		 * @param host The host to connect to.
+		 * @param port The port to connect to.
 		 * @return {@literal this}
 		 */
 		public TcpClientSpec<IN, OUT> connect(@Nonnull String host, int port) {
@@ -254,9 +268,7 @@ public interface Spec {
 		/**
 		 * The address to which this client should connect.
 		 *
-		 * @param connectAddress
-		 * 		The address to connect to.
-		 *
+		 * @param connectAddress The address to connect to.
 		 * @return {@literal this}
 		 */
 		public TcpClientSpec<IN, OUT> connect(@Nonnull InetSocketAddress connectAddress) {
@@ -268,9 +280,7 @@ public interface Spec {
 		/**
 		 * The {@link reactor.io.codec.Codec} to use to encode and decode data.
 		 *
-		 * @param codec
-		 * 		The codec to use.
-		 *
+		 * @param codec The codec to use.
 		 * @return {@literal this}
 		 */
 		public TcpClientSpec<IN, OUT> codec(@Nullable Codec<Buffer, IN, OUT> codec) {
@@ -287,7 +297,7 @@ public interface Spec {
 		 */
 		@SuppressWarnings("unchecked")
 		public TcpClientSpec<IN, OUT> rawData(boolean israw) {
-			if(israw){
+			if (israw) {
 				this.codec = NOOP_CODEC;
 			}
 			return this;
@@ -295,15 +305,14 @@ public interface Spec {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		protected reactor.io.net.tcp.TcpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
+		public reactor.io.net.tcp.TcpClient<IN, OUT> get() {
 			try {
 				return clientImplConstructor.newInstance(
-						environment,
-						dispatcher,
-						connectAddress,
-						options,
-						sslOptions,
-						codec
+				  timer,
+				  connectAddress,
+				  options,
+				  sslOptions,
+				  codec
 				);
 			} catch (Throwable t) {
 				throw new IllegalStateException(t);
@@ -315,16 +324,13 @@ public interface Spec {
 	/**
 	 * A TcpServerSpec is used to specify a TcpServer
 	 *
-	 * @param <IN>
-	 * 		The type that will be received by this client
-	 * @param <OUT>
-	 * 		The type that will be sent by this client
-	 *
+	 * @param <IN>  The type that will be received by this client
+	 * @param <OUT> The type that will be sent by this client
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
 	class TcpServerSpec<IN, OUT>
-			extends PeerSpec<IN, OUT, ChannelStream<IN, OUT>, TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {
+	  extends PeerSpec<IN, OUT, ChannelStream<IN, OUT>, TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {
 
 		private final Constructor<? extends reactor.io.net.tcp.TcpServer> serverImplConstructor;
 
@@ -333,25 +339,23 @@ public interface Spec {
 		/**
 		 * Create a {@code TcpServer.Spec} using the given implementation class.
 		 *
-		 * @param serverImpl
-		 * 		The concrete implementation of {@link reactor.io.net.tcp.TcpServer} to instantiate.
+		 * @param serverImpl The concrete implementation of {@link reactor.io.net.tcp.TcpServer} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
 		TcpServerSpec(@Nonnull Class<? extends reactor.io.net.tcp.TcpServer> serverImpl) {
 			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
 			try {
 				this.serverImplConstructor = serverImpl.getDeclaredConstructor(
-						Environment.class,
-						Dispatcher.class,
-						InetSocketAddress.class,
-						ServerSocketOptions.class,
-						SslOptions.class,
-						Codec.class
+				  Timer.class,
+				  InetSocketAddress.class,
+				  ServerSocketOptions.class,
+				  SslOptions.class,
+				  Codec.class
 				);
 				this.serverImplConstructor.setAccessible(true);
 			} catch (NoSuchMethodException e) {
 				throw new IllegalArgumentException(
-						"No public constructor found that matches the signature of the one found in the TcpServer class.");
+				  "No public constructor found that matches the signature of the one found in the TcpServer class.");
 			}
 		}
 
@@ -359,9 +363,7 @@ public interface Spec {
 		 * Set the options to use for configuring SSL. Setting this to {@code null} means don't use SSL at all (the
 		 * default).
 		 *
-		 * @param sslOptions
-		 * 		The options to set when configuring SSL
-		 *
+		 * @param sslOptions The options to set when configuring SSL
 		 * @return {@literal this}
 		 */
 		public TcpServerSpec<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
@@ -371,15 +373,14 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.tcp.TcpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
+		public reactor.io.net.tcp.TcpServer<IN, OUT> get() {
 			try {
 				return serverImplConstructor.newInstance(
-						env,
-						dispatcher,
-						listenAddress,
-						options,
-						sslOptions,
-						codec
+				  timer,
+				  listenAddress,
+				  options,
+				  sslOptions,
+				  codec
 				);
 			} catch (Throwable t) {
 				throw new IllegalStateException(t);
@@ -389,13 +390,12 @@ public interface Spec {
 	}
 
 
-
 	/**
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
 	class DatagramServerSpec<IN, OUT>
-			extends PeerSpec<IN, OUT, ChannelStream<IN, OUT>, DatagramServerSpec<IN, OUT>, DatagramServer<IN, OUT>> {
+	  extends PeerSpec<IN, OUT, ChannelStream<IN, OUT>, DatagramServerSpec<IN, OUT>, DatagramServer<IN, OUT>> {
 		protected final Constructor<? extends reactor.io.net.udp.DatagramServer> serverImplCtor;
 
 		private NetworkInterface multicastInterface;
@@ -404,26 +404,25 @@ public interface Spec {
 			Assert.notNull(serverImpl, "NetServer implementation class cannot be null.");
 			try {
 				this.serverImplCtor = serverImpl.getDeclaredConstructor(
-						Environment.class,
-						Dispatcher.class,
-						InetSocketAddress.class,
-						NetworkInterface.class,
-						ServerSocketOptions.class,
-						Codec.class
+				  Timer.class,
+				  InetSocketAddress.class,
+				  NetworkInterface.class,
+				  ServerSocketOptions.class,
+				  Codec.class
 				);
 				this.serverImplCtor.setAccessible(true);
 			} catch (NoSuchMethodException e) {
 				throw new IllegalArgumentException(
-						"No public constructor found that matches the signature of the one found in the DatagramServer class.");
+				  "No public constructor found that matches the signature of the one found in the DatagramServer " +
+					"class" +
+					".");
 			}
 		}
 
 		/**
 		 * Set the interface to use for multicast.
 		 *
-		 * @param iface
-		 * 		the {@link java.net.NetworkInterface} to use for multicast.
-		 *
+		 * @param iface the {@link java.net.NetworkInterface} to use for multicast.
 		 * @return {@literal this}
 		 */
 		public DatagramServerSpec<IN, OUT> multicastInterface(NetworkInterface iface) {
@@ -433,15 +432,14 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.udp.DatagramServer<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
+		public reactor.io.net.udp.DatagramServer<IN, OUT> get() {
 			try {
 				return serverImplCtor.newInstance(
-						environment,
-						dispatcher,
-						listenAddress,
-						multicastInterface,
-						options,
-						codec
+				  timer,
+				  listenAddress,
+				  multicastInterface,
+				  options,
+				  codec
 				);
 			} catch (Throwable t) {
 				throw new IllegalStateException(t);
@@ -453,16 +451,13 @@ public interface Spec {
 	/**
 	 * A HttpServer Spec is used to specify an HttpServer
 	 *
-	 * @param <IN>
-	 * 		The type that will be received by this client
-	 * @param <OUT>
-	 * 		The type that will be sent by this client
-	 *
+	 * @param <IN>  The type that will be received by this client
+	 * @param <OUT> The type that will be sent by this client
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
 	class HttpServerSpec<IN, OUT>
-			extends PeerSpec<IN, OUT, HttpChannel<IN, OUT>, HttpServerSpec<IN, OUT>, HttpServer<IN, OUT>> {
+	  extends PeerSpec<IN, OUT, HttpChannel<IN, OUT>, HttpServerSpec<IN, OUT>, HttpServer<IN, OUT>> {
 
 		private final Constructor<? extends reactor.io.net.http.HttpServer> serverImplConstructor;
 
@@ -471,25 +466,23 @@ public interface Spec {
 		/**
 		 * Create a {@code TcpServer.Spec} using the given implementation class.
 		 *
-		 * @param serverImpl
-		 * 		The concrete implementation of {@link reactor.io.net.http.HttpClient} to instantiate.
+		 * @param serverImpl The concrete implementation of {@link reactor.io.net.http.HttpClient} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
 		HttpServerSpec(@Nonnull Class<? extends reactor.io.net.http.HttpServer> serverImpl) {
 			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
 			try {
 				this.serverImplConstructor = serverImpl.getDeclaredConstructor(
-						Environment.class,
-						Dispatcher.class,
-						InetSocketAddress.class,
-						ServerSocketOptions.class,
-						SslOptions.class,
-						Codec.class
+				  Timer.class,
+				  InetSocketAddress.class,
+				  ServerSocketOptions.class,
+				  SslOptions.class,
+				  Codec.class
 				);
 				this.serverImplConstructor.setAccessible(true);
 			} catch (NoSuchMethodException e) {
 				throw new IllegalArgumentException(
-						"No public constructor found that matches the signature of the one found in the TcpServer class.");
+				  "No public constructor found that matches the signature of the one found in the TcpServer class.");
 			}
 		}
 
@@ -497,9 +490,7 @@ public interface Spec {
 		 * Set the options to use for configuring SSL. Setting this to {@code null} means don't use SSL at all (the
 		 * default).
 		 *
-		 * @param sslOptions
-		 * 		The options to set when configuring SSL
-		 *
+		 * @param sslOptions The options to set when configuring SSL
 		 * @return {@literal this}
 		 */
 		public HttpServerSpec<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
@@ -509,15 +500,14 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.net.http.HttpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
+		public reactor.io.net.http.HttpServer<IN, OUT> get() {
 			try {
 				return serverImplConstructor.newInstance(
-						env,
-						dispatcher,
-						listenAddress,
-						options,
-						sslOptions,
-						codec
+				  timer,
+				  listenAddress,
+				  options,
+				  sslOptions,
+				  codec
 				);
 			} catch (Throwable t) {
 				throw new IllegalStateException(t);
@@ -529,14 +519,11 @@ public interface Spec {
 	/**
 	 * A helper class for specifying a {@code HttpClient}
 	 *
-	 * @param <IN>
-	 * 		The type that will be received by the client
-	 * @param <OUT>
-	 * 		The type that will be sent by the client
-	 *
+	 * @param <IN>  The type that will be received by the client
+	 * @param <OUT> The type that will be sent by the client
 	 * @author Stephane Maldini
 	 */
-	class HttpClientSpec<IN, OUT> extends DispatcherComponentSpec<HttpClientSpec<IN, OUT>, reactor.io.net.http.HttpClient<IN, OUT>> {
+	class HttpClientSpec<IN, OUT> implements Supplier<HttpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.http.HttpClient> clientImplConstructor;
 
@@ -544,38 +531,36 @@ public interface Spec {
 		private ClientSocketOptions options    = new ClientSocketOptions();
 		private SslOptions          sslOptions = null;
 		private Codec<Buffer, IN, OUT> codec;
+		private Timer timer = null;
 
 		/**
 		 * Create a {@code TcpClient.Spec} using the given implementation class.
 		 *
-		 * @param clientImpl
-		 * 		The concrete implementation of {@link reactor.io.net.http.HttpClient} to instantiate.
+		 * @param clientImpl The concrete implementation of {@link reactor.io.net.http.HttpClient} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
 		HttpClientSpec(@Nonnull Class<? extends reactor.io.net.http.HttpClient> clientImpl) {
 			Assert.notNull(clientImpl, "TcpClient implementation class cannot be null.");
 			try {
-				this.clientImplConstructor = (Constructor<reactor.io.net.http.HttpClient>) clientImpl.getDeclaredConstructor(
-						Environment.class,
-						Dispatcher.class,
-						InetSocketAddress.class,
-						ClientSocketOptions.class,
-						SslOptions.class,
-						Codec.class
-				);
+				this.clientImplConstructor = (Constructor<reactor.io.net.http.HttpClient>) clientImpl
+				  .getDeclaredConstructor(
+					Timer.class,
+					InetSocketAddress.class,
+					ClientSocketOptions.class,
+					SslOptions.class,
+					Codec.class
+				  );
 				this.clientImplConstructor.setAccessible(true);
 			} catch (NoSuchMethodException e) {
 				throw new IllegalArgumentException(
-						"No public constructor found that matches the signature of the one found in the TcpClient class.");
+				  "No public constructor found that matches the signature of the one found in the TcpClient class.");
 			}
 		}
 
 		/**
 		 * Set the common {@link reactor.io.net.config.ClientSocketOptions} for connections made in this client.
 		 *
-		 * @param options
-		 * 		The socket options to apply to new connections.
-		 *
+		 * @param options The socket options to apply to new connections.
 		 * @return {@literal this}
 		 */
 		public HttpClientSpec<IN, OUT> options(ClientSocketOptions options) {
@@ -587,9 +572,7 @@ public interface Spec {
 		 * Set the options to use for configuring SSL. Setting this to {@code null} means don't use SSL at all (the
 		 * default).
 		 *
-		 * @param sslOptions
-		 * 		The options to set when configuring SSL
-		 *
+		 * @param sslOptions The options to set when configuring SSL
 		 * @return {@literal this}
 		 */
 		public HttpClientSpec<IN, OUT> ssl(@Nullable SslOptions sslOptions) {
@@ -600,11 +583,8 @@ public interface Spec {
 		/**
 		 * The host and port to which this client should connect.
 		 *
-		 * @param host
-		 * 		The host to connect to.
-		 * @param port
-		 * 		The port to connect to.
-		 *
+		 * @param host The host to connect to.
+		 * @param port The port to connect to.
 		 * @return {@literal this}
 		 */
 		public HttpClientSpec<IN, OUT> connect(@Nonnull String host, int port) {
@@ -614,9 +594,7 @@ public interface Spec {
 		/**
 		 * The address to which this client should connect.
 		 *
-		 * @param connectAddress
-		 * 		The address to connect to.
-		 *
+		 * @param connectAddress The address to connect to.
 		 * @return {@literal this}
 		 */
 		public HttpClientSpec<IN, OUT> connect(@Nonnull InetSocketAddress connectAddress) {
@@ -628,9 +606,7 @@ public interface Spec {
 		/**
 		 * The {@link reactor.io.codec.Codec} to use to encode and decode data.
 		 *
-		 * @param codec
-		 * 		The codec to use.
-		 *
+		 * @param codec The codec to use.
 		 * @return {@literal this}
 		 */
 		public HttpClientSpec<IN, OUT> codec(@Nullable Codec<Buffer, IN, OUT> codec) {
@@ -639,17 +615,27 @@ public interface Spec {
 			return this;
 		}
 
+		/**
+		 * Set the default {@link reactor.fn.timer.Timer} for timed operations.
+		 *
+		 * @param timer The timer to assign by default
+		 * @return {@literal this}
+		 */
+		public HttpClientSpec<IN, OUT> timer(Timer timer) {
+			this.timer = timer;
+			return this;
+		}
+
 		@Override
 		@SuppressWarnings("unchecked")
-		protected reactor.io.net.http.HttpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
+		public reactor.io.net.http.HttpClient<IN, OUT> get() {
 			try {
 				return clientImplConstructor.newInstance(
-						environment,
-						dispatcher,
-						connectAddress,
-						options,
-						sslOptions,
-						codec
+				  timer,
+				  connectAddress,
+				  options,
+				  sslOptions,
+				  codec
 				);
 			} catch (Throwable t) {
 				throw new IllegalStateException(t);
@@ -660,7 +646,6 @@ public interface Spec {
 
 	/**
 	 * A helper class for configure a new {@code Reconnect}.
-	 *
 	 */
 	class IncrementalBackoffReconnect implements Supplier<Reconnect> {
 
@@ -761,7 +746,8 @@ public interface Spec {
 			final int len = addresses.size();
 
 			final Supplier<InetSocketAddress> endpoints = new Supplier<InetSocketAddress>() {
-				@Override public InetSocketAddress get() {
+				@Override
+				public InetSocketAddress get() {
 					return addresses.get(count.getAndIncrement() % len);
 				}
 			};
@@ -772,7 +758,7 @@ public interface Spec {
 					synchronized (IncrementalBackoffReconnect.this) {
 						if (!addresses.isEmpty()) {
 							if (IncrementalBackoffReconnect.this.maxAttempts == -1 ||
-									IncrementalBackoffReconnect.this.maxAttempts > attempt) {
+							  IncrementalBackoffReconnect.this.maxAttempts > attempt) {
 								rv = Tuple.of(endpoints.get(), determineInterval(attempt));
 							}
 						} else {

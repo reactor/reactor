@@ -107,7 +107,7 @@ public class Tuple6<T1, T2, T3, T4, T5, T6> extends Tuple5<T1, T2, T3, T4, T5> {
 
 	@Override
 	public String toString() {
-		return super.toString()+
-				(t6 != null ? ","+t6.toString() : "");
+		return super.toString() +
+		  (t6 != null ? "," + t6.toString() : "");
 	}
 }

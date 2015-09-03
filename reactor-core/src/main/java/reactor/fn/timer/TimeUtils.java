@@ -16,7 +16,7 @@
 
 package reactor.fn.timer;
 
-import reactor.core.support.ReactorFatalException;
+import reactor.core.error.ReactorFatalException;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.TimeUnit;
@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Jon Brisbin
  */
 public abstract class TimeUtils {
+
 
 	private static final int        DEFAULT_RESOLUTION = 100;
 	private static final AtomicLong now                = new AtomicLong();
@@ -51,7 +52,7 @@ public abstract class TimeUtils {
 	}
 
 	public static Timer getTimer() {
-		if(null == timer) {
+		if (null == timer) {
 			setTimer(new HashWheelTimer(DEFAULT_RESOLUTION));
 		}
 		return timer;
@@ -60,8 +61,8 @@ public abstract class TimeUtils {
 	public static void checkResolution(long time, long resolution) {
 		if (time % resolution != 0) {
 			throw ReactorFatalException.create(new IllegalArgumentException(
-					"Period must be a multiple of Timer resolution (e.g. period % resolution == 0 ). " +
-					"Resolution for this Timer is: " + resolution + "ms"
+			  "Period must be a multiple of Timer resolution (e.g. period % resolution == 0 ). " +
+				"Resolution for this Timer is: " + resolution + "ms"
 			));
 		}
 	}

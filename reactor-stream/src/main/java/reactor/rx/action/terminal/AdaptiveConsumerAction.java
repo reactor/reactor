@@ -18,13 +18,11 @@ package reactor.rx.action.terminal;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.core.support.Exceptions;
-import reactor.core.support.NonBlocking;
+import reactor.core.error.Exceptions;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
@@ -38,29 +36,28 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 
 	private final Consumer<? super T> consumer;
-	private final Dispatcher          dispatcher;
 	private final Broadcaster<Long>   requestMapperStream;
 
 	private final AtomicLongFieldUpdater<AdaptiveConsumerAction> COUNTED = AtomicLongFieldUpdater.newUpdater
-			(AdaptiveConsumerAction
-					.class, "counted");
+	  (AdaptiveConsumerAction
+		.class, "counted");
 
 	private final AtomicLongFieldUpdater<AdaptiveConsumerAction> COUNTING = AtomicLongFieldUpdater.newUpdater
-			(AdaptiveConsumerAction
-					.class, "counting");
+	  (AdaptiveConsumerAction
+		.class, "counting");
 
 	private volatile long counted;
 	private volatile long counting;
 	private          long pendingRequests;
 
 
-	public AdaptiveConsumerAction(Dispatcher dispatcher,
+	public AdaptiveConsumerAction(Timer timer,
 	                              long initCapacity,
 	                              Consumer<? super T> consumer,
 	                              Function<Stream<Long>, ? extends Publisher<? extends Long>>
-			                              requestMapper) {
+	                                requestMapper) {
 		this.consumer = consumer;
-		this.requestMapperStream = Broadcaster.create();
+		this.requestMapperStream = Broadcaster.create(timer);
 		this.requestMapperStream.onSubscribe(new Subscription() {
 			@Override
 			public void request(long n) {
@@ -70,17 +67,13 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 			@Override
 			public void cancel() {
 				Subscription subscription = upstreamSubscription;
-				if(subscription != null){
+				if (subscription != null) {
 					upstreamSubscription = null;
 					subscription.cancel();
 				}
 			}
 		});
-		if (SynchronousDispatcher.INSTANCE == dispatcher) {
-			this.dispatcher =  TailRecurseDispatcher.INSTANCE;
-		} else {
-			this.dispatcher = dispatcher;
-		}
+
 		//TODO define option to choose ?
 		this.capacity = initCapacity;
 
@@ -132,16 +125,15 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		cancel();
+		recycle();
 		requestMapperStream.onError(ev);
 		super.doError(ev);
 	}
 
 	@Override
 	protected void doShutdown() {
-		cancel();
-		requestMapperStream.onComplete();
 		super.doShutdown();
+		requestMapperStream.onComplete();
 	}
 
 	@Override
@@ -155,13 +147,8 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return capacity != Long.MAX_VALUE;
-	}
-
-	@Override
-	public Dispatcher getDispatcher() {
-		return dispatcher;
 	}
 
 	@Override
@@ -169,7 +156,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 		return super.toString() + "{pending=" + pendingRequests + "}";
 	}
 
-	private class RequestSubscriber implements Subscriber<Long>, NonBlocking {
+	private class RequestSubscriber implements Subscriber<Long>, Bounded {
 		Subscription s;
 
 		@Override
@@ -185,8 +172,9 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 			}
 			PushSubscription<T> upstreamSubscription = AdaptiveConsumerAction.this.upstreamSubscription;
 			if(upstreamSubscription != null) {
-				TailRecurseDispatcher.INSTANCE.dispatch(n, upstreamSubscription, null);
+				upstreamSubscription.request(n);
 			}
+			Subscription s = this.s;
 			if (s != null) {
 				s.request(1l);
 			}
@@ -194,22 +182,18 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 
 		@Override
 		public void onError(Throwable t) {
-			if (s != null) {
-				s.cancel();
-			}
+			s = null;
 			Exceptions.throwIfFatal(t);
 		}
 
 		@Override
 		public void onComplete() {
-			if (s != null) {
-				s.cancel();
-			}
+			s = null;
 		}
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
-			return AdaptiveConsumerAction.this.isReactivePull(dispatcher, producerCapacity);
+		public boolean isExposedToOverflow(Bounded upstream) {
+			return AdaptiveConsumerAction.this.isExposedToOverflow(upstream);
 		}
 
 		@Override

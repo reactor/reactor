@@ -4,7 +4,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
+import reactor.Processors;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Predicate;
 import reactor.io.buffer.Buffer;
@@ -38,12 +38,10 @@ public class AbstractNetClientServerTest {
 
 	protected final Logger log = LoggerFactory.getLogger(getClass());
 
-	private final int senderThreads = Environment.PROCESSORS;
+	private final int senderThreads = Processors.DEFAULT_POOL_SIZE;
 	protected Data            data;
 	private   ExecutorService serverPool;
 	private   ExecutorService clientPool;
-	private   Environment     env1;
-	private   Environment     env2;
 	private   int             port;
 
 	protected static Data generateData() {
@@ -56,11 +54,10 @@ public class AbstractNetClientServerTest {
 
 	@Before
 	public void setup() {
-		clientPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(getClass().getSimpleName() + "-server"));
-		serverPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(getClass().getSimpleName() + "-client"));
-
-		env1 = new Environment();
-		env2 = new Environment();
+		clientPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(getClass().getSimpleName() +
+		  "-server"));
+		serverPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory(getClass().getSimpleName() +
+		  "-client"));
 
 		port = SocketUtils.findAvailableTcpPort();
 
@@ -84,40 +81,40 @@ public class AbstractNetClientServerTest {
 	}
 
 	protected <T> Spec.TcpServerSpec<T, T> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
-	                                                  Class<? extends T> dataType) {
+	                                                       Class<? extends T> dataType) {
 		return createTcpServer(type, dataType, dataType);
 	}
 
 	protected <IN, OUT> Spec.TcpServerSpec<IN, OUT> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
-	                                                           Class<? extends IN> inType,
-	                                                           Class<? extends OUT> outType) {
-		return new Spec.TcpServerSpec<IN, OUT>(type).env(env1).dispatcher("sync").listen(LOCALHOST, port);
+	                                                                Class<? extends IN> inType,
+	                                                                Class<? extends OUT> outType) {
+		return new Spec.TcpServerSpec<IN, OUT>(type).listen(LOCALHOST, port);
 	}
 
 	protected <T> Spec.TcpClientSpec<T, T> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
-	                                                  Class<? extends T> dataType) {
+	                                                       Class<? extends T> dataType) {
 		return createTcpClient(type, dataType, dataType);
 	}
 
 	protected <IN, OUT> Spec.TcpClientSpec<IN, OUT> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
-	                                                           Class<? extends IN> inType,
-	                                                           Class<? extends OUT> outType) {
-		return new Spec.TcpClientSpec<IN, OUT>(type).env(env2).dispatcher("sync").connect(LOCALHOST, port);
+	                                                                Class<? extends IN> inType,
+	                                                                Class<? extends OUT> outType) {
+		return new Spec.TcpClientSpec<IN, OUT>(type).connect(LOCALHOST, port);
 	}
 
 	protected <T> void assertTcpClientServerExchangedData(Class<? extends reactor.io.net.tcp.TcpServer> serverType,
 	                                                      Class<? extends reactor.io.net.tcp.TcpClient> clientType,
 	                                                      Buffer data) throws InterruptedException {
 		assertTcpClientServerExchangedData(
-				serverType,
-				clientType,
-				StandardCodecs.PASS_THROUGH_CODEC,
-				data,
-				(Buffer b) -> {
-					byte[] b1 = data.flip().asBytes();
-					byte[] b2 = b.asBytes();
-					return Arrays.equals(b1, b2);
-				}
+		  serverType,
+		  clientType,
+		  StandardCodecs.PASS_THROUGH_CODEC,
+		  data,
+		  (Buffer b) -> {
+			  byte[] b1 = data.flip().asBytes();
+			  byte[] b2 = b.asBytes();
+			  return Arrays.equals(b1, b2);
+		  }
 		);
 	}
 
@@ -127,25 +124,23 @@ public class AbstractNetClientServerTest {
 	                                                      Codec<Buffer, T, T> codec,
 	                                                      T data,
 	                                                      Predicate<T> replyPredicate)
-			throws InterruptedException {
+	  throws InterruptedException {
 		final Codec<Buffer, T, T> elCodec = codec == null ? (Codec<Buffer, T, T>) StandardCodecs.PASS_THROUGH_CODEC :
-				codec;
+		  codec;
 
 		TcpServer<T, T> server = NetStreams.tcpServer(serverType, s -> s
-						.env(env1)
-						.listen(LOCALHOST, getPort())
-						.codec(elCodec)
+			.listen(LOCALHOST, getPort())
+			.codec(elCodec)
 		);
 
 		server.start(ch -> ch.writeWith(ch.take(1))).await();
 
 		TcpClient<T, T> client = NetStreams.tcpClient(clientType, s -> s
-						.env(env2)
-						.connect(LOCALHOST, getPort())
-						.codec(elCodec)
+			.connect(LOCALHOST, getPort())
+			.codec(elCodec)
 		);
 
-		final Promise<T> p = Promises.prepare();
+		final Promise<T> p = Promises.ready();
 
 		client.start(input -> {
 			input.log("echo-in").subscribe(p);
@@ -191,10 +186,10 @@ public class AbstractNetClientServerTest {
 		@Override
 		public String toString() {
 			return "Data{" +
-					"count=" + count +
-					", length=" + length +
-					", name='" + name + '\'' +
-					'}';
+			  "count=" + count +
+			  ", length=" + length +
+			  ", name='" + name + '\'' +
+			  '}';
 		}
 
 		@Override
@@ -220,4 +215,9 @@ public class AbstractNetClientServerTest {
 		}
 	}
 
+	static {
+		System.setProperty("reactor.tcp.selectThreadCount", "2");
+		System.setProperty("reactor.tcp.ioThreadCount", "4");
+		System.setProperty("reactor.tcp.connectionReactorBacklog", "128");
+	}
 }

@@ -15,8 +15,11 @@
  */
 package reactor.core.processor;
 
-import reactor.core.processor.util.SingleUseExecutor;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
+import reactor.core.support.SingleUseExecutor;
+import reactor.fn.Consumer;
+import reactor.fn.timer.GlobalTimer;
+import reactor.fn.timer.Timer;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -26,21 +29,34 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Stephane Maldini
  */
-public abstract class ExecutorPoweredProcessor<IN, OUT> extends ReactorProcessor<IN, OUT> {
+public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN, OUT> {
 
 	protected final ExecutorService executor;
 
 	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {
-		super(autoCancel);
-
-		this.executor = executor == null
-				? SingleUseExecutor.create(name)
-				: executor;
+		super(
+		  executor == null ?
+		  new ClassLoader(Thread.currentThread().getContextClassLoader()) {} :
+		  null,
+		  autoCancel);
+		if (executor == null) {
+			this.executor = SingleUseExecutor.create(name, contextClassLoader);
+		} else {
+			this.executor = executor;
+		}
 	}
-
 
 	@Override
 	public void onComplete() {
+		super.onComplete();
+		if (executor.getClass() == SingleUseExecutor.class) {
+			executor.shutdown();
+		}
+	}
+
+	@Override
+	public void onError(Throwable error) {
+		super.onError(error);
 		if (executor.getClass() == SingleUseExecutor.class) {
 			executor.shutdown();
 		}
@@ -60,6 +76,15 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends ReactorProcessor
 			Thread.currentThread().interrupt();
 			return false;
 		}
+	}
+
+	@Override
+	protected int decrementSubscribers() {
+		int subs = super.decrementSubscribers();
+		if (autoCancel && upstreamSubscription == null && subs == 0 && executor.getClass() == SingleUseExecutor.class) {
+			executor.shutdown();
+		}
+		return subs;
 	}
 
 	@Override
@@ -83,5 +108,10 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends ReactorProcessor
 			onError(t);
 		}
 	}
+
+	/**
+	 * @return true if the attached Subscribers will read exclusive sequences (akin to work-queue pattern)
+	 */
+	public abstract boolean isWork();
 
 }

@@ -16,31 +16,30 @@
 
 package reactor.fn.timer;
 
+import org.reactivestreams.Processor;
+import reactor.core.error.CancelException;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
-import reactor.jarjar.com.lmax.disruptor.EventFactory;
-import reactor.jarjar.com.lmax.disruptor.RingBuffer;
+import reactor.core.processor.rb.disruptor.EventFactory;
+import reactor.core.processor.rb.disruptor.RingBuffer;
 
 import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Hash Wheel Timer, as per the paper:
- *
+ * <p>
  * Hashed and hierarchical timing wheels:
  * http://www.cs.columbia.edu/~nahum/w6998/papers/ton97-timing-wheels.pdf
- *
+ * <p>
  * More comprehensive slides, explaining the paper can be found here:
  * http://www.cse.wustl.edu/~cdgill/courses/cs6874/TimingWheels.ppt
- *
+ * <p>
  * Hash Wheel timer is an approximated timer that allows performant execution of
  * larger amount of tasks with better performance compared to traditional scheduling.
  *
@@ -54,10 +53,10 @@ public class HashWheelTimer implements Timer {
 	private static final String DEFAULT_TIMER_NAME = "hash-wheel-timer";
 
 	private final RingBuffer<Set<TimerPausable>> wheel;
-	private final int                                resolution;
-	private final Thread                             loop;
-	private final Executor                           executor;
-	private final WaitStrategy                       waitStrategy;
+	private final int                            resolution;
+	private final Thread                         loop;
+	private final Executor                       executor;
+	private final WaitStrategy                   waitStrategy;
 
 	/**
 	 * Create a new {@code HashWheelTimer} using the given with default resolution of 100 milliseconds and
@@ -89,7 +88,7 @@ public class HashWheelTimer implements Timer {
 	 */
 	public HashWheelTimer(int res, int wheelSize, WaitStrategy waitStrategy) {
 		this(DEFAULT_TIMER_NAME, res, wheelSize, waitStrategy, Executors.newFixedThreadPool(1, new
-				NamedDaemonThreadFactory(DEFAULT_TIMER_NAME + "-run")));
+		  NamedDaemonThreadFactory(DEFAULT_TIMER_NAME + "-run", null)));
 	}
 
 	/**
@@ -165,9 +164,9 @@ public class HashWheelTimer implements Timer {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Pausable schedule(Consumer<Long> consumer,
-	                                                            long period,
-	                                                            TimeUnit timeUnit,
-	                                                            long delayInMilliseconds) {
+	                         long period,
+	                         TimeUnit timeUnit,
+	                         long delayInMilliseconds) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), delayInMilliseconds, consumer);
 	}
@@ -175,8 +174,8 @@ public class HashWheelTimer implements Timer {
 	@Override
 	@SuppressWarnings("unchecked")
 	public Pausable submit(Consumer<Long> consumer,
-	                                                          long period,
-	                                                          TimeUnit timeUnit) {
+	                       long period,
+	                       TimeUnit timeUnit) {
 		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
 		return schedule(0, ms, consumer).cancelAfterUse();
@@ -191,18 +190,18 @@ public class HashWheelTimer implements Timer {
 	@Override
 	@SuppressWarnings("unchecked")
 	public Pausable schedule(Consumer<Long> consumer,
-	                                                            long period,
-	                                                            TimeUnit timeUnit) {
+	                         long period,
+	                         TimeUnit timeUnit) {
 		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit),
-		                                                              0,
-		                                                              consumer);
+		  0,
+		  consumer);
 	}
 
 	@SuppressWarnings("unchecked")
 	private TimerPausable schedule(long recurringTimeout,
-	                                                             long firstDelay,
-	                                                             Consumer<Long> consumer) {
-		if(recurringTimeout != 0) {
+	                               long firstDelay,
+	                               Consumer<Long> consumer) {
+		if (recurringTimeout != 0) {
 			TimeUtils.checkResolution(recurringTimeout, resolution);
 		}
 
@@ -240,13 +239,18 @@ public class HashWheelTimer implements Timer {
 	 */
 	public void cancel() {
 		this.loop.interrupt();
+		if(executor instanceof Processor){
+			((Processor)executor).onComplete();
+		}else if(executor instanceof ExecutorService){
+			((ExecutorService)executor).shutdown();
+		}
 	}
 
 	@Override
 	public String toString() {
 		return String.format("HashWheelTimer { Buffer Size: %d, Resolution: %d }",
-		                     wheel.getBufferSize(),
-		                     resolution);
+		  wheel.getBufferSize(),
+		  resolution);
 	}
 
 	/**
@@ -268,8 +272,8 @@ public class HashWheelTimer implements Timer {
 	 * @param <T> type of the Timer Registration Consumer
 	 */
 	public static class TimerPausable<T extends Consumer<Long>> implements Runnable,
-			Comparable,
-			Pausable {
+	  Comparable,
+	  Pausable {
 
 		public static int STATUS_PAUSED    = 1;
 		public static int STATUS_CANCELLED = -1;
@@ -322,7 +326,11 @@ public class HashWheelTimer implements Timer {
 		 */
 		@Override
 		public void run() {
-			delegate.accept(TimeUtils.approxCurrentTimeMillis());
+			try {
+				delegate.accept(TimeUtils.approxCurrentTimeMillis());
+			} catch(CancelException e){
+				cancel();
+			}
 		}
 
 		/**
@@ -400,8 +408,8 @@ public class HashWheelTimer implements Timer {
 		}
 
 		/**
-		 * Cancel this {@link HashWheelTimer.TimerPausable} after it has been selected and used. {@link
-		 * reactor.core.Dispatcher} implementations should respect this value and perform
+		 * Cancel this {@link HashWheelTimer.TimerPausable} after it has been selected and used.
+		 * Implementations should respect this value and perform
 		 * the cancellation.
 		 *
 		 * @return {@literal this}
@@ -437,7 +445,7 @@ public class HashWheelTimer implements Timer {
 
 	/**
 	 * Yielding wait strategy.
-	 *
+	 * <p>
 	 * Spins in the loop, until the deadline is reached. Releases the flow control
 	 * by means of Thread.yield() call. This strategy is less precise than BusySpin
 	 * one, but is more scheduler-friendly.
@@ -457,7 +465,7 @@ public class HashWheelTimer implements Timer {
 
 	/**
 	 * BusySpin wait strategy.
-	 *
+	 * <p>
 	 * Spins in the loop until the deadline is reached. In a multi-core environment,
 	 * will occupy an entire core. Is more precise than Sleep wait strategy, but
 	 * consumes more resources.
@@ -476,7 +484,7 @@ public class HashWheelTimer implements Timer {
 
 	/**
 	 * Sleep wait strategy.
-	 *
+	 * <p>
 	 * Will release the flow control, giving other threads a possibility of execution
 	 * on the same processor. Uses less resources than BusySpin wait, but is less
 	 * precise.

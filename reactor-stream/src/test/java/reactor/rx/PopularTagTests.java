@@ -21,15 +21,12 @@ import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.fn.tuple.Tuple;
 import reactor.rx.action.Control;
-import reactor.rx.stream.MapStream;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static reactor.Environment.cachedDispatcher;
-import static reactor.Environment.sharedDispatcher;
 
 /**
  * @author Stephane Maldini
@@ -39,13 +36,13 @@ public class PopularTagTests extends AbstractReactorTest {
 	private static final Logger LOG = LoggerFactory.getLogger(PopularTagTests.class);
 
 	private static final List<String> PULP_SAMPLE = Arrays.asList(
-			"Look, ", "just because I don't be givin' no man a #foot massage don't make it right for #Marsellus #to throw " +
-					"Antwone",
-			" ",
-			"into a glass #motherfucker house, ", "fuckin' up the way the nigger talks. ", "#Motherfucker do that shit #to" +
-					" " +
-					"me,", " he "
-			, "better paralyze my ass, ", "'cause I'll kill the #motherfucker , ", "know what I'm sayin'?"
+	  "Look, ", "just because I don't be givin' no man a #foot massage don't make it right for #Marsellus #to throw " +
+		"Antwone",
+	  " ",
+	  "into a glass #motherfucker house, ", "fuckin' up the way the nigger talks. ", "#Motherfucker do that shit #to" +
+		" " +
+		"me,", " he "
+	  , "better paralyze my ass, ", "'cause I'll kill the #motherfucker , ", "know what I'm sayin'?"
 	);
 
 
@@ -53,36 +50,34 @@ public class PopularTagTests extends AbstractReactorTest {
 	public void sampleTest() throws Exception {
 		CountDownLatch latch = new CountDownLatch(1);
 
-		MapStream<String, Integer> persistentMap = IOStreams.persistentMap("popularTags", true);
-
 		Control top10every1second =
-				Streams.from(PULP_SAMPLE)
-						.dispatchOn(sharedDispatcher())
-						.flatMap(samuelJackson ->
-										Streams
-												.from(samuelJackson.split(" "))
-												.dispatchOn(cachedDispatcher())
-												.filter(w -> !w.trim().isEmpty())
-												.observe(i -> simulateLatency())
-						)
-						.map(w -> Tuple.of(w, 1))
-						.window(1, SECONDS)
-						.flatMap(s ->
-										BiStreams.reduceByKey(s, persistentMap, (acc, next) -> acc + next)
-												.sort((a, b) -> -a.t2.compareTo(b.t2))
-												.take(10)
-												.finallyDo(_s -> LOG.info("------------------------ window complete! ----------------------"))
-						)
-						.consume(
-								entry -> LOG.info(entry.t1 + ": " + entry.t2),
-								error -> LOG.error("", error),
-								nil -> latch.countDown()
-						);
+		  Streams.from(PULP_SAMPLE)
+		    .run(asyncService)
+			.flatMap(samuelJackson ->
+				Streams
+				  .from(samuelJackson.split(" "))
+				  .run(asyncService)
+				  .filter(w -> !w.trim().isEmpty())
+				  .observe(i -> simulateLatency())
+			)
+			.map(w -> Tuple.of(w, 1))
+		    .window(2, SECONDS)
+			.flatMap(s ->
+				BiStreams.reduceByKey(s, (acc, next) -> acc + next)
+				  .sort((a, b) -> -a.t2.compareTo(b.t2))
+				  .take(10)
+				  .finallyDo(_s -> LOG.info("------------------------ window complete! ----------------------"))
+			)
+			.consume(
+			  entry -> LOG.info(entry.t1 + ": " + entry.t2),
+			  error -> LOG.error("", error),
+			  nil -> latch.countDown()
+			);
 
 		awaitLatch(top10every1second, latch);
 	}
 
-	private void simulateLatency(){
+	private void simulateLatency() {
 		try {
 			Thread.sleep(100);
 		} catch (InterruptedException e) {
@@ -94,7 +89,7 @@ public class PopularTagTests extends AbstractReactorTest {
 	private void awaitLatch(Control tail, CountDownLatch latch) throws Exception {
 		if (!latch.await(10, SECONDS)) {
 			throw new Exception("Never completed: (" + latch.getCount() + ") "
-					+ tail.debug());
+			  + tail.debug());
 		}
 	}
 }

@@ -19,29 +19,35 @@ package reactor;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import reactor.core.processor.ProcessorService;
+import reactor.fn.timer.Timer;
 
 /**
- * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public abstract class AbstractReactorTest {
 
-	protected Environment env;
-
+	protected static ProcessorService<?> asyncService;
+	protected static ProcessorService<?> workService;
+	protected static Timer            timer;
 
 	@BeforeClass
 	public static void loadEnv() {
-		Environment.initializeIfEmpty().assignErrorJournal();
-	}
-
-	@Before
-	public void assignEnv() {
-		env = Environment.get();
+		timer = Timers.global();
+		workService = Processors.workService("work", 2048, 4, Throwable::printStackTrace, null, false);
+		asyncService = Processors.asyncService("async", 2048, 4, Throwable::printStackTrace, null, false);
 	}
 
 	@AfterClass
 	public static void closeEnv() {
-		Environment.terminate();
+		timer = null;
+		Timers.unregisterGlobal();
+		workService.shutdown();
+		asyncService.shutdown();
+	}
+
+	static {
+		System.setProperty("reactor.trace.cancel", "true");
 	}
 
 }

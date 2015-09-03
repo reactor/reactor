@@ -30,8 +30,7 @@ public class SetMembershipSelector implements Selector {
 	/**
 	 * Create a {@link Selector} when the given regex pattern.
 	 *
-	 * @param set
-	 * 		The {@link Set} that will be used for membership checks.
+	 * @param set The {@link Set} that will be used for membership checks.
 	 */
 	public SetMembershipSelector(Set set) {
 		this.set = set;

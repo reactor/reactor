@@ -19,9 +19,7 @@ package reactor.fn;
 /**
  * Determines if the input object matches some criteria.
  *
- * @param <T>
- * 		the type of object that the predicate can test
- *
+ * @param <T> the type of object that the predicate can test
  * @author Jon Brisbin
  */
 public interface Predicate<T> {
@@ -29,9 +27,7 @@ public interface Predicate<T> {
 	/**
 	 * Returns {@literal true} if the input object matches some criteria.
 	 *
-	 * @param t
-	 * 		The input object.
-	 *
+	 * @param t The input object.
 	 * @return {@literal true} if the criteria matches, {@literal false} otherwise.
 	 */
 	boolean test(T t);

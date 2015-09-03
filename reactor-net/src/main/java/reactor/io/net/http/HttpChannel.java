@@ -16,9 +16,8 @@
 
 package reactor.io.net.http;
 
-import reactor.Environment;
 import reactor.bus.selector.HeaderResolver;
-import reactor.core.Dispatcher;
+import reactor.fn.timer.Timer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.http.model.*;
 
@@ -26,31 +25,29 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
- *
  * A Request/Response {@link ChannelStream} extension that provides for several helpers to control HTTP behavior and
- *  observe its metadata.
+ * observe its metadata.
  *
  * @author Sebastien Deleuze
  * @author Stephane maldini
  */
 public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
-	public static final String WS_SCHEME = "ws";
-	public static final String WSS_SCHEME = "wss";
-	public static final String HTTP_SCHEME = "http";
+	public static final String WS_SCHEME    = "ws";
+	public static final String WSS_SCHEME   = "wss";
+	public static final String HTTP_SCHEME  = "http";
 	public static final String HTTPS_SCHEME = "https";
 
 	private volatile int statusAndHeadersSent = 0;
 	private HeaderResolver<String> paramsResolver;
 
 	protected final static AtomicIntegerFieldUpdater<HttpChannel> HEADERS_SENT =
-			AtomicIntegerFieldUpdater.newUpdater(HttpChannel.class, "statusAndHeadersSent");
+	  AtomicIntegerFieldUpdater.newUpdater(HttpChannel.class, "statusAndHeadersSent");
 
-	public HttpChannel(Environment env,
-	                   long prefetch,
-	                   Dispatcher eventsDispatcher
+	public HttpChannel(Timer timer,
+	                   long prefetch
 	) {
-		super(env, null, prefetch, eventsDispatcher);
+		super(timer, null, prefetch);
 	}
 
 	// REQUEST contract
@@ -68,7 +65,6 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * Read URI param from the given key
 	 *
 	 * @param key matching key
-	 *
 	 * @return the resolved parameter for the given key name
 	 */
 	public final String param(String key) {
@@ -87,9 +83,8 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	/**
 	 * Register an HTTP request header
 	 *
-	 * @param name Header name
+	 * @param name  Header name
 	 * @param value Header content
-	 *
 	 * @return this
 	 */
 	public final HttpChannel<IN, OUT> header(String name, String value) {
@@ -103,6 +98,7 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	/**
 	 * Is the request keepAlive
+	 *
 	 * @return is keep alive
 	 */
 	public abstract boolean isKeepAlive();
@@ -110,6 +106,7 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	/**
 	 * set the request keepAlive if true otherwise remove the existing connection keep alive header
+	 *
 	 * @return is keep alive
 	 */
 	public abstract HttpChannel<IN, OUT> keepAlive(boolean keepAlive);
@@ -122,7 +119,6 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	 *
 	 * @param name
 	 * @param value
-	 *
 	 * @return this
 	 */
 	public HttpChannel<IN, OUT> addHeader(String name, String value) {
@@ -167,7 +163,6 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * Set the response status to an outgoing response
 	 *
 	 * @param status the status to define
-	 *
 	 * @return this
 	 */
 	public HttpChannel<IN, OUT> responseStatus(Status status) {
@@ -189,9 +184,8 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	/**
 	 * Define the response HTTP header for the given key
 	 *
-	 * @param name the HTTP response header key to override
+	 * @param name  the HTTP response header key to override
 	 * @param value the HTTP response header content
-	 *
 	 * @return this
 	 */
 	public final HttpChannel<IN, OUT> responseHeader(String name, String value) {
@@ -208,9 +202,8 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	/**
 	 * Accumulate a response HTTP header for the given key name, appending ";" for each new value
 	 *
-	 * @param name the HTTP response header name
+	 * @param name  the HTTP response header name
 	 * @param value the HTTP response header value
-	 *
 	 * @return this
 	 */
 	public HttpChannel<IN, OUT> addResponseHeader(String name, String value) {
@@ -225,11 +218,10 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	protected abstract void doAddResponseHeader(String name, String value);
 
 
-
 	/**
 	 * @return the Transfer setting SSE for this http connection (e.g. event-stream)
 	 */
-	public HttpChannel<IN, OUT>  sse(){
+	public HttpChannel<IN, OUT> sse() {
 		return transfer(Transfer.EVENT_STREAM);
 	}
 
@@ -244,7 +236,6 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * Define the Transfer mode for this http connection
 	 *
 	 * @param transfer the new transfer mode
-	 *
 	 * @return this
 	 */
 	public abstract HttpChannel<IN, OUT> transfer(Transfer transfer);

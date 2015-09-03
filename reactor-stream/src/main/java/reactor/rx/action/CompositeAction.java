@@ -93,9 +93,10 @@ final public class CompositeAction<E, O> extends Action<E, O> {
 	@Override
 	public String toString() {
 		return "input=" + (subscriber.getClass().getSimpleName().isEmpty() ? subscriber : subscriber.getClass()
-				.getSimpleName().replaceAll("Action", "")) +
-				", output=" + (publisher.getClass().getSimpleName().isEmpty() ? publisher : publisher.getClass().getSimpleName
-				().replaceAll("Action", ""));
+		  .getSimpleName().replaceAll("Action", "")) +
+		  ", output=" + (publisher.getClass().getSimpleName().isEmpty() ? publisher : publisher.getClass()
+		  .getSimpleName
+		  ().replaceAll("Action", ""));
 	}
 
 	@Override

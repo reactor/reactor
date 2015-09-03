@@ -47,7 +47,8 @@ public class NamedDaemonThreadFactory implements ThreadFactory {
 	 * @param prefix The thread name prefix
 	 */
 	public NamedDaemonThreadFactory(String prefix) {
-		this(prefix, new ClassLoader(Thread.currentThread().getContextClassLoader()) {});
+		this(prefix, new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+		});
 	}
 
 	/**

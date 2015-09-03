@@ -19,8 +19,13 @@ package reactor.core
 
 import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
+import reactor.Processors
 import reactor.core.processor.RingBufferProcessor
 import reactor.core.processor.RingBufferWorkProcessor
+import reactor.core.processor.ProcessorService
+import reactor.core.processor.SimpleWorkProcessor
+import reactor.fn.BiConsumer
+import reactor.fn.Consumer
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -30,7 +35,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /**
- * @author Jon Brisbin
  * @author Stephane Maldini
  */
 class ProcessorsSpec extends Specification {
@@ -86,15 +90,15 @@ class ProcessorsSpec extends Specification {
 			def bc2 = RingBufferProcessor.<String> create(executorService, 16)
 			def elems = 10
 			def latch = new CountDownLatch(elems)
-			def manualSub = new Subscription(){
+			def manualSub = new Subscription() {
 				@Override
 				void request(long n) {
-					println Thread.currentThread().name+" $n"
+					println Thread.currentThread().name + " $n"
 				}
 
 				@Override
 				void cancel() {
-					println Thread.currentThread().name+" cancelling"
+					println Thread.currentThread().name + " cancelling"
 				}
 			}
 
@@ -138,15 +142,15 @@ class ProcessorsSpec extends Specification {
 			def bc = RingBufferWorkProcessor.<String> create(executorService, 16)
 			def elems = 18
 			def latch = new CountDownLatch(elems)
-			def manualSub = new Subscription(){
+			def manualSub = new Subscription() {
 				@Override
 				void request(long n) {
-					println Thread.currentThread().name+" $n"
+					println Thread.currentThread().name + " $n"
 				}
 
 				@Override
 				void cancel() {
-					println Thread.currentThread().name+" cancelling"
+					println Thread.currentThread().name + " cancelling"
 				}
 			}
 
@@ -169,4 +173,179 @@ class ProcessorsSpec extends Specification {
 			ended
 	}
 
+	def "Dispatcher executes tasks in correct thread"() {
+
+		given:
+			def sameThread = ProcessorService.sync().dataDispatcher()
+			BiConsumer<String, Consumer<String>> diffThread = Processors.workService("rbWork").dataDispatcher()
+			def currentThread = Thread.currentThread()
+			Thread taskThread = null
+			Consumer<String> consumer = { ev ->
+				taskThread = Thread.currentThread()
+			}
+
+		when:
+			"a task is submitted"
+			sameThread.accept('test', consumer)
+
+		then:
+			"the task thread should be the current thread"
+			currentThread == taskThread
+
+		when:
+			"a task is submitted to the thread pool dispatcher"
+			def latch = new CountDownLatch(1)
+			diffThread.accept('test', { String ev -> consumer.accept(ev); latch.countDown() } as Consumer<String>)
+
+			latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
+
+		then:
+			"the task thread should be different when the current thread"
+			taskThread != currentThread
+			//!diffThread.shutdown()
+
+
+		cleanup:
+			ProcessorService.release(diffThread)
+	}
+
+	def "Dispatcher thread can be reused"() {
+
+		given:
+			"ring buffer eventBus"
+			def serviceRB = Processors.asyncService("rb", 32)
+			def r = serviceRB.dataDispatcher()
+			def latch = new CountDownLatch(2)
+
+		when:
+			"listen for recursive event"
+			Consumer<Integer> c
+			c = { data ->
+				if (data < 2) {
+					latch.countDown()
+					r.accept(++data, c,)
+				}
+			}
+
+		and:
+			"call the eventBus"
+			r.accept(0, c)
+
+		then:
+			"a task is submitted to the thread pool dispatcher"
+			latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
+
+		cleanup:
+			ProcessorService.release(r)
+	}
+
+	def "Dispatchers can be shutdown awaiting tasks to complete"() {
+
+		given:
+			"a Reactor with a ThreadPoolExecutorDispatcher"
+			def serviceRB = Processors.workService("rbWork", 32)
+			def r = serviceRB.dataDispatcher()
+			long start = System.currentTimeMillis()
+			def hello = ""
+			def c = { String ev ->
+				hello = ev
+				Thread.sleep(1000)
+			} as Consumer<String>
+
+		when:
+			"the Dispatcher is shutdown and tasks are awaited"
+			r.accept("Hello World!", c)
+			def success = serviceRB.awaitAndShutdown(5, TimeUnit.SECONDS)
+			long end = System.currentTimeMillis()
+
+		then:
+			"the Consumer was run, this thread was blocked, and the Dispatcher is shut down"
+			hello == "Hello World!"
+			success
+			(end - start) >= 1000
+
+	}
+
+	def "RingBufferDispatcher executes tasks in correct thread"() {
+
+		given:
+			def serviceRB = Processors.asyncService("rb", 8)
+			def dispatcher = serviceRB.executor()
+			def t1 = Thread.currentThread()
+			def t2 = Thread.currentThread()
+
+		when:
+			dispatcher.execute({ t2 = Thread.currentThread() })
+			Thread.sleep(500)
+
+		then:
+			t1 != t2
+
+		cleanup:
+			ProcessorService.release(dispatcher)
+
+	}
+
+	def "WorkQueueDispatcher executes tasks in correct thread"() {
+
+		given:
+			def serviceRBWork = Processors.workService("rbWork", 1024, 8)
+			def dispatcher = serviceRBWork.executor()
+			def t1 = Thread.currentThread()
+			def t2 = Thread.currentThread()
+
+		when:
+			dispatcher.execute({ t2 = Thread.currentThread() })
+			Thread.sleep(500)
+
+		then:
+			t1 != t2
+
+		cleanup:
+			ProcessorService.release(dispatcher)
+
+	}
+
+	def "MultiThreadDispatchers support ping pong dispatching"(BiConsumer<String, Consumer<? super String>> d) {
+		given:
+			def latch = new CountDownLatch(4)
+			def main = Thread.currentThread()
+			def t1 = Thread.currentThread()
+			def t2 = Thread.currentThread()
+
+		when:
+			Consumer<String> pong
+
+			Consumer<String> ping = {
+				if (latch.count > 0) {
+					t1 = Thread.currentThread()
+					d.accept("pong", pong)
+					latch.countDown()
+				}
+			}
+			pong = {
+				if (latch.count > 0) {
+					t2 = Thread.currentThread()
+					d.accept("ping", ping)
+					latch.countDown()
+				}
+			}
+
+			d.accept("ping", ping)
+
+		then:
+			latch.await(1, TimeUnit.SECONDS)
+			main != t1
+			main != t2
+
+		cleanup:
+		 ProcessorService.release(d)
+
+		where:
+			d << [
+					Processors.workService("ping-pong-rb", 1024, 4).dataDispatcher(),
+					ProcessorService.create({ -> SimpleWorkProcessor.create("ping-pong-work", 1024)}, 4).dataDispatcher()
+			]
+
+	}
 }

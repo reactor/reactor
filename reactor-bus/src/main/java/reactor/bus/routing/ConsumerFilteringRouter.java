@@ -21,9 +21,9 @@ import org.slf4j.LoggerFactory;
 import reactor.bus.Event;
 import reactor.bus.filter.Filter;
 import reactor.bus.registry.Registration;
-import reactor.core.processor.CancelException;
+import reactor.core.error.CancelException;
 import reactor.core.support.Assert;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
 
 import java.util.List;
@@ -38,12 +38,12 @@ import java.util.List;
 public class ConsumerFilteringRouter implements Router {
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
-	private final Filter               filter;
+	private final Filter filter;
 
 	/**
 	 * Creates a new {@code ConsumerFilteringEventRouter} that will use the {@code filter} to filter consumers.
 	 *
-	 * @param filter          The filter to use. Must not be {@code null}.
+	 * @param filter The filter to use. Must not be {@code null}.
 	 * @throws IllegalArgumentException if {@code filter} or {@code consumerInvoker} is null.
 	 */
 	public ConsumerFilteringRouter(Filter filter) {
@@ -55,9 +55,10 @@ public class ConsumerFilteringRouter implements Router {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <E extends Event<?>> void route(Object key, E event,
-	                      List<Registration<Object, ? extends Consumer<? extends Event<?>>>> consumers,
-	                      Consumer<E> completionConsumer,
-	                      Consumer<Throwable> errorConsumer) {
+	                                       List<Registration<Object, ? extends Consumer<? extends Event<?>>>>
+	                                         consumers,
+	                                       Consumer<E> completionConsumer,
+	                                       Consumer<Throwable> errorConsumer) {
 		if (null != consumers && !consumers.isEmpty()) {
 			List<Registration<Object, ? extends Consumer<? extends Event<?>>>> regs = filter.filter(consumers, key);
 			int size = regs.size();
@@ -69,7 +70,7 @@ public class ConsumerFilteringRouter implements Router {
 					continue;
 				}
 				try {
-					((Consumer<E>)reg.getObject()).accept(event);
+					((Consumer<E>) reg.getObject()).accept(event);
 				} catch (CancelException cancel) {
 					reg.cancel();
 				} catch (Throwable t) {

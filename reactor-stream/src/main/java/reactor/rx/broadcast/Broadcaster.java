@@ -17,16 +17,15 @@ package reactor.rx.broadcast;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.queue.CompletableQueue;
-import reactor.core.support.Assert;
-import reactor.core.support.Exceptions;
-import reactor.fn.Consumer;
+import reactor.Timers;
+import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
+import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
+
+import java.util.Queue;
 
 /**
  * A {@code Broadcaster} is a subclass of {@code Stream} which exposes methods for publishing values into the pipeline.
@@ -36,22 +35,6 @@ import reactor.rx.subscription.ReactiveSubscription;
  * @author Stephane Maldini
  */
 public class Broadcaster<O> extends Action<O, O> {
-
-	@SuppressWarnings("unchecked")
-	static public final Subscription HOT_SUBSCRIPTION = new PushSubscription(null, null) {
-		@Override
-		public void request(long n) {
-			//IGNORE
-		}
-
-		@Override
-		public void cancel() {
-			//IGNORE
-		}
-	};
-
-	protected final Dispatcher  dispatcher;
-	protected final Environment environment;
 
 	/**
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
@@ -63,8 +46,9 @@ public class Broadcaster<O> extends Action<O, O> {
 	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
 	 */
 	public static <T> Broadcaster<T> create() {
-		return new Broadcaster<T>(null, SynchronousDispatcher.INSTANCE, Long.MAX_VALUE);
+		return new Broadcaster<T>(null, false);
 	}
+
 
 	/**
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link
@@ -72,64 +56,62 @@ public class Broadcaster<O> extends Action<O, O> {
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
-	 * @param env the Reactor {@link reactor.Environment} to use
-	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
+	 * @param <T>   the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> create(Environment env) {
-		return create(env, env.getDefaultDispatcher());
+	public static <T> Broadcaster<T> create(Timer timer) {
+		return new Broadcaster<T>(timer, false);
 	}
 
 	/**
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link
-	 * reactor.rx.action.Action#onNext(Object)},
+	 * Broadcaster#onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 * <p>
+	 * Will not bubble up  any {@link CancelException}
 	 *
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
-	 * @param <T>        the type of values passing through the {@literal Broadcaster}
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> create(Dispatcher dispatcher) {
-		return create(null, dispatcher);
+	public static <T> Broadcaster<T> passthrough() {
+		return new Broadcaster<T>(null, true);
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext
-	 * (Object)},
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link
+	 * Broadcaster#onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 * <p>
+	 * Will not bubble up  any {@link CancelException}
 	 *
-	 * @param env        the Reactor {@link reactor.Environment} to use
-	 * @param dispatcher the {@link reactor.core.Dispatcher} to use
-	 * @param <T>        the type of values passing through the {@literal Stream}
+	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
+	 * @param <T>   the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> create(Environment env, Dispatcher dispatcher) {
-		Assert.state(dispatcher.supportsOrdering(), "Dispatcher provided doesn't support event ordering. " +
-				" For concurrent consume, refer to Stream#partition/groupBy() method and assign individual single " +
-				"dispatchers");
-		return new Broadcaster<T>(env, dispatcher, Action.evaluateCapacity(dispatcher.backlogSize()));
+	public static <T> Broadcaster<T> passthrough(Timer timer) {
+		return new Broadcaster<T>(timer, true);
 	}
 
 	/**
-	 *
 	 * INTERNAL
 	 */
+
+	private final Timer   timer;
+	private final boolean ignoreDropped;
+
 	@SuppressWarnings("unchecked")
-	protected Broadcaster(Environment environment, Dispatcher dispatcher, long capacity) {
-		super(capacity);
-		this.dispatcher = dispatcher;
-		this.environment = environment;
+	protected Broadcaster(Timer timer, boolean ignoreDropped) {
+		super();
+		this.timer = timer;
+		this.ignoreDropped = ignoreDropped;
 
 		//start broadcaster
-		this.upstreamSubscription = (PushSubscription<O>)HOT_SUBSCRIPTION;
+		this.upstreamSubscription = (PushSubscription<O>) HOT_SUBSCRIPTION;
 	}
 
-	@Override
-	public final Dispatcher getDispatcher() {
-		return dispatcher;
-	}
 
 	@Override
 	protected void doNext(O ev) {
@@ -137,66 +119,23 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
-	public void onNext(O ev) {
-		if(ev == null){
-			throw new NullPointerException("Spec 2.13: Signal cannot be null");
-		}
-		if (!dispatcher.inContext()) {
-			dispatcher.dispatch(ev, this, null);
-		} else {
-			super.onNext(ev);
-		}
-	}
-
-	@Override
 	public void onSubscribe(Subscription subscription) {
-		if(upstreamSubscription == HOT_SUBSCRIPTION){
+		if (upstreamSubscription == HOT_SUBSCRIPTION) {
 			upstreamSubscription = null;
 			super.onSubscribe(subscription);
 
 			PushSubscription<O> downSub = downstreamSubscription;
-			if(downSub != null && downSub.pendingRequestSignals() > 0L ){
+			if (downSub != null && downSub.pendingRequestSignals() > 0L) {
 				subscription.request(downSub.pendingRequestSignals());
 			}
 
-		}else{
+		} else {
 			super.onSubscribe(subscription);
 		}
 	}
 
 	@Override
-	public void onError(Throwable cause) {
-		if(cause == null){
-			throw new NullPointerException("Spec 2.13: Signal cannot be null");
-		}
-		if (!dispatcher.inContext()) {
-			dispatcher.dispatch(cause, new Consumer<Throwable>() {
-				@Override
-				public void accept(Throwable throwable) {
-					Broadcaster.super.doError(throwable);
-				}
-			}, null);
-		} else {
-			super.onError(cause);
-		}
-	}
-
-	@Override
-	public void onComplete() {
-		if (!dispatcher.inContext()) {
-			dispatcher.dispatch(null, new Consumer<Void>() {
-				@Override
-				public void accept(Void aVoid) {
-					Broadcaster.super.onComplete();
-				}
-			}, null);
-		} else {
-			super.onComplete();
-		}
-	}
-
-	@Override
-	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, CompletableQueue<O> queue) {
+	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, Queue<O> queue) {
 		if (queue != null) {
 			return new ReactiveSubscription<O>(this, subscriber, queue) {
 
@@ -204,7 +143,7 @@ public class Broadcaster<O> extends Action<O, O> {
 				protected void onRequest(long elements) {
 					if (upstreamSubscription != null) {
 						super.onRequest(elements);
-						requestUpstream(capacity, buffer.isComplete(), elements);
+						requestUpstream(capacity, terminalSignalled, elements);
 					}
 				}
 			};
@@ -214,13 +153,11 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
-	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, boolean reactivePull) {
-		if (reactivePull) {
-			return super.createSubscription(subscriber, true);
-		} else {
-			return super.createSubscription(subscriber,
-					dispatcher != SynchronousDispatcher.INSTANCE &&
-							(upstreamSubscription != null && !upstreamSubscription.hasPublisher()));
+	public void onNext(O ev) {
+		try {
+			super.onNext(ev);
+		} catch (CancelException c) {
+			if (!ignoreDropped) throw c;
 		}
 	}
 
@@ -239,20 +176,8 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
-	public void cancel() {
-		if(upstreamSubscription != HOT_SUBSCRIPTION){
-			super.cancel();
-		}
-	}
-
-	@Override
-	public void recycle() {
-		if(HOT_SUBSCRIPTION != upstreamSubscription){
-			upstreamSubscription = null;
-		} else {
-			downstreamSubscription = null;
-		}
-
+	public Timer getTimer() {
+		return timer != null ? timer : Timers.globalOrNull();
 	}
 
 	@Override
@@ -272,21 +197,6 @@ public class Broadcaster<O> extends Action<O, O> {
 			}
 		}
 	}
-
-
-	/*@Override
-	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		requestMore(elements);
-	}
-
-	@Override
-	public void requestMore(long n) {
-		Action.checkRequest(n);
-		PushSubscription<O> upstreamSubscription = this.upstreamSubscription;
-		if(upstreamSubscription != null) {
-			dispatcher.dispatch(n, upstreamSubscription, null);
-		}
-	}*/
 
 
 }

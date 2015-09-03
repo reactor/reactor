@@ -24,7 +24,6 @@ import java.util.concurrent.ThreadLocalRandom;
  * A {@link Filter} implementation that returns a single, randomly selected item.
  *
  * @author Andy Wilkinson
- *
  */
 public final class RandomFilter extends AbstractFilter {
 

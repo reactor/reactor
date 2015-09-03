@@ -16,7 +16,6 @@
 package reactor.rx.action.filter;
 
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
@@ -29,17 +28,15 @@ import java.util.concurrent.TimeUnit;
  */
 public class TakeUntilTimeout<T> extends Action<T, T> {
 
-	private final long       time;
-	private final TimeUnit   unit;
-	private final Timer      timer;
-	private final Dispatcher dispatcher;
+	private final long             time;
+	private final TimeUnit         unit;
+	private final Timer            timer;
 
 
-	public TakeUntilTimeout(Dispatcher dispatcher, long time, TimeUnit unit, Timer timer) {
+	public TakeUntilTimeout(long time, TimeUnit unit, Timer timer) {
 		this.unit = unit;
 		this.timer = timer;
 		this.time = time;
-		this.dispatcher = dispatcher;
 	}
 
 	@Override
@@ -53,13 +50,7 @@ public class TakeUntilTimeout<T> extends Action<T, T> {
 			@Override
 			public void accept(Long aLong) {
 				cancel();
-				dispatcher.dispatch(null, new Consumer<Void>() {
-					@Override
-					public void accept(Void aVoid) {
-						broadcastComplete();
-					}
-				}, null);
-
+				broadcastComplete();
 			}
 		}, time, unit);
 	}
@@ -67,8 +58,8 @@ public class TakeUntilTimeout<T> extends Action<T, T> {
 	@Override
 	public String toString() {
 		return super.toString() + "{" +
-				"time=" + time +
-				"unit=" + unit +
-				'}';
+		  "time=" + time +
+		  "unit=" + unit +
+		  '}';
 	}
 }

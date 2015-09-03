@@ -15,17 +15,29 @@
  */
 package reactor.core.processor;
 
+import org.junit.Test;
 import org.reactivestreams.Processor;
 
 /**
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class RingBufferProcessorTests extends AbstractProcessorTests {
+public class
+
+
+  RingBufferProcessorTests extends AbstractProcessorTests {
 
 	@Override
-	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return RingBufferProcessor.<Long>create("tckRingBufferProcessor", bufferSize);
+	public Processor<Long, Long> createProcessor(int bufferSize) {
+		return RingBufferProcessor.<Long>create("rb-async", bufferSize);
+	}
+
+	@Test
+	public void testShutdown() {
+		for (int i = 0; i < 1000; i++) {
+			RingBufferProcessor dispatcher = RingBufferProcessor.create("rb-test-shutdown", 16);
+			dispatcher.awaitAndShutdown();
+		}
 	}
 
 }

@@ -50,7 +50,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	public NettyHttpChannel(NettyChannelStream<IN, OUT> tcpStream,
 	                        HttpRequest request
 	) {
-		super(tcpStream.getEnvironment(), tcpStream.getCapacity(), tcpStream.getDispatcher());
+		super(tcpStream.getTimer(), tcpStream.getCapacity());
 		this.tcpStream = tcpStream;
 		this.nettyRequest = request;
 		this.nettyResponse = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.OK);
@@ -76,7 +76,7 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 		// TODO: Respond with 413 Request Entity Too Large
 		//   and discard the traffic or close the connection.
 		//       No need to notify the upstream handlers - just log.
-		//       If decoding a response, just throw an exception.
+		//       If decoding a response, just throw an error.
 		if (is100ContinueExpected(nettyRequest)) {
 			tcpStream.delegate().writeAndFlush(CONTINUE).addListener(new ChannelFutureListener() {
 				@Override

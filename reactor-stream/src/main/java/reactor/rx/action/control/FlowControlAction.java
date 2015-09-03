@@ -16,13 +16,14 @@
 package reactor.rx.action.control;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.Dispatcher;
-import reactor.core.queue.CompletableQueue;
+import reactor.core.support.Bounded;
 import reactor.fn.Supplier;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.DropSubscription;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
+
+import java.util.Queue;
 
 /**
  * @author Stephane Maldini
@@ -30,9 +31,9 @@ import reactor.rx.subscription.ReactiveSubscription;
  */
 public class FlowControlAction<O> extends Action<O, O> {
 
-	private final Supplier<? extends CompletableQueue<O>> queueSupplier;
+	private final Supplier<? extends Queue<O>> queueSupplier;
 
-	public FlowControlAction(Supplier<? extends CompletableQueue<O>> queueSupplier) {
+	public FlowControlAction(Supplier<? extends Queue<O>> queueSupplier) {
 		this.queueSupplier = queueSupplier;
 	}
 
@@ -47,7 +48,7 @@ public class FlowControlAction<O> extends Action<O, O> {
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return false;
 	}
 
@@ -58,11 +59,11 @@ public class FlowControlAction<O> extends Action<O, O> {
 				@Override
 				public void onRequest(long elements) {
 					super.onRequest(elements);
-					requestUpstream(capacity, buffer.isComplete(), capacity);
+					requestUpstream(capacity, terminalSignalled, capacity);
 				}
 			};
 		} else {
-			return new DropSubscription<O>(this, subscriber){
+			return new DropSubscription<O>(this, subscriber) {
 				@Override
 				public void request(long elements) {
 					super.request(elements);

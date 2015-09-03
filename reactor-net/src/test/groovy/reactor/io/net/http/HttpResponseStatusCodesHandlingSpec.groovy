@@ -1,6 +1,5 @@
 package reactor.io.net.http
 
-import reactor.Environment
 import reactor.io.codec.StandardCodecs
 import reactor.io.net.NetStreams
 import reactor.rx.Streams
@@ -13,16 +12,10 @@ import java.util.concurrent.TimeUnit
  */
 public class HttpResponseStatusCodesHandlingSpec extends Specification {
 
-    Environment env
-
-    def setup() {
-        env = Environment.initializeIfEmpty().assignErrorJournal()
-    }
-
     def "http status code 404 is handled by the client"() {
         given: "a simple HttpServer"
             def server = NetStreams.httpServer {
-                it.codec(StandardCodecs.STRING_CODEC).listen(0).dispatcher(Environment.sharedDispatcher())
+                it.codec(StandardCodecs.STRING_CODEC).listen(0)
             }
 
         when: "the server is prepared"
@@ -56,7 +49,7 @@ public class HttpResponseStatusCodesHandlingSpec extends Specification {
                 //successful request, listen for replies
                 replies
                         .log('client-received')
-                        .consume { s ->
+                        .observe { s ->
                             replyReceived = s
                         }
             }
@@ -65,7 +58,7 @@ public class HttpResponseStatusCodesHandlingSpec extends Specification {
                 println "Failed requesting server: $it"
             }
 
-        then: "exception is thrown with a message and no reply received"
+        then: "error is thrown with a message and no reply received"
             def exceptionMessage = ""
 
             try {

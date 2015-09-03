@@ -16,13 +16,14 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.fn.Supplier;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.CompositeAction;
+
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * A Stream wrapper that defers a parent stream subscription to the child action subscribe() call.
@@ -53,7 +54,9 @@ public class LiftStream<O, V> extends Stream<V> {
 		}
 
 		producer.subscribe(action);
-
+		while(action.getSubscription() == null){
+			LockSupport.parkNanos(1L);
+		}
 		return action.combine();
 	}
 
@@ -63,13 +66,8 @@ public class LiftStream<O, V> extends Stream<V> {
 	}
 
 	@Override
-	public Dispatcher getDispatcher() {
-		return producer.getDispatcher();
-	}
-
-	@Override
-	public Environment getEnvironment() {
-		return producer.getEnvironment();
+	public Timer getTimer() {
+		return producer.getTimer();
 	}
 
 	@Override
@@ -89,7 +87,7 @@ public class LiftStream<O, V> extends Stream<V> {
 	@Override
 	public final String toString() {
 		return "LiftStream{" +
-				"producer=" + producer.getClass().getSimpleName() +
-				'}';
+		  "producer=" + producer.getClass().getSimpleName() +
+		  '}';
 	}
 }

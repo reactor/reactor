@@ -29,9 +29,8 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
-import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -44,8 +43,6 @@ import reactor.io.net.udp.DatagramServer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
@@ -66,13 +63,12 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	private final    EventLoopGroup              ioGroup;
 	private volatile NioDatagramChannel          channel;
 
-	public NettyDatagramServer(@Nonnull Environment env,
-	                           @Nonnull Dispatcher dispatcher,
-	                           @Nullable InetSocketAddress listenAddress,
-	                           @Nullable final NetworkInterface multicastInterface,
-	                           @Nonnull final ServerSocketOptions options,
-	                           @Nullable Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, listenAddress, multicastInterface, options, codec);
+	public NettyDatagramServer(Timer timer,
+	                           InetSocketAddress listenAddress,
+	                           final NetworkInterface multicastInterface,
+	                           final ServerSocketOptions options,
+	                           Codec<Buffer, IN, OUT> codec) {
+		super(timer, listenAddress, multicastInterface, options, codec);
 
 		if (options instanceof NettyServerSocketOptions) {
 			this.nettyOptions = (NettyServerSocketOptions) options;
@@ -83,8 +79,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
-			int ioThreadCount = getDefaultEnvironment().getIntProperty("reactor.udp.ioThreadCount",
-					Environment.PROCESSORS);
+			int ioThreadCount = DEFAULT_UDP_THREAD_COUNT;
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-udp-io"));
 		}
 
@@ -134,7 +129,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN,OUT>> channelHandler) {
-		final Promise<Void> promise = Promises.ready(getDefaultEnvironment(), getDefaultDispatcher());
+		final Promise<Void> promise = Promises.ready(getDefaultTimer());
 
 		ChannelFuture future = bootstrap.handler(new ChannelInitializer<NioDatagramChannel>() {
 			@Override
@@ -165,7 +160,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	@Override
 	@SuppressWarnings("unchecked")
 	protected Promise<Void> doShutdown() {
-		final Promise<Void> d = Promises.prepare();
+		final Promise<Void> d = Promises.ready();
 
 		ChannelFuture future = channel.close();
 		final GenericFutureListener listener = new GenericFutureListener() {
@@ -202,7 +197,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
 
-		final Promise<Void> d = Promises.ready(getDefaultEnvironment(), getDefaultDispatcher());
+		final Promise<Void> d = Promises.ready(getDefaultTimer());
 
 		if (null == iface && null != getMulticastInterface()) {
 			iface = getMulticastInterface();
@@ -239,7 +234,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			iface = getMulticastInterface();
 		}
 
-		final Promise<Void> d = Promises.ready(getDefaultEnvironment(), getDefaultDispatcher());
+		final Promise<Void> d = Promises.ready(getDefaultTimer());
 
 		final ChannelFuture future;
 		if (null != iface) {
@@ -266,10 +261,9 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	                                                  Object _ioChannel) {
 		NioDatagramChannel ioChannel = (NioDatagramChannel) _ioChannel;
 		NettyChannelStream<IN, OUT> netChannel =  new NettyChannelStream<IN, OUT>(
-				getDefaultEnvironment(),
+				getDefaultTimer(),
 				getDefaultCodec(),
 				getDefaultPrefetchSize(),
-				getDefaultDispatcher(),
 				ioChannel
 		);
 

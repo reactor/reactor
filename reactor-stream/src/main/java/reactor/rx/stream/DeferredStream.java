@@ -17,14 +17,14 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.support.Exceptions;
+import reactor.core.error.Exceptions;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 
 /**
  * A {@link org.reactivestreams.Publisher} supplier that will call the passed supplier on each subscribe call.
  * <p>
-
+ * <p>
  * Create such stream with the provided factory, E.g.:
  * <pre>
  * {@code
@@ -44,9 +44,9 @@ public class DeferredStream<T> extends Stream<T> {
 
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
-		try{
+		try {
 			sourceFactory.get().subscribe(subscriber);
-		}catch (Throwable throwable){
+		} catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);
 		}

@@ -155,8 +155,8 @@ class LoggingEventRecord implements Serializable {
 			rec.args = args;
 
 			Map<String, String> mdcProps = (propsLen > 0
-					? new HashMap<String, String>()
-					: Collections.<String, String>emptyMap());
+			  ? new HashMap<String, String>()
+			  : Collections.<String, String>emptyMap());
 			for (int i = 0; i < propsLen; i++) {
 				String key = ex.readUTF();
 				String val = ex.readUTF();

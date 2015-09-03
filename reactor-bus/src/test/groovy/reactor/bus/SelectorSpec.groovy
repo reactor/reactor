@@ -96,7 +96,7 @@ class SelectorSpec extends Specification {
 			"A UriPathSelector"
 			def sel1 = U("/path/**/{resource}")
 			def key = "/path/to/some/resourceId"
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.config().sync().get()
 			def resourceId = ""
 			r.on(sel1) { Event<String> ev ->
 				resourceId = ev.headers["resource"]
@@ -119,7 +119,7 @@ class SelectorSpec extends Specification {
 			def sel1 = new UriSelector("http://user:pwd@host:80/path/segment?param=value#fragment")
 			def sel2 = new UriSelector("http://*:80/path/segment#fragment")
 			def sel3 = new UriSelector("http://user:ENCODEDPWD@*:3000/path/segment#fragment")
-			def r = EventBus.config().synchronousDispatcher().get()
+			def r = EventBus.config().sync().get()
 			def vals = [:]
 			r.on(sel1) { Event<String> ev ->
 				vals = ev.headers
@@ -127,7 +127,7 @@ class SelectorSpec extends Specification {
 			r.on(sel2) { Event<String> ev ->
 				vals["wildcard"] = true
 			}
-			r.on(sel3)  { Event<String> ev ->
+			r.on(sel3) { Event<String> ev ->
 				// shouldn't be matched
 				vals = [:]
 			}
@@ -150,42 +150,42 @@ class SelectorSpec extends Specification {
 
 	}
 
-    def "Match-All selector is available"() {
+	def "Match-All selector is available"() {
 
-        given:
-            "A MatchAllSelector"
-            def sel = new MatchAllSelector()
+		given:
+			"A MatchAllSelector"
+			def sel = new MatchAllSelector()
 
-        when:
-            "The selector is matched"
+		when:
+			"The selector is matched"
 
-        then:
-            sel.matches "a string"
-            sel.matches 1L
-            sel.matches true
-            sel.matches false
-            sel.matches(new Date())
-            sel.matches(new Object())
-    }
+		then:
+			sel.matches "a string"
+			sel.matches 1L
+			sel.matches true
+			sel.matches false
+			sel.matches(new Date())
+			sel.matches(new Object())
+	}
 
 	def "Set membership selector is available"() {
 
 		given:
-		"A SetMembershipSelector"
-		def coll = ["a", "b", "c"] as Set<String>
-		def sel = new SetMembershipSelector(coll)
+			"A SetMembershipSelector"
+			def coll = ["a", "b", "c"] as Set<String>
+			def sel = new SetMembershipSelector(coll)
 
 		when:
-		"The selector is matched"
+			"The selector is matched"
 
 		then:
-		sel.matches "a"
-		sel.matches "b"
-		sel.matches "c"
-		!sel.matches("d")
-		!sel.matches([1])
-		!sel.matches(1)
-		!sel.matches(1.0)
+			sel.matches "a"
+			sel.matches "b"
+			sel.matches "c"
+			!sel.matches("d")
+			!sel.matches([1])
+			!sel.matches(1)
+			!sel.matches(1.0)
 	}
 
 	@Ignore
@@ -193,7 +193,7 @@ class SelectorSpec extends Specification {
 
 		given:
 			"A Reactor using round-robin routing and a set of consumers assigned to the same selector"
-			def r = EventBus.config().synchronousDispatcher().roundRobinEventRouting().get()
+			def r = EventBus.config().sync().roundRobinEventRouting().get()
 			def called = []
 			def a1 = {
 				called << 1
@@ -229,7 +229,7 @@ class SelectorSpec extends Specification {
 		given:
 			"A Reactor using random routing and a set of consumers assigned to the same selector"
 
-			def r = EventBus.config().synchronousDispatcher().randomEventRouting().get()
+			def r = EventBus.config().sync().randomEventRouting().get()
 			def called = []
 			def a1 = {
 				called << 1

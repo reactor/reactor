@@ -17,36 +17,46 @@ package reactor.rx
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.reactivestreams.Subscription
-import reactor.Environment
-import reactor.core.dispatch.SynchronousDispatcher
-import reactor.core.processor.CancelException
+import reactor.Processors
+import reactor.Timers
+import reactor.bus.Event
+import reactor.bus.EventBus
+import reactor.core.error.CancelException
+import reactor.core.processor.ProcessorService
 import reactor.core.processor.RingBufferProcessor
-import reactor.core.reactivestreams.SubscriberWithContext
+import reactor.core.subscriber.SubscriberWithContext
 import reactor.fn.BiFunction
-import reactor.io.buffer.Buffer
-import reactor.io.codec.DelimitedCodec
-import reactor.io.codec.StandardCodecs
 import reactor.rx.action.Signal
 import reactor.rx.broadcast.Broadcaster
+import reactor.rx.broadcast.SerializedBroadcaster
+import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
+import static reactor.bus.selector.Selectors.anonymous
+
 class StreamsSpec extends Specification {
 
-	void setup() {
-		Environment.initializeIfEmpty().assignErrorJournal()
+	@Shared
+	ProcessorService asyncService
+
+	void setupSpec() {
+		Timers.global()
+		asyncService = Processors.asyncService("stream-spec", 128, 4, null, null, false)
 	}
 
-	def cleanup() {
-		Environment.terminate()
+	def cleanupSpec() {
+		Timers.unregisterGlobal()
+		asyncService.shutdown()
+		asyncService = null
 	}
 
 	def 'A deferred Stream with an initial value makes that value available immediately'() {
 		given:
 			'a composable with an initial value'
-			Stream stream = Streams.just('test')
+			def stream = Streams.just('test')
 
 		when:
 			'the value is retrieved'
@@ -76,14 +86,14 @@ class StreamsSpec extends Specification {
 	def 'A Stream can propagate the error using await'() {
 		given:
 			'a composable with no initial value'
-			def stream = Broadcaster.create(Environment.get())
+			def stream = Broadcaster.create()
 
 		when:
-			'the exception is retrieved after 2 sec'
-			Streams.await(stream.timeout(2, TimeUnit.SECONDS))
+			'the error is retrieved after 2 sec'
+			Streams.await(stream.run(asyncService).timeout(2, TimeUnit.SECONDS))
 
 		then:
-			'an exception has been thrown'
+			'an error has been thrown'
 			thrown TimeoutException
 	}
 
@@ -195,24 +205,6 @@ class StreamsSpec extends Specification {
 			value == Signal.complete()
 	}
 
-	def 'A deferred Stream can be run on various dispatchers'() {
-		given:
-			'a composable with an initial value'
-			def dispatcher1 = new SynchronousDispatcher()
-			def dispatcher2 = new SynchronousDispatcher()
-			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(dispatcher1)
-			def tail = stream.observe {}
-
-		when:
-			'the stream is retrieved'
-			tail = tail.dispatchOn(dispatcher2)
-
-		then:
-			'it is available'
-			stream.dispatcher == dispatcher1
-			tail.dispatcher == dispatcher2
-	}
-
 	def 'A deferred Stream can be translated into a list'() {
 		given:
 			'a composable with an initial value'
@@ -232,7 +224,7 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream can be translated into a completable queue'() {
 		given:
 			'a composable with an initial value'
-			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(Environment.get())
+			def stream = Streams.just('test', 'test2', 'test3').run(asyncService)
 
 		when:
 			'the stream is retrieved'
@@ -244,14 +236,8 @@ class StreamsSpec extends Specification {
 			def res
 			def result = []
 
-			for (; ;) {
-				res = queue.poll()
-
-				if (res)
-					result << res
-
-				if (queue.isComplete() && !queue.peek())
-					break
+			while (res = queue.take()) {
+				result << res
 			}
 
 		then:
@@ -279,7 +265,7 @@ class StreamsSpec extends Specification {
 			Streams.generate(null)
 
 		then:
-			"exception is thrown"
+			"error is thrown"
 			thrown(IllegalArgumentException)
 
 			/*when:
@@ -352,16 +338,13 @@ class StreamsSpec extends Specification {
 			'the most recent value is retrieved'
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
-					.subscribeOn(Environment.get())
-					.dispatchOn(Environment.cachedDispatcher())
+					.run(asyncService)
+					.run(Processors.workService("work", 8, 4))
 					.log()
 					.next()
 
 		then:
 			last.await(5, TimeUnit.SECONDS) > 20_000
-
-		cleanup:
-			println last.debug()
 	}
 
 	def 'A Stream can sample values over time with consumeOn'() {
@@ -372,18 +355,19 @@ class StreamsSpec extends Specification {
 		when:
 			'the most recent value is retrieved'
 			def i = 0
-			def last = Promises.prepare()
+			def last = Promises.ready()
 			s
 					.take(4, TimeUnit.SECONDS)
-					.subscribeOn(Environment.workDispatcher())
-					.consume({
-				i++
-			}, null, {
-				last.onNext(i)
-			})
+					.run(Processors.workService("work", 8, 4))
+					.last()
+					.consume(
+							{ i = it },
+							{ it.printStackTrace() },
+							{ last.onNext(i) }
+					)
 
 		then:
-			last.await(5, TimeUnit.SECONDS) > 20_000
+			last.await() > 20_000
 	}
 
 	def 'A Stream can be enforced to dispatch values distinct from their immediate predecessors'() {
@@ -579,6 +563,7 @@ class StreamsSpec extends Specification {
 		then:
 			'it is passed to the consumer'
 			errors == 1
+			thrown RuntimeException
 
 		when:
 			'A new error consumer is subscribed'
@@ -586,6 +571,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'it is called since publisher is in error state'
+			thrown RuntimeException
 			errors == 2
 
 		when:
@@ -595,6 +581,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'it is not passed to the consumer'
+			thrown Exception
 			errors == 2
 	}
 
@@ -607,6 +594,7 @@ class StreamsSpec extends Specification {
 					.observe { if (it > 1) throw new RuntimeException() }
 					.observeError(RuntimeException) { data, error -> res << data }
 					.retry()
+					.log()
 					.consume()
 			println tail.debug()
 
@@ -709,8 +697,9 @@ class StreamsSpec extends Specification {
 	def "Stream's values can be exploded"() {
 		given:
 			'a source composable with a mapMany function'
-			def source = Broadcaster.<Integer> create(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			Stream<Integer> mapped = source.
+					run(asyncService).
 					flatMap { v -> Streams.just(v * 2) }.
 					when(Throwable) { it.printStackTrace() }
 
@@ -1082,7 +1071,7 @@ class StreamsSpec extends Specification {
 			s.elementAt(-1).when(IndexOutOfBoundsException, errorConsumer).consume()
 
 		then:
-			'exception is thrown'
+			'error is thrown'
 			error == 1
 
 		when:
@@ -1090,7 +1079,7 @@ class StreamsSpec extends Specification {
 			s.elementAt(10).when(IndexOutOfBoundsException, errorConsumer).consume()
 
 		then:
-			'exception is thrown'
+			'error is thrown'
 			error == 2
 	}
 
@@ -1164,7 +1153,7 @@ class StreamsSpec extends Specification {
 
 	def "When a mapping function throws an exception, the mapped composable accepts the error"() {
 		given:
-			'a source composable with a mapping function that throws an exception'
+			'a source composable with a mapping function that throws an error'
 			def source = Broadcaster.<Integer> create()
 			Stream mapped = source.map { if (it == 1) throw new RuntimeException() else 'na' }
 			def errors = 0
@@ -1177,6 +1166,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the error is passed on'
+			thrown Exception //because consume doesn't have error handler
 			errors == 1
 	}
 
@@ -1203,7 +1193,7 @@ class StreamsSpec extends Specification {
 
 	def "When a filter function throws an exception, the filtered composable accepts the error"() {
 		given:
-			'a source composable with a filter function that throws an exception'
+			'a source composable with a filter function that throws an error'
 			def source = Broadcaster.<Integer> create()
 			Stream filtered = source.filter { if (it == 1) throw new RuntimeException() else true }
 			def errors = 0
@@ -1216,6 +1206,7 @@ class StreamsSpec extends Specification {
 		then:
 			'the error is passed on'
 			errors == 1
+			thrown Exception //no error handler
 	}
 
 	def "A known set of values can be reduced"() {
@@ -1622,10 +1613,10 @@ class StreamsSpec extends Specification {
 	def 'Window will re-route N elements over time to a fresh nested stream'() {
 		given:
 			'a source and a collected window stream'
-			def source = Broadcaster.<Integer> create(Environment.get())
-			def promise = Promises.prepare()
+			def source = Broadcaster.<Integer> create()
+			def promise = Promises.ready()
 
-			source.log("prewindow").window(10l, TimeUnit.SECONDS).consume {
+			source.run(asyncService).log("prewindow").window(10l, TimeUnit.SECONDS).consume {
 				it.log().buffer(2).consume { promise.onNext(it) }
 			}
 
@@ -1650,7 +1641,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'2 more values are accepted'
-			promise = Promises.prepare()
+			promise = Promises.ready()
 
 			sleep(2000)
 			source.onNext(3)
@@ -1706,11 +1697,11 @@ class StreamsSpec extends Specification {
 	def 'GroupBy will re-route N elements to a nested stream based on hashcode'() {
 		given:
 			'a source and a grouped by ID stream'
-			def source = Broadcaster.<SimplePojo> create(Environment.get())
+			def source = Broadcaster.<SimplePojo> create()
 			def result = [:]
 			def latch = new CountDownLatch(6)
 
-			def partitionStream = source.partition()
+			def partitionStream = source.run(asyncService).partition()
 			partitionStream.consume { stream ->
 				stream.cast(SimplePojo).consume { pojo ->
 					if (result[pojo.id]) {
@@ -1789,27 +1780,6 @@ class StreamsSpec extends Specification {
 			!result.to
 	}
 
-	def 'Creating Stream from Environment.get()'() {
-		given:
-			'a source stream with a given environment'
-			def source = Broadcaster.<Integer> create(Environment.get(), Environment.dispatcher('shared'))
-			def source2 = Broadcaster.<Integer> create(Environment.get())
-
-		when:
-			'accept a value'
-			CountDownLatch latch = new CountDownLatch(2)
-			def v = ""
-			source.consume { v = 'ok'; latch.countDown() }
-			source2.consume { v = 'ok'; latch.countDown() }
-			source.onNext(1)
-			source2.onNext(1)
-
-		then:
-			'dispatching works'
-			latch.await(1000, TimeUnit.MILLISECONDS)
-			v == 'ok'
-	}
-
 	def 'Creating Stream from publisher'() {
 		given:
 			'a source stream with a given publisher'
@@ -1840,11 +1810,11 @@ class StreamsSpec extends Specification {
 						}
 						sub.onComplete()
 					},
-					{ println Thread.currentThread().name+' start' },
-					{ println Thread.currentThread().name+' end' }
+					{ println Thread.currentThread().name + ' start' },
+					{ println Thread.currentThread().name + ' end' }
 			)
 					.log()
-					.subscribeOn(Environment.workDispatcher())
+					.run(Processors.workService("work", 8, 4))
 
 		when:
 			'accept a value'
@@ -1894,7 +1864,6 @@ class StreamsSpec extends Specification {
 
 					@Override
 					void cancel() {
-						terminated = true
 					}
 				})
 			}.log()
@@ -1907,12 +1876,11 @@ class StreamsSpec extends Specification {
 		then:
 			'dispatching works'
 			res == [1, 2, 3]
-			terminated
 	}
 
 	def 'Creating Stream from Timer'() {
 		given:
-			'a source stream with a given timer'
+			'a source stream with a given globalTimer'
 
 			def res = 0l
 			def c = Streams.timer(1)
@@ -1932,10 +1900,11 @@ class StreamsSpec extends Specification {
 		when:
 			'consuming periodic'
 			def i = []
-			Streams.period(0, 1).log().consume {
+			c = Streams.period(0, 1).log().consume {
 				i << it
 			}
 			sleep(2500)
+			c.cancel()
 
 		then:
 			'ready'
@@ -2061,7 +2030,7 @@ class StreamsSpec extends Specification {
 				'hello future too long'
 			} as Callable<String>)
 
-			s = Streams.from(future, 100, TimeUnit.MILLISECONDS).dispatchOn(Environment.get())
+			s = Streams.from(future, 100, TimeUnit.MILLISECONDS).run(asyncService)
 			nexts = []
 			errors = []
 
@@ -2116,7 +2085,7 @@ class StreamsSpec extends Specification {
 			def random = new Random()
 			def source = Streams.generate {
 				random.nextInt()
-			}.dispatchOn(Environment.get())
+			}.run(asyncService)
 
 			def values = []
 
@@ -2182,7 +2151,7 @@ class StreamsSpec extends Specification {
 			println value.debug()
 
 		when:
-			'the first values are accepted on the source, paused just enough to refresh timer until 6'
+			'the first values are accepted on the source, paused just enough to refresh globalTimer until 6'
 			source.onNext(1)
 			sleep(500)
 			source.onNext(2)
@@ -2213,7 +2182,7 @@ class StreamsSpec extends Specification {
 			println value.debug()
 
 		when:
-			'the first values are accepted on the source, paused just enough to refresh timer until 6'
+			'the first values are accepted on the source, paused just enough to refresh globalTimer until 6'
 			source.onNext(1)
 			sleep(500)
 			source.onNext(2)
@@ -2226,8 +2195,8 @@ class StreamsSpec extends Specification {
 
 		then:
 			'last value known is 10 as the stream has used its fallback'
-			thrown CancelException
 			!error
+			thrown CancelException
 			value.get() == 10
 	}
 
@@ -2446,7 +2415,7 @@ class StreamsSpec extends Specification {
 	def 'A Stream can be throttled'() {
 		given:
 			'a source and a throttled stream'
-			def source = Broadcaster.<Integer> create(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			long avgTime = 150l
 
 			def reduced = source
@@ -2479,7 +2448,7 @@ class StreamsSpec extends Specification {
 	def 'A Stream can be throttled with a backoff policy as a stream'() {
 		given:
 			'a source and a throttled stream'
-			def source = Broadcaster.<Integer> create(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			long avgTime = 150l
 
 			def reduced = source
@@ -2517,7 +2486,7 @@ class StreamsSpec extends Specification {
 	def 'time-slices of average'() {
 		given:
 			'a source and a throttled stream'
-			def source = Broadcaster.<Integer> create(Environment.get())
+			def source = Broadcaster.<Integer> create()
 			def latch = new CountDownLatch(1)
 			long avgTime = 150l
 
@@ -2555,11 +2524,11 @@ class StreamsSpec extends Specification {
 			int batchSize = 333
 			int latchCount = length / batchSize
 			def latch = new CountDownLatch(latchCount)
-			def head = Broadcaster.<Integer> create(Environment.get())
-			head.partition(3).consume {
+			def head = Broadcaster.<Integer> create()
+			head.run(asyncService).partition(3).consume {
 				s ->
 					s
-							.dispatchOn(Environment.cachedDispatcher())
+							.run(asyncService)
 							.map { it }
 							.buffer(batchSize)
 							.consume { List<Integer> ints ->
@@ -2665,7 +2634,7 @@ class StreamsSpec extends Specification {
 			def stream = Streams.from(['test', 'test2', 'test3'])
 
 		when:
-			'the stream triggers an exception for the 2 first elements and is using retry(2) to ignore them'
+			'the stream triggers an error for the 2 first elements and is using retry(2) to ignore them'
 			def i = 0
 			stream = stream
 					.log('beforeObserve')
@@ -2686,7 +2655,7 @@ class StreamsSpec extends Specification {
 			value.get() == 3
 
 		when:
-			'the stream triggers an exception for the 2 first elements and is using retry() to ignore them'
+			'the stream triggers an error for the 2 first elements and is using retry() to ignore them'
 			i = 0
 			stream = Broadcaster.create()
 			def tap = stream.observe {
@@ -2709,7 +2678,7 @@ class StreamsSpec extends Specification {
 			res == 1
 
 		when:
-			'the stream triggers an exception for the 2 first elements and is using retry(matcher) to ignore them'
+			'the stream triggers an error for the 2 first elements and is using retry(matcher) to ignore them'
 			i = 0
 			stream = Streams.from(['test', 'test2', 'test3'])
 			value = stream.observe {
@@ -2726,7 +2695,7 @@ class StreamsSpec extends Specification {
 			value.get() == 3
 
 		when:
-			'the stream triggers an exception for the 2 first elements and is using retry(matcher) to ignore them'
+			'the stream triggers an error for the 2 first elements and is using retry(matcher) to ignore them'
 			i = 0
 			stream = Broadcaster.create()
 			tap = stream.observe {
@@ -2935,8 +2904,8 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the second is the last available'
-			thrown CancelException
 			value2.get() == 'test1'
+			thrown CancelException
 	}
 
 
@@ -2944,7 +2913,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with an initial values'
 			def stream = Streams.range(0, Integer.MAX_VALUE)
-					.dispatchOn(Environment.cachedDispatcher())
+					.run(asyncService)
 
 		when:
 			'take to the first 2 elements'
@@ -2991,14 +2960,14 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with an initial values'
 			def stream = Streams.range(0, 1000)
-					.dispatchOn(Environment.cachedDispatcher())
+					.run(asyncService)
 
 		when:
 			def promise = stream.skip(2, TimeUnit.SECONDS).toList()
 
 		then:
 			!promise.await()
-	}
+	}/*
 
 	def "A Codec output can be streamed"() {
 		given: "A delimiter stripping decoder and a buffer of delimited data"
@@ -3018,6 +2987,45 @@ class StreamsSpec extends Specification {
 
 		then: "the buffers have been correctly decoded"
 			res == ['Hello World!', 'Hello World!', 'Hello World!', 'Test', 'Test', 'Test', 'End']
+	}
+*/
+
+	def 'Creating Stream from observable'() {
+		given:
+			'a source stream with a given observable'
+			def r = EventBus.config().get()
+			def selector = anonymous()
+			int event = 0
+			def s = Streams.create(r.on(selector)).map { it.data }.consume { event = it }
+			println s.debug()
+
+		when:
+			'accept a value'
+			r.notify(selector.object, Event.wrap(1))
+			println s.debug()
+
+		then:
+			'dispatching works'
+			event == 1
+
+		when:
+			"multithreaded bus can be serialized"
+			r = EventBus.create(Processors.work("bus", 8), 4)
+			s = SerializedBroadcaster.<Event<Integer>> create()
+			def tail = s.map { it.data }.observe { sleep(100) }.elapsed().log().take(1500, TimeUnit.MILLISECONDS).toList()
+
+			r.on(selector, s)
+
+			10.times {
+				r.notify(selector.object, Event.wrap(it))
+			}
+
+		then:
+			tail.await().size() == 10
+			tail.get().sum { it.t1 } >= 1000 //correctly serialized
+
+		cleanup:
+			r.processor.onComplete()
 	}
 
 

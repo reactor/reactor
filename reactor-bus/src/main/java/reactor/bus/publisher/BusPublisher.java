@@ -22,9 +22,7 @@ import reactor.bus.Bus;
 import reactor.bus.EventBus;
 import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
-import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.fn.Consumer;
 
 import javax.annotation.Nonnull;
@@ -45,9 +43,9 @@ import javax.annotation.Nonnull;
  */
 public final class BusPublisher<T> implements Publisher<T> {
 
-	private final Selector      selector;
-	private final Bus<T> observable;
-	private final boolean    ordering;
+	private final Selector selector;
+	private final Bus<T>   observable;
+	private final boolean  ordering;
 
 
 	public BusPublisher(final @Nonnull Bus<T> observable,
@@ -55,23 +53,27 @@ public final class BusPublisher<T> implements Publisher<T> {
 
 		this.selector = selector;
 		this.observable = observable;
-		Dispatcher dispatcher = EventBus.class.isAssignableFrom(observable.getClass()) ?
-				((EventBus)observable).getDispatcher() : SynchronousDispatcher.INSTANCE;
-		this.ordering = dispatcher.supportsOrdering();
+		if (EventBus.class.isAssignableFrom(observable.getClass())) {
+			this.ordering = 1 == ((EventBus) observable).getConcurrency();
+		} else {
+			this.ordering = true;
+		}
+
 	}
 
 	@Override
 	public void subscribe(Subscriber<? super T> s) {
 		final Subscriber<? super T> subscriber;
-		if(!ordering) {
+		if (!ordering) {
 			subscriber = SerializedSubscriber.create(s);
-		}else{
+		} else {
 			subscriber = s;
 		}
 
 		subscriber.onSubscribe(new Subscription() {
 
-			final Registration<Object, Consumer<? extends T>> registration = observable.on(selector, new Consumer<T>() {
+			final Registration<Object, Consumer<? extends T>> registration = observable.on(selector, new Consumer<T>
+			  () {
 				@Override
 				public void accept(T event) {
 					subscriber.onNext(event);
@@ -93,8 +95,8 @@ public final class BusPublisher<T> implements Publisher<T> {
 	@Override
 	public String toString() {
 		return "BusPublisher{" +
-				"selector=" + selector +
-				", bus=" + observable +
-				'}';
+		  "selector=" + selector +
+		  ", bus=" + observable +
+		  '}';
 	}
 }

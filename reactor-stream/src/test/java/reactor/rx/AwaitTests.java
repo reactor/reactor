@@ -21,12 +21,9 @@ import reactor.AbstractReactorTest;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.selector.Selectors;
-import reactor.core.Dispatcher;
-import reactor.core.dispatch.RingBufferDispatcher;
-import reactor.core.dispatch.ThreadPoolExecutorDispatcher;
+import reactor.core.processor.RingBufferProcessor;
+import reactor.core.processor.SimpleWorkProcessor;
 import reactor.fn.Consumer;
-import reactor.jarjar.com.lmax.disruptor.BlockingWaitStrategy;
-import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
 import reactor.rx.broadcast.Broadcaster;
 
 import java.util.List;
@@ -43,12 +40,11 @@ public class AwaitTests extends AbstractReactorTest {
 
 	@Test
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
-		ThreadPoolExecutorDispatcher dispatcher = new ThreadPoolExecutorDispatcher(4, 64);
-
-		EventBus innerReactor = EventBus.config().env(env).dispatcher(dispatcher).get();
+		EventBus innerReactor = EventBus.config().concurrency(4).processor(SimpleWorkProcessor.create("simple-work",
+		  64)).get();
 
 		for (int i = 0; i < 10000; i++) {
-			final Promise<String> deferred = Promises.<String>prepare(env);
+			final Promise<String> deferred = Promises.<String>ready(timer);
 
 			innerReactor.schedule(new Consumer() {
 
@@ -65,31 +61,30 @@ public class AwaitTests extends AbstractReactorTest {
 	}
 
 
-
 	@Test
 	public void testDoesntDeadlockOnError() throws InterruptedException {
 
-		Dispatcher dispatcher = new RingBufferDispatcher("rb", 8, null, ProducerType.MULTI, new BlockingWaitStrategy());
-		EventBus r = new EventBus(dispatcher);
+		EventBus r = EventBus.create(RingBufferProcessor.create("rb", 8));
 
-		Broadcaster<Event<Throwable>> stream = Broadcaster.<Event<Throwable>> create();
+		Broadcaster<Event<Throwable>> stream = Broadcaster.<Event<Throwable>>create();
 		Promise<List<Long>> promise = stream.take(16).count().toList();
 		r.on(Selectors.T(Throwable.class), stream.toBroadcastNextConsumer());
 		r.on(Selectors.$("test"), (Event<?> ev) -> {
-				try {
-					Thread.sleep(100);
-				} catch (InterruptedException e){
-					//IGNORE
-				}
-				throw new RuntimeException();
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				//IGNORE
+			}
+			throw new RuntimeException();
 		});
 
-		for(int i = 0; i<16; i++){
+		for (int i = 0; i < 16; i++) {
 			r.notify("test", Event.wrap("test"));
 		}
 		promise.await(5, TimeUnit.SECONDS);
 
 		assert promise.get().get(0) == 16;
+		r.getProcessor().onComplete();
 
 	}
 

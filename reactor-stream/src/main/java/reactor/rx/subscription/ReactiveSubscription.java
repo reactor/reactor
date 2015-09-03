@@ -16,17 +16,18 @@
 package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.queue.CompletableLinkedQueue;
-import reactor.core.queue.CompletableQueue;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
+
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Relationship between a Stream (Publisher) and a Subscriber.
  * <p>
  * A Reactive Subscription using a pattern called "reactive-pull" to dynamically adapt to the downstream subscriber
  * capacity:
- * - If no capacity (no previous request or capacity drained), queue data into the buffer {@link CompletableQueue}
+ * - If no capacity (no previous request or capacity drained), queue data into the buffer {@link Queue}
  * - If capacity (previous request and capacity remaining), call subscriber onNext
  * <p>
  * Queued data will be polled when the next request(n) signal is received. If there is remaining requested volume,
@@ -39,22 +40,23 @@ import reactor.rx.action.Action;
 public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 
-	protected final CompletableQueue<O> buffer;
+	protected final Queue<O> buffer;
 
 	//Guarded by this
 	protected boolean draining = false;
 
 	//Only read from subscriber context
 	protected volatile long currentNextSignals = 0l;
+	protected volatile boolean terminalSignalled = false;
 
 	//Can be set outside of publisher and subscriber contexts
 	protected volatile long maxCapacity = Long.MAX_VALUE;
 
 	public ReactiveSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
-		this(publisher, subscriber, new CompletableLinkedQueue<O>());
+		this(publisher, subscriber, new ConcurrentLinkedQueue<O>());
 	}
 
-	public ReactiveSubscription(Stream<O> publisher, Subscriber<? super O> subscriber, CompletableQueue<O> buffer) {
+	public ReactiveSubscription(Stream<O> publisher, Subscriber<? super O> subscriber, Queue<O> buffer) {
 		super(publisher, subscriber);
 		this.buffer = buffer;
 	}
@@ -88,7 +90,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 						long previous = pendingRequestSignals;
 						if (previous != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, toRequest) < 0l) {
 							PENDING_UPDATER.set(this, Long.MAX_VALUE);
-							//onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, previous, toRequest));
+							//onError(SpecificationExceptions.spec_3_17_exception(publisher, subscriber, previous,
+							// toRequest));
 							return;
 						}
 					}
@@ -115,7 +118,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 					drainNext(list);
 				} else {
 					//started
-					if(terminated == 0) {
+					if (terminated == 0) {
 						onRequest(elements);
 					}
 					return;
@@ -123,7 +126,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 				synchronized (this) {
 					draining = !buffer.isEmpty();
-					last = !draining && buffer.isComplete();
+					last = !draining && terminalSignalled;
 				}
 
 				if (last) {
@@ -136,9 +139,9 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 						toRequest = elements;
 					} else if (elements > 0l) {
 						//started
-						if(terminated == 0) {
+						if (terminated == 0) {
 							onRequest(elements);
-						}else{
+						} else {
 							updatePendingRequests(elements);
 						}
 						toRequest = 0;
@@ -178,7 +181,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			} else */
 
 			if (pendingRequestSignals != Long.MAX_VALUE &&
-					PENDING_UPDATER.decrementAndGet(this) < 0l) {
+			  PENDING_UPDATER.decrementAndGet(this) < 0l) {
 				PENDING_UPDATER.incrementAndGet(this);
 				if (ev != null) {
 					buffer.add(ev);
@@ -199,7 +202,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			return;
 
 		synchronized (this) {
-			buffer.complete();
+			terminalSignalled = true;
 
 			if (buffer.isEmpty()) {
 				if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
@@ -234,9 +237,10 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public boolean shouldRequestPendingSignals() {
+		if(pendingRequestSignals == Long.MAX_VALUE) return false;
 		synchronized (this) {
-			return pendingRequestSignals > 0 && pendingRequestSignals != Long.MAX_VALUE
-					&& (!buffer.isEmpty() || currentNextSignals == maxCapacity);
+			return pendingRequestSignals > 0
+			  && (!buffer.isEmpty() || currentNextSignals == maxCapacity);
 		}
 	}
 
@@ -253,24 +257,24 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		return pendingRequestSignals;
 	}
 
-	public final CompletableQueue<O> getBuffer() {
+	public final Queue<O> getBuffer() {
 		return buffer;
 	}
 
 	@Override
 	public final boolean isComplete() {
 		synchronized (this) {
-			return buffer.isEmpty() && buffer.isComplete();
+			return buffer.isEmpty() && terminalSignalled;
 		}
 	}
 
 	@Override
 	public String toString() {
 		return "{" +
-				"current=" + currentNextSignals +
-				", pending=" + (pendingRequestSignals() == Long.MAX_VALUE ? "infinite" : pendingRequestSignals()) +
-				(buffer != null ? (terminated == 1 ? ", complete" : "") + (", waiting=" + buffer.size()) : "") +
-				'}';
+		  "current=" + currentNextSignals +
+		  ", pending=" + (pendingRequestSignals() == Long.MAX_VALUE ? "infinite" : pendingRequestSignals()) +
+		  (buffer != null ? (terminated == 1 ? ", complete" : "") + (", waiting=" + buffer.size()) : "") +
+		  '}';
 	}
 
 	static final class FastList {

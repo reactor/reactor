@@ -19,11 +19,9 @@ package reactor.rx;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.reactivestreams.PublisherFactory;
-import reactor.core.reactivestreams.SubscriberWithContext;
+import reactor.Timers;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberWithContext;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -33,7 +31,6 @@ import reactor.fn.tuple.*;
 import reactor.rx.action.Action;
 import reactor.rx.action.combination.*;
 import reactor.rx.action.support.DefaultSubscriber;
-import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.*;
 
 import java.util.ArrayList;
@@ -89,7 +86,8 @@ public class Streams {
 	 * consists
 	 * of a series of calls to the {@link org.reactivestreams.Subscriber} argument:
 	 * onSubscribe?|onNext*|onError?|onComplete.
-	 * Strict application of this protocol is not enforced, e.g. onSubscribe is not required as a buffering subscription
+	 * Strict application of this protocol is not enforced, e.g. onSubscribe is not required as a buffering
+	 * subscription
 	 * will be created
 	 * anyway.
 	 * For simply decorating a given Publisher with {@link Stream} API, and thus relying on the publisher to honour the
@@ -127,7 +125,7 @@ public class Streams {
 	 *
 	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
 	 * @param contextFactory  A {@link Function} called for every new subscriber returning an immutable context (IO
-	 *                         connection...)
+	 *                        connection...)
 	 * @param <T>             The type of the data sequence
 	 * @param <C>             The type of contextual information to be read by the requestConsumer
 	 * @return a Stream
@@ -148,9 +146,9 @@ public class Streams {
 	 *
 	 * @param requestConsumer  A {@link BiConsumer} with left argument request and right argument target subscriber
 	 * @param contextFactory   A {@link Function} called once for every new subscriber returning an immutable context
-	 *                          (IO connection...)
+	 *                         (IO connection...)
 	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(),
-	 *                          onError()
+	 *                         onError()
 	 * @param <T>              The type of the data sequence
 	 * @param <C>              The type of contextual information to be read by the requestConsumer
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
@@ -160,13 +158,14 @@ public class Streams {
 	                                          Function<Subscriber<? super T>, C> contextFactory,
 	                                          Consumer<C> shutdownConsumer) {
 
-		return Streams.wrap(PublisherFactory.create(requestConsumer, contextFactory, shutdownConsumer));
+		return Streams.wrap(PublisherFactory.createWithDemand(requestConsumer, contextFactory, shutdownConsumer));
 	}
 
 	/**
 	 * A simple decoration of the given {@link Publisher} to expose {@link Stream} API and proxy any subscribe call to
 	 * the publisher.
-	 * The Publisher has to first call onSubscribe and receive a subscription request callback before any onNext call or
+	 * The Publisher has to first call onSubscribe and receive a subscription request callback before any onNext
+	 * call or
 	 * will risk loosing events.
 	 *
 	 * @param publisher the publisher to decorate the Stream subscriber
@@ -301,7 +300,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> timer(long delay) {
-		return timer(Environment.timer(), delay, TimeUnit.SECONDS);
+		return timer(Timers.globalOrNew(), delay, TimeUnit.SECONDS);
 	}
 
 
@@ -325,7 +324,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> timer(long delay, TimeUnit unit) {
-		return new SingleTimerStream(delay, unit, Environment.timer());
+		return timer(Timers.globalOrNew(), delay, unit);
 	}
 
 	/**
@@ -349,7 +348,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long period) {
-		return period(Environment.timer(), -1l, period, TimeUnit.SECONDS);
+		return period(Timers.globalOrNull(), -1l, period, TimeUnit.SECONDS);
 	}
 
 
@@ -376,7 +375,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long delay, long period) {
-		return period(Environment.timer(), delay, period, TimeUnit.SECONDS);
+		return period(Timers.globalOrNull(), delay, period, TimeUnit.SECONDS);
 	}
 
 
@@ -402,7 +401,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long period, TimeUnit unit) {
-		return period(Environment.timer(), -1l, period, unit);
+		return period(Timers.globalOrNull(), -1l, period, unit);
 	}
 
 	/**
@@ -428,7 +427,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long delay, long period, TimeUnit unit) {
-		return period(Environment.timer(), delay, period, unit);
+		return period(Timers.globalOrNew(), delay, period, unit);
 	}
 
 	/**
@@ -618,7 +617,7 @@ public class Streams {
 	 */
 	public static <T> Stream<T> generate(Supplier<? extends T> value) {
 		if (value == null) throw new IllegalArgumentException("Supplier must be provided");
-		return new SupplierStream<T>(SynchronousDispatcher.INSTANCE, value);
+		return new SupplierStream<T>(value);
 	}
 
 	/**
@@ -631,22 +630,8 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Action<Publisher<? extends T>, T> switchOnNext() {
-		return switchOnNext(SynchronousDispatcher.INSTANCE);
-	}
-
-	/**
-	 * Build an {@literal Action} whose data are emitted by the most recent {@link Action#onNext(Object)} signaled
-	 * publisher.
-	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
-	 *
-	 * @param dispatcher The dispatcher to execute the signals
-	 * @param <T>        type of the value
-	 * @return a {@link Action} accepting publishers and producing inner data T
-	 * @since 2.0
-	 */
-	public static <T> Action<Publisher<? extends T>, T> switchOnNext(Dispatcher dispatcher) {
-		SwitchAction<T> switchAction = new SwitchAction<>(dispatcher);
-		switchAction.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
+		SwitchAction<T> switchAction = new SwitchAction<>();
+		switchAction.onSubscribe(Action.HOT_SUBSCRIPTION);
 		return switchAction;
 	}
 
@@ -660,23 +645,8 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> switchOnNext(
-			Publisher<? extends Publisher<? extends T>> mergedPublishers) {
-		return switchOnNext(mergedPublishers, SynchronousDispatcher.INSTANCE);
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are emitted by the most recent passed publisher.
-	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
-	 *
-	 * @param mergedPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param dispatcher       The dispatcher to execute the signals
-	 * @param <T>              type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> switchOnNext(
-			Publisher<? extends Publisher<? extends T>> mergedPublishers, Dispatcher dispatcher) {
-		final Action<Publisher<? extends T>, T> mergeAction = new SwitchAction<>(dispatcher);
+	  Publisher<? extends Publisher<? extends T>> mergedPublishers) {
+		final Action<Publisher<? extends T>, T> mergeAction = new SwitchAction<>();
 
 		mergedPublishers.subscribe(mergeAction);
 		return mergeAction;
@@ -685,7 +655,8 @@ public class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
+	 * passed
 	 * to.
 	 *
 	 * @param mergedPublishers The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -712,7 +683,8 @@ public class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
+	 * passed
 	 * to.
 	 *
 	 * @param concatdPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -728,7 +700,8 @@ public class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
+	 * passed
 	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -746,7 +719,8 @@ public class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
+	 * passed
 	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -765,7 +739,8 @@ public class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
+	 * passed
 	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -787,7 +762,8 @@ public class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
+	 * passed
 	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -809,7 +785,8 @@ public class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
+	 * passed
 	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -830,12 +807,13 @@ public class Streams {
 	                                   Publisher<? extends T> source6
 	) {
 		return concat(Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
+		  source6));
 	}
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
+	 * passed
 	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -858,12 +836,13 @@ public class Streams {
 	                                   Publisher<? extends T> source7
 	) {
 		return concat(Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7));
+		  source6, source7));
 	}
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been passed
+	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
+	 * passed
 	 * to.
 	 *
 	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -888,7 +867,7 @@ public class Streams {
 	                                   Publisher<? extends T> source8
 	) {
 		return concat(Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7, source8));
+		  source6, source7, source8));
 	}
 
 	/**
@@ -912,7 +891,7 @@ public class Streams {
 		} else if (publishers.size() == 1) {
 			return wrap((Publisher<T>) publishers.get(0));
 		}
-		return new MergeAction<T>(SynchronousDispatcher.INSTANCE, publishers);
+		return new MergeAction<T>(publishers);
 	}
 
 	/**
@@ -926,7 +905,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T, E extends T> Stream<E> merge(Publisher<? extends Publisher<E>> mergedPublishers) {
-		final Action<Publisher<? extends E>, E> mergeAction = new DynamicMergeAction<E, E>(null);
+		final Action<Publisher<? extends E>, E> mergeAction = new DynamicMergeAction<>();
 
 		mergedPublishers.subscribe(mergeAction);
 		return mergeAction;
@@ -1034,7 +1013,7 @@ public class Streams {
 	                                  Publisher<? extends T> source6
 	) {
 		return merge(Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
+		  source6));
 	}
 
 	/**
@@ -1062,7 +1041,7 @@ public class Streams {
 	                                  Publisher<? extends T> source7
 	) {
 		return merge(Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7));
+		  source6, source7));
 	}
 
 	/**
@@ -1092,7 +1071,7 @@ public class Streams {
 	                                  Publisher<? extends T> source8
 	) {
 		return merge(Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7, source8));
+		  source6, source7, source8));
 	}
 
 
@@ -1140,7 +1119,7 @@ public class Streams {
 	                                                      Publisher<? extends T2> source2,
 	                                                      Publisher<? extends T3> source3,
 	                                                      Function<Tuple3<T1, T2, T3>,
-			                                                      ? extends V> combinator) {
+	                                                        ? extends V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3), combinator);
 	}
 
@@ -1169,7 +1148,7 @@ public class Streams {
 	                                                          Publisher<? extends T3> source3,
 	                                                          Publisher<? extends T4> source4,
 	                                                          Function<Tuple4<T1, T2, T3, T4>,
-			                                                          V> combinator) {
+	                                                            V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3, source4), combinator);
 	}
 
@@ -1200,7 +1179,7 @@ public class Streams {
 	                                                              Publisher<? extends T4> source4,
 	                                                              Publisher<? extends T5> source5,
 	                                                              Function<Tuple5<T1, T2, T3, T4, T5>,
-			                                                              V> combinator) {
+	                                                                V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5), combinator);
 	}
 
@@ -1235,7 +1214,7 @@ public class Streams {
 	                                                                  Publisher<? extends T5> source5,
 	                                                                  Publisher<? extends T6> source6,
 	                                                                  Function<Tuple6<T1, T2, T3, T4, T5, T6>,
-			                                                                  V> combinator) {
+	                                                                    V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5, source6), combinator);
 	}
 
@@ -1273,9 +1252,9 @@ public class Streams {
 	                                                                      Publisher<? extends T6> source6,
 	                                                                      Publisher<? extends T7> source7,
 	                                                                      Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
-			                                                                      V> combinator) {
+	                                                                        V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5, source6, source7),
-				combinator);
+		  combinator);
 	}
 
 	/**
@@ -1315,10 +1294,10 @@ public class Streams {
 	                                                                          Publisher<? extends T7> source7,
 	                                                                          Publisher<? extends T8> source8,
 	                                                                          Function<Tuple8<T1, T2, T3, T4, T5, T6,
-			                                                                          T7, T8>,
-			                                                                          ? extends V> combinator) {
+	                                                                            T7, T8>,
+	                                                                            ? extends V> combinator) {
 		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8),
-				combinator);
+		  combinator);
 	}
 
 	/**
@@ -1337,7 +1316,7 @@ public class Streams {
 	 */
 	public static <TUPLE extends Tuple, V> Stream<V> combineLatest(List<? extends Publisher<?>> sources,
 	                                                               Function<TUPLE, ? extends V> combinator) {
-		return new CombineLatestAction<>(SynchronousDispatcher.INSTANCE, combinator, sources);
+		return new CombineLatestAction<>(combinator, sources);
 	}
 
 	/**
@@ -1355,10 +1334,10 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <E, TUPLE extends Tuple, V> Stream<V> combineLatest(
-			Publisher<? extends Publisher<E>> sources,
-			Function<TUPLE, ? extends V> combinator) {
+	  Publisher<? extends Publisher<E>> sources,
+	  Function<TUPLE, ? extends V> combinator) {
 		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(
-				new CombineLatestAction<E, V, TUPLE>(SynchronousDispatcher.INSTANCE, combinator, null)
+		  new CombineLatestAction<E, V, TUPLE>(combinator, null)
 		);
 
 		sources.subscribe(mergeAction);
@@ -1408,7 +1387,7 @@ public class Streams {
 	                                            Publisher<? extends T2> source2,
 	                                            Publisher<? extends T3> source3,
 	                                            Function<Tuple3<T1, T2, T3>,
-			                                            ? extends V> combinator) {
+	                                              ? extends V> combinator) {
 		return zip(Arrays.asList(source1, source2, source3), combinator);
 	}
 
@@ -1436,7 +1415,7 @@ public class Streams {
 	                                                Publisher<? extends T3> source3,
 	                                                Publisher<? extends T4> source4,
 	                                                Function<Tuple4<T1, T2, T3, T4>,
-			                                                V> combinator) {
+	                                                  V> combinator) {
 		return zip(Arrays.asList(source1, source2, source3, source4), combinator);
 	}
 
@@ -1466,7 +1445,7 @@ public class Streams {
 	                                                    Publisher<? extends T4> source4,
 	                                                    Publisher<? extends T5> source5,
 	                                                    Function<Tuple5<T1, T2, T3, T4, T5>,
-			                                                    V> combinator) {
+	                                                      V> combinator) {
 		return zip(Arrays.asList(source1, source2, source3, source4, source5), combinator);
 	}
 
@@ -1500,7 +1479,7 @@ public class Streams {
 	                                                        Publisher<? extends T5> source5,
 	                                                        Publisher<? extends T6> source6,
 	                                                        Function<Tuple6<T1, T2, T3, T4, T5, T6>,
-			                                                        V> combinator) {
+	                                                          V> combinator) {
 		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6), combinator);
 	}
 
@@ -1537,9 +1516,9 @@ public class Streams {
 	                                                            Publisher<? extends T6> source6,
 	                                                            Publisher<? extends T7> source7,
 	                                                            Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
-			                                                            V> combinator) {
+	                                                              V> combinator) {
 		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6, source7),
-				combinator);
+		  combinator);
 	}
 
 	/**
@@ -1578,7 +1557,7 @@ public class Streams {
 	                                                                Publisher<? extends T7> source7,
 	                                                                Publisher<? extends T8> source8,
 	                                                                Function<Tuple8<T1, T2, T3, T4, T5, T6, T7, T8>,
-			                                                                ? extends V> combinator) {
+	                                                                  ? extends V> combinator) {
 		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6, source7, source8), combinator);
 	}
 
@@ -1597,7 +1576,7 @@ public class Streams {
 	 */
 	public static <TUPLE extends Tuple, V> Stream<V> zip(List<? extends Publisher<?>> sources,
 	                                                     Function<TUPLE, ? extends V> combinator) {
-		return new ZipAction<>(SynchronousDispatcher.INSTANCE, combinator, sources);
+		return new ZipAction<>(combinator, sources);
 	}
 
 	/**
@@ -1614,10 +1593,10 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <E, TUPLE extends Tuple, V> Stream<V> zip(
-			Publisher<? extends Publisher<E>> sources,
-			Function<TUPLE, ? extends V> combinator) {
+	  Publisher<? extends Publisher<E>> sources,
+	  Function<TUPLE, ? extends V> combinator) {
 		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(
-				new ZipAction<E, V, TUPLE>(SynchronousDispatcher.INSTANCE, combinator, null)
+		  new ZipAction<E, V, TUPLE>(combinator, null)
 		);
 
 		sources.subscribe(mergeAction);
@@ -1729,7 +1708,7 @@ public class Streams {
 	                                       Publisher<? extends T> source5,
 	                                       Publisher<? extends T> source6) {
 		return join(Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
+		  source6));
 	}
 
 	/**
@@ -1828,11 +1807,7 @@ public class Streams {
 	 * @param publisher the publisher to listen for terminal signals
 	 */
 	public static void await(Publisher<?> publisher) throws Throwable {
-		long timeout = 30000l;
-		if (Environment.alive()) {
-			timeout = Environment.get().getLongProperty("reactor.await.defaultTimeout", 30000L);
-		}
-		await(publisher, timeout, TimeUnit.MILLISECONDS, true);
+		await(publisher, 30000, TimeUnit.MILLISECONDS, true);
 	}
 
 	/**
@@ -1873,7 +1848,7 @@ public class Streams {
 	 * @param unit      the TimeUnit to use for the timeout
 	 */
 	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit, final boolean request) throws
-			Throwable {
+	  Throwable {
 		final AtomicReference<Throwable> exception = new AtomicReference<>();
 
 		final CountDownLatch latch = new CountDownLatch(1);
@@ -1890,19 +1865,21 @@ public class Streams {
 
 			@Override
 			public void onError(Throwable throwable) {
+				s = null;
 				exception.set(throwable);
-				cancel();
 				latch.countDown();
 			}
 
 			@Override
 			public void onComplete() {
-				cancel();
+				s = null;
 				latch.countDown();
 			}
 
 			void cancel() {
+				Subscription s = this.s;
 				if (s != null) {
+					this.s = null;
 					try {
 						s.cancel();
 					} catch (Throwable t) {

@@ -18,7 +18,7 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
+import reactor.core.support.Bounded;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
 import reactor.rx.subscription.PushSubscription;
@@ -52,22 +52,23 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
         };
     }
 
-    public ZipAction(Dispatcher dispatcher,
-                     Function<TUPLE, ? extends V> accumulator, List<? extends Publisher<? extends O>>
+    public ZipAction(Function<TUPLE, ? extends V> accumulator, List<? extends Publisher<? extends O>>
                        composables) {
-        super(dispatcher, composables);
+        super(composables);
         this.accumulator = accumulator;
         this.toZip = new Object[composables != null ? composables.size() : 1];
         capacity(toZip.length);
     }
 
     @Override
-    protected void doOnSubscribe(Subscription subscription) {
+    public void start() {
         if (status.compareAndSet(NOT_STARTED, RUNNING)) {
             if (publishers != null) {
                 for (Publisher<? extends O> publisher : publishers) {
                     addPublisher(publisher);
                 }
+            } else {
+                onSubscribe(innerSubscriptions);
             }
         }
     }
@@ -88,8 +89,8 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
             if (res != null) {
                 broadcastNext(res);
 
-                if (!isFinishing && upstreamSubscription.pendingRequestSignals() > 0) {
-                    dispatcher.dispatch(capacity, upstreamSubscription, null);
+                if (!isFinishing && innerSubscriptions.pendingRequestSignals() > 0) {
+                    innerSubscriptions.accept(capacity);
                 }
             }
         }
@@ -189,7 +190,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
             if (pendingRequests > 0) {
                 pendingRequests = 0;
-                request(1);
+                request(newSize);
             }
             if (outerAction.dynamicMergeAction != null) {
                 outerAction.dynamicMergeAction.decrementWip();
@@ -237,7 +238,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
 
         @Override
-        public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+        public boolean isExposedToOverflow(Bounded upstream) {
             return true;
         }
 

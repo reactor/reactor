@@ -16,21 +16,21 @@
 
 <configuration>
 
-	<appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
-		<encoder>
-			<pattern>
-				%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
-			</pattern>
-		</encoder>
-	</appender>
+    <appender name="stdout" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                %d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
 
-	<logger name="reactor" level="DEBUG"/>
-	<logger name="reactor.io.net.impl" level="ERROR"/>
-	<!--<logger name="reactor.io.net.impl.netty.http.NettyHttpClient" level="OFF"/>-->
-	<!--<logger name="reactor.io.net.impl.netty.http.NettyHttpServer" level="OFF"/>-->
+    <logger name="reactor" level="DEBUG"/>
+    <logger name="reactor.io.net.impl" level="ERROR"/>
+    <!--<logger name="reactor.io.net.impl.netty.http.NettyHttpClient" level="OFF"/>-->
+    <!--<logger name="reactor.io.net.impl.netty.http.NettyHttpServer" level="OFF"/>-->
 
-	<root level="info">
-		<appender-ref ref="stdout"/>
-	</root>
+    <root level="info">
+        <appender-ref ref="stdout"/>
+    </root>
 
 </configuration>

@@ -15,7 +15,6 @@
  */
 package reactor.rx.action.aggregation;
 
-import reactor.core.Dispatcher;
 import reactor.fn.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
@@ -28,17 +27,17 @@ public class SampleAction<T> extends BatchAction<T, T> {
 
 	private T sample;
 
-	public SampleAction(Dispatcher dispatcher, int maxSize) {
-		this(dispatcher, maxSize, false);
+	public SampleAction(int maxSize) {
+		this(maxSize, false);
 	}
 
-	public SampleAction(Dispatcher dispatcher, boolean first, int maxSize, long timespan, TimeUnit unit, Timer timer) {
-		super(dispatcher, maxSize, !first, first, true, timespan, unit, timer);
+	public SampleAction(int maxSize, boolean first) {
+		super(maxSize, !first, first, true);
 	}
 
 
-	public SampleAction(Dispatcher dispatcher, int maxSize, boolean first) {
-		super(dispatcher, maxSize, !first, first, true);
+	public SampleAction(boolean first, int maxSize, long timespan, TimeUnit unit, Timer timer) {
+		super(maxSize, !first, first, true, timespan, unit, timer);
 	}
 
 	@Override
@@ -54,7 +53,7 @@ public class SampleAction<T> extends BatchAction<T, T> {
 
 	@Override
 	protected void flushCallback(T event) {
-		if(sample != null){
+		if (sample != null) {
 			T _last = sample;
 			sample = null;
 			broadcastNext(_last);
@@ -63,6 +62,6 @@ public class SampleAction<T> extends BatchAction<T, T> {
 
 	@Override
 	public String toString() {
-		return super.toString()+" sample="+sample;
+		return super.toString() + " sample=" + sample;
 	}
 }

@@ -16,9 +16,8 @@
 
 package reactor.io.net;
 
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
+import reactor.Timers;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.rx.Promise;
@@ -29,32 +28,29 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Abstract base class that implements common functionality shared by clients and servers.
  * <p>
- * A Peer is network component with start and shutdown capabilities. On Start it will require a {@link ReactorChannelHandler}
+ * A Peer is network component with start and shutdown capabilities. On Start it will require a {@link
+ * ReactorChannelHandler}
  * to process the incoming {@link ReactorChannel}, regardless of being a server or a client.
  *
  * @author Stephane Maldini
  */
 public abstract class ReactorPeer<IN, OUT, CONN extends ChannelStream<IN, OUT>> {
 
-	private final   Dispatcher             defaultDispatcher;
-	private final   Environment            defaultEnv;
+	private final   Timer            defaultTimer;
 	private final   Codec<Buffer, IN, OUT> defaultCodec;
 	private final   long                   defaultPrefetch;
 	protected final AtomicBoolean          started;
 
-	protected ReactorPeer(Environment defaultEnv,
-	                      Dispatcher defaultDispatcher,
+	protected ReactorPeer(Timer defaultTimer,
 	                      Codec<Buffer, IN, OUT> codec) {
-		this(defaultEnv, defaultDispatcher, codec, Long.MAX_VALUE);
+		this(defaultTimer, codec, Long.MAX_VALUE);
 	}
 
-	protected ReactorPeer(Environment defaultEnv,
-	                      Dispatcher defaultDispatcher,
+	protected ReactorPeer(Timer defaultTimer,
 	                      Codec<Buffer, IN, OUT> codec,
 	                      long prefetch) {
-		this.defaultEnv = defaultEnv == null && Environment.alive() ? Environment.get() : defaultEnv;
+		this.defaultTimer = defaultTimer == null && Timers.hasGlobal() ? Timers.global() : defaultTimer;
 		this.defaultCodec = codec;
-		this.defaultDispatcher = defaultDispatcher != null ? defaultDispatcher : SynchronousDispatcher.INSTANCE;
 		this.defaultPrefetch = prefetch > 0 ? prefetch : Long.MAX_VALUE;
 		this.started = new AtomicBoolean();
 	}
@@ -65,7 +61,7 @@ public abstract class ReactorPeer<IN, OUT, CONN extends ChannelStream<IN, OUT>> 
 	 * @return a {@link reactor.rx.Promise} that will be complete when the {@link ReactorPeer} is started
 	 */
 	public final Promise<Void> start(
-			final ReactorChannelHandler<IN, OUT, CONN> handler) {
+	  final ReactorChannelHandler<IN, OUT, CONN> handler) {
 
 		if (!started.compareAndSet(false, true)) {
 			throw new IllegalStateException("Peer already started");
@@ -88,13 +84,6 @@ public abstract class ReactorPeer<IN, OUT, CONN extends ChannelStream<IN, OUT>> 
 	}
 
 	/**
-	 * @return Dispatcher assigned to this peer (and used by default on each new Channel)
-	 */
-	public final Dispatcher getDefaultDispatcher() {
-		return defaultDispatcher;
-	}
-
-	/**
 	 * Get the {@link Codec} in use.
 	 *
 	 * @return The defaultCodec. May be {@literal null}.
@@ -108,8 +97,8 @@ public abstract class ReactorPeer<IN, OUT, CONN extends ChannelStream<IN, OUT>> 
 	 *
 	 * @return The default environment
 	 */
-	public final Environment getDefaultEnvironment() {
-		return defaultEnv;
+	public final Timer getDefaultTimer() {
+		return defaultTimer;
 	}
 
 	/**

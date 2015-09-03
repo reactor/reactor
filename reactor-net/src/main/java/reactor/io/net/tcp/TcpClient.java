@@ -16,8 +16,7 @@
 
 package reactor.io.net.tcp;
 
-import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -30,28 +29,24 @@ import java.net.InetSocketAddress;
 /**
  * The base class for a Reactor-based TCP client.
  *
- * @param <IN>
- * 		The type that will be received by this client
- * @param <OUT>
- * 		The type that will be sent by this client
- *
+ * @param <IN>  The type that will be received by this client
+ * @param <OUT> The type that will be sent by this client
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public abstract class TcpClient<IN, OUT>
-		extends ReactorClient<IN, OUT, ChannelStream<IN, OUT>> {
+  extends ReactorClient<IN, OUT, ChannelStream<IN, OUT>> {
 
 	private final InetSocketAddress   connectAddress;
 	private final ClientSocketOptions options;
 	private final SslOptions          sslOptions;
 
-	protected TcpClient(Environment env,
-	                    Dispatcher dispatcher,
+	protected TcpClient(Timer timer,
 	                    InetSocketAddress connectAddress,
 	                    ClientSocketOptions options,
 	                    SslOptions sslOptions,
 	                    Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec, options.prefetch());
+		super(timer, codec, options.prefetch());
 		this.connectAddress = (null != connectAddress ? connectAddress : new InetSocketAddress("127.0.0.1", 3000));
 		this.options = options;
 		this.sslOptions = sslOptions;

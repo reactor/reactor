@@ -18,10 +18,9 @@ package reactor.rx.action.control;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.Dispatcher;
-import reactor.core.support.NonBlocking;
-import reactor.fn.Consumer;
+import reactor.core.support.Bounded;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
@@ -34,10 +33,10 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 
 	private final Broadcaster<Long> throttleStream;
 
-	public ThrottleRequestWhenAction(Dispatcher dispatcher,
+	public ThrottleRequestWhenAction(Timer timer,
 	                                 Function<? super Stream<? extends Long>, ? extends Publisher<? extends Long>>
-			                                 predicate) {
-		this.throttleStream = Broadcaster.create(null, dispatcher);
+	                                   predicate) {
+		this.throttleStream = Broadcaster.create(timer);
 		Publisher<? extends Long> afterRequestStream = predicate.apply(throttleStream);
 		afterRequestStream.subscribe(new ThrottleSubscriber());
 	}
@@ -57,32 +56,27 @@ public class ThrottleRequestWhenAction<T> extends Action<T, T> {
 		try {
 			throttleStream.onComplete();
 			doShutdown();
-		}catch(Exception e){
+		} catch (Exception e) {
 			doError(e);
 		}
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return true;
 	}
 
 	protected void doRequest(final long requested) {
-		throttleStream.getDispatcher().dispatch(requested, new Consumer<Long>() {
-			@Override
-			public void accept(Long o) {
-				if (upstreamSubscription != null) {
-					upstreamSubscription.request(o);
-				}
-			}
-		}, null);
+		if (upstreamSubscription != null) {
+			upstreamSubscription.request(requested);
+		}
 	}
 
-	private class ThrottleSubscriber implements Subscriber<Long>, NonBlocking {
+	private class ThrottleSubscriber implements Subscriber<Long>, Bounded {
 		Subscription s;
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+		public boolean isExposedToOverflow(Bounded upstream) {
 			return false;
 		}
 

@@ -16,9 +16,9 @@
 
 package reactor.io.net.tcp;
 
-import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.Processors;
 import reactor.core.support.Assert;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -37,7 +37,17 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class TcpServer<IN, OUT>
-		extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
+  extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
+
+	public static final int DEFAULT_TCP_THREAD_COUNT = Integer.parseInt(
+	  System.getProperty("reactor.tcp.selectThreadCount",
+		""+Processors.DEFAULT_POOL_SIZE / 2)
+	);
+
+	public static final int DEFAULT_TCP_SELECT_COUNT = Integer.parseInt(
+	  System.getProperty("reactor.tcp.selectThreadCount",
+		""+DEFAULT_TCP_THREAD_COUNT)
+	);
 
 	private final ServerSocketOptions options;
 	private final SslOptions          sslOptions;
@@ -46,13 +56,12 @@ public abstract class TcpServer<IN, OUT>
 	//Carefully reset
 	protected InetSocketAddress listenAddress;
 
-	protected TcpServer(Environment env,
-	                    Dispatcher dispatcher,
+	protected TcpServer(Timer timer,
 	                    InetSocketAddress listenAddress,
 	                    ServerSocketOptions options,
 	                    SslOptions sslOptions,
 	                    Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec, options.prefetch());
+		super(timer, codec, options.prefetch());
 		this.listenAddress = listenAddress;
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.options = options;

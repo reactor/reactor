@@ -23,13 +23,12 @@ import org.zeromq.ZContext;
 import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
-import reactor.Environment;
-import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -69,15 +68,14 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private volatile ZeroMQWorker worker;
 	private volatile Future<?>    workerFuture;
 
-	public ZeroMQTcpServer(Environment env,
-	                       Dispatcher eventsDispatcher,
+	public ZeroMQTcpServer(Timer timer,
 	                       InetSocketAddress listenAddress,
 	                       ServerSocketOptions options,
 	                       SslOptions sslOptions,
 	                       Codec<Buffer, IN, OUT> codec) {
-		super(env, eventsDispatcher, listenAddress, options, sslOptions, codec);
+		super(timer, listenAddress, options, sslOptions, codec);
 
-		this.ioThreadCount = getDefaultEnvironment().getIntProperty("reactor.zmq.ioThreadCount", 1);
+		this.ioThreadCount = Integer.parseInt(System.getProperty("reactor.zmq.ioThreadCount", "1"));
 
 		if (options instanceof ZeroMQServerSocketOptions) {
 			this.zmqOpts = (ZeroMQServerSocketOptions) options;
@@ -92,13 +90,13 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
 		Assert.isNull(worker, "This ZeroMQ server has already been started");
 
-		final Promise<Void> promise = Promises.ready(getDefaultEnvironment(), getDefaultDispatcher());
+		final Promise<Void> promise = Promises.ready(getDefaultTimer());
 
 		final UUID id = UUIDUtils.random();
 		final int socketType = (null != zmqOpts ? zmqOpts.socketType() : ZMQ.ROUTER);
 		ZContext zmq = (null != zmqOpts ? zmqOpts.context() : null);
 
-		Broadcaster<ZMsg> broadcaster = SerializedBroadcaster.create(getDefaultEnvironment());
+		Broadcaster<ZMsg> broadcaster = SerializedBroadcaster.create(getDefaultTimer());
 
 		final Stream<GroupedStream<String, ZMsg>> grouped = broadcaster.groupBy(new Function<ZMsg, String>() {
 			@Override
@@ -207,9 +205,8 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 	protected ZeroMQChannelStream<IN, OUT> bindChannel() {
 		return new ZeroMQChannelStream<IN, OUT>(
-				getDefaultEnvironment(),
+				getDefaultTimer(),
 				getDefaultPrefetchSize(),
-				getDefaultDispatcher(),
 				null,
 				getDefaultCodec()
 		);

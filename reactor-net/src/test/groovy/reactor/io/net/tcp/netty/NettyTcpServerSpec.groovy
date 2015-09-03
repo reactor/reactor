@@ -16,7 +16,6 @@
 
 package reactor.io.net.tcp.netty
 
-import reactor.Environment
 import reactor.io.buffer.Buffer
 import reactor.io.codec.PassThroughCodec
 import reactor.io.codec.json.JsonCodec
@@ -40,12 +39,10 @@ class NettyTcpServerSpec extends Specification {
 
 	def "NettyTcpServer responds to requests from clients"() {
 		given: "a simple TcpServer"
-			def env = Environment.initializeIfEmpty()
 			def stopLatch = new CountDownLatch(1)
 			def dataLatch = new CountDownLatch(1)
 			def server = NetStreams.<Buffer, Buffer> tcpServer {
 				it.
-						env(env).
 						listen(port).
 						codec(new PassThroughCodec<Buffer>())
 			}
@@ -69,16 +66,14 @@ class NettyTcpServerSpec extends Specification {
 				stopLatch.countDown()
 			}
 			stopLatch.await(5, TimeUnit.SECONDS)
-			Environment.terminate()
 	}
 
 	def "NettyTcpServer can encode and decode JSON"() {
 		given: "a TcpServer with JSON defaultCodec"
-			def env = Environment.initializeIfEmpty()
 			def stopLatch = new CountDownLatch(1)
 			def dataLatch = new CountDownLatch(1)
 			def server = NetStreams.<Pojo, Pojo> tcpServer {
-				it.env(env).
+				it.
 						listen(port).
 						codec(new JsonCodec<Pojo, Pojo>(Pojo))
 			}
@@ -107,12 +102,10 @@ class NettyTcpServerSpec extends Specification {
 				stopLatch.countDown()
 			}
 			stopLatch.await(5, TimeUnit.SECONDS)
-			Environment.terminate()
 	}
 
 	def "flush every 5 elems with manual decoding"() {
 		given: "a TcpServer and a TcpClient"
-			Environment.initializeIfEmpty()
 			def latch = new CountDownLatch(10)
 
 			def server = NetStreams.tcpServer(port)
@@ -151,13 +144,11 @@ class NettyTcpServerSpec extends Specification {
 		cleanup: "the client/server where stopped"
 			client.shutdown().onSuccess{ println 'test' }.await()
 			server.shutdown().await()
-			Environment.terminate()
 	}
 
 
 	def "retry strategies when server fails"() {
 		given: "a TcpServer and a TcpClient"
-			Environment.initializeIfEmpty().assignErrorJournal()
 			def elem = 10
 			def latch = new CountDownLatch(elem)
 
@@ -206,7 +197,6 @@ class NettyTcpServerSpec extends Specification {
 		cleanup: "the client/server where stopped"
 			client.shutdown().await()
 			server.shutdown().await()
-			Environment.terminate()
 	}
 
 

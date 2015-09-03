@@ -16,8 +16,8 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.reactivestreams.PublisherFactory;
-import reactor.core.reactivestreams.SubscriberWithContext;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberWithContext;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -62,7 +62,7 @@ public final class IterableStream<T> {
 	 * @return
 	 */
 	public static <T> Stream<T> create(final Iterable<? extends T> defaultValues) {
-		return Streams.wrap(PublisherFactory.forEach(new Consumer<SubscriberWithContext<T, Iterator<? extends T>>>() {
+		return Streams.wrap(PublisherFactory.create(new Consumer<SubscriberWithContext<T, Iterator<? extends T>>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Iterator<? extends T>> subscriber) {
 				final Iterator<? extends T> iterator = subscriber.context();
@@ -77,6 +77,11 @@ public final class IterableStream<T> {
 					subscriber.onComplete();
 				}
 			}
+
+			@Override
+			public String toString() {
+				return "IterableStream="+defaultValues;
+			}
 		}, new Function<Subscriber<? super T>, Iterator<? extends T>>() {
 			@Override
 			public Iterator<? extends T> apply(Subscriber<? super T> subscriber) {
@@ -85,6 +90,11 @@ public final class IterableStream<T> {
 					throw PublisherFactory.PrematureCompleteException.INSTANCE;
 				}
 				return defaultValues.iterator();
+			}
+
+			@Override
+			public String toString() {
+				return "cold="+defaultValues;
 			}
 		}));
 	}

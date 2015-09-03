@@ -15,12 +15,19 @@
  */
 package reactor.core.processor;
 
+import org.junit.Test;
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.TestEnvironment;
-import reactor.core.reactivestreams.PublisherFactory;
+import org.testng.annotations.AfterClass;
+import org.testng.annotations.AfterMethod;
+import org.testng.annotations.BeforeClass;
+import reactor.Publishers;
+import reactor.Timers;
+import reactor.fn.timer.Timer;
 
-import java.util.Random;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
@@ -30,13 +37,41 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public abstract class AbstractProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Long> {
 
-	public AbstractProcessorTests() {
-		super(new TestEnvironment(2000, true), 3500);
+	final ExecutorService executorService = Executors.newCachedThreadPool();
+
+	final Queue<Processor<Long, Long>> processorReferences = new ConcurrentLinkedQueue<>();
+
+	@Test
+	public void simpleTest() throws Exception{
+
 	}
 
 	@Override
 	public ExecutorService publisherExecutorService() {
-		return Executors.newCachedThreadPool();
+		return executorService;
+	}
+
+	public AbstractProcessorTests() {
+		super(new TestEnvironment(500), 1000);
+	}
+
+	@BeforeClass
+	public void setup() {
+		Timers.global();
+	}
+
+	@AfterClass
+	public void tearDown() {
+		executorService.submit(() -> {
+			  Processor<Long, Long> p;
+			  while ((p = processorReferences.poll()) != null) {
+				  p.onComplete();
+			  }
+		  }
+		);
+
+		executorService.shutdown();
+		Timers.unregisterGlobal();
 	}
 
 	@Override
@@ -45,46 +80,31 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 	}
 
 	@Override
-	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
-		//IGNORE since subscribers see distinct data
+	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
+		Processor<Long, Long> p = createProcessor(bufferSize);
+		processorReferences.add(p);
+		return p;
 	}
 
-	@Override
-	public Publisher<Long> createHelperPublisher(final long elements) {
-		if (elements < 100 && elements > 0) {
-			return PublisherFactory.forEach(
-					(s) -> {
-						long cursor = s.context().getAndIncrement();
-						if (cursor < elements){
-							s.onNext(cursor);
-						}else{
-							s.onComplete();
-						}
-					},
-					s -> new AtomicLong(0L)
-			);
-		} else {
-			final Random random = new Random();
-			return PublisherFactory.forEach(
-					s -> s.onNext(random.nextLong())
-			);
-		}
-	}
+	protected abstract Processor<Long, Long> createProcessor(int bufferSize);
+
+	/*@Override
+	public Publisher<Long> createHelperPublisher(long elements) {
+		return Publishers.<Long, AtomicLong>create(
+		  (s) -> {
+			  long cursor = s.context().getAndIncrement();
+			  if (cursor < elements) {
+				  s.onNext(cursor);
+			  } else {
+				  s.onComplete();
+			  }
+		  },
+		  s -> new AtomicLong(0L)
+		);
+	}*/
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
-		return s -> {
-			s.onSubscribe(new Subscription() {
-				@Override
-				public void request(long n) {
-				}
-
-				@Override
-				public void cancel() {
-				}
-			});
-			s.onError(new Exception("test"));
-
-		};
+		return Publishers.error(new Exception("test"));
 	}
 }

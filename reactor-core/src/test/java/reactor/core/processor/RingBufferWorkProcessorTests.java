@@ -16,13 +16,6 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.reactivestreams.PublisherFactory;
-import reactor.core.reactivestreams.SubscriberFactory;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -31,8 +24,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 
 	@Override
-	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
-		return RingBufferWorkProcessor.<Long>create("tckRingBufferProcessor", bufferSize);
+	public Processor<Long, Long> createProcessor(int bufferSize) {
+		return RingBufferWorkProcessor.<Long>create("rb-work", bufferSize);
 	}
 
 	@Override
@@ -41,28 +34,28 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 	}
 
 
-	public static void main(String... args) {
-		final RingBufferWorkProcessor<Long> processor = RingBufferWorkProcessor.<Long>create();
+	/*public static void main() {
+		final RingBufferWorkProcessor<Long> processor = RingBufferWorkProcessor.<Long>create("some-test");
 
-		Publisher<Long> pub = PublisherFactory.forEach(
-				c -> {
-					if (c.context().incrementAndGet() >= 661) {
-						c.onComplete();
-						processor.onComplete();
-					} else {
-						try {
-							Thread.sleep(50);
-						} catch (InterruptedException e) {
+		Publisher<Long> pub = PublisherFactory.create(
+		  c -> {
+			  if (c.context().incrementAndGet() >= 661) {
+				  c.onComplete();
+				  processor.onComplete();
+			  } else {
+				  try {
+					  Thread.sleep(50);
+				  } catch (InterruptedException e) {
 
-						}
-						c.onNext(c.context().get());
-						System.out.println(c.context() + " emit");
-					}
-				},
-				s -> new AtomicLong()
+				  }
+				  c.onNext(c.context().get());
+				  System.out.println(c.context() + " emit");
+			  }
+		  },
+		  s -> new AtomicLong()
 		);
 
-		for(int i = 0; i < 2; i++) {
+		for (int i = 0; i < 2; i++) {
 			processor.subscribe(new Subscriber<Long>() {
 				@Override
 				public void onSubscribe(Subscription s) {
@@ -87,7 +80,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorTests {
 		}
 
 		processor
-				.writeWith(pub)
-				.subscribe(SubscriberFactory.unbounded());
-	}
+		  .writeWith(pub)
+		  .subscribe(SubscriberFactory.unbounded());
+	}*/
 }

@@ -25,9 +25,9 @@ import java.net.ProtocolFamily;
  */
 public class ServerSocketOptions extends CommonSocketOptions<ServerSocketOptions> {
 
-	private int     		backlog   		= 1000;
-	private boolean 		reuseAddr 		= true;
-	private ProtocolFamily 	protocolFamily 	= null;
+	private int            backlog        = 1000;
+	private boolean        reuseAddr      = true;
+	private ProtocolFamily protocolFamily = null;
 
 
 	/**
@@ -43,7 +43,6 @@ public class ServerSocketOptions extends CommonSocketOptions<ServerSocketOptions
 	 * Configures the size of the pending connection backlog for the socket.
 	 *
 	 * @param backlog The size of the backlog
-	 *
 	 * @return {@code this}
 	 */
 	public ServerSocketOptions backlog(int backlog) {
@@ -64,7 +63,6 @@ public class ServerSocketOptions extends CommonSocketOptions<ServerSocketOptions
 	 * Enables or disables {@code SO_REUSEADDR}.
 	 *
 	 * @param reuseAddr {@code true} to enable {@code SO_REUSEADDR}, {@code false} to disable it
-	 *
 	 * @return {@code this}
 	 */
 	public ServerSocketOptions reuseAddr(boolean reuseAddr) {
@@ -77,13 +75,14 @@ public class ServerSocketOptions extends CommonSocketOptions<ServerSocketOptions
 	 *
 	 * @return the configured protocol family for the socket
 	 */
-	public ProtocolFamily protocolFamily() { return protocolFamily; }
+	public ProtocolFamily protocolFamily() {
+		return protocolFamily;
+	}
 
 	/**
 	 * Configures the protocol family for the socket.
 	 *
 	 * @param protocolFamily the protocol family for the socket, or null for the system default family
-	 *
 	 * @return {@code this}
 	 */
 	public ServerSocketOptions protocolFamily(ProtocolFamily protocolFamily) {

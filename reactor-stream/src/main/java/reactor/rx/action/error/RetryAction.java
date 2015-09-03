@@ -17,10 +17,7 @@ package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
+import reactor.Publishers;
 import reactor.fn.Consumer;
 import reactor.fn.Predicate;
 import reactor.rx.action.Action;
@@ -36,20 +33,13 @@ public class RetryAction<T> extends Action<T, T> {
 	private final Publisher<? extends T> rootPublisher;
 	private final Consumer<Throwable> throwableConsumer = new ThrowableConsumer();
 	private       long                currentNumRetries = 0;
-	private       long                pendingRequests = 0l;
-	private Dispatcher dispatcher;
+	private       long                pendingRequests   = 0l;
 
-	public RetryAction(Dispatcher dispatcher, int numRetries,
+	public RetryAction(int numRetries,
 	                   Predicate<Throwable> predicate, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
 		this.retryMatcher = predicate;
-		this.rootPublisher = parentStream;
-
-		if (SynchronousDispatcher.INSTANCE == dispatcher) {
-			this.dispatcher = Environment.tailRecurse();
-		} else {
-			this.dispatcher = dispatcher;
-		}
+		this.rootPublisher = parentStream != null ? Publishers.trampoline(parentStream) : null;
 	}
 
 	@Override
@@ -62,9 +52,9 @@ public class RetryAction<T> extends Action<T, T> {
 	protected void doNext(T ev) {
 		currentNumRetries = 0;
 		broadcastNext(ev);
-		if(capacity != Long.MAX_VALUE && pendingRequests != Long.MAX_VALUE){
-			synchronized (this){
-				if(pendingRequests != Long.MAX_VALUE) {
+		if (capacity != Long.MAX_VALUE && pendingRequests != Long.MAX_VALUE) {
+			synchronized (this) {
+				if (pendingRequests != Long.MAX_VALUE) {
 					pendingRequests--;
 				}
 			}
@@ -75,13 +65,13 @@ public class RetryAction<T> extends Action<T, T> {
 	@SuppressWarnings("unchecked")
 	public void onError(Throwable throwable) {
 		if ((numRetries != -1 && ++currentNumRetries > numRetries) && (retryMatcher == null || !retryMatcher.test
-				(throwable))) {
+		  (throwable))) {
 			doError(throwable);
 			doShutdown();
 			currentNumRetries = 0;
 		} else {
 			cancel();
-			dispatcher.dispatch(throwable, throwableConsumer, null);
+			throwableConsumer.accept(throwable);
 
 		}
 	}
@@ -96,19 +86,10 @@ public class RetryAction<T> extends Action<T, T> {
 		super.requestMore(n);
 	}
 
-	@Override
-	public final Dispatcher getDispatcher() {
-		return dispatcher;
-	}
-
 	private class ThrowableConsumer implements Consumer<Throwable> {
 		@Override
 		public void accept(Throwable throwable) {
 				if (rootPublisher != null) {
-					if(TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())){
-						dispatcher.shutdown();
-						dispatcher = Environment.tailRecurse();
-					}
 					rootPublisher.subscribe(RetryAction.this);
 				}
 		}

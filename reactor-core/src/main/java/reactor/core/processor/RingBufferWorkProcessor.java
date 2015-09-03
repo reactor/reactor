@@ -18,10 +18,15 @@ package reactor.core.processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.processor.util.RingBufferSubscriberUtils;
-import reactor.core.support.SpecificationExceptions;
-import reactor.jarjar.com.lmax.disruptor.*;
-import reactor.jarjar.com.lmax.disruptor.dsl.ProducerType;
+import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
+import reactor.core.error.SpecificationExceptions;
+import reactor.core.processor.rb.MutableSignal;
+import reactor.core.processor.rb.RingBufferSubscriberUtils;
+import reactor.core.processor.rb.disruptor.*;
+import reactor.core.support.Publishable;
+import reactor.core.support.SignalType;
+import reactor.fn.Consumer;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -60,7 +65,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> create() {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				LiteBlockingWaitStrategy(), true);
+		  LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -75,7 +80,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(boolean autoCancel) {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				LiteBlockingWaitStrategy(), autoCancel);
+		  LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
@@ -191,7 +196,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
-			strategy) {
+	  strategy) {
 		return create(name, bufferSize, strategy, true);
 	}
 
@@ -210,7 +215,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize, WaitStrategy
-			strategy, boolean autoCancel) {
+	  strategy, boolean autoCancel) {
 		return new RingBufferWorkProcessor<E>(name, null, bufferSize, strategy, false, autoCancel);
 	}
 
@@ -228,7 +233,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService executor, int bufferSize, WaitStrategy
-			strategy) {
+	  strategy) {
 		return create(executor, bufferSize, strategy, true);
 	}
 
@@ -247,7 +252,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService executor, int bufferSize, WaitStrategy
-			strategy, boolean autoCancel) {
+	  strategy, boolean autoCancel) {
 		return new RingBufferWorkProcessor<E>(null, executor, bufferSize, strategy, false, autoCancel);
 	}
 
@@ -265,7 +270,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> share() {
 		return share(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				LiteBlockingWaitStrategy(), true);
+		  LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
@@ -283,7 +288,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(boolean autoCancel) {
 		return share(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new
-				LiteBlockingWaitStrategy(), autoCancel);
+		  LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
@@ -417,7 +422,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(String name, int bufferSize, WaitStrategy
-			strategy) {
+	  strategy) {
 		return share(name, bufferSize, strategy, true);
 	}
 
@@ -439,7 +444,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(String name, int bufferSize, WaitStrategy
-			strategy, boolean autoCancel) {
+	  strategy, boolean autoCancel) {
 		return new RingBufferWorkProcessor<E>(name, null, bufferSize, strategy, true, autoCancel);
 	}
 
@@ -460,7 +465,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService executor, int bufferSize, WaitStrategy
-			strategy) {
+	  strategy) {
 		return share(executor, bufferSize, strategy, true);
 	}
 
@@ -482,7 +487,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService executor, int bufferSize, WaitStrategy
-			strategy, boolean autoCancel) {
+	  strategy, boolean autoCancel) {
 		return new RingBufferWorkProcessor<E>(null, executor, bufferSize, strategy, true, autoCancel);
 	}
 
@@ -505,18 +510,34 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	                                boolean autoCancel) {
 		super(name, executor, autoCancel);
 
-		this.ringBuffer = RingBuffer.create(
-				share ? ProducerType.MULTI : ProducerType.SINGLE,
-				new EventFactory<MutableSignal<E>>() {
-					@Override
-					public MutableSignal<E> newInstance() {
-						return new MutableSignal<E>();
-					}
-				},
-				bufferSize,
-				waitStrategy
-		);
+		EventFactory<MutableSignal<E>> factory =  new EventFactory<MutableSignal<E>>() {
+			  @Override
+			  public MutableSignal<E> newInstance() {
+				  return new MutableSignal<>();
+			  }
+		  };
+		Consumer<Void> spinObserver = new Consumer<Void>(){
+			@Override
+			public void accept(Void aVoid) {
+				if(!alive()) throw CancelException.get();
+			}
+		};
 
+		if(share) {
+			this.ringBuffer = RingBuffer.createMultiProducer(
+			  factory,
+			  bufferSize,
+			  waitStrategy,
+			  spinObserver
+			);
+		}else{
+			this.ringBuffer = RingBuffer.createSingleProducer(
+			  factory,
+			  bufferSize,
+			  waitStrategy,
+			  spinObserver
+			);
+		}
 		ringBuffer.addGatingSequences(workSequence);
 
 	}
@@ -524,13 +545,14 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	@Override
 	public void subscribe(final Subscriber<? super E> subscriber) {
 		if (null == subscriber) {
-			throw new NullPointerException("Cannot subscribe NULL subscriber");
+			throw SpecificationExceptions.spec_2_13_exception();
 		}
 		try {
 			final WorkSignalProcessor<E> signalProcessor = new WorkSignalProcessor<E>(
-					subscriber,
-					this
+			  subscriber,
+			  this
 			);
+
 
 			signalProcessor.sequence.set(workSequence.get());
 
@@ -540,21 +562,25 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			//prepare the subscriber subscription to this processor
 			signalProcessor.setSubscription(new RingBufferSubscription(subscriber, signalProcessor));
 
+
 			//start the subscriber thread
 			executor.execute(signalProcessor);
+			incrementSubscribers();
 
 		} catch (Throwable t) {
-			subscriber.onError(t);
+			Exceptions.<E>publisher(t).subscribe(subscriber);
 		}
 	}
 
 	@Override
 	public void onNext(E o) {
+		super.onNext(o);
 		RingBufferSubscriberUtils.onNext(o, ringBuffer);
 	}
 
 	@Override
 	public void onError(Throwable t) {
+		super.onError(t);
 		RingBufferSubscriberUtils.onError(t, ringBuffer);
 		for (int i = 1; i < SUBSCRIBER_COUNT.get(this); i++) {
 			RingBufferSubscriberUtils.onError(t, ringBuffer);
@@ -577,20 +603,25 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	@Override
 	public String toString() {
 		return "RingBufferWorkProcessor{" +
-				", ringBuffer=" + ringBuffer +
-				", executor=" + executor +
-				", workSequence=" + workSequence +
-				", cancelledSequence=" + cancelledSequences +
-				'}';
+		  ", ringBuffer=" + ringBuffer +
+		  ", executor=" + executor +
+		  ", workSequence=" + workSequence +
+		  ", cancelledSequence=" + cancelledSequences +
+		  '}';
 	}
 
-	private final class RingBufferSubscription implements Subscription {
+	private final class RingBufferSubscription implements Subscription, Publishable<E> {
 		private final Subscriber<? super E> subscriber;
 		private final WorkSignalProcessor   eventProcessor;
 
 		public RingBufferSubscription(Subscriber<? super E> subscriber, WorkSignalProcessor eventProcessor) {
 			this.subscriber = subscriber;
 			this.eventProcessor = eventProcessor;
+		}
+
+		@Override
+		public Publisher<E> upstream() {
+			return RingBufferWorkProcessor.this;
 		}
 
 		@Override
@@ -630,18 +661,25 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		return ringBuffer.getBufferSize();
 	}
 
+	@Override
+	public boolean isWork() {
+		return true;
+	}
+
+	RingBuffer<MutableSignal<E>> ringBuffer() {
+		return ringBuffer;
+	}
+
 	/**
 	 * Disruptor WorkProcessor port that deals with pending demand.
 	 * <p>
-	 * Convenience class for handling the batching semantics of consuming entries from a {@link com.lmax.disruptor
+	 * Convenience class for handling the batching semantics of consuming entries from a {@link reactor.core.processor.rb.disruptor
 	 * .RingBuffer}
-	 * and delegating the available events to an {@link com.lmax.disruptor.EventHandler}.
+	 * and delegating the available events to an {@link reactor.core.processor.rb.disruptor.EventHandler}.
 	 * <p>
-	 * If the {@link com.lmax.disruptor.EventHandler} also implements {@link com.lmax.disruptor.LifecycleAware} it will
-	 * be notified just after the thread
-	 * is started and just before the thread is shutdown.
 	 *
-	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an event.
+	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an
+	 *            event.
 	 */
 	private final static class WorkSignalProcessor<T> implements EventProcessor {
 
@@ -657,7 +695,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		private Subscription subscription;
 
 		/**
-		 * Construct a {@link com.lmax.disruptor.EventProcessor} that will automatically track the progress by updating
+		 * Construct a {@link reactor.core.processor.rb.disruptor.EventProcessor} that will automatically track the progress by updating
 		 * its
 		 * sequence
 		 */
@@ -704,23 +742,24 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				return;
 			}
 
-			processor.incrementSubscribers();
-
 			try {
-				subscriber.onSubscribe(subscription);
-			}catch (Throwable t){
-				subscriber.onError(t);
-			}
+				//while(processor.alive() && processor.upstreamSubscription == null);
+				try {
+					subscriber.onSubscribe(subscription);
+				} catch (Throwable t) {
+					Exceptions.throwIfFatal(t);
+					subscriber.onError(t);
+					return;
+				}
 
 
-			boolean processedSequence = true;
-			long cachedAvailableSequence = Long.MIN_VALUE;
-			long nextSequence = sequence.get();
-			MutableSignal<T> event = null;
+				boolean processedSequence = true;
+				long cachedAvailableSequence = Long.MIN_VALUE;
+				long nextSequence = sequence.get();
+				MutableSignal<T> event = null;
 
-			try {
 				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
-						pendingRequest, processor.ringBuffer, barrier, subscriber, running
+				  pendingRequest, processor.ringBuffer, barrier, subscriber, running
 				)) {
 					processor.ringBuffer.removeGatingSequence(sequence);
 					return;
@@ -740,7 +779,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 						// if previous sequence was processed - fetch the next sequence and set
 						// that we have successfully processed the previous sequence
 						// typically, this will be true
-						// this prevents the sequence getting too far forward if an exception
+						// this prevents the sequence getting too far forward if an error
 						// is thrown from the WorkHandler
 						if (processedSequence) {
 							processedSequence = false;
@@ -767,8 +806,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 					} catch (CancelException ce) {
 						if (event != null &&
-								event.type == MutableSignal.Type.NEXT &&
-								event.value != null) {
+						  event.type == SignalType.NEXT &&
+						  event.value != null) {
 							sequence.set(nextSequence - 1L);
 						} else {
 							sequence.set(nextSequence);
@@ -791,7 +830,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 						processedSequence = true;
 					}
 				}
-			} finally{
+			} finally {
 				processor.decrementSubscribers();
 				running.set(false);
 			}
@@ -803,7 +842,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			while ((replayedSequence = processor.cancelledSequences.poll()) != null) {
 				signal = processor.ringBuffer.get(replayedSequence.get() + 1L);
 				try {
-					if(signal.value == null){
+					if (signal.value == null) {
 						barrier.waitFor(replayedSequence.get() + 1L);
 					}
 					readNextEvent(signal, unbounded);
@@ -820,7 +859,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 		private void readNextEvent(MutableSignal<T> event, final boolean unbounded) throws AlertException {
 			//if event is Next Signal we need to handle backpressure (pendingRequests)
-			if (event.type == MutableSignal.Type.NEXT) {
+			if (event.type == SignalType.NEXT) {
 				if (event.value == null) {
 					return;
 				}

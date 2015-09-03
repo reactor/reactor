@@ -29,9 +29,8 @@ import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
-import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -67,13 +66,12 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private final EventLoopGroup           selectorGroup;
 	private final EventLoopGroup           ioGroup;
 
-	protected NettyTcpServer(Environment env,
-	                         Dispatcher dispatcher,
+	protected NettyTcpServer(Timer timer,
 	                         InetSocketAddress listenAddress,
 	                         final ServerSocketOptions options,
 	                         final SslOptions sslOptions,
 	                         Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, listenAddress, options, sslOptions, codec);
+		super(timer, listenAddress, options, sslOptions, codec);
 
 		if (options instanceof NettyServerSocketOptions) {
 			this.nettyOptions = (NettyServerSocketOptions) options;
@@ -81,10 +79,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			this.nettyOptions = null;
 		}
 
-		int selectThreadCount = getDefaultEnvironment().getIntProperty("reactor.tcp.selectThreadCount",
-		  Environment.PROCESSORS / 2);
-		int ioThreadCount = getDefaultEnvironment().getIntProperty("reactor.tcp.ioThreadCount",  Environment
-				.PROCESSORS);
+		int selectThreadCount = DEFAULT_TCP_SELECT_COUNT;
+		int ioThreadCount = DEFAULT_TCP_THREAD_COUNT;
 
 		this.selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
 
@@ -146,7 +142,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		ChannelFuture bindFuture = bootstrap.bind();
 
 
-		final Promise<Void> promise = Promises.prepare();
+		final Promise<Void> promise = Promises.ready();
 		bindFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
@@ -169,7 +165,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	@SuppressWarnings("unchecked")
 	public Promise<Void> doShutdown() {
 
-		final Promise<Void> d = Promises.prepare();
+		final Promise<Void> d = Promises.ready();
 
 		final AtomicInteger groupsToShutdown = new AtomicInteger(2);
 		GenericFutureListener listener = new GenericFutureListener() {
@@ -192,10 +188,9 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel nativeChannel) {
 
 		NettyChannelStream<IN ,OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getDefaultEnvironment(),
+				getDefaultTimer(),
 				getDefaultCodec(),
 				getDefaultPrefetchSize(),
-				getDefaultDispatcher(),
 				nativeChannel
 		);
 

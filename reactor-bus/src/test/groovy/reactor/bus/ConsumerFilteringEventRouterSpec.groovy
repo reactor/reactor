@@ -15,9 +15,6 @@
  */
 
 
-
-
-
 package reactor.bus
 
 import reactor.bus.filter.PassThroughFilter
@@ -136,7 +133,7 @@ class ConsumerFilteringEventRouterSpec extends Specification {
 			def eventRouter = new ConsumerFilteringRouter(filter)
 			Registration registration = Mock(Registration)
 
-		when: "event routing triggers an exception"
+		when: "event routing triggers an error"
 			registration.getObject() >> consumer
 			registration.getSelector() >> Mock(Selector)
 

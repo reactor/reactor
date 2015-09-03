@@ -32,9 +32,9 @@ import java.util.List;
 public class SimpleCachingRegistry<K, V> implements Registry<K, V> {
 
 	private final ConcurrentHashMapV8<Object, List<Registration<K, ? extends V>>>      cache         = new
-			ConcurrentHashMapV8<>();
+	  ConcurrentHashMapV8<>();
 	private final ConcurrentHashMapV8<Selector<K>, List<Registration<K, ? extends V>>> registrations = new
-			ConcurrentHashMapV8<>();
+	  ConcurrentHashMapV8<>();
 
 	private final boolean     useCache;
 	private final boolean     cacheNotFound;
@@ -51,12 +51,12 @@ public class SimpleCachingRegistry<K, V> implements Registry<K, V> {
 		List<Registration<K, ? extends V>> regs;
 		if (null == (regs = registrations.get(sel))) {
 			regs = registrations.computeIfAbsent(sel,
-					new ConcurrentHashMapV8.Fun<Selector<K>, List<Registration<K, ? extends V>>>() {
-						@Override
-						public List<Registration<K, ? extends V>> apply(Selector<K> selector) {
-							return new ArrayList<Registration<K, ? extends V>>();
-						}
-					});
+			  new ConcurrentHashMapV8.Fun<Selector<K>, List<Registration<K, ? extends V>>>() {
+				  @Override
+				  public List<Registration<K, ? extends V>> apply(Selector<K> selector) {
+					  return new ArrayList<Registration<K, ? extends V>>();
+				  }
+			  });
 		}
 
 		Registration<K, V> reg = new CachableRegistration<>(sel, obj, new Runnable() {

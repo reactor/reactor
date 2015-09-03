@@ -18,13 +18,10 @@ package reactor.rx.action.error;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.core.support.NonBlocking;
-import reactor.fn.Consumer;
+import reactor.Publishers;
+import reactor.core.support.Bounded;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
@@ -38,20 +35,13 @@ public class RetryWhenAction<T> extends Action<T, T> {
 
 	private final Broadcaster<Throwable> retryStream;
 	private final Publisher<? extends T> rootPublisher;
-	private Dispatcher dispatcher;
 
-	public RetryWhenAction(Dispatcher dispatcher,
-	                       Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate, Publisher<?
-			extends
-			T> rootPublisher) {
-		this.retryStream = Broadcaster.create(null, dispatcher);
-		if(SynchronousDispatcher.INSTANCE == dispatcher){
-			this.dispatcher = Environment.tailRecurse();
-		}else{
-			this.dispatcher = dispatcher;
-		}
-
-		this.rootPublisher = rootPublisher;
+	public RetryWhenAction(
+	  Timer timer, Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate, Publisher<?
+	  extends
+	  T> rootPublisher) {
+		this.retryStream = Broadcaster.create(timer);
+		this.rootPublisher = rootPublisher != null ? Publishers.trampoline(rootPublisher) : null;
 		Publisher<?> afterRetryPublisher = predicate.apply(retryStream);
 		afterRetryPublisher.subscribe(new RestartSubscriber());
 	}
@@ -67,34 +57,21 @@ public class RetryWhenAction<T> extends Action<T, T> {
 		super.doComplete();
 	}
 
-	@Override
-	public Dispatcher getDispatcher() {
-		return dispatcher;
-	}
-
 	protected void doRetry() {
-		dispatcher.dispatch(null, new Consumer<Void>() {
-			@Override
-			public void accept(Void o) {
-				long pendingRequests = Long.MAX_VALUE;
-				if (rootPublisher != null) {
-					PushSubscription<T> upstream = upstreamSubscription;
-					if (upstream == null) {
-						rootPublisher.subscribe(RetryWhenAction.this);
-						upstream = upstreamSubscription;
-					} else {
-						pendingRequests = upstream.pendingRequestSignals();
-						if(TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())){
-							dispatcher.shutdown();
-							dispatcher = Environment.tailRecurse();
-						}
-					}
-					if (upstream != null) {
-						upstream.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);
-					}
-				}
+
+		long pendingRequests = Long.MAX_VALUE;
+		if (rootPublisher != null) {
+			PushSubscription<T> upstream = upstreamSubscription;
+			if (upstream == null) {
+				rootPublisher.subscribe(RetryWhenAction.this);
+				upstream = upstreamSubscription;
+			} else {
+				pendingRequests = upstream.pendingRequestSignals();
 			}
-		}, null);
+			if (upstream != null) {
+				upstream.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);
+			}
+		}
 	}
 
 	@Override
@@ -108,12 +85,12 @@ public class RetryWhenAction<T> extends Action<T, T> {
 		return retryStream;
 	}
 
-	private class RestartSubscriber implements Subscriber<Object>, NonBlocking {
+	private class RestartSubscriber implements Subscriber<Object>, Bounded {
 		Subscription s;
 
 		@Override
-		public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
-			return RetryWhenAction.this.isReactivePull(dispatcher, producerCapacity);
+		public boolean isExposedToOverflow(Bounded upstream) {
+			return RetryWhenAction.this.isExposedToOverflow(upstream);
 		}
 
 		@Override
@@ -132,14 +109,14 @@ public class RetryWhenAction<T> extends Action<T, T> {
 			//s.cancel();
 			//publisher.subscribe(this);
 			doRetry();
-			if(s != null) {
+			if (s != null) {
 				s.request(1l);
 			}
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			if(s != null) {
+			if (s != null) {
 				s.cancel();
 			}
 			RetryWhenAction.this.onError(t);

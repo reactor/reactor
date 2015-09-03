@@ -17,13 +17,8 @@ package reactor.rx.action.control;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.dispatch.SynchronousDispatcher;
-import reactor.core.dispatch.TailRecurseDispatcher;
-import reactor.fn.Consumer;
+import reactor.Publishers;
 import reactor.rx.action.Action;
-import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
@@ -34,17 +29,11 @@ public class RepeatAction<T> extends Action<T, T> {
 	private final long numRetries;
 	private long currentNumRetries = 0;
 	private final Publisher<? extends T> rootPublisher;
-	private       Dispatcher             dispatcher;
 	private long pendingRequests = 0l;
 
-	public RepeatAction(Dispatcher dispatcher, int numRetries, Publisher<? extends T> parentStream) {
+	public RepeatAction(int numRetries, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
-		if (SynchronousDispatcher.INSTANCE == dispatcher) {
-			this.dispatcher = Environment.tailRecurse();
-		} else {
-			this.dispatcher = dispatcher;
-		}
-		this.rootPublisher = parentStream;
+		this.rootPublisher = parentStream != null ? Publishers.trampoline(parentStream) : null;
 	}
 
 	@Override
@@ -62,14 +51,9 @@ public class RepeatAction<T> extends Action<T, T> {
 	@Override
 	protected void doOnSubscribe(Subscription subscription) {
 		long pendingRequests = this.pendingRequests;
-		if(pendingRequests > 0) {
+		if (pendingRequests > 0) {
 			subscription.request(pendingRequests);
 		}
-	}
-
-	@Override
-	public final Dispatcher getDispatcher() {
-		return dispatcher;
 	}
 
 	@Override
@@ -85,23 +69,14 @@ public class RepeatAction<T> extends Action<T, T> {
 	@Override
 	public void onComplete() {
 		cancel();
-		dispatcher.dispatch(null, new Consumer<Void>() {
-			@Override
-			public void accept(Void nothing) {
-				if (numRetries != -1 && ++currentNumRetries > numRetries) {
-					RepeatAction.super.onComplete();
-					currentNumRetries = 0;
-				} else {
-					if (rootPublisher != null) {
-						if (TailRecurseDispatcher.class.isAssignableFrom(dispatcher.getClass())) {
-							dispatcher.shutdown();
-							dispatcher = Environment.tailRecurse();
-						}
-						rootPublisher.subscribe(RepeatAction.this);
-					}
-				}
 
+		if (numRetries != -1 && ++currentNumRetries > numRetries) {
+			RepeatAction.super.onComplete();
+			currentNumRetries = 0;
+		} else {
+			if (rootPublisher != null) {
+				rootPublisher.subscribe(RepeatAction.this);
 			}
-		}, null);
+		}
 	}
 }

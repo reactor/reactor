@@ -18,9 +18,8 @@ package reactor.rx.action.aggregation;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Environment;
-import reactor.core.Dispatcher;
 import reactor.fn.Supplier;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.BehaviorBroadcaster;
@@ -36,17 +35,15 @@ import reactor.rx.broadcast.Broadcaster;
 public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 
 	final private Supplier<? extends Publisher<?>> boundarySupplier;
-	final private Environment environment;
-	final private Dispatcher dispatcher;
+	final private Timer                            timer;
 
 	private Broadcaster<T> windowBroadcaster;
 
-	public WindowWhenAction(Environment environment, Dispatcher dispatcher, Supplier<? extends Publisher<?>> boundarySupplier) {
+	public WindowWhenAction(Timer timer, Supplier<? extends Publisher<?>>
+	  boundarySupplier) {
 		this.boundarySupplier = boundarySupplier;
-		this.environment = environment;
-		this.dispatcher = dispatcher;
+		this.timer = timer;
 	}
-
 
 
 	@Override
@@ -99,9 +96,9 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 
 	@Override
 	protected void doNext(T value) {
-		if(windowBroadcaster == null) {
+		if (windowBroadcaster == null) {
 			broadcastNext(createWindowStream(value));
-		}else{
+		} else {
 			windowBroadcaster.onNext(value);
 		}
 	}
@@ -111,7 +108,7 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	protected Stream<T> createWindowStream(T first) {
-		Broadcaster<T> action = BehaviorBroadcaster.first(first, environment, dispatcher);
+		Broadcaster<T> action = BehaviorBroadcaster.first(first, timer);
 		windowBroadcaster = action;
 		return action;
 	}
@@ -135,12 +132,7 @@ public class WindowWhenAction<T> extends Action<T, Stream<T>> {
 	}
 
 	@Override
-	public final Environment getEnvironment() {
-		return environment;
-	}
-
-	@Override
-	public Dispatcher getDispatcher() {
-		return dispatcher;
+	public final Timer getTimer() {
+		return timer;
 	}
 }

@@ -16,9 +16,9 @@
 
 package reactor.io.net.udp;
 
-import reactor.Environment;
-import reactor.core.Dispatcher;
+import reactor.Processors;
 import reactor.core.support.Assert;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
@@ -35,19 +35,23 @@ import java.net.NetworkInterface;
  * @author Stephane Maldini
  */
 public abstract class DatagramServer<IN, OUT>
-		extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
+  extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
+
+	public static final int DEFAULT_UDP_THREAD_COUNT = Integer.parseInt(
+	  System.getProperty("reactor.udp.ioThreadCount",
+		"" + Processors.DEFAULT_POOL_SIZE)
+	);
 
 	private final InetSocketAddress   listenAddress;
 	private final NetworkInterface    multicastInterface;
 	private final ServerSocketOptions options;
 
-	protected DatagramServer(Environment env,
-	                         Dispatcher dispatcher,
+	protected DatagramServer(Timer timer,
 	                         InetSocketAddress listenAddress,
 	                         NetworkInterface multicastInterface,
 	                         ServerSocketOptions options,
 	                         Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, codec, options.prefetch());
+		super(timer, codec, options.prefetch());
 		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.listenAddress = listenAddress;
 		this.multicastInterface = multicastInterface;
@@ -57,11 +61,8 @@ public abstract class DatagramServer<IN, OUT>
 	/**
 	 * Join a multicast group.
 	 *
-	 * @param multicastAddress
-	 * 		multicast address of the group to join
-	 * @param iface
-	 * 		interface to use for multicast
-	 *
+	 * @param multicastAddress multicast address of the group to join
+	 * @param iface            interface to use for multicast
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been joined
 	 */
 	public abstract Promise<Void> join(InetAddress multicastAddress, NetworkInterface iface);
@@ -69,9 +70,7 @@ public abstract class DatagramServer<IN, OUT>
 	/**
 	 * Join a multicast group.
 	 *
-	 * @param multicastAddress
-	 * 		multicast address of the group to join
-	 *
+	 * @param multicastAddress multicast address of the group to join
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been joined
 	 */
 	public Promise<Void> join(InetAddress multicastAddress) {
@@ -81,11 +80,8 @@ public abstract class DatagramServer<IN, OUT>
 	/**
 	 * Leave a multicast group.
 	 *
-	 * @param multicastAddress
-	 * 		multicast address of the group to leave
-	 * @param iface
-	 * 		interface to use for multicast
-	 *
+	 * @param multicastAddress multicast address of the group to leave
+	 * @param iface            interface to use for multicast
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been left
 	 */
 	public abstract Promise<Void> leave(InetAddress multicastAddress, NetworkInterface iface);
@@ -93,9 +89,7 @@ public abstract class DatagramServer<IN, OUT>
 	/**
 	 * Leave a multicast group.
 	 *
-	 * @param multicastAddress
-	 * 		multicast address of the group to leave
-	 *
+	 * @param multicastAddress multicast address of the group to leave
 	 * @return a {@link reactor.rx.Promise} that will be complete when the group has been left
 	 */
 	public Promise<Void> leave(InetAddress multicastAddress) {
@@ -116,7 +110,9 @@ public abstract class DatagramServer<IN, OUT>
 	 *
 	 * @return the multicast NetworkInterface
 	 */
-	protected NetworkInterface getMulticastInterface() { return multicastInterface; }
+	protected NetworkInterface getMulticastInterface() {
+		return multicastInterface;
+	}
 
 	/**
 	 * Get the {@link reactor.io.net.config.ServerSocketOptions} currently in effect.

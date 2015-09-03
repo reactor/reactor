@@ -19,20 +19,20 @@ package reactor.io.net.http;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 /**
- * An exception for signalling that an error occurred during a communication over HTTP protocol
+ * An error for signalling that an error occurred during a communication over HTTP protocol
  *
  * @author Anatoly Kadyshev
  */
 public class HttpException extends Exception {
 
-    private final HttpResponseStatus responseStatus;
+	private final HttpResponseStatus responseStatus;
 
-    public HttpException(HttpResponseStatus responseStatus) {
-        super("HTTP request failed with code: " + responseStatus.code());
-        this.responseStatus = responseStatus;
-    }
+	public HttpException(HttpResponseStatus responseStatus) {
+		super("HTTP request failed with code: " + responseStatus.code());
+		this.responseStatus = responseStatus;
+	}
 
-    public HttpResponseStatus getResponseStatus() {
-        return responseStatus;
-    }
+	public HttpResponseStatus getResponseStatus() {
+		return responseStatus;
+	}
 }

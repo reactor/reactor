@@ -15,7 +15,8 @@
  */
 
 /**
- * Broadcasters are akin to Reactive Extensions Subject. Extending Actions, they fulfil the {@link org.reactivestreams.Processor} contract.
+ * Broadcasters are akin to Reactive Extensions Subject. Extending Actions, they fulfil the {@link org
+ * .reactivestreams.Processor} contract.
  * Some broadcasters might be shared and will require serialization as onXXXX handle should not be invoke concurrently.
  * SerializerBroadcaster can take care of this specific issue. Behavior
  */

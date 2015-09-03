@@ -39,9 +39,7 @@ public interface Allocator<T extends Recyclable> {
 	/**
 	 * Allocate a batch of objects all at once.
 	 *
-	 * @param size
-	 * 		the number of objects to allocate
-	 *
+	 * @param size the number of objects to allocate
 	 * @return a {@code List} of {@link Reference References} to the allocated objects
 	 */
 	List<Reference<T>> allocateBatch(int size);
@@ -49,8 +47,7 @@ public interface Allocator<T extends Recyclable> {
 	/**
 	 * Efficiently release a batch of References all at once.
 	 *
-	 * @param batch
-	 * 		the references to release
+	 * @param batch the references to release
 	 */
 	void release(List<Reference<T>> batch);
 

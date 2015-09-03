@@ -15,9 +15,11 @@
  */
 package reactor.rx.action.combination;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.reactivestreams.SerializedSubscriber;
+import reactor.Publishers;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.ReactiveSubscription;
@@ -44,7 +46,13 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 	public FanInSubscription(Subscriber<? super E> subscriber) {
 		super(null, subscriber);
-		serializer.onSubscribe(this);
+		Publishers.trampoline(new Publisher<E>() {
+			@Override
+			public void subscribe(Subscriber<? super E> s) {
+				s.onSubscribe(FanInSubscription.this);
+			}
+
+		}).subscribe(serializer);
 	}
 
 	@Override
@@ -217,6 +225,11 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 	public void serialComplete() {
 		serializer.onComplete();
+	}
+
+
+	public void safeRequest(long n) {
+		serializer.request(n);
 	}
 
 	@Override

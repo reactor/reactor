@@ -20,11 +20,9 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.rx.Stream;
@@ -42,23 +40,18 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	protected static final Logger log = LoggerFactory.getLogger(ChannelStream.class);
 
 
-	private final Environment env;
-
-	private final Dispatcher eventsDispatcher;
+	private final Timer timer;
 
 	private final Function<Buffer, IN>  decoder;
 	private final Function<OUT, Buffer> encoder;
 	private final long                  prefetch;
 
-	protected ChannelStream(final Environment env,
+	protected ChannelStream(final Timer timer,
 	                        Codec<Buffer, IN, OUT> codec,
-	                        long prefetch,
-	                        Dispatcher eventsDispatcher) {
+	                        long prefetch) {
 
-		Assert.notNull(eventsDispatcher, "Events Reactor cannot be null");
-		this.env = env;
+		this.timer = timer;
 		this.prefetch = prefetch;
-		this.eventsDispatcher = eventsDispatcher;
 
 		if (null != codec) {
 			this.decoder = codec.decoder(new Consumer<IN>() {
@@ -81,8 +74,8 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 
 		if (Stream.class.isAssignableFrom(source.getClass())) {
 			sourceStream = ((Stream<? extends OUT>) source);
-		}else{
-			sourceStream = new Stream<OUT>(){
+		} else {
+			sourceStream = new Stream<OUT>() {
 				@Override
 				public void subscribe(Subscriber<? super OUT> subscriber) {
 					source.subscribe(subscriber);
@@ -104,10 +97,20 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	}
 
 	/**
+	 * @see {@link Codec#decode(Publisher)}
+	 *
+	 * @param decoder
+	 * @param <T>
+	 * @return
+	 */
+	final public <T> Stream<T> decode(Codec<IN, T, ?> decoder){
+		return Streams.wrap(decoder.decode(this));
+	}
+
+	/**
 	 * Write Buffer directly to be encoded if any codec has been setup
 	 *
 	 * @param source the raw source to encode
-	 *
 	 * @return the acknowledgement publisher from {@link #writeWith(Publisher)}
 	 */
 	final public Stream<Void> writeBufferWith(Publisher<? extends Buffer> source) {
@@ -128,13 +131,8 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	}
 
 	@Override
-	public final Environment getEnvironment() {
-		return env;
-	}
-
-	@Override
-	public final Dispatcher getDispatcher() {
-		return eventsDispatcher;
+	public final Timer getTimer() {
+		return timer;
 	}
 
 	@Override

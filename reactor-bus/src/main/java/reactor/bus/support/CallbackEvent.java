@@ -24,7 +24,6 @@ import reactor.fn.Consumer;
  * passes it to a delegate {@link Consumer}.
  *
  * @param <T> the type of the event payload
- *
  * @author Stephane Maldini
  */
 public class CallbackEvent<T> extends Event<T> {
@@ -57,8 +56,8 @@ public class CallbackEvent<T> extends Event<T> {
 	 * Trigger callback with current payload
 	 */
 	@SuppressWarnings("unchecked")
-	public void callback(){
-		if(null != callback){
+	public void callback() {
+		if (null != callback) {
 			callback.accept(getData());
 		}
 	}

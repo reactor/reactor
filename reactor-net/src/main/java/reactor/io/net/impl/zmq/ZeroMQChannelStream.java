@@ -22,16 +22,15 @@ import org.reactivestreams.Subscription;
 import org.zeromq.ZFrame;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
-import reactor.Environment;
-import reactor.core.Dispatcher;
-import reactor.core.processor.CancelException;
-import reactor.core.support.Exceptions;
+import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
+import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
+import reactor.rx.action.Action;
 import reactor.rx.action.support.DefaultSubscriber;
-import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.subscription.PushSubscription;
 
 import java.net.InetSocketAddress;
@@ -53,12 +52,11 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	private Subscriber<? super IN> inputSub;
 
-	public ZeroMQChannelStream(Environment env,
+	public ZeroMQChannelStream(Timer timer,
 	                           long prefetch,
-	                           Dispatcher eventsDispatcher,
 	                           InetSocketAddress remoteAddress,
 	                           Codec<Buffer, IN, OUT> codec) {
-		super(env, codec, prefetch, eventsDispatcher);
+		super(timer, codec, prefetch);
 		this.remoteAddress = remoteAddress;
 	}
 
@@ -77,7 +75,7 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 					}
 				});
 				subscription.request(Long.MAX_VALUE);
-				postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
+				postWriter.onSubscribe(Action.HOT_SUBSCRIPTION);
 			}
 
 			@Override
@@ -89,7 +87,7 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 					data = getEncoder().apply(out).byteBuffer();
 				} else {
 					postWriter.onError(
-							Exceptions.addValueAsLastCause(new IllegalArgumentException("Data cannot be encoded"), out));
+					  Exceptions.addValueAsLastCause(new IllegalArgumentException("Data cannot be encoded"), out));
 					return;
 				}
 
@@ -183,25 +181,20 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	}
 
 	public void close() {
-		getDispatcher().dispatch(null, new Consumer<Void>() {
-			@Override
-			public void accept(Void v) {
-				try {
-					final List<Consumer<Void>> closeHandlers;
-					synchronized (eventSpec.closeHandlers) {
-						closeHandlers = new ArrayList<Consumer<Void>>(eventSpec.closeHandlers);
-					}
-
-					for (Consumer<Void> r : closeHandlers) {
-						r.accept(null);
-					}
-				} catch (Throwable t) {
-					if (inputSub != null) {
-						inputSub.onError(t);
-					}
-				}
+		try {
+			final List<Consumer<Void>> closeHandlers;
+			synchronized (eventSpec.closeHandlers) {
+				closeHandlers = new ArrayList<Consumer<Void>>(eventSpec.closeHandlers);
 			}
-		}, null);
+
+			for (Consumer<Void> r : closeHandlers) {
+				r.accept(null);
+			}
+		} catch (Throwable t) {
+			if (inputSub != null) {
+				inputSub.onError(t);
+			}
+		}
 	}
 
 	@Override
@@ -218,10 +211,10 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	@Override
 	public String toString() {
 		return "ZeroMQNetChannel{" +
-				"closeHandlers=" + eventSpec.closeHandlers +
-				", connectionId='" + connectionId + '\'' +
-				", socket=" + socket +
-				'}';
+		  "closeHandlers=" + eventSpec.closeHandlers +
+		  ", connectionId='" + connectionId + '\'' +
+		  ", socket=" + socket +
+		  '}';
 	}
 
 	private static class ZeroMQConsumerSpec implements ConsumerSpec {

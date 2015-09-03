@@ -29,8 +29,10 @@ public class DematerializeAction<T> extends Action<Signal<T>, T> {
 			if(ev.isOnNext()){
 				broadcastNext(ev.get());
 			}else if(ev.isOnComplete()){
+				cancel();
 				broadcastComplete();
 			}else{
+				cancel();
 				broadcastError(ev.getThrowable());
 			}
 		}

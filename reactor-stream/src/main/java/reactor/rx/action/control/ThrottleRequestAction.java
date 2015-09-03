@@ -15,9 +15,9 @@
  */
 package reactor.rx.action.control;
 
-import reactor.core.Dispatcher;
-import reactor.core.processor.InsufficientCapacityException;
+import reactor.core.error.InsufficientCapacityException;
 import reactor.core.support.Assert;
+import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
@@ -39,8 +39,7 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 	private Pausable timeoutRegistration;
 
 	@SuppressWarnings("unchecked")
-	public ThrottleRequestAction(final Dispatcher dispatcher,
-	                             Timer timer, long period) {
+	public ThrottleRequestAction(Timer timer, long period) {
 		super(1l);
 
 		Assert.state(timer != null, "Timer must be supplied");
@@ -88,7 +87,7 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 	}
 
 	@Override
-	public boolean isReactivePull(Dispatcher dispatcher, long producerCapacity) {
+	public boolean isExposedToOverflow(Bounded upstream) {
 		return true;
 	}
 

@@ -95,7 +95,6 @@ public class UriPathTemplate {
 	 * uri matches the template, {@code false} otherwise.
 	 *
 	 * @param uri The uri to match
-	 *
 	 * @return {@code true} if there's a match, {@code false} otherwise
 	 */
 	public boolean matches(String uri) {
@@ -108,7 +107,6 @@ public class UriPathTemplate {
 	 * or there are no path parameters, an empty map is returned.
 	 *
 	 * @param uri The uri to match
-	 *
 	 * @return the path parameters from the uri. Never {@code null}.
 	 */
 	public Map<String, Object> match(String uri) {
