@@ -1258,24 +1258,25 @@ public class StreamTests extends AbstractReactorTest {
 
 		CountDownLatch latch = new CountDownLatch(10);
 
-		Streams
-		  .range(1, 10)
-		  .groupBy(n -> n % 2 == 0)
-		  .flatMap(stream -> stream
-			  .run(supplier1)
-			  .log("groupBy")
-		  )
-		  .partition(5)
-		  .flatMap(stream -> stream
-			  .run(supplier2)
-			  .log("partition")
-		  )
-		  .run(asyncService)
-		  .log("join")
-		  .consume(t -> {
-			  latch.countDown();
-		  });
+		  Control c = Streams
+			.range(1, 10)
+			.groupBy(n -> n % 2 == 0)
+			.flatMap(stream -> stream
+				.run(supplier1)
+				.log("groupBy-"+stream.key())
+			)
+			.partition(5)
+			.flatMap(stream -> stream
+				.run(supplier2)
+				.log("partition-"+stream.key())
+			)
+			.run(asyncService)
+			.log("join")
+			.consume(t -> {
+				latch.countDown();
+			});
 
+		System.out.println(c.debug());
 
 		latch.await(30, TimeUnit.SECONDS);
 		assertThat("Not totally dispatched: "+latch.getCount(), latch.getCount() == 0);

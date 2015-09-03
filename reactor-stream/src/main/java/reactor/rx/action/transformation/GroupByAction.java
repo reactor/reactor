@@ -45,19 +45,6 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 	private final Timer                      timer;
 
 	private final Map<K, ReactiveSubscription<T>> groupByMap = new ConcurrentHashMap<>();
-	private final SerializedSubscriber<Long>      serialized = SerializedSubscriber.create(new DefaultSubscriber<Long>
-	  () {
-
-		@Override
-		public void onNext(Long aLong) {
-			checkRequest(aLong);
-			if (upstreamSubscription != null) {
-				upstreamSubscription.request(aLong);
-			}
-		}
-
-	});
-
 
 	public GroupByAction(Timer timer, Function<? super T, ? extends K> fn) {
 		Assert.notNull(fn, "Key mapping function cannot be null.");
@@ -148,11 +135,6 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 		}
 
 		super.doComplete();
-	}
-
-	@Override
-	public void requestMore(long n) {
-		serialized.onNext(n);
 	}
 
 	@Override
