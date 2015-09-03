@@ -1253,8 +1253,8 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void consistentMultithreadingWithPartition() throws InterruptedException {
-		ProcessorService<Long> supplier1 = Processors.asyncService("groupByPool", 32, 2, null, null, false);
-		ProcessorService<Long> supplier2 = Processors.asyncService("partitionPool", 32, 5, null, null, false);
+		ProcessorService<Long> supplier1 = Processors.asyncService("groupByPool", 32, 2);
+		ProcessorService<Long> supplier2 = Processors.asyncService("partitionPool", 32, 5);
 
 		CountDownLatch latch = new CountDownLatch(10);
 
@@ -1278,7 +1278,7 @@ public class StreamTests extends AbstractReactorTest {
 
 
 		latch.await(30, TimeUnit.SECONDS);
-		assertThat("Not totally dispatched", latch.getCount() == 0);
+		assertThat("Not totally dispatched: "+latch.getCount(), latch.getCount() == 0);
 		supplier1.shutdown();
 		supplier2.shutdown();
 	}
