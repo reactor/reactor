@@ -1277,7 +1277,8 @@ public class StreamTests extends AbstractReactorTest {
 		  });
 
 
-		assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
+		latch.await(30, TimeUnit.SECONDS);
+		assertThat("Not totally dispatched", latch.getCount() == 0);
 		supplier1.shutdown();
 		supplier2.shutdown();
 	}
