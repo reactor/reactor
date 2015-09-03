@@ -94,6 +94,9 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	public void addPublisher(Publisher<? extends I> publisher) {
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
+		if(publishers == null){
+			FanInSubscription.RUNNING_COMPOSABLE_UPDATER.incrementAndGet(innerSubscriptions);
+		}
 		publisher.subscribe(inlineMerge);
 	}
 
@@ -220,7 +223,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			long toRequest = outerAction.innerSubscriptions.pendingRequestSignals();
 
 			if (outerAction.publishers == null) {
-				FanInSubscription.RUNNING_COMPOSABLE_UPDATER.incrementAndGet(outerAction.innerSubscriptions);
 
 				pendingRequests = toRequest != Long.MAX_VALUE ?
 				  Math.max(toRequest, 1) :
@@ -247,7 +249,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 
 		public void request(long n) {
-			if (s == null || n <= 0) return;
+			if (s == null || n <= 0 || pendingRequests == Long.MAX_VALUE) return;
 			if ((pendingRequests += n) < 0l) {
 				pendingRequests = Long.MAX_VALUE;
 			}

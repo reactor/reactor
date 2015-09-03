@@ -73,7 +73,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 			outerAction.innerSubscriptions.serialNext(ev);
 			emittedSignals++;
 
-			if(--pendingRequests < 0){
+			if(Long.MAX_VALUE != pendingRequests && --pendingRequests < 0){
 				pendingRequests = 0l;
 			}
 		}
