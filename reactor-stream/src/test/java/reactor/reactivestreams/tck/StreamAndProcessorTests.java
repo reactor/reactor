@@ -72,6 +72,16 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		throw new SkipException("TODO");
 	}
 
+	@Override
+	public void required_spec309_requestZeroMustSignalIllegalArgumentException() throws Throwable {
+		throw new SkipException("TODO");
+	}
+
+	@Override
+	public void required_spec309_requestNegativeNumberMustSignalIllegalArgumentException() throws Throwable {
+		throw new SkipException("TODO");
+	}
+
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
 		super.testHotIdentityProcessor();
