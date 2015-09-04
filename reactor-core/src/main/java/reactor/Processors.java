@@ -24,6 +24,10 @@ import reactor.core.processor.*;
 import reactor.core.processor.simple.SimpleSignal;
 import reactor.core.publisher.LogOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
+import reactor.core.support.Assert;
+import reactor.core.support.Bounded;
+import reactor.core.support.Publishable;
+import reactor.core.support.Subscribable;
 import reactor.core.support.internal.MpscLinkedQueue;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
@@ -352,10 +356,11 @@ public final class Processors {
 		  new Supplier<Processor<ProcessorService.Task, ProcessorService.Task>>() {
 			  @Override
 			  public Processor<ProcessorService.Task, ProcessorService.Task> get() {
-				  return  PlatformDependent.hasUnsafe()
-				    ? RingBufferProcessor.share(name, bufferSize, ProcessorService.DEFAULT_TASK_PROVIDER)
-				    : SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.<SimpleSignal<ProcessorService.Task>>create
-				    ());
+				  return PlatformDependent.hasUnsafe()
+					? RingBufferProcessor.share(name, bufferSize, ProcessorService.DEFAULT_TASK_PROVIDER)
+					: SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.<SimpleSignal<ProcessorService
+					.Task>>create
+					());
 			  }
 		  },
 		  concurrency,
@@ -449,9 +454,9 @@ public final class Processors {
 	                                                  Consumer<Void> shutdownHandler,
 	                                                  boolean autoShutdown) {
 		return ProcessorService.create(
-				  PlatformDependent.hasUnsafe()
-				    ? RingBufferWorkProcessor.<ProcessorService.Task>share(name, bufferSize)
-				    : SimpleWorkProcessor.<ProcessorService.Task>create(name, bufferSize),
+		  PlatformDependent.hasUnsafe()
+			? RingBufferWorkProcessor.<ProcessorService.Task>share(name, bufferSize)
+			: SimpleWorkProcessor.<ProcessorService.Task>create(name, bufferSize),
 		  concurrency,
 		  uncaughtExceptionHandler,
 		  shutdownHandler,
@@ -509,6 +514,17 @@ public final class Processors {
 		return new BlockingQueueSubscriber<>(source, source, store, size);
 	}
 
+	/**
+	 * @param <IN>
+	 * @param <OUT>
+	 * @return
+	 */
+	public static <IN, OUT> Processor<IN, OUT> create(final Subscriber<IN> upstream, final Publisher<OUT> downstream) {
+		Assert.notNull(upstream, "Upstream must not be null");
+		Assert.notNull(downstream, "Downstream must not be null");
+		return new DelegateProcessor<>(downstream, upstream);
+	}
+
 
 	/**
 	 * @param processor
@@ -561,6 +577,61 @@ public final class Processors {
 		@Override
 		public void onComplete() {
 			processor.onComplete();
+		}
+	}
+
+	private static class DelegateProcessor<IN, OUT> implements Processor<IN, OUT>, Publishable<OUT>, Subscribable<IN>, Bounded {
+		private final Publisher<OUT> downstream;
+		private final Subscriber<IN> upstream;
+
+		public DelegateProcessor(Publisher<OUT> downstream, Subscriber<IN> upstream) {
+			this.downstream = downstream;
+			this.upstream = upstream;
+		}
+
+		@Override
+		public Publisher<OUT> upstream() {
+			return downstream;
+		}
+
+		@Override
+		public Subscriber<? super IN> downstream() {
+			return upstream;
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super OUT> s) {
+			downstream.subscribe(s);
+		}
+
+		@Override
+		public void onSubscribe(Subscription s) {
+			upstream.onSubscribe(s);
+		}
+
+		@Override
+		public void onNext(IN in) {
+			upstream.onNext(in);
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			upstream.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			upstream.onComplete();
+		}
+
+		@Override
+		public boolean isExposedToOverflow(Bounded parentPublisher) {
+			return Bounded.class.isAssignableFrom(upstream.getClass()) && ((Bounded)upstream).isExposedToOverflow(parentPublisher);
+		}
+
+		@Override
+		public long getCapacity() {
+			return Bounded.class.isAssignableFrom(upstream.getClass()) ? ((Bounded)upstream).getCapacity() : Long.MAX_VALUE;
 		}
 	}
 }

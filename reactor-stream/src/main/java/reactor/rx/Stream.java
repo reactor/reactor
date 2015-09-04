@@ -56,10 +56,7 @@ import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
 
 import javax.annotation.Nonnull;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
@@ -881,6 +878,48 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 				return new MapAction<O, V>(fn);
 			}
 		});
+	}
+
+	/**
+	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass
+	 * it into another {@code Stream}.
+	 *
+	 * @param fn  the transformation function
+	 * @param <V> the type of the return value of the transformation function
+	 * @return a new {@link Stream} containing the transformed values
+	 * @since 2.1
+	 */
+	public final <V> Stream<V> forkJoin(int concurrency, @Nonnull final Function<GroupedStream<Integer, O>, Publisher<V>> fn) {
+		Assert.isTrue(concurrency > 0, "Must subscribe once at least, concurrency set to "+concurrency);
+
+		Publisher<V> pub;
+		List<Publisher<? extends V>> publisherList = new ArrayList<>(concurrency);
+
+		for(int i = 0; i < concurrency; i++){
+			pub = fn.apply(new GroupedStream<Integer, O>(0){
+				@Override
+				public void subscribe(Subscriber<? super O> s) {
+					Stream.this.subscribe(s);
+				}
+
+				@Override
+				public long getCapacity() {
+					return Stream.this.getCapacity();
+				}
+
+				@Override
+				public Timer getTimer() {
+					return Stream.this.getTimer();
+				}
+			});
+
+			if(concurrency == 1){
+				return Streams.wrap(pub);
+			}else{
+				publisherList.add(pub);
+			}
+		}
+		return Streams.merge(publisherList);
 	}
 
 	/**

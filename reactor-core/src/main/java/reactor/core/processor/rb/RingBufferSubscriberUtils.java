@@ -29,6 +29,22 @@ public final class RingBufferSubscriberUtils {
 		ringBuffer.publish(seqId);
 	}
 
+	public static <E> void onNext(E value, RingBuffer<MutableSignal<E>> ringBuffer, Subscription subscription) {
+		final long seqId = ringBuffer.next();
+
+		final MutableSignal<E> signal = ringBuffer.get(seqId);
+		signal.type = SignalType.NEXT;
+		signal.value = value;
+
+		if(subscription != null) {
+			long remaining = ringBuffer.cachedRemainingCapacity();
+			if (remaining > 0) {
+				subscription.request(remaining);
+			}
+		}
+		ringBuffer.publish(seqId);
+	}
+
 	public static <E> MutableSignal<E> next(RingBuffer<MutableSignal<E>> ringBuffer) {
 		long seqId = ringBuffer.next();
 		MutableSignal<E> signal = ringBuffer.get(seqId);

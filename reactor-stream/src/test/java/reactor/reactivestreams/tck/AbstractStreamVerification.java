@@ -27,12 +27,9 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import reactor.Processors;
 import reactor.Timers;
-import reactor.core.processor.ProcessorService;
 import reactor.core.support.Assert;
-import reactor.fn.tuple.Tuple1;
-import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.CompositeAction;
+import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
 
 import java.util.*;
@@ -90,7 +87,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 
 	@Override
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
-		final CompositeAction<Integer, Integer> p = createProcessor(bufferSize);
+		final Processor<Integer, Integer> p = createProcessor(bufferSize);
 
 		/*Streams.period(200, TimeUnit.MILLISECONDS)
 		  .consume(i -> System.out.println(p.debug()) );*/
@@ -105,7 +102,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 		return Streams.fail(new Exception("oops")).cast(Integer.class);
 	}
 
-	public abstract CompositeAction<Integer, Integer> createProcessor(int bufferSize);
+	public abstract Processor<Integer, Integer> createProcessor(int bufferSize);
 
 	protected void monitorThreadUse(int val) {
 		AtomicLong counter = counters.get(Thread.currentThread());
@@ -152,11 +149,13 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 		final int elements = 10;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		CompositeAction<Integer, Integer> processor = createProcessor(16);
+		Processor<Integer, Integer> processor = createProcessor(16);
 
 		createHelperPublisher(10).subscribe(processor);
 
-		System.out.println(processor.debug());
+		if(Action.class.isAssignableFrom(processor.getClass())) {
+			System.out.println(((Action)processor).debug());
+		}
 		List<Integer> list = new ArrayList<>();
 
 		processor.subscribe(new Subscriber<Integer>() {
@@ -193,7 +192,9 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 		//stream.broadcastComplete();
 
 		latch.await(8, TimeUnit.SECONDS);
-		System.out.println(processor.debug());
+		if(Action.class.isAssignableFrom(processor.getClass())) {
+			System.out.println(((Action)processor).debug());
+		}
 
 		System.out.println(counters);
 		long count = latch.getCount();
@@ -215,12 +216,14 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 		final int elements = 10000;
 		CountDownLatch latch = new CountDownLatch(elements);
 
-		CompositeAction<Integer, Integer> processor = createProcessor(1024);
+		Processor<Integer, Integer> processor = createProcessor(1024);
 
 		Broadcaster<Integer> stream = Broadcaster.create();
 
 		stream.subscribe(processor);
-		System.out.println(processor.debug());
+		if(Action.class.isAssignableFrom(processor.getClass())) {
+			System.out.println(((Action)processor).debug());
+		}
 
 		processor.subscribe(new Subscriber<Integer>() {
 			@Override
@@ -246,7 +249,11 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 		});
 
 
-		for (int i = 0; i < elements; i++) {
+		stream.onNext(0);
+		stream.onNext(1);
+
+		System.out.println(stream.debug());
+		for (int i = 2; i < elements; i++) {
 			stream.onNext(i);
 		}
 		//stream.broadcastComplete();

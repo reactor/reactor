@@ -469,4 +469,16 @@ public final class RingBuffer<E> extends RingBufferFields<E> implements Cursored
     {
         return sequencer.remainingCapacity();
     }
+
+
+    /**
+     * Get the cached remaining capacity for this ringBuffer.
+     * @return The number of slots remaining.
+     */
+    public long cachedRemainingCapacity()
+    {
+        return sequencer.cachedRemainingCapacity();
+    }
+
+
 }
