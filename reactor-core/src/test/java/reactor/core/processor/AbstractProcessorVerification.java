@@ -35,7 +35,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * @author Stephane Maldini
  */
-public abstract class AbstractProcessorTests extends org.reactivestreams.tck.IdentityProcessorVerification<Long> {
+public abstract class AbstractProcessorVerification extends org.reactivestreams.tck.IdentityProcessorVerification<Long> {
 
 	final ExecutorService executorService = Executors.newCachedThreadPool();
 
@@ -47,11 +47,16 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 	}
 
 	@Override
+	public boolean skipStochasticTests() {
+		return true;
+	}
+
+	@Override
 	public ExecutorService publisherExecutorService() {
 		return executorService;
 	}
 
-	public AbstractProcessorTests() {
+	public AbstractProcessorVerification() {
 		super(new TestEnvironment(500), 1000);
 	}
 
@@ -78,6 +83,8 @@ public abstract class AbstractProcessorTests extends org.reactivestreams.tck.Ide
 	public Long createElement(int element) {
 		return (long) element;
 	}
+
+
 
 	@Override
 	public Processor<Long, Long> createIdentityProcessor(int bufferSize) {
