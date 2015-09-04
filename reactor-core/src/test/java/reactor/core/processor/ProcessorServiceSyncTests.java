@@ -15,7 +15,6 @@
  */
 package reactor.core.processor;
 
-import org.junit.Ignore;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
 
@@ -23,7 +22,7 @@ import org.testng.SkipException;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class ProcessorServiceSyncTests extends AbstractProcessorTests {
+public class ProcessorServiceSyncTests extends AbstractProcessorVerification {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {

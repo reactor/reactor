@@ -25,7 +25,7 @@ import org.reactivestreams.Processor;
 public class
 
 
-  RingBufferProcessorTests extends AbstractProcessorTests {
+  RingBufferProcessorTests extends AbstractProcessorVerification {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {

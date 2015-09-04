@@ -24,7 +24,7 @@ import reactor.Subscribers;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class SimpleWorkProcessorTests extends AbstractProcessorTests {
+public class SimpleWorkProcessorTests extends AbstractProcessorVerification {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
