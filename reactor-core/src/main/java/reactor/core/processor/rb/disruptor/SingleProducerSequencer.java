@@ -178,6 +178,15 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
         return getBufferSize() - (produced - consumed);
     }
 
+    @Override
+    public long cachedRemainingCapacity() {
+        long nextValue = this.nextValue;
+
+        long consumed = cachedValue;
+        long produced = nextValue;
+        return getBufferSize() - (produced - consumed);
+    }
+
     /**
      * @see Sequencer#claim(long)
      */

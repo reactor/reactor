@@ -87,4 +87,10 @@ public interface Sequencer extends Cursored, Sequenced
      * @return The highest value that can be safely read, will be at least <code>nextSequence - 1</code>.
      */
     long getHighestPublishedSequence(long nextSequence, long availableSequence);
+
+
+    /**
+     * @return Get the latest cached consumed value
+     */
+    long cachedRemainingCapacity();
 }

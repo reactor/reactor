@@ -202,6 +202,14 @@ public final class MultiProducerSequencer extends AbstractSequencer
         return getBufferSize() - (produced - consumed);
     }
 
+
+    @Override
+    public long cachedRemainingCapacity() {
+        long consumed = gatingSequenceCache.get();
+        long produced = cursor.get();
+        return getBufferSize() - (produced - consumed);
+    }
+
     private void initialiseAvailableBuffer()
     {
         for (int i = availableBuffer.length - 1; i != 0; i--)
