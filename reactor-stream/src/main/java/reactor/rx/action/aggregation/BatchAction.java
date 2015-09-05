@@ -97,6 +97,22 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected void firstCallback(T event) {
 	}
 
+
+
+	@Override
+	public void onNext(final T ev) {
+		if(timer != null){
+			timer.submit(new Consumer<Long>() {
+				@Override
+				public void accept(Long aLong) {
+					BatchAction.super.onNext(ev);
+				}
+			});
+		}else {
+			super.onNext(ev);
+		}
+	}
+
 	@Override
 	protected void doNext(T value) {
 
