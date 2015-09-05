@@ -66,7 +66,7 @@ public class StreamAndProcessorServiceTests extends AbstractStreamVerification {
 	@Override
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
-		super.testHotIdentityProcessor();
+			super.testHotIdentityProcessor();
 	}
 
 	@Override
