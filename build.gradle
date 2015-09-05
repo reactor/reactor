@@ -198,9 +198,9 @@ project('reactor-core') {
 		jarjar
 	}
 
-	task testNG(type: Test) {
+	/*task testNG(type: Test) {
 		useTestNG()
-	}
+	}*/
 
 	dependencies {
 		// Reactive Streams
