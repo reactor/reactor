@@ -87,8 +87,8 @@ public class HashWheelTimer implements Timer {
 	 * @param waitStrategy strategy for waiting for the next tick
 	 */
 	public HashWheelTimer(int res, int wheelSize, WaitStrategy waitStrategy) {
-		this(DEFAULT_TIMER_NAME, res, wheelSize, waitStrategy, Executors.newFixedThreadPool(1, new
-		  NamedDaemonThreadFactory(DEFAULT_TIMER_NAME + "-run", null)));
+		this(DEFAULT_TIMER_NAME, res, wheelSize, waitStrategy,
+		  Executors.newFixedThreadPool(1, new NamedDaemonThreadFactory(DEFAULT_TIMER_NAME + "-run", null)));
 	}
 
 	/**
