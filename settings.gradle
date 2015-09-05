@@ -6,4 +6,5 @@ include 'reactor-core',
 		'reactor-codec',
 		'reactor-stream',
 		'reactor-net',
-		'reactor-logback'
+		'reactor-logback',
+		'reactor-aeron'

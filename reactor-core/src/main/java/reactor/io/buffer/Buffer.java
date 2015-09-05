@@ -1241,6 +1241,21 @@ public class Buffer implements Recyclable,
 		return (null != buffer ? this.buffer.compareTo(buffer.buffer) : -1);
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (!(o instanceof Buffer)) {
+			return false;
+		}
+		Buffer that = (Buffer) o;
+		return buffer.equals(that.byteBuffer());
+	}
+
+	@Override
+	public int hashCode() {
+		return buffer.hashCode();
+	}
+
 	private synchronized void ensureCapacity(int atLeast) {
 		if (null == buffer) {
 			buffer = ByteBuffer.allocate(Math.max(atLeast, SMALL_BUFFER_SIZE));
