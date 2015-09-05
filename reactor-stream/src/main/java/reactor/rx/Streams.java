@@ -348,7 +348,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long period) {
-		return period(Timers.globalOrNull(), -1l, period, TimeUnit.SECONDS);
+		return period(Timers.globalOrNew(), -1l, period, TimeUnit.SECONDS);
 	}
 
 
@@ -375,7 +375,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long delay, long period) {
-		return period(Timers.globalOrNull(), delay, period, TimeUnit.SECONDS);
+		return period(Timers.globalOrNew(), delay, period, TimeUnit.SECONDS);
 	}
 
 
@@ -401,7 +401,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(long period, TimeUnit unit) {
-		return period(Timers.globalOrNull(), -1l, period, unit);
+		return period(Timers.globalOrNew(), -1l, period, unit);
 	}
 
 	/**

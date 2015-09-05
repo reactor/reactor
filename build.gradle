@@ -197,10 +197,10 @@ project('reactor-core') {
 		disruptor
 		jarjar
 	}
-/*
+
 	task testNG(type: Test) {
 		useTestNG()
-	}*/
+	}
 
 	dependencies {
 		// Reactive Streams
