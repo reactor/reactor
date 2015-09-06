@@ -133,8 +133,7 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 		@Override
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(Subscription subscription) {
-			setSubscription(new FanInSubscription.InnerSubscription<O, Zippable<O>, InnerSubscriber<O, V>>(subscription,
-					this));
+			setSubscription(new FanInSubscription.InnerSubscription<>(subscription, this));
 			int newSize = outerAction.innerSubscriptions.runningComposables;
 			outerAction.capacity(newSize);
 

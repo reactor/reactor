@@ -15,17 +15,13 @@
  */
 package reactor.reactivestreams.tck;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
 import reactor.Processors;
-import reactor.core.processor.ProcessorService;
-import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.CompositeAction;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.GroupedStream;
 
@@ -47,7 +43,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		return
 		  Processors.create(
 		    broadcaster,
-			broadcaster
+		    broadcaster
 			  .process(Processors.work("stream-raw-fork", bufferSize))
 			  .forkJoin(2, (GroupedStream<Integer, Integer> stream) -> stream
 				  .observe(this::monitorThreadUse)
@@ -59,9 +55,10 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 				  .buffer(batch, 50, TimeUnit.MILLISECONDS)
 				  .<Integer>split()
 				  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
+				  .log("partition"+stream.key())
 			  )
 			  .process(Processors.async("stream-raw-join", bufferSize))
-				//.log("end")
+			  .log("end")
 			  .when(Throwable.class, Throwable::printStackTrace)
 		  );
 	}
@@ -69,7 +66,9 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 	@Override
 	public void required_spec312_cancelMustMakeThePublisherToEventuallyStopSignaling() throws Throwable {
-		throw new SkipException("TODO");
+		for(int i = 0; i < 100; i ++ ) {
+			super.required_spec312_cancelMustMakeThePublisherToEventuallyStopSignaling();
+		}
 	}
 
 	@Override
