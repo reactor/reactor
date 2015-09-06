@@ -30,7 +30,7 @@ public class TestSubscriber implements Subscriber<Buffer> {
 
     private final CountDownLatch eventsCountDownLatch;
 
-    private final CountDownLatch completedLatch = new CountDownLatch(1);
+    private final CountDownLatch completeLatch = new CountDownLatch(1);
 
     private final CountDownLatch errorLatch = new CountDownLatch(1);
 
@@ -72,7 +72,7 @@ public class TestSubscriber implements Subscriber<Buffer> {
 
     @Override
     public void onComplete() {
-        completedLatch.countDown();
+        completeLatch.countDown();
         eventsCounter.incrementAndGet();
     }
 
@@ -86,7 +86,7 @@ public class TestSubscriber implements Subscriber<Buffer> {
     }
 
     public void assertCompleteReceived() throws InterruptedException {
-        boolean result = completedLatch.await(timeoutSecs, TimeUnit.SECONDS);
+        boolean result = completeLatch.await(timeoutSecs, TimeUnit.SECONDS);
         if (!result) {
             throw new AssertionError(
                     String.format("Haven't received Complete event within %d seconds", timeoutSecs));
@@ -96,14 +96,14 @@ public class TestSubscriber implements Subscriber<Buffer> {
     public void assertNoCompleteReceived() throws InterruptedException {
         long startTime = System.nanoTime();
         do {
-            if (completedLatch.getCount() == 0) {
+            if (completeLatch.getCount() == 0) {
                 throw new AssertionError("Unexpected Complete event received");
             }
             Thread.sleep(100);
         } while (TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime) < 1);
     }
 
-    public void awaitError() throws InterruptedException {
+    public void assertErrorReceived() throws InterruptedException {
         boolean result = errorLatch.await(timeoutSecs, TimeUnit.SECONDS);
         if (!result) {
             throw new AssertionError(

@@ -141,7 +141,7 @@ public class AeronProcessorTest {
 		TestSubscriber subscriber = createTestSubscriber(1);
 		processor.subscribe(subscriber);
 
-		subscriber.awaitError();
+		subscriber.assertErrorReceived();
 
 		Throwable throwable = subscriber.getLastError();
 		assertThat(throwable.getMessage(), is("Something went wrong"));
@@ -150,13 +150,14 @@ public class AeronProcessorTest {
 	@Test
 	public void testExceptionWithNullMessageIsHandled() throws InterruptedException {
 		processor = createProcessor();
-		Stream<Buffer> sourceStream = Streams.fail(new RuntimeException());
-		sourceStream.subscribe(processor);
 
 		TestSubscriber subscriber = createTestSubscriber(0);
 		processor.subscribe(subscriber);
 
-		subscriber.awaitError();
+        Stream<Buffer> sourceStream = Streams.fail(new RuntimeException());
+        sourceStream.subscribe(processor);
+
+		subscriber.assertErrorReceived();
 
 		Throwable throwable = subscriber.getLastError();
 		assertThat(throwable.getMessage(), is(""));
