@@ -345,7 +345,7 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 		this.subscriber = new AeronProcessorSubscriber(builder.name, builder.ringBufferSize,
 				builder.signalSenderContext, builder.launchEmbeddedMediaDriver, builder.multiPublishers);
 		this.publisher = new AeronProcessorPublisher(builder.signalReceiverContext, builder.launchEmbeddedMediaDriver,
-				builder.subscriberFragmentLimit);
+				builder.subscriberFragmentLimit, builder.cleanupDelayMillis);
 	}
 
 	/**
@@ -577,14 +577,14 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 		private final AliveSendersChecker aliveSendersChecker;
 
 		AeronProcessorPublisher(Aeron.Context subscriberCtx, boolean launchEmbeddedMediaDriver,
-								int subscriberFragmentLimit) {
+								int subscriberFragmentLimit, int cleanupDelayMillis) {
 			this.subscriberFragmentLimit = subscriberFragmentLimit;
 			this.aeronHelper = new AeronHelper(subscriberCtx, launchEmbeddedMediaDriver,
 					channel, waitForSubscriberMillis, publicationLingerTimeoutMillis);
 			aeronHelper.initialise();
 			this.commandPub = aeronHelper.addPublication(commandRequestStreamId);
 			this.aliveSendersChecker = new AliveSendersChecker(logger, aeronHelper, commandPub,
-					commandReplyStreamId, publicationLingerTimeoutMillis);
+					commandReplyStreamId, publicationLingerTimeoutMillis, cleanupDelayMillis);
 		}
 
 		@Override

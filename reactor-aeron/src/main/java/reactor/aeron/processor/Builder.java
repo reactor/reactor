@@ -113,6 +113,12 @@ public class Builder {
 	 */
 	int ringBufferSize = 1024;
 
+	/**
+	 * Delay between clean up task subsequent runs.
+	 * The clean up task ignores all {@link CommandType#IsAliveReply} produced by other signal senders.
+	 */
+	int cleanupDelayMillis = 100;
+
 	Builder() {
 	}
 
@@ -188,6 +194,11 @@ public class Builder {
 
 	public Builder ringBufferSize(int ringBufferSize) {
 		this.ringBufferSize = ringBufferSize;
+		return this;
+	}
+
+	public Builder cleanupDelayMillis(int cleanupDelayMillis) {
+		this.cleanupDelayMillis = cleanupDelayMillis;
 		return this;
 	}
 

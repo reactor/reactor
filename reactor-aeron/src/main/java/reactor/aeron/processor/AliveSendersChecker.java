@@ -15,8 +15,14 @@
  */
 package reactor.aeron.processor;
 
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
+import reactor.Timers;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.UUIDUtils;
+import reactor.fn.Consumer;
+import reactor.fn.timer.Timer;
 import uk.co.real_logic.aeron.FragmentAssembler;
 import uk.co.real_logic.aeron.Publication;
 import uk.co.real_logic.aeron.logbuffer.BufferClaim;
@@ -27,8 +33,6 @@ import uk.co.real_logic.agrona.MutableDirectBuffer;
 import uk.co.real_logic.agrona.concurrent.IdleStrategy;
 
 import java.util.UUID;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -41,7 +45,7 @@ class AliveSendersChecker {
 
 	private final uk.co.real_logic.aeron.Subscription commandsSub;
 
-	private final ScheduledExecutorService executorService;
+	private final Timer timer;
 
 	private final Logger logger;
 
@@ -61,42 +65,59 @@ class AliveSendersChecker {
 		}
 	};
 
-	private final Runnable checkAlivePublishersTask = new Runnable() {
-		@Override
-		public void run() {
-			checkAliveSenders();
-		}
-	};
+	private static final Object CLEANUP = new Object();
 
-	private final Runnable cleanupTask = new Runnable() {
+	private static final Object CHECK_ALIVE_SENDERS = new Object();
+
+	private final SerializedSubscriber<Object> serializedSubscriber = SerializedSubscriber.create(new Subscriber<Object>() {
 		@Override
-		public void run() {
-			cleanup();
+		public void onSubscribe(Subscription s) {
 		}
-	};
+
+		@Override
+		public void onNext(Object o) {
+			if (o == CLEANUP) {
+				cleanup();
+			} else if (o == CHECK_ALIVE_SENDERS) {
+				checkAliveSenders();
+			}
+		}
+
+		@Override
+		public void onError(Throwable t) {
+		}
+
+		@Override
+		public void onComplete() {
+		}
+	});
 
 	AliveSendersChecker(Logger logger, AeronHelper aeronHelper, Publication commandsPub,
-						int commandReplyStreamId, long publicationLingerTimeoutMillis) {
+						int commandReplyStreamId, long publicationLingerTimeoutMillis, int cleanupDelayMillis) {
 		this.logger = logger;
 		this.aeronHelper = aeronHelper;
 		this.commandsPub = commandsPub;
 		this.publicationLingerTimeoutMillis = publicationLingerTimeoutMillis;
-		this.executorService = Executors.newSingleThreadScheduledExecutor();
+		this.timer = Timers.create();
 		this.commandsSub = aeronHelper.addSubscription(commandReplyStreamId);
 
-		//TODO: Move hard-coded value into configuration
-		this.executorService.scheduleWithFixedDelay(cleanupTask, 100, 100, TimeUnit.MILLISECONDS);
+		this.timer.schedule(new Consumer<Long>() {
+			@Override
+			public void accept(Long value) {
+				serializedSubscriber.onNext(CLEANUP);
+			}
+		}, cleanupDelayMillis, TimeUnit.MILLISECONDS);
 	}
 
 	void scheduleCheck() {
 		if (!scheduled) {
 			scheduled = true;
-			executorService.submit(checkAlivePublishersTask);
+			serializedSubscriber.onNext(CHECK_ALIVE_SENDERS);
 		}
 	}
 
 	void shutdown() {
-		executorService.shutdown();
+		timer.cancel();
 		commandsSub.close();
 	}
 

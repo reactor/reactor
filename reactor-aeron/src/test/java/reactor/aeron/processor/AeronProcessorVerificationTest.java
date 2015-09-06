@@ -49,7 +49,7 @@ public class AeronProcessorVerificationTest extends IdentityProcessorVerificatio
 	int counter = 0;
 
 	public AeronProcessorVerificationTest() {
-		super(new TestEnvironment(250, true), 200);
+		super(new TestEnvironment(300, true), 200);
 	}
 
 	@BeforeClass

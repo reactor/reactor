@@ -224,7 +224,9 @@ public class AeronProcessorTest {
 			subscriber.assertAllEventsReceived();
 		} finally {
 			if (processor != null) {
-				processor.shutdown();
+				processor.awaitAndShutdown(500, TimeUnit.MILLISECONDS);
+
+				// Waiting to let all Aeron threads to shutdown
 				Thread.sleep(500);
 			}
 
