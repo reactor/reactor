@@ -26,42 +26,48 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Builder of the processor
+ * Builder of {@link AeronProcessor}
  */
 public class Builder {
 
 	/**
-	 * Processor name
+	 * Processor name used as a base name for threads created by
+	 * the processor's executor
 	 */
 	String name;
 
 	/**
-	 * If the processor should auto-cancel
+	 * If the processor should cancel an upstream subscription when
+	 * the last subscriber terminates
 	 */
 	boolean autoCancel;
 
 	/**
-	 * Channel used by the processor Aeron publisher and subscriber
+	 * Aeron channel used by the signals sender and the receiver
+	 * of the processor
 	 */
 	String channel;
 
 	/**
-	 * Stream Id used by Aeron publisher to publish Next and Complete signals
+	 * Aeron StreamId used by the signals sender to publish Next and
+	 * Complete signals
 	 */
 	Integer streamId;
 
 	/**
-	 * Stream Id used by Aeron publisher to publish Error signals
+	 * Aeron StreamId used by the signals sender to publish Error signals
 	 */
 	Integer errorStreamId;
 
 	/**
-	 * Stream Id used by Aeron publisher to listen to commands from its clients
+	 * Aeron StreamId used by the signals sender to listen to commands
+	 * from the receiver
 	 */
 	Integer commandRequestStreamId;
 
 	/**
-	 * Stream Id used by signals sender to reply to command requests from signals receiver
+	 * Aeron StreamId used by signals sender to reply to command requests
+	 * from signals receiver
 	 */
 	Integer commandReplyStreamId;
 
@@ -93,8 +99,9 @@ public class Builder {
 	boolean multiPublishers;
 
 	/**
-	 * Number of fragments that could be read by an Aeron subscriber during a single call to
-	 * {@link uk.co.real_logic.aeron.Subscription#poll(FragmentHandler, int)} method
+	 * Number of fragments that could be read by the signals receiver during
+     * a single call to {@link uk.co.real_logic.aeron.Subscription#poll(FragmentHandler, int)}
+     * method
 	 */
 	int subscriberFragmentLimit;
 
@@ -104,18 +111,24 @@ public class Builder {
 	long publicationLingerTimeoutMillis = TimeUnit.NANOSECONDS.toMillis(Configuration.PUBLICATION_LINGER_NS);
 
 	/**
-	 * Time out for waiting for a subscriber connected to Aeron publication
+     * A timeout during which a message is retied to be published into Aeron.
+     * If the timeout elapses and the message cannot be published because of
+     * either {@link uk.co.real_logic.aeron.Publication#BACK_PRESSURED} or
+     * {@link uk.co.real_logic.aeron.Publication#NOT_CONNECTED} it is discarded.
+     * In the next version of the processor the behaviour is likely to change.
 	 */
-	long waitForSubscriberMillis = 1000;
+	long publicationTimeoutMillis = 1000;
 
 	/**
-	 * Size of internal ring buffer used for processing messages to be written into Aeron
+	 * Size of internal ring buffer used for processing of messages
+     * to be published into Aeron
 	 */
 	int ringBufferSize = 1024;
 
 	/**
 	 * Delay between clean up task subsequent runs.
-	 * The clean up task ignores all {@link CommandType#IsAliveReply} produced by other signal senders.
+	 * The clean up task ignores all {@link CommandType#IsAliveReply} replies
+     * published by signal senders.
 	 */
 	int cleanupDelayMillis = 100;
 
@@ -187,8 +200,8 @@ public class Builder {
 		return this;
 	}
 
-	public Builder waitForSubscriberMillis(long waitForSubscriberMillis) {
-		this.waitForSubscriberMillis = waitForSubscriberMillis;
+	public Builder publicationTimeoutMillis(long publicationTimeoutMillis) {
+		this.publicationTimeoutMillis = publicationTimeoutMillis;
 		return this;
 	}
 
@@ -203,7 +216,8 @@ public class Builder {
 	}
 
 	/**
-	 * Creates a new processor using the builder fields which supports a single publishing thread only.
+	 * Creates a new processor supporting a single publishing thread only
+     * using the builder fields.
 	 *
 	 * @return a new processor
 	 */
@@ -213,7 +227,8 @@ public class Builder {
 	}
 
 	/**
-	 * Creates a new processor using the builder fields which supports publishing from multiple threads.
+	 * Creates a new processor supports publishing from multiple threads
+     * using the builder fields.
 	 *
 	 * @return a new processor
 	 */
@@ -230,10 +245,10 @@ public class Builder {
 	}
 
 	private void assertStreamIdsAreDifferent() {
-		Assert.notNull(streamId, "streamId wasn't provided");
-		Assert.notNull(errorStreamId, "errorStreamId wasn't provided");
-		Assert.notNull(commandRequestStreamId, "commandRequestStreamId wasn't provided");
-		Assert.notNull(commandReplyStreamId, "commandReplyStreamId wasn't provided");
+		Assert.notNull(streamId, "streamId should be provided");
+		Assert.notNull(errorStreamId, "errorStreamId should be provided");
+		Assert.notNull(commandRequestStreamId, "commandRequestStreamId should be provided");
+		Assert.notNull(commandReplyStreamId, "commandReplyStreamId should be provided");
 
 		Set<Integer> streamIdsSet = new HashSet<>();
 		streamIdsSet.add(streamId);

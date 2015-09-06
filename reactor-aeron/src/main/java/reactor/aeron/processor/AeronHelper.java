@@ -25,6 +25,9 @@ import uk.co.real_logic.agrona.concurrent.IdleStrategy;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * Helper class for creating Aeron subscriptions and publications and
+ * publishing messages.
+ *
  * @author Anatoly Kadyshev
  */
 class AeronHelper {
@@ -40,12 +43,13 @@ class AeronHelper {
 	private Aeron aeron;
 
 	/**
-	 * How long to wait for Subscriber for a publication before giving up publishing data into it
+	 * How long to try to publish into Aeron before giving up.
+     * @see Builder#publicationLingerTimeoutMillis
 	 */
-	private final long waitForSubscriberMillis;
+    private final long publicationTimeoutNs;
 
-	AeronHelper(Aeron.Context ctx, boolean launchEmbeddedMediaDriver,
-				String channel, long waitForSubscriberMillis,
+    AeronHelper(Aeron.Context ctx, boolean launchEmbeddedMediaDriver,
+				String channel, long publicationTimeoutMillis,
 				long publicationLingerTimeoutMillis) {
 		this.launchEmbeddedMediaDriver = launchEmbeddedMediaDriver;
 		this.publicationLingerTimeoutMillis = publicationLingerTimeoutMillis;
@@ -60,7 +64,7 @@ class AeronHelper {
 
 		this.ctx = ctx;
 		this.channel = channel;
-		this.waitForSubscriberMillis = waitForSubscriberMillis;
+        this.publicationTimeoutNs = TimeUnit.MILLISECONDS.toNanos(publicationTimeoutMillis);
 	}
 
 	static BackoffIdleStrategy newBackoffIdleStrategy() {
@@ -100,12 +104,13 @@ class AeronHelper {
 	 * @param publication  into which data should be published
 	 * @param bufferClaim  to be used for publishing
 	 * @param limit        number of bytes to be published
-	 * @param idleStrategy idle strategy to use when claim for data publishing fails
-	 * @return the reserved buffer claim or <code>null</code> when no subscribers are connected
+	 * @param idleStrategy idle strategy to use when an attempt
+     *                     to claim a buffer for publishing fails
+	 * @return the reserved buffer claim or <code>null</code> when failed to
+     * claim a buffer for publishing within {@link #publicationTimeoutNs} nanos
 	 */
 	BufferClaim publish(Publication publication, BufferClaim bufferClaim, int limit, IdleStrategy idleStrategy) {
 		long result;
-		final long timeoutNs = TimeUnit.MILLISECONDS.toNanos(waitForSubscriberMillis);
 		long startTime = System.nanoTime();
 		while ((result = publication.tryClaim(limit, bufferClaim)) < 0) {
 			if (result != Publication.BACK_PRESSURED && result != Publication.NOT_CONNECTED) {
@@ -113,7 +118,7 @@ class AeronHelper {
 			}
 			idleStrategy.idle(0);
 
-			if (System.nanoTime() - startTime > timeoutNs) {
+			if (System.nanoTime() - startTime > publicationTimeoutNs) {
 				// TODO: Rethink handling back-pressured publication
 				return null;
 			}
@@ -121,6 +126,10 @@ class AeronHelper {
 		return bufferClaim;
 	}
 
+    /**
+     * Wait till a message is published into Aeron. A message is considered
+     * published after {@link #publicationLingerTimeoutMillis} elapses.
+     */
 	void waitLingerTimeout() {
 		try {
 			Thread.sleep(publicationLingerTimeoutMillis);
