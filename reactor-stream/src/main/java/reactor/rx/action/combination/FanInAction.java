@@ -217,6 +217,10 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 		@SuppressWarnings("unchecked")
 		void setSubscription(FanInSubscription.InnerSubscription s) {
+			if(!outerAction.isPublishing()){
+				s.cancel();
+				return;
+			}
 			this.s = s;
 			this.sequenceId = outerAction.innerSubscriptions.addSubscription(this);
 			long toRequest = outerAction.innerSubscriptions.pendingRequestSignals();

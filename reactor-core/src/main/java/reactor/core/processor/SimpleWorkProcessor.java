@@ -403,7 +403,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 						if (unbounded) {
 							upstream.request(Long.MAX_VALUE);
 						} else {
-							upstream.request(processor.capacity - 1);
+							upstream.request(AVAILABLE.get(processor));
 						}
 					}
 
