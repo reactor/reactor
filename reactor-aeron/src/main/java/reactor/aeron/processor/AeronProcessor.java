@@ -39,40 +39,84 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * A processor which publishes into and subscribes to data from Aeron.
- * For more information about Aeron go to <a href="https://github.com/real-logic/Aeron">Aeron Project Home</a>
+ * A processor which publishes into and subscribes to data from Aeron.<br>
+ * For more information about Aeron go to
+ * <a href="https://github.com/real-logic/Aeron">Aeron Project Home</a>
  *
- * <p>The processor could launch an embedded Media Driver for the application if requested via
- * <code>launchEmbeddedMediaDriver</code> parameter during the processor creation via static methods or {@link Builder}.
- * Only a single instance of the embedded media driver is launched for the application.
+ * <p>The processor plays roles of both {@link Publisher} and
+ * {@link Subscriber}<br>
+ * <ul>
+ * <li>{@link Subscriber} part of the processor called as
+ * <b>'signals sender'</b> below publishes messages into Aeron.</li>
+ * <li>{@link Publisher} part of the processor called as
+ * <b>'signals receiver'</b> below subscribers for messages published
+ * by the sender part.</li>
+ * </ul>
+ * </p>
+ *
+ * <p>An instance of the processor is created upon a single Aeron channel of
+ * {@link #channel} and requires 4 <b>different</b> streamIds to function:<br>
+ * <ul>
+ *     <li>{@link #streamId} - used for sending Next and Complete signals from
+ *     the signals sender to the signals receiver</li>
+ *     <li>{@link #errorStreamId} - for Error signals</li>
+ *     <li>{@link #commandRequestStreamId} - for {@link CommandType#Request},
+ *     {@link CommandType#Cancel} and {@link CommandType#IsAliveRequest}</li>
+ *     from the signals receiver to the signals sender
+ *     <li>{@link #commandReplyStreamId} - for command execution results from
+ *     the signals sender to the signals receiver</li>
+ * </ul>
+ * </p>
+ *
+ * <p>The processor could launch an embedded Media Driver for the application
+ * if requested via <code>launchEmbeddedMediaDriver</code> parameter during
+ * the processor creation via static methods or via
+ * {@link Builder#launchEmbeddedMediaDriver(boolean)} when created using the
+ * {@link Builder}.<br>
+ * Only a single instance of the embedded media driver is launched for the
+ * application.<br>
+ * The launched Media Driver instance is shut down once the last
+ * instance of {@link AeronProcessor} is shut down.
  *
  * <p>The processor created via {@link #create(String, boolean, boolean, String, int, int, int, int)}
  * or {@link Builder#create()} methods respects the Reactive Streams contract
- * and must not be signalled concurrently on any onXXXX methods.
- * Reactor allows creating of a processor which can be used by publishers from different threads.
- * In this case the processor should be created via either
- * {@link #share(String, boolean, boolean, String, int, int, int, int)}
- * or {@link Builder#share()} methods.
- * Each subscriber is assigned a unique thread that stops on a terminal event only: Complete, Error or Cancel.</p>
+ * and must not be signalled concurrently on any onXXXX methods.<br>
+ * Nonetheless Reactor allows creating of a processor which can be used by
+ * publishers from different threads. In this case the processor should be
+ * created via either {@link #share(String, boolean, boolean, String, int, int, int, int)}
+ * or {@link Builder#share()} methods.<br>
  *
- * <p>When auto-cancel is enabled and the last subscriber is unregistered an upstream subscription
- * to the upstream publisher is cancelled.</p>
+ * <p>Each subscriber is assigned a unique thread that stops either on
+ * the processor subscription cancellation or upon a terminal event of Complete or Error.
+ * </p>
  *
- * <p>The processor could be assigned a custom executor service when is constructed via {@link Builder}.
- * The executor service decides upon threads allocation for the processor subscribers.</p>
+ * <p>When auto-cancel is enabled and the last subscriber is unregistered
+ * an upstream subscription to the upstream publisher is cancelled.</p>
  *
- * <p>When a Subscriber to the processor requests {@link Long#MAX_VALUE} there won't be any
- * backpressure applied and the Producer into the processor will run at risk of being throttled
- * if subscribers don't catch up.
+ * <p>The processor could be assigned a custom executor service when is
+ * constructed via {@link Builder}. The executor service decides upon threads
+ * allocation for the processor subscribers.</p>
+ *
+ * <p>When a Subscriber to the processor requests {@link Long#MAX_VALUE} there
+ * won't be any backpressure applied and thread publishing into the processor
+ * will run at risk of being throttled if subscribers don't catch up.<br>
  * With any other strictly positive demand a subscriber will stop reading new
- * Next signals (Complete and Error will still be read) as soon as the demand has been fully consumed.</p>
+ * Next signals (Complete and Error will still be read) as soon as the demand
+ * has been fully consumed.</p>
  *
  * <p>When more than 1 subscriber listens to the processor they all receive
  * the exact same events if their respective demand is still strictly positive,
- * very much like a Fan-Out scenario.<p>
+ * very much like a Fan-Out scenario.</p>
  *
- * <p>When the Aeron buffer for published messages becomes completely full the processor starts to throttle
- * and as a result method {@link #onNext(Buffer)} blocks until messages are consumed.
+ * <p>When the Aeron buffer for published messages becomes completely full
+ * the processor starts to throttle and as a result method
+ * {@link #onNext(Buffer)} blocks until messages are consumed or
+ * {@link #publicationTimeoutMillis} timeout elapses.<br>
+ *
+ * If a message cannot be published into Aeron within
+ * {@link #publicationTimeoutMillis} then it is discarded.
+ * In the next version of the processor this behaviour is likely to change.<br>
+ *
  * For configuration of Aeron buffers refer to
  * <a href="https://github.com/real-logic/Aeron/wiki/Configuration-Options">Aeron Configuration Options</a>
  * </p>
@@ -83,26 +127,59 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 
 	private static final Logger logger = LoggerFactory.getLogger(AeronProcessor.class);
 
+    /**
+     * Described at {@link Builder#channel}
+     */
 	private final String channel;
 
+    /**
+     * Described at {@link Builder#streamId}
+     */
 	private final int streamId;
 
+    /**
+     * Described at {@link Builder#errorStreamId}
+     */
 	private final int errorStreamId;
 
+    /**
+     * Described at {@link Builder#commandRequestStreamId}
+     */
 	private final int commandRequestStreamId;
 
+    /**
+     * Described at {@link Builder#commandReplyStreamId}
+     */
 	private final int commandReplyStreamId;
 
+    /**
+     * Described at {@link Builder#publicationLingerTimeoutMillis}
+     */
 	private final long publicationLingerTimeoutMillis;
 
-	private final long waitForSubscriberMillis;
+    /**
+     * Described at {@link Builder#publicationTimeoutMillis}
+     */
+    private final long publicationTimeoutMillis;
 
+    /**
+     * Exception serializer to serialize Error messages sent into Aeron
+     */
 	private final Serializer<Throwable> exceptionSerializer;
 
+    /**
+     * Reactive Publisher part of the processor - signals sender
+     */
 	private final AeronProcessorPublisher publisher;
 
+    /**
+     * Reactive Subscriber part of the processor - signals receiver
+     */
 	private final AeronProcessorSubscriber subscriber;
 
+    /**
+     * Signals receiver functionality which polls for signals sent by senders
+     */
 	private class SignalsPoller implements Runnable {
 
 		private final Subscriber<? super Buffer> subscriber;
@@ -118,12 +195,12 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 		private final Runnable completionTask;
 
 		/**
-		 * Complete signal was received from one of the publishers
+		 * Complete signal was received from one of senders
 		 */
 		private volatile boolean completeReceived = false;
 
 		/**
-		 * Error signal was received from one of the publishers
+		 * Error signal was received from one of senders
 		 */
 		private volatile boolean errorReceived = false;
 
@@ -151,7 +228,8 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 			}
 
 			/**
-			 * Handles signal with type code of <code>signalTypeCode</code> and content of <code>data</code>
+			 * Handles signal with type code of <code>signalTypeCode</code> and
+             * content of <code>data</code>
 			 *
 			 * @param signalTypeCode signal type code
 			 * @param data signal data
@@ -162,16 +240,26 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 
 		}
 
+        /**
+         * Handler for Complete and Next signals
+         */
 		private class CompleteNextFragmentHandler extends SignalsPollerFragmentHandler {
 
 			/**
 			 * If should read a single message from Aeron.
-			 * Used to check that Complete event was sent before any events were requested via a subscription.
+			 * Used to check if Complete signal was sent before any events were
+             * requested via a subscription
 			 */
 			boolean shouldSnap;
 
+            /**
+             * Message received from Aeron when {link #shouldSnap} was set
+             */
 			Buffer snappedNextMsg;
 
+            /**
+             * Number of Next signals received
+             */
 			int nNextSignalsReceived;
 
 			@Override
@@ -200,6 +288,9 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 
 		}
 
+        /**
+         * Handler for Error signals
+         */
 		private class ErrorFragmentHandler extends SignalsPollerFragmentHandler {
 
 			@Override
@@ -340,7 +431,7 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 		this.commandRequestStreamId = builder.commandRequestStreamId;
 		this.commandReplyStreamId = builder.commandReplyStreamId;
 		this.publicationLingerTimeoutMillis = builder.publicationLingerTimeoutMillis;
-		this.waitForSubscriberMillis = builder.waitForSubscriberMillis;
+		this.publicationTimeoutMillis = builder.publicationTimeoutMillis;
 		this.exceptionSerializer = new BasicExceptionSerializer();
 		this.subscriber = new AeronProcessorSubscriber(builder.name, builder.ringBufferSize,
 				builder.signalSenderContext, builder.launchEmbeddedMediaDriver, builder.multiPublishers);
@@ -349,23 +440,29 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 	}
 
 	/**
-	 * Creates a new processor with name <code>name</code> which expects publishing into itself from a single thread
-	 * on channel <code>channel</code> and stream <code>stream</code>
+	 * Creates a new processor which supports publishing into itself
+     * from a <b>single</b> thread.
 	 *
 	 * @param name processor's name used as a base name of subscriber threads
 	 * @param autoCancel when set to true the processor will auto-cancel
-	 * @param useEmbeddedMediaDriver if embedded media driver should be used
-	 * @param channel onto which publishing and subscribing should be done
-	 * @param streamId onto which publishing and subscribing should be done for provided <code>channel</code>
+	 * @param launchEmbeddedMediaDriver if embedded media driver should be launched
+	 * @param channel Aeron channel used by the signals sender and the receiver
+	 * @param streamId streamId for sending Next and Complete signals
+	 * @param errorStreamId streamId for sending Error signals
+	 * @param commandRequestStreamId streamId onto which signals sender
+     *                               listens for commands from signals receiver
+	 * @param commandReplyStreamId streamId onto which signals receiver
+     *                             listens for command execution replies from
+	 *                             signals sender
 	 * @return a new processor
 	 */
-	public static AeronProcessor create(String name, boolean autoCancel, boolean useEmbeddedMediaDriver, String channel,
-										int streamId, int errorStreamId, int commandRequestStreamId,
+	public static AeronProcessor create(String name, boolean autoCancel, boolean launchEmbeddedMediaDriver,
+										String channel,	int streamId, int errorStreamId, int commandRequestStreamId,
 										int commandReplyStreamId) {
 		return new Builder()
 				.name(name)
 				.autoCancel(autoCancel)
-				.launchEmbeddedMediaDriver(useEmbeddedMediaDriver)
+				.launchEmbeddedMediaDriver(launchEmbeddedMediaDriver)
 				.channel(channel)
 				.streamId(streamId)
 				.errorStreamId(errorStreamId)
@@ -375,24 +472,29 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 	}
 
 	/**
-	 * Creates a processor with name <code>name</code> into which publishing can be done from multiple threads
-	 * on channel <code>channel</code> and stream <code>stream</code>
+     * Creates a new processor which supports publishing into itself
+     * from multiple threads.
 	 *
 	 * @param name processor's name used as a base name of subscriber threads
 	 * @param autoCancel when set to true the processor will auto-cancel
-	 * @param useEmbeddedMediaDriver if embedded media driver should be used
-	 * @param channel onto which publishing and subscribing should be done
-	 * @param streamId onto which publishing and subscribing should be done for provided <code>channel</code>
-	 * @param commandRequestStreamId
+	 * @param launchEmbeddedMediaDriver if embedded media driver should be launched
+     * @param channel Aeron channel used by the signals sender and the receiver
+     * @param streamId streamId for sending Next and Complete signals
+     * @param errorStreamId streamId for sending Error signals
+     * @param commandRequestStreamId streamId onto which signals sender
+     *                               listens for commands from signals receiver
+     * @param commandReplyStreamId streamId onto which signals receiver
+     *                             listens for command execution replies from
+     *                             signals sender
 	 * @return a new processor
 	 */
-	public static AeronProcessor share(String name, boolean autoCancel, boolean useEmbeddedMediaDriver,
+	public static AeronProcessor share(String name, boolean autoCancel, boolean launchEmbeddedMediaDriver,
 									   String channel, int streamId, int errorStreamId, int commandRequestStreamId,
 									   int commandReplyStreamId) {
 		return new Builder()
 				.name(name)
 				.autoCancel(autoCancel)
-				.launchEmbeddedMediaDriver(useEmbeddedMediaDriver)
+				.launchEmbeddedMediaDriver(launchEmbeddedMediaDriver)
 				.channel(channel)
 				.streamId(streamId)
 				.errorStreamId(errorStreamId)
@@ -514,7 +616,7 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 			}
 
 			this.aeronHelper = new AeronHelper(publisherCtx, launchEmbeddedMediaDriver,
-					channel, waitForSubscriberMillis, publicationLingerTimeoutMillis);
+					channel, publicationTimeoutMillis, publicationLingerTimeoutMillis);
 			aeronHelper.initialise();
 
 			processor.subscribe(new RingBufferProcessorSubscriber(aeronHelper));
@@ -580,7 +682,7 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 								int subscriberFragmentLimit, int cleanupDelayMillis) {
 			this.subscriberFragmentLimit = subscriberFragmentLimit;
 			this.aeronHelper = new AeronHelper(subscriberCtx, launchEmbeddedMediaDriver,
-					channel, waitForSubscriberMillis, publicationLingerTimeoutMillis);
+					channel, publicationTimeoutMillis, publicationLingerTimeoutMillis);
 			aeronHelper.initialise();
 			this.commandPub = aeronHelper.addPublication(commandRequestStreamId);
 			this.aliveSendersChecker = new AliveSendersChecker(logger, aeronHelper, commandPub,
@@ -665,10 +767,9 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 	}
 
 	/**
-	 * Buffer to be published into Aeron the first byte of which should be 0 for signal type passing.
+	 * Publishes Next signal containing <code>buffer</code> into Aeron.
 	 *
-	 * @param buffer buffer the first byte of which is used for signal type and should always be 0
-	 * @throws IllegalArgumentException if the first byte of the buffer is not 0
+	 * @param buffer buffer to be published
 	 */
 	@Override
 	public void onNext(Buffer buffer) {

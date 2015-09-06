@@ -239,4 +239,34 @@ public class AeronProcessorTest {
 			}
 		}
 	}
+
+    @Test
+    public void testCreate() throws InterruptedException {
+        processor = AeronProcessor.create("aeron", true, true, CHANNEL, STREAM_ID,
+                STREAM_ID + 1, STREAM_ID + 2, STREAM_ID + 3);
+
+        Streams.just(
+                Buffer.wrap("Live"))
+                .subscribe(processor);
+
+        TestSubscriber subscriber = createTestSubscriber(1);
+        processor.subscribe(subscriber);
+
+        subscriber.assertAllEventsReceived();
+    }
+
+    @Test
+    public void testShare() throws InterruptedException {
+        processor = AeronProcessor.share("aeron", true, true, CHANNEL, STREAM_ID,
+                STREAM_ID + 1, STREAM_ID + 2, STREAM_ID + 3);
+
+        Streams.just(
+                Buffer.wrap("Live"))
+                .subscribe(processor);
+
+        TestSubscriber subscriber = createTestSubscriber(1);
+        processor.subscribe(subscriber);
+
+        subscriber.assertAllEventsReceived();
+    }
 }

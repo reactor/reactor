@@ -96,7 +96,7 @@ public class AeronProcessorVerificationTest extends IdentityProcessorVerificatio
 				.commandRequestStreamId(streamId + 2)
 				.commandReplyStreamId(streamId + 3)
 				.publicationLingerTimeoutMillis(50)
-				.waitForSubscriberMillis(250)
+				.publicationTimeoutMillis(250)
 				.create();
 
 		return processor;

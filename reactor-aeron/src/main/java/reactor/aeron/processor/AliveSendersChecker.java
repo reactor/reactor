@@ -69,7 +69,8 @@ class AliveSendersChecker {
 
 	private static final Object CHECK_ALIVE_SENDERS = new Object();
 
-	private final SerializedSubscriber<Object> serializedSubscriber = SerializedSubscriber.create(new Subscriber<Object>() {
+	private final SerializedSubscriber<Object> serializedSubscriber =
+            SerializedSubscriber.create(new Subscriber<Object>() {
 		@Override
 		public void onSubscribe(Subscription s) {
 		}
@@ -136,6 +137,9 @@ class AliveSendersChecker {
 		final UUID id = sendRequestAlive();
 		if (id == null) {
 			allDead = true;
+            if (logger.isDebugEnabled()) {
+                logger.info("No alive senders detected");
+            }
 			return;
 		}
 
@@ -165,11 +169,11 @@ class AliveSendersChecker {
 		if (nAlivePublishers[0] == 0) {
 			allDead = true;
 			if (logger.isDebugEnabled()) {
-				logger.info("No alive publishers detected");
+				logger.info("No alive senders detected");
 			}
 		} else {
 			if (logger.isDebugEnabled()) {
-				logger.debug("{} alive publishers detected", nAlivePublishers[0]);
+				logger.debug("{} alive senders detected", nAlivePublishers[0]);
 			}
 		}
 	}
