@@ -52,7 +52,7 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	public BatchAction(int batchSize, boolean next, boolean first, boolean flush,
-	                   long timespan, TimeUnit unit, Timer timer) {
+	                   long timespan, TimeUnit unit, final Timer timer) {
 		super(batchSize);
 		if (timespan > 0) {
 			this.unit = unit != null ? unit : TimeUnit.SECONDS;
