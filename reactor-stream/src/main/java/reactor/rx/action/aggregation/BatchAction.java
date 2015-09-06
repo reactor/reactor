@@ -41,10 +41,9 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	protected final long     timespan;
 	protected final TimeUnit unit;
 	protected final Timer    timer;
-	protected final Consumer<T> flushConsumer = new FlushConsumer();
 	protected final Consumer<Long> flushTask;
 
-	protected int index = 0;
+	private volatile int index = 0;
 	private Pausable timespanRegistration;
 
 	public BatchAction(
@@ -63,7 +62,14 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 				@Override
 				public void accept(Long aLong) {
 					if (isPublishing()) {
-						flushConsumer.accept(null);
+						synchronized (timer) {
+							if(index == 0) {
+								return;
+							} else {
+								index = 0;
+							}
+						}
+						flushCallback(null);
 					}
 				}
 			};
@@ -110,8 +116,16 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void doNext(final T value) {
+		final int index;
+		if ( timer != null ){
+			synchronized (timer) {
+				index = ++this.index;
+			}
+		} else {
+			index = ++this.index;
+		}
 
-		if (++index == 1) {
+		if (index == 1) {
 			if (timer != null) {
 				timespanRegistration = timer.submit(flushTask, timespan, unit);
 			}
@@ -129,7 +143,13 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 				timespanRegistration.cancel();
 				timespanRegistration = null;
 			}
-			index = 0;
+			if ( timer != null) {
+				synchronized (timer) {
+					this.index = 0;
+				}
+			}else {
+				this.index = 0;
+			}
 			if (flush) {
 				flushCallback(value);
 			}
@@ -138,18 +158,10 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 
 	@Override
 	protected void doComplete() {
-		flushConsumer.accept(null);
+		flushCallback(null);
 		super.doComplete();
 	}
 
-
-	final private class FlushConsumer implements Consumer<T> {
-		@Override
-		public void accept(T n) {
-			flushCallback(n);
-			index = 0;
-		}
-	}
 
 	@Override
 	public String toString() {
