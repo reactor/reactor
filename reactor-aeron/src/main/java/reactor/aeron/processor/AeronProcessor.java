@@ -355,17 +355,21 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 						completeNextFragmentHandler.shouldSnap = false;
 					}
 
-					if (fragmentLimit > 0) {
-						if (completeNextFragmentHandler.snappedNextMsg != null) {
-							subscriber.onNext(completeNextFragmentHandler.snappedNextMsg);
-							completeNextFragmentHandler.snappedNextMsg = null;
-							fragmentLimit--;
-						}
-
-						int nFragmentsReceived = nextCompleteSub.poll(completeNextFragmentAssembler, fragmentLimit);
-						requestCounter.release(completeNextFragmentHandler.getAndClearNextEventsReceived());
-						idleStrategy.idle(nFragmentsReceived);
+                    int nFragmentsReceived = 0;
+                    if (fragmentLimit > 0) {
+                        if (completeNextFragmentHandler.snappedNextMsg != null) {
+                            subscriber.onNext(completeNextFragmentHandler.snappedNextMsg);
+                            completeNextFragmentHandler.snappedNextMsg = null;
+                            fragmentLimit--;
+                            requestCounter.release(1);
+                            nFragmentsReceived = 1;
+                        }
+                        if (fragmentLimit > 0) {
+                            nFragmentsReceived += nextCompleteSub.poll(completeNextFragmentAssembler, fragmentLimit);
+                            requestCounter.release(completeNextFragmentHandler.getAndClearNextEventsReceived());
+                        }
 					}
+                    idleStrategy.idle(nFragmentsReceived);
 
 					if (completeReceived) {
 						completeReceived = false;
@@ -778,13 +782,14 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 
 	@Override
 	public void onError(Throwable t) {
-		subscriber.onError(t);
+        super.onError(t);
+        subscriber.onError(t);
 	}
 
 	@Override
 	public void onComplete() {
-		subscriber.onComplete();
-		super.onComplete();
+        super.onComplete();
+        subscriber.onComplete();
 	}
 
 }

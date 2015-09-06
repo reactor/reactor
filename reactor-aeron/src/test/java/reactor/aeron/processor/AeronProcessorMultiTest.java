@@ -40,7 +40,7 @@ public class AeronProcessorMultiTest {
 
 	private ThreadSnapshot threadSnapshot;
 
-	@Before
+    @Before
 	public void doSetup() {
 		threadSnapshot = new ThreadSnapshot().take();
 
@@ -49,7 +49,7 @@ public class AeronProcessorMultiTest {
 
 	@After
 	public void doTeardown() throws InterruptedException {
-		assertTrue(threadSnapshot.takeAndCompare(new String[]{"hash"}, TimeUnit.SECONDS.toMillis(TIMEOUT_SECS)));
+		assertTrue(threadSnapshot.takeAndCompare(new String[] {"hash"}, TimeUnit.SECONDS.toMillis(TIMEOUT_SECS)));
 	}
 
 	@Test
@@ -64,8 +64,8 @@ public class AeronProcessorMultiTest {
 
 		otherProcessor.onError(new RuntimeException("Bah"));
 
-		mySubscriber.awaitError();
-		otherSubscriber.awaitError();
+		mySubscriber.assertErrorReceived();
+		otherSubscriber.assertErrorReceived();
 
 		Thread.sleep(100);
 
@@ -113,6 +113,76 @@ public class AeronProcessorMultiTest {
 		otherProcessor.onComplete();
 		subscriber.assertCompleteReceived();
 	}
+
+    @Test
+    public void testSingleSenderTwoReceivers() throws InterruptedException {
+        AeronProcessor server = createProcessor("server");
+        Streams.just(
+                Buffer.wrap("One"),
+                Buffer.wrap("Two"),
+                Buffer.wrap("Three"))
+                .subscribe(server);
+
+        AeronProcessor client1 = createProcessor("client-1");
+        StepByStepTestSubscriber subscriber1 = new StepByStepTestSubscriber(TIMEOUT_SECS);
+        client1.subscribe(subscriber1);
+
+        AeronProcessor client2 = createProcessor("client-2");
+        StepByStepTestSubscriber subscriber2 = new StepByStepTestSubscriber(TIMEOUT_SECS);
+        client2.subscribe(subscriber2);
+
+        subscriber1.request(1);
+        subscriber1.assertNextSignals("One");
+        subscriber2.assertNumNextSignalsReceived(0);
+
+        subscriber1.request(1);
+        subscriber1.assertNextSignals("One", "Two");
+        subscriber2.assertNumNextSignalsReceived(0);
+
+        subscriber2.request(1);
+        subscriber1.assertNextSignals("One", "Two");
+        subscriber2.assertNextSignals("One");
+
+        subscriber1.request(1);
+        subscriber2.request(2);
+        subscriber1.assertNextSignals("One", "Two", "Three");
+        subscriber2.assertNextSignals("One", "Two", "Three");
+
+        client1.onComplete();
+        client2.onComplete();
+
+        subscriber1.assertCompleteReceived();
+        subscriber2.assertCompleteReceived();
+    }
+
+    @Test
+    public void testSingleSenderSendsErrorToTwoReceivers() throws InterruptedException {
+        AeronProcessor server = createProcessor("server");
+        Streams.concat(
+                Streams.just(Buffer.wrap("One"), Buffer.wrap("Two")),
+                Streams.fail(new RuntimeException("Something went wrong")))
+                .subscribe(server);
+
+        AeronProcessor client1 = createProcessor("client-1");
+        StepByStepTestSubscriber subscriber1 = new StepByStepTestSubscriber(TIMEOUT_SECS);
+        client1.subscribe(subscriber1);
+
+        AeronProcessor client2 = createProcessor("client-2");
+        StepByStepTestSubscriber subscriber2 = new StepByStepTestSubscriber(TIMEOUT_SECS);
+        client2.subscribe(subscriber2);
+
+        subscriber1.request(1);
+        subscriber1.assertNextSignals("One");
+        subscriber2.assertNumNextSignalsReceived(0);
+
+        subscriber1.request(1);
+        subscriber1.assertNextSignals("One", "Two");
+        subscriber2.assertNumNextSignalsReceived(0);
+
+        subscriber1.request(1);
+        subscriber1.assertErrorReceived();
+        subscriber2.assertErrorReceived();
+    }
 
 	private AeronProcessor createProcessor(String name) {
 		return AeronProcessor.builder()
