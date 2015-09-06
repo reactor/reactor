@@ -30,7 +30,7 @@ public abstract class TimeUtils {
 
 	private static final int        DEFAULT_RESOLUTION = 100;
 	private static final AtomicLong now                = new AtomicLong();
-	private static Timer timer;
+	private static volatile Timer timer;
 
 	protected TimeUtils() {
 	}
