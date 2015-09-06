@@ -125,8 +125,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			innerSubscriptions.maxCapacity(capacity);
 			if (publishers != null) {
 				capacity(initUpstreamPublisherAndCapacity());
-			}
-			if(publishers == null) {
+			} else {
 				onSubscribe(innerSubscriptions);
 			}
 		}
@@ -191,7 +190,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	protected abstract InnerSubscriber<I, E, O> createSubscriber();
 
-	public abstract static class InnerSubscriber<I, E, O> implements Subscriber<I>, Bounded, Consumer<Long> {
+	public abstract static class InnerSubscriber<I, E, O> implements Subscriber<I>, Bounded{
 		final FanInAction<I, E, O, ? extends InnerSubscriber<I, E, O>> outerAction;
 
 		int sequenceId;
@@ -236,17 +235,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				0;
 			}
 		}
-
-		public void accept(Long pendingRequests) {
-			try {
-				if (pendingRequests > 0) {
-					request(pendingRequests);
-				}
-			} catch (Throwable e) {
-				outerAction.onError(e);
-			}
-		}
-
 
 		public void request(long n) {
 			if (s == null || n <= 0 || pendingRequests == Long.MAX_VALUE) return;

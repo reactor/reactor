@@ -15,13 +15,15 @@
  */
 package reactor.core.processor.rb.disruptor;
 
+import reactor.fn.Consumer;
+
 import java.util.concurrent.locks.LockSupport;
 
 /**
  * Sleeping strategy that initially spins, then uses a Thread.yield(), and
  * eventually sleep (<code>LockSupport.parkNanos(1)</code>) for the minimum
  * number of nanos the OS and JVM will allow while the
- * {@link reactor.core.processor.rb.disruptor.EventProcessor}s are waiting on a barrier.
+ * ringbuffer consumers are waiting on a barrier.
  *
  * This strategy is a good compromise between performance and CPU resource.
  * Latency spikes can occur after quiet periods.
@@ -43,13 +45,13 @@ public final class SleepingWaitStrategy implements WaitStrategy
     }
 
     @Override
-    public long waitFor(final long sequence, Sequence cursor, final Sequence dependentSequence, final SequenceBarrier barrier)
+    public long waitFor(final long sequence, Sequence cursor, final Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;
         int counter = retries;
 
-        while ((availableSequence = dependentSequence.get()) < sequence)
+        while ((availableSequence = cursor.get()) < sequence)
         {
             counter = applyWaitMethod(barrier, counter);
         }
@@ -62,10 +64,10 @@ public final class SleepingWaitStrategy implements WaitStrategy
     {
     }
 
-    private int applyWaitMethod(final SequenceBarrier barrier, int counter)
+    private int applyWaitMethod(final Consumer<Void> barrier, int counter)
         throws AlertException
     {
-        barrier.checkAlert();
+        barrier.accept(null);
 
         if (counter > 100)
         {

@@ -31,19 +31,19 @@ import java.util.concurrent.locks.LockSupport;
  * to {@link Sequencer#next()}, to determine the highest available sequence that can be read, then
  * {@link Sequencer#getHighestPublishedSequence(long, long)} should be used.
  */
-public final class MultiProducerSequencer extends AbstractSequencer
+public final class MultiProducerSequencer extends Sequencer
 {
     private static final Unsafe UNSAFE = Util.getUnsafe();
-    private static final long BASE  = UNSAFE.arrayBaseOffset(int[].class);
-    private static final long SCALE = UNSAFE.arrayIndexScale(int[].class);
+    private static final long   BASE   = UNSAFE.arrayBaseOffset(int[].class);
+    private static final long   SCALE  = UNSAFE.arrayIndexScale(int[].class);
 
     private final Sequence gatingSequenceCache = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
 
     // availableBuffer tracks the state of each ringbuffer slot
     // see below for more details on the approach
     private final int[] availableBuffer;
-    private final int indexMask;
-    private final int indexShift;
+    private final int   indexMask;
+    private final int   indexShift;
 
     /**
      * Construct a Sequencer with the selected wait strategy and buffer size.
@@ -51,8 +51,7 @@ public final class MultiProducerSequencer extends AbstractSequencer
      * @param bufferSize the size of the buffer that this will sequence over.
      * @param waitStrategy for those waiting on sequences.
      */
-    public MultiProducerSequencer(int bufferSize, final WaitStrategy waitStrategy, Consumer<Void> spinObserver)
-    {
+    public MultiProducerSequencer(int bufferSize, final WaitStrategy waitStrategy, Consumer<Void> spinObserver) {
         super(bufferSize, waitStrategy, spinObserver);
         availableBuffer = new int[bufferSize];
         indexMask = bufferSize - 1;
@@ -64,23 +63,19 @@ public final class MultiProducerSequencer extends AbstractSequencer
      * @see Sequencer#hasAvailableCapacity(int)
      */
     @Override
-    public boolean hasAvailableCapacity(final int requiredCapacity)
-    {
+    public boolean hasAvailableCapacity(final int requiredCapacity) {
         return hasAvailableCapacity(gatingSequences, requiredCapacity, cursor.get());
     }
 
-    private boolean hasAvailableCapacity(Sequence[] gatingSequences, final int requiredCapacity, long cursorValue)
-    {
+    private boolean hasAvailableCapacity(Sequence[] gatingSequences, final int requiredCapacity, long cursorValue) {
         long wrapPoint = (cursorValue + requiredCapacity) - bufferSize;
         long cachedGatingSequence = gatingSequenceCache.get();
 
-        if (wrapPoint > cachedGatingSequence || cachedGatingSequence > cursorValue)
-        {
+        if (wrapPoint > cachedGatingSequence || cachedGatingSequence > cursorValue) {
             long minSequence = Util.getMinimumSequence(gatingSequences, cursorValue);
             gatingSequenceCache.set(minSequence);
 
-            if (wrapPoint > minSequence)
-            {
+            if (wrapPoint > minSequence) {
                 return false;
             }
         }

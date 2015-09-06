@@ -27,6 +27,7 @@ import reactor.core.processor.rb.disruptor.*;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
+import reactor.fn.Supplier;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -510,27 +511,27 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	                                boolean autoCancel) {
 		super(name, executor, autoCancel);
 
-		EventFactory<MutableSignal<E>> factory =  new EventFactory<MutableSignal<E>>() {
-			  @Override
-			  public MutableSignal<E> newInstance() {
-				  return new MutableSignal<>();
-			  }
-		  };
-		Consumer<Void> spinObserver = new Consumer<Void>(){
+		Supplier<MutableSignal<E>> factory = new Supplier<MutableSignal<E>>() {
+			@Override
+			public MutableSignal<E> get() {
+				return new MutableSignal<>();
+			}
+		};
+		Consumer<Void> spinObserver = new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
-				if(!alive()) throw CancelException.get();
+				if (!alive()) throw CancelException.get();
 			}
 		};
 
-		if(share) {
+		if (share) {
 			this.ringBuffer = RingBuffer.createMultiProducer(
 			  factory,
 			  bufferSize,
 			  waitStrategy,
 			  spinObserver
 			);
-		}else{
+		} else {
 			this.ringBuffer = RingBuffer.createSingleProducer(
 			  factory,
 			  bufferSize,
@@ -673,15 +674,15 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	/**
 	 * Disruptor WorkProcessor port that deals with pending demand.
 	 * <p>
-	 * Convenience class for handling the batching semantics of consuming entries from a {@link reactor.core.processor.rb.disruptor
+	 * Convenience class for handling the batching semantics of consuming entries from a {@link reactor.core.processor
+	 * .rb.disruptor
 	 * .RingBuffer}
-	 * and delegating the available events to an {@link reactor.core.processor.rb.disruptor.EventHandler}.
 	 * <p>
 	 *
 	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an
 	 *            event.
 	 */
-	private final static class WorkSignalProcessor<T> implements EventProcessor {
+	private final static class WorkSignalProcessor<T> implements Runnable {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -695,7 +696,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		private Subscription subscription;
 
 		/**
-		 * Construct a {@link reactor.core.processor.rb.disruptor.EventProcessor} that will automatically track the progress by updating
+		 * Construct a ringbuffer consumer that will automatically track the
+		 * progress by updating
 		 * its
 		 * sequence
 		 */
@@ -715,18 +717,15 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			this.subscription = subscription;
 		}
 
-		@Override
 		public Sequence getSequence() {
 			return sequence;
 		}
 
-		@Override
 		public void halt() {
 			running.set(false);
 			barrier.alert();
 		}
 
-		@Override
 		public boolean isRunning() {
 			return running.get();
 		}
@@ -848,7 +847,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 					readNextEvent(signal, unbounded);
 					RingBufferSubscriberUtils.routeOnce(signal, subscriber);
 					processor.ringBuffer.removeGatingSequence(replayedSequence);
-				} catch (TimeoutException | InterruptedException | AlertException | CancelException ce) {
+				} catch (InterruptedException | AlertException | CancelException ce) {
 					processor.ringBuffer.removeGatingSequence(sequence);
 					processor.cancelledSequences.add(replayedSequence);
 					return true;

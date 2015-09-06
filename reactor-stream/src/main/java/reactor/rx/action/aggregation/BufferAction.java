@@ -39,22 +39,45 @@ public class BufferAction<T> extends BatchAction<T, List<T>> {
 
 	@Override
 	protected void doError(Throwable ev) {
-		values.clear();
+		if (timer != null) {
+			synchronized (timer) {
+				values.clear();
+			}
+		} else {
+			values.clear();
+		}
 		super.doError(ev);
 	}
 
 	@Override
 	public void nextCallback(T value) {
-		values.add(value);
+		if (timer != null) {
+			synchronized (timer) {
+				values.add(value);
+			}
+		} else {
+			values.add(value);
+		}
 	}
 
 	@Override
 	public void flushCallback(T ev) {
-		if (values.isEmpty()) {
-			return;
+		final List<T> toSend;
+		if (timer != null) {
+			synchronized (timer) {
+				if (values.isEmpty()) {
+					return;
+				}
+				toSend = new ArrayList<T>(values);
+				values.clear();
+			}
+		} else {
+			if (values.isEmpty()) {
+				return;
+			}
+			toSend = new ArrayList<T>(values);
+			values.clear();
 		}
-		List<T> toSend = new ArrayList<T>(values);
-		values.clear();
 		broadcastNext(toSend);
 	}
 }

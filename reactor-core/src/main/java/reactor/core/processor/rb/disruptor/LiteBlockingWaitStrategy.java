@@ -15,6 +15,8 @@
  */
 package reactor.core.processor.rb.disruptor;
 
+import reactor.fn.Consumer;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -33,7 +35,7 @@ public final class LiteBlockingWaitStrategy implements WaitStrategy
     private final AtomicBoolean signalNeeded = new AtomicBoolean(false);
 
     @Override
-    public long waitFor(long sequence, Sequence cursorSequence, Sequence dependentSequence, SequenceBarrier barrier)
+    public long waitFor(long sequence, Sequence cursorSequence, Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;
@@ -52,7 +54,7 @@ public final class LiteBlockingWaitStrategy implements WaitStrategy
                         break;
                     }
 
-                    barrier.checkAlert();
+                    barrier.accept(null);
                     processorNotifyCondition.await();
                 }
                 while ((availableSequence = cursorSequence.get()) < sequence);
@@ -63,9 +65,9 @@ public final class LiteBlockingWaitStrategy implements WaitStrategy
             }
         }
 
-        while ((availableSequence = dependentSequence.get()) < sequence)
+        while ((availableSequence = cursorSequence.get()) < sequence)
         {
-            barrier.checkAlert();
+            barrier.accept(null);
         }
 
         return availableSequence;

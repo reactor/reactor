@@ -21,7 +21,7 @@ import reactor.fn.Consumer;
 
 import java.util.concurrent.locks.LockSupport;
 
-abstract class SingleProducerSequencerPad extends AbstractSequencer
+abstract class SingleProducerSequencerPad extends Sequencer
 {
     protected long p1, p2, p3, p4, p5, p6, p7;
     public SingleProducerSequencerPad(int bufferSize, WaitStrategy waitStrategy, Consumer<Void> spinObserver)
