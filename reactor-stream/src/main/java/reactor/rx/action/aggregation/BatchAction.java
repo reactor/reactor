@@ -15,7 +15,9 @@
  */
 package reactor.rx.action.aggregation;
 
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
@@ -84,6 +86,15 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 	}
 
 	@Override
+	public void subscribe(Subscriber<? super V> subscriber) {
+		if (timer != null) {
+			super.subscribe(SerializedSubscriber.create(subscriber));
+		} else {
+			super.subscribe(subscriber);
+		}
+	}
+
+	@Override
 	public boolean isExposedToOverflow(Bounded upstream) {
 		return false;
 	}
@@ -114,22 +125,13 @@ public abstract class BatchAction<T, V> extends Action<T, V> {
 		}
 
 		if (index % batchSize == 0) {
-			if (timespanRegistration != null) {
+			if(timer != null && timespanRegistration != null) {
 				timespanRegistration.cancel();
 				timespanRegistration = null;
 			}
 			index = 0;
 			if (flush) {
-				if(timer != null){
-					timer.submit(new Consumer<Long>() {
-						@Override
-						public void accept(Long aLong) {
-							flushConsumer.accept(value);
-						}
-					});
-				}else{
-					flushConsumer.accept(value);
-				}
+				flushCallback(value);
 			}
 		}
 	}

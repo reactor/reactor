@@ -15,12 +15,14 @@
  */
 package reactor.core.processor.rb.disruptor;
 
+import reactor.fn.Consumer;
+
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * Blocking strategy that uses a lock and condition variable for {@link EventProcessor}s waiting on a barrier.
+ * Blocking strategy that uses a lock and condition variable for ringbuffer consumer waiting on a barrier.
  *
  * This strategy can be used when throughput and low-latency are not as important as CPU resource.
  */
@@ -30,7 +32,7 @@ public final class BlockingWaitStrategy implements WaitStrategy
     private final Condition processorNotifyCondition = lock.newCondition();
 
     @Override
-    public long waitFor(long sequence, Sequence cursorSequence, Sequence dependentSequence, SequenceBarrier barrier)
+    public long waitFor(long sequence, Sequence cursorSequence, Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;
@@ -41,7 +43,7 @@ public final class BlockingWaitStrategy implements WaitStrategy
             {
                 while ((availableSequence = cursorSequence.get()) < sequence)
                 {
-                    barrier.checkAlert();
+                    barrier.accept(null);
                     processorNotifyCondition.await();
                 }
             }
@@ -51,9 +53,9 @@ public final class BlockingWaitStrategy implements WaitStrategy
             }
         }
 
-        while ((availableSequence = dependentSequence.get()) < sequence)
+        while ((availableSequence = cursorSequence.get()) < sequence)
         {
-            barrier.checkAlert();
+            barrier.accept(null);
         }
 
         return availableSequence;

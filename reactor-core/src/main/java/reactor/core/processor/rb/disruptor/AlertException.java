@@ -16,12 +16,12 @@
 package reactor.core.processor.rb.disruptor;
 
 /**
- * Used to alert {@link EventProcessor}s waiting at a {@link SequenceBarrier} of status changes.
+ * Used to alert ringbuffer consumers waiting at a {@link SequenceBarrier} of status changes.
  * <P>
  * It does not fill in a stack trace for performance reasons.
  */
 @SuppressWarnings("serial")
-public final class AlertException extends Exception
+public final class AlertException extends RuntimeException
 {
     /** Pre-allocated exception to avoid garbage generation */
     public static final AlertException INSTANCE = new AlertException();

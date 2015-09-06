@@ -559,9 +559,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	                            final Supplier<E> signalSupplier) {
 		super(name, executor, autoCancel);
 
-		EventFactory<MutableSignal<E>> factory =  new EventFactory<MutableSignal<E>>() {
+		Supplier<MutableSignal<E>> factory =  new Supplier<MutableSignal<E>>() {
 			@Override
-			public MutableSignal<E> newInstance() {
+			public MutableSignal<E> get() {
 				MutableSignal<E> signal = new MutableSignal<>();
 				if (signalSupplier != null) {
 					signal.value = signalSupplier.get();
@@ -771,15 +771,13 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 * Disruptor BatchEventProcessor port that deals with pending demand.
 	 * <p>
 	 * Convenience class for handling the batching semantics of consuming entries from a {@link reactor.core.processor.rb.disruptor
-	 * .RingBuffer}
-	 * and delegating the available events to an {@link reactor.core.processor.rb.disruptor.EventHandler}.
+	 * .RingBuffer}.
 	 * <p>
-	 * If the {@link reactor.core.processor.rb.disruptor.EventHandler} .
 	 *
 	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an
 	 *            event.
 	 */
-	private final static class BatchSignalProcessor<T> implements EventProcessor {
+	private final static class BatchSignalProcessor<T> implements Runnable {
 
 		private final AtomicBoolean running  = new AtomicBoolean(false);
 		private final Sequence      sequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
@@ -792,7 +790,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		long nextSequence = -1l;
 
 		/**
-		 * Construct a {@link reactor.core.processor.rb.disruptor.EventProcessor} that will automatically track the progress by updating
+		 * Construct a ringbuffer consumer that will automatically track the
+		 * progress by updating
 		 * its
 		 * sequence
 		 */
@@ -812,18 +811,15 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			this.subscription = subscription;
 		}
 
-		@Override
 		public Sequence getSequence() {
 			return sequence;
 		}
 
-		@Override
 		public void halt() {
 			running.set(false);
 			processor.barrier.alert();
 		}
 
-		@Override
 		public boolean isRunning() {
 			return running.get();
 		}
@@ -896,8 +892,6 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 						}
 						//processor.recentSequence.compareAndSet(sequence.get(), availableSequence);
 						sequence.set(availableSequence);
-					} catch (final TimeoutException e) {
-						//IGNORE
 					} catch (final AlertException | CancelException ex) {
 						if (!running.get()) {
 							break;

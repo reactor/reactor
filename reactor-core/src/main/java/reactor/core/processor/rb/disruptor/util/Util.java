@@ -15,16 +15,14 @@
  */
 package reactor.core.processor.rb.disruptor.util;
 
+import reactor.core.processor.rb.disruptor.Sequence;
+import sun.misc.Unsafe;
+
 import java.lang.reflect.Field;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedExceptionAction;
-
-import sun.misc.Unsafe;
-
-import reactor.core.processor.rb.disruptor.EventProcessor;
-import reactor.core.processor.rb.disruptor.Sequence;
 
 /**
  * Set of common functions used by the Disruptor
@@ -71,23 +69,6 @@ public final class Util
         }
 
         return minimum;
-    }
-
-    /**
-     * Get an array of {@link Sequence}s for the passed {@link EventProcessor}s
-     *
-     * @param processors for which to get the sequences
-     * @return the array of {@link Sequence}s
-     */
-    public static Sequence[] getSequencesFor(final EventProcessor... processors)
-    {
-        Sequence[] sequences = new Sequence[processors.length];
-        for (int i = 0; i < sequences.length; i++)
-        {
-            sequences[i] = processors[i].getSequence();
-        }
-
-        return sequences;
     }
 
     private static final Unsafe THE_UNSAFE;

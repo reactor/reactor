@@ -18,12 +18,12 @@ package reactor.fn.timer;
 
 import org.reactivestreams.Processor;
 import reactor.core.error.CancelException;
+import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
-import reactor.core.processor.rb.disruptor.EventFactory;
-import reactor.core.processor.rb.disruptor.RingBuffer;
+import reactor.fn.Supplier;
 
 import java.util.Set;
 import java.util.concurrent.*;
@@ -106,9 +106,9 @@ public class HashWheelTimer implements Timer {
 	public HashWheelTimer(String name, int res, int wheelSize, WaitStrategy strategy, Executor exec) {
 		this.waitStrategy = strategy;
 
-		this.wheel = RingBuffer.createSingleProducer(new EventFactory<Set<TimerPausable>>() {
+		this.wheel = RingBuffer.createSingleProducer(new Supplier<Set<TimerPausable>>() {
 			@Override
-			public Set<TimerPausable> newInstance() {
+			public Set<TimerPausable> get() {
 				return new ConcurrentSkipListSet<TimerPausable>();
 			}
 		}, wheelSize);

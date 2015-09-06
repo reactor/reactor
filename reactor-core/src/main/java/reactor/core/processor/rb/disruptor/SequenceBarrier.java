@@ -16,51 +16,103 @@
 package reactor.core.processor.rb.disruptor;
 
 
+import reactor.fn.Consumer;
+
 /**
- * Coordination barrier for tracking the cursor for publishers and sequence of
- * dependent {@link EventProcessor}s for processing a data structure
+ * Used for Gating ringbuffer consumers on a cursor sequence and optional dependent ringbuffer consumer(s),
+ * using the given WaitStrategy.
  */
-public interface SequenceBarrier
+public final class SequenceBarrier implements Consumer<Void>
 {
-    /**
-     * Wait for the given sequence to be available for consumption.
-     *
-     * @param sequence to wait for
-     * @return the sequence up to which is available
-     * @throws AlertException if a status change has occurred for the Disruptor
-     * @throws InterruptedException if the thread needs awaking on a condition variable.
-     * @throws TimeoutException
-     */
-    long waitFor(long sequence) throws AlertException, InterruptedException, TimeoutException;
+    private final WaitStrategy waitStrategy;
+    private volatile boolean alerted = false;
+    private final Sequence cursorSequence;
+    private final Sequencer sequencer;
+
+    public SequenceBarrier(final Sequencer sequencer,
+                           final WaitStrategy waitStrategy,
+                           final Sequence cursorSequence)
+    {
+        this.sequencer = sequencer;
+        this.waitStrategy = waitStrategy;
+        this.cursorSequence = cursorSequence;
+    }
 
     /**
-     * Get the current cursor value that can be read.
-     *
-     * @return value of the cursor for entries that have been published.
-     */
-    long getCursor();
+         * Wait for the given sequence to be available for consumption.
+         *
+         * @param sequence to wait for
+         * @return the sequence up to which is available
+         * @throws AlertException if a status change has occurred for the Disruptor
+         * @throws InterruptedException if the thread needs awaking on a condition variable.
+         */
+    public long waitFor(final long sequence)
+        throws AlertException, InterruptedException
+    {
+        checkAlert();
+
+        long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, this);
+
+        if (availableSequence < sequence)
+        {
+            return availableSequence;
+        }
+
+        return sequencer.getHighestPublishedSequence(sequence, availableSequence);
+    }
 
     /**
-     * The current alert status for the barrier.
-     *
-     * @return true if in alert otherwise false.
-     */
-    boolean isAlerted();
+         * Get the current cursor value that can be read.
+         *
+         * @return value of the cursor for entries that have been published.
+         */
+    public long getCursor()
+    {
+        return cursorSequence.get();
+    }
 
     /**
-     * Alert the {@link EventProcessor}s of a status change and stay in this status until cleared.
-     */
-    void alert();
+         * The current alert status for the barrier.
+         *
+         * @return true if in alert otherwise false.
+         */
+    public boolean isAlerted()
+    {
+        return alerted;
+    }
 
     /**
-     * Clear the current alert status.
-     */
-    void clearAlert();
+         * Alert the ringbuffer consumers of a status change and stay in this status until cleared.
+         */
+    public void alert()
+    {
+        alerted = true;
+        waitStrategy.signalAllWhenBlocking();
+    }
 
     /**
-     * Check if an alert has been raised and throw an {@link AlertException} if it has.
-     *
-     * @throws AlertException if alert has been raised.
-     */
-    void checkAlert() throws AlertException;
+         * Clear the current alert status.
+         */
+    public void clearAlert()
+    {
+        alerted = false;
+    }
+
+    /**
+         * Check if an alert has been raised and throw an {@link AlertException} if it has.
+         *
+         * @throws AlertException if alert has been raised.
+         */
+    public void checkAlert() throws AlertException
+    {
+        if (alerted)
+        {
+            throw AlertException.INSTANCE;
+        }
+    }
+
+    @Override
+    public void accept(Void aVoid) {
+        checkAlert();
+    }
 }

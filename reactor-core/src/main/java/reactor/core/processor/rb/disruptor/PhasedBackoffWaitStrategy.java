@@ -15,10 +15,12 @@
  */
 package reactor.core.processor.rb.disruptor;
 
+import reactor.fn.Consumer;
+
 import java.util.concurrent.TimeUnit;
 
 /**
- * <p>Phased wait strategy for waiting {@link EventProcessor}s on a barrier.</p>
+ * <p>Phased wait strategy for waiting ringbuffer consumers on a barrier.</p>
  *
  * <p>This strategy can be used when throughput and low-latency are not as important as CPU resource.
  * Spins, then yields, then waits using the configured fallback WaitStrategy.</p>
@@ -74,8 +76,8 @@ public final class PhasedBackoffWaitStrategy implements WaitStrategy
     }
 
     @Override
-    public long waitFor(long sequence, Sequence cursor, Sequence dependentSequence, SequenceBarrier barrier)
-        throws AlertException, InterruptedException, TimeoutException
+    public long waitFor(long sequence, Sequence cursor, Consumer<Void> barrier)
+        throws AlertException, InterruptedException
     {
         long availableSequence;
         long startTime = 0;
@@ -83,7 +85,7 @@ public final class PhasedBackoffWaitStrategy implements WaitStrategy
 
         do
         {
-            if ((availableSequence = dependentSequence.get()) >= sequence)
+            if ((availableSequence = cursor.get()) >= sequence)
             {
                 return availableSequence;
             }
@@ -99,7 +101,7 @@ public final class PhasedBackoffWaitStrategy implements WaitStrategy
                     long timeDelta = System.nanoTime() - startTime;
                     if (timeDelta > yieldTimeoutNanos)
                     {
-                        return fallbackStrategy.waitFor(sequence, cursor, dependentSequence, barrier);
+                        return fallbackStrategy.waitFor(sequence, cursor, barrier);
                     }
                     else if (timeDelta > spinTimeoutNanos)
                     {

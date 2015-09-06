@@ -20,13 +20,13 @@ import static java.util.Arrays.copyOf;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
- * Provides static methods for managing a {@link SequenceGroup} object.
+ * Provides static methods for managing a {@link Sequence} object.
  */
 class SequenceGroups
 {
     static <T> void addSequences(final T holder,
                                  final AtomicReferenceFieldUpdater<T, Sequence[]> updater,
-                                 final Cursored cursor,
+                                 final Sequencer cursor,
                                  final Sequence... sequencesToAdd)
     {
         long cursorSequence;

@@ -16,8 +16,10 @@
 package reactor.core.processor.rb.disruptor;
 
 
+import reactor.fn.Consumer;
+
 /**
- * Yielding strategy that uses a Thread.yield() for {@link reactor.core.processor.rb.disruptor.EventProcessor}s waiting on a barrier
+ * Yielding strategy that uses a Thread.yield() for ringbuffer consumers waiting on a barrier
  * after an initially spinning.
  *
  * This strategy is a good compromise between performance and CPU resource without incurring significant latency spikes.
@@ -27,13 +29,13 @@ public final class YieldingWaitStrategy implements WaitStrategy
     private static final int SPIN_TRIES = 100;
 
     @Override
-    public long waitFor(final long sequence, Sequence cursor, final Sequence dependentSequence, final SequenceBarrier barrier)
+    public long waitFor(final long sequence, Sequence cursor, final Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;
         int counter = SPIN_TRIES;
 
-        while ((availableSequence = dependentSequence.get()) < sequence)
+        while ((availableSequence = cursor.get()) < sequence)
         {
             counter = applyWaitMethod(barrier, counter);
         }
@@ -46,10 +48,10 @@ public final class YieldingWaitStrategy implements WaitStrategy
     {
     }
 
-    private int applyWaitMethod(final SequenceBarrier barrier, int counter)
+    private int applyWaitMethod(final Consumer<Void> barrier, int counter)
         throws AlertException
     {
-        barrier.checkAlert();
+        barrier.accept(null);
 
         if (0 == counter)
         {

@@ -148,8 +148,6 @@ public final class RingBufferSubscriberUtils {
 				}
 				LockSupport.parkNanos(1l);
 			}
-		} catch (TimeoutException te) {
-			//ignore
 		} catch (AlertException ae) {
 			if (!isRunning.get()) {
 				return false;

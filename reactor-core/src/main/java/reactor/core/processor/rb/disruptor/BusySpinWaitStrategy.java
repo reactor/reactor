@@ -16,8 +16,10 @@
 package reactor.core.processor.rb.disruptor;
 
 
+import reactor.fn.Consumer;
+
 /**
- * Busy Spin strategy that uses a busy spin loop for {@link reactor.core.processor.rb.disruptor.EventProcessor}s waiting on a barrier.
+ * Busy Spin strategy that uses a busy spin loop for ringbuffer consumers waiting on a barrier.
  *
  * This strategy will use CPU resource to avoid syscalls which can introduce latency jitter.  It is best
  * used when threads can be bound to specific CPU cores.
@@ -25,14 +27,14 @@ package reactor.core.processor.rb.disruptor;
 public final class BusySpinWaitStrategy implements WaitStrategy
 {
     @Override
-    public long waitFor(final long sequence, Sequence cursor, final Sequence dependentSequence, final SequenceBarrier barrier)
+    public long waitFor(final long sequence, Sequence cursor, final Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;
 
-        while ((availableSequence = dependentSequence.get()) < sequence)
+        while ((availableSequence = cursor.get()) < sequence)
         {
-            barrier.checkAlert();
+            barrier.accept(null);
         }
 
         return availableSequence;
