@@ -1,8 +1,9 @@
 package reactor.io.buffer;
 
-import static org.junit.Assert.*;
-
 import org.junit.Test;
+
+import static junit.framework.TestCase.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Sergey Shcherbakov
@@ -25,6 +26,14 @@ public class BufferTests {
 			Buffer.SMALL_BUFFER_SIZE = initial_small_size;
 			Buffer.MAX_BUFFER_SIZE = initial_max_size;
 		}
+	}
+
+	@Test
+	public void testEquals() {
+		Buffer buffer = Buffer.wrap("Hello");
+
+		assertTrue(buffer.equals(Buffer.wrap("Hello")));
+		assertFalse(buffer.equals(Buffer.wrap("Other")));
 	}
 
 }
