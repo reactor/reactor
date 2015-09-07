@@ -87,9 +87,7 @@ public class HashWheelTimer implements Timer {
 	 * @param waitStrategy strategy for waiting for the next tick
 	 */
 	public HashWheelTimer(int res, int wheelSize, WaitStrategy waitStrategy) {
-		this(DEFAULT_TIMER_NAME, res, wheelSize, waitStrategy,
-		  Executors.newFixedThreadPool(1, new NamedDaemonThreadFactory(DEFAULT_TIMER_NAME + "-run",
-		    new ClassLoader(Thread.currentThread().getContextClassLoader()) {})));
+		this(DEFAULT_TIMER_NAME, res, wheelSize, waitStrategy, null);
 	}
 
 	/**
@@ -113,6 +111,13 @@ public class HashWheelTimer implements Timer {
 				return new ConcurrentSkipListSet<TimerPausable>();
 			}
 		}, wheelSize);
+
+		if(exec == null){
+			this.executor = Executors.newFixedThreadPool(1, new NamedDaemonThreadFactory(name + "-run",
+			  new ClassLoader(Thread.currentThread().getContextClassLoader()) {}));
+		} else {
+			this.executor = exec;
+		}
 
 		this.resolution = res;
 		this.loop = new NamedDaemonThreadFactory(name).newThread(new Runnable() {
@@ -153,7 +158,7 @@ public class HashWheelTimer implements Timer {
 			}
 		});
 
-		this.executor = exec;
+
 		this.start();
 	}
 

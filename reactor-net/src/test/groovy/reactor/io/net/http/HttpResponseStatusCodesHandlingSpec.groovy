@@ -53,6 +53,7 @@ public class HttpResponseStatusCodesHandlingSpec extends Specification {
                             replyReceived = s
                         }
             }
+            .next()
             .onError {
                 //something failed during the request or the reply processing
                 println "Failed requesting server: $it"

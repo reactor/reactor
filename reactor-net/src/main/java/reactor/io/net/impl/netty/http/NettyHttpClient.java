@@ -25,7 +25,11 @@ import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.Publishers;
+import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.Assert;
+import reactor.fn.BiConsumer;
+import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
@@ -61,7 +65,6 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	private final static Logger log = LoggerFactory.getLogger(NettyHttpClient.class);
 
 	private final NettyTcpClient<IN, OUT>            client;
-	private final Promise<NettyHttpChannel<IN, OUT>> reply;
 
 	private URI lastURI = null;
 
@@ -135,8 +138,6 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 				}
 			}
 		};
-
-		this.reply = Promises.ready();
 	}
 
 	@Override
@@ -164,7 +165,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	}
 
 	@Override
-	public Promise<? extends HttpChannel<IN, OUT>> request(final Method method, final String url,
+	public Stream<? extends HttpChannel<IN, OUT>> request(final Method method, final String url,
 	                                                       final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
 			                                                       handler) {
 		final URI currentURI;
@@ -173,37 +174,50 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 			currentURI = parseURL(method, url);
 			lastURI = currentURI;
 		}catch(Exception e){
-			return Promises.error(e);
+			return Streams.fail(e);
 		}
 
-		start(new ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>() {
+		return Streams.wrap(Publishers.createWithDemand(new BiConsumer<Long, SubscriberWithContext<HttpChannel<IN, OUT>,  Void>>() {
 			@Override
-			public Publisher<Void> apply(HttpChannel<IN, OUT> inoutHttpChannel) {
-				try {
-					final NettyHttpChannel<IN, OUT> ch = ((NettyHttpChannel<IN, OUT>) inoutHttpChannel);
-					ch.getNettyRequest()
-							.setUri(currentURI.getPath() + (currentURI.getQuery() == null ? "" : "?" + currentURI.getQuery()))
-							.setMethod(new HttpMethod(method.getName()))
-							.headers()
-								.add(HttpHeaders.Names.HOST, currentURI.getHost())
-								.add(HttpHeaders.Names.ACCEPT, "*/*");
+			public void accept(Long n, final SubscriberWithContext<HttpChannel<IN, OUT>, Void> subscriber) {
+				if (started.get()) return;
+				start(new ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>() {
+					@Override
+					public Publisher<Void> apply(HttpChannel<IN, OUT> inoutHttpChannel) {
+						try {
+							final NettyHttpChannel<IN, OUT> ch = ((NettyHttpChannel<IN, OUT>) inoutHttpChannel);
+							ch.getNettyRequest()
+							  .setUri(currentURI.getPath() + (currentURI.getQuery() == null ? "" : "?" + currentURI
+								.getQuery()))
+							  .setMethod(new HttpMethod(method.getName()))
+							  .headers()
+							  .add(HttpHeaders.Names.HOST, currentURI.getHost())
+							  .add(HttpHeaders.Names.ACCEPT, "*/*");
 
-					if (handler != null) {
-						Publisher<Void> p = handler.apply(ch);
-						reply.onNext(ch);
-						return p;
-					} else {
-						reply.onNext(ch);
-						return Streams.empty();
+							if (handler != null) {
+								Publisher<Void> p = handler.apply(ch);
+								subscriber.onNext(ch);
+								subscriber.onComplete();
+								return p;
+							} else {
+								subscriber.onNext(ch);
+								subscriber.onComplete();
+								return Streams.empty();
+							}
+						} catch (Throwable t) {
+							subscriber.onError(t);
+							return Promises.error(t);
+						}
 					}
-				} catch (Throwable t) {
-					reply.onError(t);
-					return Promises.error(t);
-				}
-			}
 
-		});
-		return reply;
+				}).onError(new Consumer<Throwable>() {
+					@Override
+					public void accept(Throwable throwable) {
+						subscriber.onError(throwable);
+					}
+				});
+			}
+		}));
 	}
 
 	private URI parseURL(Method method, String url) throws Exception{

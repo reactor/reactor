@@ -547,6 +547,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	}
 
 	private final SequenceBarrier              barrier;
+	private final int              prefetch;
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 	private final Sequence                     recentSequence;
 
@@ -593,6 +594,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			);
 		}
 
+		this.prefetch = bufferSize / 2;
 		this.recentSequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
 		this.barrier = ringBuffer.newBarrier();
 		//ringBuffer.addGatingSequences(recentSequence);
@@ -642,10 +644,28 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		}
 	}
 
+	int current = 0;
+
 	@Override
-	public void onNext(E o) {
+	 public void onNext(E o) {
 		super.onNext(o);
 		RingBufferSubscriberUtils.onNext(o, ringBuffer);
+
+		Subscription upstream = upstreamSubscription;
+		if(
+		  upstream != SignalType.NOOP_SUBSCRIPTION &&
+		    upstream != null &&
+		  ++current == prefetch ){
+			current = 0;
+			upstream.request(prefetch );
+		}
+	}
+
+	@Override
+	public void onSubscribe(Subscription s) {
+		super.onSubscribe(s);
+		current = -prefetch / 2;
+		s.request(getCapacity() - 1);
 	}
 
 	@Override
@@ -719,32 +739,6 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			if (pendingRequest.addAndGet(n) < 0) {
 				pendingRequest.set(Long.MAX_VALUE);
 			}
-			//buffered data in producer unpublished
-			final long currentSequence = eventProcessor.nextSequence;
-			final long cursor = ringBuffer.getCursor();
-
-			//if the current subscriber sequence behind ringBuffer cursor, count the distance from the next slot to
-			// the end
-			final long buffered = currentSequence < cursor
-			  ? cursor - (currentSequence == Sequencer.INITIAL_CURSOR_VALUE
-			  ? currentSequence + 1l
-			  : currentSequence)
-			  : 0l;
-
-			final long toRequest;
-			if (buffered > 0l) {
-				toRequest = (n - buffered) < 0l ? 0 : n - buffered;
-			} else {
-				toRequest = n;
-			}
-
-			if (toRequest > 0l) {
-				Subscription parent = upstreamSubscription;
-				if (parent != null) {
-					parent.request(toRequest);
-				}
-			}
-
 		}
 
 		@Override

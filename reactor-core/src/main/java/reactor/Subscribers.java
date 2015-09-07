@@ -15,12 +15,11 @@
  */
 package reactor;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.SubscriberFactory;
+import reactor.core.support.SignalType;
 
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -85,7 +84,7 @@ public final class Subscribers extends SubscriberFactory {
 	 * @return
 	 */
 	public static <I, E extends Subscriber<I>> E start(E subscriber) {
-		subscriber.onSubscribe(BaseSubscriber.NOOP_SUBSCRIPTION);
+		subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 		return subscriber;
 	}
 }

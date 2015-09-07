@@ -248,19 +248,6 @@ public abstract class PublisherFactory {
 	}
 
 	/**
-	 * A singleton noop subscription
-	 */
-	protected static final Subscription NOOP_SUBSCRIPTION = new Subscription() {
-		@Override
-		public void request(long n) {
-		}
-
-		@Override
-		public void cancel() {
-		}
-	};
-
-	/**
 	 * Check if the subscription is bound to a Publisher.
 	 *
 	 * @param subscription the sub to check

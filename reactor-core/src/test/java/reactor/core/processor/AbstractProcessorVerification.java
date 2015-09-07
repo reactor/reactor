@@ -47,11 +47,6 @@ public abstract class AbstractProcessorVerification extends org.reactivestreams.
 	}
 
 	@Override
-	public boolean skipStochasticTests() {
-		return true;
-	}
-
-	@Override
 	public ExecutorService publisherExecutorService() {
 		return executorService;
 	}

@@ -2762,8 +2762,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 					}
 
 					@Override
-					protected void doShutdown() {
-						//IGNORE
+					public void cancel() {
+						//ignore
 					}
 				};
 			}

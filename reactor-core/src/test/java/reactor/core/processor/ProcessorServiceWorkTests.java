@@ -36,6 +36,7 @@ public class ProcessorServiceWorkTests extends AbstractProcessorVerification {
 	}
 
 
+
 	@Override
 	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws
 	  Throwable {

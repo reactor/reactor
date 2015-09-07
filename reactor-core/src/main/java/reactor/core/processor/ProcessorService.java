@@ -484,7 +484,7 @@ public class ProcessorService<T> implements Supplier<Processor<T, T>>, Resource 
 			}
 
 			for (int i = 0; i < concurrency; i++) {
-				this.processor.onSubscribe(BaseSubscriber.NOOP_SUBSCRIPTION);
+				this.processor.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 				this.processor.subscribe(new TaskSubscriber(uncaughtExceptionHandler, shutdownHandler));
 			}
 

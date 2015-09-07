@@ -23,7 +23,7 @@ import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.ReactorClient;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.http.model.Method;
-import reactor.rx.Promise;
+import reactor.rx.Stream;
 
 /**
  * The base class for a Reactor-based Http client.
@@ -48,9 +48,9 @@ public abstract class HttpClient<IN, OUT>
 	 *
 	 * @param url     the target remote URL
 	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
 	 */
-	public final Promise<? extends HttpChannel<IN, OUT>> get(String url,
+	public final Stream<? extends HttpChannel<IN, OUT>> get(String url,
 	                                                         final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
 	                                                           handler) {
 		return request(Method.GET, url, handler);
@@ -61,9 +61,9 @@ public abstract class HttpClient<IN, OUT>
 	 * HTTP GET the passed URL.
 	 *
 	 * @param url the target remote URL
-	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
 	 */
-	public final Promise<? extends HttpChannel<IN, OUT>> get(String url) {
+	public final Stream<? extends HttpChannel<IN, OUT>> get(String url) {
 
 		return request(Method.GET, url, null);
 	}
@@ -74,9 +74,9 @@ public abstract class HttpClient<IN, OUT>
 	 *
 	 * @param url     the target remote URL
 	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
 	 */
-	public final Promise<? extends HttpChannel<IN, OUT>> post(String url,
+	public final Stream<? extends HttpChannel<IN, OUT>> post(String url,
 	                                                          final ReactorChannelHandler<IN, OUT, HttpChannel<IN,
 	                                                            OUT>>
 	                                                            handler) {
@@ -90,9 +90,9 @@ public abstract class HttpClient<IN, OUT>
 	 *
 	 * @param url     the target remote URL
 	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
 	 */
-	public final Promise<? extends HttpChannel<IN, OUT>> put(String url,
+	public final Stream<? extends HttpChannel<IN, OUT>> put(String url,
 	                                                         final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
 	                                                           handler) {
 		return request(Method.PUT, url, handler);
@@ -105,9 +105,9 @@ public abstract class HttpClient<IN, OUT>
 	 *
 	 * @param url     the target remote URL
 	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
 	 */
-	public final Promise<? extends HttpChannel<IN, OUT>> delete(String url,
+	public final Stream<? extends HttpChannel<IN, OUT>> delete(String url,
 	                                                            final ReactorChannelHandler<IN, OUT, HttpChannel<IN,
 	                                                              OUT>> handler) {
 		return request(Method.DELETE, url, handler);
@@ -119,9 +119,9 @@ public abstract class HttpClient<IN, OUT>
 	 * precisely the request and write data to it.
 	 *
 	 * @param url the target remote URL
-	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
 	 */
-	public final Promise<? extends HttpChannel<IN, OUT>> delete(String url) {
+	public final Stream<? extends HttpChannel<IN, OUT>> delete(String url) {
 		return request(Method.DELETE, url, null);
 	}
 
@@ -129,9 +129,9 @@ public abstract class HttpClient<IN, OUT>
 	 * WebSocket to the passed URL.
 	 *
 	 * @param url the target remote URL
-	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
 	 */
-	public final Promise<? extends HttpChannel<IN, OUT>> ws(String url) {
+	public final Stream<? extends HttpChannel<IN, OUT>> ws(String url) {
 		return request(Method.WS, url, null);
 	}
 
@@ -143,9 +143,9 @@ public abstract class HttpClient<IN, OUT>
 	 *
 	 * @param url     the target remote URL
 	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
 	 */
-	public final Promise<? extends HttpChannel<IN, OUT>> ws(String url,
+	public final Stream<? extends HttpChannel<IN, OUT>> ws(String url,
 	                                                        final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
 	                                                          handler) {
 		return request(Method.WS, url, handler);
@@ -159,9 +159,9 @@ public abstract class HttpClient<IN, OUT>
 	 * @param method  the HTTP method to send
 	 * @param url     the target remote URL
 	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Promise} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
 	 */
-	public abstract Promise<? extends HttpChannel<IN, OUT>> request(Method method, String url,
+	public abstract Stream<? extends HttpChannel<IN, OUT>> request(Method method, String url,
 	                                                                final ReactorChannelHandler<IN, OUT,
 	                                                                  HttpChannel<IN,
 	                                                                  OUT>> handler);

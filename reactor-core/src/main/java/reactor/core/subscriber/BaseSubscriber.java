@@ -18,6 +18,7 @@ package reactor.core.subscriber;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.support.SignalType;
 
 /**
  * Convenience subscriber base class that checks for input errors and provide a self-subscription operation.
@@ -26,19 +27,6 @@ import reactor.core.error.SpecificationExceptions;
  * @since 2.1
  */
 public class BaseSubscriber<T> implements Subscriber<T> {
-
-	/**
-	 * A singleton noop subscription
-	 */
-	public static final Subscription NOOP_SUBSCRIPTION = new Subscription() {
-		@Override
-		public void request(long n) {
-		}
-
-		@Override
-		public void cancel() {
-		}
-	};
 
 	/**
 	 * Trigger onSubscribe with a stateless subscription to signal this subscriber it can start receiving
@@ -50,7 +38,7 @@ public class BaseSubscriber<T> implements Subscriber<T> {
 	 * Note that {@link org.reactivestreams.Processor} can extend this behavior to effectively start its subscribers.
 	 */
 	public BaseSubscriber<T> start() {
-		onSubscribe(NOOP_SUBSCRIPTION);
+		onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 		return this;
 	}
 

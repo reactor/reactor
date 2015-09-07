@@ -172,6 +172,21 @@ public class Streams {
 	 * @param <T>       the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}
 	 */
+	public static <T> Stream<T> create(final Publisher<T> publisher) {
+		return wrap(publisher);
+	}
+
+	/**
+	 * A simple decoration of the given {@link Publisher} to expose {@link Stream} API and proxy any subscribe call to
+	 * the publisher.
+	 * The Publisher has to first call onSubscribe and receive a subscription request callback before any onNext
+	 * call or
+	 * will risk loosing events.
+	 *
+	 * @param publisher the publisher to decorate the Stream subscriber
+	 * @param <T>       the type of values passing through the {@literal Stream}
+	 * @return a new {@link reactor.rx.Stream}
+	 */
 	public static <T> Stream<T> wrap(final Publisher<T> publisher) {
 		if (Stream.class.isAssignableFrom(publisher.getClass())) {
 			return (Stream<T>) publisher;
