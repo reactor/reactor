@@ -547,9 +547,10 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	}
 
 	private final SequenceBarrier              barrier;
-	private final int              prefetch;
+	private final int                          prefetch;
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
-	private final Sequence                     recentSequence;
+	private final Sequence                     read;
+	private final Sequence                     minimum;
 
 	private RingBufferProcessor(String name,
 	                            ExecutorService executor,
@@ -560,7 +561,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	                            final Supplier<E> signalSupplier) {
 		super(name, executor, autoCancel);
 
-		Supplier<MutableSignal<E>> factory =  new Supplier<MutableSignal<E>>() {
+		Supplier<MutableSignal<E>> factory = new Supplier<MutableSignal<E>>() {
 			@Override
 			public MutableSignal<E> get() {
 				MutableSignal<E> signal = new MutableSignal<>();
@@ -571,21 +572,22 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			}
 		};
 
-		Consumer<Void> spinObserver = new Consumer<Void>(){
+		Consumer<Void> spinObserver = new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
-				if(!alive()) throw CancelException.get();
+				if (!alive()) throw CancelException.get();
 			}
 		};
 
-		if(shared) {
+		if (shared) {
 			this.ringBuffer = RingBuffer.createMultiProducer(
 			  factory,
 			  bufferSize,
 			  waitStrategy,
 			  spinObserver
 			);
-		}else{
+			onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+		} else {
 			this.ringBuffer = RingBuffer.createSingleProducer(
 			  factory,
 			  bufferSize,
@@ -595,9 +597,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		}
 
 		this.prefetch = bufferSize / 2;
-		this.recentSequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+		this.read = new Sequence(bufferSize);
+		this.minimum = new Sequence(-1);
 		this.barrier = ringBuffer.newBarrier();
-		//ringBuffer.addGatingSequences(recentSequence);
 	}
 
 	@Override
@@ -618,15 +620,15 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 		//if only active subscriber, replay missed data
 		if (incrementSubscribers()) {
-			ringBuffer.addGatingSequences(signalProcessor.getSequence());
 
 			//set eventProcessor sequence to minimum index (replay)
-			signalProcessor.getSequence().set(recentSequence.get());
+
+			signalProcessor.getSequence().set(minimum.get());
+			ringBuffer.addGatingSequences(signalProcessor.getSequence());
 		} else {
 			//otherwise only listen to new data
 			//set eventProcessor sequence to ringbuffer index
 			signalProcessor.getSequence().set(ringBuffer.getCursor());
-			signalProcessor.nextSequence = signalProcessor.getSequence().get();
 
 			ringBuffer.addGatingSequences(signalProcessor.getSequence());
 		}
@@ -644,28 +646,18 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		}
 	}
 
-	int current = 0;
-
 	@Override
-	 public void onNext(E o) {
-		super.onNext(o);
-		RingBufferSubscriberUtils.onNext(o, ringBuffer);
-
-		Subscription upstream = upstreamSubscription;
-		if(
-		  upstream != SignalType.NOOP_SUBSCRIPTION &&
-		    upstream != null &&
-		  ++current == prefetch ){
-			current = 0;
-			upstream.request(prefetch );
+	public void onSubscribe(Subscription s) {
+		super.onSubscribe(s);
+		if(s != SignalType.NOOP_SUBSCRIPTION){
+			ringBuffer.addGatingSequences(minimum);
 		}
 	}
 
 	@Override
-	public void onSubscribe(Subscription s) {
-		super.onSubscribe(s);
-		current = -prefetch / 2;
-		s.request(getCapacity() - 1);
+	public void onNext(E o) {
+		super.onNext(o);
+		RingBufferSubscriberUtils.onNext(o, ringBuffer);
 	}
 
 	@Override
@@ -764,7 +756,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	/**
 	 * Disruptor BatchEventProcessor port that deals with pending demand.
 	 * <p>
-	 * Convenience class for handling the batching semantics of consuming entries from a {@link reactor.core.processor.rb.disruptor
+	 * Convenience class for handling the batching semantics of consuming entries from a {@link reactor.core.processor
+	 * .rb.disruptor
 	 * .RingBuffer}.
 	 * <p>
 	 *
@@ -781,7 +774,6 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		private final Subscriber<? super T>  subscriber;
 
 		private Subscription subscription;
-		long nextSequence = -1l;
 
 		/**
 		 * Construct a ringbuffer consumer that will automatically track the
@@ -838,7 +830,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 				}
 
 				MutableSignal<T> event = null;
-				nextSequence = sequence.get() + 1L;
+				long nextSequence = sequence.get() + 1L;
 
 				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
 				  pendingRequest, processor.ringBuffer, processor.barrier, subscriber, running
@@ -847,6 +839,22 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 				}
 
 				final boolean unbounded = pendingRequest.get() == Long.MAX_VALUE;
+
+				Subscription upstream;
+				while((upstream = processor.upstreamSubscription) == null){
+					if(!running.get()) throw CancelException.INSTANCE;
+					LockSupport.parkNanos(1L);
+				}
+
+				final Subscription parent = upstream;
+
+				if(SignalType.NOOP_SUBSCRIPTION != parent) {
+					if (processor.read.compareAndSet(processor.getCapacity(), 0)) {
+						parent.request(processor.getCapacity() - 1);
+					}
+				}
+
+				long lastRead = 0l;
 				while (true) {
 					try {
 						final long availableSequence = processor.barrier.waitFor(nextSequence);
@@ -872,6 +880,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 								//It's an unbounded subscriber or there is enough capacity to process the signal
 								RingBufferSubscriberUtils.route(event, subscriber);
 								nextSequence++;
+								if(parent != SignalType.NOOP_SUBSCRIPTION){
+									lastRead = processor.read.incrementAndGet();
+								}
 							} else {
 								//Complete or Error are terminal events, we shutdown the processor and process the
 								// signal
@@ -884,22 +895,28 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 								throw AlertException.INSTANCE;
 							}
 						}
-						//processor.recentSequence.compareAndSet(sequence.get(), availableSequence);
 						sequence.set(availableSequence);
+						if(parent != SignalType.NOOP_SUBSCRIPTION &&
+						  lastRead >= processor.prefetch){
+							if(processor.read.compareAndSet(lastRead, 0)){
+								processor.minimum.set(availableSequence);
+								parent.request(processor.prefetch);
+							}
+						}
+
 					} catch (final AlertException | CancelException ex) {
 						if (!running.get()) {
 							break;
 						} else {
 							long cursor = processor.barrier.getCursor();
 							if (processor.ringBuffer.get(cursor).type == SignalType.ERROR) {
-								sequence.set(cursor);
 								nextSequence = cursor;
-							} else {
-								sequence.set(cursor - 1l);
 							}
+							nextSequence = nextSequence - 1;
 							processor.barrier.clearAlert();
 						}
 					} catch (final Throwable ex) {
+						Exceptions.throwIfFatal(ex);
 						subscriber.onError(ex);
 						sequence.set(nextSequence);
 						nextSequence++;

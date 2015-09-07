@@ -57,7 +57,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 				  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 			  )
 			  .process(Processors.async("stream-raw-join", bufferSize))
-			  .when(Throwable.class, Throwable::printStackTrace)
+		      .when(Throwable.class, Throwable::printStackTrace)
 		  );
 	}
 

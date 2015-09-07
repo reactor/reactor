@@ -406,6 +406,18 @@ public final class RingBuffer<E> extends RingBufferFields<E>
     }
 
     /**
+     * Get the current cursor value for the ring buffer.  The actual value recieved
+     * will depend on the type of {@link Sequencer} that is being used.
+     *
+     * @see MultiProducerSequencer
+     * @see SingleProducerSequencer
+     */
+    public Sequence getSequence()
+    {
+        return sequencer.getSequence();
+    }
+
+    /**
      * The size of the buffer.
      */
     public int getBufferSize()

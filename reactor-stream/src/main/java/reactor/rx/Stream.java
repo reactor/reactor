@@ -2533,7 +2533,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			public Action<O, Long> get() {
 				return new CountAction<O>(i);
 			}
-		});
+		}).last();
 	}
 
 	/**

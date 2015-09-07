@@ -516,10 +516,10 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void konamiCode() throws InterruptedException {
-		final Processor<Integer, Integer> keyboardStream = RingBufferProcessor.create();
+		final RingBufferProcessor<Integer> keyboardStream = RingBufferProcessor.create();
 
 		Promise<List<Boolean>> konamis = Streams
-		  .wrap(keyboardStream)
+		  .wrap(keyboardStream.start())
 		  .skipWhile(key -> KeyEvent.VK_UP != key)
 		  .buffer(10, 1)
 		  .map(keys -> keys.size() == 10 &&
@@ -1263,7 +1263,7 @@ public class StreamTests extends AbstractReactorTest {
 			.groupBy(n -> n % 2 == 0)
 			.flatMap(stream -> stream
 				.run(supplier1)
-				.log("groupBy-"+stream.key())
+				.log("groupBy-" + stream.key())
 			)
 			.partition(5)
 			.flatMap(stream -> stream

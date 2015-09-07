@@ -124,6 +124,7 @@ class ProcessorsSpec extends Specification {
 			latch = new CountDownLatch(elems)
 			bc = RingBufferProcessor.<String> create(executorService)
 			bc.subscribe(sub('spec2', latch))
+			bc.start()
 
 			elems.times {
 				bc.onNext 'hello ' + it

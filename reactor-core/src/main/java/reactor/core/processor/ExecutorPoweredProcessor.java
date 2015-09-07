@@ -36,24 +36,15 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {
 		super(
 		  executor == null ?
-		  new ClassLoader(Thread.currentThread().getContextClassLoader()) {} :
-		  null,
+			new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+			} :
+			null,
 		  autoCancel);
 		if (executor == null) {
 			this.executor = SingleUseExecutor.create(name, contextClassLoader);
 		} else {
 			this.executor = executor;
 		}
-	}
-
-	@Override
-	public void onComplete() {
-		super.onComplete();
-	}
-
-	@Override
-	public void onError(Throwable error) {
-		super.onError(error);
 	}
 
 	@Override
@@ -76,6 +67,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	protected int decrementSubscribers() {
 		int subs = super.decrementSubscribers();
 		if (autoCancel && upstreamSubscription == null && subs == 0 && executor.getClass() == SingleUseExecutor.class) {
+			this.upstreamSubscription = null;
 			executor.shutdown();
 		}
 		return subs;

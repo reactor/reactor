@@ -503,7 +503,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 
-	private final int prefetch;
+	private final Sequence read;
+	private final int      prefetch;
 
 	private RingBufferWorkProcessor(String name,
 	                                ExecutorService executor,
@@ -533,6 +534,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			  waitStrategy,
 			  spinObserver
 			);
+			onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 		} else {
 			this.ringBuffer = RingBuffer.createSingleProducer(
 			  factory,
@@ -542,7 +544,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			);
 		}
 		prefetch = bufferSize / 2;
-	    ringBuffer.addGatingSequences(workSequence);
+		read = new Sequence(bufferSize);
+		ringBuffer.addGatingSequences(workSequence);
 
 	}
 
@@ -576,28 +579,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		}
 	}
 
-	int current = 0;
-
 	@Override
 	public void onNext(E o) {
 		super.onNext(o);
 		RingBufferSubscriberUtils.onNext(o, ringBuffer);
-
-		Subscription upstream = upstreamSubscription;
-		if(
-		  upstream != SignalType.NOOP_SUBSCRIPTION &&
-		    upstream != null &&
-		  ++current == prefetch ){
-			current = 0;
-			upstream.request(prefetch );
-		}
-	}
-
-	@Override
-	public void onSubscribe(Subscription s) {
-		super.onSubscribe(s);
-		current = -prefetch / 2;
-		s.request(getCapacity() - 1);
 	}
 
 	@Override
@@ -789,6 +774,21 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 				barrier.clearAlert();
 
+				Subscription upstream;
+				while ((upstream = processor.upstreamSubscription) == null) {
+					if(!running.get()) throw CancelException.INSTANCE;
+					LockSupport.parkNanos(1L);
+				}
+
+				final Subscription parent = upstream;
+
+				if (SignalType.NOOP_SUBSCRIPTION != parent) {
+					if (processor.read.compareAndSet(processor.getCapacity(), 0)) {
+						parent.request(processor.getCapacity() - 1);
+					}
+				}
+
+				long lastRead;
 				while (true) {
 					try {
 						// if previous sequence was processed - fetch the next sequence and set
@@ -812,6 +812,13 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 							//It's an unbounded subscriber or there is enough capacity to process the signal
 							RingBufferSubscriberUtils.routeOnce(event, subscriber);
+
+							if(parent != SignalType.NOOP_SUBSCRIPTION &&
+							  (lastRead = processor.read.incrementAndGet()) >= processor.prefetch){
+								if(processor.read.compareAndSet(lastRead, 0)){
+									parent.request(processor.prefetch);
+								}
+							}
 
 							processedSequence = true;
 

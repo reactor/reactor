@@ -38,7 +38,7 @@ public class CountAction<T> extends Action<T, Long> {
 	@Override
 	public void subscribe(final Subscriber<? super Long> subscriber) {
 		PushSubscription<T> sub = upstreamSubscription;
-		if(sub != null && sub.isComplete()){
+		if (sub != null && sub.isComplete()) {
 			subscriber.onSubscribe(new Subscription() {
 				@Override
 				public void request(long n) {
@@ -50,7 +50,7 @@ public class CountAction<T> extends Action<T, Long> {
 				public void cancel() {
 				}
 			});
-		}else{
+		} else {
 			super.subscribe(subscriber);
 
 		}
@@ -58,15 +58,6 @@ public class CountAction<T> extends Action<T, Long> {
 
 	@Override
 	protected void doNext(T value) {
-		long counter = this.counter.incrementAndGet();
-		if (i != null && counter % i == 0l) {
-			broadcastNext(counter);
-		}
-	}
-
-	@Override
-	protected void doComplete() {
-		broadcastNext(counter.get());
-		super.doComplete();
+		broadcastNext(counter.incrementAndGet());
 	}
 }
