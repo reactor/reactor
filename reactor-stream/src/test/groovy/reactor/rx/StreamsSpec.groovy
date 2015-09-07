@@ -2469,7 +2469,7 @@ class StreamsSpec extends Specification {
 					.requestWhen {
 				it
 						.flatMap { v ->
-					Streams.period(avgTime, TimeUnit.MILLISECONDS).map { 1l }.take(v)
+					Streams.timer(avgTime, TimeUnit.MILLISECONDS).map { 1l }
 				}
 			}
 			.elapsed()

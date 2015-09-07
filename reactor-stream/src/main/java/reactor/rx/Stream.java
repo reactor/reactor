@@ -2519,7 +2519,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Count accepted events for each batch and pass each accumulated long to the {@param stream}.
 	 */
 	public final Stream<Long> count() {
-		return count(getCapacity());
+		return count(Long.MAX_VALUE);
 	}
 
 	/**
@@ -2528,7 +2528,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream}
 	 */
 	public final Stream<Long> count(final long i) {
-		return liftAction(new Supplier<Action<O, Long>>() {
+		Stream<O> thiz = i != Long.MAX_VALUE ? take(i) : this;
+
+		return thiz.liftAction(new Supplier<Action<O, Long>>() {
 			@Override
 			public Action<O, Long> get() {
 				return new CountAction<O>(i);
