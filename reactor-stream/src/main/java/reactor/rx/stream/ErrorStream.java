@@ -18,6 +18,7 @@ package reactor.rx.stream;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.support.SignalType;
 import reactor.rx.Stream;
 
 /**
@@ -47,16 +48,6 @@ import reactor.rx.Stream;
  */
 public final class ErrorStream<O, T extends Throwable> extends Stream<O> {
 
-	final static private Subscription ERROR_SUB = new Subscription() {
-		@Override
-		public void request(long n) {
-		}
-
-		@Override
-		public void cancel() {
-		}
-	};
-
 	final private T error;
 
 	public ErrorStream(T value) {
@@ -71,7 +62,7 @@ public final class ErrorStream<O, T extends Throwable> extends Stream<O> {
 	@Override
 	public void subscribe(final Subscriber<? super O> s) {
 		try {
-			s.onSubscribe(ERROR_SUB);
+			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 		} catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			s.onError(throwable);

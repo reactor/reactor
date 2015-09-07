@@ -275,8 +275,9 @@ public class ClientServerHttpTests {
 
 		return httpClient.get("/data")
 		  .flatMap(s ->
-			  s.log("client").toList()
-		  );
+			  s.log("client")
+		  )
+		  .toList();
 	}
 
 	private List<List<String>> getClientDatas(int threadCount, Sender sender, int count) throws Exception {

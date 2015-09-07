@@ -18,6 +18,7 @@ package reactor.core.error;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.SignalType;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -167,24 +168,11 @@ public final class Exceptions {
 				if(s == null){
 					throw SpecificationExceptions.spec_2_13_exception();
 				}
-				s.onSubscribe(ERROR_SUBSCRIPTION);
+				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 				s.onError(error);
 			}
 		};
 	}
-
-	/**
-	 * A singleton noop subscription
-	 */
-	public static final Subscription ERROR_SUBSCRIPTION = new Subscription() {
-		@Override
-		public void request(long n) {
-		}
-
-		@Override
-		public void cancel() {
-		}
-	};
 
 	/**
 	 * Represents an error that was encountered while trying to emit an item from an Observable, and

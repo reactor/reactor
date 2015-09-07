@@ -27,6 +27,10 @@ public class GlobalTimer extends HashWheelTimer {
 
 	private static final AtomicReference<GlobalTimer> globalTimer = new AtomicReference<>();
 
+	public GlobalTimer() {
+		super("global-timer", 50, DEFAULT_WHEEL_SIZE, new SleepWait(), null);
+	}
+
 	private void _cancel() {
 		super.cancel();
 	}

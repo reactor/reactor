@@ -38,7 +38,7 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
-	public static final int SMALL_BUFFER_SIZE  = 32;
+	public static final int SMALL_BUFFER_SIZE  = 256;
 	public static final int MEDIUM_BUFFER_SIZE = 8192;
 	public static final int CANCEL_TIMEOUT     =
 	  Integer.parseInt(System.getProperty("reactor.processor.cancel.timeout", "3"));

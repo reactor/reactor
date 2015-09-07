@@ -318,14 +318,12 @@ public class TcpClientTests {
 
 		client.start(connection -> {
 			  connection.on()
-				.writeIdle(500, v -> {
-					latch.countDown();
-				});
+				.writeIdle(500, v -> latch.countDown());
 
 			  List<Publisher<Void>> allWrites = new ArrayList<>();
 			  for (int i = 0; i < 5; i++) {
-				  allWrites.add(connection.writeBufferWith(Streams.just(Buffer.wrap("a")).throttle(500)
-				    .run(Processors.asyncService("testIdle"))));
+				  allWrites.add(connection.writeBufferWith(Streams.just(Buffer.wrap("a"))
+				    .throttle(750)));
 			  }
 			  return Streams.merge(allWrites);
 		  }

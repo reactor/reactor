@@ -503,6 +503,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 
+	private final int prefetch;
+
 	private RingBufferWorkProcessor(String name,
 	                                ExecutorService executor,
 	                                int bufferSize,
@@ -539,7 +541,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			  spinObserver
 			);
 		}
-		ringBuffer.addGatingSequences(workSequence);
+		prefetch = bufferSize / 2;
+	    ringBuffer.addGatingSequences(workSequence);
 
 	}
 
@@ -573,10 +576,28 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		}
 	}
 
+	int current = 0;
+
 	@Override
 	public void onNext(E o) {
 		super.onNext(o);
 		RingBufferSubscriberUtils.onNext(o, ringBuffer);
+
+		Subscription upstream = upstreamSubscription;
+		if(
+		  upstream != SignalType.NOOP_SUBSCRIPTION &&
+		    upstream != null &&
+		  ++current == prefetch ){
+			current = 0;
+			upstream.request(prefetch );
+		}
+	}
+
+	@Override
+	public void onSubscribe(Subscription s) {
+		super.onSubscribe(s);
+		current = -prefetch / 2;
+		s.request(getCapacity() - 1);
 	}
 
 	@Override
@@ -638,11 +659,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 			if (eventProcessor.pendingRequest.addAndGet(n) < 0) {
 				eventProcessor.pendingRequest.set(Long.MAX_VALUE);
-			}
-
-			final Subscription parent = upstreamSubscription;
-			if (parent != null) {
-				parent.request(n);
 			}
 		}
 

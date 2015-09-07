@@ -24,6 +24,7 @@ import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolineOperator;
 import reactor.core.subscriber.Tap;
 import reactor.core.subscriber.BlockingQueueSubscriber;
+import reactor.core.support.SignalType;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 
@@ -54,7 +55,7 @@ public final class Publishers extends PublisherFactory {
 		return new Publisher<IN>() {
 			@Override
 			public void subscribe(Subscriber<? super IN> s) {
-				s.onSubscribe(NOOP_SUBSCRIPTION);
+				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 				s.onComplete();
 			}
 		};

@@ -79,8 +79,9 @@ class HttpSpec extends Specification {
 				//successful request, listen for the first returned next reply and pass it downstream
 				replies
 						.log('client-received')
-						.next()
-			}.onError {
+			}
+			.next()
+			.onError {
 				//something failed during the request or the reply processing
 				println "Failed requesting server: $it"
 			}
@@ -150,8 +151,8 @@ class HttpSpec extends Specification {
 				//successful handshake, listen for the first returned next replies and pass it downstream
 				replies
 						.log('client-received')
-						.toList(1000)
-			}.onError {
+			}.toList(1000)
+			.onError {
 				//something failed during the request or the reply processing
 				println "Failed requesting server: $it"
 			}

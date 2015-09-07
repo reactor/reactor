@@ -49,17 +49,11 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	@Override
 	public void onComplete() {
 		super.onComplete();
-		if (executor.getClass() == SingleUseExecutor.class) {
-			executor.shutdown();
-		}
 	}
 
 	@Override
 	public void onError(Throwable error) {
 		super.onError(error);
-		if (executor.getClass() == SingleUseExecutor.class) {
-			executor.shutdown();
-		}
 	}
 
 	@Override
