@@ -17,6 +17,7 @@ package reactor.aeron.processor;
 
 import org.reactivestreams.Subscription;
 import reactor.core.subscriber.BaseSubscriber;
+import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 
 import java.util.ArrayList;
@@ -32,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class StepByStepTestSubscriber extends BaseSubscriber<Buffer> {
 
-    private Subscription subscription;
+    private volatile Subscription subscription;
 
     private final AtomicInteger numNextSignalsReceived = new AtomicInteger(0);
 
@@ -76,7 +77,11 @@ public class StepByStepTestSubscriber extends BaseSubscriber<Buffer> {
         errorLatch.countDown();
     }
 
-    public void request(int n) {
+    public void request(int n) throws InterruptedException {
+        TestUtils.waitForTrue(timeoutSecs,
+                String.format("onSubscribe wasn't called within %d secs", timeoutSecs),
+                () -> subscription != null);
+
         subscription.request(n);
     }
 
@@ -103,18 +108,16 @@ public class StepByStepTestSubscriber extends BaseSubscriber<Buffer> {
     }
 
     public void assertNumNextSignalsReceived(int n) throws InterruptedException {
-        long startTime = System.nanoTime();
-        do {
-            if (numNextSignalsReceived.get() == n) {
-                Thread.sleep(250);
-                if (numNextSignalsReceived.get() == n) {
-                    return;
-                }
-            }
-            Thread.sleep(100);
-        } while (TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime) < 1);
-        throw new AssertionError(
-                String.format("%d out of %d Next signals received during 1 sec", numNextSignalsReceived.get(), n));
+        Supplier<String> errorSupplier = () -> String.format("%d out of %d Next signals received within %d secs",
+                numNextSignalsReceived.get(), n, timeoutSecs);
+
+        TestUtils.waitForTrue(timeoutSecs, errorSupplier, () -> numNextSignalsReceived.get() == n);
+
+        Thread.sleep(250);
+
+        if (numNextSignalsReceived.get() != n) {
+            throw new AssertionError(errorSupplier.get());
+        }
     }
 
     public void assertCompleteReceived() throws InterruptedException {

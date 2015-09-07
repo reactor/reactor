@@ -24,8 +24,7 @@ import reactor.rx.Streams;
 
 import java.util.concurrent.TimeUnit;
 
-import static org.testng.AssertJUnit.assertFalse;
-import static org.testng.AssertJUnit.assertTrue;
+import static org.junit.Assert.assertTrue;
 
 /**
  * @author Anatoly Kadyshev
@@ -67,10 +66,8 @@ public class AeronProcessorMultiTest {
 		mySubscriber.assertErrorReceived();
 		otherSubscriber.assertErrorReceived();
 
-		Thread.sleep(100);
-
-		assertFalse(myProcessor.alive());
-		assertFalse(otherProcessor.alive());
+        TestUtils.waitForTrue(TIMEOUT_SECS, "One of the processors is still alive",
+                () -> !myProcessor.alive() && !otherProcessor.alive());
 	}
 
 	@Test

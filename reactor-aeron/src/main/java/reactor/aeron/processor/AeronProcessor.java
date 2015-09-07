@@ -43,7 +43,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * For more information about Aeron go to
  * <a href="https://github.com/real-logic/Aeron">Aeron Project Home</a>
  *
- * <p>The processor plays roles of both {@link Publisher} and
+ * <p>
+ * The processor plays roles of both {@link Publisher} and
  * {@link Subscriber}<br>
  * <ul>
  * <li>{@link Subscriber} part of the processor called as
@@ -52,9 +53,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <b>'signals receiver'</b> below subscribers for messages published
  * by the sender part.</li>
  * </ul>
- * </p>
  *
- * <p>An instance of the processor is created upon a single Aeron channel of
+ * <p>
+ * An instance of the processor is created upon a single Aeron channel of
  * {@link #channel} and requires 4 <b>different</b> streamIds to function:<br>
  * <ul>
  *     <li>{@link #streamId} - used for sending Next and Complete signals from
@@ -66,9 +67,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *     <li>{@link #commandReplyStreamId} - for command execution results from
  *     the signals sender to the signals receiver</li>
  * </ul>
- * </p>
  *
- * <p>The processor could launch an embedded Media Driver for the application
+ * <p>
+ * The processor could launch an embedded Media Driver for the application
  * if requested via <code>launchEmbeddedMediaDriver</code> parameter during
  * the processor creation via static methods or via
  * {@link Builder#launchEmbeddedMediaDriver(boolean)} when created using the
@@ -78,37 +79,44 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * The launched Media Driver instance is shut down once the last
  * instance of {@link AeronProcessor} is shut down.
  *
- * <p>The processor created via {@link #create(String, boolean, boolean, String, int, int, int, int)}
+ * <p>
+ * The processor created via {@link #create(String, boolean, boolean, String, int, int, int, int)}
  * or {@link Builder#create()} methods respects the Reactive Streams contract
  * and must not be signalled concurrently on any onXXXX methods.<br>
  * Nonetheless Reactor allows creating of a processor which can be used by
  * publishers from different threads. In this case the processor should be
  * created via either {@link #share(String, boolean, boolean, String, int, int, int, int)}
- * or {@link Builder#share()} methods.<br>
+ * or {@link Builder#share()} methods.
  *
- * <p>Each subscriber is assigned a unique thread that stops either on
- * the processor subscription cancellation or upon a terminal event of Complete or Error.
- * </p>
+ * <p>
+ * Each subscriber is assigned a unique thread that stops either on
+ * the processor subscription cancellation or upon a terminal event of Complete or
+ * Error.
  *
- * <p>When auto-cancel is enabled and the last subscriber is unregistered
- * an upstream subscription to the upstream publisher is cancelled.</p>
+ * <p>
+ * When auto-cancel is enabled and the last subscriber is unregistered
+ * an upstream subscription to the upstream publisher is cancelled.
  *
- * <p>The processor could be assigned a custom executor service when is
+ * <p>
+ * The processor could be assigned a custom executor service when is
  * constructed via {@link Builder}. The executor service decides upon threads
- * allocation for the processor subscribers.</p>
+ * allocation for the processor subscribers.
  *
- * <p>When a Subscriber to the processor requests {@link Long#MAX_VALUE} there
+ * <p>
+ * When a Subscriber to the processor requests {@link Long#MAX_VALUE} there
  * won't be any backpressure applied and thread publishing into the processor
  * will run at risk of being throttled if subscribers don't catch up.<br>
  * With any other strictly positive demand a subscriber will stop reading new
  * Next signals (Complete and Error will still be read) as soon as the demand
- * has been fully consumed.</p>
+ * has been fully consumed.
  *
- * <p>When more than 1 subscriber listens to the processor they all receive
+ * <p>
+ * When more than 1 subscriber listens to the processor they all receive
  * the exact same events if their respective demand is still strictly positive,
- * very much like a Fan-Out scenario.</p>
+ * very much like a Fan-Out scenario.
  *
- * <p>When the Aeron buffer for published messages becomes completely full
+ * <p>
+ * When the Aeron buffer for published messages becomes completely full
  * the processor starts to throttle and as a result method
  * {@link #onNext(Buffer)} blocks until messages are consumed or
  * {@link #publicationTimeoutMillis} timeout elapses.<br>
@@ -119,7 +127,40 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * For configuration of Aeron buffers refer to
  * <a href="https://github.com/real-logic/Aeron/wiki/Configuration-Options">Aeron Configuration Options</a>
- * </p>
+ *
+ * <p>
+ * Instances of {@link AeronProcessor} can communicate with each other over a
+ * network.<br>
+ * In this case {@link #channel} should be a multicast channel. For more information
+ * regarding Aeron channels configuration please refer to
+ * <a href="https://github.com/real-logic/Aeron/wiki/Channel-Configuration">Channel Coniguration</a>.
+ * <br>
+ * For example, for a typical client-server application an instance of
+ * the processor called the server and an instance of the processor called the
+ * client are located on different machines. Both the server and the client
+ * are configured with the same multicast channel and streamIds.
+ * In this case a client subscriber requests of {@link Subscription#request(long)}
+ * and {@link Subscription#cancel()} and sent to the server.
+ * The server in its turn invokes them on its upstream subscription and sends
+ * data to the client.<br>
+ * A sample server instance:
+ * <pre>
+ * AeronProcessor server = AeronProcessor.create("server", true, true, "udp://239.1.1.1:12001", 1, 2, 3, 4);
+ * serverSidePublisher.subscribe(server);
+ * </pre>
+ *
+ * And a client instance:
+ * <pre>
+ * AeronProcessor client = AeronProcessor.create("client", true, true, "udp://239.1.1.1:12001", 1, 2, 3, 4);
+ * client.subscribe(clientSideSubscriber);
+ * </pre>
+ *
+ * In the example above when <tt>clientSideSubscriber</tt> calls
+ * {@link Subscription#request(long)} or {@link Subscription#cancel()}
+ * methods on its subscription provided by the processor the calls are sent to
+ * the server instance which invokes them on the upstream subscription provided
+ * by <tt>clientSidePublisher</tt>. As a result data pushed by
+ * <code>clientSidePublisher</code> is sent to the client.
  *
  * @author Anatoly Kadyshev
  */

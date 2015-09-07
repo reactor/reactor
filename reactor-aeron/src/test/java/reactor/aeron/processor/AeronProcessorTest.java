@@ -16,7 +16,6 @@
 package reactor.aeron.processor;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.io.buffer.Buffer;
@@ -93,6 +92,30 @@ public class AeronProcessorTest {
 
 		subscriber.assertAllEventsReceived();
 	}
+
+    @Test
+    public void testCompleteEventIsPropagated() throws InterruptedException {
+        processor = createProcessor();
+        Streams.just(
+                Buffer.wrap("One"),
+                Buffer.wrap("Two"),
+                Buffer.wrap("Three"))
+                .subscribe(processor);
+
+        StepByStepTestSubscriber subscriber = new StepByStepTestSubscriber(TIMEOUT_SECS);
+        processor.subscribe(subscriber);
+
+        subscriber.request(1);
+        subscriber.assertNextSignals("One");
+
+        subscriber.request(1);
+        subscriber.assertNextSignals("One", "Two");
+
+        subscriber.request(1);
+        subscriber.assertNextSignals("One", "Two", "Three");
+
+        subscriber.assertCompleteReceived();
+    }
 
 	@Test
 	public void testWorksWithTwoSubscribers() throws InterruptedException {
@@ -174,14 +197,7 @@ public class AeronProcessorTest {
 
 		subscriber.assertCompleteReceived();
 
-		int timeoutSecs = 5;
-		long start = System.nanoTime();
-		while(processor.alive()) {
-			if (TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - start) > timeoutSecs) {
-				Assert.fail("Processor didn't shutdown within " + timeoutSecs + " seconds");
-			}
-			Thread.sleep(100);
-		}
+        TestUtils.waitForTrue(TIMEOUT_SECS, "Processor is still alive", processor::alive);
 	}
 
 	@Test

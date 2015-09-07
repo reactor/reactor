@@ -21,7 +21,6 @@ import reactor.io.buffer.Buffer;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Anatoly Kadyshev
@@ -40,8 +39,6 @@ public class TestSubscriber implements Subscriber<Buffer> {
 
     private Subscription subscription;
 
-    private AtomicInteger eventsCounter = new AtomicInteger(0);
-
     public TestSubscriber(int timeoutSecs, int nExpectedEvents) {
         this.timeoutSecs = timeoutSecs;
         this.eventsCountDownLatch = new CountDownLatch(nExpectedEvents);
@@ -56,14 +53,12 @@ public class TestSubscriber implements Subscriber<Buffer> {
     @Override
     public void onNext(Buffer buffer) {
         eventsCountDownLatch.countDown();
-        eventsCounter.incrementAndGet();
     }
 
     @Override
     public void onError(Throwable t) {
         this.lastError = t;
         errorLatch.countDown();
-        eventsCounter.incrementAndGet();
     }
 
     public void cancel() {
@@ -73,7 +68,6 @@ public class TestSubscriber implements Subscriber<Buffer> {
     @Override
     public void onComplete() {
         completeLatch.countDown();
-        eventsCounter.incrementAndGet();
     }
 
     public void assertAllEventsReceived() throws InterruptedException {
@@ -115,7 +109,4 @@ public class TestSubscriber implements Subscriber<Buffer> {
         return lastError;
     }
 
-    public int getEventsCounterValue() {
-        return eventsCounter.get();
-    }
 }
