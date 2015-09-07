@@ -1926,6 +1926,20 @@ class StreamsSpec extends Specification {
 			result == [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 	}
 
+	def 'Counting Stream from range'() {
+		given:
+			'a source stream with a given range'
+			def s = Streams.range(1, 10)
+
+		when:
+			'accept a value'
+			def result = s.count().next().await()
+
+		then:
+			'dispatching works'
+			result == 10
+	}
+
 	def 'Creating Empty Streams from publisher'() {
 		given:
 			'a source stream pre-completed'

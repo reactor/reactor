@@ -39,6 +39,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.subscription.SubscriptionWithContext;
 import reactor.core.support.Assert;
+import reactor.core.support.SignalType;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -243,6 +244,7 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 					}
 				}, this.processorErrorHandler));
 			}
+			processor.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 		}
 
 		this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {

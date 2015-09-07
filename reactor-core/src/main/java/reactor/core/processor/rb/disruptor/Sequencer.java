@@ -68,6 +68,17 @@ public abstract class Sequencer
         return cursor.get();
     }
 
+
+
+    /**
+     * Get the current cursor value.
+     *
+     * @return current cursor value
+     */
+    public final Sequence getSequence() {
+        return cursor;
+    }
+
     /**
      * The capacity of the data structure to hold entries.
      *

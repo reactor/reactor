@@ -15,7 +15,11 @@
  */
 package reactor.rx.action.aggregation;
 
+import org.reactivestreams.Subscription;
 import reactor.rx.action.Action;
+import reactor.rx.subscription.PushSubscription;
+
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * @author Stephane Maldini
@@ -25,14 +29,36 @@ public class LastAction<T> extends Action<T, T> {
 
 	private T last;
 
+	private final AtomicLongFieldUpdater<LastAction> COUNTED = AtomicLongFieldUpdater.newUpdater(LastAction
+	  .class, "count");
+
+	private volatile long count;
+	private Boolean unbounded = null;
+
 	@Override
 	protected void doNext(T value) {
 		last = value;
+		if((unbounded != null && !unbounded || !(unbounded = count == Long.MAX_VALUE ))
+		  && COUNTED.decrementAndGet(this) == 0L){
+			requestMore(downstreamSubscription.pendingRequestSignals());
+		}
+	}
+
+	@Override
+	public void requestMore(long n) {
+		checkRequest(n);
+		if(COUNTED.addAndGet(this, n) < 0L){
+			COUNTED.set(this, Long.MAX_VALUE);
+		}
+		Subscription subscription = upstreamSubscription;
+		if (subscription != null) {
+			subscription.request(n);
+		}
 	}
 
 	@Override
 	protected void doComplete() {
-		if(last != null){
+		if (last != null) {
 			broadcastNext(last);
 		}
 
