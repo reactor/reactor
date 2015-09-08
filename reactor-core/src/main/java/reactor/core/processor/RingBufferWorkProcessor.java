@@ -684,6 +684,13 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	}
 
 	@Override
+	protected int decrementSubscribers() {
+		int res = super.decrementSubscribers();
+		readWait.signalAllWhenBlocking();
+		return res;
+	}
+
+	@Override
 	public long getCapacity() {
 		return ringBuffer.getBufferSize();
 	}

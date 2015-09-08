@@ -71,7 +71,7 @@ public final class RequestTask implements Runnable {
 				upstream.request(prefetch);
 			}
 		} catch (CancelException ce) {
-			upstream.cancel();
+			//upstream.cancel();
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		} catch (Throwable t) {
