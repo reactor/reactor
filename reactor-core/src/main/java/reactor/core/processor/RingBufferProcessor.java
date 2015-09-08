@@ -603,6 +603,13 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	}
 
 	@Override
+	protected int decrementSubscribers() {
+		int res = super.decrementSubscribers();
+		readWait.signalAllWhenBlocking();
+		return res;
+	}
+
+	@Override
 	public void subscribe(final Subscriber<? super E> subscriber) {
 		if (null == subscriber) {
 			throw SpecificationExceptions.spec_2_13_exception();

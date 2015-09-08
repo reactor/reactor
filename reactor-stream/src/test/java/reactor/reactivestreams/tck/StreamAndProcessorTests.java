@@ -53,15 +53,17 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 				  .buffer(batch, 50, TimeUnit.MILLISECONDS)
 				  .<Integer>split()
 				  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
-			    //  .log("partition" + stream.key())
 			  )
 		      .observe(this::monitorThreadUse)
 		      .process(Processors.async("stream-raw-join", bufferSize))
-			    // .log("join")
 			  .when(Throwable.class, Throwable::printStackTrace)
 		  );
 	}
 
+	/*@Override
+	public boolean skipStochasticTests() {
+		return true;
+	}*/
 
 	@Override
 	public void required_spec309_requestZeroMustSignalIllegalArgumentException() throws Throwable {
@@ -71,6 +73,11 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 	@Override
 	public void required_spec309_requestNegativeNumberMustSignalIllegalArgumentException() throws Throwable {
 		throw new SkipException("TODO");
+	}
+
+	@Override
+	public void stochastic_spec103_mustSignalOnMethodsSequentially() throws Throwable {
+			super.stochastic_spec103_mustSignalOnMethodsSequentially();
 	}
 
 	@Test

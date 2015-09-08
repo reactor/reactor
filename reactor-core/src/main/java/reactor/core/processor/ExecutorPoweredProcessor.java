@@ -70,15 +70,15 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	@Override
 	public void onComplete() {
-		terminated = true;
 		upstreamSubscription = null;
+		terminated = true;
 	}
 
 	@Override
 	public void onError(Throwable t) {
 		super.onError(t);
-		terminated = true;
 		upstreamSubscription = null;
+		terminated = true;
 	}
 
 	@Override
@@ -100,9 +100,9 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	@Override
 	protected int decrementSubscribers() {
 		int subs = super.decrementSubscribers();
-		if (autoCancel && upstreamSubscription == null && subs == 0 && executor.getClass() == SingleUseExecutor.class) {
-			this.upstreamSubscription = null;
+		if (autoCancel && subs == 0 && executor.getClass() == SingleUseExecutor.class) {
 			this.terminated = true;
+			this.upstreamSubscription = null;
 			executor.shutdown();
 		}
 		return subs;
@@ -116,7 +116,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	@Override
 	public boolean alive() {
-		return !terminated || !executor.isTerminated();
+		return !terminated;
 	}
 
 	@Override
