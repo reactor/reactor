@@ -673,7 +673,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		  read,
 		  readWait,
 		  this,
-		  getCapacity()
+		  getCapacity() / 2
 		));
 	}
 
