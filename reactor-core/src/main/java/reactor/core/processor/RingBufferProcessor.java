@@ -699,7 +699,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		  new Consumer<Long>() {
 			  @Override
 			  public void accept(Long newMin) {
-				  minimum.set(newMin);
+				  if(alive()) {
+					  minimum.set(newMin);
+				  }
 			  }
 		  },
 		  new LongSupplier() {
