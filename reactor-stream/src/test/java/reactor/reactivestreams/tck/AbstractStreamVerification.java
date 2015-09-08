@@ -55,6 +55,11 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 	final Queue<Processor<Integer, Integer>> processorReferences = new ConcurrentLinkedQueue<>();
 
 	@Override
+	public boolean skipStochasticTests() {
+		return true;
+	}
+
+	@Override
 	public ExecutorService publisherExecutorService() {
 		return executorService;
 	}
