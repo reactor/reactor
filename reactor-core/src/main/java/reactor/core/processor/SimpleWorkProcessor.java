@@ -344,6 +344,18 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 	}
 
 	@Override
+	public void onSubscribe(Subscription s) {
+		if(s == null){
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
+		if (this.upstreamSubscription != null) {
+			s.cancel();
+			return;
+		}
+		this.upstreamSubscription = s;
+	}
+
+	@Override
 	public long getCapacity() {
 		return capacity;
 	}

@@ -16,6 +16,7 @@
 package reactor.core.processor.rb.disruptor;
 
 import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
 
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -32,7 +33,7 @@ public final class BlockingWaitStrategy implements WaitStrategy
     private final Condition processorNotifyCondition = lock.newCondition();
 
     @Override
-    public long waitFor(long sequence, Sequence cursorSequence, Consumer<Void> barrier)
+    public long waitFor(long sequence, LongSupplier cursorSequence, Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;

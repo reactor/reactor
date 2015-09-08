@@ -117,9 +117,9 @@ public abstract class Sequencer
          * @return The minimum gating sequence or the cursor sequence if
          * no sequences have been added.
          */
-    public long getMinimumSequence()
+    public long getMinimumSequence(Sequence excludeSequence)
     {
-        return Util.getMinimumSequence(gatingSequences, cursor.get());
+        return Util.getMinimumSequence(excludeSequence, gatingSequences, cursor.get());
     }
 
     /**

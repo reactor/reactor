@@ -896,7 +896,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		List<Publisher<? extends V>> publisherList = new ArrayList<>(concurrency);
 
 		for(int i = 0; i < concurrency; i++){
-			pub = fn.apply(new GroupedStream<Integer, O>(0){
+			pub = fn.apply(new GroupedStream<Integer, O>(i){
 				@Override
 				public void subscribe(Subscriber<? super O> s) {
 					Stream.this.subscribe(s);

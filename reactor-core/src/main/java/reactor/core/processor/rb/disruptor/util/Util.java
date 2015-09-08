@@ -27,117 +27,122 @@ import java.security.PrivilegedExceptionAction;
 /**
  * Set of common functions used by the Disruptor
  */
-public final class Util
-{
-    /**
-     * Calculate the next power of 2, greater than or equal to x.<p>
-     * From Hacker's Delight, Chapter 3, Harry S. Warren Jr.
-     *
-     * @param x Value to round up
-     * @return The next power of 2 from x inclusive
-     */
-    public static int ceilingNextPowerOfTwo(final int x)
-    {
-        return 1 << (32 - Integer.numberOfLeadingZeros(x - 1));
-    }
+public final class Util {
+	/**
+	 * Calculate the next power of 2, greater than or equal to x.<p>
+	 * From Hacker's Delight, Chapter 3, Harry S. Warren Jr.
+	 *
+	 * @param x Value to round up
+	 * @return The next power of 2 from x inclusive
+	 */
+	public static int ceilingNextPowerOfTwo(final int x) {
+		return 1 << (32 - Integer.numberOfLeadingZeros(x - 1));
+	}
 
-    /**
-     * Get the minimum sequence from an array of {@link reactor.core.processor.rb.disruptor.Sequence}s.
-     *
-     * @param sequences to compare.
-     * @return the minimum sequence found or Long.MAX_VALUE if the array is empty.
-     */
-    public static long getMinimumSequence(final Sequence[] sequences)
-    {
-        return getMinimumSequence(sequences, Long.MAX_VALUE);
-    }
+	/**
+	 * Get the minimum sequence from an array of {@link reactor.core.processor.rb.disruptor.Sequence}s.
+	 *
+	 * @param sequences to compare.
+	 * @return the minimum sequence found or Long.MAX_VALUE if the array is empty.
+	 */
+	public static long getMinimumSequence(final Sequence[] sequences) {
+		return getMinimumSequence(sequences, Long.MAX_VALUE);
+	}
 
-    /**
-     * Get the minimum sequence from an array of {@link reactor.core.processor.rb.disruptor.Sequence}s.
-     *
-     * @param sequences to compare.
-     * @param minimum an initial default minimum.  If the array is empty this value will be
-     * returned.
-     * @return the minimum sequence found or Long.MAX_VALUE if the array is empty.
-     */
-    public static long getMinimumSequence(final Sequence[] sequences, long minimum)
-    {
-        for (int i = 0, n = sequences.length; i < n; i++)
-        {
-            long value = sequences[i].get();
-            minimum = Math.min(minimum, value);
-        }
+	/**
+	 * Get the minimum sequence from an array of {@link reactor.core.processor.rb.disruptor.Sequence}s.
+	 *
+	 * @param sequences to compare.
+	 * @param minimum   an initial default minimum.  If the array is empty this value will be
+	 *                  returned.
+	 * @return the minimum sequence found or Long.MAX_VALUE if the array is empty.
+	 */
+	public static long getMinimumSequence(final Sequence[] sequences, long minimum) {
+		for (int i = 0, n = sequences.length; i < n; i++) {
+			long value = sequences[i].get();
+			minimum = Math.min(minimum, value);
+		}
 
-        return minimum;
-    }
+		return minimum;
+	}
 
-    private static final Unsafe THE_UNSAFE;
-    static
-    {
-        try
-        {
-            final PrivilegedExceptionAction<Unsafe> action = new PrivilegedExceptionAction<Unsafe>()
-            {
-                public Unsafe run() throws Exception
-                {
-                    Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-                    theUnsafe.setAccessible(true);
-                    return (Unsafe) theUnsafe.get(null);
-                }
-            };
+	/**
+	 * Get the minimum sequence from an array of {@link reactor.core.processor.rb.disruptor.Sequence}s.
+	 *
+	 * @param excludeSequence to exclude from search.
+	 * @param sequences to compare.
+	 * @param minimum   an initial default minimum.  If the array is empty this value will be
+	 *                  returned.
+	 * @return the minimum sequence found or Long.MAX_VALUE if the array is empty.
+	 */
+	public static long getMinimumSequence(Sequence excludeSequence, final Sequence[] sequences, long minimum) {
+		for (int i = 0, n = sequences.length; i < n; i++) {
+			if (excludeSequence == null || sequences[i] != excludeSequence) {
+				long value = sequences[i].get();
+				minimum = Math.min(minimum, value);
+			}
+		}
 
-            THE_UNSAFE = AccessController.doPrivileged(action);
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException("Unable to load unsafe", e);
-        }
-    }
+		return minimum;
+	}
 
-    /**
-     * Get a handle on the Unsafe instance, used for accessing low-level concurrency
-     * and memory constructs.
-     * @return The Unsafe
-     */
-    public static Unsafe getUnsafe()
-    {
-        return THE_UNSAFE;
-    }
+	private static final Unsafe THE_UNSAFE;
 
-    /**
-     * Gets the address value for the memory that backs a direct byte buffer.
-     * @param buffer
-     * @return The system address for the buffers
-     */
-    public static long getAddressFromDirectByteBuffer(ByteBuffer buffer)
-    {
-        try
-        {
-            Field addressField = Buffer.class.getDeclaredField("address");
-            addressField.setAccessible(true);
-            return addressField.getLong(buffer);
-        }
-        catch (Exception e)
-        {
-            throw new RuntimeException("Unable to address field from ByteBuffer", e);
-        }
-    }
+	static {
+		try {
+			final PrivilegedExceptionAction<Unsafe> action = new PrivilegedExceptionAction<Unsafe>() {
+				public Unsafe run() throws Exception {
+					Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+					theUnsafe.setAccessible(true);
+					return (Unsafe) theUnsafe.get(null);
+				}
+			};
+
+			THE_UNSAFE = AccessController.doPrivileged(action);
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to load unsafe", e);
+		}
+	}
+
+	/**
+	 * Get a handle on the Unsafe instance, used for accessing low-level concurrency
+	 * and memory constructs.
+	 *
+	 * @return The Unsafe
+	 */
+	public static Unsafe getUnsafe() {
+		return THE_UNSAFE;
+	}
+
+	/**
+	 * Gets the address value for the memory that backs a direct byte buffer.
+	 *
+	 * @param buffer
+	 * @return The system address for the buffers
+	 */
+	public static long getAddressFromDirectByteBuffer(ByteBuffer buffer) {
+		try {
+			Field addressField = Buffer.class.getDeclaredField("address");
+			addressField.setAccessible(true);
+			return addressField.getLong(buffer);
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to address field from ByteBuffer", e);
+		}
+	}
 
 
-    /**
-     * Calculate the log base 2 of the supplied integer, essentially reports the location
-     * of the highest bit.
-     *
-     * @param i Value to calculate log2 for.
-     * @return The log2 value
-     */
-    public static int log2(int i)
-    {
-        int r = 0;
-        while ((i >>= 1) != 0)
-        {
-            ++r;
-        }
-        return r;
-    }
+	/**
+	 * Calculate the log base 2 of the supplied integer, essentially reports the location
+	 * of the highest bit.
+	 *
+	 * @param i Value to calculate log2 for.
+	 * @return The log2 value
+	 */
+	public static int log2(int i) {
+		int r = 0;
+		while ((i >>= 1) != 0) {
+			++r;
+		}
+		return r;
+	}
 }

@@ -42,6 +42,11 @@ public class UUIDUtilsTests {
 	private static final int    TEST_ITERATIONS       = 10;
 
 	@Test
+	public void noop(){
+
+	}
+
+	@Test
 	@Ignore
 	public void reentrantLockWithAtomicLongPerformance() throws InterruptedException {
 		doTest("ReentrantLock with AtomicLong", new Supplier<UUID>() {
@@ -226,6 +231,8 @@ public class UUIDUtilsTests {
 			System.out.println("\t     max: " + getMax(durations) + "ms");
 		}
 	}
+
+
 
 	private long getMin(long[] durations) {
 		long min = Long.MAX_VALUE;
