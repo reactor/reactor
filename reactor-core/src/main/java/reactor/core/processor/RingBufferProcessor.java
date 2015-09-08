@@ -629,7 +629,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			//set eventProcessor sequence to ringbuffer index
 			signalProcessor.getSequence().set(ringBuffer.getCursor());
 
-			ringBuffer.addGatingSequences(signalProcessor.getSequence());
+
 		}
 
 		//prepare the subscriber subscription to this processor
@@ -680,7 +680,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 	@Override
 	protected void requestTask(Subscription s) {
-		//BringBuffer.addGatingSequences(minimum);
+		ringBuffer.addGatingSequences(minimum);
 		executor.execute(new RequestTask(
 		  s,
 		  new Consumer<Void>() {
@@ -698,12 +698,15 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		  new LongSupplier() {
 			  @Override
 			  public long get() {
-				  return ringBuffer.getMinimumGatingSequence(minimum);
+				  return
+				    SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0 ?
+				    minimum.get() :
+				      ringBuffer.getMinimumGatingSequence(minimum);
 			  }
 		  },
 		  readWait,
 		  this,
-		  getCapacity()
+		  getCapacity() / 2
 		));
 	}
 
