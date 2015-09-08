@@ -17,6 +17,7 @@ package reactor.core.processor.rb.disruptor;
 
 
 import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
 
 /**
  * Strategy employed for making ringbuffer consumers wait on a cursor {@link Sequence}.
@@ -37,7 +38,7 @@ public interface WaitStrategy
      * @throws AlertException if the status of the Disruptor has changed.
      * @throws InterruptedException if the thread is interrupted.
      */
-    long waitFor(long sequence, Sequence cursor, Consumer<Void> spinObserver)
+    long waitFor(long sequence, LongSupplier cursor, Consumer<Void> spinObserver)
         throws AlertException, InterruptedException;
 
     /**

@@ -17,6 +17,7 @@ package reactor.core.processor.rb.disruptor;
 
 
 import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
 
 /**
  * Busy Spin strategy that uses a busy spin loop for ringbuffer consumers waiting on a barrier.
@@ -27,7 +28,7 @@ import reactor.fn.Consumer;
 public final class BusySpinWaitStrategy implements WaitStrategy
 {
     @Override
-    public long waitFor(final long sequence, Sequence cursor, final Consumer<Void> barrier)
+    public long waitFor(final long sequence, LongSupplier cursor, final Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;

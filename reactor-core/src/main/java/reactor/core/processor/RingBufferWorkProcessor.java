@@ -22,6 +22,7 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
+import reactor.core.processor.rb.RequestTask;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.processor.rb.disruptor.*;
 import reactor.core.support.Publishable;
@@ -504,7 +505,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 
 	private final Sequence read;
-	private final int      prefetch;
+	private final WaitStrategy readWait = new LiteBlockingWaitStrategy();
 
 	private RingBufferWorkProcessor(String name,
 	                                ExecutorService executor,
@@ -534,7 +535,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			  waitStrategy,
 			  spinObserver
 			);
-			onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 		} else {
 			this.ringBuffer = RingBuffer.createSingleProducer(
 			  factory,
@@ -543,8 +543,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			  spinObserver
 			);
 		}
-		prefetch = bufferSize / 2;
-		read = new Sequence(bufferSize);
+		read = new Sequence(0);
 		ringBuffer.addGatingSequences(workSequence);
 
 	}
@@ -592,15 +591,17 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		for (int i = 1; i < SUBSCRIBER_COUNT.get(this); i++) {
 			RingBufferSubscriberUtils.onError(t, ringBuffer);
 		}
+		readWait.signalAllWhenBlocking();
 	}
 
 	@Override
 	public void onComplete() {
+		super.onComplete();
 		RingBufferSubscriberUtils.onComplete(ringBuffer);
 		for (int i = 0; i < SUBSCRIBER_COUNT.get(this); i++) {
 			RingBufferSubscriberUtils.onComplete(ringBuffer);
 		}
-		super.onComplete();
+		readWait.signalAllWhenBlocking();
 	}
 
 	public Publisher<Void> writeWith(final Publisher<? extends E> source) {
@@ -655,6 +656,30 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				subscription.cancel();
 			}
 			eventProcessor.halt();
+		}
+	}
+
+	@Override
+	protected void requestTask(Subscription s) {
+		executor.execute(new RequestTask(
+		  s,
+		  new Consumer<Void>() {
+			  @Override
+			  public void accept(Void aVoid) {
+				  if (!alive()) throw CancelException.INSTANCE;
+			  }
+		  },
+		  null,
+		  read,
+		  readWait,
+		  this,
+		  getCapacity()
+		));
+	}
+
+	protected void requestMore() {
+		if(read.incrementAndGet() % (getCapacity() / 2) == 0){
+			readWait.signalAllWhenBlocking();
 		}
 	}
 
@@ -774,21 +799,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 				barrier.clearAlert();
 
-				Subscription upstream;
-				while ((upstream = processor.upstreamSubscription) == null) {
-					if(!running.get()) throw CancelException.INSTANCE;
-					LockSupport.parkNanos(1L);
-				}
-
-				final Subscription parent = upstream;
-
-				if (SignalType.NOOP_SUBSCRIPTION != parent) {
-					if (processor.read.compareAndSet(processor.getCapacity(), 0)) {
-						parent.request(processor.getCapacity() - 1);
-					}
-				}
-
-				long lastRead;
 				while (true) {
 					try {
 						// if previous sequence was processed - fetch the next sequence and set
@@ -813,12 +823,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 							//It's an unbounded subscriber or there is enough capacity to process the signal
 							RingBufferSubscriberUtils.routeOnce(event, subscriber);
 
-							if(parent != SignalType.NOOP_SUBSCRIPTION &&
-							  (lastRead = processor.read.incrementAndGet()) >= processor.prefetch){
-								if(processor.read.compareAndSet(lastRead, 0)){
-									parent.request(processor.prefetch);
-								}
-							}
+							processor.requestMore();
 
 							processedSequence = true;
 
@@ -855,6 +860,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			} finally {
 				processor.decrementSubscribers();
 				running.set(false);
+				processor.readWait.signalAllWhenBlocking();
 			}
 		}
 

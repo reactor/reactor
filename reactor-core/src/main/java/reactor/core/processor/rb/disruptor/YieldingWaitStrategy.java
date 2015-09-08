@@ -17,6 +17,7 @@ package reactor.core.processor.rb.disruptor;
 
 
 import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
 
 /**
  * Yielding strategy that uses a Thread.yield() for ringbuffer consumers waiting on a barrier
@@ -29,7 +30,7 @@ public final class YieldingWaitStrategy implements WaitStrategy
     private static final int SPIN_TRIES = 100;
 
     @Override
-    public long waitFor(final long sequence, Sequence cursor, final Consumer<Void> barrier)
+    public long waitFor(final long sequence, LongSupplier cursor, final Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;

@@ -16,6 +16,7 @@
 package reactor.core.processor.rb.disruptor;
 
 import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
 
 import java.util.concurrent.locks.LockSupport;
 
@@ -45,7 +46,7 @@ public final class SleepingWaitStrategy implements WaitStrategy
     }
 
     @Override
-    public long waitFor(final long sequence, Sequence cursor, final Consumer<Void> barrier)
+    public long waitFor(final long sequence, LongSupplier cursor, final Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;

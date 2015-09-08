@@ -367,7 +367,19 @@ public final class RingBuffer<E> extends RingBufferFields<E>
      */
     public long getMinimumGatingSequence()
     {
-        return sequencer.getMinimumSequence();
+        return getMinimumGatingSequence(null);
+    }
+
+  /**
+     * Get the minimum sequence value from all of the gating sequences
+     * added to this ringBuffer.
+     *
+     * @return The minimum gating sequence or the cursor sequence if
+     * no sequences have been added.
+     */
+    public long getMinimumGatingSequence(Sequence sequence)
+    {
+        return sequencer.getMinimumSequence(sequence);
     }
 
     /**

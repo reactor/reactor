@@ -15,14 +15,20 @@
  */
 package reactor.core.processor;
 
+import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.support.SignalType;
 import reactor.core.support.SingleUseExecutor;
 import reactor.fn.Consumer;
+import reactor.fn.Supplier;
 import reactor.fn.timer.GlobalTimer;
 import reactor.fn.timer.Timer;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * A base processor used by executor backed processors to take care of their ExecutorService
@@ -32,6 +38,8 @@ import java.util.concurrent.TimeUnit;
 public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN, OUT> {
 
 	protected final ExecutorService executor;
+
+	private volatile boolean terminated;
 
 	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {
 		super(
@@ -45,6 +53,32 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 		} else {
 			this.executor = executor;
 		}
+	}
+
+	@Override
+	public void onSubscribe(Subscription s) {
+		Subscription subscription = upstreamSubscription;
+		super.onSubscribe(s);
+		if (subscription == null && s != SignalType.NOOP_SUBSCRIPTION) {
+			requestTask(s);
+		}
+	}
+
+	protected void requestTask(final Subscription s) {
+		//implementation might run a specific request task for the given subscription
+	}
+
+	@Override
+	public void onComplete() {
+		terminated = true;
+		upstreamSubscription = null;
+	}
+
+	@Override
+	public void onError(Throwable t) {
+		super.onError(t);
+		terminated = true;
+		upstreamSubscription = null;
 	}
 
 	@Override
@@ -68,6 +102,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 		int subs = super.decrementSubscribers();
 		if (autoCancel && upstreamSubscription == null && subs == 0 && executor.getClass() == SingleUseExecutor.class) {
 			this.upstreamSubscription = null;
+			this.terminated = true;
 			executor.shutdown();
 		}
 		return subs;
@@ -81,7 +116,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	@Override
 	public boolean alive() {
-		return !executor.isTerminated();
+		return !terminated || !executor.isTerminated();
 	}
 
 	@Override

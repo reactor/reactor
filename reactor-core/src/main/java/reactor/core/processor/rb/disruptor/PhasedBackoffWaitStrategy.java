@@ -16,6 +16,7 @@
 package reactor.core.processor.rb.disruptor;
 
 import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
 
 import java.util.concurrent.TimeUnit;
 
@@ -76,7 +77,7 @@ public final class PhasedBackoffWaitStrategy implements WaitStrategy
     }
 
     @Override
-    public long waitFor(long sequence, Sequence cursor, Consumer<Void> barrier)
+    public long waitFor(long sequence, LongSupplier cursor, Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;

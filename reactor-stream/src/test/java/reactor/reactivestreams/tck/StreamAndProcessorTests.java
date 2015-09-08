@@ -38,15 +38,13 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		System.out.println("Providing new processor");
-		Broadcaster<Integer> broadcaster = Broadcaster.passthrough();
+		Processor<Integer, Integer> p = Processors.work("stream-raw-fork", bufferSize);
 
 		return
 		  Processors.create(
-		    broadcaster,
-		    broadcaster
-			  .process(Processors.work("stream-raw-fork", bufferSize))
+		    p,
+		    Streams.wrap(p)
 			  .forkJoin(2, (GroupedStream<Integer, Integer> stream) -> stream
-				  .observe(this::monitorThreadUse)
 				  .scan((prev, next) -> next)
 				  .map(integer -> -integer)
 				  .filter(integer -> integer <= 0)
@@ -55,9 +53,12 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 				  .buffer(batch, 50, TimeUnit.MILLISECONDS)
 				  .<Integer>split()
 				  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
+			    //  .log("partition" + stream.key())
 			  )
-			  .process(Processors.async("stream-raw-join", bufferSize))
-		      .when(Throwable.class, Throwable::printStackTrace)
+		      .observe(this::monitorThreadUse)
+		      .process(Processors.async("stream-raw-join", bufferSize))
+			    // .log("join")
+			  .when(Throwable.class, Throwable::printStackTrace)
 		  );
 	}
 
@@ -74,12 +75,16 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
-		super.testHotIdentityProcessor();
+	//	for(int i = 0; i < 1000; i++) {
+			super.testHotIdentityProcessor();
+	//	}
 	}
 
 
 	@Test
 	public void testColdIdentityProcessor() throws InterruptedException {
-		super.testColdIdentityProcessor();
+//		for(int i = 0; i < 1000; i++) {
+			super.testColdIdentityProcessor();
+//		}
 	}
 }
