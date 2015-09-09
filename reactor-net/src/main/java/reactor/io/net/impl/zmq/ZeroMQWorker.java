@@ -25,6 +25,7 @@ import org.zeromq.ZMsg;
 import reactor.rx.broadcast.Broadcaster;
 
 import java.util.UUID;
+import java.util.concurrent.locks.LockSupport;
 
 /**
  * @author Jon Brisbin
@@ -63,6 +64,7 @@ public abstract class ZeroMQWorker implements Runnable {
 			public int handle(ZLoop loop, ZMQ.PollItem item, Object arg) {
 				ZMsg msg = ZMsg.recvMsg(socket);
 				if (null == msg || msg.size() == 0) {
+					LockSupport.parkNanos(1);
 					return 0;
 				}
 
