@@ -648,6 +648,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			executor.execute(signalProcessor);
 
 		} catch (Throwable t) {
+			ringBuffer.removeGatingSequence(signalProcessor.getSequence());
 			decrementSubscribers();
 			Exceptions.<E>publisher(t).subscribe(subscriber);
 		}

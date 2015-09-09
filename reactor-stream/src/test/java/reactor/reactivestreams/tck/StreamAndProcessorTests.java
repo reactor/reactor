@@ -61,10 +61,10 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		  );
 	}
 
-	/*@Override
+	@Override
 	public boolean skipStochasticTests() {
 		return true;
-	}*/
+	}
 
 	@Override
 	public void required_spec309_requestZeroMustSignalIllegalArgumentException() throws Throwable {
