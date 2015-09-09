@@ -100,21 +100,11 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	@Override
 	protected int decrementSubscribers() {
 		int subs = super.decrementSubscribers();
-		if (autoCancel && subs == 0 && executor.getClass() == SingleUseExecutor.class) {
-			if (BaseProcessor.CANCEL_TIMEOUT > 0) {
-				final Timer timer = GlobalTimer.globalOrNew();
-				timer.submit(new Consumer<Long>() {
-					@Override
-					public void accept(Long aLong) {
-						if (SUBSCRIBER_COUNT.get(ExecutorPoweredProcessor.this) == 0) {
-							terminated = true;
-							executor.shutdown();
-						}
-						timer.cancel();
-					}
-				}, BaseProcessor.CANCEL_TIMEOUT, TimeUnit.SECONDS);
-			} else {
+		if(autoCancel && subs == 0) {
+			if(upstreamSubscription != null) {
 				terminated = true;
+			}
+			if (executor.getClass() == SingleUseExecutor.class) {
 				executor.shutdown();
 			}
 		}

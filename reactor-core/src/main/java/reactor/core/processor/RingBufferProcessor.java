@@ -579,7 +579,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		Consumer<Void> spinObserver = new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
-				if (!alive()) throw CancelException.get();
+				if (!alive() && SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0) throw CancelException.get();
 			}
 		};
 
@@ -606,7 +606,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	@Override
 	protected int decrementSubscribers() {
 		int res = super.decrementSubscribers();
-		readWait.signalAllWhenBlocking();
+		if(res == 0) {
+			readWait.signalAllWhenBlocking();
+		}
 		return res;
 	}
 
@@ -718,6 +720,11 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		  this,
 		  getCapacity() / 2
 		)).start();
+	}
+
+	@Override
+	protected void cancel(Subscription subscription) {
+		//ignore since request task auto cancel
 	}
 
 	@Override

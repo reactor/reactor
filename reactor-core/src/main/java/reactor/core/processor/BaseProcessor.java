@@ -23,6 +23,7 @@ import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.Bounded;
 import reactor.core.support.Resource;
 import reactor.core.support.Publishable;
+import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -116,11 +117,17 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 		if (subs == 0) {
 			if (subscription != null && autoCancel) {
 				upstreamSubscription = null;
-				subscription.cancel();
+				if(subscription != SignalType.NOOP_SUBSCRIPTION){
+					cancel(subscription);
+				}
 			}
 			return subs;
 		}
 		return subs;
+	}
+
+	protected void cancel(Subscription subscription){
+			subscription.cancel();
 	}
 
 
