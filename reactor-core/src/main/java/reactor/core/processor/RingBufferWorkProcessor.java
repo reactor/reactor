@@ -25,6 +25,7 @@ import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RequestTask;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.processor.rb.disruptor.*;
+import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
@@ -619,6 +620,51 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		  '}';
 	}
 
+	@Override
+	protected void requestTask(Subscription s) {
+		new NamedDaemonThreadFactory("ringbufferwork-request-task", null, null, false).newThread(new RequestTask(
+		  s,
+		  new Consumer<Void>() {
+			  @Override
+			  public void accept(Void aVoid) {
+				  if (!alive()) throw CancelException.INSTANCE;
+			  }
+		  },
+		  null,
+		  read,
+		  readWait,
+		  this,
+		  getCapacity() / 2
+		)).start();
+	}
+
+	protected void requestMore() {
+		if(read.incrementAndGet() % (getCapacity() / 2) == 0){
+			readWait.signalAllWhenBlocking();
+		}
+	}
+
+	@Override
+	protected int decrementSubscribers() {
+		int res = super.decrementSubscribers();
+		readWait.signalAllWhenBlocking();
+		return res;
+	}
+
+	@Override
+	public long getCapacity() {
+		return ringBuffer.getBufferSize();
+	}
+
+	@Override
+	public boolean isWork() {
+		return true;
+	}
+
+	RingBuffer<MutableSignal<E>> ringBuffer() {
+		return ringBuffer;
+	}
+
 	private final class RingBufferSubscription implements Subscription, Publishable<E> {
 		private final Subscriber<? super E> subscriber;
 		private final WorkSignalProcessor   eventProcessor;
@@ -658,51 +704,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			}
 			eventProcessor.halt();
 		}
-	}
-
-	@Override
-	protected void requestTask(Subscription s) {
-		executor.execute(new RequestTask(
-		  s,
-		  new Consumer<Void>() {
-			  @Override
-			  public void accept(Void aVoid) {
-				  if (!alive()) throw CancelException.INSTANCE;
-			  }
-		  },
-		  null,
-		  read,
-		  readWait,
-		  this,
-		  getCapacity() / 2
-		));
-	}
-
-	protected void requestMore() {
-		if(read.incrementAndGet() % (getCapacity() / 2) == 0){
-			readWait.signalAllWhenBlocking();
-		}
-	}
-
-	@Override
-	protected int decrementSubscribers() {
-		int res = super.decrementSubscribers();
-		readWait.signalAllWhenBlocking();
-		return res;
-	}
-
-	@Override
-	public long getCapacity() {
-		return ringBuffer.getBufferSize();
-	}
-
-	@Override
-	public boolean isWork() {
-		return true;
-	}
-
-	RingBuffer<MutableSignal<E>> ringBuffer() {
-		return ringBuffer;
 	}
 
 	/**
