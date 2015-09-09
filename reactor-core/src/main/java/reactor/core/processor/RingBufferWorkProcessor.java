@@ -561,6 +561,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 			signalProcessor.sequence.set(workSequence.get());
 
+			incrementSubscribers();
+
 			//bind eventProcessor sequence to observe the ringBuffer
 			ringBuffer.addGatingSequences(signalProcessor.sequence);
 
@@ -570,7 +572,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 			//start the subscriber thread
 			executor.execute(signalProcessor);
-			incrementSubscribers();
 
 		} catch (Throwable t) {
 			ringBuffer.removeGatingSequence(signalProcessor.sequence);
