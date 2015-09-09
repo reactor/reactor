@@ -635,6 +635,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			//otherwise only listen to new data
 			//set eventProcessor sequence to ringbuffer index
 			signalProcessor.getSequence().set(ringBuffer.getCursor());
+			ringBuffer.addGatingSequences(signalProcessor.getSequence());
 
 
 		}
@@ -699,9 +700,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		  new Consumer<Long>() {
 			  @Override
 			  public void accept(Long newMin) {
-				  if(alive()) {
-					  minimum.set(newMin);
-				  }
+				  minimum.set(newMin);
 			  }
 		  },
 		  new LongSupplier() {
@@ -912,7 +911,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 							}
 						}
 						sequence.set(availableSequence);
-						processor.readWait.signalAllWhenBlocking();
+						if(SignalType.NOOP_SUBSCRIPTION != processor.upstreamSubscription) {
+							processor.readWait.signalAllWhenBlocking();
+						}
 					} catch (final AlertException | CancelException ex) {
 						if (!running.get()) {
 							break;

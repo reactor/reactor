@@ -58,17 +58,20 @@ public final class RequestTask implements Runnable {
 
 	@Override
 	public void run() {
-		long cursor = -1;
+		long cursor = 0;
+		long prev = cursor;
 		try {
 			spinObserver.accept(null);
 			upstream.request((prefetch * 2) - 1);
 
 			while (true) {
-				cursor = waitStrategy.waitFor(cursor + prefetch, readCount, spinObserver);
+				cursor = waitStrategy.waitFor(cursor + prefetch - 1 , readCount, spinObserver);
 				if(postWaitCallback != null){
 					postWaitCallback.accept(cursor);
 				}
-				upstream.request(prefetch);
+				upstream.request(cursor - prev);
+
+				prev = cursor - 1;
 			}
 		} catch (CancelException ce) {
 			//upstream.cancel();

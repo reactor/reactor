@@ -55,6 +55,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 				  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 			  )
 		      .observe(this::monitorThreadUse)
+		      //.log()
 		      .process(Processors.async("stream-raw-join", bufferSize))
 			  .when(Throwable.class, Throwable::printStackTrace)
 		  );
@@ -82,9 +83,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
-	//	for(int i = 0; i < 1000; i++) {
 			super.testHotIdentityProcessor();
-	//	}
 	}
 
 
