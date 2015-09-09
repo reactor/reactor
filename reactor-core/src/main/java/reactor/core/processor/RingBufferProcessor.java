@@ -25,6 +25,7 @@ import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RequestTask;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.processor.rb.disruptor.*;
+import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
@@ -690,7 +691,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	@Override
 	protected void requestTask(Subscription s) {
 		ringBuffer.addGatingSequences(minimum);
-		executor.execute(new RequestTask(
+		new NamedDaemonThreadFactory("ringbuffer-request-task", null, null, false).newThread(new RequestTask(
 		  s,
 		  new Consumer<Void>() {
 			  @Override
@@ -708,15 +709,15 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			  @Override
 			  public long get() {
 				  return
-				    SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0 ?
-				    minimum.get() :
-				      ringBuffer.getMinimumGatingSequence(minimum);
+					SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0 ?
+					  minimum.get() :
+					  ringBuffer.getMinimumGatingSequence(minimum);
 			  }
 		  },
 		  readWait,
 		  this,
 		  getCapacity() / 2
-		));
+		)).start();
 	}
 
 	@Override
