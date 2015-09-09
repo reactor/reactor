@@ -101,7 +101,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	protected int decrementSubscribers() {
 		int subs = super.decrementSubscribers();
 		if(autoCancel && subs == 0) {
-			if(upstreamSubscription != null) {
+			if(upstreamSubscription == null) {
 				terminated = true;
 			}
 			if (executor.getClass() == SingleUseExecutor.class) {
