@@ -84,7 +84,11 @@ public class AwaitTests extends AbstractReactorTest {
 		promise.await(5, TimeUnit.SECONDS);
 
 		assert promise.get().get(0) == 16;
-		r.getProcessor().onComplete();
+		try{
+			r.getProcessor().onComplete();
+		}catch(Throwable c){
+			c.printStackTrace();
+		}
 
 	}
 
