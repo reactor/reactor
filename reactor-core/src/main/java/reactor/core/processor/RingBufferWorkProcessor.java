@@ -525,7 +525,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		Consumer<Void> spinObserver = new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
-				if (!alive()) throw CancelException.get();
+				if (!alive() && SUBSCRIBER_COUNT.get(RingBufferWorkProcessor.this) == 0) throw CancelException.get();
 			}
 		};
 
@@ -611,16 +611,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	}
 
 	@Override
-	public String toString() {
-		return "RingBufferWorkProcessor{" +
-		  ", ringBuffer=" + ringBuffer +
-		  ", executor=" + executor +
-		  ", workSequence=" + workSequence +
-		  ", cancelledSequence=" + cancelledSequences +
-		  '}';
-	}
-
-	@Override
 	protected void requestTask(Subscription s) {
 		new NamedDaemonThreadFactory("ringbufferwork-request-task", null, null, false).newThread(new RequestTask(
 		  s,
@@ -638,6 +628,12 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		)).start();
 	}
 
+	@Override
+	protected void cancel(Subscription subscription) {
+		//ignore since request task auto cancel
+	}
+
+
 	protected void requestMore() {
 		if(read.incrementAndGet() % (getCapacity() / 2) == 0){
 			readWait.signalAllWhenBlocking();
@@ -647,8 +643,20 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	@Override
 	protected int decrementSubscribers() {
 		int res = super.decrementSubscribers();
-		readWait.signalAllWhenBlocking();
+		if(res == 0) {
+			readWait.signalAllWhenBlocking();
+		}
 		return res;
+	}
+
+	@Override
+	public String toString() {
+		return "RingBufferWorkProcessor{" +
+		  ", ringBuffer=" + ringBuffer +
+		  ", executor=" + executor +
+		  ", workSequence=" + workSequence +
+		  ", cancelledSequence=" + cancelledSequences +
+		  '}';
 	}
 
 	@Override
@@ -697,11 +705,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 		@Override
 		public void cancel() {
-			Subscription subscription = upstreamSubscription;
-			if (subscription != null && autoCancel && SUBSCRIBER_COUNT.get(RingBufferWorkProcessor.this) - 1 == 0) {
-				upstreamSubscription = null;
-				subscription.cancel();
-			}
 			eventProcessor.halt();
 		}
 	}
@@ -920,10 +923,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				//Complete or Error are terminal events, we shutdown the processor and process the signal
 				running.set(false);
 				RingBufferSubscriberUtils.route(event, subscriber);
-				Subscription s = processor.upstreamSubscription;
-				if (s != null) {
-					s.cancel();
-				}
 				throw CancelException.INSTANCE;
 			}
 		}
