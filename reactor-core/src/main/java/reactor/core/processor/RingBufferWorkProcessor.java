@@ -553,12 +553,11 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		if (null == subscriber) {
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
+		final WorkSignalProcessor<E> signalProcessor = new WorkSignalProcessor<E>(
+		  subscriber,
+		  this
+		);
 		try {
-			final WorkSignalProcessor<E> signalProcessor = new WorkSignalProcessor<E>(
-			  subscriber,
-			  this
-			);
-
 
 			signalProcessor.sequence.set(workSequence.get());
 
@@ -574,6 +573,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			incrementSubscribers();
 
 		} catch (Throwable t) {
+			ringBuffer.removeGatingSequence(signalProcessor.sequence);
 			Exceptions.<E>publisher(t).subscribe(subscriber);
 		}
 	}
