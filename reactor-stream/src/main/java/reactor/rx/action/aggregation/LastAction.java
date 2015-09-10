@@ -17,7 +17,6 @@ package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscription;
 import reactor.rx.action.Action;
-import reactor.rx.subscription.PushSubscription;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 

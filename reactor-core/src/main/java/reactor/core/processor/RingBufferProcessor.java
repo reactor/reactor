@@ -698,7 +698,10 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		  new Consumer<Void>() {
 			  @Override
 			  public void accept(Void aVoid) {
-				  if (!alive()) throw CancelException.INSTANCE;
+				  if (!alive()){
+					  ringBuffer.removeGatingSequence(minimum);
+					  throw CancelException.INSTANCE;
+				  }
 			  }
 		  },
 		  new Consumer<Long>() {
