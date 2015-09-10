@@ -505,7 +505,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
 
-	private final Sequence read;
 	private final WaitStrategy readWait = new LiteBlockingWaitStrategy();
 
 	private RingBufferWorkProcessor(String name,
@@ -544,7 +543,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			  spinObserver
 			);
 		}
-		read = new Sequence(0);
 		ringBuffer.addGatingSequences(workSequence);
 
 	}
@@ -621,7 +619,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			  }
 		  },
 		  null,
-		  read,
+		  workSequence,
 		  readWait,
 		  this,
 		  getCapacity() / 2
@@ -634,21 +632,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	}
 
 
-	protected void requestMore() {
-		if(read.incrementAndGet() % (getCapacity() / 2) == 0){
-			readWait.signalAllWhenBlocking();
-		}
-	}
-
-	@Override
-	protected int decrementSubscribers() {
-		int res = super.decrementSubscribers();
-		if(res == 0) {
-			readWait.signalAllWhenBlocking();
-		}
-		return res;
-	}
-
 	@Override
 	public String toString() {
 		return "RingBufferWorkProcessor{" +
@@ -657,6 +640,13 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		  ", workSequence=" + workSequence +
 		  ", cancelledSequence=" + cancelledSequences +
 		  '}';
+	}
+
+	@Override
+	protected int decrementSubscribers() {
+		int res = super.decrementSubscribers();
+		readWait.signalAllWhenBlocking();
+		return res;
 	}
 
 	@Override
@@ -835,11 +825,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 							//It's an unbounded subscriber or there is enough capacity to process the signal
 							RingBufferSubscriberUtils.routeOnce(event, subscriber);
 
-							processor.requestMore();
-
 							processedSequence = true;
 
 						} else {
+							processor.readWait.signalAllWhenBlocking();
 							cachedAvailableSequence = barrier.waitFor(nextSequence);
 						}
 
