@@ -63,7 +63,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 	@Override
 	public boolean skipStochasticTests() {
-		return false;
+		return true;
 	}
 
 	@Override

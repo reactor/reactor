@@ -261,15 +261,16 @@ public class SmokeTests {
 		Stream<Buffer> bufferStream = Streams
 		  .wrap(processor)
 		  .window(windowBatch, 2, TimeUnit.SECONDS)
+		  .observe(d ->
+			  windows.getAndIncrement()
+		  )
 		  .flatMap(s -> s
-			  .observe(d ->
-				  windows.getAndIncrement()
-			  )
 			  .reduce(new Buffer(), Buffer::append)
 			  .observe(d ->
 				  postReduce.getAndIncrement()
 			  )
 		  )
+		  //.log()
 		  .process(workProcessor);
 
 		httpServer = NetStreams.httpServer(server -> server
