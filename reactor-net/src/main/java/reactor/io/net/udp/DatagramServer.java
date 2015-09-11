@@ -51,8 +51,7 @@ public abstract class DatagramServer<IN, OUT>
 	                         NetworkInterface multicastInterface,
 	                         ServerSocketOptions options,
 	                         Codec<Buffer, IN, OUT> codec) {
-		super(timer, codec, options.prefetch());
-		Assert.notNull(options, "ServerSocketOptions cannot be null");
+		super(timer, codec, options != null ? options.prefetch() : Long.MAX_VALUE);
 		this.listenAddress = listenAddress;
 		this.multicastInterface = multicastInterface;
 		this.options = options;

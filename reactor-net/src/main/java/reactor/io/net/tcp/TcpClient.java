@@ -46,7 +46,7 @@ public abstract class TcpClient<IN, OUT>
 	                    ClientSocketOptions options,
 	                    SslOptions sslOptions,
 	                    Codec<Buffer, IN, OUT> codec) {
-		super(timer, codec, options.prefetch());
+		super(timer, codec, options != null ? options.prefetch() : Long.MAX_VALUE);
 		this.connectAddress = (null != connectAddress ? connectAddress : new InetSocketAddress("127.0.0.1", 3000));
 		this.options = options;
 		this.sslOptions = sslOptions;

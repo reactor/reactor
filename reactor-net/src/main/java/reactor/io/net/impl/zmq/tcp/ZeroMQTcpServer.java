@@ -73,7 +73,7 @@ public class ZeroMQTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	                       ServerSocketOptions options,
 	                       SslOptions sslOptions,
 	                       Codec<Buffer, IN, OUT> codec) {
-		super(timer, listenAddress, options, sslOptions, codec);
+		super(timer, listenAddress, options == null ? new ServerSocketOptions() : options, sslOptions, codec);
 
 		this.ioThreadCount = Integer.parseInt(System.getProperty("reactor.zmq.ioThreadCount", "1"));
 

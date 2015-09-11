@@ -39,7 +39,7 @@ public abstract class HttpClient<IN, OUT>
 	protected HttpClient(Timer timer,
 	                     Codec<Buffer, IN, OUT> codec,
 	                     ClientSocketOptions options) {
-		super(timer, codec, options.prefetch());
+		super(timer, codec, options != null ? options.prefetch() : 1);
 	}
 
 	/**

@@ -106,6 +106,22 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			this.nettyOptions = null;
 
 		}
+
+		Bootstrap _bootstrap = new Bootstrap()
+				.channel(NioSocketChannel.class)
+				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+				.option(ChannelOption.AUTO_READ, sslOptions != null)
+						//.remoteAddress(this.connectAddress)
+				;
+
+		if (options != null) {
+			_bootstrap = _bootstrap.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
+			  .option(ChannelOption.SO_SNDBUF, options.sndbuf())
+			  .option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
+			  .option(ChannelOption.SO_LINGER, options.linger())
+			  .option(ChannelOption.TCP_NODELAY, options.tcpNoDelay());
+		}
+
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
@@ -113,18 +129,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 		}
 
-		this.bootstrap = new Bootstrap()
-				.group(ioGroup)
-				.channel(NioSocketChannel.class)
-				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
-				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
-				.option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
-				.option(ChannelOption.SO_LINGER, options.linger())
-				.option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
-				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-				.option(ChannelOption.AUTO_READ, sslOptions != null)
-						//.remoteAddress(this.connectAddress)
-				;
+		this.bootstrap = _bootstrap.group(ioGroup);
 
 		this.connectionSupplier = new Supplier<ChannelFuture>() {
 			@Override
@@ -167,7 +172,9 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
 			@Override
 			public void initChannel(final SocketChannel ch) throws Exception {
-				ch.config().setConnectTimeoutMillis(getOptions().timeout());
+				if(getOptions() != null) {
+					ch.config().setConnectTimeoutMillis(getOptions().timeout());
+				}
 
 				if (null != getSslOptions()) {
 					addSecureHandler(ch);

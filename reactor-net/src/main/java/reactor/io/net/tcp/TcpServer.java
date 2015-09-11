@@ -61,9 +61,8 @@ public abstract class TcpServer<IN, OUT>
 	                    ServerSocketOptions options,
 	                    SslOptions sslOptions,
 	                    Codec<Buffer, IN, OUT> codec) {
-		super(timer, codec, options.prefetch());
+		super(timer, codec, options != null ? options.prefetch() : Long.MAX_VALUE);
 		this.listenAddress = listenAddress;
-		Assert.notNull(options, "ServerSocketOptions cannot be null");
 		this.options = options;
 		this.sslOptions = sslOptions;
 	}

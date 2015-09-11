@@ -80,7 +80,7 @@ public interface Spec {
 	  N extends ReactorPeer<IN, OUT, CONN>>
 	  implements Supplier<N> {
 
-		protected ServerSocketOptions options = new ServerSocketOptions();
+		protected ServerSocketOptions options;
 		protected InetSocketAddress      listenAddress;
 		protected Codec<Buffer, IN, OUT> codec;
 		protected Timer                  timer;
@@ -190,7 +190,7 @@ public interface Spec {
 
 		private InetSocketAddress connectAddress;
 
-		private ClientSocketOptions options = new ClientSocketOptions();
+		private ClientSocketOptions options;
 
 		private SslOptions sslOptions = null;
 		private Timer      timer      = null;
@@ -528,7 +528,7 @@ public interface Spec {
 		private final Constructor<reactor.io.net.http.HttpClient> clientImplConstructor;
 
 		private InetSocketAddress connectAddress;
-		private ClientSocketOptions options    = new ClientSocketOptions();
+		private ClientSocketOptions options    ;
 		private SslOptions          sslOptions = null;
 		private Codec<Buffer, IN, OUT> codec;
 		private Timer timer = null;
