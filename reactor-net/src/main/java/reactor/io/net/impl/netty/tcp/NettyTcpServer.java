@@ -82,7 +82,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		int selectThreadCount = DEFAULT_TCP_SELECT_COUNT;
 		int ioThreadCount = DEFAULT_TCP_THREAD_COUNT;
 
-		this.selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
+		this.selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory
+		  ("reactor-tcp-select"));
 
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
@@ -90,16 +91,23 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 		}
 
-		this.bootstrap = new ServerBootstrap()
-				.group(selectorGroup, ioGroup)
-				.channel(NioServerSocketChannel.class)
-				.option(ChannelOption.SO_BACKLOG, options.backlog())
-				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
-				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
-				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
-				.localAddress((null == listenAddress ? new InetSocketAddress(0) : listenAddress))
-				.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-				.childOption(ChannelOption.AUTO_READ, sslOptions != null);
+		ServerBootstrap _serverBootstrap = new ServerBootstrap()
+		  .group(selectorGroup, ioGroup)
+		  .channel(NioServerSocketChannel.class)
+		  .localAddress((null == listenAddress ? new InetSocketAddress(0) : listenAddress))
+		  .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+		  .childOption(ChannelOption.AUTO_READ, sslOptions != null);
+
+		if (options != null) {
+			_serverBootstrap = _serverBootstrap
+			  .option(ChannelOption.SO_BACKLOG, options.backlog())
+			  .option(ChannelOption.SO_RCVBUF, options.rcvbuf())
+			  .option(ChannelOption.SO_SNDBUF, options.sndbuf())
+			  .option(ChannelOption.SO_REUSEADDR, options.reuseAddr());
+		}
+
+		this.bootstrap = _serverBootstrap;
+
 	}
 
 	@Override
@@ -108,7 +116,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
 			@Override
 			public void initChannel(final SocketChannel ch) throws Exception {
-				if(nettyOptions != null) {
+				if (nettyOptions != null) {
 					SocketChannelConfig config = ch.config();
 					config.setReceiveBufferSize(nettyOptions.rcvbuf());
 					config.setSendBufferSize(nettyOptions.sndbuf());
@@ -126,7 +134,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 					SSLEngine ssl = new SSLEngineSupplier(getSslOptions(), false).get();
 					if (log.isDebugEnabled()) {
 						log.debug("SSL enabled using keystore {}",
-								(null != getSslOptions().keystoreFile() ? getSslOptions().keystoreFile() : "<DEFAULT>"));
+						  (null != getSslOptions().keystoreFile() ? getSslOptions().keystoreFile() : "<DEFAULT>"));
 					}
 					ch.pipeline().addLast(new SslHandler(ssl));
 				}
@@ -148,8 +156,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			public void operationComplete(ChannelFuture future) throws Exception {
 				log.info("BIND {}", future.channel().localAddress());
 				if (future.isSuccess()) {
-					if(listenAddress.getPort() == 0){
-						listenAddress = (InetSocketAddress)future.channel().localAddress();
+					if (listenAddress.getPort() == 0) {
+						listenAddress = (InetSocketAddress) future.channel().localAddress();
 					}
 					promise.onComplete();
 				} else {
@@ -185,22 +193,23 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		return d;
 	}
 
-	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel nativeChannel) {
+	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel
+	  nativeChannel) {
 
-		NettyChannelStream<IN ,OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getDefaultTimer(),
-				getDefaultCodec(),
-				getDefaultPrefetchSize(),
-				nativeChannel
+		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
+		  getDefaultTimer(),
+		  getDefaultCodec(),
+		  getDefaultPrefetchSize(),
+		  nativeChannel
 		);
 
 		ChannelPipeline pipeline = nativeChannel.pipeline();
 
-		if(log.isDebugEnabled()){
+		if (log.isDebugEnabled()) {
 			pipeline.addLast(new LoggingHandler(NettyTcpServer.class));
 		}
 		pipeline.addLast(
-				new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel)
+		  new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel)
 		);
 	}
 

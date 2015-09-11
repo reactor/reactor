@@ -72,7 +72,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	                       ClientSocketOptions options,
 	                       SslOptions sslOptions,
 	                       Codec<Buffer, IN, OUT> codec) {
-		super(timer, connectAddress, options, sslOptions, codec);
+		super(timer, connectAddress, options == null ? new ClientSocketOptions() : options, sslOptions, codec);
 
 		this.ioThreadCount = DEFAULT_ZMQ_THREAD_COUNT;
 

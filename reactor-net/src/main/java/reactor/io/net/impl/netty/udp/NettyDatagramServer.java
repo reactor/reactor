@@ -58,10 +58,10 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	private final static Logger log = LoggerFactory.getLogger(NettyDatagramServer.class);
 
-	private final    NettyServerSocketOptions    nettyOptions;
-	private final    Bootstrap                   bootstrap;
-	private final    EventLoopGroup              ioGroup;
-	private volatile NioDatagramChannel          channel;
+	private final    NettyServerSocketOptions nettyOptions;
+	private final    Bootstrap                bootstrap;
+	private final    EventLoopGroup           ioGroup;
+	private volatile NioDatagramChannel       channel;
 
 	public NettyDatagramServer(Timer timer,
 	                           InetSocketAddress listenAddress,
@@ -83,22 +83,24 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-udp-io"));
 		}
 
-		final InternetProtocolFamily family = toNettyFamily(options.protocolFamily());
 
 		this.bootstrap = new Bootstrap()
-				.group(ioGroup)
-				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
-				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
-				.option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
-				.option(ChannelOption.AUTO_READ, false)
-				.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, options.timeout())
-				.channelFactory(new ChannelFactory<Channel>() {
-									@Override
-									public Channel newChannel() {
-										return new NioDatagramChannel(family);
-									}
-								})
-				;
+		  .group(ioGroup)
+		  .option(ChannelOption.AUTO_READ, false)
+		  .channelFactory(new ChannelFactory<Channel>() {
+			  @Override
+			  public Channel newChannel() {
+				  return new NioDatagramChannel(toNettyFamily(options != null ? options.protocolFamily() : null));
+			  }
+		  })
+		;
+
+		if ( options != null ){
+			bootstrap.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
+			  .option(ChannelOption.SO_SNDBUF, options.sndbuf())
+			  .option(ChannelOption.SO_REUSEADDR, options.reuseAddr())
+			  .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, options.timeout());
+		}
 
 		if (null != listenAddress) {
 			bootstrap.localAddress(listenAddress);
@@ -125,10 +127,9 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	}
 
 
-
 	@SuppressWarnings("unchecked")
 	@Override
-	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN,OUT>> channelHandler) {
+	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> channelHandler) {
 		final Promise<Void> promise = Promises.ready(getDefaultTimer());
 
 		ChannelFuture future = bootstrap.handler(new ChannelInitializer<NioDatagramChannel>() {
@@ -257,38 +258,38 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		return d;
 	}
 
-	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN,OUT>> handler,
-	                                                  Object _ioChannel) {
+	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
+	                           Object _ioChannel) {
 		NioDatagramChannel ioChannel = (NioDatagramChannel) _ioChannel;
-		NettyChannelStream<IN, OUT> netChannel =  new NettyChannelStream<IN, OUT>(
-				getDefaultTimer(),
-				getDefaultCodec(),
-				getDefaultPrefetchSize(),
-				ioChannel
+		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
+		  getDefaultTimer(),
+		  getDefaultCodec(),
+		  getDefaultPrefetchSize(),
+		  ioChannel
 		);
 
 		ChannelPipeline pipeline = ioChannel.pipeline();
 
-		if(log.isDebugEnabled()){
+		if (log.isDebugEnabled()) {
 			pipeline.addLast(new LoggingHandler(NettyDatagramServer.class));
 		}
 
 		pipeline.addLast(
-				new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel) {
-					@Override
-					public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-						if (msg != null && DatagramPacket.class.isAssignableFrom(msg.getClass())) {
-							super.channelRead(ctx, ((DatagramPacket) msg).content());
-						} else {
-							super.channelRead(ctx, msg);
-						}
-					}
-				},
-				new ChannelOutboundHandlerAdapter() {
-					@Override
-					public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
-						super.write(ctx, msg, promise);
-					}
-				});
+		  new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel) {
+			  @Override
+			  public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+				  if (msg != null && DatagramPacket.class.isAssignableFrom(msg.getClass())) {
+					  super.channelRead(ctx, ((DatagramPacket) msg).content());
+				  } else {
+					  super.channelRead(ctx, msg);
+				  }
+			  }
+		  },
+		  new ChannelOutboundHandlerAdapter() {
+			  @Override
+			  public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+				  super.write(ctx, msg, promise);
+			  }
+		  });
 	}
 }
