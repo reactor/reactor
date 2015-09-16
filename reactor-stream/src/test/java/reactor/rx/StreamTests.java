@@ -868,6 +868,18 @@ public class StreamTests extends AbstractReactorTest {
 
 
 	@Test
+	public void prematureFlatMapCompletion() throws Exception{
+
+		CountDownLatch latch = new CountDownLatch(1);
+		Streams.range(0, 1_000_000)
+		  .flatMap(v -> Streams.range(v, 2))
+		  .count()
+		  .consume(d -> latch.countDown());
+
+		assertTrue(latch.await(5, TimeUnit.SECONDS));
+	}
+
+	@Test
 	public void shouldCorrectlyDispatchComplexFlow() throws InterruptedException {
 		Broadcaster<Integer> globalFeed = Broadcaster.create();
 
