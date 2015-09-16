@@ -64,6 +64,9 @@ public final class RangeStream {
 	 * @return
 	 */
 	public static Stream<Long> create(final long min, final long max) {
+		if(max < min)
+			return Streams.empty();
+
 		return Streams.wrap(PublisherFactory.create(new Consumer<SubscriberWithContext<Long, Range>>() {
 			  @Override
 			  public void accept(SubscriberWithContext<Long, Range> subscriber) {
