@@ -28,9 +28,9 @@ import reactor.io.buffer.Buffer;
 @SuppressWarnings("unchecked")
 public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super SO>> {
 
-	private int     timeout    = 30000;
+	private int     timeout    = 5000; // value in millis
 	private boolean keepAlive  = true;
-	private int     linger     = 30000;
+	private int     linger     = 2; // value in seconds
 	private boolean tcpNoDelay = true;
 	private int     rcvbuf     = Buffer.SMALL_BUFFER_SIZE;
 	private int     sndbuf     = Buffer.SMALL_BUFFER_SIZE;
