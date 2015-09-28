@@ -30,7 +30,7 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	private int     timeout    = 30000;
 	private boolean keepAlive  = true;
-	private int     linger     = 30000;
+	private int     linger     = 5;
 	private boolean tcpNoDelay = true;
 	private int     rcvbuf     = Buffer.SMALL_BUFFER_SIZE;
 	private int     sndbuf     = Buffer.SMALL_BUFFER_SIZE;

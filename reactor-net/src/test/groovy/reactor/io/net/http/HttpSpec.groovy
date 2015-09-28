@@ -123,6 +123,7 @@ class HttpSpec extends Specification {
 						.writeWith(
 						req
 								.log('server-received')
+								.capacity(1)
 								.map { it + ' ' + req.param('param') + '!' }
 								.log('server-reply')
 				)
@@ -147,7 +148,8 @@ class HttpSpec extends Specification {
 				//return a producing stream to send some data along the request
 				req.writeWith(
 						Streams
-								.just("Hello")
+								.range(1, 1000)
+								.map{ it.toString() }
 								.log('client-send')
 				)
 
@@ -155,7 +157,7 @@ class HttpSpec extends Specification {
 				//successful handshake, listen for the first returned next replies and pass it downstream
 				replies
 						.log('client-received')
-						.next()
+						.toList(1000)
 			}.onError {
 				//something failed during the request or the reply processing
 				println "Failed requesting server: $it"
@@ -165,7 +167,7 @@ class HttpSpec extends Specification {
 
 		then: "data was recieved"
 			//the produced reply should be there soon
-			content.await() == "Hello World!"
+			content.await()[1000 - 1] == "1000 World!"
 
 		cleanup: "the client/server where stopped"
 			//note how we order first the client then the server shutdown
