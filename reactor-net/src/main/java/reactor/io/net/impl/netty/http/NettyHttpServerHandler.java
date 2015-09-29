@@ -27,6 +27,7 @@ import io.netty.handler.codec.http.LastHttpContent;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
@@ -105,20 +106,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 				}
 			};
 
-			if (request.checkHeader()) {
-				writeFirst(ctx).addListener(new ChannelFutureListener() {
-					@Override
-					public void operationComplete(ChannelFuture future) throws Exception {
-						if (future.isSuccess()) {
-							closePublisher.subscribe(closeSub);
-						} else {
-							closeSub.onError(future.cause());
-						}
-					}
-				});
-			} else {
-				closePublisher.subscribe(closeSub);
-			}
+			closePublisher.subscribe(closeSub);
 
 		}
 		if (HttpContent.class.isAssignableFrom(messageClass)) {
@@ -134,11 +122,9 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		}
 	}
 	protected void writeLast(ChannelHandlerContext ctx){
-		ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT).addListener(ChannelFutureListener.CLOSE);
-	}
-
-	protected ChannelFuture writeFirst(ChannelHandlerContext ctx){
-		return ctx.writeAndFlush(request.getNettyResponse());
+		ctx
+		  .writeAndFlush(request.checkHeader() ? request.getNettyResponse() : LastHttpContent.EMPTY_LAST_CONTENT)
+		  .addListener(ChannelFutureListener.CLOSE);
 	}
 
 	@Override
@@ -148,6 +134,15 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		} else {
 			return ctx.write(data);
 		}
+	}
+
+	@Override
+	protected void doOnSubscribe(ChannelHandlerContext ctx, Subscription s, long n, Consumer<Void> cb) {
+		if (request.checkHeader()) {
+			ctx.write(request.getNettyResponse());
+		}
+
+		super.doOnSubscribe(ctx, s, n, cb);
 	}
 
 	NettyHttpServerHandler<IN, OUT> withWebsocketSupport(String url, String protocols){
