@@ -39,6 +39,7 @@ import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.net.impl.netty.NettyNativeDetector;
 import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
@@ -88,12 +89,12 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
-			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
+			this.ioGroup = NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
 		}
 
 		ServerBootstrap _serverBootstrap = new ServerBootstrap()
 		  .group(selectorGroup, ioGroup)
-		  .channel(NioServerSocketChannel.class)
+		  .channel(NettyNativeDetector.getServerChannel())
 		  .localAddress((null == listenAddress ? new InetSocketAddress(0) : listenAddress))
 		  .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 		  .childOption(ChannelOption.AUTO_READ, sslOptions != null);

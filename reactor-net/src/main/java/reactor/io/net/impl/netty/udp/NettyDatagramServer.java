@@ -19,7 +19,7 @@ package reactor.io.net.impl.netty.udp;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ChannelFactory;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.epoll.EpollDatagramChannel;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.InternetProtocolFamily;
 import io.netty.channel.socket.nio.NioDatagramChannel;
@@ -38,6 +38,7 @@ import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.net.impl.netty.NettyNativeDetector;
 import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.udp.DatagramServer;
 import reactor.rx.Promise;
@@ -80,22 +81,31 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
 			int ioThreadCount = DEFAULT_UDP_THREAD_COUNT;
-			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-udp-io"));
+			this.ioGroup = NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
+			  ("reactor-udp-io"));
 		}
 
 
 		this.bootstrap = new Bootstrap()
 		  .group(ioGroup)
 		  .option(ChannelOption.AUTO_READ, false)
-		  .channelFactory(new ChannelFactory<Channel>() {
-			  @Override
-			  public Channel newChannel() {
-				  return new NioDatagramChannel(toNettyFamily(options != null ? options.protocolFamily() : null));
-			  }
-		  })
 		;
 
-		if ( options != null ){
+		if ((options == null ||
+		  options.protocolFamily() == null)
+		  &&
+		  NettyNativeDetector.getDatagramChannel().equals(EpollDatagramChannel.class)) {
+			bootstrap.channel(EpollDatagramChannel.class);
+		} else {
+			bootstrap.channelFactory(new ChannelFactory<Channel>() {
+				@Override
+				public Channel newChannel() {
+					return new NioDatagramChannel(toNettyFamily(options != null ? options.protocolFamily() : null));
+				}
+			});
+		}
+
+		if (options != null) {
 			bootstrap.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
 			  .option(ChannelOption.SO_SNDBUF, options.sndbuf())
 			  .option(ChannelOption.SO_REUSEADDR, options.reuseAddr())

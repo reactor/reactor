@@ -19,9 +19,7 @@ package reactor.io.net.impl.netty.tcp;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
@@ -44,6 +42,7 @@ import reactor.io.net.config.SslOptions;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.io.net.impl.netty.NettyClientSocketOptions;
+import reactor.io.net.impl.netty.NettyNativeDetector;
 import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
@@ -108,7 +107,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		}
 
 		Bootstrap _bootstrap = new Bootstrap()
-				.channel(NioSocketChannel.class)
+		        .channel(NettyNativeDetector.getChannel())
 				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.option(ChannelOption.AUTO_READ, sslOptions != null)
 						//.remoteAddress(this.connectAddress)
@@ -126,7 +125,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
 			int ioThreadCount = TcpServer.DEFAULT_TCP_THREAD_COUNT;
-			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
+			this.ioGroup = NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
+			  ("reactor-tcp-io"));
 		}
 
 		this.bootstrap = _bootstrap.group(ioGroup);
@@ -262,7 +262,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		private final AtomicInteger attempts = new AtomicInteger(0);
 		private final Reconnect reconnect;
 		private final Broadcaster<Tuple2<InetSocketAddress, Integer>> broadcaster =
-				BehaviorBroadcaster.create(getDefaultTimer());
+		  BehaviorBroadcaster.create(getDefaultTimer());
 
 		private volatile InetSocketAddress connectAddress;
 
@@ -282,7 +282,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				if (null == tup) {
 					// do not attempt a reconnect
 					if (log.isErrorEnabled()) {
-						log.error("Reconnection to {} failed after {} attempts. Giving up.", connectAddress, attempt - 1);
+						log.error("Reconnection to {} failed after {} attempts. Giving up.", connectAddress, attempt -
+						  1);
 					}
 					future.channel().eventLoop().submit(new Runnable() {
 						@Override
@@ -306,7 +307,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							log.info("CLOSED: " + ioCh);
 						}
 
-						Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempts.incrementAndGet());
+						Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempts
+						  .incrementAndGet());
 						if (null == tup) {
 							broadcaster.onComplete();
 							// do not attempt a reconnect
@@ -330,16 +332,16 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			}
 
 			getDefaultTimer()
-					.submit(
-							new Consumer<Long>() {
-								@Override
-								public void accept(Long now) {
-									openChannel(ReconnectingChannelListener.this);
-								}
-							},
-							delay,
-							TimeUnit.MILLISECONDS
-					);
+			  .submit(
+			    new Consumer<Long>() {
+				    @Override
+				    public void accept(Long now) {
+					    openChannel(ReconnectingChannelListener.this);
+				    }
+			    },
+			    delay,
+			    TimeUnit.MILLISECONDS
+			  );
 		}
 	}
 
