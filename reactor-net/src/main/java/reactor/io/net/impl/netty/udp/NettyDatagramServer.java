@@ -20,6 +20,7 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ChannelFactory;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollDatagramChannel;
+import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.InternetProtocolFamily;
 import io.netty.channel.socket.nio.NioDatagramChannel;
@@ -142,9 +143,9 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> channelHandler) {
 		final Promise<Void> promise = Promises.ready(getDefaultTimer());
 
-		ChannelFuture future = bootstrap.handler(new ChannelInitializer<NioDatagramChannel>() {
+		ChannelFuture future = bootstrap.handler(new ChannelInitializer<DatagramChannel>() {
 			@Override
-			public void initChannel(final NioDatagramChannel ch) throws Exception {
+			public void initChannel(final DatagramChannel ch) throws Exception {
 				if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 					nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 				}
