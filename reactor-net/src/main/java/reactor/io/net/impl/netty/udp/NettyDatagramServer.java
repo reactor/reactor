@@ -64,7 +64,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	private final    NettyServerSocketOptions nettyOptions;
 	private final    Bootstrap                bootstrap;
 	private final    EventLoopGroup           ioGroup;
-	private volatile NioDatagramChannel       channel;
+	private volatile DatagramChannel       channel;
 
 	public NettyDatagramServer(Timer timer,
 	                           InetSocketAddress listenAddress,
@@ -163,7 +163,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			public void operationComplete(ChannelFuture future) throws Exception {
 				if (future.isSuccess()) {
 					log.info("BIND {}", future.channel().localAddress());
-					channel = (NioDatagramChannel) future.channel();
+					channel = (DatagramChannel) future.channel();
 					promise.onComplete();
 				} else {
 					promise.onError(future.cause());
