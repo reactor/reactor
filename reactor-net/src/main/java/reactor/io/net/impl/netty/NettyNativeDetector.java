@@ -32,34 +32,31 @@ import java.util.concurrent.ThreadFactory;
  */
 public class NettyNativeDetector {
 
-		private static boolean epoll;
+	private static boolean epoll;
 
-		static
-		{
-			if ( !PlatformDependent.isWindows() && Boolean.parseBoolean( System.getProperty( "reactor.io.epoll", "true" ) ) )
-			{
-				epoll = Epoll.isAvailable();
-			}
+	static {
+		if (!PlatformDependent.isWindows() && Boolean.parseBoolean(System.getProperty("reactor.io.epoll", "true"))) {
+			epoll = Epoll.isAvailable();
 		}
-
-		public static EventLoopGroup newEventLoopGroup(int threads, ThreadFactory factory)
-		{
-			return epoll ? new EpollEventLoopGroup( threads, factory ) : new NioEventLoopGroup( threads, factory );
-		}
-
-		public static Class<? extends ServerChannel> getServerChannel()
-		{
-			return epoll ? EpollServerSocketChannel.class : NioServerSocketChannel.class;
-		}
-
-		public static Class<? extends Channel> getChannel()
-		{
-			return epoll ? EpollSocketChannel.class : NioSocketChannel.class;
-		}
-
-		public static Class<? extends Channel> getDatagramChannel()
-		{
-			return epoll ? EpollDatagramChannel.class : NioDatagramChannel.class;
-		}
-
 	}
+
+	public static EventLoopGroup newEventLoopGroup(int threads, ThreadFactory factory) {
+		return epoll ? new EpollEventLoopGroup(threads, factory) : new NioEventLoopGroup(threads, factory);
+	}
+
+	public static Class<? extends ServerChannel> getServerChannel(Class<? extends EventLoopGroup> group) {
+		return EpollEventLoopGroup.class.isAssignableFrom(group.getClass()) && epoll ?
+		  EpollServerSocketChannel.class : NioServerSocketChannel.class;
+	}
+
+	public static Class<? extends Channel> getChannel(Class<? extends EventLoopGroup> group) {
+		return EpollEventLoopGroup.class.isAssignableFrom(group.getClass()) && epoll ?
+		  EpollSocketChannel.class : NioSocketChannel.class;
+	}
+
+	public static Class<? extends Channel> getDatagramChannel(Class<? extends EventLoopGroup> group) {
+		return EpollEventLoopGroup.class.isAssignableFrom(group.getClass()) && epoll ?
+		  EpollDatagramChannel.class : NioDatagramChannel.class;
+	}
+
+}

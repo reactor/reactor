@@ -105,9 +105,16 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			this.nettyOptions = null;
 
 		}
+		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
+			this.ioGroup = nettyOptions.eventLoopGroup();
+		} else {
+			int ioThreadCount = TcpServer.DEFAULT_TCP_THREAD_COUNT;
+			this.ioGroup = NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
+			  ("reactor-tcp-io"));
+		}
 
 		Bootstrap _bootstrap = new Bootstrap()
-		        .channel(NettyNativeDetector.getChannel())
+		        .channel(NettyNativeDetector.getChannel(ioGroup.getClass()))
 				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.option(ChannelOption.AUTO_READ, sslOptions != null)
 						//.remoteAddress(this.connectAddress)
@@ -121,13 +128,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			  .option(ChannelOption.TCP_NODELAY, options.tcpNoDelay());
 		}
 
-		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
-			this.ioGroup = nettyOptions.eventLoopGroup();
-		} else {
-			int ioThreadCount = TcpServer.DEFAULT_TCP_THREAD_COUNT;
-			this.ioGroup = NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
-			  ("reactor-tcp-io"));
-		}
 
 		this.bootstrap = _bootstrap.group(ioGroup);
 
