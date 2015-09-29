@@ -31,7 +31,7 @@ ext {
   // Libraries
   disruptorVersion = '3.3.2'
   gsCollectionsVersion = '5.1.0'
-  nettyVersion = '4.0.27.Final'
+  nettyVersion = '4.0.31.Final'
   jeromqVersion = '0.3.4'
   jacksonDatabindVersion = '2.5.1'
   jsonPathVersion = '2.0.0'

@@ -20,6 +20,7 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ChannelFactory;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollDatagramChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.InternetProtocolFamily;
@@ -66,7 +67,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	private final    NettyServerSocketOptions    nettyOptions;
 	private final    Bootstrap                   bootstrap;
 	private final    EventLoopGroup              ioGroup;
-	private volatile NioDatagramChannel          channel;
+	private volatile DatagramChannel          channel;
 
 	public NettyDatagramServer(@Nonnull Environment env,
 	                           @Nonnull Dispatcher dispatcher,
@@ -86,9 +87,13 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
 			int ioThreadCount = getDefaultEnvironment().getIntProperty("reactor.udp.ioThreadCount",
-					Environment.PROCESSORS);
-			this.ioGroup = NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
-			  ("reactor-udp-io"));
+			  Environment.PROCESSORS);
+			this.ioGroup =
+			  options == null || options.protocolFamily() == null ?
+				NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
+				  ("reactor-udp-io")) :
+				new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
+				  ("reactor-udp-io"));
 		}
 
 		final InternetProtocolFamily family = toNettyFamily(options.protocolFamily());
@@ -101,13 +106,13 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		if ((options == null ||
 		  options.protocolFamily() == null)
 		  &&
-		  NettyNativeDetector.getDatagramChannel().equals(EpollDatagramChannel.class)) {
+		  NettyNativeDetector.getDatagramChannel(ioGroup).equals(EpollDatagramChannel.class)) {
 			bootstrap.channel(EpollDatagramChannel.class);
 		} else {
 			bootstrap.channelFactory(new ChannelFactory<Channel>() {
 				@Override
 				public Channel newChannel() {
-					return new NioDatagramChannel(toNettyFamily(options != null ? options.protocolFamily() : null));
+					return new NioDatagramChannel(family);
 				}
 			});
 		}
@@ -150,9 +155,9 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN,OUT>> channelHandler) {
 		final Promise<Void> promise = Promises.ready(getDefaultEnvironment(), getDefaultDispatcher());
 
-		ChannelFuture future = bootstrap.handler(new ChannelInitializer<NioDatagramChannel>() {
+		ChannelFuture future = bootstrap.handler(new ChannelInitializer<DatagramChannel>() {
 			@Override
-			public void initChannel(final NioDatagramChannel ch) throws Exception {
+			public void initChannel(final DatagramChannel ch) throws Exception {
 				if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 					nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 				}
@@ -165,7 +170,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			public void operationComplete(ChannelFuture future) throws Exception {
 				if (future.isSuccess()) {
 					log.info("BIND {}", future.channel().localAddress());
-					channel = (NioDatagramChannel) future.channel();
+					channel = (DatagramChannel)future.channel();
 					promise.onComplete();
 				} else {
 					promise.onError(future.cause());

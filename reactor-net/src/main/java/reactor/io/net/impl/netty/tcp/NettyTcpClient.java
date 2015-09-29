@@ -117,7 +117,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		}
 
 		Bootstrap _bootstrap = new Bootstrap()
-		  .channel(NettyNativeDetector.getChannel())
+		        .group(ioGroup)
+		        .channel(NettyNativeDetector.getChannel(ioGroup))
 				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.option(ChannelOption.AUTO_READ, sslOptions != null)
 						//.remoteAddress(this.connectAddress)
@@ -131,7 +132,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			  .option(ChannelOption.TCP_NODELAY, options.tcpNoDelay());
 		}
 
-		this.bootstrap = _bootstrap.group(ioGroup);
+
+		this.bootstrap = _bootstrap;
 
 		this.connectionSupplier = new Supplier<ChannelFuture>() {
 			@Override

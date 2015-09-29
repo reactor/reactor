@@ -83,13 +83,14 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 						ctx.read();
 					}
 
-				/*	@Override
+					@Override
 					public void cancel() {
 						super.cancel();
+						channelSubscription = null;
 						if (ctx.channel().isOpen()) {
 							ctx.close();
 						}
-					}*/
+					}
 				};
 				subscriberEvent.inputSubscriber.onSubscribe(channelSubscription);
 

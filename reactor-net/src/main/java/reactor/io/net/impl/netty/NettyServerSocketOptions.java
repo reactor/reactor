@@ -17,7 +17,7 @@
 package reactor.io.net.impl.netty;
 
 import io.netty.channel.ChannelPipeline;
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.EventLoopGroup;
 import reactor.fn.Consumer;
 import reactor.io.net.config.ServerSocketOptions;
 
@@ -29,7 +29,7 @@ import reactor.io.net.config.ServerSocketOptions;
 public class NettyServerSocketOptions extends ServerSocketOptions {
 
 	private Consumer<ChannelPipeline> pipelineConfigurer;
-	private NioEventLoopGroup         eventLoopGroup;
+	private EventLoopGroup            eventLoopGroup;
 
 	public Consumer<ChannelPipeline> pipelineConfigurer() {
 		return pipelineConfigurer;
@@ -40,11 +40,11 @@ public class NettyServerSocketOptions extends ServerSocketOptions {
 		return this;
 	}
 
-	public NioEventLoopGroup eventLoopGroup() {
+	public EventLoopGroup eventLoopGroup() {
 		return eventLoopGroup;
 	}
 
-	public NettyServerSocketOptions eventLoopGroup(NioEventLoopGroup eventLoopGroup) {
+	public NettyServerSocketOptions eventLoopGroup(EventLoopGroup eventLoopGroup) {
 		this.eventLoopGroup = eventLoopGroup;
 		return this;
 	}

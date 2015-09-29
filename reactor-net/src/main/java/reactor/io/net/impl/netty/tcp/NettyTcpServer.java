@@ -19,10 +19,8 @@ package reactor.io.net.impl.netty.tcp;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.SocketChannelConfig;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
@@ -87,7 +85,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		int ioThreadCount = getDefaultEnvironment().getIntProperty("reactor.tcp.ioThreadCount",  Environment
 				.PROCESSORS);
 
-		this.selectorGroup = new NioEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory("reactor-tcp-select"));
+		this.selectorGroup = NettyNativeDetector.newEventLoopGroup(selectThreadCount, new NamedDaemonThreadFactory
+		  ("reactor-tcp-select"));
 
 		if (null != nettyOptions && null != nettyOptions.eventLoopGroup()) {
 			this.ioGroup = nettyOptions.eventLoopGroup();
@@ -97,7 +96,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 		ServerBootstrap _serverBootstrap = new ServerBootstrap()
 		  .group(selectorGroup, ioGroup)
-		  .channel(NettyNativeDetector.getServerChannel())
+		  .channel(NettyNativeDetector.getServerChannel(ioGroup))
 		  .localAddress((null == listenAddress ? new InetSocketAddress(0) : listenAddress))
 		  .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 		  .childOption(ChannelOption.AUTO_READ, sslOptions != null);
