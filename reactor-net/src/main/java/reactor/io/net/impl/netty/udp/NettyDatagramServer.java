@@ -100,7 +100,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		if ((options == null ||
 		  options.protocolFamily() == null)
 		  &&
-		  NettyNativeDetector.getDatagramChannel(ioGroup.getClass()).equals(EpollDatagramChannel.class)) {
+		  NettyNativeDetector.getDatagramChannel(ioGroup).equals(EpollDatagramChannel.class)) {
 			bootstrap.channel(EpollDatagramChannel.class);
 		} else {
 			bootstrap.channelFactory(new ChannelFactory<Channel>() {

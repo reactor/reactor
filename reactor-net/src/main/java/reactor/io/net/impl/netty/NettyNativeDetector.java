@@ -44,17 +44,17 @@ public class NettyNativeDetector {
 		return epoll ? new EpollEventLoopGroup(threads, factory) : new NioEventLoopGroup(threads, factory);
 	}
 
-	public static Class<? extends ServerChannel> getServerChannel(Class<? extends EventLoopGroup> group) {
+	public static Class<? extends ServerChannel> getServerChannel(EventLoopGroup group) {
 		return EpollEventLoopGroup.class.isAssignableFrom(group.getClass()) && epoll ?
 		  EpollServerSocketChannel.class : NioServerSocketChannel.class;
 	}
 
-	public static Class<? extends Channel> getChannel(Class<? extends EventLoopGroup> group) {
+	public static Class<? extends Channel> getChannel(EventLoopGroup group) {
 		return EpollEventLoopGroup.class.isAssignableFrom(group.getClass()) && epoll ?
 		  EpollSocketChannel.class : NioSocketChannel.class;
 	}
 
-	public static Class<? extends Channel> getDatagramChannel(Class<? extends EventLoopGroup> group) {
+	public static Class<? extends Channel> getDatagramChannel(EventLoopGroup group) {
 		return EpollEventLoopGroup.class.isAssignableFrom(group.getClass()) && epoll ?
 		  EpollDatagramChannel.class : NioDatagramChannel.class;
 	}

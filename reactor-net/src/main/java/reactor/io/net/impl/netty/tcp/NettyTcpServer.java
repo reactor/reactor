@@ -92,7 +92,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 		ServerBootstrap _serverBootstrap = new ServerBootstrap()
 		  .group(selectorGroup, ioGroup)
-		  .channel(NettyNativeDetector.getServerChannel(ioGroup.getClass()))
+		  .channel(NettyNativeDetector.getServerChannel(ioGroup))
 		  .localAddress((null == listenAddress ? new InetSocketAddress(0) : listenAddress))
 		  .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 		  .childOption(ChannelOption.AUTO_READ, sslOptions != null);

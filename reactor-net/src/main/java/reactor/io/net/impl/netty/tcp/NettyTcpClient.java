@@ -115,7 +115,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 		Bootstrap _bootstrap = new Bootstrap()
 		        .group(ioGroup)
-		        .channel(NettyNativeDetector.getChannel(ioGroup.getClass()))
+		        .channel(NettyNativeDetector.getChannel(ioGroup))
 				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.option(ChannelOption.AUTO_READ, sslOptions != null)
 						//.remoteAddress(this.connectAddress)
