@@ -17,17 +17,19 @@
 package reactor.io.net.impl.netty;
 
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import reactor.fn.Consumer;
 import reactor.io.net.config.ClientSocketOptions;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class NettyClientSocketOptions extends ClientSocketOptions {
 
 	private Consumer<ChannelPipeline> pipelineConfigurer;
-	private NioEventLoopGroup         eventLoopGroup;
+	private EventLoopGroup         eventLoopGroup;
 
 	public Consumer<ChannelPipeline> pipelineConfigurer() {
 		return pipelineConfigurer;
@@ -38,11 +40,11 @@ public class NettyClientSocketOptions extends ClientSocketOptions {
 		return this;
 	}
 
-	public NioEventLoopGroup eventLoopGroup() {
+	public EventLoopGroup eventLoopGroup() {
 		return eventLoopGroup;
 	}
 
-	public NettyClientSocketOptions eventLoopGroup(NioEventLoopGroup eventLoopGroup) {
+	public NettyClientSocketOptions eventLoopGroup(EventLoopGroup eventLoopGroup) {
 		this.eventLoopGroup = eventLoopGroup;
 		return this;
 	}
