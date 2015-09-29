@@ -118,7 +118,10 @@ public class TcpClientTests {
 			conn.log("conn").consume(s -> {
 				latch.countDown();
 			});
-			return conn.writeWith(Streams.just("Hello World!"));
+
+			conn.writeWith(Streams.just("Hello World!")).consume();
+
+			return Streams.never();
 		});
 
 		latch.await(30, TimeUnit.SECONDS);
@@ -140,7 +143,9 @@ public class TcpClientTests {
 
 		client.start(input -> {
 			input.consume(d -> latch.countDown());
-			return input.writeWith(Streams.just("Hello"));
+			input.writeWith(Streams.just("Hello")).consume();
+
+			return Streams.never();
 		});
 
 		latch.await(30, TimeUnit.SECONDS);
@@ -169,11 +174,13 @@ public class TcpClientTests {
 				latch.countDown();
 			});
 
-			return input.writeWith(
+			input.writeWith(
 					Streams.range(1, messages)
 							.map(i -> "Hello World!")
 							.subscribeOn(env.getDefaultDispatcher())
-			);
+			).consume();
+
+			return Streams.never();
 		});
 
 		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings,

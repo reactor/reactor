@@ -141,7 +141,9 @@ class NettyTcpServerSpec extends Specification {
 								.map { new Pojo(name: 'test' + it) }
 								.log('send')
 								.map(codec)
-				)
+				).consume()
+
+				Streams.never()
 			}.await()
 
 		then: "the client/server were started"
@@ -196,7 +198,9 @@ class NettyTcpServerSpec extends Specification {
 								.map { new Pojo(name: 'test' + it) }
 								.log('send')
 								.map(codec)
-				)
+				).consume()
+
+				Streams.never()
 			}.await()
 
 		then: "the client/server were started"
