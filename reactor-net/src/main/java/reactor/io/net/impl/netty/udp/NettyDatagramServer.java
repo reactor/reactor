@@ -276,7 +276,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
 	                           Object _ioChannel) {
-		NioDatagramChannel ioChannel = (NioDatagramChannel) _ioChannel;
+		DatagramChannel ioChannel = (DatagramChannel) _ioChannel;
 		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
 		  getDefaultTimer(),
 		  getDefaultCodec(),
