@@ -20,6 +20,7 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ChannelFactory;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollDatagramChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.InternetProtocolFamily;
@@ -82,8 +83,12 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			this.ioGroup = nettyOptions.eventLoopGroup();
 		} else {
 			int ioThreadCount = DEFAULT_UDP_THREAD_COUNT;
-			this.ioGroup = NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
-			  ("reactor-udp-io"));
+			this.ioGroup =
+			  options == null || options.protocolFamily() == null ?
+				NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
+				  ("reactor-udp-io")) :
+				new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
+				  ("reactor-udp-io"));
 		}
 
 

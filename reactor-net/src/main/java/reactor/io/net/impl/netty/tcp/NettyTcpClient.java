@@ -114,6 +114,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		}
 
 		Bootstrap _bootstrap = new Bootstrap()
+		        .group(ioGroup)
 		        .channel(NettyNativeDetector.getChannel(ioGroup.getClass()))
 				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.option(ChannelOption.AUTO_READ, sslOptions != null)
@@ -129,7 +130,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		}
 
 
-		this.bootstrap = _bootstrap.group(ioGroup);
+		this.bootstrap = _bootstrap;
 
 		this.connectionSupplier = new Supplier<ChannelFuture>() {
 			@Override
