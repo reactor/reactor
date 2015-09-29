@@ -55,9 +55,9 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	protected PushSubscription<IN> channelSubscription;
 	private   ByteBuf              remainder;
 
-	private volatile int writers = 0;
-	protected static final AtomicIntegerFieldUpdater<NettyChannelHandlerBridge> WRITERS =
-	  AtomicIntegerFieldUpdater.newUpdater(NettyChannelHandlerBridge.class, "writers");
+	private volatile int channelRef = 0;
+	protected static final AtomicIntegerFieldUpdater<NettyChannelHandlerBridge> CHANNEL_REF =
+	  AtomicIntegerFieldUpdater.newUpdater(NettyChannelHandlerBridge.class, "channelRef");
 
 	public NettyChannelHandlerBridge(
 			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, NettyChannelStream<IN, OUT> channelStream
@@ -79,6 +79,8 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 				@SuppressWarnings("unchecked")
 				ChannelInputSubscriberEvent<IN> subscriberEvent = (ChannelInputSubscriberEvent<IN>) evt;
 
+				CHANNEL_REF.incrementAndGet(NettyChannelHandlerBridge.this);
+
 				this.channelSubscription = new PushSubscription<IN>(null, subscriberEvent.inputSubscriber) {
 					@Override
 					protected void onRequest(long n) {
@@ -91,8 +93,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					@Override
 					public void cancel() {
 						super.cancel();
-						channelSubscription = null;
-						if (writers == 0) {
+						if (CHANNEL_REF.decrementAndGet(NettyChannelHandlerBridge.this) == 0) {
 							ctx.channel().close();
 						}
 
@@ -120,14 +121,14 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					@Override
 					public void onError(Throwable t) {
 						log.error("Error processing connection. Closing the channel.", t);
-						if (channelSubscription == null && writers == 0) {
+						if (channelRef == 0) {
 							ctx.channel().close();
 						}
 					}
 
 					@Override
 					public void onComplete() {
-						if (channelSubscription == null && writers == 0) {
+						if (channelRef == 0) {
 							ctx.channel().close();
 						}
 					}
@@ -248,7 +249,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	@Override
 	public void write(final ChannelHandlerContext ctx, Object msg, final ChannelPromise promise) throws Exception {
 		if (msg instanceof Publisher) {
-			WRITERS.incrementAndGet(this);
+			CHANNEL_REF.incrementAndGet(this);
 
 			@SuppressWarnings("unchecked")
 			Publisher<?> data = (Publisher<?>) msg;
@@ -290,7 +291,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	}
 
 	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last, final ChannelPromise promise) {
-		WRITERS.decrementAndGet(this);
+		CHANNEL_REF.decrementAndGet(this);
 
 		if (ctx.channel().isOpen()) {
 			ChannelFutureListener listener = new ChannelFutureListener() {
