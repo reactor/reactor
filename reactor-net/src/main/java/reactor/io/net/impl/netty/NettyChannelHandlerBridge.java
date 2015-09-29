@@ -264,14 +264,6 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		}
 	}
 
-	@Override
-	public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
-		if(ctx.channel().isWritable()){
-			
-		}
-		super.channelWritabilityChanged(ctx);
-	}
-
 	protected ChannelFuture doOnWrite(Object data, ChannelHandlerContext ctx) {
 		if (data.getClass().equals(Buffer.class)) {
 			return ctx.channel().write(convertBufferToByteBuff(ctx, (Buffer) data));

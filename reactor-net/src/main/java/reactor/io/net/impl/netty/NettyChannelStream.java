@@ -72,17 +72,23 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 			encodedWriter = writer;
 		}
 
-		ioChannel.write(encodedWriter).addListener(new ChannelFutureListener() {
+		ioChannel.eventLoop().execute(new Runnable() {
 			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (future.isSuccess()) {
-					postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
-					postWriter.onComplete();
-				} else {
-					postWriter.onError(future.cause());
-				}
+			public void run() {
+				ioChannel.write(encodedWriter).addListener(new ChannelFutureListener() {
+					@Override
+					public void operationComplete(ChannelFuture future) throws Exception {
+						if (future.isSuccess()) {
+							postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
+							postWriter.onComplete();
+						} else {
+							postWriter.onError(future.cause());
+						}
+					}
+				});
 			}
 		});
+
 	}
 
 	@Override
