@@ -72,22 +72,38 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 			encodedWriter = writer;
 		}
 
-		ioChannel.eventLoop().execute(new Runnable() {
-			@Override
-			public void run() {
-				ioChannel.write(encodedWriter).addListener(new ChannelFutureListener() {
-					@Override
-					public void operationComplete(ChannelFuture future) throws Exception {
-						if (future.isSuccess()) {
-							postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
-							postWriter.onComplete();
-						} else {
-							postWriter.onError(future.cause());
-						}
+
+
+		if(ioChannel.eventLoop().inEventLoop()) {
+			ioChannel.write(encodedWriter).addListener(new ChannelFutureListener() {
+				@Override
+				public void operationComplete(ChannelFuture future) throws Exception {
+					if (future.isSuccess()) {
+						postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
+						postWriter.onComplete();
+					} else {
+						postWriter.onError(future.cause());
 					}
-				});
-			}
-		});
+				}
+			});
+		}else {
+			ioChannel.eventLoop().execute(new Runnable() {
+				@Override
+				public void run() {
+					ioChannel.write(encodedWriter).addListener(new ChannelFutureListener() {
+						@Override
+						public void operationComplete(ChannelFuture future) throws Exception {
+							if (future.isSuccess()) {
+								postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
+								postWriter.onComplete();
+							} else {
+								postWriter.onError(future.cause());
+							}
+						}
+					});
+				}
+			});
+		}
 
 	}
 
