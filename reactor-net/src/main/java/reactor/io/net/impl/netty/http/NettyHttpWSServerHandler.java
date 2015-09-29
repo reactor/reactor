@@ -76,11 +76,6 @@ public class NettyHttpWSServerHandler<IN, OUT> extends NettyHttpServerHandler<IN
 	}
 
 	@Override
-	protected ChannelFuture writeFirst(ChannelHandlerContext ctx) {
-		return ctx.newSucceededFuture();
-	}
-
-	@Override
 	protected ChannelFuture doOnWrite(final Object data, final ChannelHandlerContext ctx) {
 		if (data.getClass().equals(Buffer.class)) {
 			if(!plainText) {
