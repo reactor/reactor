@@ -122,16 +122,12 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					@Override
 					public void onError(Throwable t) {
 						log.error("Error processing connection. Closing the channel.", t);
-						if (channelRef == 0) {
-							ctx.channel().close();
-						}
+						ctx.channel().close();
 					}
 
 					@Override
 					public void onComplete() {
-						if (channelRef == 0) {
-							ctx.channel().close();
-						}
+						ctx.channel().close();
 					}
 				});
 	}
