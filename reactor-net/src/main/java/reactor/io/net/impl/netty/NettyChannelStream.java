@@ -77,7 +77,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
 					if (future.isSuccess()) {
-						postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
+						postWriter.onSubscribe(Action.HOT_SUBSCRIPTION);
 						postWriter.onComplete();
 					} else {
 						postWriter.onError(future.cause());
@@ -92,7 +92,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 						@Override
 						public void operationComplete(ChannelFuture future) throws Exception {
 							if (future.isSuccess()) {
-								postWriter.onSubscribe(Broadcaster.HOT_SUBSCRIPTION);
+								postWriter.onSubscribe(Action.HOT_SUBSCRIPTION);
 								postWriter.onComplete();
 							} else {
 								postWriter.onError(future.cause());
