@@ -36,7 +36,7 @@ public class NettyNativeDetector {
 
 		static
 		{
-			if ( !PlatformDependent.isWindows() && Boolean.parseBoolean( System.getProperty( "reactor.io.epoll", "false" ) ) )
+			if ( !PlatformDependent.isWindows() && Boolean.parseBoolean( System.getProperty( "reactor.io.epoll", "true" ) ) )
 			{
 				epoll = Epoll.isAvailable();
 			}
