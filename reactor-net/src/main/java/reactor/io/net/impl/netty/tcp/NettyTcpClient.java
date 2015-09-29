@@ -19,9 +19,7 @@ package reactor.io.net.impl.netty.tcp;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
@@ -45,6 +43,7 @@ import reactor.io.net.config.SslOptions;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.io.net.impl.netty.NettyClientSocketOptions;
+import reactor.io.net.impl.netty.NettyNativeDetector;
 import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
@@ -113,21 +112,26 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		} else {
 			int ioThreadCount = env != null ? env.getIntProperty("reactor.tcp.ioThreadCount", Environment
 					.PROCESSORS) : Environment.PROCESSORS;
-			this.ioGroup = new NioEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory("reactor-tcp-io"));
+			this.ioGroup = NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
+			  ("reactor-tcp-io"));
 		}
 
-		this.bootstrap = new Bootstrap()
-				.group(ioGroup)
-				.channel(NioSocketChannel.class)
-				.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
-				.option(ChannelOption.SO_SNDBUF, options.sndbuf())
-				.option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
-				.option(ChannelOption.SO_LINGER, options.linger())
-				.option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
+		Bootstrap _bootstrap = new Bootstrap()
+		  .channel(NettyNativeDetector.getChannel())
 				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.option(ChannelOption.AUTO_READ, sslOptions != null)
 						//.remoteAddress(this.connectAddress)
 				;
+
+		if (options != null) {
+			_bootstrap = _bootstrap.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
+			  .option(ChannelOption.SO_SNDBUF, options.sndbuf())
+			  .option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
+			  .option(ChannelOption.SO_LINGER, options.linger())
+			  .option(ChannelOption.TCP_NODELAY, options.tcpNoDelay());
+		}
+
+		this.bootstrap = _bootstrap.group(ioGroup);
 
 		this.connectionSupplier = new Supplier<ChannelFuture>() {
 			@Override
@@ -279,7 +283,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				if (null == tup) {
 					// do not attempt a reconnect
 					if (log.isErrorEnabled()) {
-						log.error("Reconnection to {} failed after {} attempts. Giving up.", connectAddress, attempt - 1);
+						log.error("Reconnection to {} failed after {} attempts. Giving up.", connectAddress, attempt -
+						  1);
 					}
 					future.channel().eventLoop().submit(new Runnable() {
 						@Override
@@ -303,7 +308,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							log.info("CLOSED: " + ioCh);
 						}
 
-						Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempts.incrementAndGet());
+						Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempts
+						  .incrementAndGet());
 						if (null == tup) {
 							broadcaster.onComplete();
 							// do not attempt a reconnect
