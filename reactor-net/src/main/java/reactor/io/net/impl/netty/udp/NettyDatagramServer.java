@@ -20,6 +20,7 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ChannelFactory;
 import io.netty.channel.*;
 import io.netty.channel.epoll.EpollDatagramChannel;
+import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.DatagramPacket;
 import io.netty.channel.socket.InternetProtocolFamily;
 import io.netty.channel.socket.nio.NioDatagramChannel;
@@ -277,10 +278,10 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN,OUT>> handler,
 	                                                  Object _ioChannel) {
-		NioDatagramChannel ioChannel = (NioDatagramChannel) _ioChannel;
+		DatagramChannel ioChannel = (DatagramChannel) _ioChannel;
 		NettyChannelStream<IN, OUT> netChannel =  new NettyChannelStream<IN, OUT>(
 				getDefaultEnvironment(),
-				getDefaultCodec(),
+		  getDefaultCodec(),
 		  getDefaultPrefetchSize(),
 		  getDefaultDispatcher(),
 				ioChannel
