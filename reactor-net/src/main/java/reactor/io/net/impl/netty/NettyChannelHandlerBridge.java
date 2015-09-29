@@ -93,10 +93,10 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					@Override
 					public void cancel() {
 						super.cancel();
-						if (CHANNEL_REF.decrementAndGet(NettyChannelHandlerBridge.this) == 0) {
-							ctx.channel().close();
-						}
-
+						channelSubscription = null;
+						//log.debug("Cancel read");
+						ctx.channel().config().setAutoRead(false);
+						CHANNEL_REF.decrementAndGet(NettyChannelHandlerBridge.this);
 					}
 				};
 				subscriberEvent.inputSubscriber.onSubscribe(channelSubscription);
@@ -121,19 +121,20 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					@Override
 					public void onError(Throwable t) {
 						log.error("Error processing connection. Closing the channel.", t);
-						ctx.channel().close();
+
+						ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
 					}
 
 					@Override
 					public void onComplete() {
-						ctx.channel().close();
+						ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
 					}
 				});
 	}
 
 	@Override
 	public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-		if (this.channelSubscription == null) {
+		if (channelSubscription == null) {
 			return;
 		}
 

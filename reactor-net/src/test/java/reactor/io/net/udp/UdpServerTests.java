@@ -121,7 +121,7 @@ public class UdpServerTests {
 						latch.countDown();
 					}
 				});
-				return Streams.empty();
+				return Streams.never();
 			}).onComplete(b -> {
 				try {
 					for (Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();

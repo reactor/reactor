@@ -203,8 +203,9 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 				}
 			});
 		} else {
-			ctx.write(new DefaultHttpContent(byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled
-					.EMPTY_BUFFER));
+			ctx.writeAndFlush(new DefaultLastHttpContent(byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) :
+			  Unpooled
+			  .EMPTY_BUFFER));
 		}
 		body.reset();
 	}
