@@ -36,6 +36,8 @@ import reactor.io.net.Spec;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.subscription.PushSubscription;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 /**
  * Netty {@link io.netty.channel.ChannelInboundHandler} implementation that passes data to a Reactor {@link
  * reactor.io.net.ChannelStream}.
@@ -52,6 +54,10 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 	protected PushSubscription<IN> channelSubscription;
 	private   ByteBuf              remainder;
+
+	private volatile int writers = 0;
+	protected static final AtomicIntegerFieldUpdater<NettyChannelHandlerBridge> WRITERS =
+	  AtomicIntegerFieldUpdater.newUpdater(NettyChannelHandlerBridge.class, "writers");
 
 	public NettyChannelHandlerBridge(
 			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, NettyChannelStream<IN, OUT> channelStream
@@ -86,9 +92,10 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					public void cancel() {
 						super.cancel();
 						channelSubscription = null;
-						if (ctx.channel().isOpen()) {
-							ctx.close();
+						if (writers == 0) {
+							ctx.channel().close();
 						}
+
 					}
 				};
 				subscriberEvent.inputSubscriber.onSubscribe(channelSubscription);
@@ -113,14 +120,14 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 					@Override
 					public void onError(Throwable t) {
 						log.error("Error processing connection. Closing the channel.", t);
-						if (channelSubscription == null) {
+						if (channelSubscription == null && writers == 0) {
 							ctx.channel().close();
 						}
 					}
 
 					@Override
 					public void onComplete() {
-						if (channelSubscription == null) {
+						if (channelSubscription == null && writers == 0) {
 							ctx.channel().close();
 						}
 					}
@@ -241,6 +248,8 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	@Override
 	public void write(final ChannelHandlerContext ctx, Object msg, final ChannelPromise promise) throws Exception {
 		if (msg instanceof Publisher) {
+			WRITERS.incrementAndGet(this);
+
 			@SuppressWarnings("unchecked")
 			Publisher<?> data = (Publisher<?>) msg;
 			final long capacity = msg instanceof Bounded ? ((Bounded) data).getCapacity() : Long.MAX_VALUE;
@@ -281,6 +290,8 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	}
 
 	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last, final ChannelPromise promise) {
+		WRITERS.decrementAndGet(this);
+
 		if (ctx.channel().isOpen()) {
 			ChannelFutureListener listener = new ChannelFutureListener() {
 				@Override
@@ -410,6 +421,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 		@Override
 		public void onError(Throwable t) {
+			if (subscription == null) throw new IllegalStateException("already flushed", t);
 			subscription = null;
 			log.error("Write error", t);
 			doOnTerminate(ctx, lastWrite, promise);
@@ -485,6 +497,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 		@Override
 		public void onError(Throwable t) {
+			if (subscription == null) throw new IllegalStateException("already flushed", t);
 			log.error("Write error", t);
 			subscription = null;
 			doOnTerminate(ctx, null, promise);
@@ -492,6 +505,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 		@Override
 		public void onComplete() {
+			if (subscription == null) throw new IllegalStateException("already flushed");
 			subscription = null;
 			if (log.isDebugEnabled()) {
 				log.debug("Flush Connection");

@@ -77,7 +77,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 				@Override
 				public void onError(Throwable t) {
 					log.error("Error processing connection. Closing the channel.", t);
-					if (channelSubscription == null && ctx.channel().isOpen()) {
+					if (channelSubscription == null && WRITERS.get(NettyHttpServerHandler.this) == 0) {
 						ctx.channel().close();
 					}
 				}
