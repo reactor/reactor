@@ -43,36 +43,26 @@ public final class Subscribers extends SubscriberFactory {
 
 
 	/**
-	 *
-	 * @param source
-	 * @param <T>
+	 * @param <IN>
 	 * @return
 	 */
-	public static <T> Subscriber<T> group(Subscriber<T> source) {
-		return source;
+	public static <IN> BlockingQueue<IN> toWriteQueue(Subscriber<IN> target) {
+		return toWriteQueue(target, BaseProcessor.SMALL_BUFFER_SIZE);
 	}
 
 	/**
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> BlockingQueue<IN> writeQueue(Subscriber<IN> target) {
-		return writeQueue(target, BaseProcessor.SMALL_BUFFER_SIZE);
+	public static <IN> BlockingQueue<IN> toWriteQueue(Subscriber<IN> target, int size) {
+		return toWriteQueue(target, size, new ArrayBlockingQueue<IN>(size));
 	}
 
 	/**
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> BlockingQueue<IN> writeQueue(Subscriber<IN> target, int size) {
-		return writeQueue(target, size, new ArrayBlockingQueue<IN>(size));
-	}
-
-	/**
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> BlockingQueue<IN> writeQueue(Subscriber<IN> target, int size, Queue<IN> store) {
+	public static <IN> BlockingQueue<IN> toWriteQueue(Subscriber<IN> target, int size, Queue<IN> store) {
 		return new BlockingQueueSubscriber<>(null, target, store, size);
 	}
 

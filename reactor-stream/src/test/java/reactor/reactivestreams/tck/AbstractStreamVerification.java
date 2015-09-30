@@ -87,6 +87,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 
 	@Override
 	public Processor<Integer, Integer> createIdentityProcessor(int bufferSize) {
+		counters.clear();
 		final Processor<Integer, Integer> p = createProcessor(bufferSize);
 
 		/*Streams.period(200, TimeUnit.MILLISECONDS)
@@ -146,6 +147,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 
 	@Test
 	public void testColdIdentityProcessor() throws InterruptedException {
+		counters.clear();
 		final int elements = 10;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
@@ -212,6 +214,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 */
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
+		counters.clear();
 		final int elements = 10000;
 		CountDownLatch latch = new CountDownLatch(elements);
 

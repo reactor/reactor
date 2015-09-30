@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.fn.Consumer;
-import reactor.fn.Function;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.action.Control;
 import reactor.rx.broadcast.Broadcaster;
@@ -76,7 +75,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
 		}
 
-		return sensorOdd.run(asyncService).log("odd");
+		return sensorOdd.dispatchOn(asyncGroup).log("odd");
 	}
 
 	public Stream<SensorData> sensorEven() {
@@ -88,7 +87,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
 		}
 
-		return sensorEven.run(asyncService).log("even");
+		return sensorEven.dispatchOn(asyncGroup).log("even");
 	}
 
 	@Test

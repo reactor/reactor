@@ -27,7 +27,7 @@ public class ProcessorServiceWorkTests extends AbstractProcessorVerification {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
-		return Processors.<Long>workService("shared-work", bufferSize, 2, Throwable::printStackTrace).get();
+		return Processors.<Long>ioGroup("shared-work", bufferSize, 2, Throwable::printStackTrace).get();
 	}
 
 	@Override

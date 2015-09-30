@@ -68,8 +68,8 @@ public final class Processors {
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> async() {
-		return async("async", BaseProcessor.SMALL_BUFFER_SIZE, true);
+	public static <E> BaseProcessor<E, E> topic() {
+		return topic("async", BaseProcessor.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
@@ -86,8 +86,8 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> async(boolean autoCancel) {
-		return async(Processors.class.getSimpleName(), BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
+	public static <E> BaseProcessor<E, E> topic(boolean autoCancel) {
+		return topic(Processors.class.getSimpleName(), BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
 	}
 
 	/**
@@ -106,8 +106,8 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> async(String name, int bufferSize) {
-		return async(name, bufferSize, true);
+	public static <E> BaseProcessor<E, E> topic(String name, int bufferSize) {
+		return topic(name, bufferSize, true);
 	}
 
 	/**
@@ -126,7 +126,7 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> async(String name, int bufferSize, boolean autoCancel) {
+	public static <E> BaseProcessor<E, E> topic(String name, int bufferSize, boolean autoCancel) {
 		final BaseProcessor<E, E> processor;
 
 		if (PlatformDependent.hasUnsafe()) {
@@ -151,8 +151,8 @@ public final class Processors {
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> work() {
-		return work("worker", BaseProcessor.SMALL_BUFFER_SIZE, true);
+	public static <E> BaseProcessor<E, E> queue() {
+		return queue("worker", BaseProcessor.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
@@ -169,8 +169,8 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> work(boolean autoCancel) {
-		return work(Processors.class.getSimpleName(), BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
+	public static <E> BaseProcessor<E, E> queue(boolean autoCancel) {
+		return queue(Processors.class.getSimpleName(), BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
 	}
 
 	/**
@@ -189,8 +189,8 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> work(String name, int bufferSize) {
-		return work(name, bufferSize, true);
+	public static <E> BaseProcessor<E, E> queue(String name, int bufferSize) {
+		return queue(name, bufferSize, true);
 	}
 
 	/**
@@ -206,7 +206,7 @@ public final class Processors {
 	 * @param <E>        Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> work(String name, int bufferSize, boolean autoCancel) {
+	public static <E> BaseProcessor<E, E> queue(String name, int bufferSize, boolean autoCancel) {
 		final BaseProcessor<E, E> processor;
 
 		if (PlatformDependent.hasUnsafe()) {
@@ -221,8 +221,8 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> asyncService() {
-		return asyncService(null, BaseProcessor.MEDIUM_BUFFER_SIZE);
+	public static <E> ProcessorGroup<E> asyncGroup() {
+		return asyncGroup(null, BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -230,19 +230,8 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> asyncService(String name) {
-		return asyncService(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
-	}
-
-	/**
-	 * @param name
-	 * @param bufferSize
-	 * @param <E>
-	 * @return
-	 */
-	public static <E> ProcessorService<E> asyncService(String name,
-	                                                   int bufferSize) {
-		return asyncService(name, bufferSize, null);
+	public static <E> ProcessorGroup<E> asyncGroup(String name) {
+		return asyncGroup(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -251,25 +240,22 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> asyncService(String name,
-	                                                   int bufferSize,
-	                                                   int concurrency) {
-		return asyncService(name, bufferSize, concurrency, null);
+	public static <E> ProcessorGroup<E> asyncGroup(String name,
+	                                               int bufferSize) {
+		return asyncGroup(name, bufferSize, null);
 	}
 
 	/**
 	 * @param name
 	 * @param bufferSize
-	 * @param uncaughtExceptionHandler
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> asyncService(String name,
-	                                                   int bufferSize,
-	                                                   Consumer<Throwable> uncaughtExceptionHandler) {
-		return asyncService(name, bufferSize, uncaughtExceptionHandler, null);
+	public static <E> ProcessorGroup<E> asyncGroup(String name,
+	                                               int bufferSize,
+	                                               int concurrency) {
+		return asyncGroup(name, bufferSize, concurrency, null);
 	}
-
 
 	/**
 	 * @param name
@@ -278,29 +264,26 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> asyncService(String name,
-	                                                   int bufferSize,
-	                                                   int concurrency,
-	                                                   Consumer<Throwable> uncaughtExceptionHandler) {
-		return asyncService(name, bufferSize, concurrency, uncaughtExceptionHandler, null);
+	public static <E> ProcessorGroup<E> asyncGroup(String name,
+	                                               int bufferSize,
+	                                               Consumer<Throwable> uncaughtExceptionHandler) {
+		return asyncGroup(name, bufferSize, uncaughtExceptionHandler, null);
 	}
+
 
 	/**
 	 * @param name
 	 * @param bufferSize
 	 * @param uncaughtExceptionHandler
-	 * @param shutdownHandler
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> asyncService(String name,
-	                                                   int bufferSize,
-	                                                   Consumer<Throwable> uncaughtExceptionHandler,
-	                                                   Consumer<Void> shutdownHandler
-	) {
-		return asyncService(name, bufferSize, uncaughtExceptionHandler, shutdownHandler, true);
+	public static <E> ProcessorGroup<E> asyncGroup(String name,
+	                                               int bufferSize,
+	                                               int concurrency,
+	                                               Consumer<Throwable> uncaughtExceptionHandler) {
+		return asyncGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, null);
 	}
-
 
 	/**
 	 * @param name
@@ -310,13 +293,30 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> asyncService(String name,
-	                                                   int bufferSize,
-	                                                   int concurrency,
-	                                                   Consumer<Throwable> uncaughtExceptionHandler,
-	                                                   Consumer<Void> shutdownHandler
+	public static <E> ProcessorGroup<E> asyncGroup(String name,
+	                                               int bufferSize,
+	                                               Consumer<Throwable> uncaughtExceptionHandler,
+	                                               Consumer<Void> shutdownHandler
 	) {
-		return asyncService(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
+		return asyncGroup(name, bufferSize, uncaughtExceptionHandler, shutdownHandler, true);
+	}
+
+
+	/**
+	 * @param name
+	 * @param bufferSize
+	 * @param uncaughtExceptionHandler
+	 * @param shutdownHandler
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorGroup<E> asyncGroup(String name,
+	                                               int bufferSize,
+	                                               int concurrency,
+	                                               Consumer<Throwable> uncaughtExceptionHandler,
+	                                               Consumer<Void> shutdownHandler
+	) {
+		return asyncGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
 	}
 
 	/**
@@ -328,12 +328,12 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> asyncService(String name,
-	                                                   int bufferSize,
-	                                                   Consumer<Throwable> uncaughtExceptionHandler,
-	                                                   Consumer<Void> shutdownHandler,
-	                                                   boolean autoShutdown) {
-		return asyncService(name, bufferSize, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+	public static <E> ProcessorGroup<E> asyncGroup(String name,
+	                                               int bufferSize,
+	                                               Consumer<Throwable> uncaughtExceptionHandler,
+	                                               Consumer<Void> shutdownHandler,
+	                                               boolean autoShutdown) {
+		return asyncGroup(name, bufferSize, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**
@@ -345,20 +345,20 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> asyncService(final String name,
-	                                                   final int bufferSize,
-	                                                   int concurrency,
-	                                                   Consumer<Throwable> uncaughtExceptionHandler,
-	                                                   Consumer<Void> shutdownHandler,
-	                                                   boolean autoShutdown) {
+	public static <E> ProcessorGroup<E> asyncGroup(final String name,
+	                                               final int bufferSize,
+	                                               int concurrency,
+	                                               Consumer<Throwable> uncaughtExceptionHandler,
+	                                               Consumer<Void> shutdownHandler,
+	                                               boolean autoShutdown) {
 
-		return ProcessorService.create(
-		  new Supplier<Processor<ProcessorService.Task, ProcessorService.Task>>() {
+		return ProcessorGroup.create(
+		  new Supplier<Processor<ProcessorGroup.Task, ProcessorGroup.Task>>() {
 			  @Override
-			  public Processor<ProcessorService.Task, ProcessorService.Task> get() {
+			  public Processor<ProcessorGroup.Task, ProcessorGroup.Task> get() {
 				  return PlatformDependent.hasUnsafe()
-					? RingBufferProcessor.share(name, bufferSize, ProcessorService.DEFAULT_TASK_PROVIDER)
-					: SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.<SimpleSignal<ProcessorService
+					? RingBufferProcessor.share(name, bufferSize, ProcessorGroup.DEFAULT_TASK_PROVIDER)
+					: SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.<SimpleSignal<ProcessorGroup
 					.Task>>create
 					());
 			  }
@@ -370,14 +370,13 @@ public final class Processors {
 		);
 	}
 
-
 	/**
 	 * @param name
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> workService(String name) {
-		return workService(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
+	public static <E> ProcessorGroup<E> ioGroup(String name) {
+		return ioGroup(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -386,10 +385,11 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> workService(String name,
-	                                                  int bufferSize) {
-		return workService(name, bufferSize, DEFAULT_POOL_SIZE);
+	public static <E> ProcessorGroup<E> ioGroup(String name,
+	                                            int bufferSize) {
+		return ioGroup(name, bufferSize, DEFAULT_POOL_SIZE);
 	}
+
 
 	/**
 	 * @param name
@@ -398,11 +398,12 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> workService(String name,
-	                                                  int bufferSize,
-	                                                  int concurrency) {
-		return workService(name, bufferSize, concurrency, null, null, true);
+	public static <E> ProcessorGroup<E> ioGroup(String name,
+	                                            int bufferSize,
+	                                            int concurrency) {
+		return ioGroup(name, bufferSize, concurrency, null, null, true);
 	}
+
 
 	/**
 	 * @param name
@@ -412,11 +413,11 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> workService(String name,
-	                                                  int bufferSize,
-	                                                  int concurrency,
-	                                                  Consumer<Throwable> uncaughtExceptionHandler) {
-		return workService(name, bufferSize, concurrency, uncaughtExceptionHandler, null, true);
+	public static <E> ProcessorGroup<E> ioGroup(String name,
+	                                            int bufferSize,
+	                                            int concurrency,
+	                                            Consumer<Throwable> uncaughtExceptionHandler) {
+		return ioGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, null, true);
 	}
 
 	/**
@@ -428,12 +429,12 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> workService(String name,
-	                                                  int bufferSize,
-	                                                  int concurrency,
-	                                                  Consumer<Throwable> uncaughtExceptionHandler,
-	                                                  Consumer<Void> shutdownHandler) {
-		return workService(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
+	public static <E> ProcessorGroup<E> ioGroup(String name,
+	                                            int bufferSize,
+	                                            int concurrency,
+	                                            Consumer<Throwable> uncaughtExceptionHandler,
+	                                            Consumer<Void> shutdownHandler) {
+		return ioGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
 	}
 
 
@@ -447,16 +448,16 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorService<E> workService(final String name,
-	                                                  final int bufferSize,
-	                                                  int concurrency,
-	                                                  Consumer<Throwable> uncaughtExceptionHandler,
-	                                                  Consumer<Void> shutdownHandler,
-	                                                  boolean autoShutdown) {
-		return ProcessorService.create(
+	public static <E> ProcessorGroup<E> ioGroup(final String name,
+	                                            final int bufferSize,
+	                                            int concurrency,
+	                                            Consumer<Throwable> uncaughtExceptionHandler,
+	                                            Consumer<Void> shutdownHandler,
+	                                            boolean autoShutdown) {
+		return ProcessorGroup.create(
 		  PlatformDependent.hasUnsafe()
-			? RingBufferWorkProcessor.<ProcessorService.Task>share(name, bufferSize)
-			: SimpleWorkProcessor.<ProcessorService.Task>create(name, bufferSize),
+			? RingBufferWorkProcessor.<ProcessorGroup.Task>share(name, bufferSize)
+			: SimpleWorkProcessor.<ProcessorGroup.Task>create(name, bufferSize),
 		  concurrency,
 		  uncaughtExceptionHandler,
 		  shutdownHandler,
@@ -494,23 +495,23 @@ public final class Processors {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> BlockingQueue<IN> queue(Processor<IN, IN> source) {
-		return queue(source, BaseProcessor.SMALL_BUFFER_SIZE);
+	public static <IN> BlockingQueue<IN> toQueue(Processor<IN, IN> source) {
+		return toQueue(source, BaseProcessor.SMALL_BUFFER_SIZE);
 	}
 
 	/**
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> BlockingQueue<IN> queue(Processor<IN, IN> source, int size) {
-		return queue(source, size, new ArrayBlockingQueue<IN>(size));
+	public static <IN> BlockingQueue<IN> toQueue(Processor<IN, IN> source, int size) {
+		return toQueue(source, size, new ArrayBlockingQueue<IN>(size));
 	}
 
 	/**
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> BlockingQueue<IN> queue(Processor<IN, IN> source, int size, Queue<IN> store) {
+	public static <IN> BlockingQueue<IN> toQueue(Processor<IN, IN> source, int size, Queue<IN> store) {
 		return new BlockingQueueSubscriber<>(source, source, store, size);
 	}
 

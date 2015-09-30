@@ -25,7 +25,6 @@ import reactor.core.publisher.TrampolineOperator;
 import reactor.core.subscriber.Tap;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.SignalType;
-import reactor.fn.Function;
 import reactor.fn.Supplier;
 
 import java.util.Queue;
@@ -65,23 +64,23 @@ public final class Publishers extends PublisherFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> BlockingQueue<IN> readQueue(Publisher<IN> source) {
-		return readQueue(source, BaseProcessor.SMALL_BUFFER_SIZE);
+	public static <IN> BlockingQueue<IN> toReadQueue(Publisher<IN> source) {
+		return toReadQueue(source, BaseProcessor.SMALL_BUFFER_SIZE);
 	}
 
 	/**
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> BlockingQueue<IN> readQueue(Publisher<IN> source, int size) {
-		return readQueue(source, size, new ArrayBlockingQueue<IN>(size));
+	public static <IN> BlockingQueue<IN> toReadQueue(Publisher<IN> source, int size) {
+		return toReadQueue(source, size, new ArrayBlockingQueue<IN>(size));
 	}
 
 	/**
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> BlockingQueue<IN> readQueue(Publisher<IN> source, int size, Queue<IN> store) {
+	public static <IN> BlockingQueue<IN> toReadQueue(Publisher<IN> source, int size, Queue<IN> store) {
 		return new BlockingQueueSubscriber<>(source, null, store, size);
 	}
 

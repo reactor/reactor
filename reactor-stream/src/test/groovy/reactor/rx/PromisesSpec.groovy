@@ -20,7 +20,6 @@ import reactor.bus.EventBus
 import reactor.bus.selector.Selectors
 import reactor.core.error.CancelException
 import reactor.rx.broadcast.Broadcaster
-import spock.lang.Shared
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -607,9 +606,9 @@ class PromisesSpec extends Specification {
 	def "A combined promise through 'any' is fulfilled with the first component result when using asynchronously"() {
 		given:
 			"two fulfilled promises"
-		def workService = Processors.workService("promise-task", 8, 2)
-			def promise1 = Promises.task(workService.get()){ sleep(10000); 1 }
-			def promise2 = Promises.task(workService.get()){ sleep(250); 2 }
+		def ioGroup = Processors.ioGroup("promise-task", 8, 2)
+			def promise1 = Promises.task(ioGroup.get()){ sleep(10000); 1 }
+			def promise2 = Promises.task(ioGroup.get()){ sleep(250); 2 }
 
 		when:
 			"a combined promise is first created"
@@ -797,7 +796,7 @@ class PromisesSpec extends Specification {
 			"p1 is consumed by p2"
 			Promise p2 = p1
 					.onSuccess({ Integer.parseInt it })
-					.run(Processors.asyncService('test'))
+					.run(Processors.asyncGroup('test'))
 					.map { sleep(3000); it }
 
 		and:

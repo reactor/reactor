@@ -118,6 +118,21 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 
 	/**
+	 * Create a new RingBufferProcessor using the default buffer size 32, blockingWait Strategy
+	 * and auto-cancel.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
+	 * the created threads.
+	 *
+	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param <E>        Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> RingBufferWorkProcessor<E> create(String name) {
+		return create(name, SMALL_BUFFER_SIZE);
+	}
+
+	/**
 	 * Create a new RingBufferProcessor using the passed buffer size, blockingWait Strategy
 	 * and auto-cancel.
 	 * <p>

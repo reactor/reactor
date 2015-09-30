@@ -13,7 +13,7 @@ public class EventBusTests {
 
 	@Test
 	public void workerOrchestrator() throws InterruptedException {
-		EventBus reactor = EventBus.create(Processors.work(), 4);
+		EventBus reactor = EventBus.create(Processors.queue(), 4);
 
 		CountDownLatch latch = new CountDownLatch(3);
 

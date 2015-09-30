@@ -52,11 +52,11 @@ public class PopularTagTests extends AbstractReactorTest {
 
 		Control top10every1second =
 		  Streams.from(PULP_SAMPLE)
-		    .run(asyncService)
+		    .dispatchOn(asyncGroup)
 			.flatMap(samuelJackson ->
 				Streams
 				  .from(samuelJackson.split(" "))
-				  .run(asyncService)
+				  .dispatchOn(asyncGroup)
 				  .filter(w -> !w.trim().isEmpty())
 				  .observe(i -> simulateLatency())
 			)

@@ -17,7 +17,7 @@
 /**
  * This package offers a suite of asynchronous {@link org.reactivestreams.Processor} with backpressure support.
  * These components will be unique and bound to a given stream of data except
- * for the {@link reactor.core.processor.ProcessorService} that allows
+ * for the {@link reactor.core.processor.ProcessorGroup} that allows
  *  Processor Pooling.
  *
  * A {@link org.reactivestreams.Processor} will manage its own thread(s), one by {@link org.reactivestreams.Subscriber}.

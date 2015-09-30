@@ -17,9 +17,8 @@
 package reactor;
 
 import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
-import reactor.core.processor.ProcessorService;
+import reactor.core.processor.ProcessorGroup;
 import reactor.fn.timer.Timer;
 
 /**
@@ -27,23 +26,23 @@ import reactor.fn.timer.Timer;
  */
 public abstract class AbstractReactorTest {
 
-	protected static ProcessorService<?> asyncService;
-	protected static ProcessorService<?> workService;
-	protected static Timer            timer;
+	protected static ProcessorGroup<?> asyncGroup;
+	protected static ProcessorGroup<?> ioGroup;
+	protected static Timer             timer;
 
 	@BeforeClass
 	public static void loadEnv() {
 		timer = Timers.global();
-		workService = Processors.workService("work", 2048, 4, Throwable::printStackTrace, null, false);
-		asyncService = Processors.asyncService("async", 2048, 4, Throwable::printStackTrace, null, false);
+		ioGroup = Processors.ioGroup("work", 2048, 4, Throwable::printStackTrace, null, false);
+		asyncGroup = Processors.asyncGroup("async", 2048, 4, Throwable::printStackTrace, null, false);
 	}
 
 	@AfterClass
 	public static void closeEnv() {
 		timer = null;
 		Timers.unregisterGlobal();
-		workService.shutdown();
-		asyncService.shutdown();
+		ioGroup.shutdown();
+		asyncGroup.shutdown();
 	}
 
 	static {

@@ -26,7 +26,7 @@ public class ProcessorServiceAsyncTests extends AbstractProcessorVerification {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
-		return Processors.<Long>asyncService("shared-async", bufferSize, Throwable::printStackTrace).get();
+		return Processors.<Long>asyncGroup("shared-async", bufferSize, Throwable::printStackTrace).get();
 	}
 
 	@Override
@@ -47,12 +47,12 @@ public class ProcessorServiceAsyncTests extends AbstractProcessorVerification {
 
 	@Test
 	public void testDispatch() throws InterruptedException {
-		ProcessorService<String> service = Processors.asyncService("dispatcher", BUFFER_SIZE, t -> {
+		ProcessorGroup<String> service = Processors.asyncGroup("dispatcher", BUFFER_SIZE, t -> {
 			exceptionThrown.set(true);
 			t.printStackTrace();
 		});
 
-		ProcessorService.release(
+		ProcessorGroup.release(
 		  runTest(service.dataDispatcher()),
 		  runTest(service.dataDispatcher())
 		);

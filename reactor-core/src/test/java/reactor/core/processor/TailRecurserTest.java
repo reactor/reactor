@@ -18,17 +18,17 @@ public class TailRecurserTest {
 	public void testConsumeTasks() throws Exception {
 		AtomicInteger nRecursiveTasks = new AtomicInteger(0);
 
-		Consumer<ProcessorService.Task> taskConsumer = new Consumer<ProcessorService.Task>() {
+		Consumer<ProcessorGroup.Task> taskConsumer = new Consumer<ProcessorGroup.Task>() {
 			@Override
-			public void accept(ProcessorService.Task dispatcherTask) {
+			public void accept(ProcessorGroup.Task dispatcherTask) {
 				nRecursiveTasks.incrementAndGet();
 			}
 		};
 
-		ProcessorService.TailRecurser recursion = new ProcessorService.TailRecurser(1,
-		  new Supplier<ProcessorService.Task>() {
+		ProcessorGroup.TailRecurser recursion = new ProcessorGroup.TailRecurser(1,
+		  new Supplier<ProcessorGroup.Task>() {
 			  @Override
-			  public ProcessorService.Task get() {
+			  public ProcessorGroup.Task get() {
 				  return null;
 			  }
 		  }, taskConsumer);

@@ -22,7 +22,6 @@ import reactor.Processors;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.GroupedStream;
 
 import java.util.concurrent.TimeUnit;
@@ -38,7 +37,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		System.out.println("Providing new processor");
-		Processor<Integer, Integer> p = Processors.work("stream-raw-fork", bufferSize);
+		Processor<Integer, Integer> p = Processors.queue("stream-raw-fork", bufferSize);
 
 		return
 		  Processors.create(
@@ -55,9 +54,9 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 				  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 			  )
 		      .observe(this::monitorThreadUse)
-		      //.log()
-		      .process(Processors.async("stream-raw-join", bufferSize))
-			  .when(Throwable.class, Throwable::printStackTrace)
+			      //.log()
+		      .process(Processors.topic("stream-raw-join", bufferSize))
+		      .when(Throwable.class, Throwable::printStackTrace)
 		  );
 	}
 

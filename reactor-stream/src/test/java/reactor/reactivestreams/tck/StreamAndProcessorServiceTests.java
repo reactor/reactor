@@ -17,7 +17,7 @@ package reactor.reactivestreams.tck;
 
 import org.junit.Test;
 import reactor.Processors;
-import reactor.core.processor.ProcessorService;
+import reactor.core.processor.ProcessorGroup;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
@@ -38,15 +38,15 @@ public class StreamAndProcessorServiceTests extends AbstractStreamVerification {
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		System.out.println("Providing new processor");
 
-		ProcessorService<Integer> asyncService =
-		  Processors.asyncService("stream-tck", bufferSize, 4, Throwable::printStackTrace);
+		ProcessorGroup<Integer> asyncService =
+		  Processors.asyncGroup("stream-tck", bufferSize, 4, Throwable::printStackTrace);
 
 		return Broadcaster.<Integer>
 		  passthrough()
-		  .run(asyncService)
+		  .dispatchOn(asyncService)
 		  .partition(2)
 		  .flatMap(stream -> stream
-			  .run(asyncService)
+			  .dispatchOn(asyncService)
 			  .observe(this::monitorThreadUse)
 			  .scan((prev, next) -> next)
 			  .map(integer -> -integer)
@@ -57,7 +57,7 @@ public class StreamAndProcessorServiceTests extends AbstractStreamVerification {
 			  .<Integer>split()
 			  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 		  )
-		  .run(asyncService)
+		  .dispatchOn(asyncService)
 		  //.log("end")
 		  .when(Throwable.class, Throwable::printStackTrace)
 		  .combine();

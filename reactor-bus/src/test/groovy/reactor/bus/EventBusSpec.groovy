@@ -20,7 +20,6 @@ package reactor.bus
 import groovy.transform.CompileStatic
 import reactor.bus.filter.RoundRobinFilter
 import reactor.bus.routing.ConsumerFilteringRouter
-import reactor.core.processor.ProcessorService
 import reactor.fn.Consumer
 import spock.lang.Specification
 

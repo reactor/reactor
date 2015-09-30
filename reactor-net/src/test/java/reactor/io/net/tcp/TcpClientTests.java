@@ -175,7 +175,7 @@ public class TcpClientTests {
 			input.writeWith(
 			  Streams.range(1, messages)
 				.map(i -> "Hello World!")
-				.run(Processors.workService("test-line-feed"))
+				.dispatchOn(Processors.ioGroup("test-line-feed"))
 			).consume();
 
 			return Streams.never();

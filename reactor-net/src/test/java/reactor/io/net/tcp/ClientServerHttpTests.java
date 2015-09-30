@@ -241,7 +241,7 @@ public class ClientServerHttpTests {
 	}
 
 	private void setupFakeProtocolListener() throws Exception {
-		broadcaster = Processors.async();
+		broadcaster = Processors.topic();
 		final Processor<List<String>, List<String>> processor = RingBufferWorkProcessor.create(false);
 		Streams.wrap(broadcaster).buffer(5).subscribe(processor);
 

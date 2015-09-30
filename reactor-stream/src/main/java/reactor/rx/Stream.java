@@ -353,7 +353,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 	/**
 	 */
-	public final Stream<O> run(final Supplier<? extends Processor> processorProvider) {
+	public final Stream<O> dispatchOn(final Supplier<? extends Processor> processorProvider) {
 		final long capacity = getCapacity();
 
 		return new Stream<O>() {
@@ -893,7 +893,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		Assert.isTrue(concurrency > 0, "Must subscribe once at least, concurrency set to "+concurrency);
 
 		Publisher<V> pub;
-		List<Publisher<? extends V>> publisherList = new ArrayList<>(concurrency);
+		final List<Publisher<? extends V>> publisherList = new ArrayList<>(concurrency);
 
 		for(int i = 0; i < concurrency; i++){
 			pub = fn.apply(new GroupedStream<Integer, O>(i){
@@ -919,7 +919,23 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 				publisherList.add(pub);
 			}
 		}
-		return Streams.merge(publisherList);
+
+		return new Stream<V>() {
+			@Override
+			public void subscribe(Subscriber<? super V> s) {
+				Streams.merge(publisherList).subscribe(s);
+			}
+
+			@Override
+			public Timer getTimer() {
+				return Stream.this.getTimer();
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+		};
 	}
 
 	/**
@@ -2745,7 +2761,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final BlockingQueue<O> toBlockingQueue(int maximum) {
-		return Publishers.readQueue(this, maximum);
+		return Publishers.toReadQueue(this, maximum);
 	}
 
 	/**

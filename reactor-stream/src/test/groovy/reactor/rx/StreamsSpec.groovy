@@ -22,7 +22,7 @@ import reactor.Timers
 import reactor.bus.Event
 import reactor.bus.EventBus
 import reactor.core.error.CancelException
-import reactor.core.processor.ProcessorService
+import reactor.core.processor.ProcessorGroup
 import reactor.core.processor.RingBufferProcessor
 import reactor.core.subscriber.SubscriberWithContext
 import reactor.fn.BiFunction
@@ -40,11 +40,11 @@ import static reactor.bus.selector.Selectors.anonymous
 class StreamsSpec extends Specification {
 
 	@Shared
-	ProcessorService asyncService
+	ProcessorGroup asyncService
 
 	void setupSpec() {
 		Timers.global()
-		asyncService = Processors.asyncService("stream-spec", 128, 4, null, null, false)
+		asyncService = Processors.asyncGroup("stream-spec", 128, 4, null, null, false)
 	}
 
 	def cleanupSpec() {
@@ -90,7 +90,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the error is retrieved after 2 sec'
-			Streams.await(stream.run(asyncService).timeout(2, TimeUnit.SECONDS))
+			Streams.await(stream.dispatchOn(asyncService).timeout(2, TimeUnit.SECONDS))
 
 		then:
 			'an error has been thrown'
@@ -224,7 +224,7 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream can be translated into a completable queue'() {
 		given:
 			'a composable with an initial value'
-			def stream = Streams.just('test', 'test2', 'test3').run(asyncService)
+			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(asyncService)
 
 		when:
 			'the stream is retrieved'
@@ -338,8 +338,8 @@ class StreamsSpec extends Specification {
 			'the most recent value is retrieved'
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
-					.run(asyncService)
-					.run(Processors.workService("work", 8, 4))
+					.dispatchOn(asyncService)
+					.dispatchOn(Processors.ioGroup("work", 8, 4))
 					.log()
 					.next()
 
@@ -358,7 +358,7 @@ class StreamsSpec extends Specification {
 			def last = Promises.ready()
 			s
 					.take(4, TimeUnit.SECONDS)
-					.run(Processors.workService("work", 8, 4))
+					.dispatchOn(Processors.ioGroup("work", 8, 4))
 					.last()
 					.consume(
 							{ i = it },
@@ -699,7 +699,7 @@ class StreamsSpec extends Specification {
 			'a source composable with a mapMany function'
 			def source = Broadcaster.<Integer> create()
 			Stream<Integer> mapped = source.
-					run(asyncService).
+					dispatchOn(asyncService).
 					flatMap { v -> Streams.just(v * 2) }.
 					when(Throwable) { it.printStackTrace() }
 
@@ -1616,7 +1616,7 @@ class StreamsSpec extends Specification {
 			def source = Broadcaster.<Integer> create()
 			def promise = Promises.ready()
 
-			source.run(asyncService).log("prewindow").window(10l, TimeUnit.SECONDS).consume {
+			source.dispatchOn(asyncService).log("prewindow").window(10l, TimeUnit.SECONDS).consume {
 				it.log().buffer(2).consume { promise.onNext(it) }
 			}
 
@@ -1701,7 +1701,7 @@ class StreamsSpec extends Specification {
 			def result = [:]
 			def latch = new CountDownLatch(6)
 
-			def partitionStream = source.run(asyncService).partition()
+			def partitionStream = source.dispatchOn(asyncService).partition()
 			partitionStream.consume { stream ->
 				stream.cast(SimplePojo).consume { pojo ->
 					if (result[pojo.id]) {
@@ -1814,7 +1814,7 @@ class StreamsSpec extends Specification {
 					{ println Thread.currentThread().name + ' end' }
 			)
 					.log()
-					.run(Processors.workService("work", 8, 4))
+					.dispatchOn(Processors.ioGroup("work", 8, 4))
 
 		when:
 			'accept a value'
@@ -2044,7 +2044,7 @@ class StreamsSpec extends Specification {
 				'hello future too long'
 			} as Callable<String>)
 
-			s = Streams.from(future, 100, TimeUnit.MILLISECONDS).run(asyncService)
+			s = Streams.from(future, 100, TimeUnit.MILLISECONDS).dispatchOn(asyncService)
 			nexts = []
 			errors = []
 
@@ -2099,7 +2099,7 @@ class StreamsSpec extends Specification {
 			def random = new Random()
 			def source = Streams.generate {
 				random.nextInt()
-			}.run(asyncService)
+			}.dispatchOn(asyncService)
 
 			def values = []
 
@@ -2539,10 +2539,10 @@ class StreamsSpec extends Specification {
 			int latchCount = length / batchSize
 			def latch = new CountDownLatch(latchCount)
 			def head = Broadcaster.<Integer> create()
-			head.run(asyncService).partition(3).consume {
+			head.dispatchOn(asyncService).partition(3).consume {
 				s ->
 					s
-							.run(asyncService)
+							.dispatchOn(asyncService)
 							.map { it }
 							.buffer(batchSize)
 							.consume { List<Integer> ints ->
@@ -2927,7 +2927,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with an initial values'
 			def stream = Streams.range(0, Integer.MAX_VALUE)
-					.run(asyncService)
+					.dispatchOn(asyncService)
 
 		when:
 			'take to the first 2 elements'
@@ -2974,7 +2974,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with an initial values'
 			def stream = Streams.range(0, 1000)
-					.run(asyncService)
+					.dispatchOn(asyncService)
 
 		when:
 			def promise = stream.skip(2, TimeUnit.SECONDS).toList()
@@ -3024,7 +3024,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			"multithreaded bus can be serialized"
-			r = EventBus.create(Processors.work("bus", 8), 4)
+			r = EventBus.create(Processors.queue("bus", 8), 4)
 			s = SerializedBroadcaster.<Event<Integer>> create()
 			def tail = Streams.wrap(r.on(selector)).map { it.data }.observe { sleep(100) }.elapsed().log().take(10).toList()
 

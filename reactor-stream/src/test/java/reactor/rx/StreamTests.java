@@ -33,7 +33,7 @@ import reactor.bus.EventBus;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
 import reactor.core.error.CancelException;
-import reactor.core.processor.ProcessorService;
+import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.Tap;
@@ -106,7 +106,7 @@ public class StreamTests extends AbstractReactorTest {
 	public void simpleReactiveSubscriber() throws InterruptedException {
 		Broadcaster<String> str = Broadcaster.create();
 
-		str.run(asyncService).subscribe(new TestSubscriber());
+		str.dispatchOn(asyncGroup).subscribe(new TestSubscriber());
 
 		System.out.println(str.debug());
 
@@ -333,8 +333,8 @@ public class StreamTests extends AbstractReactorTest {
 		Random random = ThreadLocalRandom.current();
 
 		Broadcaster<String> d = Broadcaster.<String>create();
-		Stream<Integer> tasks = d.run(asyncService).partition().flatMap(stream ->
-		  stream.run(asyncService).map((String str) -> {
+		Stream<Integer> tasks = d.dispatchOn(asyncGroup).partition().flatMap(stream ->
+		  stream.dispatchOn(asyncGroup).map((String str) -> {
 			  try {
 				  Thread.sleep(random.nextInt(10));
 			  } catch (InterruptedException e) {
@@ -437,8 +437,8 @@ public class StreamTests extends AbstractReactorTest {
 		Broadcaster<Integer> d = Broadcaster.create();
 
 		Control c = d.
-		  run(asyncService).partition().consume(stream ->
-			stream.run(asyncService)
+		  dispatchOn(asyncGroup).partition().consume(stream ->
+			stream.dispatchOn(asyncGroup)
 			  .map(o -> {
 				  synchronized (internalLock) {
 
@@ -492,7 +492,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Promise<Long> result = source
 		  .onOverflowBuffer()
-		  .run(asyncService)
+		  .dispatchOn(asyncGroup)
 		  .throttle(avgTime)
 		  .elapsed()
 		  .nest()
@@ -640,11 +640,11 @@ public class StreamTests extends AbstractReactorTest {
 
 		Broadcaster<String> deferred = Broadcaster.<String>create();
 		deferred
-		  .run(asyncService)
+		  .dispatchOn(asyncGroup)
 		  .partition()
 		  .consume(stream ->
 		    stream
-			  .run(asyncService)
+			  .dispatchOn(asyncGroup)
 			  .buffer(1000 / 8, 1l, TimeUnit.SECONDS)
 			  .consume(batch -> {
 				  for (String i : batch) latch.countDown();
@@ -687,8 +687,8 @@ public class StreamTests extends AbstractReactorTest {
 		switch (dispatcher) {
 			case "partitioned":
 				deferred = Broadcaster.create();
-				System.out.println(deferred.run(asyncService).partition(2).consume(stream -> stream
-				  .run(asyncService)
+				System.out.println(deferred.dispatchOn(asyncGroup).partition(2).consume(stream -> stream
+				  .dispatchOn(asyncGroup)
 				  .map(i -> i)
 				  .scan(1, (acc, next) -> acc + next)
 				  .consume(i -> latch.countDown()).debug()));
@@ -698,7 +698,7 @@ public class StreamTests extends AbstractReactorTest {
 			default:
 				deferred = Broadcaster.<Integer>create();
 				deferred
-				  .run(asyncService)
+				  .dispatchOn(asyncGroup)
 				  .map(i -> i)
 				  .scan(1, (acc, next) -> acc + next)
 				  .consume(i -> latch.countDown());
@@ -743,12 +743,12 @@ public class StreamTests extends AbstractReactorTest {
 				mapManydeferred = Broadcaster.<Integer>create();
 				mapManydeferred
 				  .partition(4).consume(substream ->
-				  substream.run(asyncService).consume(i -> latch.countDown()));
+				  substream.dispatchOn(asyncGroup).consume(i -> latch.countDown()));
 				break;
 			default:
 				mapManydeferred = Broadcaster.<Integer>create();
 				mapManydeferred
-				  .run("sync".equals(dispatcher) ? ProcessorService.sync() : asyncService)
+				  .dispatchOn("sync".equals(dispatcher) ? ProcessorGroup.sync() : asyncGroup)
 				  .flatMap(Streams::just)
 				  .consume(i -> latch.countDown());
 		}
@@ -832,9 +832,9 @@ public class StreamTests extends AbstractReactorTest {
 
 		final CountDownLatch latch = new CountDownLatch(NUM_MESSAGES);
 		Map<Integer, Integer> batchesDistribution = new ConcurrentHashMap<>();
-		batchingStreamDef.run(asyncService).partition(PARALLEL_STREAMS).consume(substream ->
+		batchingStreamDef.dispatchOn(asyncGroup).partition(PARALLEL_STREAMS).consume(substream ->
 		  substream
-			.run(asyncService)
+			.dispatchOn(asyncGroup)
 			.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
 			.consume(items -> {
 				batchesDistribution.compute(items.size(),
@@ -890,11 +890,11 @@ public class StreamTests extends AbstractReactorTest {
 		  .map(Integer::parseInt)
 		  .flatMap(l ->
 			  Streams.<Integer>merge(
-			    globalFeed.run(asyncService),
+			    globalFeed.dispatchOn(asyncGroup),
 			    Streams.just(1111, l, 3333, 4444, 5555, 6666)
 			  )
 			    .log("merged")
-			    .run(asyncService)
+			    .dispatchOn(asyncGroup)
 			    .log("dispatched")
 			    .observeSubscribe(x -> afterSubscribe.countDown())
 			    .filter(nearbyLoc -> 3333 >= nearbyLoc)
@@ -954,7 +954,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Stream<String> operationStream =
 		  Streams.defer(Broadcaster::<String>create)
-		    .run(asyncService)
+		    .dispatchOn(asyncGroup)
 			.throttle(100)
 			.map(s -> s + " MODIFIED")
 			.map(s -> {
@@ -986,15 +986,15 @@ public class StreamTests extends AbstractReactorTest {
 	 */
 	@Test
 	public void testParallelWithJava8StreamsInput() throws InterruptedException {
-		ProcessorService<Long> supplier = Processors.asyncService("test-p", 2048, 2);
+		ProcessorGroup<Long> supplier = Processors.asyncGroup("test-p", 2048, 2);
 
 		int max = ThreadLocalRandom.current().nextInt(100, 300);
 		CountDownLatch countDownLatch = new CountDownLatch(max + 1);
 
-		Stream<Long> worker = Streams.range(0, max).run(asyncService);
+		Stream<Long> worker = Streams.range(0, max).dispatchOn(asyncGroup);
 		worker.partition(2).consume(s ->
 			s
-			  .run(supplier)
+			  .dispatchOn(supplier)
 			  .map(v -> v)
 			  .consume(v -> countDownLatch.countDown())
 		);
@@ -1008,11 +1008,11 @@ public class StreamTests extends AbstractReactorTest {
 		List<Integer> tasks = IntStream.range(0, 1500).boxed().collect(Collectors.toList());
 
 		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
-		Stream<Integer> worker = Streams.from(tasks).run(asyncService);
+		Stream<Integer> worker = Streams.from(tasks).dispatchOn(asyncGroup);
 
 		Control tail = worker.partition(2).consume(s ->
 			s
-			  .run(asyncService)
+			  .dispatchOn(asyncGroup)
 			  .map(v -> v)
 			  .consume(v -> countDownLatch.countDown(),
 			    Throwable::printStackTrace)
@@ -1056,7 +1056,7 @@ public class StreamTests extends AbstractReactorTest {
 			.log("outer-2");
 
 		Streams.merge(innerSamples, outerSamples)
-		  .run(asyncService)
+		  .dispatchOn(asyncGroup)
 		  .scan(new SimulationState(0l, 0l), SimulationState::withNextSample)
 		  .log("result")
 		  .map(s -> System.out.printf("After %8d samples π is approximated as %.5f", s.totalSamples, s.pi()))
@@ -1198,7 +1198,7 @@ public class StreamTests extends AbstractReactorTest {
 	@Test
 	public void shouldThrottleCorrectly() throws InterruptedException {
 		Streams.range(1, 10000000)
-		  .run(asyncService)
+		  .dispatchOn(asyncGroup)
 		  .requestWhen(reqs -> reqs.flatMap(req -> {
 			  // set the batch size
 			  long batchSize = 10;
@@ -1229,12 +1229,12 @@ public class StreamTests extends AbstractReactorTest {
 
 		final Broadcaster<Integer> streamBatcher = Broadcaster.<Integer>create();
 		streamBatcher
-		  .run(asyncService)
+		  .dispatchOn(asyncGroup)
 		  .buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
 		  .partition(parallelStreams)
 		  .consume(innerStream ->
 		    innerStream
-			  .run(asyncService)
+			  .dispatchOn(asyncGroup)
 			  .when(Exception.class, Throwable::printStackTrace)
 			  .consume(i -> latch.countDown()));
 
@@ -1265,8 +1265,8 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void consistentMultithreadingWithPartition() throws InterruptedException {
-		ProcessorService<Long> supplier1 = Processors.asyncService("groupByPool", 32, 2);
-		ProcessorService<Long> supplier2 = Processors.asyncService("partitionPool", 32, 5);
+		ProcessorGroup<Long> supplier1 = Processors.asyncGroup("groupByPool", 32, 2);
+		ProcessorGroup<Long> supplier2 = Processors.asyncGroup("partitionPool", 32, 5);
 
 		CountDownLatch latch = new CountDownLatch(10);
 
@@ -1274,15 +1274,15 @@ public class StreamTests extends AbstractReactorTest {
 			.range(1, 10)
 			.groupBy(n -> n % 2 == 0)
 			.flatMap(stream -> stream
-				.run(supplier1)
+				.dispatchOn(supplier1)
 				.log("groupBy-" + stream.key())
 			)
 			.partition(5)
 			.flatMap(stream -> stream
-				.run(supplier2)
+				.dispatchOn(supplier2)
 				.log("partition-"+stream.key())
 			)
-			.run(asyncService)
+			.dispatchOn(asyncGroup)
 			.log("join")
 			.consume(t -> {
 				latch.countDown();
@@ -1303,8 +1303,8 @@ public class StreamTests extends AbstractReactorTest {
 		Streams
 		  .range(1, 100)
 		  .log("testOn")
-		  .run(asyncService)
-		  .run(workService)
+		  .dispatchOn(asyncGroup)
+		  .dispatchOn(ioGroup)
 		  .capacity(1)
 		  .consume(t -> latch.countDown());
 
@@ -1322,8 +1322,8 @@ public class StreamTests extends AbstractReactorTest {
 
 		Phaser phaser = new Phaser(2);
 
-		Stream<Object> s1 = BehaviorBroadcaster.first(new Object()).run(asyncService);
-		Stream<Object> s2 = BehaviorBroadcaster.first(new Object()).run(asyncService);
+		Stream<Object> s1 = BehaviorBroadcaster.first(new Object()).dispatchOn(asyncGroup);
+		Stream<Object> s2 = BehaviorBroadcaster.first(new Object()).dispatchOn(asyncGroup);
 
 		// The following works:
 		List<Stream<Object>> list = Arrays.asList(s1);
@@ -1436,7 +1436,7 @@ public class StreamTests extends AbstractReactorTest {
 		Promises.task(() -> {
 			throw new RuntimeException("Some Exception");
 		}).stream()
-		  .run(workService)
+		  .dispatchOn(ioGroup)
 		  .next()
 		  .onError(t -> latch1.countDown())
 		  .onSuccess(s -> latch2.countDown());
@@ -1557,7 +1557,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		final Broadcaster<Integer> computationBroadcaster = Broadcaster.create();
 		final Stream<List<String>> computationStream = computationBroadcaster
-		  .run(Processors.asyncService("computation", BACKLOG))
+		  .dispatchOn(Processors.asyncGroup("computation", BACKLOG))
 		  .map(i -> {
 			  final List<String> list = new ArrayList<>(i);
 			  for (int j = 0; j < i; j++) {
@@ -1571,19 +1571,19 @@ public class StreamTests extends AbstractReactorTest {
 
 		final Broadcaster<Integer> persistenceBroadcaster = Broadcaster.create();
 		final Stream<List<String>> persistenceStream = persistenceBroadcaster
-		  .run(Processors.asyncService("persistence", BACKLOG))
+		  .dispatchOn(Processors.asyncGroup("persistence", BACKLOG))
 		  .observe(i -> println("Persisted: ", i))
 		  .map(i -> Collections.singletonList("done" + i))
 		  .log("persistence");
 
-		Stream<Integer> forkStream = forkBroadcaster.run(Processors.asyncService("fork", BACKLOG));
+		Stream<Integer> forkStream = forkBroadcaster.dispatchOn(Processors.asyncGroup("fork", BACKLOG));
 		forkStream.subscribe(computationBroadcaster);
 		forkStream.subscribe(persistenceBroadcaster);
 
 		final Stream<List<String>> joinStream = Streams
 		  .join(computationStream, persistenceStream)
 			// MPSC seems perfect for joining threads.
-		  .run(Processors.asyncService("join", BACKLOG))
+		  .dispatchOn(Processors.asyncGroup("join", BACKLOG))
 //        .dispatchOn( Environment.newDispatcher( "join", BACKLOG ) )
 		  .map(listOfLists -> {
 			  listOfLists.get(0).addAll(listOfLists.get(1));

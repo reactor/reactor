@@ -22,7 +22,7 @@ import org.reactivestreams.Subscription
 import reactor.Processors
 import reactor.core.processor.RingBufferProcessor
 import reactor.core.processor.RingBufferWorkProcessor
-import reactor.core.processor.ProcessorService
+import reactor.core.processor.ProcessorGroup
 import reactor.core.processor.SimpleWorkProcessor
 import reactor.fn.BiConsumer
 import reactor.fn.Consumer
@@ -166,8 +166,8 @@ class ProcessorsSpec extends Specification {
 	def "Dispatcher executes tasks in correct thread"() {
 
 		given:
-			def sameThread = ProcessorService.sync().dataDispatcher()
-			BiConsumer<String, Consumer<String>> diffThread = Processors.workService("rbWork").dataDispatcher()
+			def sameThread = ProcessorGroup.sync().dataDispatcher()
+			BiConsumer<String, Consumer<String>> diffThread = Processors.ioGroup("rbWork").dataDispatcher()
 			def currentThread = Thread.currentThread()
 			Thread taskThread = null
 			Consumer<String> consumer = { ev ->
@@ -196,14 +196,14 @@ class ProcessorsSpec extends Specification {
 
 
 		cleanup:
-			ProcessorService.release(diffThread)
+			ProcessorGroup.release(diffThread)
 	}
 
 	def "Dispatcher thread can be reused"() {
 
 		given:
 			"ring buffer eventBus"
-			def serviceRB = Processors.asyncService("rb", 32)
+			def serviceRB = Processors.asyncGroup("rb", 32)
 			def r = serviceRB.dataDispatcher()
 			def latch = new CountDownLatch(2)
 
@@ -226,14 +226,14 @@ class ProcessorsSpec extends Specification {
 			latch.await(5, TimeUnit.SECONDS) // Wait for task to execute
 
 		cleanup:
-			ProcessorService.release(r)
+			ProcessorGroup.release(r)
 	}
 
 	def "Dispatchers can be shutdown awaiting tasks to complete"() {
 
 		given:
 			"a Reactor with a ThreadPoolExecutorDispatcher"
-			def serviceRB = Processors.workService("rbWork", 32)
+			def serviceRB = Processors.ioGroup("rbWork", 32)
 			def r = serviceRB.dataDispatcher()
 			long start = System.currentTimeMillis()
 			def hello = ""
@@ -259,7 +259,7 @@ class ProcessorsSpec extends Specification {
 	def "RingBufferDispatcher executes tasks in correct thread"() {
 
 		given:
-			def serviceRB = Processors.asyncService("rb", 8)
+			def serviceRB = Processors.asyncGroup("rb", 8)
 			def dispatcher = serviceRB.executor()
 			def t1 = Thread.currentThread()
 			def t2 = Thread.currentThread()
@@ -272,14 +272,14 @@ class ProcessorsSpec extends Specification {
 			t1 != t2
 
 		cleanup:
-			ProcessorService.release(dispatcher)
+			ProcessorGroup.release(dispatcher)
 
 	}
 
 	def "WorkQueueDispatcher executes tasks in correct thread"() {
 
 		given:
-			def serviceRBWork = Processors.workService("rbWork", 1024, 8)
+			def serviceRBWork = Processors.ioGroup("rbWork", 1024, 8)
 			def dispatcher = serviceRBWork.executor()
 			def t1 = Thread.currentThread()
 			def t2 = Thread.currentThread()
@@ -292,7 +292,7 @@ class ProcessorsSpec extends Specification {
 			t1 != t2
 
 		cleanup:
-			ProcessorService.release(dispatcher)
+			ProcessorGroup.release(dispatcher)
 
 	}
 
@@ -329,12 +329,12 @@ class ProcessorsSpec extends Specification {
 			main != t2
 
 		cleanup:
-		 ProcessorService.release(d)
+		 ProcessorGroup.release(d)
 
 		where:
 			d << [
-					Processors.workService("ping-pong-rb", 1024, 4).dataDispatcher(),
-					ProcessorService.create({ -> SimpleWorkProcessor.create("ping-pong-work", 1024)}, 4).dataDispatcher()
+					ProcessorGroup.create(RingBufferWorkProcessor.create("rbWork", 1024), 4).dataDispatcher(),
+					ProcessorGroup.create(SimpleWorkProcessor.create("ping-pong-work", 1024), 4).dataDispatcher()
 			]
 
 	}
