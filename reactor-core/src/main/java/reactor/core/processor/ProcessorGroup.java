@@ -256,14 +256,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <V> Processor<V, V> subscribeOn(Class<V> clazz) {
-		return (Processor<V, V>) subscribeOn();
+	public <V> Processor<V, V> publishOn(Class<V> clazz) {
+		return (Processor<V, V>) publishOn();
 	}
 
 	/**
 	 * @return
 	 */
-	public Processor<T, T> subscribeOn() {
+	public Processor<T, T> publishOn() {
 		return createBarrier(true);
 	}
 
@@ -1124,8 +1124,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 		}
 
 		@Override
-		public Processor<T, T> subscribeOn() {
-			return next().subscribeOn();
+		public Processor<T, T> publishOn() {
+			return next().publishOn();
 		}
 
 		@Override

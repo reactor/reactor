@@ -63,7 +63,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 			long toRequest = pendingRequests;
 			if (toRequest > 0) {
 				pendingRequests = 0;
-				request(toRequest);
+				request(Long.MAX_VALUE);
 			}
 		}
 
@@ -74,7 +74,7 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 			emittedSignals++;
 
 			if(Long.MAX_VALUE != pendingRequests && --pendingRequests < 0){
-				pendingRequests = 0l;
+				pendingRequests = 0;
 			}
 		}
 

@@ -17,6 +17,7 @@ package reactor.core.subscriber;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.SignalType;
 
@@ -62,6 +63,7 @@ public class BaseSubscriber<T> implements Subscriber<T> {
 		if (t == null) {
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
+		Exceptions.throwIfFatal(t);
 	}
 
 	@Override

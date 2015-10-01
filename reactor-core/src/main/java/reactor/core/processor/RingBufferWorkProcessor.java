@@ -29,12 +29,14 @@ import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -827,6 +829,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 							processedSequence = false;
 							do {
 								nextSequence = processor.workSequence.get() + 1L;
+								readNextEvent(processor.ringBuffer.get(nextSequence), unbounded);
+								if(!unbounded) {
+									pendingRequest.incrementAndGet();
+								}
 								sequence.set(nextSequence - 1L);
 							}
 							while (!processor.workSequence.compareAndSet(nextSequence - 1L, nextSequence));
@@ -835,7 +841,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 						if (cachedAvailableSequence >= nextSequence) {
 							event = processor.ringBuffer.get(nextSequence);
 
-							readNextEvent(event, unbounded);
+							readNextEvent(processor.ringBuffer.get(nextSequence), unbounded);;
 
 							//It's an unbounded subscriber or there is enough capacity to process the signal
 							RingBufferSubscriberUtils.routeOnce(event, subscriber);
@@ -893,6 +899,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 					RingBufferSubscriberUtils.routeOnce(signal, subscriber);
 					processor.ringBuffer.removeGatingSequence(replayedSequence);
 				} catch (InterruptedException | AlertException | CancelException ce) {
+					System.out.println("CANCELLED "+signal.value);
 					processor.ringBuffer.removeGatingSequence(sequence);
 					processor.cancelledSequences.add(replayedSequence);
 					return true;
@@ -909,14 +916,14 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				}
 
 				//if bounded and out of capacity
-				if (!unbounded && pendingRequest.addAndGet(-1l) < 0l) {
+				if (!unbounded || pendingRequest.addAndGet(-1L) < 0) {
 					//re-add the retained capacity
 					pendingRequest.incrementAndGet();
 
 					//if current sequence does not yet match the published one
 					//if (nextSequence < cachedAvailableSequence) {
 					//pause until request
-					while (pendingRequest.addAndGet(-1l) < 0l) {
+					while (pendingRequest.addAndGet(-1L) < 0) {
 						pendingRequest.incrementAndGet();
 						if (!running.get()) throw CancelException.INSTANCE;
 						//Todo Use WaitStrategy?

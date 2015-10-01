@@ -19,6 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.processor.BaseProcessor;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
@@ -70,10 +71,10 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	public void subscribe(Subscriber<? super O> subscriber) {
-		super.subscribe(subscriber);
 		if(dynamicMergeAction == null){
 			start();
 		}
+		super.subscribe(subscriber);
 	}
 
 	@Override
@@ -144,18 +145,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	protected final boolean checkDynamicMerge() {
 		return dynamicMergeAction != null && dynamicMergeAction.isPublishing();
-	}
-
-	@Override
-	public void onNext(E ev) {
-		super.onNext(ev);
-		if (innerSubscriptions.shouldRequestPendingSignals()) {
-			long left = innerSubscriptions.pendingRequestSignals();
-			if (left > 0l) {
-				innerSubscriptions.updatePendingRequests(-left);
-				innerSubscriptions.safeRequest(left);
-			}
-		}
 	}
 
 	@Override
@@ -235,7 +224,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				}
 			} else {
 				pendingRequests = toRequest != 0 ?
-				  Math.max(1, toRequest / Math.max(outerAction.innerSubscriptions.runningComposables, 1)) :
+				  Math.max(1, toRequest) :
 				0;
 			}
 		}

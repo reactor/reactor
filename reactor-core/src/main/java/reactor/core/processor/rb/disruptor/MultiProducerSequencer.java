@@ -192,9 +192,17 @@ public final class MultiProducerSequencer extends Sequencer
     @Override
     public long remainingCapacity()
     {
+        return getBufferSize() - pending();
+    }
+    /**
+     * @see Sequencer#pending()
+     */
+    @Override
+    public long pending()
+    {
         long consumed = Util.getMinimumSequence(gatingSequences, cursor.get());
         long produced = cursor.get();
-        return getBufferSize() - (produced - consumed);
+        return produced - consumed;
     }
 
 

@@ -240,7 +240,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		if(pendingRequestSignals == Long.MAX_VALUE) return false;
 		synchronized (this) {
 			return pendingRequestSignals > 0
-			  && (!buffer.isEmpty() || currentNextSignals == maxCapacity);
+			  && (currentNextSignals == maxCapacity);
 		}
 	}
 

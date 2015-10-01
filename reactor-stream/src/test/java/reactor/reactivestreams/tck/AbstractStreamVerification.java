@@ -258,7 +258,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 		for (int i = 2; i < elements; i++) {
 			stream.onNext(i);
 		}
-		//stream.broadcastComplete();
+		//stream.onComplete();
 
 		latch.await(8, TimeUnit.SECONDS);
 		System.out.println(stream.debug());

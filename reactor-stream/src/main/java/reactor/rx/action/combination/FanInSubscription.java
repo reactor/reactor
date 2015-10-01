@@ -91,9 +91,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 				}
 			}
 
-			if (terminated) {
-				cancel();
-			}
+
 		} catch (Throwable t) {
 			subscriber.onError(t);
 		}

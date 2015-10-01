@@ -607,8 +607,8 @@ class PromisesSpec extends Specification {
 		given:
 			"two fulfilled promises"
 		def ioGroup = Processors.ioGroup("promise-task", 8, 2)
-			def promise1 = Promises.task(ioGroup.get()){ sleep(10000); 1 }
-			def promise2 = Promises.task(ioGroup.get()){ sleep(250); 2 }
+			def promise1 = Promises.task(ioGroup.publishOn()){ sleep(10000); 1 }
+			def promise2 = Promises.task(ioGroup.publishOn()){ sleep(250); 2 }
 
 		when:
 			"a combined promise is first created"

@@ -38,7 +38,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		System.out.println("Providing new processor");
 		Processor<Integer, Integer> p = Processors.queue("stream-raw-fork", bufferSize);
-
+		
 		return
 		  Processors.create(
 		    p,
@@ -52,11 +52,12 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 				  .buffer(batch, 50, TimeUnit.MILLISECONDS)
 				  .<Integer>split()
 				  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
+				  //.log()
+				  .observe(this::monitorThreadUse)
 			  )
-		      .observe(this::monitorThreadUse)
-			      //.log()
-		      .process(Processors.topic("stream-raw-join", bufferSize))
-		      .when(Throwable.class, Throwable::printStackTrace)
+			    //.log()
+			  //.process(Processors.topic("stream-raw-join", bufferSize))
+			  .when(Throwable.class, Throwable::printStackTrace)
 		  );
 	}
 
@@ -66,22 +67,13 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 	}
 
 	@Override
-	public void required_spec309_requestZeroMustSignalIllegalArgumentException() throws Throwable {
-		throw new SkipException("TODO");
-	}
-
-	@Override
-	public void required_spec309_requestNegativeNumberMustSignalIllegalArgumentException() throws Throwable {
-		throw new SkipException("TODO");
-	}
-
-	@Override
 	public void stochastic_spec103_mustSignalOnMethodsSequentially() throws Throwable {
 			super.stochastic_spec103_mustSignalOnMethodsSequentially();
 	}
 
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
+		//for(int i = 0; i < 1000; i++)
 			super.testHotIdentityProcessor();
 	}
 

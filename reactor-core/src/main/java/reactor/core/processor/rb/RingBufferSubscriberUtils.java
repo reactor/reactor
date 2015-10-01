@@ -7,6 +7,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.support.Bounded;
 import reactor.core.support.SignalType;
 import reactor.core.processor.rb.disruptor.*;
+import reactor.fn.LongSupplier;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
@@ -115,7 +116,7 @@ public final class RingBufferSubscriberUtils {
 	}
 
 	public static <T> boolean waitRequestOrTerminalEvent(
-			Sequence pendingRequest,
+			LongSupplier pendingRequest,
 			RingBuffer<MutableSignal<T>> ringBuffer,
 			SequenceBarrier barrier,
 			Subscriber<? super T> subscriber,

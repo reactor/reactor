@@ -889,7 +889,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream} containing the transformed values
 	 * @since 2.1
 	 */
-	public final <V> Stream<V> forkJoin(int concurrency, @Nonnull final Function<GroupedStream<Integer, O>, Publisher<V>> fn) {
+	public final <V> Stream<V> forkJoin(final int concurrency,
+	                                    @Nonnull final Function<GroupedStream<Integer, O>, Publisher<V>> fn) {
 		Assert.isTrue(concurrency > 0, "Must subscribe once at least, concurrency set to "+concurrency);
 
 		Publisher<V> pub;
@@ -920,10 +921,13 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 		}
 
+		final Stream<V> mergedStream = Streams.merge(publisherList);
+
+
 		return new Stream<V>() {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				Streams.merge(publisherList).subscribe(s);
+				mergedStream.subscribe(s);
 			}
 
 			@Override
@@ -1996,32 +2000,13 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream} whose values result from the iterable input
 	 * @since 1.1, 2.0
 	 */
-	public final <V> Stream<V> split() {
-		return split(Long.MAX_VALUE);
-	}
-
-	/**
-	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * <p>
-	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
-	 *
-	 * @param batchSize the batch size to use
-	 * @return a new {@link Stream} whose values result from the iterable input
-	 * @since 1.1, 2.0
-	 */
 	@SuppressWarnings("unchecked")
-	public final <V> Stream<V> split(final long batchSize) {
+	public final <V> Stream<V> split() {
 		final Stream<Iterable<? extends V>> iterableStream = (Stream<Iterable<? extends V>>) this;
-		/*return iterableStream.flatMap(new Function<Iterable<V>, Publisher<? extends V>>() {
+		return iterableStream.flatMap(new Function<Iterable<? extends V>, Publisher<? extends V>>() {
 			@Override
-			public Publisher<? extends V> apply(Iterable<V> vs) {
+			public Publisher<? extends V> apply(Iterable<? extends V> vs) {
 				return Streams.from(vs);
-			}
-		});*/
-		return iterableStream.liftAction(new Supplier<Action<Iterable<? extends V>, V>>() {
-			@Override
-			public Action<Iterable<? extends V>, V> get() {
-				return new SplitAction<V>().capacity(batchSize);
 			}
 		});
 	}

@@ -485,6 +485,15 @@ public final class RingBuffer<E> extends RingBufferFields<E>
         return sequencer.remainingCapacity();
     }
 
+    /**
+     * Get the pending capacity for this ringBuffer.
+     * @return The number of slots taken.
+     */
+    public long pending()
+    {
+        return sequencer.pending();
+    }
+
 
     /**
      * Get the cached remaining capacity for this ringBuffer.

@@ -171,11 +171,20 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
     @Override
     public long remainingCapacity()
     {
+        return getBufferSize() - pending();
+    }
+
+    /**
+     * @see Sequencer#pending()
+     */
+    @Override
+    public long pending()
+    {
         long nextValue = this.nextValue;
 
         long consumed = Util.getMinimumSequence(gatingSequences, nextValue);
         long produced = nextValue;
-        return getBufferSize() - (produced - consumed);
+        return produced - consumed;
     }
 
     @Override

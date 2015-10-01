@@ -184,6 +184,12 @@ public abstract class Sequencer
     public abstract long remainingCapacity();
 
     /**
+     * Get the pending capacity for this sequencer.
+     * @return The number of slots pending consuming.
+     */
+    public abstract long pending();
+
+    /**
      * Claim the next event in sequence for publishing.
      * @return the claimed sequence value
      */
