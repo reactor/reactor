@@ -40,17 +40,17 @@ import static reactor.bus.selector.Selectors.anonymous
 class StreamsSpec extends Specification {
 
 	@Shared
-	ProcessorGroup asyncService
+	ProcessorGroup asyncGroup
 
 	void setupSpec() {
 		Timers.global()
-		asyncService = Processors.asyncGroup("stream-spec", 128, 4, null, null, false)
+		asyncGroup = Processors.asyncGroup("stream-spec", 128, 4, null, null, false)
 	}
 
 	def cleanupSpec() {
 		Timers.unregisterGlobal()
-		asyncService.shutdown()
-		asyncService = null
+		asyncGroup.shutdown()
+		asyncGroup = null
 	}
 
 	def 'A deferred Stream with an initial value makes that value available immediately'() {
@@ -90,7 +90,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the error is retrieved after 2 sec'
-			Streams.await(stream.dispatchOn(asyncService).timeout(2, TimeUnit.SECONDS))
+			Streams.await(stream.dispatchOn(asyncGroup).timeout(2, TimeUnit.SECONDS))
 
 		then:
 			'an error has been thrown'
@@ -224,7 +224,7 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream can be translated into a completable queue'() {
 		given:
 			'a composable with an initial value'
-			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(asyncService)
+			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(asyncGroup)
 
 		when:
 			'the stream is retrieved'
@@ -338,7 +338,7 @@ class StreamsSpec extends Specification {
 			'the most recent value is retrieved'
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
-					.dispatchOn(asyncService)
+					.dispatchOn(asyncGroup)
 					.dispatchOn(Processors.ioGroup("work", 8, 4))
 					.log()
 					.next()
@@ -699,7 +699,7 @@ class StreamsSpec extends Specification {
 			'a source composable with a mapMany function'
 			def source = Broadcaster.<Integer> create()
 			Stream<Integer> mapped = source.
-					dispatchOn(asyncService).
+					dispatchOn(asyncGroup).
 					flatMap { v -> Streams.just(v * 2) }.
 					when(Throwable) { it.printStackTrace() }
 
@@ -1616,7 +1616,7 @@ class StreamsSpec extends Specification {
 			def source = Broadcaster.<Integer> create()
 			def promise = Promises.ready()
 
-			source.dispatchOn(asyncService).log("prewindow").window(10l, TimeUnit.SECONDS).consume {
+			source.dispatchOn(asyncGroup).log("prewindow").window(10l, TimeUnit.SECONDS).consume {
 				it.log().buffer(2).consume { promise.onNext(it) }
 			}
 
@@ -1701,7 +1701,7 @@ class StreamsSpec extends Specification {
 			def result = [:]
 			def latch = new CountDownLatch(6)
 
-			def partitionStream = source.dispatchOn(asyncService).partition()
+			def partitionStream = source.dispatchOn(asyncGroup).partition()
 			partitionStream.consume { stream ->
 				stream.cast(SimplePojo).consume { pojo ->
 					if (result[pojo.id]) {
@@ -2044,7 +2044,7 @@ class StreamsSpec extends Specification {
 				'hello future too long'
 			} as Callable<String>)
 
-			s = Streams.from(future, 100, TimeUnit.MILLISECONDS).dispatchOn(asyncService)
+			s = Streams.from(future, 100, TimeUnit.MILLISECONDS).dispatchOn(asyncGroup)
 			nexts = []
 			errors = []
 
@@ -2099,7 +2099,7 @@ class StreamsSpec extends Specification {
 			def random = new Random()
 			def source = Streams.generate {
 				random.nextInt()
-			}.dispatchOn(asyncService)
+			}.dispatchOn(asyncGroup)
 
 			def values = []
 
@@ -2539,10 +2539,10 @@ class StreamsSpec extends Specification {
 			int latchCount = length / batchSize
 			def latch = new CountDownLatch(latchCount)
 			def head = Broadcaster.<Integer> create()
-			head.dispatchOn(asyncService).partition(3).consume {
+			head.dispatchOn(asyncGroup).partition(3).consume {
 				s ->
 					s
-							.dispatchOn(asyncService)
+							.dispatchOn(asyncGroup)
 							.map { it }
 							.buffer(batchSize)
 							.consume { List<Integer> ints ->
@@ -2927,7 +2927,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with an initial values'
 			def stream = Streams.range(0, Integer.MAX_VALUE)
-					.dispatchOn(asyncService)
+					.dispatchOn(asyncGroup)
 
 		when:
 			'take to the first 2 elements'
@@ -2974,7 +2974,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable with an initial values'
 			def stream = Streams.range(0, 1000)
-					.dispatchOn(asyncService)
+					.dispatchOn(asyncGroup)
 
 		when:
 			def promise = stream.skip(2, TimeUnit.SECONDS).toList()

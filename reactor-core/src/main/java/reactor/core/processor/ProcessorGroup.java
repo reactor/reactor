@@ -1010,7 +1010,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 			if (uncaughtExceptionHandler != null) {
 				uncaughtExceptionHandler.accept(t);
 			}
-			throw new UnsupportedOperationException("No error handler provided for this ProcessorService", t);
+			throw new UnsupportedOperationException("No error handler provided for this ProcessorGroup", t);
 		}
 
 		@Override

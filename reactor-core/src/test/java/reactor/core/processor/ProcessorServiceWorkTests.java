@@ -23,7 +23,7 @@ import reactor.Processors;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class ProcessorServiceWorkTests extends AbstractProcessorVerification {
+public class ProcessorGroupWorkTests extends AbstractProcessorVerification {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {

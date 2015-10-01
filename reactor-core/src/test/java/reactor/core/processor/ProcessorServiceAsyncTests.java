@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class ProcessorServiceAsyncTests extends AbstractProcessorVerification {
+public class ProcessorGroupAsyncTests extends AbstractProcessorVerification {
 
 	private final int           BUFFER_SIZE     = 8;
 	private final AtomicBoolean exceptionThrown = new AtomicBoolean();

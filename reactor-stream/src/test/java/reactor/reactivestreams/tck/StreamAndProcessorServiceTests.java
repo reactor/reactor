@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class StreamAndProcessorServiceTests extends AbstractStreamVerification {
+public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 
 	@Override
 	public CompositeAction<Integer, Integer> createProcessor(int bufferSize) {
@@ -38,15 +38,15 @@ public class StreamAndProcessorServiceTests extends AbstractStreamVerification {
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		System.out.println("Providing new processor");
 
-		ProcessorGroup<Integer> asyncService =
+		ProcessorGroup<Integer> asyncGroup =
 		  Processors.asyncGroup("stream-tck", bufferSize, 4, Throwable::printStackTrace);
 
 		return Broadcaster.<Integer>
 		  passthrough()
-		  .dispatchOn(asyncService)
+		  .dispatchOn(asyncGroup)
 		  .partition(2)
 		  .flatMap(stream -> stream
-			  .dispatchOn(asyncService)
+			  .dispatchOn(asyncGroup)
 			  .observe(this::monitorThreadUse)
 			  .scan((prev, next) -> next)
 			  .map(integer -> -integer)
@@ -57,7 +57,7 @@ public class StreamAndProcessorServiceTests extends AbstractStreamVerification {
 			  .<Integer>split()
 			  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 		  )
-		  .dispatchOn(asyncService)
+		  .dispatchOn(asyncGroup)
 		  //.log("end")
 		  .when(Throwable.class, Throwable::printStackTrace)
 		  .combine();

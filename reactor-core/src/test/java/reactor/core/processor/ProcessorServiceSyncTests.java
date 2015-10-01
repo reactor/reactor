@@ -22,7 +22,7 @@ import org.testng.SkipException;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class ProcessorServiceSyncTests extends AbstractProcessorVerification {
+public class ProcessorGroupSyncTests extends AbstractProcessorVerification {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
