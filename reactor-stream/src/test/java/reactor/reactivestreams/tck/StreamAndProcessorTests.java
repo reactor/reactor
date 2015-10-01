@@ -38,7 +38,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		System.out.println("Providing new processor");
 		Processor<Integer, Integer> p = Processors.queue("stream-raw-fork", bufferSize);
-		
+
 		return
 		  Processors.create(
 		    p,
@@ -70,6 +70,18 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 	public void stochastic_spec103_mustSignalOnMethodsSequentially() throws Throwable {
 			super.stochastic_spec103_mustSignalOnMethodsSequentially();
 	}
+
+
+	@Override
+	public void required_spec309_requestZeroMustSignalIllegalArgumentException() throws Throwable {
+		throw new SkipException("TODO");
+	}
+
+	@Override
+	public void required_spec309_requestNegativeNumberMustSignalIllegalArgumentException() throws Throwable {
+		throw new SkipException("TODO");
+	}
+
 
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
