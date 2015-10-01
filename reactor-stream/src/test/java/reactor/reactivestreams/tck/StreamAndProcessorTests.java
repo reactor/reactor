@@ -56,7 +56,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 				  .observe(this::monitorThreadUse)
 			  )
 			    //.log()
-			  .process(Processors.topic("stream-raw-join", bufferSize))
+//			  .process(Processors.topic("stream-raw-join", bufferSize))
 			  .when(Throwable.class, Throwable::printStackTrace)
 		  );
 	}
@@ -73,7 +73,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
-		for(int i = 0; i < 1000; i++)
+//		for(int i = 0; i < 1000; i++)
 			super.testHotIdentityProcessor();
 	}
 

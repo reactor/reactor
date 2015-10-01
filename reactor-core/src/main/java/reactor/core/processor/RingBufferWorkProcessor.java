@@ -899,7 +899,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 					RingBufferSubscriberUtils.routeOnce(signal, subscriber);
 					processor.ringBuffer.removeGatingSequence(replayedSequence);
 				} catch (InterruptedException | AlertException | CancelException ce) {
-					System.out.println("CANCELLED "+signal.value);
 					processor.ringBuffer.removeGatingSequence(sequence);
 					processor.cancelledSequences.add(replayedSequence);
 					return true;
