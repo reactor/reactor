@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Stephane Maldini
  */
-@org.testng.annotations.Test
+//@org.testng.annotations.Test
 public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 	@Override
