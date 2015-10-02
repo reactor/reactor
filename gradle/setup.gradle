@@ -13,15 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-apply plugin: 'groovy'
 
 task wrapper(type: Wrapper, description: "Create a Gradle self-download wrapper") {
 	group = 'Project Setup'
 	gradleVersion = "$gradleVersion"
-}
-
-configure(rootProject) {
-	configurations.archives.artifacts.removeAll()
 }
 
 configure(subprojects) { subproject ->
@@ -43,11 +38,6 @@ configure(subprojects) { subproject ->
 	task sourcesJar(type: Jar) {
 		classifier = 'sources'
 		from sourceSets.main.allSource
-	}
-
-	task groovydocJar(type: Jar) {
-		classifier = 'groovydoc'
-		from groovydoc
 	}
 
 	task javadocJar(type: Jar) {
