@@ -27,7 +27,7 @@ This should cause the submodules to be compiled and the tests to be run. To inst
 Snapshot Maven artifacts are provided in the SpringSource snapshot repositories. To add this repo to your Gradle build, specify the URL like the following:
 
     ext {
-      reactorVersion = '2.0.4.RELEASE'
+      reactorVersion = '2.0.6.RELEASE'
     }
 
     repositories {
