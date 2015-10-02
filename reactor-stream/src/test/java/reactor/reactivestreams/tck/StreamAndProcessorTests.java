@@ -43,7 +43,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		  Processors.create(
 		    p,
 		    Streams.wrap(p)
-			  .forkJoin(2, (GroupedStream<Integer, Integer> stream) -> stream
+			/*  .forkJoin(2, (GroupedStream<Integer, Integer> stream) -> stream
 				  .scan((prev, next) -> next)
 				  .map(integer -> -integer)
 				  .filter(integer -> integer <= 0)
@@ -57,7 +57,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 			  )
 			    //.log()
 //			  .process(Processors.topic("stream-raw-join", bufferSize))
-			  .when(Throwable.class, Throwable::printStackTrace)
+			  .when(Throwable.class, Throwable::printStackTrace)*/
 		  );
 	}
 
