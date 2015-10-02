@@ -20,6 +20,10 @@ task wrapper(type: Wrapper, description: "Create a Gradle self-download wrapper"
 	gradleVersion = "$gradleVersion"
 }
 
+configure(rootProject) {
+	configurations.archives.artifacts.removeAll()
+}
+
 configure(subprojects) { subproject ->
 	apply plugin: 'propdeps-maven'
 	apply plugin: 'maven'
