@@ -125,6 +125,7 @@ configure(subprojects) { project ->
 		scanForTestClasses = false
 		include '**/*Tests.*'
 		include '**/*Spec.*'
+		exclude '**/StreamAndProcessorTests.*'
 		exclude '**/*Abstract*.*'
 	}
 
