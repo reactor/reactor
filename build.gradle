@@ -96,15 +96,6 @@ configure(subprojects) { project ->
 			"-Xlint:-rawtypes"     // TODO enable and fix warnings
 	]
 
-
-
-	if (JavaVersion.current().isJava8Compatible()) {
-			compileTestJava.options.compilerArgs += "-parameters"
-			tasks.withType(Javadoc) {
-				options.addStringOption('Xdoclint:none', '-quiet')
-			}
-	}
-
 	compileJava {
 		sourceCompatibility = 1.7
 		targetCompatibility = 1.7
@@ -113,6 +104,13 @@ configure(subprojects) { project ->
 	compileTestJava {
 		sourceCompatibility = 1.8
 		targetCompatibility = 1.8
+	}
+
+	if (JavaVersion.current().isJava8Compatible()) {
+		compileTestJava.options.compilerArgs += "-parameters"
+		tasks.withType(Javadoc) {
+			options.addStringOption('Xdoclint:none', '-quiet')
+		}
 	}
 
 	sourceSets.test.resources.srcDirs = ["src/test/resources", "src/test/java"]

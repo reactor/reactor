@@ -31,8 +31,17 @@ buildscript {
 configure(rootProject) {
 	task api(type: Javadoc) {
 		group = "Reactor Javadoc"
+		apply plugin: "java"
+
 		description = "Generates aggregated Javadoc API documentation."
 		title = "${rootProject.description} ${version} API"
+
+		if (JavaVersion.current().isJava8Compatible()) {
+			compileTestJava.options.compilerArgs += "-parameters"
+			tasks.withType(Javadoc) {
+				options.addStringOption('Xdoclint:none', '-quiet')
+			}
+		}
 
 		dependsOn {
 			subprojects.collect {
