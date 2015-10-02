@@ -618,6 +618,12 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
+		if(!alive()){
+			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+			subscriber.onComplete();
+			return;
+		}
+
 		//create a unique eventProcessor for this subscriber
 		final Sequence pendingRequest = new Sequence(0);
 		final BatchSignalProcessor<E> signalProcessor = new BatchSignalProcessor<E>(

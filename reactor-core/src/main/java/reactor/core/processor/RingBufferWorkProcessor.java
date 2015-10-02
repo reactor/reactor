@@ -569,6 +569,13 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		if (null == subscriber) {
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
+
+		if(!alive()){
+			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+			subscriber.onComplete();
+			return;
+		}
+
 		final WorkSignalProcessor<E> signalProcessor = new WorkSignalProcessor<E>(
 		  subscriber,
 		  this
@@ -605,7 +612,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	public void onError(Throwable t) {
 		super.onError(t);
 		RingBufferSubscriberUtils.onError(t, ringBuffer);
-		for (int i = 1; i < SUBSCRIBER_COUNT.get(this); i++) {
+		for(long n = ringBuffer.getCursor(); n < workSequence.get(); n++){
 			RingBufferSubscriberUtils.onError(t, ringBuffer);
 		}
 		readWait.signalAllWhenBlocking();
@@ -615,7 +622,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	public void onComplete() {
 		super.onComplete();
 		RingBufferSubscriberUtils.onComplete(ringBuffer);
-		for (int i = 0; i < SUBSCRIBER_COUNT.get(this); i++) {
+		for(long n = ringBuffer.getCursor(); n <= workSequence.get(); n++){
 			RingBufferSubscriberUtils.onComplete(ringBuffer);
 		}
 		readWait.signalAllWhenBlocking();
@@ -924,7 +931,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 					//pause until request
 					while (pendingRequest.addAndGet(-1L) < 0) {
 						pendingRequest.incrementAndGet();
-						if (!running.get()) throw CancelException.INSTANCE;
+						if (!isRunning()) {
+							subscriber.onComplete();
+							throw CancelException.INSTANCE;
+						}
 						//Todo Use WaitStrategy?
 						LockSupport.parkNanos(1l);
 					}

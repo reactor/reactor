@@ -355,7 +355,8 @@ public final class Promises {
 	public static <T> Promise<List<T>> when(final List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		return new MergeAction<T>(promises)
+		return Streams.from(promises)
+		  .<T>merge()
 		  .buffer(promises.size())
 		  .next();
 	}
@@ -383,7 +384,9 @@ public final class Promises {
 	@SuppressWarnings("unchecked")
 	public static <T> Promise<T> any(List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
-		return new MergeAction<>(promises).next();
+		return Streams.from(promises)
+		  .<T>merge()
+		  .next();
 	}
 
 
