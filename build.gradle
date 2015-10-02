@@ -96,6 +96,15 @@ configure(subprojects) { project ->
 			"-Xlint:-rawtypes"     // TODO enable and fix warnings
 	]
 
+
+
+	if (JavaVersion.current().isJava8Compatible()) {
+			compileTestJava.options.compilerArgs += "-parameters"
+			tasks.withType(Javadoc) {
+				options.addStringOption('Xdoclint:none', '-quiet')
+			}
+	}
+
 	compileJava {
 		sourceCompatibility = 1.7
 		targetCompatibility = 1.7
@@ -144,18 +153,8 @@ configure(subprojects) { project ->
 				"org.hamcrest:hamcrest-library:1.3",
 				"org.testng:testng:6.8.5"
 	}
-}
 
-if (JavaVersion.current().isJava8Compatible()) {
-	allprojects {
-		compileTestJava.options.compilerArgs += "-parameters"
-		tasks.withType(Javadoc) {
-			options.addStringOption('Xdoclint:none', '-quiet')
-		}
-	}
-}
 
-configure(subprojects) { subproject ->
 	if (project.hasProperty('platformVersion')) {
 		apply plugin: 'spring-io'
 
