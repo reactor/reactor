@@ -71,7 +71,7 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 
 	@Override
 	protected FanInSubscription<O, Zippable<O>, V, InnerSubscriber<O, V>> createFanInSubscription() {
-		return new FanInSubscription<>(this);
+		return new FanInSubscription<>(this, true);
 	}
 
 	@Override

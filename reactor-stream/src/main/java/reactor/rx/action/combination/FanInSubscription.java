@@ -39,20 +39,26 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 			.newUpdater(FanInSubscription.class, "runningComposables");
 
 	protected final FastList                subscriptions = new FastList();
-	protected final SerializedSubscriber<E> serializer    = SerializedSubscriber.create(this);
+	protected final SerializedSubscriber<E> serializer;
 
 	protected volatile boolean terminated = false;
 	protected          int     leftIndex  = Integer.MAX_VALUE;
 
-	public FanInSubscription(Subscriber<? super E> subscriber) {
+	public FanInSubscription(Subscriber<? super E> subscriber, boolean serialize) {
 		super(null, subscriber);
-		Publishers.trampoline(new Publisher<E>() {
-			@Override
-			public void subscribe(Subscriber<? super E> s) {
-				s.onSubscribe(FanInSubscription.this);
-			}
 
-		}).subscribe(serializer);
+		if(serialize) {
+			serializer = SerializedSubscriber.create(this);
+			Publishers.trampoline(new Publisher<E>() {
+				@Override
+				public void subscribe(Subscriber<? super E> s) {
+					s.onSubscribe(FanInSubscription.this);
+				}
+
+			}).subscribe(serializer);
+		}else{
+			serializer = null;
+		}
 	}
 
 	@Override
@@ -214,20 +220,36 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 	}
 
 	public void serialNext(E next) {
-		serializer.onNext(next);
+		if(serializer != null) {
+			serializer.onNext(next);
+		} else {
+			onNext(next);
+		}
 	}
 
 	public void serialError(Throwable t) {
-		serializer.onError(t);
+		if(serializer != null) {
+			serializer.onError(t);
+		} else {
+			onError(t);
+		}
 	}
 
 	public void serialComplete() {
-		serializer.onComplete();
+		if(serializer != null) {
+			serializer.onComplete();
+		} else {
+			onComplete();
+		}
 	}
 
 
 	public void safeRequest(long n) {
-		serializer.request(n);
+		if(serializer != null) {
+			serializer.request(n);
+		} else {
+			request(n);
+		}
 	}
 
 	@Override

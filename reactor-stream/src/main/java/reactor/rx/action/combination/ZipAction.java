@@ -257,7 +257,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
     private final class ZipSubscription extends FanInSubscription<O, Zippable<O>, V, ZipAction.InnerSubscriber<O, V>> {
 
         public ZipSubscription(Subscriber<? super Zippable<O>> subscriber) {
-            super(subscriber);
+            super(subscriber, true);
         }
 
         @Override

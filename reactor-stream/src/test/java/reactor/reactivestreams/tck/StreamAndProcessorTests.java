@@ -25,12 +25,16 @@ import reactor.rx.Streams;
 import reactor.rx.stream.GroupedStream;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
  */
-//@org.testng.annotations.Test
+@org.testng.annotations.Test
 public class StreamAndProcessorTests extends AbstractStreamVerification {
+
+	final AtomicLong cumulated = new AtomicLong(0);
+	final AtomicLong cumulatedJoin = new AtomicLong(0);
 
 	@Override
 	public Processor<Integer, Integer> createProcessor(int bufferSize) {
@@ -38,6 +42,9 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		System.out.println("Providing new processor");
 		Processor<Integer, Integer> p = Processors.queue("stream-raw-fork", bufferSize);
+
+		cumulated.set(0);
+		cumulatedJoin.set(0);
 
 		return
 		  Processors.create(
@@ -51,19 +58,21 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 				  .map(integer -> -integer)
 				  .buffer(batch, 50, TimeUnit.MILLISECONDS)
 				  .<Integer>split()
+				  .observe(array -> cumulated.getAndIncrement())
 				  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
-				  //.log()
 				  .observe(this::monitorThreadUse)
-			  )
 			    //.log()
-//			  .process(Processors.topic("stream-raw-join", bufferSize))
+			  )
+		      .observe(array -> cumulatedJoin.getAndIncrement())
+			    //.log()
+			  .process(Processors.topic("stream-raw-join", bufferSize))
 			  .when(Throwable.class, Throwable::printStackTrace)
 		  );
 	}
 
 	@Override
 	public boolean skipStochasticTests() {
-		return true;
+		return false;
 	}
 
 	@Override
@@ -86,7 +95,12 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
 //		for(int i = 0; i < 1000; i++)
-			super.testHotIdentityProcessor();
+			try {
+				super.testHotIdentityProcessor();
+			} finally {
+				System.out.println("cumulated : "+cumulated);
+				System.out.println("cumulated after join : "+cumulatedJoin);
+			}
 	}
 
 

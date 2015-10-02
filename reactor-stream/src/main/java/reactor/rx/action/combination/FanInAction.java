@@ -19,9 +19,8 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
-import reactor.core.processor.BaseProcessor;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.Bounded;
-import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
@@ -74,7 +73,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if(dynamicMergeAction == null){
 			start();
 		}
-		super.subscribe(subscriber);
+		super.subscribe(SerializedSubscriber.create(subscriber));
 	}
 
 
@@ -172,7 +171,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	protected FanInSubscription<I, E, O, SUBSCRIBER> createFanInSubscription() {
-		return new FanInSubscription<I, E, O, SUBSCRIBER>(this);
+		return new FanInSubscription<I, E, O, SUBSCRIBER>(this, false);
 	}
 
 	@Override

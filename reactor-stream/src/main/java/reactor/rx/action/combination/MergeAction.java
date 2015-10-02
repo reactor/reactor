@@ -55,16 +55,24 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 		@SuppressWarnings("unchecked")
 		public void onSubscribe(final Subscription subscription) {
 			setSubscription(
-					new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I,I,I>>(subscription, this)
+			  new FanInSubscription.InnerSubscription<I, I, FanInAction.InnerSubscriber<I, I, I>>(subscription, this)
 			);
 			if (outerAction.dynamicMergeAction != null) {
 				outerAction.dynamicMergeAction.decrementWip();
 			}
-			long toRequest = pendingRequests;
-			if (toRequest > 0) {
-				pendingRequests = 0;
-				request(Long.MAX_VALUE);
+
+			final long toRequest;
+
+			if(outerAction.publishers == null){
+				toRequest = pendingRequests;
+			}else{
+				toRequest = getCapacity() != Long.MAX_VALUE ?
+				  Math.max(1, getCapacity() / outerAction.innerSubscriptions.runningComposables) :
+				  Long.MAX_VALUE;
 			}
+
+			pendingRequests = 0;
+			request(toRequest);
 		}
 
 		@Override
@@ -73,11 +81,13 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 			outerAction.innerSubscriptions.serialNext(ev);
 			emittedSignals++;
 
-			if(Long.MAX_VALUE != pendingRequests && --pendingRequests < 0){
+			if (Long.MAX_VALUE != pendingRequests && --pendingRequests < 0) {
 				pendingRequests = 0;
+				long toRequest = outerAction.innerSubscriptions.pendingRequestSignals();
+					request((toRequest > 0 ? toRequest : getCapacity())
+					  / Math.max(outerAction.innerSubscriptions.runningComposables, 1));
 			}
 		}
-
 
 
 		@Override
