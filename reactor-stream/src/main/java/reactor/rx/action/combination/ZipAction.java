@@ -190,7 +190,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
 
             if (pendingRequests > 0) {
                 pendingRequests = 0;
-                request(newSize);
+                request(1);
             }
             if (outerAction.dynamicMergeAction != null) {
                 outerAction.dynamicMergeAction.decrementWip();
