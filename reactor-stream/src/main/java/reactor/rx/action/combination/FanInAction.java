@@ -42,6 +42,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	final static protected int NOT_STARTED = 0;
 	final static protected int RUNNING     = 1;
 	final static protected int COMPLETING  = 2;
+	final static protected int COMPLETE  = 3;
 
 	final FanInSubscription<I, E, O, SUBSCRIBER> innerSubscriptions;
 	final List<? extends Publisher<? extends I>> publishers;
@@ -73,13 +74,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if(dynamicMergeAction == null){
 			start();
 		}
-
-		if(status.get() == COMPLETING){
-			subscriber.onSubscribe(HOT_SUBSCRIPTION);
-			subscriber.onComplete();
-		}else {
-			super.subscribe(SerializedSubscriber.create(subscriber));
-		}
+		super.subscribe(SerializedSubscriber.create(subscriber));
 	}
 
 
@@ -99,7 +94,12 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		}
 	}
 
-
+	@Override
+	protected void doComplete() {
+		if(status.compareAndSet(COMPLETING, COMPLETE)) {
+			super.doComplete();
+		}
+	}
 
 	public void addPublisher(Publisher<? extends I> publisher) {
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();

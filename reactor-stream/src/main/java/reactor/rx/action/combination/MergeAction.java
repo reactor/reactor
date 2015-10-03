@@ -16,7 +16,9 @@
 package reactor.rx.action.combination;
 
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.Bounded;
 
 import java.util.List;
@@ -44,6 +46,15 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 		return new InnerSubscriber<O>(this);
 	}
 
+	@Override
+	public void subscribe(Subscriber<? super O> subscriber) {
+		if(status.get() == COMPLETE){
+			subscriber.onSubscribe(HOT_SUBSCRIPTION);
+			subscriber.onComplete();
+		}else {
+			super.subscribe(subscriber);
+		}
+	}
 
 	public static final class InnerSubscriber<I> extends FanInAction.InnerSubscriber<I, I, I> {
 
