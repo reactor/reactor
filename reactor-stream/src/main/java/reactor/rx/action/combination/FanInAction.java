@@ -73,7 +73,13 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if(dynamicMergeAction == null){
 			start();
 		}
-		super.subscribe(SerializedSubscriber.create(subscriber));
+
+		if(status.get() == COMPLETING){
+			subscriber.onSubscribe(HOT_SUBSCRIPTION);
+			subscriber.onComplete();
+		}else {
+			super.subscribe(SerializedSubscriber.create(subscriber));
+		}
 	}
 
 
@@ -208,10 +214,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 		@SuppressWarnings("unchecked")
 		void setSubscription(FanInSubscription.InnerSubscription s) {
-			if(!outerAction.isPublishing()){
-				s.cancel();
-				return;
-			}
 			this.s = s;
 			this.sequenceId = outerAction.innerSubscriptions.addSubscription(this);
 			long toRequest = outerAction.innerSubscriptions.pendingRequestSignals();
