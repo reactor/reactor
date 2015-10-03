@@ -1515,10 +1515,15 @@ public class StreamTests extends AbstractReactorTest {
 		  .wrap(persistenceBroadcaster)
 		  .map(i -> "done " + i);
 
+		forkStream.subscribe(computationBroadcaster);
+		forkStream.subscribe(persistenceBroadcaster);
+
 		final Semaphore doneSemaphore = new Semaphore(0);
 
-		final Stream<List<String>> joinStream = Streams.join(computationStream.log("log1"), persistenceStream.log
-		  ("log2"));
+		final Stream<List<String>> joinStream = Streams.join(
+		  computationStream.log("log1"),
+		  persistenceStream.log("log2")
+		);
 
 		// Method chaining doesn't compile.
 		joinStream.log("log-final").consume(
@@ -1529,9 +1534,6 @@ public class StreamTests extends AbstractReactorTest {
 			  doneSemaphore.release();
 		  }
 		);
-
-		forkStream.subscribe(computationBroadcaster);
-		forkStream.subscribe(persistenceBroadcaster);
 
 		doneSemaphore.acquire();
 
