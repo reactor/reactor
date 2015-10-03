@@ -95,7 +95,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
             }
         }
         if (isFinishing) {
-            broadcastComplete();
+            super.doComplete();
         }
     }
 

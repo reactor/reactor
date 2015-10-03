@@ -74,7 +74,12 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 		if(dynamicMergeAction == null){
 			start();
 		}
-		super.subscribe(SerializedSubscriber.create(subscriber));
+		if(status.get() == COMPLETE){
+			subscriber.onSubscribe(HOT_SUBSCRIPTION);
+			subscriber.onComplete();
+		}else {
+			super.subscribe(SerializedSubscriber.create(subscriber));
+		}
 	}
 
 

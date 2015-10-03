@@ -46,16 +46,6 @@ final public class MergeAction<O> extends FanInAction<O, O, O, MergeAction.Inner
 		return new InnerSubscriber<O>(this);
 	}
 
-	@Override
-	public void subscribe(Subscriber<? super O> subscriber) {
-		if(status.get() == COMPLETE){
-			subscriber.onSubscribe(HOT_SUBSCRIPTION);
-			subscriber.onComplete();
-		}else {
-			super.subscribe(subscriber);
-		}
-	}
-
 	public static final class InnerSubscriber<I> extends FanInAction.InnerSubscriber<I, I, I> {
 
 		InnerSubscriber(FanInAction<I, I, I, InnerSubscriber<I>> outerAction) {

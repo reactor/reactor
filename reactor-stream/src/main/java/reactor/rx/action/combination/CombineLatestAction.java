@@ -87,13 +87,6 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 	}
 
 	@Override
-	protected void doComplete() {
-			//can receive multiple queued complete signals
-			cancel();
-			broadcastComplete();
-	}
-
-	@Override
 	protected InnerSubscriber<O, V> createSubscriber() {
 		return new CombineLatestAction.InnerSubscriber<>(this, index++);
 	}
