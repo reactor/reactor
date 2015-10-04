@@ -3,6 +3,7 @@ package reactor.io.net.tcp;
 import com.esotericsoftware.kryo.Kryo;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import reactor.Timers;
 import reactor.io.buffer.Buffer;
@@ -23,6 +24,7 @@ import static org.junit.Assert.assertTrue;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
+@Ignore
 public class ZeroMQClientServerTests extends AbstractNetClientServerTest {
 
 	static Kryo                  KRYO;
