@@ -24,6 +24,7 @@ import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.Assert;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.fn.BiConsumer;
@@ -173,8 +174,8 @@ public abstract class PublisherFactory {
 	 * @param <O>          The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> map(Publisher<I> source, BiConsumer<I, Subscriber<? super O>> dataConsumer) {
-		return map(source, dataConsumer, null, null);
+	public static <I, O> Publisher<O> lift(Publisher<I> source, BiConsumer<I, Subscriber<? super O>> dataConsumer) {
+		return lift(source, dataConsumer, null, null);
 	}
 
 	/**
@@ -189,10 +190,10 @@ public abstract class PublisherFactory {
 	 * @param <O>           The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> map(Publisher<I> source,
-	                                      BiConsumer<I, Subscriber<? super O>> dataConsumer,
-	                                      BiConsumer<Throwable, Subscriber<? super O>> errorConsumer) {
-		return map(source, dataConsumer, errorConsumer, null);
+	public static <I, O> Publisher<O> lift(Publisher<I> source,
+	                                       BiConsumer<I, Subscriber<? super O>> dataConsumer,
+	                                       BiConsumer<Throwable, Subscriber<? super O>> errorConsumer) {
+		return lift(source, dataConsumer, errorConsumer, null);
 	}
 
 
@@ -213,10 +214,10 @@ public abstract class PublisherFactory {
 	 * @param <O>              The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> map(Publisher<I> source,
-	                                      final BiConsumer<I, Subscriber<? super O>> dataConsumer,
-	                                      final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer,
-	                                      final Consumer<Subscriber<? super O>> completeConsumer) {
+	public static <I, O> Publisher<O> lift(Publisher<I> source,
+	                                       final BiConsumer<I, Subscriber<? super O>> dataConsumer,
+	                                       final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer,
+	                                       final Consumer<Subscriber<? super O>> completeConsumer) {
 		return lift(
 		  source,
 		  new Function<Subscriber<? super O>, Subscriber<? super I>>() {
@@ -229,7 +230,8 @@ public abstract class PublisherFactory {
 	}
 
 	/**
-	 * Create a {@link Publisher} intercepting all source signals with the returned Subscriber that might choose to pass
+	 * Create a {@link Publisher} intercepting all source signals with the returned Subscriber that might choose to
+	 * pass
 	 * them alone to the provided Subscriber (given to the returned {@link Publisher#subscribe(Subscriber)}.
 	 *
 	 * @param source          A {@link Publisher} source delegate
@@ -255,9 +257,9 @@ public abstract class PublisherFactory {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Publisher<T> fromSubscription(Subscription subscription){
+	public static <T> Publisher<T> fromSubscription(Subscription subscription) {
 		return subscription != null && Publishable.class.isAssignableFrom(subscription.getClass()) ?
-		  ((Publishable<T>)subscription).upstream():
+		  ((Publishable<T>) subscription).upstream() :
 		  null;
 	}
 
@@ -348,8 +350,10 @@ public abstract class PublisherFactory {
 				return;
 			}
 
-			if (n <= 0) {
-				onError(SpecificationExceptions.spec_3_09_exception(n));
+			try {
+				BackpressureUtils.checkRequest(n);
+			} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae) {
+				onError(iae);
 				return;
 			}
 
@@ -371,7 +375,7 @@ public abstract class PublisherFactory {
 		public void onError(Throwable t) {
 			if (TERMINAL_UPDATER.compareAndSet(this, 0, 1)) {
 				doShutdown();
-				if(CancelException.class != t.getClass()) {
+				if (CancelException.class != t.getClass()) {
 					subscriber.onError(t);
 				}
 			}
@@ -428,36 +432,26 @@ public abstract class PublisherFactory {
 		@Override
 		public void accept(Long n, SubscriberWithContext<T, C> sub) {
 
-			if (pending == Long.MAX_VALUE) {
+			if (BackpressureUtils.getAndAdd(PENDING_UPDATER, this, n) > 0) {
 				return;
 			}
 
 			long demand = n;
-			long afterAdd;
-			if (!PENDING_UPDATER.compareAndSet(this, 0L, demand)
-			  && (afterAdd = PENDING_UPDATER.addAndGet(this, demand)) != demand) {
-				if (afterAdd < 0L) {
-					if (!PENDING_UPDATER.compareAndSet(this, afterAdd, Long.MAX_VALUE)) {
-						return;
-					}
-				} else {
-					return;
-				}
-			}
-
 			do {
 				long requestCursor = 0l;
 				while ((requestCursor++ < demand || demand == Long.MAX_VALUE) && !sub.isCancelled()) {
 					requestConsumer.accept(sub);
 				}
-			} while ((demand = PENDING_UPDATER.addAndGet(this, -demand)) > 0L && !sub.isCancelled());
+			} while ((demand == Long.MAX_VALUE ||
+			  (demand = PENDING_UPDATER.addAndGet(this, -demand)) > 0L)
+			  && !sub.isCancelled());
 
 		}
 	}
 
 	private final static class ProxyPublisher<I, O> implements Publisher<O>, Bounded {
 
-		final private Publisher<? extends I>                                   source;
+		final private Publisher<? extends I>                                 source;
 		final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
 
 		public ProxyPublisher(Publisher<? extends I> source,
@@ -483,13 +477,14 @@ public abstract class PublisherFactory {
 
 		@Override
 		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return Bounded.class.isAssignableFrom(source.getClass()) && ((Bounded)source).isExposedToOverflow(parentPublisher);
+			return Bounded.class.isAssignableFrom(source.getClass()) && ((Bounded) source).isExposedToOverflow
+			  (parentPublisher);
 		}
 
 		@Override
 		public long getCapacity() {
 			return Bounded.class.isAssignableFrom(source.getClass()) ?
-			  ((Bounded)source).getCapacity() :
+			  ((Bounded) source).getCapacity() :
 			  Long.MAX_VALUE;
 		}
 	}

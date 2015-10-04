@@ -16,6 +16,7 @@
 package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.support.BackpressureUtils;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 
@@ -64,7 +65,7 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	@Override
 	public void request(long elements) {
 		try {
-			Action.checkRequest(elements);
+			BackpressureUtils.checkRequest(elements);
 
 			O element;
 			FastList list = null;

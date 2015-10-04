@@ -466,6 +466,17 @@ public final class Processors {
 	}
 
 	/**
+	 *
+	 * @param map
+	 * @param <T>
+	 * @param <V>
+	 * @return
+	 */
+	public static <T, V> Processor<T, V> flatMap(Function<? super T, ? extends Publisher<? extends V>> map){
+		return new FlatMapProcessor<>(map);
+	}
+
+	/**
 	 * @param processor
 	 * @param <IN>
 	 * @param <OUT>
@@ -635,4 +646,5 @@ public final class Processors {
 			return Bounded.class.isAssignableFrom(upstream.getClass()) ? ((Bounded)upstream).getCapacity() : Long.MAX_VALUE;
 		}
 	}
+
 }

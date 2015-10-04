@@ -23,6 +23,7 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.Recyclable;
@@ -91,12 +92,6 @@ public abstract class Action<I, O> extends Stream<O>
 	protected PushSubscription<O> downstreamSubscription;
 
 	protected long capacity;
-
-	public static void checkRequest(long n) {
-		if (n <= 0l) {
-			throw SpecificationExceptions.spec_3_09_exception(n);
-		}
-	}
 
 	public Action() {
 		this(Long.MAX_VALUE);
@@ -614,7 +609,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void requestMore(final long n) {
-		checkRequest(n);
+		BackpressureUtils.checkRequest(n);
 		if (upstreamSubscription != null) {
 			upstreamSubscription.request(n);
 		}

@@ -24,6 +24,7 @@ import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Assert;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
 
@@ -69,8 +70,15 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 
 	@Override
 	public void request(long n) {
-		if (n <= 0) {
-			throw SpecificationExceptions.spec_3_09_exception(n);
+		try {
+			BackpressureUtils.checkRequest(n);
+		} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
+			if(target != null) {
+				target.onError(iae);
+			} else {
+				throw iae;
+			}
+			return;
 		}
 
 		long toRequest = n;

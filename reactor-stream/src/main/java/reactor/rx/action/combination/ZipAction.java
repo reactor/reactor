@@ -18,6 +18,7 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
@@ -102,7 +103,7 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
     @Override
     protected void requestUpstream(long capacity, boolean terminated, long elements) {
         long upstream = innerSubscriptions.runningComposables;
-        upstream = upstream == 0 ? elements : (upstream * elements < 0 ? Long.MAX_VALUE : upstream * elements);
+        upstream = upstream == 0 ? elements : (BackpressureUtils.multiplyOrLongMax(upstream, elements));
         if (publishers != null && innerSubscriptions.pendingRequestSignals() > 0) {
             innerSubscriptions.updatePendingRequests(upstream);
         } else {

@@ -18,6 +18,7 @@ package reactor.rx.action.combination;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.BackpressureUtils;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 
@@ -97,10 +98,8 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		if (upstreamSubscription != null && !terminated) {
-			long toRequest;
-			if((toRequest = REQUESTED_UPDATER.getAndSet(this, 0l)) < 0l){
-				toRequest = Long.MAX_VALUE;
-			}
+			long toRequest = BackpressureUtils.getAndAdd(REQUESTED_UPDATER, this, elements);
+
 			if(toRequest == 0){
 				toRequest = elements;
 			} else if(elements != toRequest){
@@ -112,9 +111,7 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 				requestMore(toRequest);
 			}
 		} else {
-				if(REQUESTED_UPDATER.addAndGet(this, elements) < 0l){
-					REQUESTED_UPDATER.set(this, Long.MAX_VALUE);
-				}
+			BackpressureUtils.getAndAdd(REQUESTED_UPDATER, this, elements);
 		}
 	}
 

@@ -17,6 +17,7 @@ package reactor.rx.action.control;
 
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.support.Assert;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
@@ -76,10 +77,7 @@ public class ThrottleRequestAction<T> extends Action<T, T> {
 	@Override
 	public void requestMore(long n) {
 		synchronized (this) {
-			if (pending != Long.MAX_VALUE) {
-				pending += n;
-				pending = pending < 0l ? Long.MAX_VALUE : pending;
-			}
+			pending = BackpressureUtils.addOrLongMax(pending, n);;
 		}
 		if (timeoutRegistration == null) {
 			timeoutRegistration = timer.submit(periodTask, period, TimeUnit.MILLISECONDS);

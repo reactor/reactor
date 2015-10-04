@@ -19,6 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
@@ -58,9 +59,7 @@ public class RepeatWhenAction<T> extends Action<T, T> {
 	@Override
 	public void requestMore(long n) {
 		synchronized (this) {
-			if ((pendingRequests += n) < 0l) {
-				pendingRequests = Long.MAX_VALUE;
-			}
+			pendingRequests = BackpressureUtils.addOrLongMax(pendingRequests, n);
 		}
 		super.requestMore(n);
 	}

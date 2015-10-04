@@ -18,6 +18,7 @@ package reactor.rx.action.control;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
+import reactor.core.support.BackpressureUtils;
 import reactor.rx.action.Action;
 
 /**
@@ -59,9 +60,7 @@ public class RepeatAction<T> extends Action<T, T> {
 	@Override
 	public void requestMore(long n) {
 		synchronized (this) {
-			if ((pendingRequests += n) < 0l) {
-				pendingRequests = Long.MAX_VALUE;
-			}
+			pendingRequests = BackpressureUtils.addOrLongMax(pendingRequests, n);
 		}
 		super.requestMore(n);
 	}

@@ -17,6 +17,7 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
+import reactor.core.support.BackpressureUtils;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.ReactiveSubscription;
@@ -79,7 +80,7 @@ public final class FutureStream<T> extends Stream<T> {
 
 				@Override
 				public void request(long elements) {
-					Action.checkRequest(elements);
+					BackpressureUtils.checkRequest(elements);
 					if (isComplete()) return;
 
 					try {

@@ -20,6 +20,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.subscriber.SerializedSubscriber;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
@@ -162,7 +163,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	@Override
 	public void requestMore(long n) {
-		checkRequest(n);
+		BackpressureUtils.checkRequest(n);
 		innerSubscriptions.safeRequest(n);
 	}
 
@@ -240,9 +241,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 		public void request(long n) {
 			if (s == null || n <= 0 || pendingRequests == Long.MAX_VALUE) return;
-			if ((pendingRequests += n) < 0l) {
-				pendingRequests = Long.MAX_VALUE;
-			}
+			pendingRequests = BackpressureUtils.addOrLongMax(pendingRequests, n);
 			emittedSignals = 0;
 			s.request(n);
 		}

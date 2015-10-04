@@ -18,6 +18,7 @@ package reactor.aeron.processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.support.BackpressureUtils;
 import reactor.io.buffer.Buffer;
 import uk.co.real_logic.aeron.Publication;
 import uk.co.real_logic.aeron.logbuffer.BufferClaim;
@@ -41,7 +42,7 @@ class AeronProcessorSubscription implements Subscription {
 	private final RequestCounter requestCounter;
 
 	AeronProcessorSubscription(Subscriber<? super Buffer> subscriber, int fragmentLimit, AeronHelper aeronHelper,
-							   Publication commandPub) {
+	                           Publication commandPub) {
 		this.subscriber = subscriber;
 		this.aeronHelper = aeronHelper;
 		this.commandPub = commandPub;
@@ -50,8 +51,10 @@ class AeronProcessorSubscription implements Subscription {
 
 	@Override
 	public void request(long n) {
-		if (n <= 0l) {
-			subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
+		try {
+			BackpressureUtils.checkRequest(n);
+		} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae) {
+			subscriber.onError(iae);
 			return;
 		}
 
@@ -67,7 +70,7 @@ class AeronProcessorSubscription implements Subscription {
 
 	void sendRequestCommand(long n) {
 		BufferClaim bufferClaim = aeronHelper.publish(commandPub, new BufferClaim(), 9,
-				AeronHelper.newBackoffIdleStrategy());
+		  AeronHelper.newBackoffIdleStrategy());
 		if (bufferClaim != null) {
 			try {
 				MutableDirectBuffer mutableBuffer = bufferClaim.buffer();

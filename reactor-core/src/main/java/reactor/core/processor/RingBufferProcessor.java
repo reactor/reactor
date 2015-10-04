@@ -25,6 +25,7 @@ import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RequestTask;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.processor.rb.disruptor.*;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
@@ -770,8 +771,10 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		@Override
 		@SuppressWarnings("unchecked")
 		public void request(long n) {
-			if (n <= 0l) {
-				subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
+			try {
+				BackpressureUtils.checkRequest(n);
+			} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
+				subscriber.onError(iae);
 				return;
 			}
 
@@ -779,9 +782,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 				return;
 			}
 
-			if (pendingRequest.addAndGet(n) < 0) {
-				pendingRequest.set(Long.MAX_VALUE);
-			}
+			BackpressureUtils.getAndAdd(pendingRequest, n);
 		}
 
 		@Override

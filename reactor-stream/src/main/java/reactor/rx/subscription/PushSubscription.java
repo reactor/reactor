@@ -18,6 +18,7 @@ package reactor.rx.subscription;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Publishable;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
@@ -79,8 +80,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Publis
 	public void request(long n) {
 		try {
 			if (publisher == null) {
-				if (pendingRequestSignals != Long.MAX_VALUE && PENDING_UPDATER.addAndGet(this, n) < 0)
-					PENDING_UPDATER.set(this, Long.MAX_VALUE);
+				BackpressureUtils.getAndAdd(PENDING_UPDATER, this, n);
 			}
 
 			if (terminated == -1L) {

@@ -17,6 +17,7 @@ package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.BackpressureUtils;
 import reactor.rx.subscription.support.WrappedSubscription;
 
 /**
@@ -40,8 +41,7 @@ public final class BatchSubscription<T> extends WrappedSubscription<T> {
 			if (n == Long.MAX_VALUE) {
 				pushSubscription.request(Long.MAX_VALUE);
 			} else if (pushSubscription.pendingRequestSignals() != Long.MAX_VALUE) {
-				long toRequest = n * batchSize;
-				toRequest = toRequest > 0 ? toRequest : Long.MAX_VALUE;
+				long toRequest = BackpressureUtils.multiplyOrLongMax(n, batchSize);
 				pushSubscription.request(toRequest);
 			}
 		} else {

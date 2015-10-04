@@ -20,6 +20,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.subscriber.SerializedSubscriber;
+import reactor.core.support.BackpressureUtils;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.ReactiveSubscription;
@@ -68,7 +69,7 @@ public class FanInSubscription<O, E, X, SUBSCRIBER extends FanInAction.InnerSubs
 
 	protected void parallelRequest(long elements) {
 		try {
-			Action.checkRequest(elements);
+			BackpressureUtils.checkRequest(elements);
 			int size = runningComposables;
 
 			if (size > 0) {

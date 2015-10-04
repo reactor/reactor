@@ -16,6 +16,7 @@
 package reactor.rx.subscription;
 
 import org.reactivestreams.Subscriber;
+import reactor.core.support.BackpressureUtils;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 
@@ -44,7 +45,7 @@ public class DropSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public void request(long elements) {
-		Action.checkRequest(elements);
+		BackpressureUtils.checkRequest(elements);
 		CAPACITY_UPDATER.addAndGet(this, elements);
 	}
 

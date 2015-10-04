@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.PublisherFactory;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.Publishable;
@@ -123,8 +124,10 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 
 	@Override
 	public final void request(long n) {
-		if (n < 0) {
-			doError(SpecificationExceptions.spec_3_09_exception(n));
+		try {
+			BackpressureUtils.checkRequest(n);
+		} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
+			subscriber.onError(iae);
 			return;
 		}
 		try {

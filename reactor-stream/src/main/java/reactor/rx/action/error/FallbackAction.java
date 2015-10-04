@@ -16,6 +16,7 @@
 package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
+import reactor.core.support.BackpressureUtils;
 import reactor.rx.action.Action;
 
 /**
@@ -53,7 +54,7 @@ public class FallbackAction<T> extends Action<T, T> {
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		synchronized (this) {
-			if ((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
+			pendingRequests = BackpressureUtils.addOrLongMax(pendingRequests, elements);
 		}
 		super.requestUpstream(capacity, terminated, elements);
 	}

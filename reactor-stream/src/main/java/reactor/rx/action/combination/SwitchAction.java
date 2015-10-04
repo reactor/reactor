@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.subscriber.SerializedSubscriber;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.rx.action.Action;
 
@@ -86,10 +87,10 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 	protected void doNext(Publisher<? extends T> ev) {
 		SwitchSubscriber subscriber, nextSubscriber;
 		synchronized (this) {
-			if(switchSubscriber != null && switchSubscriber.publisher == ev) return;
-			if(pendingRequests != Long.MAX_VALUE) pendingRequests--;
+			if (switchSubscriber != null && switchSubscriber.publisher == ev) return;
+			if (pendingRequests != Long.MAX_VALUE) pendingRequests--;
 			subscriber = switchSubscriber;
-			switchSubscriber = nextSubscriber= new SwitchSubscriber(ev);
+			switchSubscriber = nextSubscriber = new SwitchSubscriber(ev);
 		}
 
 		if (subscriber != null) {
@@ -131,7 +132,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		SwitchSubscriber subscriber;
 		synchronized (this) {
-			if ((pendingRequests += elements) < 0) pendingRequests = Long.MAX_VALUE;
+			pendingRequests = BackpressureUtils.addOrLongMax(pendingRequests, elements);
 			subscriber = switchSubscriber;
 		}
 		super.requestUpstream(capacity, terminated, elements);

@@ -19,6 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -87,9 +88,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 			requestMapperStream.onNext(n);
 		} else {
 			synchronized (this) {
-				if ((pendingRequests += n) < 0l) {
-					pendingRequests = Long.MAX_VALUE;
-				}
+				pendingRequests = BackpressureUtils.addOrLongMax(pendingRequests, n);
 			}
 		}
 	}
@@ -167,9 +166,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 
 		@Override
 		public void onNext(Long n) {
-			if (COUNTED.addAndGet(AdaptiveConsumerAction.this, n) < 0l) {
-				COUNTED.set(AdaptiveConsumerAction.this, Long.MAX_VALUE);
-			}
+			BackpressureUtils.getAndAdd(COUNTED, AdaptiveConsumerAction.this, n);
 			PushSubscription<T> upstreamSubscription = AdaptiveConsumerAction.this.upstreamSubscription;
 			if(upstreamSubscription != null) {
 				upstreamSubscription.request(n);

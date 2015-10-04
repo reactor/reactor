@@ -25,18 +25,17 @@ import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RequestTask;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.processor.rb.disruptor.*;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
-import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 /**
@@ -703,8 +702,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 		@Override
 		public void request(long n) {
-			if (n <= 0l) {
-				subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
+			try {
+				BackpressureUtils.checkRequest(n);
+			} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
+				subscriber.onError(iae);
 				return;
 			}
 
@@ -712,9 +713,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				return;
 			}
 
-			if (eventProcessor.pendingRequest.addAndGet(n) < 0) {
-				eventProcessor.pendingRequest.set(Long.MAX_VALUE);
-			}
+			BackpressureUtils.getAndAdd(eventProcessor.pendingRequest, n);
 		}
 
 		@Override

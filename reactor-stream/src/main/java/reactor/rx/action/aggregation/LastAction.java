@@ -16,6 +16,7 @@
 package reactor.rx.action.aggregation;
 
 import org.reactivestreams.Subscription;
+import reactor.core.support.BackpressureUtils;
 import reactor.rx.action.Action;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -45,7 +46,7 @@ public class LastAction<T> extends Action<T, T> {
 
 	@Override
 	public void requestMore(long n) {
-		checkRequest(n);
+		BackpressureUtils.checkRequest(n);
 		if(COUNTED.addAndGet(this, n) < 0L){
 			COUNTED.set(this, Long.MAX_VALUE);
 		}

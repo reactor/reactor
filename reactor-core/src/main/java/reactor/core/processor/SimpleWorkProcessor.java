@@ -24,6 +24,7 @@ import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.simple.SimpleSignal;
 import reactor.core.processor.simple.SimpleSubscriberUtils;
 import reactor.core.support.Assert;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.SignalType;
 import reactor.core.support.Publishable;
 
@@ -468,8 +469,10 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 
 		@Override
 		public void request(long n) {
-			if (n <= 0l) {
-				subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
+			try {
+				BackpressureUtils.checkRequest(n);
+			} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
+				subscriber.onError(iae);
 				return;
 			}
 
@@ -477,9 +480,7 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 				return;
 			}
 
-			if (addAndGet(n) < 0) {
-				set(Long.MAX_VALUE);
-			}
+			BackpressureUtils.getAndAdd(this, n);
 		}
 
 

@@ -25,6 +25,8 @@ import reactor.core.publisher.TrampolineOperator;
 import reactor.core.subscriber.Tap;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.SignalType;
+import reactor.fn.BiConsumer;
+import reactor.fn.Function;
 import reactor.fn.Supplier;
 
 import java.util.Queue;
@@ -50,7 +52,7 @@ public final class Publishers extends PublisherFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> complete() {
+	public static <IN> Publisher<IN> empty() {
 		return new Publisher<IN>() {
 			@Override
 			public void subscribe(Subscriber<? super IN> s) {
@@ -58,6 +60,40 @@ public final class Publishers extends PublisherFactory {
 				s.onComplete();
 			}
 		};
+	}
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> never() {
+		return new Publisher<IN>() {
+			@Override
+			public void subscribe(Subscriber<? super IN> s) {
+				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+			}
+		};
+	}
+
+
+	/**
+	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by
+	 * calling
+	 * or not
+	 * the right operand {@link Subscriber}.
+	 *
+	 * @param transformer A {@link Function} that transforms each emitting sequence item
+	 * @param <I>          The source type of the data sequence
+	 * @param <O>          The target type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <I, O> Publisher<O> map(Publisher<I> source, final Function<? super I, ? extends O> transformer) {
+		return lift(source, new BiConsumer<I, Subscriber<? super O>>() {
+			@Override
+			public void accept(I i, Subscriber<? super O> subscriber) {
+				subscriber.onNext(transformer.apply(i));
+			}
+		}, null, null);
 	}
 
 	/**

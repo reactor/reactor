@@ -44,7 +44,7 @@ public class PublisherFactoryTests extends PublisherVerification<Long> {
 		return
 		  Publishers.trampoline(
 			Publishers.log(
-			  Publishers.map(
+			  Publishers.lift(
 			    Publishers.<Long, AtomicLong>create(
 				  (s) -> {
 					  long cursor = s.context().getAndIncrement();

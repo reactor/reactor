@@ -22,18 +22,35 @@ package reactor.core.error;
 public final class SpecificationExceptions {
 
 	public static IllegalStateException spec_2_12_exception() {
-		return new IllegalStateException("Spec. Rule 2.12 - Subscriber.onSubscribe MUST NOT be called more than once" +
-		  " " +
-		  "(based on object equality)");
+		return new Spec212_DuplicateOnSubscribe();
 	}
 
 	public static NullPointerException spec_2_13_exception() {
-		return new NullPointerException("Spec 2.13: Signal/argument cannot be null");
+		return new Spec213_ArgumentIsNull();
 	}
 
 	public static IllegalArgumentException spec_3_09_exception(long elements) {
-		return new IllegalArgumentException("Spec. Rule 3.9 - Cannot request a non strictly positive number: " +
-		  elements);
+		return new Spec309_NullOrNegativeRequest(elements);
 	}
 
+	public static final class Spec309_NullOrNegativeRequest extends IllegalArgumentException {
+		public Spec309_NullOrNegativeRequest(long elements) {
+			super("Spec. Rule 3.9 - Cannot request a non strictly positive number: " +
+			  elements);
+		}
+	}
+
+	public static final class Spec213_ArgumentIsNull extends NullPointerException {
+		public Spec213_ArgumentIsNull() {
+			super("Spec 2.13: Signal/argument cannot be null");
+		}
+	}
+
+	public static final class Spec212_DuplicateOnSubscribe extends IllegalStateException {
+		public Spec212_DuplicateOnSubscribe() {
+			super("Spec. Rule 2.12 - Subscriber.onSubscribe MUST NOT be called more than once" +
+			" " +
+			  "(based on object equality)");
+		}
+	}
 }
