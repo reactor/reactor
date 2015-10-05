@@ -371,6 +371,7 @@ public class TcpServerTests {
 	}
 
 	@Test(timeout = 60000)
+	@Ignore
 	public void exposesZeroMQServer() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(2);
