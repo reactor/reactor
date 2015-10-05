@@ -473,7 +473,57 @@ public final class Processors {
 	 * @return
 	 */
 	public static <T, V> Processor<T, V> flatMap(Function<? super T, ? extends Publisher<? extends V>> map){
-		return new FlatMapProcessor<>(map);
+		return flatMap(map, BaseProcessor.SMALL_BUFFER_SIZE, BaseProcessor.SMALL_BUFFER_SIZE * 2);
+	}
+
+
+	/**
+	 *
+	 * @param map
+	 * @param <T>
+	 * @param <V>
+	 * @return
+	 */
+	public static <T, V> Processor<T, V> flatMap(Function<? super T, ? extends Publisher<? extends V>> map,
+	                                             int maxConcurrency){
+		return flatMap(map, maxConcurrency, maxConcurrency);
+	}
+
+
+	/**
+	 *
+	 * @param map
+	 * @param <T>
+	 * @param <V>
+	 * @return
+	 */
+	public static <T, V> Processor<T, V> flatMap(Function<? super T, ? extends Publisher<? extends V>> map,
+	                                             int maxConcurrency, int bufferSize){
+		return new FlatMapProcessor<>(map, maxConcurrency, bufferSize);
+	}
+
+	/**
+	 *
+	 * @param map
+	 * @param <T>
+	 * @param <V>
+	 * @return
+	 */
+	public static <T, V> Processor<T, V> concatMap(Function<? super T, ? extends Publisher<? extends V>> map){
+		return concatMap(map, BaseProcessor.SMALL_BUFFER_SIZE);
+	}
+
+
+	/**
+	 *
+	 * @param map
+	 * @param <T>
+	 * @param <V>
+	 * @return
+	 */
+	public static <T, V> Processor<T, V> concatMap(Function<? super T, ? extends Publisher<? extends V>> map,
+	                                             int bufferSize){
+		return flatMap(map, 1, bufferSize);
 	}
 
 	/**

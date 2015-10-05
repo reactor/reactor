@@ -46,6 +46,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 	private final Subscriber<IN> target;
 	private final Queue<IN>      store;
 	private final int            capacity;
+	private final boolean        cancelAfterFirstRequestComplete;
 
 	private volatile Throwable endError;
 	private volatile boolean   terminated;
@@ -57,10 +58,16 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 	  .newUpdater(BlockingQueueSubscriber.class, "remainingCapacity");
 
 	public BlockingQueueSubscriber(Publisher<IN> source, Subscriber<IN> target, Queue<IN> store, int capacity) {
+		this(source, target, store, false, capacity);
+	}
+
+	public BlockingQueueSubscriber(Publisher<IN> source, Subscriber<IN> target, Queue<IN> store,
+	                               boolean cancelAfterFirstRequestComplete, int capacity) {
 		Assert.isTrue(store != null, "A queue must be provided");
 		Assert.isTrue(capacity > 0, "A strict positive capacity is required");
 		this.source = source;
 		this.target = target;
+		this.cancelAfterFirstRequestComplete = cancelAfterFirstRequestComplete;
 		this.remainingCapacity = this.capacity = capacity;
 		this.store = store;
 		if (source != null) {
@@ -72,8 +79,8 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 	public void request(long n) {
 		try {
 			BackpressureUtils.checkRequest(n);
-		} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
-			if(target != null) {
+		} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae) {
+			if (target != null) {
 				target.onError(iae);
 			} else {
 				throw iae;
@@ -125,7 +132,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		if (source == null && target != null) {
 			target.onSubscribe(this);
 		} else {
-			s.request(Long.MAX_VALUE);
+			s.request(capacity == Integer.MAX_VALUE ? Long.MAX_VALUE : capacity);
 		}
 	}
 
@@ -240,7 +247,6 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 			}
 		}
 		REMAINING.incrementAndGet(this);
-
 		return res;
 	}
 

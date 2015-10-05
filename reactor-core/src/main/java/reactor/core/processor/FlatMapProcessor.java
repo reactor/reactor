@@ -54,10 +54,6 @@ public final class FlatMapProcessor<T, V> extends BaseSubscriber<T> implements P
 
 	private final MergeState<T, V> state;
 
-	public FlatMapProcessor(Function<? super T, ? extends Publisher<? extends V>> map) {
-		this(map, 128, 128);
-	}
-
 	public FlatMapProcessor(Function<? super T, ? extends Publisher<? extends V>> map, int bufferSize, int maxConcurrency) {
 		this.map = map;
 
