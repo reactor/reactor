@@ -19,7 +19,6 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
-import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.LogOperator;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolineOperator;
@@ -78,27 +77,18 @@ public final class Publishers extends PublisherFactory {
 	 * @param <IN>
 	 * @return
 	 */
+	@SuppressWarnings("unchecked")
 	public static <IN> Publisher<IN> empty() {
-		return new Publisher<IN>() {
-			@Override
-			public void subscribe(Subscriber<? super IN> s) {
-				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-				s.onComplete();
-			}
-		};
+		return (EmptyPublisher<IN>)EMPTY;
 	}
 
 	/**
 	 * @param <IN>
 	 * @return
 	 */
+	@SuppressWarnings("unchecked")
 	public static <IN> Publisher<IN> never() {
-		return new Publisher<IN>() {
-			@Override
-			public void subscribe(Subscriber<? super IN> s) {
-				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-			}
-		};
+		return (NeverPublisher<IN>)NEVER;
 	}
 
 
@@ -114,12 +104,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Publisher<O> map(Publisher<I> source, final Function<? super I, ? extends O> transformer) {
-		return lift(source, new BiConsumer<I, Subscriber<? super O>>() {
-			@Override
-			public void accept(I i, Subscriber<? super O> subscriber) {
-				subscriber.onNext(transformer.apply(i));
-			}
-		}, null, null);
+		return lift(source, new MapOperator<>(transformer), null, null);
 	}
 
 	/**
@@ -128,14 +113,10 @@ public final class Publishers extends PublisherFactory {
 	 * @param <I>         The source type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
+	@SuppressWarnings("unchecked")
 	public static <I> Publisher<I> merge(Publisher<? extends Publisher<? extends I>> source) {
-		Processor<Publisher<? extends I>, I> flatMap = Processors.flatMap(
-		  new Function<Publisher<? extends I>, Publisher<? extends I>>() {
-			@Override
-			public Publisher<? extends I> apply(Publisher<? extends I> publisher) {
-				return publisher;
-			}
-		});
+		Processor<Publisher<? extends I>, I> flatMap =
+		  Processors.flatMap((PublisherToPublisherFunction<I>) P2P_FUNCTION);
 		source.subscribe(flatMap);
 		return flatMap;
 	}
@@ -161,14 +142,10 @@ public final class Publishers extends PublisherFactory {
 	 * @param <I>         The source type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
+	@SuppressWarnings("unchecked")
 	public static <I> Publisher<I> concat(Publisher<? extends Publisher<? extends I>> source) {
-		Processor<Publisher<? extends I>, I> concatMap = Processors.concatMap(
-		  new Function<Publisher<? extends I>, Publisher<? extends I>>() {
-			  @Override
-			  public Publisher<? extends I> apply(Publisher<? extends I> publisher) {
-				  return publisher;
-			  }
-		  });
+		Processor<Publisher<? extends I>, I> concatMap =
+		  Processors.concatMap((PublisherToPublisherFunction<I>) P2P_FUNCTION);
 		source.subscribe(concatMap);
 		return concatMap;
 	}
@@ -265,6 +242,13 @@ public final class Publishers extends PublisherFactory {
 		return tap;
 	}
 
+
+	/**
+	 * Simple Publisher implementations
+	 */
+
+	//
+
 	private static class IteratorPublisher<T> implements
 	  Consumer<SubscriberWithContext<T, Iterator<? extends T>>>,
 	  Function<Subscriber<? super T>, Iterator<? extends T>> {
@@ -329,6 +313,48 @@ public final class Publishers extends PublisherFactory {
 		@Override
 		public String toString() {
 			return "single-value=" + data;
+		}
+	}
+
+	private static class MapOperator<I, O> implements BiConsumer<I, Subscriber<? super O>> {
+
+		private final Function<? super I, ? extends O> transformer;
+		public MapOperator(Function<? super I, ? extends O> transformer) {
+			this.transformer = transformer;
+		}
+
+		@Override
+		public void accept(I i, Subscriber<? super O> subscriber) {
+			subscriber.onNext(transformer.apply(i));
+		}
+
+	}
+	private static final PublisherToPublisherFunction<?> P2P_FUNCTION = new PublisherToPublisherFunction<>();
+
+	private static class PublisherToPublisherFunction<I> implements
+	  Function<Publisher<? extends I>, Publisher<? extends I>> {
+		@Override
+		public Publisher<? extends I> apply(Publisher<? extends I> publisher) {
+			return publisher;
+		}
+	}
+
+	private static final NeverPublisher<?> NEVER = new NeverPublisher<>();
+
+	private static class NeverPublisher<IN> implements Publisher<IN> {
+		@Override
+		public void subscribe(Subscriber<? super IN> s) {
+			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+		}
+	}
+
+	private static final EmptyPublisher<?> EMPTY = new EmptyPublisher<>();
+
+	private static class EmptyPublisher<IN> implements Publisher<IN> {
+		@Override
+		public void subscribe(Subscriber<? super IN> s) {
+			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+			s.onComplete();
 		}
 	}
 }
