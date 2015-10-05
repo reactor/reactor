@@ -20,10 +20,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
-import reactor.core.support.Bounded;
-import reactor.core.support.Resource;
-import reactor.core.support.Publishable;
-import reactor.core.support.SignalType;
+import reactor.core.support.*;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -94,12 +91,9 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 
 	@Override
 	public void onSubscribe(final Subscription s) {
-		super.onSubscribe(s);
-		if (this.upstreamSubscription != null) {
-			s.cancel();
-			return;
+		if(BackpressureUtils.checkSubscription(upstreamSubscription, s)) {
+			this.upstreamSubscription = s;
 		}
-		this.upstreamSubscription = s;
 	}
 
 	@Override

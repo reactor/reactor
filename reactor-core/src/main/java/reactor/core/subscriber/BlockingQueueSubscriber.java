@@ -127,12 +127,13 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 
 	@Override
 	public void onSubscribe(Subscription s) {
-		super.onSubscribe(s);
-		this.subscription = s;
-		if (source == null && target != null) {
-			target.onSubscribe(this);
-		} else {
-			s.request(capacity == Integer.MAX_VALUE ? Long.MAX_VALUE : capacity);
+		if(BackpressureUtils.checkSubscription(subscription, s)) {
+			this.subscription = s;
+			if (source == null && target != null) {
+				target.onSubscribe(this);
+			} else {
+				s.request(capacity == Integer.MAX_VALUE ? Long.MAX_VALUE : capacity);
+			}
 		}
 	}
 

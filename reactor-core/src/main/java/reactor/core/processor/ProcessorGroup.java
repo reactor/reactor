@@ -714,24 +714,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 
 		@Override
 		public final void onSubscribe(Subscription s) {
-			super.onSubscribe(s);
-
-			final boolean set;
 			final Subscriber<? super V> subscriber;
 
 			synchronized (this) {
-				if (subscription == null) {
+				if (BackpressureUtils.checkSubscription(subscription, s)) {
 					subscription = s;
-					set = true;
-				} else {
-					set = false;
 				}
 				subscriber = this.subscriber != null ? this.subscriber : null;
 			}
 
-			if (!set) {
-				s.cancel();
-			} else if (subscriber != null) {
+			if (subscriber != null) {
 				dispatch(this, subscriber, SignalType.SUBSCRIPTION);
 			}
 		}

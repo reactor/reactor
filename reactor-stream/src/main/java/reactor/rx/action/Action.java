@@ -142,27 +142,18 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		if (subscription == null) {
-			throw new NullPointerException("Spec 2.13: Subscription cannot be null");
-		}
+		if(BackpressureUtils.checkSubscription(upstreamSubscription, subscription)) {
 
-		final boolean hasRequestTracker = upstreamSubscription != null;
+			upstreamSubscription = createTrackingSubscription(subscription);
+			upstreamSubscription.maxCapacity(getCapacity());
 
-		//if request tracker was connected to another subscription
-		if (hasRequestTracker) {
-			subscription.cancel();
-			return;
-		}
-
-		upstreamSubscription = createTrackingSubscription(subscription);
-		upstreamSubscription.maxCapacity(getCapacity());
-
-		try {
-			doOnSubscribe(subscription);
-			doStart();
-		} catch (Throwable t) {
-			Exceptions.throwIfFatal(t);
-			doError(t);
+			try {
+				doOnSubscribe(subscription);
+				doStart();
+			} catch (Throwable t) {
+				Exceptions.throwIfFatal(t);
+				doError(t);
+			}
 		}
 	}
 

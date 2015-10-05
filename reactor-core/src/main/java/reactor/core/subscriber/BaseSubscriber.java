@@ -45,9 +45,7 @@ public class BaseSubscriber<T> implements Subscriber<T> {
 
 	@Override
 	public void onSubscribe(Subscription s) {
-		if (s == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
-		}
+		//To validate with BackpressureUtils.checkSubscription(current, s)
 	}
 
 	@Override

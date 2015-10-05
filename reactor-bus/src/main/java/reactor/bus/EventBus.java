@@ -39,6 +39,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.subscription.SubscriptionWithContext;
 import reactor.core.support.Assert;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.SignalType;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.BiConsumer;
@@ -440,8 +441,10 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 			@Override
 			public void onSubscribe(Subscription s) {
-				this.s = s;
-				s.request(Long.MAX_VALUE);
+				if(BackpressureUtils.checkSubscription(this.s, s)) {
+					this.s = s;
+					s.request(Long.MAX_VALUE);
+				}
 			}
 
 			@Override
@@ -451,12 +454,12 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 
 			@Override
 			public void onError(Throwable t) {
-				if (s != null) s.cancel();
+				s = null;
 			}
 
 			@Override
 			public void onComplete() {
-				if (s != null) s.cancel();
+				s = null;
 			}
 		});
 		return this;

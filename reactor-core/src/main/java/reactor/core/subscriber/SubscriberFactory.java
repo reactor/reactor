@@ -23,6 +23,7 @@ import reactor.core.error.ReactorFatalException;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscription.SubscriptionWithContext;
 import reactor.core.support.Assert;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.fn.BiConsumer;
@@ -248,40 +249,35 @@ public abstract class SubscriberFactory {
 
 		@Override
 		public void onSubscribe(Subscription s) {
-			super.onSubscribe(s);
-
 			try {
-				if (subscriptionWithContext != null) {
-					s.cancel();
-					return;
-				}
-
-				final AtomicLong proxyRequest = new AtomicLong();
-				final C context = subscriptionHandler.apply(new Subscription() {
-					@Override
-					public void request(long n) {
-						if (subscriptionWithContext == null && proxyRequest.get() != Long.MIN_VALUE) {
-							proxyRequest.addAndGet(n);
-						} else {
-							subscriptionWithContext.request(n);
+				if(BackpressureUtils.checkSubscription(subscriptionWithContext, s)) {
+					final AtomicLong proxyRequest = new AtomicLong();
+					final C context = subscriptionHandler.apply(new Subscription() {
+						@Override
+						public void request(long n) {
+							if (subscriptionWithContext == null && proxyRequest.get() != Long.MIN_VALUE) {
+								BackpressureUtils.getAndAdd(proxyRequest, n);
+							} else {
+								subscriptionWithContext.request(n);
+							}
 						}
-					}
 
-					@Override
-					public void cancel() {
-						if (subscriptionWithContext == null) {
-							proxyRequest.set(Long.MIN_VALUE);
-						} else {
-							subscriptionWithContext.cancel();
+						@Override
+						public void cancel() {
+							if (subscriptionWithContext == null) {
+								proxyRequest.set(Long.MIN_VALUE);
+							} else {
+								subscriptionWithContext.cancel();
+							}
 						}
-					}
-				});
+					});
 
-				this.subscriptionWithContext = SubscriptionWithContext.create(s, context);
-				if (proxyRequest.compareAndSet(Long.MIN_VALUE, 0)) {
-					subscriptionWithContext.cancel();
-				} else if (proxyRequest.get() > 0) {
-					subscriptionWithContext.request(proxyRequest.get());
+					this.subscriptionWithContext = SubscriptionWithContext.create(s, context);
+					if (proxyRequest.compareAndSet(Long.MIN_VALUE, 0)) {
+						subscriptionWithContext.cancel();
+					} else if (proxyRequest.get() > 0) {
+						subscriptionWithContext.request(proxyRequest.get());
+					}
 				}
 			} catch (Throwable throwable) {
 				Exceptions.throwIfFatal(throwable);
