@@ -470,18 +470,13 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 
 		@Override
 		public void request(long n) {
-			try {
-				BackpressureUtils.checkRequest(n);
-			} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
-				subscriber.onError(iae);
-				return;
-			}
+			if(BackpressureUtils.checkRequest(n, subscriber)) {
+				if (!isRunning()) {
+					return;
+				}
 
-			if (!isRunning()) {
-				return;
+				BackpressureUtils.getAndAdd(this, n);
 			}
-
-			BackpressureUtils.getAndAdd(this, n);
 		}
 
 

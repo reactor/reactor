@@ -19,6 +19,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.SignalType;
 
 /**
@@ -45,6 +46,7 @@ public class BaseSubscriber<T> implements Subscriber<T> {
 
 	@Override
 	public void onSubscribe(Subscription s) {
+		BackpressureUtils.checkSubscription(null, s);
 		//To validate with BackpressureUtils.checkSubscription(current, s)
 	}
 

@@ -77,28 +77,20 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 
 	@Override
 	public void request(long n) {
-		try {
-			BackpressureUtils.checkRequest(n);
-		} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae) {
+		if(BackpressureUtils.checkRequest(n, target)) {
+
+			long toRequest = n;
 			if (target != null) {
-				target.onError(iae);
-			} else {
-				throw iae;
+				IN polled;
+				while ((n == Long.MAX_VALUE || toRequest-- > 0) && (polled = store.poll()) != null) {
+					target.onNext(polled);
+				}
 			}
-			return;
-		}
 
-		long toRequest = n;
-		if (target != null) {
-			IN polled;
-			while ((n == Long.MAX_VALUE || toRequest-- > 0) && (polled = store.poll()) != null) {
-				target.onNext(polled);
+			Subscription subscription = this.subscription;
+			if (subscription != null) {
+				subscription.request(toRequest);
 			}
-		}
-
-		Subscription subscription = this.subscription;
-		if (subscription != null) {
-			subscription.request(toRequest);
 		}
 	}
 

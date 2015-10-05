@@ -16,6 +16,7 @@
 
 package reactor.core.support;
 
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.disruptor.Sequence;
@@ -24,7 +25,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
- * A generic utility to check subscription, request size and to cap concurrent additive operations to Long.MAX_VALUE_LONG,
+ * A generic utility to check subscription, request size and to cap concurrent additive operations to Long
+ * .MAX_VALUE_LONG,
  * which is generic to {@link org.reactivestreams.Subscription#request(long)} handling.
  *
  * @author Stephane Maldini
@@ -38,14 +40,13 @@ public abstract class BackpressureUtils {
 	 *
 	 * @param oldSub current Subscription, expected to be null
 	 * @param newSub new Subscription
-	 *
 	 * @return true if Subscription can be used
 	 */
-	public static boolean checkSubscription(Subscription oldSub, Subscription newSub){
-		if (newSub == null){
+	public static boolean checkSubscription(Subscription oldSub, Subscription newSub) {
+		if (newSub == null) {
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
-		if(oldSub != null){
+		if (oldSub != null) {
 			newSub.cancel();
 			return false;
 		}
@@ -62,6 +63,29 @@ public abstract class BackpressureUtils {
 		if (n <= 0L) {
 			throw SpecificationExceptions.spec_3_09_exception(n);
 		}
+	}
+
+
+	/**
+	 * Throws an exception if request is 0 or negative as specified in rule 3.09 of Reactive Streams
+	 *
+	 * @param n          demand to check
+	 * @param subscriber Subscriber to onError if non strict positive n
+	 *
+	 * @return true if valid or false if specification exception occured
+	 *
+	 * @throws IllegalArgumentException if subscriber is null and demand is negative or 0.
+	 */
+	public static boolean checkRequest(long n, Subscriber<?> subscriber) {
+		if (n <= 0L) {
+			if (null != subscriber) {
+				subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
+			} else {
+				throw SpecificationExceptions.spec_3_09_exception(n);
+			}
+			return false;
+		}
+		return true;
 	}
 
 	/**

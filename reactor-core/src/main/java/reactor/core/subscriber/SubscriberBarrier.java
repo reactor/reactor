@@ -59,7 +59,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 	@Override
 	public final void onSubscribe(Subscription s) {
 		try {
-			if(BackpressureUtils.checkSubscription(subscription, s)) {
+			if (BackpressureUtils.checkSubscription(subscription, s)) {
 				subscription = s;
 				doOnSubscribe(this);
 			}
@@ -122,11 +122,6 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 	public final void request(long n) {
 		try {
 			BackpressureUtils.checkRequest(n);
-		} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
-			subscriber.onError(iae);
-			return;
-		}
-		try {
 			doRequest(n);
 		} catch (Throwable throwable) {
 			doError(throwable);

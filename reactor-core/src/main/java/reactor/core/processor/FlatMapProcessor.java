@@ -69,7 +69,9 @@ public final class FlatMapProcessor<T, V> extends BaseSubscriber<T> implements P
 
 	@Override
 	public void onSubscribe(Subscription s) {
-		super.onSubscribe(s);
+		if(BackpressureUtils.checkSubscription(state.subscription, s)){
+
+		}
 	}
 
 	@Override
@@ -98,11 +100,8 @@ public final class FlatMapProcessor<T, V> extends BaseSubscriber<T> implements P
 
 	@Override
 	public void request(long n) {
-		try {
-			BackpressureUtils.checkRequest(n);
-		} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
-			//subscriber.onError(iae);
-			return;
+		if(BackpressureUtils.checkRequest(n, state.subscriber)){
+
 		}
 	}
 
@@ -130,7 +129,10 @@ public final class FlatMapProcessor<T, V> extends BaseSubscriber<T> implements P
 	static class MergeState<T, V> {
 
 		final RingBuffer<Emitted<T, V>>                             emitBuffer;
-		
+
+		Subscriber<? super V> subscriber;
+		Subscription subscription;
+
 		volatile     int                                   running = 0;
 		@SuppressWarnings("rawtypes")
 		static final AtomicIntegerFieldUpdater<MergeState> RUNNING =

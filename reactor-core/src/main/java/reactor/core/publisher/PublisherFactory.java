@@ -348,17 +348,12 @@ public abstract class PublisherFactory {
 				return;
 			}
 
-			try {
-				BackpressureUtils.checkRequest(n);
-			} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae) {
-				onError(iae);
-				return;
-			}
-
-			try {
-				requestConsumer.accept(n, this);
-			} catch (Throwable t) {
-				onError(t);
+			if(BackpressureUtils.checkRequest(n, this)) {
+				try {
+					requestConsumer.accept(n, this);
+				} catch (Throwable t) {
+					onError(t);
+				}
 			}
 		}
 

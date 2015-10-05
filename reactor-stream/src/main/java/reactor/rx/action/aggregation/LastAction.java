@@ -47,9 +47,7 @@ public class LastAction<T> extends Action<T, T> {
 	@Override
 	public void requestMore(long n) {
 		BackpressureUtils.checkRequest(n);
-		if(COUNTED.addAndGet(this, n) < 0L){
-			COUNTED.set(this, Long.MAX_VALUE);
-		}
+		BackpressureUtils.getAndAdd(COUNTED, this, n);
 		Subscription subscription = upstreamSubscription;
 		if (subscription != null) {
 			subscription.request(n);

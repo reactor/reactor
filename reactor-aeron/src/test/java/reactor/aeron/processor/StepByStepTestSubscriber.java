@@ -17,6 +17,7 @@ package reactor.aeron.processor;
 
 import org.reactivestreams.Subscription;
 import reactor.core.subscriber.BaseSubscriber;
+import reactor.core.support.BackpressureUtils;
 import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 
@@ -51,8 +52,9 @@ public class StepByStepTestSubscriber extends BaseSubscriber<Buffer> {
 
     @Override
     public void onSubscribe(Subscription s) {
-        super.onSubscribe(s);
-        this.subscription = s;
+        if(BackpressureUtils.checkSubscription(subscription, s)) {
+            this.subscription = s;
+        }
     }
 
     @Override

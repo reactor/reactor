@@ -702,18 +702,13 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 		@Override
 		public void request(long n) {
-			try {
-				BackpressureUtils.checkRequest(n);
-			} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
-				subscriber.onError(iae);
-				return;
-			}
+			if(BackpressureUtils.checkRequest(n, subscriber)) {
+				if (!eventProcessor.isRunning()) {
+					return;
+				}
 
-			if (!eventProcessor.isRunning()) {
-				return;
+				BackpressureUtils.getAndAdd(eventProcessor.pendingRequest, n);
 			}
-
-			BackpressureUtils.getAndAdd(eventProcessor.pendingRequest, n);
 		}
 
 		@Override

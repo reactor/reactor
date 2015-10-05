@@ -51,16 +51,10 @@ class AeronProcessorSubscription implements Subscription {
 
 	@Override
 	public void request(long n) {
-		try {
-			BackpressureUtils.checkRequest(n);
-		} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae) {
-			subscriber.onError(iae);
-			return;
+		if (BackpressureUtils.checkRequest(n, subscriber)) {
+			sendRequestCommand(n);
+			requestCounter.request(n);
 		}
-
-		sendRequestCommand(n);
-
-		requestCounter.request(n);
 	}
 
 	@Override

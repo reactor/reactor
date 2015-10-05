@@ -45,8 +45,9 @@ public class DropSubscription<O> extends PushSubscription<O> {
 
 	@Override
 	public void request(long elements) {
-		BackpressureUtils.checkRequest(elements);
-		CAPACITY_UPDATER.addAndGet(this, elements);
+		if(BackpressureUtils.checkRequest(elements, subscriber)) {
+			BackpressureUtils.getAndAdd(CAPACITY_UPDATER, this, elements);
+		}
 	}
 
 	@Override

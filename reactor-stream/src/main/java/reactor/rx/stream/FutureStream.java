@@ -80,10 +80,11 @@ public final class FutureStream<T> extends Stream<T> {
 
 				@Override
 				public void request(long elements) {
-					BackpressureUtils.checkRequest(elements);
-					if (isComplete()) return;
 
 					try {
+						BackpressureUtils.checkRequest(elements);
+						if (isComplete()) return;
+
 						T result = unit == null ? future.get() : future.get(time, unit);
 
 						subscriber.onNext(result);

@@ -770,18 +770,13 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		@Override
 		@SuppressWarnings("unchecked")
 		public void request(long n) {
-			try {
-				BackpressureUtils.checkRequest(n);
-			} catch (SpecificationExceptions.Spec309_NullOrNegativeRequest iae){
-				subscriber.onError(iae);
-				return;
-			}
+			if(BackpressureUtils.checkRequest(n, subscriber)) {
+				if (!eventProcessor.isRunning()) {
+					return;
+				}
 
-			if (!eventProcessor.isRunning()) {
-				return;
+				BackpressureUtils.getAndAdd(pendingRequest, n);
 			}
-
-			BackpressureUtils.getAndAdd(pendingRequest, n);
 		}
 
 		@Override
