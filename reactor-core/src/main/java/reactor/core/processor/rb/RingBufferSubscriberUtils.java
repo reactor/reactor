@@ -120,11 +120,12 @@ public final class RingBufferSubscriberUtils {
 			RingBuffer<MutableSignal<T>> ringBuffer,
 			SequenceBarrier barrier,
 			Subscriber<? super T> subscriber,
-			AtomicBoolean isRunning
+			AtomicBoolean isRunning,
+	        long nextSequence
 	) {
-		final long waitedSequence = ringBuffer.get(ringBuffer.getCursor()).type != SignalType.COMPLETE ?
-		  ringBuffer.getCursor() + 1L :
-		  ringBuffer.getCursor();
+		final long waitedSequence = ringBuffer.get(nextSequence - 1).type == SignalType.COMPLETE ?
+		  nextSequence -1 :
+		  nextSequence;
 		try {
 			MutableSignal<T> event = null;
 			while (pendingRequest.get() < 0l) {

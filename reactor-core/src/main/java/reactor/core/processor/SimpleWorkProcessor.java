@@ -308,6 +308,12 @@ public final class SimpleWorkProcessor<IN> extends ExecutorPoweredProcessor<IN, 
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
+		if(!alive() && workQueue.isEmpty()){
+			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+			subscriber.onComplete();
+			return;
+		}
+
 		try {
 			final SubscriberWorker<IN> signalProcessor = new SubscriberWorker<>(
 			  this,

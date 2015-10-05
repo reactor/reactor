@@ -569,7 +569,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
-		if(!alive()){
+		if(!alive() && ringBuffer.pending() == 0L){
 			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 			subscriber.onComplete();
 			return;
@@ -809,7 +809,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				MutableSignal<T> event = null;
 
 				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
-				  pendingRequest, processor.ringBuffer, barrier, subscriber, running
+				  pendingRequest, processor.ringBuffer, barrier, subscriber, running, nextSequence
 				)) {
 					processor.ringBuffer.removeGatingSequence(sequence);
 					return;

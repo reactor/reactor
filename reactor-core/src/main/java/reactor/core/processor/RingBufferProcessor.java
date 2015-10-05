@@ -619,7 +619,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
-		if(!alive()){
+		if(!alive() && ringBuffer.pending() == 0L){
 			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 			subscriber.onComplete();
 			return;
@@ -706,7 +706,6 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			  @Override
 			  public void accept(Void aVoid) {
 				  if (!alive()){
-					  ringBuffer.removeGatingSequence(minimum);
 					  throw CancelException.INSTANCE;
 				  }
 			  }
@@ -885,7 +884,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 				long nextSequence = sequence.get() + 1L;
 
 				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
-				  pendingRequest, processor.ringBuffer, processor.barrier, subscriber, running
+				  pendingRequest, processor.ringBuffer, processor.barrier, subscriber, running, nextSequence
 				)) {
 					return;
 				}

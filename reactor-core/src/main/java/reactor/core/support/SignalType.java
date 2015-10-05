@@ -26,7 +26,9 @@ public enum SignalType {
 	/**
 	 * A singleton noop subscription
 	 */
-	public static final Subscription NOOP_SUBSCRIPTION = new Subscription() {
+	public static final Subscription NOOP_SUBSCRIPTION = new NoopSubscription();
+
+	private final static class NoopSubscription implements Subscription {
 		@Override
 		public void request(long n) {
 		}
@@ -34,5 +36,5 @@ public enum SignalType {
 		@Override
 		public void cancel() {
 		}
-	};
+	}
 }
