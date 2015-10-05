@@ -21,12 +21,9 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithContext;
-import reactor.core.support.Assert;
+import reactor.core.support.*;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -283,7 +280,8 @@ public abstract class PublisherFactory {
 				final C context = contextFactory != null ? contextFactory.apply(subscriber) : null;
 				subscriber.onSubscribe(createSubscription(subscriber, context));
 			} catch (PrematureCompleteException pce) {
-				//IGNORE
+				subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				subscriber.onComplete();
 			} catch (Throwable throwable) {
 				Exceptions.<T>publisher(throwable).subscribe(subscriber);
 			}

@@ -86,7 +86,6 @@ public final class IterableStream<T> {
 			@Override
 			public Iterator<? extends T> apply(Subscriber<? super T> subscriber) {
 				if (defaultValues == null) {
-					subscriber.onComplete();
 					throw PublisherFactory.PrematureCompleteException.INSTANCE;
 				}
 				return defaultValues.iterator();
