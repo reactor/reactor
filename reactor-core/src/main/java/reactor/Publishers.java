@@ -50,58 +50,19 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> just(final IN data) {
-		return PublisherFactory.create(new Consumer<SubscriberWithContext<IN, IN>>() {
-			@Override
-			public void accept(SubscriberWithContext<IN, IN> sub) {
-				if(sub.context() != null) {
-					sub.onNext(sub.context());
-				}
-
-				sub.onComplete();
-			}
-		}, new Function<Subscriber<? super IN>, IN>() {
-			@Override
-			public IN apply(Subscriber<? super IN> subscriber) {
-				return data;
-			}
-		});
+		ValuePublisher<IN> valuePublisher = new ValuePublisher<>(data);
+		return create(valuePublisher, valuePublisher);
 	}
 
+	/**
+	 *
+	 * @param defaultValues
+	 * @param <T>
+	 * @return
+	 */
 	public static <T> Publisher<T> from(final Iterable<T> defaultValues){
-		return PublisherFactory.create(new Consumer<SubscriberWithContext<T, Iterator<? extends T>>>() {
-			@Override
-			public void accept(SubscriberWithContext<T, Iterator<? extends T>> subscriber) {
-				final Iterator<? extends T> iterator = subscriber.context();
-				if (iterator.hasNext()) {
-					subscriber.onNext(iterator.next());
-				} else {
-					subscriber.onComplete();
-					return;
-				}
-
-				if (!iterator.hasNext()) {
-					subscriber.onComplete();
-				}
-			}
-
-			@Override
-			public String toString() {
-				return "iterable="+defaultValues;
-			}
-		}, new Function<Subscriber<? super T>, Iterator<? extends T>>() {
-			@Override
-			public Iterator<? extends T> apply(Subscriber<? super T> subscriber) {
-				if (defaultValues == null) {
-					throw PublisherFactory.PrematureCompleteException.INSTANCE;
-				}
-				return defaultValues.iterator();
-			}
-
-			@Override
-			public String toString() {
-				return "iterable="+defaultValues;
-			}
-		});
+		IteratorPublisher<T> iteratorPublisher = new IteratorPublisher<>(defaultValues);
+		return create(iteratorPublisher, iteratorPublisher);
 	}
 
 	/**
@@ -304,4 +265,70 @@ public final class Publishers extends PublisherFactory {
 		return tap;
 	}
 
+	private static class IteratorPublisher<T> implements
+	  Consumer<SubscriberWithContext<T, Iterator<? extends T>>>,
+	  Function<Subscriber<? super T>, Iterator<? extends T>> {
+		private final Iterable<T> defaultValues;
+
+		public IteratorPublisher(Iterable<T> defaultValues) {
+			this.defaultValues = defaultValues;
+		}
+
+		@Override
+		public void accept(SubscriberWithContext<T, Iterator<? extends T>> subscriber) {
+			final Iterator<? extends T> iterator = subscriber.context();
+			if (iterator.hasNext()) {
+				subscriber.onNext(iterator.next());
+			} else {
+				subscriber.onComplete();
+				return;
+			}
+
+			if (!iterator.hasNext()) {
+				subscriber.onComplete();
+			}
+		}
+
+		@Override
+		public Iterator<? extends T> apply(Subscriber<? super T> subscriber) {
+			if (defaultValues == null) {
+				throw PrematureCompleteException.INSTANCE;
+			}
+			return defaultValues.iterator();
+		}
+
+		@Override
+		public String toString() {
+			return "iterable="+ defaultValues;
+		}
+	}
+
+	private static class ValuePublisher<IN> implements
+	  Consumer<SubscriberWithContext<IN, IN>>,
+	  Function<Subscriber<? super IN>, IN> {
+		private final IN data;
+
+		public ValuePublisher(IN data) {
+			this.data = data;
+		}
+
+		@Override
+		public void accept(SubscriberWithContext<IN, IN> sub) {
+			if(sub.context() != null) {
+				sub.onNext(sub.context());
+			}
+
+			sub.onComplete();
+		}
+
+		@Override
+		public IN apply(Subscriber<? super IN> subscriber) {
+			return data;
+		}
+
+		@Override
+		public String toString() {
+			return "single-value=" + data;
+		}
+	}
 }
