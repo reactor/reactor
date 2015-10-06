@@ -18,11 +18,11 @@ package reactor.rx;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
+import reactor.Processors;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.selector.Selectors;
 import reactor.core.processor.RingBufferProcessor;
-import reactor.core.processor.SimpleWorkProcessor;
 import reactor.fn.Consumer;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -40,7 +40,7 @@ public class AwaitTests extends AbstractReactorTest {
 
 	@Test
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
-		EventBus innerReactor = EventBus.config().concurrency(4).processor(SimpleWorkProcessor.create("simple-work",
+		EventBus innerReactor = EventBus.config().concurrency(4).processor(Processors.queue("simple-work",
 		  64)).get();
 
 		for (int i = 0; i < 10000; i++) {

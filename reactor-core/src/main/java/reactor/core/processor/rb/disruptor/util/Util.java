@@ -28,6 +28,10 @@ import java.security.PrivilegedExceptionAction;
  * Set of common functions used by the Disruptor
  */
 public final class Util {
+
+	public static boolean isPowerOfTwo(final int x){
+		return Integer.bitCount(x) == 1;
+	}
 	/**
 	 * Calculate the next power of 2, greater than or equal to x.<p>
 	 * From Hacker's Delight, Chapter 3, Harry S. Warren Jr.

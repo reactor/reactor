@@ -20,16 +20,16 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
-import reactor.core.processor.*;
-import reactor.core.processor.simple.SimpleSignal;
+import reactor.core.processor.BaseProcessor;
+import reactor.core.processor.ProcessorGroup;
+import reactor.core.processor.RingBufferProcessor;
+import reactor.core.processor.RingBufferWorkProcessor;
 import reactor.core.publisher.LogOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
-import reactor.core.support.internal.MpscLinkedQueue;
-import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -127,15 +127,7 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> BaseProcessor<E, E> topic(String name, int bufferSize, boolean autoCancel) {
-		final BaseProcessor<E, E> processor;
-
-		if (PlatformDependent.hasUnsafe()) {
-			processor = RingBufferProcessor.create(name, bufferSize, autoCancel);
-		} else {
-			throw new UnsupportedOperationException("Pub-Sub async processor not yet supported without Unsafe");
-			//			processor = SimpleWorkProcessor.create(name, bufferSize);
-		}
-		return processor;
+		return RingBufferProcessor.create(name, bufferSize, autoCancel);
 	}
 
 	/**
@@ -207,14 +199,7 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> BaseProcessor<E, E> queue(String name, int bufferSize, boolean autoCancel) {
-		final BaseProcessor<E, E> processor;
-
-		if (PlatformDependent.hasUnsafe()) {
-			processor = RingBufferWorkProcessor.create(name, bufferSize, autoCancel);
-		} else {
-			processor = SimpleWorkProcessor.create(name, bufferSize, autoCancel);
-		}
-		return processor;
+		return RingBufferWorkProcessor.create(name, bufferSize, autoCancel);
 	}
 
 	/**
@@ -356,11 +341,7 @@ public final class Processors {
 		  new Supplier<Processor<ProcessorGroup.Task, ProcessorGroup.Task>>() {
 			  @Override
 			  public Processor<ProcessorGroup.Task, ProcessorGroup.Task> get() {
-				  return PlatformDependent.hasUnsafe()
-					? RingBufferProcessor.share(name, bufferSize, ProcessorGroup.DEFAULT_TASK_PROVIDER)
-					: SimpleWorkProcessor.create(name, bufferSize, MpscLinkedQueue.<SimpleSignal<ProcessorGroup
-					.Task>>create
-					());
+				  return RingBufferProcessor.share(name, bufferSize, ProcessorGroup.DEFAULT_TASK_PROVIDER);
 			  }
 		  },
 		  concurrency,
@@ -455,9 +436,7 @@ public final class Processors {
 	                                            Consumer<Void> shutdownHandler,
 	                                            boolean autoShutdown) {
 		return ProcessorGroup.create(
-		  PlatformDependent.hasUnsafe()
-			? RingBufferWorkProcessor.<ProcessorGroup.Task>share(name, bufferSize)
-			: SimpleWorkProcessor.<ProcessorGroup.Task>create(name, bufferSize),
+		  RingBufferWorkProcessor.<ProcessorGroup.Task>share(name, bufferSize),
 		  concurrency,
 		  uncaughtExceptionHandler,
 		  shutdownHandler,
@@ -466,63 +445,59 @@ public final class Processors {
 	}
 
 	/**
-	 *
 	 * @param map
 	 * @param <T>
 	 * @param <V>
 	 * @return
 	 */
-	public static <T, V> Processor<T, V> flatMap(Function<? super T, ? extends Publisher<? extends V>> map){
+	public static <T, V> Processor<T, V> flatMap(Function<? super T, ? extends Publisher<? extends V>> map) {
 		return flatMap(map, BaseProcessor.SMALL_BUFFER_SIZE, BaseProcessor.SMALL_BUFFER_SIZE * 2);
 	}
 
 
 	/**
-	 *
 	 * @param map
 	 * @param <T>
 	 * @param <V>
 	 * @return
 	 */
 	public static <T, V> Processor<T, V> flatMap(Function<? super T, ? extends Publisher<? extends V>> map,
-	                                             int maxConcurrency){
+	                                             int maxConcurrency) {
 		return flatMap(map, maxConcurrency, maxConcurrency);
 	}
 
 
 	/**
-	 *
 	 * @param map
 	 * @param <T>
 	 * @param <V>
 	 * @return
 	 */
 	public static <T, V> Processor<T, V> flatMap(Function<? super T, ? extends Publisher<? extends V>> map,
-	                                             int maxConcurrency, int bufferSize){
-		return new FlatMapProcessor<>(map, maxConcurrency, bufferSize);
+	                                             int maxConcurrency, int bufferSize) {
+		//return new FlatMapOperator<>(map, maxConcurrency, bufferSize);
+		return null;
 	}
 
 	/**
-	 *
 	 * @param map
 	 * @param <T>
 	 * @param <V>
 	 * @return
 	 */
-	public static <T, V> Processor<T, V> concatMap(Function<? super T, ? extends Publisher<? extends V>> map){
+	public static <T, V> Processor<T, V> concatMap(Function<? super T, ? extends Publisher<? extends V>> map) {
 		return concatMap(map, BaseProcessor.SMALL_BUFFER_SIZE);
 	}
 
 
 	/**
-	 *
 	 * @param map
 	 * @param <T>
 	 * @param <V>
 	 * @return
 	 */
 	public static <T, V> Processor<T, V> concatMap(Function<? super T, ? extends Publisher<? extends V>> map,
-	                                             int bufferSize){
+	                                               int bufferSize) {
 		return flatMap(map, 1, bufferSize);
 	}
 
@@ -642,7 +617,8 @@ public final class Processors {
 		}
 	}
 
-	private static class DelegateProcessor<IN, OUT> implements Processor<IN, OUT>, Publishable<OUT>, Subscribable<IN>, Bounded {
+	private static class DelegateProcessor<IN, OUT> implements Processor<IN, OUT>, Publishable<OUT>, Subscribable<IN>,
+	  Bounded {
 		private final Publisher<OUT> downstream;
 		private final Subscriber<IN> upstream;
 
@@ -688,12 +664,14 @@ public final class Processors {
 
 		@Override
 		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return Bounded.class.isAssignableFrom(upstream.getClass()) && ((Bounded)upstream).isExposedToOverflow(parentPublisher);
+			return Bounded.class.isAssignableFrom(upstream.getClass()) && ((Bounded) upstream).isExposedToOverflow
+			  (parentPublisher);
 		}
 
 		@Override
 		public long getCapacity() {
-			return Bounded.class.isAssignableFrom(upstream.getClass()) ? ((Bounded)upstream).getCapacity() : Long.MAX_VALUE;
+			return Bounded.class.isAssignableFrom(upstream.getClass()) ? ((Bounded) upstream).getCapacity() : Long
+			  .MAX_VALUE;
 		}
 	}
 

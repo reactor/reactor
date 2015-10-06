@@ -18,6 +18,7 @@ package reactor;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.LogOperator;
 import reactor.core.publisher.PublisherFactory;
@@ -49,8 +50,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> just(final IN data) {
-		ValuePublisher<IN> valuePublisher = new ValuePublisher<>(data);
-		return create(valuePublisher, valuePublisher);
+		return new ValuePublisher<>(data);
 	}
 
 	/**
@@ -287,9 +287,7 @@ public final class Publishers extends PublisherFactory {
 		}
 	}
 
-	private static class ValuePublisher<IN> implements
-	  Consumer<SubscriberWithContext<IN, IN>>,
-	  Function<Subscriber<? super IN>, IN> {
+	private static class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN> {
 		private final IN data;
 
 		public ValuePublisher(IN data) {
@@ -297,16 +295,34 @@ public final class Publishers extends PublisherFactory {
 		}
 
 		@Override
-		public void accept(SubscriberWithContext<IN, IN> sub) {
-			if(sub.context() != null) {
-				sub.onNext(sub.context());
-			}
+		public void subscribe(final Subscriber<? super IN> s) {
+			try {
+				s.onSubscribe(new Subscription() {
+					boolean terminado = false;
 
-			sub.onComplete();
+					@Override
+					public void request(long elements) {
+						if (terminado) return;
+
+						terminado = true;
+						if (data != null) {
+							s.onNext(data);
+						}
+						s.onComplete();
+					}
+
+					@Override
+					public void cancel() {
+						terminado = true;
+					}
+				});
+			} catch (Throwable throwable) {
+				Publishers.<IN>error(throwable).subscribe(s);
+			}
 		}
 
 		@Override
-		public IN apply(Subscriber<? super IN> subscriber) {
+		public IN get() {
 			return data;
 		}
 

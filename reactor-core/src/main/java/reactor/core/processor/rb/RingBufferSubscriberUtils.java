@@ -196,7 +196,7 @@ public final class RingBufferSubscriberUtils {
 
 		private class WriteWithSubscriber implements Subscriber<E> , Bounded {
 
-			private final Sequence pendingRequest = new Sequence(0);
+			private final Sequence pendingRequest = Sequencer.newSequence(0);
 			private final Subscriber<? super Void> s;
 			Subscription subscription;
 			long         index;

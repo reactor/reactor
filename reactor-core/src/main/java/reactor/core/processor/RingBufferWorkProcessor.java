@@ -516,7 +516,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	 */
 
 
-	private final Sequence        workSequence       = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+	private final Sequence        workSequence       = Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
 	private final Queue<Sequence> cancelledSequences = new ConcurrentLinkedQueue<>();
 
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
@@ -545,14 +545,14 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		};
 
 		if (share) {
-			this.ringBuffer = RingBuffer.createMultiProducer(
+			this.ringBuffer = RingBuffers.createMultiProducer(
 			  factory,
 			  bufferSize,
 			  waitStrategy,
 			  spinObserver
 			);
 		} else {
-			this.ringBuffer = RingBuffer.createSingleProducer(
+			this.ringBuffer = RingBuffers.createSingleProducer(
 			  factory,
 			  bufferSize,
 			  waitStrategy,
@@ -732,8 +732,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
 
-		private final Sequence sequence       = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
-		private final Sequence pendingRequest = new Sequence(0);
+		private final Sequence sequence       = Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
+		private final Sequence pendingRequest = Sequencer.newSequence(0);
 
 		private final SequenceBarrier            barrier;
 		private final RingBufferWorkProcessor<T> processor;

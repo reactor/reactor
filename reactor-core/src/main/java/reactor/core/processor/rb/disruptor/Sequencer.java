@@ -17,6 +17,7 @@ package reactor.core.processor.rb.disruptor;
 
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.rb.disruptor.util.Util;
+import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -36,8 +37,16 @@ public abstract class Sequencer
     protected final Consumer<Void> spinObserver;
     protected final int            bufferSize;
     protected final WaitStrategy   waitStrategy;
-    protected final    Sequence   cursor          = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+    protected final    Sequence   cursor          = Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
     protected volatile Sequence[] gatingSequences = new Sequence[0];
+
+    public static Sequence newSequence(long init){
+        if(PlatformDependent.hasUnsafe()){
+            return new UnsafeSequence(init);
+        }else{
+            return new AtomicSequence(init);
+        }
+    }
 
     /**
      * Create with the specified buffer size and wait strategy.
@@ -49,9 +58,6 @@ public abstract class Sequencer
     public Sequencer(int bufferSize, WaitStrategy waitStrategy, Consumer<Void> spinObserver) {
         if (bufferSize < 1) {
             throw new IllegalArgumentException("bufferSize must not be less than 1");
-        }
-        if (Integer.bitCount(bufferSize) != 1) {
-            throw new IllegalArgumentException("bufferSize must be a power of 2");
         }
 
         this.spinObserver = spinObserver;

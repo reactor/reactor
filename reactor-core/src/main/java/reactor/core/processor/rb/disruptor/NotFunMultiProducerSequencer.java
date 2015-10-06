@@ -18,7 +18,6 @@ package reactor.core.processor.rb.disruptor;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.rb.disruptor.util.Util;
 import reactor.fn.Consumer;
-import sun.misc.Unsafe;
 
 import java.util.concurrent.locks.LockSupport;
 
@@ -31,13 +30,9 @@ import java.util.concurrent.locks.LockSupport;
  * to {@link Sequencer#next()}, to determine the highest available sequence that can be read, then
  * {@link Sequencer#getHighestPublishedSequence(long, long)} should be used.
  */
-public final class MultiProducerSequencer extends Sequencer
+public final class NotFunMultiProducerSequencer extends Sequencer
 {
-    private static final Unsafe UNSAFE = Util.getUnsafe();
-    private static final long   BASE   = UNSAFE.arrayBaseOffset(int[].class);
-    private static final long   SCALE  = UNSAFE.arrayIndexScale(int[].class);
-
-    private final Sequence gatingSequenceCache = new UnsafeSequence(Sequencer.INITIAL_CURSOR_VALUE);
+    private final Sequence gatingSequenceCache = new AtomicSequence(Sequencer.INITIAL_CURSOR_VALUE);
 
     // availableBuffer tracks the state of each ringbuffer slot
     // see below for more details on the approach
@@ -51,13 +46,8 @@ public final class MultiProducerSequencer extends Sequencer
      * @param bufferSize the size of the buffer that this will sequence over.
      * @param waitStrategy for those waiting on sequences.
      */
-    public MultiProducerSequencer(int bufferSize, final WaitStrategy waitStrategy, Consumer<Void> spinObserver) {
+    public NotFunMultiProducerSequencer(int bufferSize, final WaitStrategy waitStrategy, Consumer<Void> spinObserver) {
         super(bufferSize, waitStrategy, spinObserver);
-
-        if (!Util.isPowerOfTwo(bufferSize)) {
-            throw new IllegalArgumentException("bufferSize must be a power of 2");
-        }
-
         availableBuffer = new int[bufferSize];
         indexMask = bufferSize - 1;
         indexShift = Util.log2(bufferSize);
@@ -277,8 +267,7 @@ public final class MultiProducerSequencer extends Sequencer
 
     private void setAvailableBufferValue(int index, int flag)
     {
-        long bufferAddress = (index * SCALE) + BASE;
-        UNSAFE.putOrderedInt(availableBuffer, bufferAddress, flag);
+        availableBuffer[index] = flag;
     }
 
     /**
@@ -289,8 +278,7 @@ public final class MultiProducerSequencer extends Sequencer
     {
         int index = calculateIndex(sequence);
         int flag = calculateAvailabilityFlag(sequence);
-        long bufferAddress = (index * SCALE) + BASE;
-        return UNSAFE.getIntVolatile(availableBuffer, bufferAddress) == flag;
+        return availableBuffer[index] == flag;
     }
 
     @Override

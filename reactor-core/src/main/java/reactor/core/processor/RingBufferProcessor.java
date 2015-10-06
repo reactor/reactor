@@ -585,14 +585,14 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		};
 
 		if (shared) {
-			this.ringBuffer = RingBuffer.createMultiProducer(
+			this.ringBuffer = RingBuffers.createMultiProducer(
 			  factory,
 			  bufferSize,
 			  waitStrategy,
 			  spinObserver
 			);
 		} else {
-			this.ringBuffer = RingBuffer.createSingleProducer(
+			this.ringBuffer = RingBuffers.createSingleProducer(
 			  factory,
 			  bufferSize,
 			  waitStrategy,
@@ -600,7 +600,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			);
 		}
 
-		this.minimum = new Sequence(-1);
+		this.minimum = Sequencer.newSequence(-1);
 		this.barrier = ringBuffer.newBarrier();
 	}
 
@@ -626,7 +626,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		}
 
 		//create a unique eventProcessor for this subscriber
-		final Sequence pendingRequest = new Sequence(0);
+		final Sequence pendingRequest = Sequencer.newSequence(0);
 		final BatchSignalProcessor<E> signalProcessor = new BatchSignalProcessor<E>(
 		  this,
 		  pendingRequest,
@@ -813,7 +813,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	private final static class BatchSignalProcessor<T> implements Runnable {
 
 		private final AtomicBoolean running  = new AtomicBoolean(false);
-		private final Sequence      sequence = new Sequence(Sequencer.INITIAL_CURSOR_VALUE);
+		private final Sequence      sequence = Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
 
 		private final RingBufferProcessor<T> processor;
 		private final Sequence               pendingRequest;

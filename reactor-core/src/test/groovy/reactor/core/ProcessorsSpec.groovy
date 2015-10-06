@@ -20,10 +20,9 @@ package reactor.core
 import org.reactivestreams.Subscriber
 import org.reactivestreams.Subscription
 import reactor.Processors
+import reactor.core.processor.ProcessorGroup
 import reactor.core.processor.RingBufferProcessor
 import reactor.core.processor.RingBufferWorkProcessor
-import reactor.core.processor.ProcessorGroup
-import reactor.core.processor.SimpleWorkProcessor
 import reactor.fn.BiConsumer
 import reactor.fn.Consumer
 import spock.lang.Shared
@@ -334,7 +333,6 @@ class ProcessorsSpec extends Specification {
 		where:
 			d << [
 					ProcessorGroup.create(RingBufferWorkProcessor.create("rbWork", 1024), 4).dataDispatcher(),
-					ProcessorGroup.create(SimpleWorkProcessor.create("ping-pong-work", 1024), 4).dataDispatcher()
 			]
 
 	}
