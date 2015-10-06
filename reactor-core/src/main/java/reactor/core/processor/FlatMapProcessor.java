@@ -19,12 +19,10 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.Exceptions;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
-import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.processor.rb.disruptor.BusySpinWaitStrategy;
 import reactor.core.processor.rb.disruptor.RingBuffer;
+import reactor.core.processor.rb.disruptor.RingBuffers;
 import reactor.core.processor.rb.disruptor.WaitStrategy;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.BackpressureUtils;
@@ -157,9 +155,9 @@ public final class FlatMapProcessor<T, V> extends BaseSubscriber<T> implements P
 			};
 
 			if (maxConcurrency == 1) {
-				emitBuffer = RingBuffer.createSingleProducer(factory, bufferSize, waitStrategy);
+				emitBuffer = RingBuffers.createSingleProducer(factory, bufferSize, waitStrategy);
 			} else {
-				emitBuffer = RingBuffer.createMultiProducer(factory, bufferSize, waitStrategy);
+				emitBuffer = RingBuffers.createMultiProducer(factory, bufferSize, waitStrategy);
 
 			}
 			
