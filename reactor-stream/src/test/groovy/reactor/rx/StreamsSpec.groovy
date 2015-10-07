@@ -338,8 +338,8 @@ class StreamsSpec extends Specification {
 			'the most recent value is retrieved'
 			def last = s
 					.sample(2l, TimeUnit.SECONDS)
+					.publishOn(Processors.ioGroup("work", 8, 4))
 					.dispatchOn(asyncGroup)
-					.dispatchOn(Processors.ioGroup("work", 8, 4))
 					.log()
 					.next()
 
@@ -358,7 +358,7 @@ class StreamsSpec extends Specification {
 			def last = Promises.ready()
 			s
 					.take(4, TimeUnit.SECONDS)
-					.dispatchOn(Processors.ioGroup("work", 8, 4))
+					.publishOn(Processors.ioGroup("work", 8, 4))
 					.last()
 					.consume(
 							{ i = it },
@@ -900,8 +900,6 @@ class StreamsSpec extends Specification {
 					{ res.sort(); res << 'done'; println 'completed!' }
 			)
 
-			println mergedStream.debug()
-
 		then:
 			'the values are all collected from source1 and source2 stream'
 			res == [1, 2, 3, 4, 5, 6, 7, 9, 'done']
@@ -981,8 +979,6 @@ class StreamsSpec extends Specification {
 					{ it.printStackTrace() },
 					{ res << 'done'; println 'completed!' }
 			)
-
-			println mergedStream.debug()
 
 		then:
 			'the values are all collected from source1 and source2 stream'
@@ -1814,7 +1810,7 @@ class StreamsSpec extends Specification {
 					{ println Thread.currentThread().name + ' end' }
 			)
 					.log()
-					.dispatchOn(Processors.ioGroup("work", 8, 4))
+					.publishOn(Processors.ioGroup("work", 8, 4))
 
 		when:
 			'accept a value'

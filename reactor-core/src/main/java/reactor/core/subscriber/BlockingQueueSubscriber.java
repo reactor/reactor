@@ -18,10 +18,7 @@ package reactor.core.subscriber;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.CancelException;
-import reactor.core.error.Exceptions;
-import reactor.core.error.ReactorFatalException;
-import reactor.core.error.SpecificationExceptions;
+import reactor.core.error.*;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
@@ -30,10 +27,12 @@ import reactor.core.support.Subscribable;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * @author Stephane Maldini
@@ -53,8 +52,8 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 
 	private volatile Subscription subscription;
 
-	private volatile int remainingCapacity;
-	private static final AtomicIntegerFieldUpdater<BlockingQueueSubscriber> REMAINING = AtomicIntegerFieldUpdater
+	private volatile long remainingCapacity;
+	private static final AtomicLongFieldUpdater<BlockingQueueSubscriber> REMAINING = AtomicLongFieldUpdater
 	  .newUpdater(BlockingQueueSubscriber.class, "remainingCapacity");
 
 	public BlockingQueueSubscriber(Publisher<IN> source, Subscriber<IN> target, Queue<IN> store, int capacity) {
@@ -68,7 +67,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		this.source = source;
 		this.target = target;
 		this.cancelAfterFirstRequestComplete = cancelAfterFirstRequestComplete;
-		this.remainingCapacity = this.capacity = capacity;
+		this.capacity = capacity;
 		this.store = store;
 		if (source != null) {
 			source.subscribe(this);
@@ -77,20 +76,27 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 
 	@Override
 	public void request(long n) {
-		if(BackpressureUtils.checkRequest(n, target)) {
+		if (BackpressureUtils.checkRequest(n, target)) {
 
-			long toRequest = n;
 			if (target != null) {
+				long toRequest = n;
 				IN polled;
 				while ((n == Long.MAX_VALUE || toRequest-- > 0) && (polled = store.poll()) != null) {
 					target.onNext(polled);
 				}
+				Subscription subscription = this.subscription;
+				if (subscription != null) {
+					subscription.request(toRequest);
+				}
+			} else {
+				if (BackpressureUtils.getAndAdd(REMAINING, this, n) == 0) {
+					Subscription subscription = this.subscription;
+					if (subscription != null) {
+						subscription.request(n);
+					}
+				}
 			}
 
-			Subscription subscription = this.subscription;
-			if (subscription != null) {
-				subscription.request(toRequest);
-			}
 		}
 	}
 
@@ -119,12 +125,12 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 
 	@Override
 	public void onSubscribe(Subscription s) {
-		if(BackpressureUtils.checkSubscription(subscription, s)) {
+		if (BackpressureUtils.checkSubscription(subscription, s)) {
 			this.subscription = s;
 			if (source == null && target != null) {
 				target.onSubscribe(this);
 			} else {
-				s.request(capacity == Integer.MAX_VALUE ? Long.MAX_VALUE : capacity);
+				request(capacity == Integer.MAX_VALUE ? Long.MAX_VALUE : capacity);
 			}
 		}
 	}
@@ -134,14 +140,17 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		super.onNext(in);
 		if (terminated) throw CancelException.get();
 
+		long r = REMAINING.decrementAndGet(this);
+
 		if (source == null && target != null) {
 			target.onNext(in);
-		} else {
-			while (REMAINING.decrementAndGet(this) < 0) {
-				REMAINING.incrementAndGet(this);
-				if (terminated) throw CancelException.get();
-			}
-			store.offer(in);
+
+		} else if (!store.offer(in)) {
+			onError(InsufficientCapacityException.get());
+		}
+
+		if (cancelAfterFirstRequestComplete && r == 0) {
+			cancel();
 		}
 	}
 
@@ -159,6 +168,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 	public void onError(Throwable t) {
 		super.onError(t);
 		if (terminate()) {
+			subscription = null;
 			endError = t;
 			if (source == null && target != null) {
 				target.onError(t);
@@ -168,8 +178,11 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 
 	@Override
 	public void onComplete() {
-		if (terminate() && source == null && target != null) {
-			target.onComplete();
+		if (terminate()) {
+			subscription = null;
+			if (source == null && target != null) {
+				target.onComplete();
+			}
 		}
 	}
 
@@ -227,19 +240,16 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
 
-		if (blockingTerminatedCheck() && remainingCapacity == capacity) return null;
 
 		IN res;
-
-		if (BlockingQueue.class.isAssignableFrom(store.getClass())) {
-			res = ((BlockingQueue<IN>) store).take();
-		} else {
-			while ((res = store.poll()) == null) {
-				if (blockingTerminatedCheck() && remainingCapacity == capacity) return null;
-				Thread.sleep(10);
+		while ((res = store.poll()) == null) {
+			if (blockingTerminatedCheck()) break;
+			if (remainingCapacity == 0){
+				markAllRead();
 			}
+			Thread.sleep(10);
 		}
-		REMAINING.incrementAndGet(this);
+		markRead(res);
 		return res;
 	}
 
@@ -248,15 +258,33 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		if (source == null) {
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
-		return null;
+		IN res;
+
+		long timespan = System.currentTimeMillis() +
+		  TimeUnit.MILLISECONDS.convert(timeout, unit);
+
+		while ((res = store.poll()) == null) {
+			if (blockingTerminatedCheck() || remainingCapacity == 0) break;
+			if (System.currentTimeMillis() > timespan) {
+				break;
+			}
+			Thread.sleep(10);
+		}
+		markRead(res);
+		return res;
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public boolean remove(Object o) {
 		if (source == null) {
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
-		return store.remove(o);
+		if (store.remove(o)) {
+			markRead((IN) o);
+			return true;
+		}
+		return false;
 	}
 
 	@Override
@@ -265,7 +293,11 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
 		if (store instanceof BlockingQueue) {
-			((BlockingQueue<IN>) store).drainTo(c);
+			int drained = ((BlockingQueue<IN>) store).drainTo(c);
+			if (drained > 0) {
+				markAllRead();
+				return drained;
+			}
 		}
 		return 0;
 	}
@@ -276,7 +308,11 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
 		if (store instanceof BlockingQueue) {
-			((BlockingQueue<IN>) store).drainTo(c, maxElements);
+			int drained = ((BlockingQueue<IN>) store).drainTo(c, maxElements);
+			if (drained > 0) {
+				markAllRead();
+				return drained;
+			}
 		}
 		return 0;
 	}
@@ -286,7 +322,13 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		if (source == null) {
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
-		return null;
+		IN t = store.remove();
+		if (t == null) {
+			throw new NoSuchElementException();
+		} else {
+			markRead(t);
+			return t;
+		}
 	}
 
 	@Override
@@ -294,7 +336,21 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		if (source == null) {
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
-		return null;
+
+		IN res = store.poll();
+		markRead(res);
+		return res;
+	}
+
+	private void markRead(IN data) {
+		long r = remainingCapacity;
+		if (r == 0l) {
+			request(capacity - store.size());
+		}
+	}
+
+	private void markAllRead() {
+		request(capacity - store.size());
 	}
 
 	@Override
@@ -302,6 +358,14 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		if (target == null) {
 			throw new UnsupportedOperationException("This operation requires a write queue");
 		}
+
+		if (!c.isEmpty()) {
+			for (IN in : c) {
+				offer(in);
+			}
+			return true;
+		}
+
 		return false;
 	}
 
@@ -310,7 +374,11 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		if (source == null) {
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
-		return store.removeAll(c);
+		if (store.removeAll(c)) {
+			markAllRead();
+			return true;
+		}
+		return false;
 	}
 
 
@@ -319,7 +387,11 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		if (source == null) {
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
-		return store.retainAll(c);
+		if (store.retainAll(c)) {
+			markAllRead();
+			return true;
+		}
+		return false;
 	}
 
 	@Override
@@ -328,12 +400,12 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
 		store.clear();
-
+		markAllRead();
 	}
 
 	@Override
 	public int remainingCapacity() {
-		return remainingCapacity;
+		return (int) remainingCapacity;
 	}
 
 	@Override

@@ -13,29 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.processor.rb.disruptor;
+package reactor.core.support.wait;
 
 
+import reactor.core.error.AlertException;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 
 /**
- * Busy Spin strategy that uses a busy spin loop for ringbuffer consumers waiting on a barrier.
+ * Yielding strategy that uses a Thread.yield() for ringbuffer consumers waiting on a barrier
+ * after an initially spinning.
  *
- * This strategy will use CPU resource to avoid syscalls which can introduce latency jitter.  It is best
- * used when threads can be bound to specific CPU cores.
+ * This strategy is a good compromise between performance and CPU resource without incurring significant latency spikes.
  */
-public final class BusySpinWaitStrategy implements WaitStrategy
+public final class YieldingWaitStrategy implements WaitStrategy
 {
+    private static final int SPIN_TRIES = 100;
+
     @Override
     public long waitFor(final long sequence, LongSupplier cursor, final Consumer<Void> barrier)
         throws AlertException, InterruptedException
     {
         long availableSequence;
+        int counter = SPIN_TRIES;
 
         while ((availableSequence = cursor.get()) < sequence)
         {
-            barrier.accept(null);
+            counter = applyWaitMethod(barrier, counter);
         }
 
         return availableSequence;
@@ -44,5 +48,22 @@ public final class BusySpinWaitStrategy implements WaitStrategy
     @Override
     public void signalAllWhenBlocking()
     {
+    }
+
+    private int applyWaitMethod(final Consumer<Void> barrier, int counter)
+        throws AlertException
+    {
+        barrier.accept(null);
+
+        if (0 == counter)
+        {
+            Thread.yield();
+        }
+        else
+        {
+            --counter;
+        }
+
+        return counter;
     }
 }

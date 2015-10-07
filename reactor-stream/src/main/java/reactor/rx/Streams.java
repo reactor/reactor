@@ -19,6 +19,7 @@ package reactor.rx;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberWithContext;
@@ -692,9 +693,7 @@ public class Streams {
 		} else if (size == 0) {
 			return empty();
 		}
-		ConcatAction<T> concatAction = new ConcatAction<T>();
-		from(mergedPublishers).subscribe(concatAction);
-		return concatAction;
+		return Streams.wrap(Publishers.concat(from(mergedPublishers)));
 	}
 
 	/**
@@ -907,7 +906,7 @@ public class Streams {
 		} else if (publishers.size() == 1) {
 			return wrap((Publisher<T>) publishers.get(0));
 		}
-		return new MergeAction<T>(publishers);
+		return wrap(Publishers.merge(Publishers.from(publishers)));
 	}
 
 	/**
@@ -921,10 +920,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T, E extends T> Stream<E> merge(Publisher<? extends Publisher<E>> mergedPublishers) {
-		final Action<Publisher<? extends E>, E> mergeAction = new DynamicMergeAction<>();
-
-		mergedPublishers.subscribe(mergeAction);
-		return mergeAction;
+		return wrap(Publishers.merge(mergedPublishers));
 	}
 
 	/**

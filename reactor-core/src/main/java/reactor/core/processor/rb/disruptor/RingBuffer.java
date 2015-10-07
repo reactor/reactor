@@ -17,6 +17,13 @@ package reactor.core.processor.rb.disruptor;
 
 
 import reactor.core.error.InsufficientCapacityException;
+import reactor.core.processor.rb.disruptor.util.Util;
+import reactor.core.support.internal.PlatformDependent;
+import reactor.core.support.wait.BlockingWaitStrategy;
+import reactor.core.support.wait.BusySpinWaitStrategy;
+import reactor.core.support.wait.WaitStrategy;
+import reactor.fn.Consumer;
+import reactor.fn.Supplier;
 
 /**
  * Ring based store of reusable entries containing the data representing
@@ -24,9 +31,119 @@ import reactor.core.error.InsufficientCapacityException;
  *
  * @param <E> implementation storing the data for sharing during exchange or parallel coordination of an event.
  */
-public interface RingBuffer<E>
+public abstract class RingBuffer<E>
 {
-    long INITIAL_CURSOR_VALUE = Sequence.INITIAL_VALUE;
+    public static final BusySpinWaitStrategy NO_WAIT = new BusySpinWaitStrategy();
+
+    /**
+     * Create a new multiple producer RingBuffer with the specified wait strategy.
+     *
+     * @see MultiProducerSequencer
+     * @param factory used to create the events within the ring buffer.
+     * @param bufferSize number of elements to create within the ring buffer.
+     * @param waitStrategy used to determine how to wait for new elements to become available.
+     * @throws IllegalArgumentException if bufferSize is less than 1 or not a power of 2
+     */
+    public static <E> RingBuffer<E> createMultiProducer(Supplier<E> factory,
+                                                        int bufferSize,
+                                                        WaitStrategy waitStrategy) {
+        return createMultiProducer(factory, bufferSize, waitStrategy, null);
+    }
+
+
+    /**
+     * Create a new multiple producer RingBuffer with the specified wait strategy.
+     *
+     * @see MultiProducerSequencer
+     * @param factory used to create the events within the ring buffer.
+     * @param bufferSize number of elements to create within the ring buffer.
+     * @param waitStrategy used to determine how to wait for new elements to become available.
+     * @throws IllegalArgumentException if bufferSize is less than 1 or not a power of 2
+     */
+    public static <E> RingBuffer<E> createMultiProducer(Supplier<E> factory,
+                                                        int             bufferSize,
+                                                         WaitStrategy    waitStrategy,
+                                                         Consumer<Void> spinObserver)
+    {
+
+        if(PlatformDependent.hasUnsafe() && Util.isPowerOfTwo(bufferSize)) {
+            MultiProducerSequencer sequencer = new MultiProducerSequencer(bufferSize, waitStrategy, spinObserver);
+
+            return new UnsafeRingBuffer<E>(factory, sequencer);
+        }else{
+            NotFunMultiProducerSequencer sequencer =
+              new NotFunMultiProducerSequencer(bufferSize, waitStrategy, spinObserver);
+
+            return new NotFunRingBuffer<E>(factory, sequencer);
+        }
+    }
+
+    /**
+     * Create a new multiple producer RingBuffer using the default wait strategy  {@link BlockingWaitStrategy}.
+     *
+     * @see MultiProducerSequencer
+     * @param factory used to create the events within the ring buffer.
+     * @param bufferSize number of elements to create within the ring buffer.
+     * @throws IllegalArgumentException if <tt>bufferSize</tt> is less than 1 or not a power of 2
+     */
+    public static <E> RingBuffer<E>  createMultiProducer(Supplier<E> factory, int bufferSize)
+    {
+        return createMultiProducer(factory, bufferSize, new BlockingWaitStrategy());
+    }
+
+    /**
+     * Create a new single producer RingBuffer with the specified wait strategy.
+     *
+     * @see SingleProducerSequencer
+     * @param factory used to create the events within the ring buffer.
+     * @param bufferSize number of elements to create within the ring buffer.
+     * @param waitStrategy used to determine how to wait for new elements to become available.
+     * @throws IllegalArgumentException if bufferSize is less than 1 or not a power of 2
+     */
+    public static <E> RingBuffer<E>  createSingleProducer(Supplier<E> factory,
+                                                          int             bufferSize,
+                                                          WaitStrategy    waitStrategy)
+    {
+        return createSingleProducer(factory, bufferSize, waitStrategy, null);
+    }
+
+
+    /**
+     * Create a new single producer RingBuffer with the specified wait strategy.
+     *
+     * @see SingleProducerSequencer
+     * @param factory used to create the events within the ring buffer.
+     * @param bufferSize number of elements to create within the ring buffer.
+     * @param waitStrategy used to determine how to wait for new elements to become available.
+     * @param spinObserver called each time the next claim is spinning and waiting for a slot
+     * @throws IllegalArgumentException if bufferSize is less than 1 or not a power of 2
+     */
+    public static <E> RingBuffer<E>  createSingleProducer(Supplier<E> factory,
+                                                          int             bufferSize,
+                                                          WaitStrategy    waitStrategy,
+                                                          Consumer<Void> spinObserver)
+    {
+        SingleProducerSequencer sequencer = new SingleProducerSequencer(bufferSize, waitStrategy, spinObserver);
+
+        if(PlatformDependent.hasUnsafe() && Util.isPowerOfTwo(bufferSize)) {
+            return new UnsafeRingBuffer<>(factory, sequencer);
+        }else{
+            return new NotFunRingBuffer<>(factory, sequencer);
+        }
+    }
+
+    /**
+     * Create a new single producer RingBuffer using the default wait strategy  {@link BlockingWaitStrategy}.
+     *
+     * @see MultiProducerSequencer
+     * @param factory used to create the events within the ring buffer.
+     * @param bufferSize number of elements to create within the ring buffer.
+     * @throws IllegalArgumentException if <tt>bufferSize</tt> is less than 1 or not a power of 2
+     */
+    public static <E> RingBuffer<E>  createSingleProducer(Supplier<E> factory, int bufferSize)
+    {
+        return createSingleProducer(factory, bufferSize, new BlockingWaitStrategy());
+    }
 
     /**
      * <p>Get the event for a given sequence in the RingBuffer.</p>
@@ -43,7 +160,7 @@ public interface RingBuffer<E>
      * @param sequence for the event
      * @return the event for the given sequence
      */
-    E get(long sequence);
+    abstract public E get(long sequence);
 
     /**
      * Increment and return the next sequence for the ring buffer.  Calls of this
@@ -61,7 +178,7 @@ public interface RingBuffer<E>
      * @see RingBuffer#get(long)
      * @return The next sequence to publish to.
      */
-    long next();
+    abstract public long next();
 
     /**
      * The same functionality as {@link RingBuffer#next()}, but allows the caller to claim
@@ -71,7 +188,7 @@ public interface RingBuffer<E>
      * @param n number of slots to claim
      * @return sequence number of the highest slot claimed
      */
-    long next(int n);
+    abstract public long next(int n);
 
     /**
      * <p>Increment and return the next sequence for the ring buffer.  Calls of this
@@ -94,7 +211,7 @@ public interface RingBuffer<E>
      * @return The next sequence to publish to.
      * @throws InsufficientCapacityException if the necessary space in the ring buffer is not available
      */
-    long tryNext() throws InsufficientCapacityException;
+    abstract public long tryNext() throws InsufficientCapacityException;
 
     /**
      * The same functionality as {@link RingBuffer#tryNext()}, but allows the caller to attempt
@@ -104,7 +221,7 @@ public interface RingBuffer<E>
      * @return sequence number of the highest slot claimed
      * @throws InsufficientCapacityException if the necessary space in the ring buffer is not available
      */
-    long tryNext(int n) throws InsufficientCapacityException;
+    abstract public long tryNext(int n) throws InsufficientCapacityException;
 
     /**
      * Resets the cursor to a specific value.  This can be applied at any time, but it is worth noting
@@ -114,7 +231,7 @@ public interface RingBuffer<E>
      * @param sequence The sequence to reset too.
      * @throws IllegalStateException If any gating sequences have already been specified.
      */
-    void resetTo(long sequence);
+    abstract public void resetTo(long sequence);
 
     /**
      * Sets the cursor to a specific sequence and returns the preallocated entry that is stored there.  This
@@ -123,7 +240,7 @@ public interface RingBuffer<E>
      * @param sequence The sequence to claim.
      * @return The preallocated event.
      */
-    E claimAndGetPreallocated(long sequence);
+    abstract public E claimAndGetPreallocated(long sequence);
 
     /**
      * Determines if a particular entry has been published.
@@ -131,7 +248,7 @@ public interface RingBuffer<E>
      * @param sequence The sequence to identify the entry.
      * @return If the value has been published or not.
      */
-    boolean isPublished(long sequence);
+    abstract public boolean isPublished(long sequence);
 
     /**
      * Add the specified gating sequences to this instance of the Disruptor.  They will
@@ -139,7 +256,7 @@ public interface RingBuffer<E>
      *
      * @param gatingSequences The sequences to add.
      */
-    void addGatingSequences(Sequence... gatingSequences);
+    abstract public void addGatingSequences(Sequence... gatingSequences);
 
     /**
      * Get the minimum sequence value from all of the gating sequences
@@ -148,7 +265,7 @@ public interface RingBuffer<E>
      * @return The minimum gating sequence or the cursor sequence if
      * no sequences have been added.
      */
-    long getMinimumGatingSequence();
+    abstract public long getMinimumGatingSequence();
 
   /**
      * Get the minimum sequence value from all of the gating sequences
@@ -157,7 +274,7 @@ public interface RingBuffer<E>
      * @return The minimum gating sequence or the cursor sequence if
      * no sequences have been added.
      */
-    long getMinimumGatingSequence(Sequence sequence);
+  abstract public long getMinimumGatingSequence(Sequence sequence);
 
     /**
      * Remove the specified sequence from this ringBuffer.
@@ -165,7 +282,7 @@ public interface RingBuffer<E>
      * @param sequence to be removed.
      * @return <tt>true</tt> if this sequence was found, <tt>false</tt> otherwise.
      */
-    boolean removeGatingSequence(Sequence sequence);
+    abstract public boolean removeGatingSequence(Sequence sequence);
 
     /**
      * Create a new SequenceBarrier to be used by an EventProcessor to track which messages
@@ -174,7 +291,7 @@ public interface RingBuffer<E>
      * @see SequenceBarrier
      * @return A sequence barrier that will track the ringbuffer.
      */
-    SequenceBarrier newBarrier();
+    abstract public SequenceBarrier newBarrier();
 
     /**
      * Get the current cursor value for the ring buffer.  The actual value recieved
@@ -183,7 +300,7 @@ public interface RingBuffer<E>
      * @see MultiProducerSequencer
      * @see SingleProducerSequencer
      */
-    long getCursor();
+    abstract public long getCursor();
 
     /**
      * Get the current cursor value for the ring buffer.  The actual value recieved
@@ -192,12 +309,12 @@ public interface RingBuffer<E>
      * @see MultiProducerSequencer
      * @see SingleProducerSequencer
      */
-    Sequence getSequence();
+    abstract public Sequence getSequence();
 
     /**
      * The size of the buffer.
      */
-    int getBufferSize();
+    abstract public int getBufferSize();
 
     /**
      * Given specified <tt>requiredCapacity</tt> determines if that amount of space
@@ -209,7 +326,7 @@ public interface RingBuffer<E>
      * @return <tt>true</tt> If the specified <tt>requiredCapacity</tt> is available
      * <tt>false</tt> if now.
      */
-    boolean hasAvailableCapacity(int requiredCapacity);
+    abstract public boolean hasAvailableCapacity(int requiredCapacity);
 
     /**
      * Publish the specified sequence.  This action marks this particular
@@ -217,7 +334,7 @@ public interface RingBuffer<E>
      *
      * @param sequence the sequence to publish.
      */
-    void publish(long sequence);
+    abstract public void publish(long sequence);
 
     /**
      * Publish the specified sequences.  This action marks these particular
@@ -227,26 +344,26 @@ public interface RingBuffer<E>
      * @param lo the lowest sequence number to be published
      * @param hi the highest sequence number to be published
      */
-    void publish(long lo, long hi);
+    abstract public void publish(long lo, long hi);
 
     /**
      * Get the remaining capacity for this ringBuffer.
      * @return The number of slots remaining.
      */
-    long remainingCapacity();
+    abstract public long remainingCapacity();
 
     /**
      * Get the pending capacity for this ringBuffer.
      * @return The number of slots taken.
      */
-    long pending();
+    abstract public long pending();
 
 
     /**
      * Get the cached remaining capacity for this ringBuffer.
      * @return The number of slots remaining.
      */
-    long cachedRemainingCapacity();
+    abstract public long cachedRemainingCapacity();
 
 
 }

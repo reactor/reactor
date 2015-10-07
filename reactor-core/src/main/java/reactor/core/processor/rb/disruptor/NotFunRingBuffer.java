@@ -17,10 +17,9 @@ package reactor.core.processor.rb.disruptor;
 
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
-abstract class NotFunRingBufferFields<E>
+abstract class NotFunRingBufferFields<E> extends RingBuffer<E>
 {
     private final long indexMask;
     private final Object[] entries;
@@ -64,7 +63,7 @@ abstract class NotFunRingBufferFields<E>
  *
  * @param <E> implementation storing the data for sharing during exchange or parallel coordination of an event.
  */
-public final class NotFunRingBuffer<E> extends NotFunRingBufferFields<E> implements RingBuffer<E>
+public final class NotFunRingBuffer<E> extends NotFunRingBufferFields<E>
 {
     /**
      * Construct a RingBuffer with the full option set.

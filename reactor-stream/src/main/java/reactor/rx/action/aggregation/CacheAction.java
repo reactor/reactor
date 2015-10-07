@@ -60,7 +60,7 @@ public class CacheAction<T> extends Action<T, T> {
 				synchronized (values) {
 					if (cursor < values.size()) {
 						toSend = elem == Long.MAX_VALUE ? new ArrayList<>(values) :
-						  values.subList(cursor, Math.max(cursor + elem.intValue(), values.size()));
+						  values.subList(cursor, Math.min(cursor + elem.intValue(), values.size()));
 					}
 				}
 

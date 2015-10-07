@@ -18,6 +18,7 @@ package reactor.core.processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
@@ -29,6 +30,8 @@ import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
+import reactor.core.support.wait.LiteBlockingWaitStrategy;
+import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
@@ -545,14 +548,14 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		};
 
 		if (share) {
-			this.ringBuffer = RingBuffers.createMultiProducer(
+			this.ringBuffer = RingBuffer.createMultiProducer(
 			  factory,
 			  bufferSize,
 			  waitStrategy,
 			  spinObserver
 			);
 		} else {
-			this.ringBuffer = RingBuffers.createSingleProducer(
+			this.ringBuffer = RingBuffer.createSingleProducer(
 			  factory,
 			  bufferSize,
 			  waitStrategy,

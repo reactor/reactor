@@ -18,6 +18,7 @@ package reactor.core.processor.rb.disruptor;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.rb.disruptor.util.Util;
 import reactor.core.support.internal.PlatformDependent;
+import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -40,10 +41,10 @@ public abstract class Sequencer
     protected final    Sequence   cursor          = Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
     protected volatile Sequence[] gatingSequences = new Sequence[0];
 
-    public static Sequence newSequence(long init){
-        if(PlatformDependent.hasUnsafe()){
+    public static Sequence newSequence(long init) {
+        if (PlatformDependent.hasUnsafe()) {
             return new UnsafeSequence(init);
-        }else{
+        } else {
             return new AtomicSequence(init);
         }
     }
@@ -73,7 +74,6 @@ public abstract class Sequencer
     public final long getCursor() {
         return cursor.get();
     }
-
 
 
     /**

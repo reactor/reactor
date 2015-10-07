@@ -24,6 +24,7 @@ import reactor.Processors;
 import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.processor.ProcessorGroup;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
 import reactor.core.error.Exceptions;
@@ -351,9 +352,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 		};
 	}
+
 	/**
+	 *
 	 */
-	public final Stream<O> dispatchOn(final Supplier<? extends Processor> processorProvider) {
+	public final Stream<O> dispatchOn(final ProcessorGroup processorProvider) {
 		final long capacity = getCapacity();
 
 		return new Stream<O>() {
@@ -372,7 +375,39 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			@SuppressWarnings("unchecked")
 			public void subscribe(Subscriber<? super O> s) {
 				try {
-					Processor<O, O> processor = processorProvider.get();
+					Processor<O, O> processor = processorProvider.observeOn();
+					processor.subscribe(s);
+					Stream.this.subscribe(processor);
+				} catch (Throwable t) {
+					s.onError(t);
+				}
+			}
+		};
+	}
+
+	/**
+	 *
+	 */
+	public final Stream<O> publishOn(final ProcessorGroup processorProvider) {
+		final long capacity = getCapacity();
+
+		return new Stream<O>() {
+
+			@Override
+			public long getCapacity() {
+				return capacity;
+			}
+
+			@Override
+			public Timer getTimer() {
+				return Stream.this.getTimer();
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public void subscribe(Subscriber<? super O> s) {
+				try {
+					Processor<O, O> processor = processorProvider.publishOn();
 					processor.subscribe(s);
 					Stream.this.subscribe(processor);
 				} catch (Throwable t) {
@@ -921,8 +956,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			}
 		}
 
-		final Stream<V> mergedStream = Streams.merge(publisherList);
-
+		final Publisher<V> mergedStream = Publishers.merge(Publishers.from(publisherList));
 
 		return new Stream<V>() {
 			@Override
@@ -1007,7 +1041,24 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final <V> Stream<V> merge() {
-		return fanIn(null);
+		final Stream<? extends Publisher<? extends V>> thiz = (Stream<? extends Publisher<? extends V>>)this;
+
+		return new Stream<V>() {
+			@Override
+			public void subscribe(Subscriber<? super V> s) {
+				Publishers.merge(thiz).subscribe(s);
+			}
+
+			@Override
+			public Timer getTimer() {
+				return Stream.this.getTimer();
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+		};
 	}
 
 	/**
@@ -1021,7 +1072,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				new MergeAction<>(Arrays.asList(Stream.this, publisher)).subscribe(s);
+				Publishers.merge(Publishers.from(Arrays.asList(Stream.this, publisher))).subscribe(s);
 			}
 
 			@Override
@@ -1048,10 +1099,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Stream<Publisher<? extends O>> just = Streams.just(Stream.this, publisher);
-				ConcatAction<O> concatAction = new ConcatAction<>();
-				concatAction.subscribe(s);
-				just.subscribe(concatAction);
+				Publishers.concat(Publishers.from(Arrays.asList(Stream.this, publisher)))
+				.subscribe(s);
 			}
 
 			@Override
@@ -1185,43 +1234,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 				return Stream.this.getTimer();
 			}
 		};
-	}
-
-	/**
-	 * {@link #liftAction(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} calling the logic
-	 * inside the provided fanInAction for complex merging strategies.
-	 * {@link reactor.rx.action.combination.FanInAction} provides helpers to create subscriber for each source,
-	 * a registry of incoming sources and overriding doXXX signals as usual to produce the result via
-	 * reactor.rx.action.Action#broadcastXXX.
-	 * <p>
-	 * A default fanInAction will act like {@link #merge()}, passing values to doNext. In java8 one can then
-	 * implement
-	 * stream.fanIn(data -> broadcastNext(data)) or stream.fanIn(System.out::println)
-	 * <p>
-	 * Dynamic merge (moving nested data into the top-level returned stream) requires use of reactive-pull offered by
-	 * default StreamSubscription. If merge hasn't getCapacity() to
-	 * take new elements because its {@link
-	 * #getCapacity()(long)} instructed so, the subscription will buffer
-	 * them.
-	 *
-	 * @param <T> the nested type of flowing upstream Stream.
-	 * @param <V> the produced output
-	 * @return the zipped stream
-	 * @since 2.0
-	 */
-	@SuppressWarnings("unchecked")
-	public <T, V> Stream<V> fanIn(
-	  final FanInAction<T, ?, V, ? extends FanInAction.InnerSubscriber<T, ?, V>> fanInAction
-	) {
-		final Stream<Publisher<? extends T>> thiz = (Stream<Publisher<? extends T>>) this;
-
-		return thiz.liftAction(new Supplier<Action<Publisher<? extends T>, V>>() {
-			@Override
-			public Action<Publisher<? extends T>, V> get() {
-				return new DynamicMergeAction<T, V>(fanInAction).
-				  capacity(getCapacity());
-			}
-		});
 	}
 
 	/**

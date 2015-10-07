@@ -16,6 +16,8 @@
 package reactor.core.processor.rb.disruptor;
 
 
+import reactor.core.error.AlertException;
+import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 
 /**
@@ -26,35 +28,32 @@ public final class SequenceBarrier implements Consumer<Void>
 {
     private final WaitStrategy waitStrategy;
     private volatile boolean alerted = false;
-    private final Sequence cursorSequence;
+    private final Sequence  cursorSequence;
     private final Sequencer sequencer;
 
     public SequenceBarrier(final Sequencer sequencer,
                            final WaitStrategy waitStrategy,
-                           final Sequence cursorSequence)
-    {
+                           final Sequence cursorSequence) {
         this.sequencer = sequencer;
         this.waitStrategy = waitStrategy;
         this.cursorSequence = cursorSequence;
     }
 
     /**
-         * Wait for the given sequence to be available for consumption.
-         *
-         * @param sequence to wait for
-         * @return the sequence up to which is available
-         * @throws AlertException if a status change has occurred for the Disruptor
-         * @throws InterruptedException if the thread needs awaking on a condition variable.
-         */
+     * Wait for the given sequence to be available for consumption.
+     *
+     * @param sequence to wait for
+     * @return the sequence up to which is available
+     * @throws AlertException if a status change has occurred for the Disruptor
+     * @throws InterruptedException if the thread needs awaking on a condition variable.
+     */
     public long waitFor(final long sequence)
-        throws AlertException, InterruptedException
-    {
+      throws AlertException, InterruptedException {
         checkAlert();
 
         long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, this);
 
-        if (availableSequence < sequence)
-        {
+        if (availableSequence < sequence) {
             return availableSequence;
         }
 

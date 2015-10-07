@@ -876,7 +876,8 @@ public class StreamTests extends AbstractReactorTest {
 		  .count()
 		  .consume(d -> latch.countDown());
 
-		assertTrue(latch.await(5, TimeUnit.SECONDS));
+		latch.await(5, TimeUnit.SECONDS);
+		assertTrue("Latch is "+latch.getCount(), latch.getCount() == 0);
 	}
 
 	@Test
@@ -1303,8 +1304,8 @@ public class StreamTests extends AbstractReactorTest {
 		Streams
 		  .range(1, 100)
 		  .log("testOn")
+		  .publishOn(ioGroup)
 		  .dispatchOn(asyncGroup)
-		  .dispatchOn(ioGroup)
 		  .capacity(1)
 		  .consume(t -> latch.countDown());
 

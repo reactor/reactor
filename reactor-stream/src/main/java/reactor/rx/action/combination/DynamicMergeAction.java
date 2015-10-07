@@ -43,19 +43,11 @@ public class DynamicMergeAction<I, O> extends Action<Publisher<? extends I>, O> 
 			.newUpdater(DynamicMergeAction.class, "requested");
 
 
-	public DynamicMergeAction(){
-		this(null);
-	}
-
 	@SuppressWarnings("unchecked")
 	public DynamicMergeAction(
 			FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>> fanInAction
 	) {
-		this.fanInAction = fanInAction == null ?
-				(FanInAction<I, ?, O, ? extends FanInAction.InnerSubscriber<I, ?, O>>) new MergeAction<O>
-						() :
-				fanInAction;
-
+		this.fanInAction = fanInAction;
 		this.fanInAction.dynamicMergeAction = this;
 	}
 

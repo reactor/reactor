@@ -914,6 +914,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 
 	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> {
 
+		Subscription cachedSubscription;
+
 		public SyncProcessorBarrier(ProcessorGroup service) {
 			super(service);
 		}
@@ -931,6 +933,24 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 		@Override
 		public long getCapacity() {
 			return Long.MAX_VALUE;
+		}
+
+		@Override
+		public void request(long n) {
+			if(cachedSubscription == null){
+				cachedSubscription = subscription;
+			}
+
+			Subscription subscription = cachedSubscription;
+			if(subscription != null){
+				subscription.request(n);
+			}
+		}
+
+		@Override
+		public void cancel() {
+			super.cancel();
+			cachedSubscription = null;
 		}
 	}
 

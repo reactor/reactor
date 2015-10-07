@@ -3,6 +3,7 @@ package reactor.core.processor.rb;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.AlertException;
 import reactor.core.error.Exceptions;
 import reactor.core.support.Bounded;
 import reactor.core.support.SignalType;

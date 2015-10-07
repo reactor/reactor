@@ -15,6 +15,8 @@
  */
 package reactor.fn.timer;
 
+import reactor.core.support.wait.SleepingWaitStrategy;
+
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -28,7 +30,7 @@ public class GlobalTimer extends HashWheelTimer {
 	private static final AtomicReference<GlobalTimer> globalTimer = new AtomicReference<>();
 
 	public GlobalTimer() {
-		super("global-timer", 50, DEFAULT_WHEEL_SIZE, new SleepWait(), null);
+		super("global-timer", 50, DEFAULT_WHEEL_SIZE, new SleepingWaitStrategy(), null);
 	}
 
 	private void _cancel() {
@@ -95,7 +97,7 @@ public class GlobalTimer extends HashWheelTimer {
 		Timer timer = globalTimer.get();
 
 		if (timer == null) {
-			return new HashWheelTimer(50, 64, new SleepWait());
+			return new HashWheelTimer(50, 64, new SleepingWaitStrategy());
 		} else {
 			return timer;
 		}

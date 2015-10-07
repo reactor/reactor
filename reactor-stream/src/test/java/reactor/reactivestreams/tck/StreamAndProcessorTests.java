@@ -53,6 +53,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 			  .forkJoin(2, (GroupedStream<Integer, Integer> stream) -> stream
 				  .scan((prev, next) -> next)
 				  .map(integer -> -integer)
+				  //.log()
 				  .filter(integer -> integer <= 0)
 				  .sample(1)
 				  .map(integer -> -integer)

@@ -15,17 +15,18 @@
  */
 package reactor;
 
-import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.processor.BaseProcessor;
+import reactor.core.publisher.FlatMapOperator;
 import reactor.core.publisher.LogOperator;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolineOperator;
+import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscriber.Tap;
-import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -115,10 +116,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Publisher<I> merge(Publisher<? extends Publisher<? extends I>> source) {
-		Processor<Publisher<? extends I>, I> flatMap =
-		  Processors.flatMap((PublisherToPublisherFunction<I>) P2P_FUNCTION);
-		source.subscribe(flatMap);
-		return flatMap;
+		return lift(source, new FlatMapOperator(P2P_FUNCTION, BaseProcessor.SMALL_BUFFER_SIZE, BaseProcessor.SMALL_BUFFER_SIZE));
 	}
 
 	/**
@@ -128,11 +126,10 @@ public final class Publishers extends PublisherFactory {
 	 * @param <O>         The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
+	@SuppressWarnings("unchecked")
 	public static <I, O> Publisher<O> flatMap(Publisher<I> source,
 	                                          final Function<? super I, ? extends Publisher<? extends O>> transformer) {
-		Processor<I, O> flatMap = Processors.flatMap(transformer);
-		source.subscribe(flatMap);
-		return flatMap;
+		return lift(source, new FlatMapOperator(transformer, BaseProcessor.SMALL_BUFFER_SIZE, BaseProcessor.SMALL_BUFFER_SIZE));
 	}
 
 
@@ -144,10 +141,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Publisher<I> concat(Publisher<? extends Publisher<? extends I>> source) {
-		Processor<Publisher<? extends I>, I> concatMap =
-		  Processors.concatMap((PublisherToPublisherFunction<I>) P2P_FUNCTION);
-		source.subscribe(concatMap);
-		return concatMap;
+		return lift(source, new FlatMapOperator(P2P_FUNCTION, 1, BaseProcessor.SMALL_BUFFER_SIZE));
 	}
 
 
@@ -158,11 +152,10 @@ public final class Publishers extends PublisherFactory {
 	 * @param <O>         The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
+	@SuppressWarnings("unchecked")
 	public static <I, O> Publisher<O> concatMap(Publisher<I> source,
 	                                          final Function<? super I, ? extends Publisher<? extends O>> transformer) {
-		Processor<I, O> concatMap = Processors.concatMap(transformer);
-		source.subscribe(concatMap);
-		return concatMap;
+		return lift(source, new FlatMapOperator(transformer, 1, BaseProcessor.SMALL_BUFFER_SIZE));
 	}
 
 	/**
@@ -170,7 +163,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> BlockingQueue<IN> toReadQueue(Publisher<IN> source) {
-		return toReadQueue(source, Integer.MAX_VALUE);
+		return toReadQueue(source, BaseProcessor.SMALL_BUFFER_SIZE);
 	}
 
 	/**
@@ -178,7 +171,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> BlockingQueue<IN> toReadQueue(Publisher<IN> source, int size) {
-		return toReadQueue(source, size, false, new ArrayBlockingQueue<IN>(size));
+		return toReadQueue(source, size, false);
 	}
 
 	/**
@@ -345,6 +338,26 @@ public final class Publishers extends PublisherFactory {
 		}
 
 	}
+	private static final NeverPublisher<?> NEVER = new NeverPublisher<>();
+
+	private static class NeverPublisher<IN> implements Publisher<IN> {
+
+		@Override
+		public void subscribe(Subscriber<? super IN> s) {
+			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+		}
+	}
+	private static final EmptyPublisher<?> EMPTY = new EmptyPublisher<>();
+
+	private static class EmptyPublisher<IN> implements Publisher<IN> {
+
+		@Override
+		public void subscribe(Subscriber<? super IN> s) {
+			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+			s.onComplete();
+		}
+	}
+
 	private static final PublisherToPublisherFunction<?> P2P_FUNCTION = new PublisherToPublisherFunction<>();
 
 	private static class PublisherToPublisherFunction<I> implements
@@ -352,25 +365,6 @@ public final class Publishers extends PublisherFactory {
 		@Override
 		public Publisher<? extends I> apply(Publisher<? extends I> publisher) {
 			return publisher;
-		}
-	}
-
-	private static final NeverPublisher<?> NEVER = new NeverPublisher<>();
-
-	private static class NeverPublisher<IN> implements Publisher<IN> {
-		@Override
-		public void subscribe(Subscriber<? super IN> s) {
-			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-		}
-	}
-
-	private static final EmptyPublisher<?> EMPTY = new EmptyPublisher<>();
-
-	private static class EmptyPublisher<IN> implements Publisher<IN> {
-		@Override
-		public void subscribe(Subscriber<? super IN> s) {
-			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-			s.onComplete();
 		}
 	}
 }

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.processor.rb.disruptor;
+package reactor.core.error;
 
 /**
- * Used to alert ringbuffer consumers waiting at a {@link SequenceBarrier} of status changes.
+ * Used to alert consumers waiting with a {@link reactor.core.support.wait.WaitStrategy} for status changes.
  * <P>
  * It does not fill in a stack trace for performance reasons.
  */

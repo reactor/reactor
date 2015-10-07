@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.processor.rb.disruptor;
+package reactor.core.support.wait;
 
+import reactor.core.error.AlertException;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 

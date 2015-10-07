@@ -1,5 +1,6 @@
 package reactor.fn.timer
 
+import reactor.core.support.wait.YieldingWaitStrategy
 import reactor.fn.Consumer
 import spock.lang.Specification
 
@@ -17,7 +18,7 @@ class HashWheelTimerYieldingStrategy extends Specification {
 
 		given:
 			"a new globalTimer"
-			def timer = new HashWheelTimer(10, 8, new HashWheelTimer.YieldingWait())
+			def timer = new HashWheelTimer(10, 8, new YieldingWaitStrategy())
 			def latch = new CountDownLatch(10)
 
 		when:
@@ -41,7 +42,7 @@ class HashWheelTimerYieldingStrategy extends Specification {
 		given:
 			"a new globalTimer"
 			def delay = 500
-			def timer = new HashWheelTimer(10, 512, new HashWheelTimer.YieldingWait())
+			def timer = new HashWheelTimer(10, 512, new YieldingWaitStrategy())
 			def latch = new CountDownLatch(1)
 			def start = System.currentTimeMillis()
 			def elapsed = 0

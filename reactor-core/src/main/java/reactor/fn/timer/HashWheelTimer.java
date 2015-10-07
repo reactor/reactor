@@ -17,12 +17,15 @@
 package reactor.fn.timer;
 
 import org.reactivestreams.Processor;
+import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.processor.rb.disruptor.RingBuffer;
-import reactor.core.processor.rb.disruptor.RingBuffers;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.wait.SleepingWaitStrategy;
+import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
 import reactor.fn.Pausable;
 import reactor.fn.Supplier;
 
@@ -50,6 +53,20 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class HashWheelTimer implements Timer {
 
+	final static private LongSupplier SYSTEM_NOW = new LongSupplier() {
+		@Override
+		public long get() {
+			return System.currentTimeMillis();
+		}
+	};
+
+	final static private Consumer<Void> noop = new Consumer<Void>() {
+		@Override
+		public void accept(Void noop) {
+			//NOOP
+		}
+	};
+
 	public static final  int    DEFAULT_WHEEL_SIZE = 512;
 	private static final String DEFAULT_TIMER_NAME = "hash-wheel-timer";
 
@@ -58,14 +75,8 @@ public class HashWheelTimer implements Timer {
 	private final Thread                         loop;
 	private final Executor                       executor;
 	private final WaitStrategy                   waitStrategy;
+	private final LongSupplier now;
 
-	/**
-	 * Create a new {@code HashWheelTimer} using the given with default resolution of 100 milliseconds and
-	 * default wheel size.
-	 */
-	public HashWheelTimer() {
-		this(50, DEFAULT_WHEEL_SIZE, new SleepWait());
-	}
 
 	/**
 	 * Create a new {@code HashWheelTimer} using the given timer resolution. All times will rounded up to the closest
@@ -74,7 +85,7 @@ public class HashWheelTimer implements Timer {
 	 * @param resolution the resolution of this timer, in milliseconds
 	 */
 	public HashWheelTimer(int resolution) {
-		this(resolution, DEFAULT_WHEEL_SIZE, new SleepWait());
+		this(resolution, DEFAULT_WHEEL_SIZE, new SleepingWaitStrategy());
 	}
 
 	/**
@@ -106,7 +117,7 @@ public class HashWheelTimer implements Timer {
 	public HashWheelTimer(String name, int res, int wheelSize, WaitStrategy strategy, Executor exec) {
 		this.waitStrategy = strategy;
 
-		this.wheel = RingBuffers.createSingleProducer(new Supplier<Set<TimerPausable>>() {
+		this.wheel = RingBuffer.createSingleProducer(new Supplier<Set<TimerPausable>>() {
 			@Override
 			public Set<TimerPausable> get() {
 				return new ConcurrentSkipListSet<TimerPausable>();
@@ -120,11 +131,12 @@ public class HashWheelTimer implements Timer {
 			this.executor = exec;
 		}
 
+		this.now = SYSTEM_NOW;
 		this.resolution = res;
 		this.loop = new NamedDaemonThreadFactory(name).newThread(new Runnable() {
 			@Override
 			public void run() {
-				long deadline = System.currentTimeMillis();
+				long deadline = now.get();
 
 				while (true) {
 					Set<TimerPausable> registrations = wheel.get(wheel.getCursor());
@@ -149,8 +161,8 @@ public class HashWheelTimer implements Timer {
 					deadline += resolution;
 
 					try {
-						waitStrategy.waitUntil(deadline);
-					} catch (InterruptedException e) {
+						waitStrategy.waitFor(deadline, now, noop);
+					} catch (AlertException | InterruptedException e) {
 						return;
 					}
 
@@ -260,18 +272,6 @@ public class HashWheelTimer implements Timer {
 		  resolution);
 	}
 
-	/**
-	 * Wait strategy for the timer
-	 */
-	public interface WaitStrategy {
-
-		/**
-		 * Wait until the given deadline, {@param deadlineMilliseconds}
-		 *
-		 * @param deadlineMilliseconds deadline to wait for, in milliseconds
-		 */
-		void waitUntil(long deadlineMilliseconds) throws InterruptedException;
-	}
 
 	/**
 	 * Timer Registration
@@ -447,63 +447,6 @@ public class HashWheelTimer implements Timer {
 
 		public long getOffset() {
 			return scheduleOffset;
-		}
-	}
-
-	/**
-	 * Yielding wait strategy.
-	 * <p>
-	 * Spins in the loop, until the deadline is reached. Releases the flow control
-	 * by means of Thread.yield() call. This strategy is less precise than BusySpin
-	 * one, but is more scheduler-friendly.
-	 */
-	public static class YieldingWait implements WaitStrategy {
-
-		@Override
-		public void waitUntil(long deadlineMilliseconds) throws InterruptedException {
-			while (deadlineMilliseconds >= System.currentTimeMillis()) {
-				Thread.yield();
-				if (Thread.currentThread().isInterrupted()) {
-					throw new InterruptedException();
-				}
-			}
-		}
-	}
-
-	/**
-	 * BusySpin wait strategy.
-	 * <p>
-	 * Spins in the loop until the deadline is reached. In a multi-core environment,
-	 * will occupy an entire core. Is more precise than Sleep wait strategy, but
-	 * consumes more resources.
-	 */
-	public static class BusySpinWait implements WaitStrategy {
-
-		@Override
-		public void waitUntil(long deadlineMilliseconds) throws InterruptedException {
-			while (deadlineMilliseconds >= System.currentTimeMillis()) {
-				if (Thread.currentThread().isInterrupted()) {
-					throw new InterruptedException();
-				}
-			}
-		}
-	}
-
-	/**
-	 * Sleep wait strategy.
-	 * <p>
-	 * Will release the flow control, giving other threads a possibility of execution
-	 * on the same processor. Uses less resources than BusySpin wait, but is less
-	 * precise.
-	 */
-	public static class SleepWait implements WaitStrategy {
-
-		@Override
-		public void waitUntil(long deadlineMilliseconds) throws InterruptedException {
-			long sleepTimeMs = deadlineMilliseconds - System.currentTimeMillis();
-			if (sleepTimeMs > 0) {
-				Thread.sleep(sleepTimeMs);
-			}
 		}
 	}
 

@@ -18,16 +18,15 @@ package reactor.core.processor.rb.disruptor;
 
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.rb.disruptor.util.Util;
-import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import sun.misc.Unsafe;
 
-abstract class RingBufferPad
+abstract class RingBufferPad<E> extends RingBuffer<E>
 {
     protected long p1, p2, p3, p4, p5, p6, p7;
 }
 
-abstract class RingBufferFields<E> extends RingBufferPad
+abstract class RingBufferFields<E> extends RingBufferPad<E>
 {
     private static final int  BUFFER_PAD;
     private static final long REF_ARRAY_BASE;
@@ -92,7 +91,7 @@ abstract class RingBufferFields<E> extends RingBufferPad
  *
  * @param <E> implementation storing the data for sharing during exchange or parallel coordination of an event.
  */
-public final class UnsafeRingBuffer<E> extends RingBufferFields<E> implements RingBuffer<E>
+public final class UnsafeRingBuffer<E> extends RingBufferFields<E>
 {
     protected long p1, p2, p3, p4, p5, p6, p7;
 

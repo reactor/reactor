@@ -17,6 +17,7 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
+import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 
@@ -46,7 +47,7 @@ import reactor.rx.subscription.PushSubscription;
  *
  * @author Stephane Maldini
  */
-public final class SingleValueStream<T> extends Stream<T> {
+public final class SingleValueStream<T> extends Stream<T> implements Supplier<T> {
 
 	final public static SingleValueStream<?> EMPTY = new SingleValueStream<>(null);
 
@@ -55,6 +56,11 @@ public final class SingleValueStream<T> extends Stream<T> {
 	@SuppressWarnings("unchecked")
 	public SingleValueStream(T value) {
 		this.value = value;
+	}
+
+	@Override
+	public T get() {
+		return value;
 	}
 
 	@Override
