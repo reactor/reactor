@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * - downstream consume buffer once all inner subscribers have read
  * - when more than half of the demand has been fulfilled, request more
  * - request to upstream represent the maximum concurrent merge possible
- *
+ * <p>
  * Original design idea from David Karnok (RxJava 2.0)
  *
  * @author David Karnok
@@ -71,6 +71,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		final Function<? super T, ? extends Publisher<? extends V>> mapper;
 		final int                                                   maxConcurrency;
 		final int                                                   bufferSize;
+		final int                                                   limit;
 
 		Sequence pollCursor;
 		volatile RingBuffer<Emitted<V>> emitBuffer;
@@ -117,6 +118,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			this.mapper = mapper;
 			this.maxConcurrency = maxConcurrency;
 			this.bufferSize = bufferSize;
+			this.limit = Math.max(1, maxConcurrency / 2);
 			SUBSCRIBERS.lazySet(this, EMPTY);
 		}
 
@@ -229,9 +231,9 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 						REQUESTED.decrementAndGet(this);
 					}
 					if (maxConcurrency != Integer.MAX_VALUE && !cancelled
-					  && ++lastRequest == maxConcurrency / 2) {
+					  && ++lastRequest == limit) {
 						lastRequest = 0;
-						subscription.request(maxConcurrency / 2);
+						subscription.request(limit);
 					}
 				} else {
 					RingBuffer<Emitted<V>> q = getMainQueue();
