@@ -347,9 +347,9 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
 
-		if(blockingTerminatedCheck()) throw CancelException.get();
 
 		IN res = store.poll();
+		if(res == null && blockingTerminatedCheck()) throw CancelException.get();
 		markRead(res);
 		return res;
 	}
