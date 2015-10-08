@@ -219,7 +219,16 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		if (target == null) {
 			throw new UnsupportedOperationException("This operation requires a write queue");
 		}
-		return false;
+		long timespan = System.currentTimeMillis() +
+		  TimeUnit.MILLISECONDS.convert(timeout, unit);
+
+		while (!store.offer(in)) {
+			if (blockingTerminatedCheck() || System.currentTimeMillis() > timespan) {
+				return false;
+			}
+			Thread.sleep(10);
+		}
+		return true;
 	}
 
 	private boolean blockingTerminatedCheck() {
@@ -228,7 +237,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 				Exceptions.throwIfFatal(endError);
 				throw ReactorFatalException.create(endError);
 			}
-			return true;
+			throw CancelException.INSTANCE;
 		}
 		return false;
 	}
@@ -243,7 +252,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 
 		IN res;
 		while ((res = store.poll()) == null) {
-			if (blockingTerminatedCheck()) break;
+			if (blockingTerminatedCheck()) throw CancelException.INSTANCE;
 			if (remainingCapacity == 0){
 				markAllRead();
 			}
