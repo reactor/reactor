@@ -237,7 +237,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 				Exceptions.throwIfFatal(endError);
 				throw ReactorFatalException.create(endError);
 			}
-			throw CancelException.INSTANCE;
+			return true;
 		}
 		return false;
 	}
@@ -252,7 +252,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 
 		IN res;
 		while ((res = store.poll()) == null) {
-			if (blockingTerminatedCheck()) throw CancelException.INSTANCE;
+			if (blockingTerminatedCheck()) break;
 			if (remainingCapacity == 0){
 				markAllRead();
 			}
@@ -273,7 +273,8 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		  TimeUnit.MILLISECONDS.convert(timeout, unit);
 
 		while ((res = store.poll()) == null) {
-			if (blockingTerminatedCheck() || remainingCapacity == 0) break;
+			if (blockingTerminatedCheck()) throw CancelException.get();
+			if (remainingCapacity == 0);
 			if (System.currentTimeMillis() > timespan) {
 				break;
 			}
@@ -345,6 +346,8 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		if (source == null) {
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
+
+		if(blockingTerminatedCheck()) throw CancelException.get();
 
 		IN res = store.poll();
 		markRead(res);
