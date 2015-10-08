@@ -111,9 +111,10 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public <V> Stream<V> liftAction(@Nonnull final Supplier<? extends Action<O, V>>
-	                                  action) {
+			action) {
 		return new LiftStream<>(this, action);
 	}
+
 	/**
 	 * @see {@link Publishers#lift(Publisher, Function)}
 	 * 
@@ -319,7 +320,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-
+	 * FIXME Doc
 	 */
 	@SuppressWarnings("unchecked")
 	public final <E> Stream<E> process(final Processor<O, E> processor) {
@@ -346,6 +347,50 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			public void subscribe(Subscriber<? super E> s) {
 				try {
 					processor.subscribe(s);
+				} catch (Throwable t) {
+					s.onError(t);
+				}
+			}
+		};
+	}
+
+
+	/**
+	 * Defer the subscription of an {@link Action} to the actual pipeline.
+	 * Terminal operations such as {@link #consume(reactor.fn.Consumer)} will start the subscription chain.
+	 * It will listen for current Stream signals and will be eventually producing signals as well (subscribe,error,
+	 * complete,next).
+	 * <p>
+	 * The action is returned for functional-style chaining.
+	 *
+	 * @param <V>    the {@link reactor.rx.Stream} output type
+	 * @param processorSupplier the function to map a provided dispatcher to a fresh Action to subscribe.
+	 * @return the passed action
+	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
+	 * @since 2.0
+	 */
+	public <V> Stream<V> liftProcess(@Nonnull final Supplier<? extends Processor<O, V>>
+			processorSupplier) {
+		final long capacity = getCapacity();
+
+		return new Stream<V>() {
+
+			@Override
+			public long getCapacity() {
+				return capacity;
+			}
+
+			@Override
+			public Timer getTimer() {
+				return Stream.this.getTimer();
+			}
+
+			@Override
+			public void subscribe(Subscriber<? super V> s) {
+				try {
+					Processor<O, V> processor = processorSupplier.get();
+					processor.subscribe(s);
+					Stream.this.subscribe(processor);
 				} catch (Throwable t) {
 					s.onError(t);
 				}

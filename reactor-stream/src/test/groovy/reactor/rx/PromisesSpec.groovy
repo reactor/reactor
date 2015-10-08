@@ -209,9 +209,9 @@ class PromisesSpec extends Specification {
 
 		then:
 			"the promise is invoked without the accepted value"
-			after.isComplete()
-			after.isSuccess()
-			!after.get()
+		!after.get()
+		after.isComplete()
+		after.isSuccess()
 
 		when:
 			"the promise is rejected"
@@ -434,6 +434,7 @@ class PromisesSpec extends Specification {
 
 		then:
 			"the mapped promise is rejected"
+			mapped.request(1)
 			mapped.error
 	}
 
@@ -501,7 +502,7 @@ class PromisesSpec extends Specification {
 		given:
 			"two fulfilled promises"
 			def promise1 = Broadcaster.<Integer> create().observe { println 'hey' + it }.next()
-			def promise2 = Promises.<Integer> ready()
+			def promise2 = Promises.<Integer> ready().stream().log().next()
 
 		when:
 			"a combined promise is first created"
@@ -529,9 +530,9 @@ class PromisesSpec extends Specification {
 
 		then:
 			"the combined promise is fulfilled with both values"
-			combined.success
 			combined.get().t1 == 1
 			combined.get().t2 == 2
+			combined.success
 	}
 
 	def "A combined promise is rejected once any of its component promises are rejected"() {
@@ -566,6 +567,7 @@ class PromisesSpec extends Specification {
 		when:
 			"a combined promise is first created"
 			def combined = Promises.when(promise1, promise2)
+	  		combined.get()
 
 		then:
 			"it is fulfilled"
@@ -578,6 +580,7 @@ class PromisesSpec extends Specification {
 			promise1 = Promises.task { '1' }
 			promise2 = Promises.task { '2' }
 			combined = Promises.when(promise1, promise2)
+			combined.get()
 
 		then:
 			"it is fulfilled"
@@ -599,8 +602,8 @@ class PromisesSpec extends Specification {
 
 		then:
 			"it is fulfilled"
-			combined.success
-			combined.get() == 1
+		combined.get() == 1
+		combined.success
 	}
 
 	def "A combined promise through 'any' is fulfilled with the first component result when using asynchronously"() {
@@ -697,8 +700,8 @@ class PromisesSpec extends Specification {
 
 		then:
 			"the filtered promise is not fulfilled"
-			filtered.complete
-			!filtered.get()
+		!filtered.get()
+		filtered.complete
 	}
 
 	def "A filtered promise is fulfilled if the filter allows the value to pass through"() {
@@ -727,6 +730,7 @@ class PromisesSpec extends Specification {
 		when:
 			"the promise is fulfilled"
 			promise.onNext 2
+			filteredPromise.request(1)
 
 		then:
 			"the filtered promise is rejected"
@@ -744,8 +748,8 @@ class PromisesSpec extends Specification {
 
 		then:
 			"the filtered promise is fulfilled"
-			promise.success
 			promise.get() == 2
+			promise.success
 	}
 
 	def "If a promise is already fulfilled with a value rejected by a filter, the filtered promise is not fulfilled"() {
@@ -759,8 +763,8 @@ class PromisesSpec extends Specification {
 
 		then:
 			"the filtered promise is not fulfilled"
-			filtered.complete
 			!filtered.get()
+			filtered.complete
 	}
 
 	def "Errors stop compositions"() {
@@ -795,13 +799,17 @@ class PromisesSpec extends Specification {
 		when:
 			"p1 is consumed by p2"
 			Promise p2 = p1
-					.onSuccess({ Integer.parseInt it })
-					.run(Processors.asyncGroup('test'))
-					.map { sleep(3000); it }
+					.publishOn(Processors.asyncGroup('test'))
+					.map {
+			  println Thread.currentThread();
+			  sleep(3000);
+			  Integer.parseInt it
+			}
 
 		and:
 			"setting a value"
 			p1.onNext '1'
+		println "emitted"
 			p2.poll(1, TimeUnit.SECONDS)
 
 		then:

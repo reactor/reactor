@@ -116,7 +116,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Publisher<I> merge(Publisher<? extends Publisher<? extends I>> source) {
-		return lift(source, new FlatMapOperator(P2P_FUNCTION, BaseProcessor.SMALL_BUFFER_SIZE, BaseProcessor.SMALL_BUFFER_SIZE));
+		return lift(source, new FlatMapOperator(P2P_FUNCTION, BaseProcessor.SMALL_BUFFER_SIZE, 32));
 	}
 
 	/**
@@ -129,7 +129,7 @@ public final class Publishers extends PublisherFactory {
 	@SuppressWarnings("unchecked")
 	public static <I, O> Publisher<O> flatMap(Publisher<I> source,
 	                                          final Function<? super I, ? extends Publisher<? extends O>> transformer) {
-		return lift(source, new FlatMapOperator(transformer, BaseProcessor.SMALL_BUFFER_SIZE, BaseProcessor.SMALL_BUFFER_SIZE));
+		return lift(source, new FlatMapOperator(transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32));
 	}
 
 
@@ -141,7 +141,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Publisher<I> concat(Publisher<? extends Publisher<? extends I>> source) {
-		return lift(source, new FlatMapOperator(P2P_FUNCTION, 1, BaseProcessor.SMALL_BUFFER_SIZE));
+		return lift(source, new FlatMapOperator(P2P_FUNCTION, 1, 32));
 	}
 
 
@@ -155,7 +155,7 @@ public final class Publishers extends PublisherFactory {
 	@SuppressWarnings("unchecked")
 	public static <I, O> Publisher<O> concatMap(Publisher<I> source,
 	                                          final Function<? super I, ? extends Publisher<? extends O>> transformer) {
-		return lift(source, new FlatMapOperator(transformer, 1, BaseProcessor.SMALL_BUFFER_SIZE));
+		return lift(source, new FlatMapOperator(transformer, 1, 32));
 	}
 
 	/**

@@ -107,6 +107,7 @@ public final class Promises {
 			return Streams.wrap(p)
 			  .timer(timer)
 			  .next();
+
 		}else {
 			return Streams.wrap(p)
 			  .timer(timer)
@@ -354,10 +355,13 @@ public final class Promises {
 	public static <T> Promise<List<T>> when(final List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		return Streams.from(promises)
-		  .<T>merge()
+		Promise<List<T>> d = new Promise<>();
+
+		Streams.merge(promises)
 		  .buffer(promises.size())
-		  .next();
+		  .subscribe(d);
+
+		return d;
 	}
 
 
@@ -383,9 +387,13 @@ public final class Promises {
 	@SuppressWarnings("unchecked")
 	public static <T> Promise<T> any(List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
-		return Streams.from(promises)
-		  .<T>merge()
-		  .next();
+
+		Promise<T> d = new Promise<T>();
+
+		Publishers.<T>merge(Publishers.from(promises))
+				.subscribe(d);
+
+		return d;
 	}
 
 
