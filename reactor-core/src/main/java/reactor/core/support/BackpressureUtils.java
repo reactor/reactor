@@ -120,6 +120,21 @@ public abstract class BackpressureUtils {
 		return res;
 	}
 
+	/**
+	 * Cap a substraction to 0
+	 *
+	 * @param a left operand
+	 * @param b right operand
+	 * @return Subscription result or 0 if overflow
+	 */
+	public static long subOrZero(long a, long b) {
+		long res = a - b;
+		if (res < 0L) {
+			return 0;
+		}
+		return res;
+	}
+
 
 	/**
 	 * Concurrent addition bound to Long.MAX_VALUE.
@@ -159,6 +174,28 @@ public abstract class BackpressureUtils {
 				return Long.MAX_VALUE;
 			}
 			u = addOrLongMax(r, toAdd);
+		} while (!updater.compareAndSet(instance, r, u));
+
+		return r;
+	}
+
+	/**
+	 * Concurrent substraction bound to 0.
+	 * Any concurrent write will "happen" before this operation.
+	 *
+	 * @param updater  current field updater
+	 * @param instance current instance to update
+	 * @param toSub    delta to sub
+	 * @return Substraction result or zero
+	 */
+	public static <T> long getAndSub(AtomicLongFieldUpdater<T> updater, T instance, long toSub) {
+		long r, u;
+		do {
+			r = updater.get(instance);
+			if (r == 0 || r == Long.MAX_VALUE) {
+				return r;
+			}
+			u = subOrZero(r, toSub);
 		} while (!updater.compareAndSet(instance, r, u));
 
 		return r;
