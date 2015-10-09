@@ -1017,7 +1017,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources are zipped'
-			def mergedStream = firsts.concatMap { Streams.range(it, 3) }
+			def mergedStream = firsts.concatMap { Streams.range(it, 2) }
 			def res = []
 			println mergedStream.consume(
 					{ res << it; println it },
@@ -1027,7 +1027,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the values are all collected from source1 and source2 stream'
-			res == [1, 2, 3, 2, 3, 3, 'done']
+			res == [1, 2, 2, 3, 3, 4, 'done']
 	}
 
 	def "Stream can be counted"() {
@@ -2389,7 +2389,7 @@ class StreamsSpec extends Specification {
 			)
 
 		then:
-			res == [1, 2, 3, 2, 3, 3, 'complete']
+			res == [1, 2, 3, 2, 3, 4, 3, 4, 5, 'complete']
 	}
 
 

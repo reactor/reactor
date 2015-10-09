@@ -95,7 +95,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		final int n = 1000;
 
 
-		Stream<Long> stream = Streams.merge(
+		Stream<Integer> stream = Streams.merge(
 		  Streams.just(1)
 			.map(i -> Streams.range(0, n))
 		);

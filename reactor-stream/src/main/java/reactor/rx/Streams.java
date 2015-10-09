@@ -298,15 +298,15 @@ public class Streams {
 	}
 
 	/**
-	 * Build a {@literal Stream} that will only emit a sequence of longs within the specified range and then
+	 * Build a {@literal Stream} that will only emit a sequence of int within the specified range and then
 	 * complete.
 	 *
-	 * @param start the inclusive starting value to be emitted
-	 * @param end   the inclusive closing value to be emitted
+	 * @param start the starting value to be emitted
+	 * @param count   the number ot times to emit an increment including the first value
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static Stream<Long> range(long start, long end) {
-		return RangeStream.create(start, end);
+	public static Stream<Integer> range(int start, int count) {
+		return RangeStream.create(start, count);
 	}
 
 	/**

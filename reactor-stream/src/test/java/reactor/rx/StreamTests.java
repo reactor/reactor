@@ -787,7 +787,7 @@ public class StreamTests extends AbstractReactorTest {
 	 */
 	@Test
 	public void partitionByHashCodeShouldNeverCreateMoreStreamsThanSpecified() throws Exception {
-		Stream<Integer> stream = Streams.range(-10, 10).map(Long::intValue);
+		Stream<Integer> stream = Streams.range(-10, 20).map(Integer::intValue);
 
 		assertThat(stream.partition(2).count().tap().get(), is(equalTo(2L)));
 	}
@@ -990,9 +990,9 @@ public class StreamTests extends AbstractReactorTest {
 		ProcessorGroup<Long> supplier = Processors.asyncGroup("test-p", 2048, 2);
 
 		int max = ThreadLocalRandom.current().nextInt(100, 300);
-		CountDownLatch countDownLatch = new CountDownLatch(max + 1);
+		CountDownLatch countDownLatch = new CountDownLatch(max);
 
-		Stream<Long> worker = Streams.range(0, max).dispatchOn(asyncGroup);
+		Stream<Integer> worker = Streams.range(0, max).dispatchOn(asyncGroup);
 		worker.partition(2).consume(s ->
 			s
 			  .dispatchOn(supplier)

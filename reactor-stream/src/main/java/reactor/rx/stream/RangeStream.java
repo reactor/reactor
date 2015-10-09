@@ -18,6 +18,7 @@ package reactor.rx.stream;
 import org.reactivestreams.Subscriber;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -60,55 +61,60 @@ public final class RangeStream {
 	 * Create a Range Stream Publisher
 	 *
 	 * @param min
-	 * @param max
+	 * @param count
 	 * @return
 	 */
-	public static Stream<Long> create(final long min, final long max) {
-		if(max < min)
-			return Streams.empty();
+	public static Stream<Integer> create(final int min, final int count) {
 
-		return Streams.wrap(PublisherFactory.create(new Consumer<SubscriberWithContext<Long, Range>>() {
+		Assert.isTrue(count >= 0, "Count can not be negative");
+
+		if(count == 0) {
+			return Streams.empty();
+		}
+		else if ( count == 1 ){
+			return Streams.just(min);
+		}
+		Assert.isTrue(min <= Integer.MAX_VALUE - count + 1, "start + count can not exceed Integer.MAX_VALUE");
+
+
+		return Streams.wrap(PublisherFactory.create(new Consumer<SubscriberWithContext<Integer, Range>>() {
 			  @Override
-			  public void accept(SubscriberWithContext<Long, Range> subscriber) {
+			  public void accept(SubscriberWithContext<Integer, Range> subscriber) {
 				  Range range = subscriber.context();
 
-				  if (range.cursor <= range.end) {
-					  subscriber.onNext(range.cursor++);
+				  if (range.cursor < range.count) {
+					  subscriber.onNext(range.start + range.cursor++);
 				  }
-				  if (range.cursor > range.end) {
+				  if (range.cursor >= range.count) {
 					  subscriber.onComplete();
 				  }
 			  }
-		  }, new Function<Subscriber<? super Long>, Range>() {
+		  }, new Function<Subscriber<? super Integer>, Range>() {
 			  @Override
-			  public Range apply(Subscriber<? super Long> subscriber) {
-				  if (max < min) {
-					  subscriber.onComplete();
-					  throw PublisherFactory.PrematureCompleteException.INSTANCE;
-				  }
-				  return new Range(min, max);
+			  public Range apply(Subscriber<? super Integer> subscriber) {
+				  return new Range(min, count);
 			  }
 		  })
 		);
 	}
 
 	private final static class Range {
-		final long start;
-		final long end;
+		final int count;
+		final int start;
 
-		long cursor;
+		int cursor;
 
-		public Range(long start, long end) {
+		public Range(int start, int count) {
+			this.count = count;
 			this.start = start;
-			this.end = end;
-			cursor = start;
+			cursor = 0;
 		}
 
 		@Override
 		public String toString() {
 			return "{" +
-			  "cursor=" + cursor + "" + (end > 0 ? "[" + 100 * (cursor - 1) / end + "%]" : "") +
-			  ", start=" + start + ", end=" + end + "}";
+			  "cursor=" + cursor + "" + (count > 0 ? "[" + 100 * (cursor - 1) / count + "%]" : "") +
+			  ", start=" + start + ", count=" + count + "}";
 		}
 	}
 }
