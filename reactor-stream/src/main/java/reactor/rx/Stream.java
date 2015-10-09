@@ -1032,7 +1032,23 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	public final <V> Stream<V> flatMap(@Nonnull
 	                                   final Function<? super O, ? extends Publisher<? extends V>> fn) {
-		return map(fn).merge();
+
+		return new Stream<V>() {
+			@Override
+			public void subscribe(Subscriber<? super V> s) {
+				Publishers.flatMap(Stream.this, fn).subscribe(s);
+			}
+
+			@Override
+			public Timer getTimer() {
+				return Stream.this.getTimer();
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+		};
 	}
 
 	/**
