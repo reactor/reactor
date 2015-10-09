@@ -1258,8 +1258,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			@Override
 			public Action<Publisher<?>, V> get() {
 				return new DynamicMergeAction<Object, V>(
-				  new ZipAction<Object, V, TupleN>(zipper, null)).
-				  capacity(getCapacity());
+						new ZipAction<Object, V, TupleN>(zipper, null)).
+						capacity(getCapacity());
 			}
 		});
 	}
@@ -1536,7 +1536,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 					public Object apply(Throwable throwable) {
 						if (exceptionType.isAssignableFrom(throwable.getClass())) {
 							return Exceptions.getFinalValueCause(throwable);
-						} else {
+						}
+						else {
 							return null;
 						}
 					}
@@ -1548,7 +1549,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 					public Signal<Throwable> apply(Throwable throwable) {
 						if (exceptionType.isAssignableFrom(throwable.getClass())) {
 							return Signal.next(throwable);
-						} else {
+						}
+						else {
 							return Signal.<Throwable>error(throwable);
 						}
 					}
@@ -2086,12 +2088,13 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	@SuppressWarnings("unchecked")
 	public final <V> Stream<V> split() {
 		final Stream<Iterable<? extends V>> iterableStream = (Stream<Iterable<? extends V>>) this;
-		return iterableStream.flatMap(new Function<Iterable<? extends V>, Publisher<? extends V>>() {
-			@Override
-			public Publisher<? extends V> apply(Iterable<? extends V> vs) {
-				return Streams.from(vs);
-			}
-		});
+		return iterableStream.flatMap(
+				new Function<Iterable<? extends V>, Publisher<? extends V>>() {
+					@Override
+					public Publisher<? extends V> apply(Iterable<? extends V> vs) {
+						return Streams.from(vs);
+					}
+				});
 	}
 
 	/**
@@ -2242,10 +2245,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return liftAction(new Supplier<Action<O, List<O>>>() {
 			@Override
 			public Action<O, List<O>> get() {
-				return new BufferShiftAction<O>(Integer.MAX_VALUE, Integer.MAX_VALUE, timeshift,
-				  timespan,
-				  unit,
-				  timer);
+				return new BufferShiftAction<O>(Integer.MAX_VALUE, Integer.MAX_VALUE,
+						timeshift, timespan, unit, timer);
 			}
 		});
 	}
@@ -2637,10 +2638,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return liftAction(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new ThrottleRequestAction<O>(
-				  timer,
-				  period
-				);
+				return new ThrottleRequestAction<O>(timer, period);
 			}
 		});
 	}
@@ -2718,11 +2716,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return liftAction(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new TimeoutAction<O>(
-				  fallback,
-				  timer,
-				  unit != null ? TimeUnit.MILLISECONDS.convert(timeout, unit) : timeout
-				);
+				return new TimeoutAction<O>(fallback, timer,
+						unit != null ? TimeUnit.MILLISECONDS.convert(timeout, unit) :
+								timeout);
 			}
 		});
 	}
@@ -2758,6 +2754,24 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		subscribe(d);
 		return d;
 	}
+
+	/**
+	 * Return the promise of the next triggered signal. Unlike next, no extra action is required to
+	 *  request 1 onSubscribe allowing for the promise request to run on the onSubscribe signal thread.
+	 *
+	 * A promise is a container that will capture only once the first arriving error|next|complete signal
+	 * to this {@link Stream}. It is useful to coordinate on single data streams or await for any signal.
+	 *
+	 * @return a new {@link Promise}
+	 * @since 2.1
+	 */
+	public final Promise<O> consumeNext() {
+		Promise<O> d = new Promise<O>(getTimer());
+		d.request(1);
+		subscribe(d);
+		return d;
+	}
+
 
 	/**
 	 * Fetch all values in a List to the returned Promise

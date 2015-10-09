@@ -147,7 +147,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	@Override
 	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
 
-		final Promise<Void> promise = Promises.ready();
+		final Promise<Void> promise = Promises.prepare();
 
 		ChannelFutureListener listener = new ChannelFutureListener() {
 			@Override
@@ -218,7 +218,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			return Promises.success();
 		}
 
-		final Promise<Void> promise = Promises.ready();
+		final Promise<Void> promise = Promises.prepare();
 
 		ioGroup.shutdownGracefully().addListener(new FutureListener<Object>() {
 			@Override

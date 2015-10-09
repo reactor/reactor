@@ -157,7 +157,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		bindFuture = bootstrap.bind();
 
 
-		final Promise<Void> promise = Promises.ready();
+		final Promise<Void> promise = Promises.prepare();
 		bindFuture.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) throws Exception {
@@ -182,7 +182,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	@SuppressWarnings("unchecked")
 	public Promise<Void> doShutdown() {
 
-		final Promise<Void> d = Promises.ready();
+		final Promise<Void> d = Promises.prepare();
 		final AtomicInteger groupsToShutdown = new AtomicInteger(2);
 		GenericFutureListener listener = new GenericFutureListener() {
 

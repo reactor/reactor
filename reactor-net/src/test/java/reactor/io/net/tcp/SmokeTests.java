@@ -277,7 +277,7 @@ public class SmokeTests {
 			.codec(codec).listen(port)
 		);
 
-
+		AtomicInteger term = new AtomicInteger(1);
 		httpServer.get("/data", (request) -> {
 			request.responseHeaders().removeTransferEncodingChunked();
 			request.addResponseHeader("Content-type", "text/plain");
@@ -287,27 +287,26 @@ public class SmokeTests {
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
 			return request.writeWith(bufferStream
-				.observe(d ->
-					integer.getAndIncrement()
-				)
-				.take(takeCount)
-				.observe(d ->
-					integerPostTake.getAndIncrement()
-				)
-				.timeout(2, TimeUnit.SECONDS, Streams.<Buffer>empty())
-				.observe(d ->
-					integerPostTimeout.getAndIncrement()
-				)
-				.concatWith(Streams.just(GpdistCodec.class.equals(codec.getClass()) ? Buffer.wrap(new byte[0]) :
-				  Buffer.wrap("END")))//END
-				.observe(d ->
-					integerPostConcat.getAndIncrement()
-				)
-				.observeComplete(no ->
-					integerPostConcat.decrementAndGet()
-				)//END
-				.capacity(1L)
-			);
+							.observe(d -> integer.getAndIncrement())
+							.take(takeCount)
+							.observe(d -> integerPostTake.getAndIncrement())
+							.observeComplete(
+									no -> integerPostConcat.getAndAdd(-term.getAndSet(0)))
+							.timeout(2, TimeUnit.SECONDS,
+									Streams.<Buffer>empty()
+									.observeComplete(no -> integerPostConcat
+											.decrementAndGet()))
+							.observeComplete(
+									no -> integerPostConcat.getAndAdd(-term.getAndSet(0)))
+							.observe(
+									d -> integerPostTimeout.getAndIncrement())
+							.concatWith(
+									Streams.just(
+											GpdistCodec.class.equals(codec.getClass()) ?
+													Buffer.wrap(new byte[0]) :
+													Buffer.wrap("END")))//END
+							.observe(d -> integerPostConcat.getAndIncrement())
+							.capacity(1L));
 		});
 
 		httpServer.start().awaitSuccess();

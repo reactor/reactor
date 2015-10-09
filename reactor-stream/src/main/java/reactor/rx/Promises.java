@@ -63,6 +63,29 @@ public final class Promises {
 	}
 
 	/**
+	 * Create a synchronous {@link Promise}.
+	 *
+	 * @param <T> type of the expected value
+	 * @return A {@link Promise}.
+	 */
+	public static <T> Promise<T> prepare() {
+		return prepare(Timers.globalOrNull());
+	}
+
+	/**
+	 * Create a `{@link Promise}.
+	 *
+	 * @param timer        the {@link reactor.fn.timer.Timer} to use by default for scheduled operations
+	 * @param <T>        type of the expected value
+	 * @return a new {@link reactor.rx.Promise}
+	 */
+	public static <T> Promise<T> prepare(Timer timer) {
+		Promise<T> p = new Promise<T>(timer);
+		p.request(1);
+		return p;
+	}
+
+	/**
 	 * Create a {@link Promise} producing the value for the {@link Promise} using the
 	 * given supplier.
 	 *

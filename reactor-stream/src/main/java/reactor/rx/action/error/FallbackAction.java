@@ -16,6 +16,7 @@
 package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.rx.action.Action;
 
@@ -27,26 +28,36 @@ public class FallbackAction<T> extends Action<T, T> {
 
 	protected final Publisher<? extends T> fallback;
 
-	private boolean switched        = false;
-	private long    pendingRequests = 0l;
+	private volatile boolean switched        = false;
+	private volatile long    pendingRequests = 0l;
 
 	public FallbackAction(Publisher<? extends T> fallback) {
 		this.fallback = fallback;
 	}
 
 	@Override
+	protected void doOnSubscribe(Subscription subscription) {
+		long p = pendingRequests;
+		if(p > 0){
+			subscription.request(p);
+		}
+	}
+
+	@Override
 	protected void doNext(T ev) {
 		boolean toSwitch;
 		synchronized (this){
-			if(pendingRequests > 0 && pendingRequests != Long.MAX_VALUE){
-				pendingRequests--;
+			long p = pendingRequests;
+			if(p > 0 && p != Long.MAX_VALUE){
+				pendingRequests = --p;
 			}
 			toSwitch = switched;
 		}
 
 		if(toSwitch){
 			doFallbackNext(ev);
-		}else{
+		}
+		else{
 			doNormalNext(ev);
 		}
 	}
@@ -60,19 +71,8 @@ public class FallbackAction<T> extends Action<T, T> {
 	}
 
 	protected void doSwitch(){
-		this.cancel();
-		long pending;
-
-		synchronized (this){
-			this.switched = true;
-			pending = pendingRequests;
-		}
-
+		cancel();
 		fallback.subscribe(this);
-
-		if(pending > 0){
-			upstreamSubscription.request(pending);
-		}
 	}
 
 	protected void doNormalNext(T ev) {

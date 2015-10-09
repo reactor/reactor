@@ -424,7 +424,7 @@ class PromisesSpec extends Specification {
 	def "When a promise is fulfilled, if a mapping function throws an exception the mapped promise is rejected"() {
 		given:
 			"a promise with a filter that throws an error"
-			Promise<String> promise = Promises.<String> ready()
+			Promise<String> promise = Promises.<String> prepare()
 			def e = new RuntimeException()
 			def mapped = promise.map { throw e }
 
@@ -434,7 +434,6 @@ class PromisesSpec extends Specification {
 
 		then:
 			"the mapped promise is rejected"
-			mapped.request(1)
 			mapped.error
 	}
 
@@ -725,12 +724,11 @@ class PromisesSpec extends Specification {
 			"a promise with a filter that throws an error"
 			def promise = Promises.ready()
 			def e = new RuntimeException()
-			def filteredPromise = promise.stream().filter { throw e }.next()
+			def filteredPromise = promise.stream().filter { throw e }.consumeNext()
 
 		when:
 			"the promise is fulfilled"
 			promise.onNext 2
-			filteredPromise.request(1)
 
 		then:
 			"the filtered promise is rejected"

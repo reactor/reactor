@@ -833,10 +833,12 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 							processedSequence = false;
 							do {
 								nextSequence = processor.workSequence.get() + 1L;
-								readNextEvent(processor.ringBuffer.get(nextSequence), unbounded);
+
 								if(!unbounded) {
+									readNextEvent(processor.ringBuffer.get(nextSequence), unbounded);
 									pendingRequest.incrementAndGet();
 								}
+
 								sequence.set(nextSequence - 1L);
 							}
 							while (!processor.workSequence.compareAndSet(nextSequence - 1L, nextSequence));
@@ -845,7 +847,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 						if (cachedAvailableSequence >= nextSequence) {
 							event = processor.ringBuffer.get(nextSequence);
 
-							readNextEvent(processor.ringBuffer.get(nextSequence), unbounded);;
+							readNextEvent(event, unbounded);
 
 							//It's an unbounded subscriber or there is enough capacity to process the signal
 							RingBufferSubscriberUtils.routeOnce(event, subscriber);
@@ -896,13 +898,11 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			while ((replayedSequence = processor.cancelledSequences.poll()) != null) {
 				signal = processor.ringBuffer.get(replayedSequence.get() + 1L);
 				try {
-					if (signal.value == null) {
-						barrier.waitFor(replayedSequence.get() + 1L);
-					}
+
 					readNextEvent(signal, unbounded);
 					RingBufferSubscriberUtils.routeOnce(signal, subscriber);
 					processor.ringBuffer.removeGatingSequence(replayedSequence);
-				} catch (InterruptedException | AlertException | CancelException ce) {
+				} catch (AlertException | CancelException ce) {
 					processor.ringBuffer.removeGatingSequence(sequence);
 					processor.cancelledSequences.add(replayedSequence);
 					return true;

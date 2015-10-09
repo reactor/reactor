@@ -152,7 +152,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> channelHandler) {
-		final Promise<Void> promise = Promises.ready(getDefaultTimer());
+		final Promise<Void> promise = Promises.prepare(getDefaultTimer());
 
 		ChannelFuture future = bootstrap.handler(new ChannelInitializer<DatagramChannel>() {
 			@Override
@@ -183,7 +183,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	@Override
 	@SuppressWarnings("unchecked")
 	protected Promise<Void> doShutdown() {
-		final Promise<Void> d = Promises.ready();
+		final Promise<Void> d = Promises.prepare();
 
 		ChannelFuture future = channel.close();
 		final GenericFutureListener listener = new GenericFutureListener() {
@@ -220,7 +220,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
 
-		final Promise<Void> d = Promises.ready(getDefaultTimer());
+		final Promise<Void> d = Promises.prepare(getDefaultTimer());
 
 		if (null == iface && null != getMulticastInterface()) {
 			iface = getMulticastInterface();
@@ -257,7 +257,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			iface = getMulticastInterface();
 		}
 
-		final Promise<Void> d = Promises.ready(getDefaultTimer());
+		final Promise<Void> d = Promises.prepare(getDefaultTimer());
 
 		final ChannelFuture future;
 		if (null != iface) {
