@@ -16,9 +16,18 @@
 
 package reactor.io.net.impl.netty.tcp;
 
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.net.ssl.SSLEngine;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.SocketChannelConfig;
 import io.netty.handler.logging.LoggingHandler;
@@ -44,10 +53,6 @@ import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 
-import javax.net.ssl.SSLEngine;
-import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicInteger;
-
 /**
  * A Netty-based {@code TcpServer} implementation
  *
@@ -64,6 +69,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	private final ServerBootstrap          bootstrap;
 	private final EventLoopGroup           selectorGroup;
 	private final EventLoopGroup           ioGroup;
+
+	private ChannelFuture bindFuture;
 
 	protected NettyTcpServer(Timer timer,
 	                         InetSocketAddress listenAddress,
@@ -93,7 +100,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 		ServerBootstrap _serverBootstrap = new ServerBootstrap()
 		  .group(selectorGroup, ioGroup)
 		  .channel(NettyNativeDetector.getServerChannel(ioGroup))
-		  .localAddress((null == listenAddress ? new InetSocketAddress(0) : listenAddress))
+		  .localAddress(
+				  (null == listenAddress ? new InetSocketAddress(0) : listenAddress))
 		  .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 		  .childOption(ChannelOption.AUTO_READ, sslOptions != null);
 
@@ -146,7 +154,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			}
 		});
 
-		ChannelFuture bindFuture = bootstrap.bind();
+		bindFuture = bootstrap.bind();
 
 
 		final Promise<Void> promise = Promises.ready();
@@ -156,10 +164,12 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				log.info("BIND {}", future.channel().localAddress());
 				if (future.isSuccess()) {
 					if (listenAddress.getPort() == 0) {
-						listenAddress = (InetSocketAddress) future.channel().localAddress();
+						listenAddress =
+								(InetSocketAddress) future.channel().localAddress();
 					}
 					promise.onComplete();
-				} else {
+				}
+				else {
 					promise.onError(future.cause());
 				}
 			}
@@ -173,7 +183,6 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	public Promise<Void> doShutdown() {
 
 		final Promise<Void> d = Promises.ready();
-
 		final AtomicInteger groupsToShutdown = new AtomicInteger(2);
 		GenericFutureListener listener = new GenericFutureListener() {
 
@@ -184,6 +193,12 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 				}
 			}
 		};
+		try {
+			bindFuture.channel().close().sync();
+		} catch (InterruptedException ie){
+			return Promises.error(ie);
+		}
+
 		selectorGroup.shutdownGracefully().addListener(listener);
 		if (null == nettyOptions || null == nettyOptions.eventLoopGroup()) {
 			ioGroup.shutdownGracefully().addListener(listener);

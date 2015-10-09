@@ -16,10 +16,23 @@
 
 package reactor.io.net.impl.netty.udp;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
+import java.net.ProtocolFamily;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ChannelFactory;
-import io.netty.channel.*;
-import io.netty.channel.epoll.EpollDatagramChannel;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelOutboundHandlerAdapter;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.ChannelPromise;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.DatagramChannel;
 import io.netty.channel.socket.DatagramPacket;
@@ -45,11 +58,6 @@ import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.udp.DatagramServer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
-
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
-import java.net.ProtocolFamily;
 
 /**
  * {@link reactor.io.net.udp.DatagramServer} implementation built on Netty.
@@ -98,8 +106,8 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		;
 
 		if ((options == null || options.protocolFamily() == null) &&
-				NettyNativeDetector.getDatagramChannel(ioGroup).equals(EpollDatagramChannel.class)) {
-			bootstrap.channel(EpollDatagramChannel.class);
+				NettyNativeDetector.getDatagramChannel(ioGroup).getSimpleName().startsWith("Epoll")) {
+			bootstrap.channel(NettyNativeDetector.getDatagramChannel(ioGroup));
 		} else {
 			bootstrap.channelFactory(new ChannelFactory<Channel>() {
 				@Override
