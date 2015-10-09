@@ -13,7 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.reactivestreams.tck;
+
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
 import org.reactivestreams.Processor;
@@ -24,9 +28,6 @@ import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.stream.GroupedStream;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * @author Stephane Maldini
  */
@@ -34,6 +35,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 	final AtomicLong cumulated = new AtomicLong(0);
+
 	final AtomicLong cumulatedJoin = new AtomicLong(0);
 
 	@Override
@@ -46,29 +48,23 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		cumulated.set(0);
 		cumulatedJoin.set(0);
 
-		return
-		  Processors.create(
-		    p,
-		    Streams.wrap(p)
-			  .forkJoin(2, (GroupedStream<Integer, Integer> stream) -> stream
-				  .scan((prev, next) -> next)
-				  .map(integer -> -integer)
-				  //.log()
-				  .filter(integer -> integer <= 0)
-				  .sample(1)
-				  .map(integer -> -integer)
-				  .buffer(batch, 50, TimeUnit.MILLISECONDS)
-				  .<Integer>split()
-				  .observe(array -> cumulated.getAndIncrement())
-				  .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
-				  .observe(this::monitorThreadUse)
-			    //.log()
-			  )
-		      .observe(array -> cumulatedJoin.getAndIncrement())
-			    //.log()
-			  .process(Processors.topic("stream-raw-join", bufferSize))
-			  .when(Throwable.class, Throwable::printStackTrace)
-		  );
+		return Processors.create(p, Streams.wrap(p).forkJoin(2,
+				(GroupedStream<Integer, Integer> stream) -> stream
+						.scan((prev, next) -> next)
+						.map(integer -> -integer)
+						.filter(integer -> integer <= 0).sample(1)
+						.map(integer -> -integer)
+						.buffer(batch, 50, TimeUnit.MILLISECONDS)
+						.<Integer>split()
+						.observe(array -> cumulated.getAndIncrement())
+						.flatMap(i -> Streams
+								.zip(Streams.just(i), otherStream, Tuple1::getT1))
+						.observe(this::monitorThreadUse)
+				//.log()
+		)
+				.observe(array -> cumulatedJoin.getAndIncrement())
+				.process(Processors.topic("stream-raw-join", bufferSize))
+				.when(Throwable.class, Throwable::printStackTrace));
 	}
 
 	@Override
@@ -78,37 +74,43 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 	@Override
 	public void stochastic_spec103_mustSignalOnMethodsSequentially() throws Throwable {
-			super.stochastic_spec103_mustSignalOnMethodsSequentially();
+		super.stochastic_spec103_mustSignalOnMethodsSequentially();
 	}
 
-
 	@Override
-	public void required_spec309_requestZeroMustSignalIllegalArgumentException() throws Throwable {
+	public void required_spec309_requestZeroMustSignalIllegalArgumentException()
+			throws Throwable {
 		throw new SkipException("TODO");
 	}
 
 	@Override
-	public void required_spec309_requestNegativeNumberMustSignalIllegalArgumentException() throws Throwable {
+	public void required_spec309_requestNegativeNumberMustSignalIllegalArgumentException()
+			throws Throwable {
 		throw new SkipException("TODO");
 	}
-
 
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
 //		for(int i = 0; i < 1000; i++)
-			try {
-				super.testHotIdentityProcessor();
-			} finally {
-				System.out.println("cumulated : "+cumulated);
-				System.out.println("cumulated after join : "+cumulatedJoin);
-			}
+		try {
+			super.testHotIdentityProcessor();
+		}
+		finally {
+			System.out.println("cumulated : " + cumulated);
+			System.out.println("cumulated after join : " + cumulatedJoin);
+		}
 	}
-
 
 	@Test
 	public void testColdIdentityProcessor() throws InterruptedException {
-//		for(int i = 0; i < 1000; i++) {
-			super.testColdIdentityProcessor();
+		//for (int i = 0; i < 1000; i++) {
+			try {
+				super.testColdIdentityProcessor();
+			}
+			finally {
+				System.out.println("cumulated : " + cumulated);
+				System.out.println("cumulated after join : " + cumulatedJoin);
+			}
 //		}
 	}
 }

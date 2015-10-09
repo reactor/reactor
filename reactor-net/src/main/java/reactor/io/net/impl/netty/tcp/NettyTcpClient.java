@@ -92,10 +92,10 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	 * @param codec          The codec used to encode and decode data
 	 */
 	public NettyTcpClient(Timer timer,
-	                      InetSocketAddress connectAddress,
-	                      final ClientSocketOptions options,
-	                      final SslOptions sslOptions,
-	                      Codec<Buffer, IN, OUT> codec) {
+			InetSocketAddress connectAddress,
+			final ClientSocketOptions options,
+			final SslOptions sslOptions,
+			Codec<Buffer, IN, OUT> codec) {
 		super(timer, connectAddress, options, sslOptions, codec);
 		this.connectAddress = connectAddress;
 
@@ -110,23 +110,23 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		} else {
 			int ioThreadCount = TcpServer.DEFAULT_TCP_THREAD_COUNT;
 			this.ioGroup = NettyNativeDetector.newEventLoopGroup(ioThreadCount, new NamedDaemonThreadFactory
-			  ("reactor-tcp-io"));
+					("reactor-tcp-io"));
 		}
 
 		Bootstrap _bootstrap = new Bootstrap()
-		        .group(ioGroup)
-		        .channel(NettyNativeDetector.getChannel(ioGroup))
+				.group(ioGroup)
+				.channel(NettyNativeDetector.getChannel(ioGroup))
 				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.option(ChannelOption.AUTO_READ, sslOptions != null)
-						//.remoteAddress(this.connectAddress)
+				//.remoteAddress(this.connectAddress)
 				;
 
 		if (options != null) {
 			_bootstrap = _bootstrap.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
-			  .option(ChannelOption.SO_SNDBUF, options.sndbuf())
-			  .option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
-			  .option(ChannelOption.SO_LINGER, options.linger())
-			  .option(ChannelOption.TCP_NODELAY, options.tcpNoDelay());
+					.option(ChannelOption.SO_SNDBUF, options.sndbuf())
+					.option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
+					.option(ChannelOption.SO_LINGER, options.linger())
+					.option(ChannelOption.TCP_NODELAY, options.tcpNoDelay());
 		}
 
 
@@ -203,7 +203,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	@Override
 	protected Stream<Tuple2<InetSocketAddress, Integer>> doStart(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>>
-			                                                       handler, final Reconnect reconnect) {
+			handler, final Reconnect reconnect) {
 
 		ReconnectingChannelListener listener = new ReconnectingChannelListener(connectAddress, reconnect);
 		addHandler(handler);
@@ -246,8 +246,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		if (log.isDebugEnabled()) {
 			pipeline.addLast(new LoggingHandler(NettyTcpClient.class));
 		}
-		pipeline.addLast(
-				new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel)
+		pipeline.addLast(new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel)
 		);
 	}
 
@@ -263,12 +262,12 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		private final AtomicInteger attempts = new AtomicInteger(0);
 		private final Reconnect reconnect;
 		private final Broadcaster<Tuple2<InetSocketAddress, Integer>> broadcaster =
-		  BehaviorBroadcaster.create(getDefaultTimer());
+				BehaviorBroadcaster.create(getDefaultTimer());
 
 		private volatile InetSocketAddress connectAddress;
 
 		private ReconnectingChannelListener(InetSocketAddress connectAddress,
-		                                    Reconnect reconnect) {
+				Reconnect reconnect) {
 			this.connectAddress = connectAddress;
 			this.reconnect = reconnect;
 		}
@@ -284,7 +283,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					// do not attempt a reconnect
 					if (log.isErrorEnabled()) {
 						log.error("Reconnection to {} failed after {} attempts. Giving up.", connectAddress, attempt -
-						  1);
+								1);
 					}
 					future.channel().eventLoop().submit(new Runnable() {
 						@Override
@@ -309,7 +308,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 						}
 
 						Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempts
-						  .incrementAndGet());
+								.incrementAndGet());
 						if (null == tup) {
 							broadcaster.onComplete();
 							// do not attempt a reconnect
@@ -333,16 +332,16 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 			}
 
 			getDefaultTimer()
-			  .submit(
-			    new Consumer<Long>() {
-				    @Override
-				    public void accept(Long now) {
-					    openChannel(ReconnectingChannelListener.this);
-				    }
-			    },
-			    delay,
-			    TimeUnit.MILLISECONDS
-			  );
+					.submit(
+							new Consumer<Long>() {
+								@Override
+								public void accept(Long now) {
+									openChannel(ReconnectingChannelListener.this);
+								}
+							},
+							delay,
+							TimeUnit.MILLISECONDS
+					);
 		}
 	}
 

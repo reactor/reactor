@@ -60,7 +60,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final static Logger log = LoggerFactory.getLogger(ZeroMQTcpClient.class);
 
 	public static final int DEFAULT_ZMQ_THREAD_COUNT = Integer.parseInt(
-	  System.getProperty("reactor.zmq.ioThreadCount", "1")
+			System.getProperty("reactor.zmq.ioThreadCount", "1")
 	);
 
 	private final int                       ioThreadCount;
@@ -68,10 +68,10 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final ExecutorService           threadPool;
 
 	public ZeroMQTcpClient(Timer timer,
-	                       InetSocketAddress connectAddress,
-	                       ClientSocketOptions options,
-	                       SslOptions sslOptions,
-	                       Codec<Buffer, IN, OUT> codec) {
+			InetSocketAddress connectAddress,
+			ClientSocketOptions options,
+			SslOptions sslOptions,
+			Codec<Buffer, IN, OUT> codec) {
 		super(timer, connectAddress, options == null ? new ClientSocketOptions() : options, sslOptions, codec);
 
 		this.ioThreadCount = DEFAULT_ZMQ_THREAD_COUNT;
@@ -103,10 +103,10 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	protected ZeroMQChannelStream<IN, OUT> bindChannel() {
 
 		return new ZeroMQChannelStream<IN, OUT>(
-		  getDefaultTimer(),
-		  getDefaultPrefetchSize(),
-		  getConnectAddress(),
-		  getDefaultCodec()
+				getDefaultTimer(),
+				getDefaultPrefetchSize(),
+				getConnectAddress(),
+				getDefaultCodec()
 		);
 	}
 

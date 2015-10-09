@@ -39,6 +39,8 @@ import java.util.List;
  */
 public final class Promises {
 
+	private final static Promise COMPLETE = success(null);
+
 	/**
 	 * Create a synchronous {@link Promise}.
 	 *
@@ -121,8 +123,9 @@ public final class Promises {
 	 *
 	 * @return A {@link Promise} that is completed
 	 */
+	@SuppressWarnings("unchecked")
 	public static Promise<Void> success() {
-		return success(null);
+		return COMPLETE;
 	}
 
 	/**
@@ -358,8 +361,7 @@ public final class Promises {
 		Promise<List<T>> d = new Promise<>();
 
 		Streams.merge(promises)
-		  .buffer(promises.size())
-		  .subscribe(d);
+		  .buffer(promises.size()).subscribe(d);
 
 		return d;
 	}

@@ -13,53 +13,61 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.io.net.impl.netty;
+package reactor.io.net.impl.netty.internal;
 
 import java.util.concurrent.ThreadFactory;
 
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollDatagramChannel;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
+import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.util.internal.PlatformDependent;
-import reactor.io.net.impl.netty.internal.EpollDetector;
 
 /**
  * @author Stephane Maldini
  */
-public class NettyNativeDetector {
+public class EpollDetector {
 
-	private final static boolean epoll;
-
+	private static final boolean epoll;
 
 	static {
-		if (!PlatformDependent.isWindows()
-				&&
-				Boolean.parseBoolean(System.getProperty("reactor.io.epoll", "true"))) {
-				epoll = EpollDetector.hasEpoll();
+		boolean epollCheck = false;
+		try{
+			Class.forName("io.netty.channel.epoll.Epoll");
+			epollCheck = Epoll.isAvailable();
 		}
-		else {
-			epoll = true;
+		catch (ClassNotFoundException cnfe){
 		}
+		epoll = epollCheck;
 	}
 
 	public static EventLoopGroup newEventLoopGroup(int threads, ThreadFactory factory) {
-		return epoll ? EpollDetector.newEventLoopGroup(threads, factory) : new NioEventLoopGroup(threads, factory);
+		return epoll ? new EpollEventLoopGroup(threads, factory) : new NioEventLoopGroup(threads, factory);
 	}
 
 	public static Class<? extends ServerChannel> getServerChannel(EventLoopGroup group) {
-		return epoll ? EpollDetector.getServerChannel(group) :  NioServerSocketChannel.class;
+		return EpollEventLoopGroup.class.isAssignableFrom(group.getClass()) && epoll ?
+		  EpollServerSocketChannel.class : NioServerSocketChannel.class;
 	}
 
 	public static Class<? extends Channel> getChannel(EventLoopGroup group) {
-		return epoll ? EpollDetector.getChannel(group) :  NioSocketChannel.class;
+		return EpollEventLoopGroup.class.isAssignableFrom(group.getClass()) && epoll ?
+		  EpollSocketChannel.class : NioSocketChannel.class;
 	}
 
 	public static Class<? extends Channel> getDatagramChannel(EventLoopGroup group) {
-		return epoll ? EpollDetector.getDatagramChannel(group) :  NioDatagramChannel.class;
+		return EpollEventLoopGroup.class.isAssignableFrom(group.getClass()) && epoll ?
+		  EpollDatagramChannel.class : NioDatagramChannel.class;
 	}
 
+	public static boolean hasEpoll() {
+		return epoll;
+	}
 }
