@@ -230,7 +230,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 
 	@Override
 	public Processor<T, T> get() {
-		return observeOn();
+		return dispatchOn();
 	}
 
 	/**
@@ -239,14 +239,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <V> Processor<V, V> observeOn(Class<V> clazz) {
-		return (Processor<V, V>) observeOn();
+	public <V> Processor<V, V> dispatchOn(Class<V> clazz) {
+		return (Processor<V, V>) dispatchOn();
 	}
 
 	/**
 	 * @return
 	 */
-	public Processor<T, T> observeOn() {
+	public Processor<T, T> dispatchOn() {
 		return createBarrier(false);
 	}
 
@@ -1131,8 +1131,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 		}
 
 		@Override
-		public Processor<T, T> observeOn() {
-			return next().observeOn();
+		public Processor<T, T> dispatchOn() {
+			return next().dispatchOn();
 		}
 
 		@Override

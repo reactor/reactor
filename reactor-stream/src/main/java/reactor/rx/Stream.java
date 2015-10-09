@@ -420,7 +420,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			@SuppressWarnings("unchecked")
 			public void subscribe(Subscriber<? super O> s) {
 				try {
-					Processor<O, O> processor = processorProvider.observeOn();
+					Processor<O, O> processor = processorProvider.dispatchOn();
 					processor.subscribe(s);
 					Stream.this.subscribe(processor);
 				} catch (Throwable t) {

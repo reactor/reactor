@@ -223,7 +223,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
-		Control tail = sensorOdd().joinWith(sensorEven())
+		Control tail = sensorOdd().joinWith(sensorEven().cache())
 		  .log("joinWithTest")
 		  .consume(i -> latch.countDown());
 
