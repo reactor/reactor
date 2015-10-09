@@ -164,8 +164,8 @@ public class TcpServerTests {
 
 		assertTrue("Latch was counted down", latch.await(5, TimeUnit.SECONDS));
 
-		client.shutdown().await();
-		server.shutdown().await();
+		client.shutdown();
+		server.shutdown();
 	}
 
 	@Test
@@ -222,7 +222,7 @@ public class TcpServerTests {
 		System.out.println("elapsed: " + (int) elapsed + "ms");
 		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
 
-		server.shutdown().await();
+		server.shutdown();
 	}
 
 	@Test
@@ -264,7 +264,7 @@ public class TcpServerTests {
 		System.out.println("elapsed: " + (int) elapsed + "ms");
 		System.out.println("throughput: " + (int) ((msgs * threads) / (elapsed / 1000)) + "/sec");
 
-		server.shutdown().await();
+		server.shutdown();
 	}
 
 	@Test
@@ -293,7 +293,7 @@ public class TcpServerTests {
 
 		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 
-		server.shutdown().await();
+		server.shutdown();
 	}
 
 	@Test
@@ -329,8 +329,8 @@ public class TcpServerTests {
 
 		assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
 
-		client.shutdown().await();
-		server.shutdown().await();
+		client.shutdown();
+		server.shutdown();
 	}
 
 	@Test
@@ -365,7 +365,7 @@ public class TcpServerTests {
 		try {
 			assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
 		} finally {
-			server.shutdown().await();
+			server.shutdown();
 		}
 
 	}
@@ -454,7 +454,7 @@ public class TcpServerTests {
 		}
 
 
-		httpServer.shutdown().awaitSuccess();
+		httpServer.shutdown();
 
 	}
 

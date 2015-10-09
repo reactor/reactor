@@ -85,7 +85,7 @@ public class PostAndGetTests {
 
 	@After
 	public void teardown() throws Exception {
-		httpServer.shutdown().await();
+		httpServer.shutdown();
 	}
 
 	@Test

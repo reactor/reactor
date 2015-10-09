@@ -94,7 +94,8 @@ class HttpSpec extends Specification {
 
 		cleanup: "the client/server where stopped"
 			//note how we order first the client then the server shutdown
-			client?.shutdown()?.onComplete { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			client?.shutdown()
+            server?.shutdown()
 	}
 
 	def "WebSocket responds to requests from clients"() {
@@ -165,7 +166,8 @@ class HttpSpec extends Specification {
 
 		cleanup: "the client/server where stopped"
 			//note how we order first the client then the server shutdown
-			client?.shutdown()?.onComplete { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+			client?.shutdown()
+			server?.shutdown()
 	}
 
 }

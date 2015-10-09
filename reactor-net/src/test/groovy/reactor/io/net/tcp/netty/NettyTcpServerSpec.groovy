@@ -62,10 +62,7 @@ class NettyTcpServerSpec extends Specification {
 			dataLatch.count == 0
 
 		cleanup: "the server is stopped"
-			server.shutdown().onSuccess {
-				stopLatch.countDown()
-			}
-			stopLatch.await(5, TimeUnit.SECONDS)
+			server.shutdown()
 	}
 
 	def "NettyTcpServer can encode and decode JSON"() {
@@ -98,10 +95,7 @@ class NettyTcpServerSpec extends Specification {
 			dataLatch.count == 0
 
 		cleanup: "the server is stopped"
-			server.shutdown().onSuccess {
-				stopLatch.countDown()
-			}
-			stopLatch.await(5, TimeUnit.SECONDS)
+			server.shutdown()
 	}
 
 	def "flush every 5 elems with manual decoding"() {
@@ -144,8 +138,8 @@ class NettyTcpServerSpec extends Specification {
 
 
 		cleanup: "the client/server where stopped"
-			client.shutdown().onSuccess{ println 'test' }.await()
-			server.shutdown().await()
+			client.shutdown()
+			server.shutdown()
 	}
 
 
@@ -199,8 +193,8 @@ class NettyTcpServerSpec extends Specification {
 
 
 		cleanup: "the client/server where stopped"
-			client.shutdown().await()
-			server.shutdown().await()
+			client.shutdown()
+			server.shutdown()
 	}
 
 

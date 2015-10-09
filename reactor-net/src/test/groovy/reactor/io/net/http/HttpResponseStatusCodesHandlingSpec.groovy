@@ -72,6 +72,7 @@ public class HttpResponseStatusCodesHandlingSpec extends Specification {
             replyReceived == ""
 
         cleanup: "the client/server where stopped"
-            client?.shutdown()?.onComplete { server.shutdown() }?.awaitSuccess(5, TimeUnit.SECONDS)
+        client?.shutdown()
+        server?.shutdown()
     }
 }
