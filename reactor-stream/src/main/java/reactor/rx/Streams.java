@@ -192,6 +192,12 @@ public class Streams {
 		if (Stream.class.isAssignableFrom(publisher.getClass())) {
 			return (Stream<T>) publisher;
 		}
+		if (Supplier.class.isAssignableFrom(publisher.getClass())) {
+			T t = ((Supplier<T>)publisher).get();
+			if(t != null){
+				return just(t);
+			}
+		}
 		return new Stream<T>() {
 			@Override
 			public void subscribe(Subscriber<? super T> s) {
@@ -708,9 +714,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends Publisher<? extends T>> concatdPublishers) {
-		final Action<Publisher<? extends T>, T> concatAction = new ConcatAction<>();
-		concatdPublishers.subscribe(concatAction);
-		return concatAction;
+		return wrap(Publishers.concat(concatdPublishers));
 	}
 
 	/**

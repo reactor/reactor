@@ -598,24 +598,38 @@ public class Promise<O>
 	}
 
 	public Stream<O> stream() {
-		lock.lock();
-		try {
-			if (outboundStream == null) {
-				outboundStream = BehaviorBroadcaster.first(value, timer).capacity(1);
-				if (isSuccess()) {
-					outboundStream.onComplete();
+		Action<O, O> out = outboundStream;
+		if (out == null) {
+			lock.lock();
+			out = outboundStream;
+			try {
+				if (finalState == FinalState.COMPLETE) {
+					if (value == null) {
+						return Streams.<O>empty();
+					}
+					else {
+						return Streams.just(value);
+					}
+
 				}
-				else if (isError()) {
-					outboundStream.onError(error);
+				else if (finalState == FinalState.ERROR) {
+					return Streams.fail(error);
+				}
+				else if (out == null){
+					out = BehaviorBroadcaster.first(value, timer).capacity(1);
 				}
 				else {
-					outboundStream.onSubscribe(this);
+					return out;
 				}
+				outboundStream = out;
 			}
-
+			finally {
+				lock.unlock();
+			}
 		}
-		finally {
-			lock.unlock();
+
+		if (out != null) {
+			out.onSubscribe(this);
 		}
 		return outboundStream;
 	}
@@ -762,7 +776,7 @@ public class Promise<O>
 					outbound.onError(error);
 					return;
 				}
-				else if (finalState == FinalState.COMPLETE){
+				else if (finalState == FinalState.COMPLETE) {
 					if (value != null) {
 						outbound.onNext(value);
 					}

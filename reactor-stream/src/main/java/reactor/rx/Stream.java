@@ -1081,12 +1081,22 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	public final <V> Stream<V> concatMap(@Nonnull final Function<? super O,
 	  Publisher<? extends V>> fn) {
-		return map(fn).liftAction(new Supplier<Action<Publisher<? extends V>, V>>() {
+		return new Stream<V>() {
 			@Override
-			public Action<Publisher<? extends V>, V> get() {
-				return new ConcatAction<V>();
+			public void subscribe(Subscriber<? super V> s) {
+				Publishers.concatMap(Stream.this, fn).subscribe(s);
 			}
-		});
+
+			@Override
+			public Timer getTimer() {
+				return Stream.this.getTimer();
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+		};
 	}
 
 	/**
