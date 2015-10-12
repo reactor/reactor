@@ -15,20 +15,14 @@
  */
 package reactor.core.processor;
 
-import org.reactivestreams.Subscription;
-import reactor.core.error.CancelException;
-import reactor.core.error.Exceptions;
-import reactor.core.support.SignalType;
-import reactor.core.support.SingleUseExecutor;
-import reactor.fn.Consumer;
-import reactor.fn.Supplier;
-import reactor.fn.timer.GlobalTimer;
-import reactor.fn.timer.Timer;
-
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.locks.LockSupport;
+
+import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
+import reactor.core.support.SignalType;
+import reactor.core.support.SingleUseExecutor;
 
 /**
  * A base processor used by executor backed processors to take care of their ExecutorService
@@ -39,7 +33,10 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	protected final ExecutorService executor;
 
-	protected volatile boolean terminated;
+	protected volatile int terminated;
+
+	protected final static AtomicIntegerFieldUpdater<ExecutorPoweredProcessor> TERMINATED =
+		AtomicIntegerFieldUpdater.newUpdater(ExecutorPoweredProcessor.class, "terminated");
 
 	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {
 		super(executor == null ?
@@ -67,23 +64,23 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	@Override
 	public void onComplete() {
-		if (executor.getClass() == SingleUseExecutor.class) {
-			executor.shutdown();
+		if(TERMINATED.compareAndSet(this, 0, 1)) {
+			upstreamSubscription = null;
+			if (executor.getClass() == SingleUseExecutor.class) {
+				executor.shutdown();
+			}
 		}
-
-		upstreamSubscription = null;
-		terminated = true;
 	}
 
 	@Override
 	public void onError(Throwable t) {
 		super.onError(t);
-		if (executor.getClass() == SingleUseExecutor.class) {
-			executor.shutdown();
+		if(TERMINATED.compareAndSet(this, 0, 1)) {
+			upstreamSubscription = null;
+			if (executor.getClass() == SingleUseExecutor.class) {
+				executor.shutdown();
+			}
 		}
-
-		upstreamSubscription = null;
-		terminated = true;
 	}
 
 	@Override
@@ -104,9 +101,10 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	@Override
 	protected void cancel(Subscription subscription) {
-		terminated = true;
-		if (executor.getClass() == SingleUseExecutor.class) {
-			executor.shutdown();
+		if(TERMINATED.compareAndSet(this, 0, 1)) {
+			if (executor.getClass() == SingleUseExecutor.class) {
+				executor.shutdown();
+			}
 		}
 	}
 
@@ -118,7 +116,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	@Override
 	public boolean alive() {
-		return !terminated;
+		return 0 == terminated;
 	}
 
 	@Override
