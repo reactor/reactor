@@ -13,9 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.processor;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.reactivestreams.Processor;
+import reactor.Processors;
+import reactor.Subscribers;
+import reactor.core.publisher.LogOperator;
+import reactor.core.support.Assert;
 
 /**
  * @author Stephane Maldini
@@ -25,14 +33,47 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
-		return RingBufferWorkProcessor.<Long>create("rb-work", bufferSize);
+		return Processors.log(RingBufferWorkProcessor.<Long>create("rb-work", bufferSize));
 	}
 
 	@Override
-	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo() throws Throwable {
+	public void required_mustRequestFromUpstreamForElementsThatHaveBeenRequestedLongAgo()
+			throws Throwable {
 		//IGNORE since subscribers see distinct data
 	}
 
+	@Override
+	public void simpleTest() throws Exception {
+		final Processor<Integer, Integer> sink = Processors.topic("topic");
+		final Processor<Integer, Integer> processor = Processors.queue("queue");
+
+		int elems = 20_000_000;
+		CountDownLatch latch = new CountDownLatch(elems);
+
+		//List<Integer> list = new CopyOnWriteArrayList<>();
+
+		processor.subscribe(Subscribers.unbounded((d, sub) -> sub.abort()));
+		processor.subscribe(Subscribers.unbounded((d, sub) -> {
+			latch.countDown();
+			//list.add(d);
+		}));
+
+		sink.subscribe(processor);
+		Subscribers.start(sink);
+		for(int i = 0; i < elems; i++){
+			sink.onNext(i);
+			if( i % 100 == 0) {
+				processor.subscribe(Subscribers.unbounded((d, sub) -> sub.abort()));
+			}
+		}
+
+		latch.await(10, TimeUnit.SECONDS);
+		//System.out.println("list "+list.size());
+		Assert.isTrue(latch.getCount() == 0, "Latch is "+latch.getCount());
+
+		sink.onComplete();
+
+	}
 
 	/*public static void main() {
 		final RingBufferWorkProcessor<Long> processor = RingBufferWorkProcessor.<Long>create("some-test");

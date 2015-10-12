@@ -180,6 +180,26 @@ public abstract class BackpressureUtils {
 	}
 
 	/**
+	 * Concurrent addition bound to Long.MAX_VALUE.
+	 * Any concurrent write will "happen" before this operation.
+	 *
+	 * @param sequence current sequence to update
+	 * @param toAdd    delta to add
+	 * @return Addition result or Long.MAX_VALUE
+	 */
+	public static long getAndAdd(Sequence sequence, long toAdd) {
+		long u, r;
+		do {
+			r = sequence.get();
+			if (r == Long.MAX_VALUE) {
+				return Long.MAX_VALUE;
+			}
+			u = addOrLongMax(r, toAdd);
+		} while (!sequence.compareAndSet(r, u));
+		return r;
+	}
+
+	/**
 	 * Concurrent substraction bound to 0.
 	 * Any concurrent write will "happen" before this operation.
 	 *
@@ -202,22 +222,23 @@ public abstract class BackpressureUtils {
 	}
 
 	/**
-	 * Concurrent addition bound to Long.MAX_VALUE.
+	 * Concurrent substraction bound to 0 and Long.MAX_VALUE.
 	 * Any concurrent write will "happen" before this operation.
 	 *
 	 * @param sequence current sequence to update
-	 * @param toAdd    delta to add
-	 * @return Addition result or Long.MAX_VALUE
+	 * @param toSub    delta to sub
+	 * @return Substraction result, 0 or Long.MAX_VALUE
 	 */
-	public static long getAndAdd(Sequence sequence, long toAdd) {
-		long u, r;
+	public static long getAndSub(Sequence sequence, long toSub) {
+		long r, u;
 		do {
 			r = sequence.get();
-			if (r == Long.MAX_VALUE) {
-				return Long.MAX_VALUE;
+			if (r == 0 || r == Long.MAX_VALUE) {
+				return r;
 			}
-			u = addOrLongMax(r, toAdd);
+			u = subOrZero(r, toSub);
 		} while (!sequence.compareAndSet(r, u));
+
 		return r;
 	}
 }

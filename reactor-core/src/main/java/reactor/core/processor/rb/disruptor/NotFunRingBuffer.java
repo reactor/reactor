@@ -206,6 +206,10 @@ public final class NotFunRingBuffer<E> extends NotFunRingBufferFields<E>
         return sequencer.pending();
     }
 
+    @Override
+    public Sequencer getSequencer() {
+        return sequencer;
+    }
 
     @Override
     public long cachedRemainingCapacity()

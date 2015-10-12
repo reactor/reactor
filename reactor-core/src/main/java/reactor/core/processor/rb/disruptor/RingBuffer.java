@@ -23,6 +23,7 @@ import reactor.core.support.wait.BlockingWaitStrategy;
 import reactor.core.support.wait.BusySpinWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
 
 /**
@@ -31,7 +32,7 @@ import reactor.fn.Supplier;
  *
  * @param <E> implementation storing the data for sharing during exchange or parallel coordination of an event.
  */
-public abstract class RingBuffer<E>
+public abstract class RingBuffer<E> implements LongSupplier
 {
     public static final BusySpinWaitStrategy NO_WAIT = new BusySpinWaitStrategy();
 
@@ -366,4 +367,10 @@ public abstract class RingBuffer<E>
     abstract public long cachedRemainingCapacity();
 
 
+    abstract public Sequencer getSequencer();
+
+    @Override
+    public long get() {
+        return getCursor();
+    }
 }

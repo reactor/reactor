@@ -236,6 +236,10 @@ public final class UnsafeRingBuffer<E> extends RingBufferFields<E>
         return sequencer.pending();
     }
 
+    @Override
+    public Sequencer getSequencer() {
+        return sequencer;
+    }
 
     @Override
     public long cachedRemainingCapacity()

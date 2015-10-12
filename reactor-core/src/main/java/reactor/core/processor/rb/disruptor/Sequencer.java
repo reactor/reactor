@@ -254,4 +254,8 @@ public abstract class Sequencer
      * @param hi last sequence number to publish
      */
     public abstract void publish(long lo, long hi);
+
+    public WaitStrategy getWaitStrategy() {
+        return waitStrategy;
+    }
 }

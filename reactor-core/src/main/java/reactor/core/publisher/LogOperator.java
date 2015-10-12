@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.publisher;
 
 import org.reactivestreams.Subscriber;
@@ -24,43 +25,62 @@ import reactor.fn.Function;
 
 /**
  * A logging interceptor that intercepts all reactive calls and trace them
- *
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class LogOperator<IN> implements Function<Subscriber<? super IN>, Subscriber<? super IN>>{
+public final class LogOperator<IN>
+		implements Function<Subscriber<? super IN>, Subscriber<? super IN>> {
+
+	public static final int SUBSCRIBE = 0b1000000;
+
+	public static final int ON_SUBSCRIBE = 0b0100000;
+
+	public static final int ON_NEXT = 0b0010000;
+
+	public static final int ON_ERROR = 0b0001000;
+
+	public static final int ON_COMPLETE = 0b0000100;
+
+	public static final int REQUEST = 0b0000010;
+
+	public static final int CANCEL = 0b0000001;
+
+	public static final int ALL = 0b1111111;
 
 	private final Logger log;
 
-	public LogOperator(final String category) {
+	private final int options;
+
+	public LogOperator(final String category, int options) {
 
 		this.log = category != null && !category.isEmpty() ?
-		  LoggerFactory.getLogger(category) :
-		  LoggerFactory.getLogger(LogOperator.class);
-
+				LoggerFactory.getLogger(category) :
+				LoggerFactory.getLogger(LogOperator.class);
+		this.options = options;
 	}
 
 	@Override
 	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
-		if (log.isTraceEnabled()) {
+		if ((options & SUBSCRIBE) == SUBSCRIBE && log.isInfoEnabled()) {
 			log.trace("subscribe: {}", subscriber.getClass().getSimpleName());
 		}
-		return new LoggerBarrier<>(log, subscriber);
+		return new LoggerBarrier<>(log, subscriber, options);
 	}
 
 	private static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> {
 
+		private final int options;
 		private final Logger log;
 
-		public LoggerBarrier(Logger log,
-		                     Subscriber<? super IN> subscriber) {
+		public LoggerBarrier(Logger log, Subscriber<? super IN> subscriber, int options) {
 			super(subscriber);
 			this.log = log;
+			this.options = options;
 		}
 
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
-			if (log.isInfoEnabled()) {
+			if ((options & ON_SUBSCRIBE) == ON_SUBSCRIBE && log.isInfoEnabled()) {
 				log.info("⇩ onSubscribe({})", this.subscription);
 			}
 			super.doOnSubscribe(subscription);
@@ -68,7 +88,7 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 
 		@Override
 		protected void doNext(IN in) {
-			if (log.isInfoEnabled()) {
+			if ((options & ON_NEXT) == ON_NEXT && log.isInfoEnabled()) {
 				log.info("↓ onNext({})", in);
 			}
 			super.doNext(in);
@@ -76,7 +96,7 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 
 		@Override
 		protected void doError(Throwable throwable) {
-			if (log.isErrorEnabled()) {
+			if ((options & ON_ERROR) == ON_ERROR && log.isErrorEnabled()) {
 				log.error("↯ onError({})", throwable);
 			}
 			super.doError(throwable);
@@ -84,7 +104,7 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 
 		@Override
 		protected void doComplete() {
-			if (log.isInfoEnabled()) {
+			if ((options & ON_COMPLETE) == ON_COMPLETE && log.isInfoEnabled()) {
 				log.info("↧ onComplete()");
 			}
 			super.doComplete();
@@ -92,7 +112,7 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 
 		@Override
 		protected void doRequest(long n) {
-			if (log.isInfoEnabled()) {
+			if ((options & REQUEST) == REQUEST && log.isInfoEnabled()) {
 				log.info("⇡ request({})", Long.MAX_VALUE == n ? "unbounded" : n);
 			}
 			super.doRequest(n);
@@ -100,12 +120,11 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 
 		@Override
 		protected void doCancel() {
-			if (log.isInfoEnabled()) {
+			if ((options & CANCEL) == CANCEL && log.isInfoEnabled()) {
 				log.info("↥ cancel()");
 			}
 			super.doCancel();
 		}
-
 
 		@Override
 		public String toString() {

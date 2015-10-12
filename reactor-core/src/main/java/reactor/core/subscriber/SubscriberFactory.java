@@ -18,6 +18,7 @@ package reactor.core.subscriber;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.publisher.PublisherFactory;
@@ -293,8 +294,12 @@ public abstract class SubscriberFactory {
 			if (dataConsumer != null) {
 				try {
 					dataConsumer.accept(t, subscriptionWithContext);
-				} catch (Throwable error) {
-					onError(error);
+				}
+				catch (CancelException ce){
+					throw ce;
+				}
+				catch (Throwable error) {
+					onError(Exceptions.addValueAsLastCause(error, t));
 				}
 			}
 		}

@@ -112,6 +112,7 @@ public final class PhasedBackoffWaitStrategy implements WaitStrategy
                 }
                 counter = SPIN_TRIES;
             }
+            barrier.accept(null);
         }
         while (true);
     }

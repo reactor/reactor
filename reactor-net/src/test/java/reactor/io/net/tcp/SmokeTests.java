@@ -231,7 +231,7 @@ public class SmokeTests {
 
 				fulltotalints += size;
 
-				System.out.println(size + "/" + (integerPostConcat.get() * windowBatch));
+				System.out.println(size + "/" + (postReduce.get() * windowBatch));
 
 				assertThat(size, greaterThanOrEqualTo(count));
 
@@ -266,10 +266,10 @@ public class SmokeTests {
 		  )
 		  .flatMap(s -> s
 			  .reduce(new Buffer(), Buffer::append)
-			  .observe(d ->
-				  postReduce.getAndIncrement()
-			  )
 		  )
+				.observe(d ->
+								postReduce.getAndIncrement()
+				)
 		  //.log()
 		  .process(workProcessor);
 
@@ -277,7 +277,6 @@ public class SmokeTests {
 			.codec(codec).listen(port)
 		);
 
-		AtomicInteger term = new AtomicInteger(1);
 		httpServer.get("/data", (request) -> {
 			request.responseHeaders().removeTransferEncodingChunked();
 			request.addResponseHeader("Content-type", "text/plain");
@@ -286,25 +285,18 @@ public class SmokeTests {
 			request.addResponseHeader("X-GP-PROTO", "1");
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
-			return request.writeWith(bufferStream
-							.observe(d -> integer.getAndIncrement())
-							.take(takeCount)
+			return request.writeWith(
+					bufferStream.observe(d -> integer.getAndIncrement()).take(takeCount)
 							.observe(d -> integerPostTake.getAndIncrement())
-							.observeComplete(
-									no -> integerPostConcat.getAndAdd(-term.getAndSet(0)))
-							.timeout(2, TimeUnit.SECONDS,
-									Streams.<Buffer>empty()
-									.observeComplete(no -> integerPostConcat
-											.decrementAndGet()))
-							.observeComplete(
-									no -> integerPostConcat.getAndAdd(-term.getAndSet(0)))
+							.timeout(2, TimeUnit.SECONDS, Streams.<Buffer>empty()
+											.observeComplete(p -> System.out
+													.println("timeout after 2 ")))
 							.observe(
-									d -> integerPostTimeout.getAndIncrement())
-							.concatWith(
-									Streams.just(
-											GpdistCodec.class.equals(codec.getClass()) ?
-													Buffer.wrap(new byte[0]) :
-													Buffer.wrap("END")))//END
+									d -> integerPostTimeout.getAndIncrement()).concatWith(
+							Streams.just(
+									GpdistCodec.class.equals(codec.getClass()) ? Buffer.wrap(new byte[0]) :
+											Buffer.wrap("END"))
+									.observeComplete(d->integerPostConcat.decrementAndGet()))//END
 							.observe(d -> integerPostConcat.getAndIncrement())
 							.capacity(1L));
 		});
@@ -315,10 +307,9 @@ public class SmokeTests {
 	private List<String> getClientDataPromise() throws Exception {
 		HttpClient<String, String> httpClient = NetStreams.httpClient(clientFactory);
 
-		Promise<List<String>> content = httpClient
-		  .get("/data")
+		Promise<List<String>> content = httpClient.get("/data")
 		  .flatMap(s -> s)
-		  .toList();
+		  .consumeAsList();
 
 		content.awaitSuccess(20, TimeUnit.SECONDS);
 		httpClient.shutdown().awaitSuccess();

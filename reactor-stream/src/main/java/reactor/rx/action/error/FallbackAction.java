@@ -15,9 +15,14 @@
  */
 package reactor.rx.action.error;
 
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
+import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.BackpressureUtils;
+import reactor.core.support.Bounded;
 import reactor.rx.action.Action;
 
 /**
@@ -30,6 +35,11 @@ public class FallbackAction<T> extends Action<T, T> {
 
 	private volatile boolean switched        = false;
 	private volatile long    pendingRequests = 0l;
+
+	private FallbackSubscriber fallbackSubscriber;
+
+	private static final AtomicLongFieldUpdater<FallbackAction> REQUESTED =
+			AtomicLongFieldUpdater.newUpdater(FallbackAction.class, "pendingRequests");
 
 	public FallbackAction(Publisher<? extends T> fallback) {
 		this.fallback = fallback;
@@ -45,34 +55,51 @@ public class FallbackAction<T> extends Action<T, T> {
 
 	@Override
 	protected void doNext(T ev) {
-		boolean toSwitch;
-		synchronized (this){
-			long p = pendingRequests;
-			if(p > 0 && p != Long.MAX_VALUE){
-				pendingRequests = --p;
-			}
-			toSwitch = switched;
-		}
 
-		if(toSwitch){
-			doFallbackNext(ev);
+		if(switched){
+			throw CancelException.get();
 		}
 		else{
+			BackpressureUtils.getAndSub(REQUESTED, this, 1L);
 			doNormalNext(ev);
 		}
 	}
 
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		synchronized (this) {
-			pendingRequests = BackpressureUtils.addOrLongMax(pendingRequests, elements);
+		FallbackSubscriber fallbackSubscriber = this.fallbackSubscriber;
+		if(fallbackSubscriber == null) {
+			BackpressureUtils.getAndAdd(REQUESTED, this, elements);
+			super.requestUpstream(capacity, terminated, elements);
 		}
-		super.requestUpstream(capacity, terminated, elements);
+		else{
+			Subscription subscription = fallbackSubscriber.subscription;
+			if(subscription != null){
+				subscription.request(elements);
+			}
+		}
+	}
+
+	@Override
+	public void cancel() {
+		super.cancel();
+		FallbackSubscriber fallbackSubscriber = this.fallbackSubscriber;
+		if(fallbackSubscriber != null) {
+			Subscription subscription = fallbackSubscriber.subscription;
+			if(subscription != null){
+				fallbackSubscriber.subscription = null;
+				subscription.cancel();
+			}
+		}
 	}
 
 	protected void doSwitch(){
-		cancel();
-		fallback.subscribe(this);
+		if(!switched) {
+			switched = true;
+			cancel();
+			fallbackSubscriber = new FallbackSubscriber();
+			fallback.subscribe(fallbackSubscriber);
+		}
 	}
 
 	protected void doNormalNext(T ev) {
@@ -81,5 +108,49 @@ public class FallbackAction<T> extends Action<T, T> {
 
 	protected void doFallbackNext(T ev) {
 		broadcastNext(ev);
+	}
+
+	private class FallbackSubscriber extends BaseSubscriber<T> implements Bounded {
+
+		Subscription subscription;
+
+		@Override
+		public void onSubscribe(Subscription s) {
+			super.onSubscribe(s);
+			subscription = s;
+			long r = pendingRequests;
+			if(r > 0){
+				subscription.request(r);
+			}
+		}
+
+		@Override
+		public void onNext(T t) {
+			super.onNext(t);
+			BackpressureUtils.getAndSub(REQUESTED, FallbackAction.this, 1L);
+			doFallbackNext(t);
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			super.onError(t);
+			broadcastError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			super.onComplete();
+			broadcastComplete();
+		}
+
+		@Override
+		public boolean isExposedToOverflow(Bounded parentPublisher) {
+			return FallbackAction.this.isExposedToOverflow(parentPublisher);
+		}
+
+		@Override
+		public long getCapacity() {
+			return FallbackAction.this.getCapacity();
+		}
 	}
 }

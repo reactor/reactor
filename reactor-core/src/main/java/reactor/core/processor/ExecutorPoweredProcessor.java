@@ -39,15 +39,12 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	protected final ExecutorService executor;
 
-	private volatile boolean terminated;
+	protected volatile boolean terminated;
 
 	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {
-		super(
-		  executor == null ?
-			new ClassLoader(Thread.currentThread().getContextClassLoader()) {
-			} :
-			null,
-		  autoCancel);
+		super(executor == null ?
+						new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+						} : null, autoCancel);
 		if (executor == null) {
 			this.executor = SingleUseExecutor.create(name, contextClassLoader);
 		} else {
@@ -98,17 +95,11 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	}
 
 	@Override
-	protected int decrementSubscribers() {
-		int subs = super.decrementSubscribers();
-		if(autoCancel && subs == 0) {
-			if(upstreamSubscription == null) {
-				terminated = true;
-			}
-			if (executor.getClass() == SingleUseExecutor.class) {
-				executor.shutdown();
-			}
+	protected void cancel(Subscription subscription) {
+		terminated = true;
+		if (executor.getClass() == SingleUseExecutor.class) {
+			executor.shutdown();
 		}
-		return subs;
 	}
 
 	@Override

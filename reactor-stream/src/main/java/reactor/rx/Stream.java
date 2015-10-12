@@ -25,6 +25,7 @@ import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
+import reactor.core.publisher.LogOperator;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
 import reactor.core.error.Exceptions;
@@ -707,12 +708,13 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	                                       final Consumer<? super O> consumer,
 	                                       final Function<Long, ? extends Long>
 	                                         requestMapper) {
-		return multiAdaptiveConsume(concurrency, consumer, new Function<Stream<Long>, Publisher<? extends Long>>() {
-			@Override
-			public Publisher<? extends Long> apply(Stream<Long> longStream) {
-				return longStream.map(requestMapper);
-			}
-		});
+		return multiAdaptiveConsume(concurrency, consumer,
+				new Function<Stream<Long>, Publisher<? extends Long>>() {
+					@Override
+					public Publisher<? extends Long> apply(Stream<Long> longStream) {
+						return longStream.map(requestMapper);
+					}
+				});
 	}
 
 	/**
@@ -787,18 +789,30 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> log() {
-		return log(null);
+		return log(null, LogOperator.ALL);
 	}
 
 	/**
 	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
 	 *
-	 * @param name The logger name
+	 * @param category The logger name
 	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> log(final String name) {
-		final Publisher<O> logger = Publishers.log(this, name);
+	public final Stream<O> log(String category) {
+		return log(category, LogOperator.ALL);
+	}
+
+	/**
+	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
+	 *
+	 * @param category The logger name
+	 * @param options the bitwise checked flags for observed signals
+	 * @return {@literal new Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> log(final String category, int options) {
+		final Publisher<O> logger = Publishers.log(this, category, options);
 		return new Stream<O>(){
 			@Override
 			public long getCapacity() {
@@ -2481,8 +2495,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return liftAction(new Supplier<Action<O, Stream<O>>>() {
 			@Override
 			public Action<O, Stream<O>> get() {
-				return new WindowShiftAction<O>(Integer.MAX_VALUE, Integer.MAX_VALUE, timespan, timeshift,
-				  unit, getTimer());
+				return new WindowShiftAction<O>(Integer.MAX_VALUE, Integer.MAX_VALUE,
+						timespan, timeshift, unit, getTimer());
 			}
 		});
 	}
@@ -2657,10 +2671,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return liftAction(new Supplier<Action<O, O>>() {
 			@Override
 			public Action<O, O> get() {
-				return new ThrottleRequestWhenAction<O>(
-				  getTimer(),
-				  throttleStream
-				);
+				return new ThrottleRequestWhenAction<O>(getTimer(), throttleStream);
 			}
 		});
 	}
@@ -2770,6 +2781,32 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		d.request(1);
 		subscribe(d);
 		return d;
+	}
+
+
+	/**
+	 * Fetch all values in a List to the returned Promise
+	 *
+	 * @return the promise of all data from this Stream
+	 * @since 2.1
+	 */
+	public final Promise<List<O>> consumeAsList() {
+		return toList(-1);
+	}
+
+	/**
+	 * Return the promise of N signals collected into an array list.
+	 *
+	 * @param maximum list size and therefore events signal to listen for
+	 * @return the promise of all data from this Stream
+	 * @since 2.1
+	 */
+	public final Promise<List<O>> consumeAsList(long maximum) {
+		if (maximum > 0)
+			return take(maximum).buffer().consumeNext();
+		else {
+			return buffer(Integer.MAX_VALUE).consumeNext();
+		}
 	}
 
 

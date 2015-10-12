@@ -17,6 +17,7 @@ package reactor.core.subscription;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Publishable;
 
@@ -76,6 +77,13 @@ public class SubscriptionWithContext<C> implements Subscription, Publishable {
 	 */
 	public C context() {
 		return context;
+	}
+
+	/**
+	 * Throw a CancelException
+	 */
+	public void abort(){
+		throw CancelException.get();
 	}
 
 	@Override

@@ -216,7 +216,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
-		return log(publisher, null);
+		return log(publisher, null, LogOperator.ALL);
 	}
 
 	/**
@@ -226,7 +226,17 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
-		return Publishers.lift(publisher, new LogOperator<IN>(category));
+		return log(publisher, category, LogOperator.ALL);
+	}
+	/**
+	 * @param publisher
+	 * @param category
+	 * @param options
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, int options) {
+		return Publishers.lift(publisher, new LogOperator<IN>(category, options));
 	}
 
 	/**

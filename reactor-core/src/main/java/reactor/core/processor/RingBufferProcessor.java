@@ -15,6 +15,11 @@
  */
 package reactor.core.processor;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.LockSupport;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -25,20 +30,20 @@ import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RequestTask;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
-import reactor.core.processor.rb.disruptor.*;
+import reactor.core.processor.rb.disruptor.RingBuffer;
+import reactor.core.processor.rb.disruptor.Sequence;
+import reactor.core.processor.rb.disruptor.SequenceBarrier;
+import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.core.support.wait.LiteBlockingWaitStrategy;
+import reactor.core.support.wait.PhasedBackoffWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.LockSupport;
 
 /**
  * An implementation of a RingBuffer backed message-passing Processor.
@@ -553,20 +558,18 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, true, autoCancel, null);
 	}
 
-	private final SequenceBarrier              barrier;
+	private final SequenceBarrier barrier;
 
 	private final RingBuffer<MutableSignal<E>> ringBuffer;
-	private final Sequence                     minimum;
 
-	private final WaitStrategy readWait = new LiteBlockingWaitStrategy();
+	private final Sequence minimum;
 
-	private RingBufferProcessor(String name,
-	                            ExecutorService executor,
-	                            int bufferSize,
-	                            WaitStrategy waitStrategy,
-	                            boolean shared,
-	                            boolean autoCancel,
-	                            final Supplier<E> signalSupplier) {
+	private final WaitStrategy readWait =
+			PhasedBackoffWaitStrategy.withSleep(5, 5, TimeUnit.SECONDS);
+
+	private RingBufferProcessor(String name, ExecutorService executor, int bufferSize,
+	                            WaitStrategy waitStrategy, boolean shared,
+	                            boolean autoCancel, final Supplier<E> signalSupplier) {
 		super(name, executor, autoCancel);
 
 		Supplier<MutableSignal<E>> factory = new Supplier<MutableSignal<E>>() {
@@ -583,37 +586,23 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		Consumer<Void> spinObserver = new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
-				if (!alive() && SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0) throw CancelException.get();
+				if (!alive() && SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0)
+					throw CancelException.get();
 			}
 		};
 
 		if (shared) {
-			this.ringBuffer = RingBuffer.createMultiProducer(
-			  factory,
-			  bufferSize,
-			  waitStrategy,
-			  spinObserver
-			);
-		} else {
-			this.ringBuffer = RingBuffer.createSingleProducer(
-			  factory,
-			  bufferSize,
-			  waitStrategy,
-			  spinObserver
-			);
+			this.ringBuffer = RingBuffer
+					.createMultiProducer(factory, bufferSize, waitStrategy, spinObserver);
+		}
+		else {
+			this.ringBuffer = RingBuffer
+					.createSingleProducer(factory, bufferSize, waitStrategy,
+							spinObserver);
 		}
 
 		this.minimum = Sequencer.newSequence(-1);
 		this.barrier = ringBuffer.newBarrier();
-	}
-
-	@Override
-	protected int decrementSubscribers() {
-		int res = super.decrementSubscribers();
-		if(res == 0) {
-			readWait.signalAllWhenBlocking();
-		}
-		return res;
 	}
 
 	@Override
@@ -622,7 +611,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
-		if(!alive() && ringBuffer.pending() == 0L){
+		if (!alive() && ringBuffer.pending() == 0L) {
 			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 			subscriber.onComplete();
 			return;
@@ -630,11 +619,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 		//create a unique eventProcessor for this subscriber
 		final Sequence pendingRequest = Sequencer.newSequence(0);
-		final BatchSignalProcessor<E> signalProcessor = new BatchSignalProcessor<E>(
-		  this,
-		  pendingRequest,
-		  subscriber
-		);
+		final BatchSignalProcessor<E> signalProcessor =
+				new BatchSignalProcessor<E>(this, pendingRequest, subscriber);
 
 		//bind eventProcessor sequence to observe the ringBuffer
 
@@ -644,7 +630,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			//set eventProcessor sequence to minimum index (replay)
 			ringBuffer.addGatingSequences(signalProcessor.getSequence());
 			signalProcessor.getSequence().set(minimum.get());
-		} else {
+		}
+		else {
 			//otherwise only listen to new data
 			//set eventProcessor sequence to ringbuffer index
 			signalProcessor.getSequence().set(ringBuffer.getCursor());
@@ -654,13 +641,15 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		}
 
 		//prepare the subscriber subscription to this processor
-		signalProcessor.setSubscription(new RingBufferSubscription(pendingRequest, subscriber, signalProcessor));
+		signalProcessor.setSubscription(
+				new RingBufferSubscription(pendingRequest, subscriber, signalProcessor));
 
 		try {
 			//start the subscriber thread
 			executor.execute(signalProcessor);
 
-		} catch (Throwable t) {
+		}
+		catch (Throwable t) {
 			ringBuffer.removeGatingSequence(signalProcessor.getSequence());
 			decrementSubscribers();
 			Exceptions.<E>publisher(t).subscribe(subscriber);
@@ -703,48 +692,41 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	@Override
 	protected void requestTask(Subscription s) {
 		ringBuffer.addGatingSequences(minimum);
-		new NamedDaemonThreadFactory("ringbuffer-request-task", null, null, false).newThread(new RequestTask(
-		  s,
-		  new Consumer<Void>() {
-			  @Override
-			  public void accept(Void aVoid) {
-				  if (!alive()){
-					  throw CancelException.INSTANCE;
-				  }
-			  }
-		  },
-		  new Consumer<Long>() {
-			  @Override
-			  public void accept(Long newMin) {
-				  minimum.set(newMin);
-			  }
-		  },
-		  new LongSupplier() {
-			  @Override
-			  public long get() {
-				  return
-					SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0 ?
-					  minimum.get() :
-					  ringBuffer.getMinimumGatingSequence(minimum);
-			  }
-		  },
-		  readWait,
-		  this,
-		  getCapacity() / 2
-		)).start();
+		new NamedDaemonThreadFactory("ringbuffer-request-task", null, null, false)
+				.newThread(new RequestTask(s, new Consumer<Void>() {
+					@Override
+					public void accept(Void aVoid) {
+						if (!alive()) {
+							throw CancelException.INSTANCE;
+						}
+					}
+				}, new Consumer<Long>() {
+					@Override
+					public void accept(Long newMin) {
+						minimum.set(newMin);
+					}
+				}, new LongSupplier() {
+					@Override
+					public long get() {
+						return SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0 ?
+								minimum.get() :
+								ringBuffer.getMinimumGatingSequence(minimum);
+					}
+				}, readWait, this, ringBuffer)).start();
 	}
 
 	@Override
 	protected void cancel(Subscription subscription) {
-		//ignore since request task auto cancel
+		super.cancel(subscription);
+		readWait.signalAllWhenBlocking();
 	}
 
 	@Override
 	public String toString() {
 		return "RingBufferProcessor{" +
-		  "barrier=" + barrier +
-		  ", remaining=" + ringBuffer.remainingCapacity() +
-		  '}';
+				"barrier=" + barrier +
+				", remaining=" + ringBuffer.remainingCapacity() +
+				'}';
 	}
 
 	@Override
@@ -753,8 +735,11 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	}
 
 	private final class RingBufferSubscription implements Subscription, Publishable<E> {
-		private final Sequence                pendingRequest;
-		private final Subscriber<? super E>   subscriber;
+
+		private final Sequence pendingRequest;
+
+		private final Subscriber<? super E> subscriber;
+
 		private final BatchSignalProcessor<E> eventProcessor;
 
 		public RingBufferSubscription(Sequence pendingRequest,
@@ -773,7 +758,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		@Override
 		@SuppressWarnings("unchecked")
 		public void request(long n) {
-			if(BackpressureUtils.checkRequest(n, subscriber)) {
+			if (BackpressureUtils.checkRequest(n, subscriber)) {
 				if (!eventProcessor.isRunning()) {
 					return;
 				}
@@ -815,12 +800,16 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	 */
 	private final static class BatchSignalProcessor<T> implements Runnable {
 
-		private final AtomicBoolean running  = new AtomicBoolean(false);
-		private final Sequence      sequence = Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
+		private final AtomicBoolean running = new AtomicBoolean(false);
+
+		private final Sequence sequence =
+				Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
 
 		private final RingBufferProcessor<T> processor;
-		private final Sequence               pendingRequest;
-		private final Subscriber<? super T>  subscriber;
+
+		private final Sequence pendingRequest;
+
+		private final Subscriber<? super T> subscriber;
 
 		private Subscription subscription;
 
@@ -866,55 +855,53 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		public void run() {
 			try {
 				if (!running.compareAndSet(false, true)) {
-					subscriber.onError(new IllegalStateException("Thread is already running"));
+					Exceptions.<T>publisher(
+							new IllegalStateException("Thread is already running"))
+					          .subscribe(subscriber);
 					return;
 				}
 
 				try {
 					subscriber.onSubscribe(subscription);
-				} catch (Throwable t) {
-					Exceptions.throwIfFatal(t);
-					subscriber.onError(t);
+				}
+				catch (Throwable t) {
+					Exceptions.<T>publisher(t).subscribe(subscriber);
+					return;
+				}
+
+				if (!RingBufferSubscriberUtils
+						.waitRequestOrTerminalEvent(pendingRequest, processor.ringBuffer,
+								processor.barrier, subscriber, running, sequence, null)) {
 					return;
 				}
 
 				MutableSignal<T> event = null;
 				long nextSequence = sequence.get() + 1L;
-
-				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(
-				  pendingRequest, processor.ringBuffer, processor.barrier, subscriber, running, nextSequence
-				)) {
-					return;
-				}
-
 				final boolean unbounded = pendingRequest.get() == Long.MAX_VALUE;
 
 				while (true) {
 					try {
-						final long availableSequence = processor.barrier.waitFor(nextSequence);
+						final long availableSequence =
+								processor.barrier.waitFor(nextSequence);
 						while (nextSequence <= availableSequence) {
 							event = processor.ringBuffer.get(nextSequence);
 
 							//if event is Next Signal we need to handle backpressure (pendingRequests)
 							if (event.type == SignalType.NEXT) {
 								//if bounded and out of capacity
-								if (!unbounded && pendingRequest.addAndGet(-1l) < 0l) {
-									//re-add the retained capacity
-									pendingRequest.incrementAndGet();
-
-									//pause until request
-									while (pendingRequest.addAndGet(-1l) < 0l) {
-										pendingRequest.incrementAndGet();
-										//Todo Use WaitStrategy?
-										processor.barrier.checkAlert();
-										LockSupport.parkNanos(1l);
-									}
+								while (!unbounded &&
+										BackpressureUtils.getAndSub(pendingRequest, 1L) ==
+												0) {
+									//Todo Use WaitStrategy?
+									processor.barrier.checkAlert();
+									LockSupport.parkNanos(1l);
 								}
 
 								//It's an unbounded subscriber or there is enough capacity to process the signal
 								RingBufferSubscriberUtils.route(event, subscriber);
 								nextSequence++;
-							} else {
+							}
+							else {
 								//Complete or Error are terminal events, we shutdown the processor and process the
 								// signal
 								running.set(false);
@@ -927,29 +914,36 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 							}
 						}
 						sequence.set(availableSequence);
-						if(SignalType.NOOP_SUBSCRIPTION != processor.upstreamSubscription) {
+						if (SignalType.NOOP_SUBSCRIPTION !=
+								processor.upstreamSubscription) {
 							processor.readWait.signalAllWhenBlocking();
 						}
-					} catch (final AlertException | CancelException ex) {
+					}
+					catch (final AlertException | CancelException ex) {
 						if (!running.get()) {
 							break;
-						} else {
+						}
+						else {
 							long cursor = processor.barrier.getCursor();
-							if (processor.ringBuffer.get(cursor).type == SignalType.ERROR) {
+							if (processor.ringBuffer.get(cursor).type ==
+									SignalType.ERROR) {
 								nextSequence = cursor;
-							} else {
+							}
+							else {
 								nextSequence = nextSequence - 1;
 							}
 							processor.barrier.clearAlert();
 						}
-					} catch (final Throwable ex) {
+					}
+					catch (final Throwable ex) {
 						Exceptions.throwIfFatal(ex);
 						subscriber.onError(ex);
 						sequence.set(nextSequence);
 						nextSequence++;
 					}
 				}
-			} finally {
+			}
+			finally {
 				processor.ringBuffer.removeGatingSequence(sequence);
 				processor.decrementSubscribers();
 				running.set(false);

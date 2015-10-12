@@ -237,7 +237,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		int elements = 69;
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
-		Control tail = Streams.zip(sensorEven(), sensorOdd(), this::computeMin)
+		Control tail = Streams.zip(sensorEven(), sensorOdd().cache(), this::computeMin)
 		  .log("sampleZipTest")
 		  .consume(x -> latch.countDown());
 

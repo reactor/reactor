@@ -60,9 +60,6 @@ public final class Processors {
 	 * blockingWait Strategy
 	 * and auto-cancel.
 	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
 	 * A new Cached ThreadExecutorPool will be implicitely created.
 	 *
 	 * @param <E> Type of processed signals
@@ -70,6 +67,19 @@ public final class Processors {
 	 */
 	public static <E> BaseProcessor<E, E> topic() {
 		return topic("async", BaseProcessor.SMALL_BUFFER_SIZE, true);
+	}
+	/**
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy
+	 * and auto-cancel.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created.
+	 *
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> BaseProcessor<E, E> topic(String name) {
+		return topic(name, BaseProcessor.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
@@ -145,6 +155,23 @@ public final class Processors {
 	 */
 	public static <E> BaseProcessor<E, E> queue() {
 		return queue("worker", BaseProcessor.SMALL_BUFFER_SIZE, true);
+	}
+
+	/**
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy
+	 * and auto-cancel.
+	 * <p>
+	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data.
+	 * <p>
+	 * A new Cached ThreadExecutorPool will be implicitely created.
+	 *
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> BaseProcessor<E, E> queue(String name) {
+		return queue(name, BaseProcessor.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
@@ -338,17 +365,13 @@ public final class Processors {
 	                                               boolean autoShutdown) {
 
 		return ProcessorGroup.create(
-		  new Supplier<Processor<ProcessorGroup.Task, ProcessorGroup.Task>>() {
-			  @Override
-			  public Processor<ProcessorGroup.Task, ProcessorGroup.Task> get() {
-				  return RingBufferProcessor.share(name, bufferSize, ProcessorGroup.DEFAULT_TASK_PROVIDER);
-			  }
-		  },
-		  concurrency,
-		  uncaughtExceptionHandler,
-		  shutdownHandler,
-		  autoShutdown
-		);
+				new Supplier<Processor<ProcessorGroup.Task, ProcessorGroup.Task>>() {
+					@Override
+					public Processor<ProcessorGroup.Task, ProcessorGroup.Task> get() {
+						return RingBufferProcessor.share(name, bufferSize,
+								ProcessorGroup.DEFAULT_TASK_PROVIDER);
+					}
+				}, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**
@@ -436,12 +459,8 @@ public final class Processors {
 	                                            Consumer<Void> shutdownHandler,
 	                                            boolean autoShutdown) {
 		return ProcessorGroup.create(
-		  RingBufferWorkProcessor.<ProcessorGroup.Task>share(name, bufferSize),
-		  concurrency,
-		  uncaughtExceptionHandler,
-		  shutdownHandler,
-		  autoShutdown
-		);
+				RingBufferWorkProcessor.<ProcessorGroup.Task>share(name, bufferSize),
+				concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**
@@ -451,7 +470,16 @@ public final class Processors {
 	 * @return
 	 */
 	public static <IN, OUT> Processor<IN, OUT> log(Processor<IN, OUT> processor) {
-		return log(processor, null);
+		return log(processor, null, LogOperator.ALL);
+	}
+	/**
+	 * @param processor
+	 * @param <IN>
+	 * @param <OUT>
+	 * @return
+	 */
+	public static <IN, OUT> Processor<IN, OUT> log(Processor<IN, OUT> processor, String category) {
+		return log(processor, category, LogOperator.ALL);
 	}
 
 	/**
@@ -461,11 +489,11 @@ public final class Processors {
 	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> Processor<IN, OUT> log(final Processor<IN, OUT> processor, final String category) {
+	public static <IN, OUT> Processor<IN, OUT> log(final Processor<IN, OUT> processor, final String category, final int options) {
 		return lift(processor, new Function<Processor<IN, OUT>, Publisher<OUT>>() {
 			@Override
 			public Publisher<OUT> apply(Processor<IN, OUT> processor) {
-				return Publishers.lift(processor, new LogOperator<OUT>(category));
+				return Publishers.log(processor, category, options);
 			}
 		});
 	}

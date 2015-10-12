@@ -32,6 +32,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
 public class UdpServerTests {
 
@@ -64,7 +65,7 @@ public class UdpServerTests {
 		);
 
 		server.start(ch -> {
-			ch.consume(bytes -> {
+			ch.log().consume(bytes -> {
 				if (bytes.length == 1024) {
 					latch.countDown();
 				}
@@ -83,12 +84,14 @@ public class UdpServerTests {
 				}
 
 				udp.close();
-			} catch (IOException e) {
+			}
+			catch (IOException e) {
 				e.printStackTrace();
 			}
 		});
 
-		assertThat("latch was counted down", latch.await(30, TimeUnit.SECONDS));
+		assertThat("latch was counted down", latch.await(10, TimeUnit.SECONDS));
+		server.shutdown().await();
 	}
 
 	@Test
@@ -96,14 +99,14 @@ public class UdpServerTests {
 	//@Ignore
 	public void supportsUdpMulticast() throws Exception {
 		final int port = SocketUtils.findAvailableUdpPort();
-		final CountDownLatch latch = new CountDownLatch(Processors.DEFAULT_POOL_SIZE ^ 2);
+		final CountDownLatch latch = new CountDownLatch(4 ^ 2);
 
 		final InetAddress multicastGroup = InetAddress.getByName("230.0.0.1");
 		final NetworkInterface multicastInterface = findMulticastEnabledIPv4Interface();
 		log.info("Using network interface '{}' for multicast", multicastInterface);
 		final Collection<DatagramServer<byte[], byte[]>> servers = new ArrayList<>();
 
-		for (int i = 0; i < Processors.DEFAULT_POOL_SIZE; i++) {
+		for (int i = 0; i < 4; i++) {
 			DatagramServer<byte[], byte[]> server = NetStreams.<byte[], byte[]>udpServer(
 			  NettyDatagramServer.class,
 			  spec -> spec
@@ -115,7 +118,7 @@ public class UdpServerTests {
 			);
 
 			server.start(ch -> {
-				ch.consume(bytes -> {
+				ch.log().consume(bytes -> {
 					//log.info("{} got {} bytes", ++count, bytes.length);
 					if (bytes.length == 1024) {
 						latch.countDown();
@@ -124,14 +127,16 @@ public class UdpServerTests {
 				return Streams.never();
 			}).onComplete(b -> {
 				try {
-					for (Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
+					for (Enumeration<NetworkInterface> ifaces =
+					     NetworkInterface.getNetworkInterfaces();
 					     ifaces.hasMoreElements(); ) {
 						NetworkInterface iface = ifaces.nextElement();
 						if (isMulticastEnabledIPv4Interface(iface)) {
 							server.join(multicastGroup, iface);
 						}
 					}
-				} catch (Throwable t) {
+				}
+				catch (Throwable t) {
 					throw new IllegalStateException(t);
 				}
 			}).await();

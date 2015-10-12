@@ -19,12 +19,13 @@ package reactor.core.processor.rb.disruptor;
 import reactor.core.error.AlertException;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
 
 /**
  * Used for Gating ringbuffer consumers on a cursor sequence and optional dependent ringbuffer consumer(s),
  * using the given WaitStrategy.
  */
-public final class SequenceBarrier implements Consumer<Void>
+public final class SequenceBarrier implements Consumer<Void>, LongSupplier
 {
     private final WaitStrategy waitStrategy;
     private volatile boolean alerted = false;
@@ -52,6 +53,28 @@ public final class SequenceBarrier implements Consumer<Void>
         checkAlert();
 
         long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, this);
+
+        if (availableSequence < sequence) {
+            return availableSequence;
+        }
+
+        return sequencer.getHighestPublishedSequence(sequence, availableSequence);
+    }
+
+    /**
+     * Wait for the given sequence to be available for consumption.
+     *
+     * @param consumer
+     * @param sequence to wait for
+     * @return the sequence up to which is available
+     * @throws AlertException if a status change has occurred for the Disruptor
+     * @throws InterruptedException if the thread needs awaking on a condition variable.
+     */
+    public long waitFor(final long sequence, Consumer<Void> consumer)
+      throws AlertException, InterruptedException {
+        checkAlert();
+
+        long availableSequence = waitStrategy.waitFor(sequence, cursorSequence, consumer);
 
         if (availableSequence < sequence) {
             return availableSequence;
@@ -108,6 +131,11 @@ public final class SequenceBarrier implements Consumer<Void>
         {
             throw AlertException.INSTANCE;
         }
+    }
+
+    @Override
+    public long get() {
+        return cursorSequence.get();
     }
 
     @Override
