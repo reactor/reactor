@@ -7,7 +7,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.AlertException;
-import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
@@ -152,6 +151,13 @@ public final class RingBufferSubscriberUtils {
 		}
 
 		return true;
+	}
+
+
+	public static <T> RingBufferSequencer<T> toReactiveSequencer(
+									final RingBuffer<MutableSignal<T>> ringBuffer,
+	                                  final long fromSequence){
+		return new RingBufferSequencer<T>(ringBuffer, fromSequence);
 	}
 
 	public static <E> Publisher<Void> writeWith(final Publisher<? extends E> source,

@@ -15,16 +15,15 @@
  */
 package reactor.rx.action.terminal;
 
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.support.Bounded;
 import reactor.fn.Consumer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * @author Stephane Maldini
@@ -59,7 +58,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 
 	@Override
 	public void requestMore(long n) {
-		PushSubscription<T> upstreamSubscription = this.upstreamSubscription;
+		Subscription upstreamSubscription = this.upstreamSubscription;
 		if (upstreamSubscription != null) {
 			long toRequest = Math.min(n, capacity);
 			if (COUNTED.addAndGet(this, toRequest) < 0l) {

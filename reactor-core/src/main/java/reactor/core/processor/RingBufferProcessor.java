@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.processor;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -29,91 +29,82 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RequestTask;
+import reactor.core.processor.rb.RingBufferSequencer;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.SequenceBarrier;
 import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.publisher.IteratorSequencer;
+import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.core.support.wait.LiteBlockingWaitStrategy;
-import reactor.core.support.wait.PhasedBackoffWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
 
 /**
- * An implementation of a RingBuffer backed message-passing Processor.
- * <p>
- * The processor respects the Reactive Streams contract and must not be signalled concurrently on any onXXXX
- * method. Each subscriber will be assigned a unique thread that will only stop on terminal event: Complete, Error or
- * Cancel.
- * If Auto-Cancel is enabled, when all subscribers are unregistered, a cancel signal is sent to the upstream Publisher
- * if any.
- * Executor can be customized and will define how many concurrent subscribers are allowed (fixed thread).
- * When a Subscriber requests Long.MAX, there won't be any backpressure applied and the producer will run at risk of
- * being throttled
- * if the subscribers don't catch up. With any other strictly positive demand, a subscriber will stop reading new Next
- * signals
- * (Complete and Error will still be read) as soon as the demand has been fully consumed by the publisher.
- * <p>
- * When more than 1 subscriber listens to that processor, they will all receive the exact same events if their
- * respective demand is still strictly positive, very much like a Fan-Out scenario.
- * <p>
- * When the backlog has been completely booked and no subscribers is draining the signals, the publisher will start
- * throttling.
- * In effect the smaller the backlog size is defined, the smaller the difference in processing rate between subscribers
- * must remain. Since the sequence for each subscriber will point to various ringBuffer locations, the processor
- * knows when a backlog can't override the previously occupied slot.
- *
+ * An implementation of a RingBuffer backed message-passing Processor. <p> The processor
+ * respects the Reactive Streams contract and must not be signalled concurrently on any
+ * onXXXX method. Each subscriber will be assigned a unique thread that will only stop on
+ * terminal event: Complete, Error or Cancel. If Auto-Cancel is enabled, when all
+ * subscribers are unregistered, a cancel signal is sent to the upstream Publisher if any.
+ * Executor can be customized and will define how many concurrent subscribers are allowed
+ * (fixed thread). When a Subscriber requests Long.MAX, there won't be any backpressure
+ * applied and the producer will run at risk of being throttled if the subscribers don't
+ * catch up. With any other strictly positive demand, a subscriber will stop reading new
+ * Next signals (Complete and Error will still be read) as soon as the demand has been
+ * fully consumed by the publisher. <p> When more than 1 subscriber listens to that
+ * processor, they will all receive the exact same events if their respective demand is
+ * still strictly positive, very much like a Fan-Out scenario. <p> When the backlog has
+ * been completely booked and no subscribers is draining the signals, the publisher will
+ * start throttling. In effect the smaller the backlog size is defined, the smaller the
+ * difference in processing rate between subscribers must remain. Since the sequence for
+ * each subscriber will point to various ringBuffer locations, the processor knows when a
+ * backlog can't override the previously occupied slot.
  * @param <E> Type of dispatched signal
  * @author Stephane Maldini
  * @author Anatoly Kadyshev
  */
 public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E> {
 
-
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
-	 * and auto-cancel.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created.
-	 *
+	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy and auto-cancel. <p> A new Cached ThreadExecutorPool will be
+	 * implicitely created.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create() {
-		return create(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
-		  true);
+		return create(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE,
+				new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
-	 * and the passed auto-cancel setting.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created.
-	 *
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy and the passed auto-cancel setting. <p> A new Cached
+	 * ThreadExecutorPool will be implicitely created.
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(boolean autoCancel) {
-		return create(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
-		  autoCancel);
+		return create(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE,
+				new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
-	 * and auto-cancel.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
+	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy and auto-cancel. <p> The passed {@link
+	 * java.util.concurrent.ExecutorService} will execute as many event-loop consuming the
+	 * ringbuffer as subscribers.
 	 * @param service A provided ExecutorService to manage threading infrastructure
-	 * @param <E>     Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service) {
@@ -121,230 +112,216 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
-	 * and the passed auto-cancel setting.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param service    A provided ExecutorService to manage threading infrastructure
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy and the passed auto-cancel setting. <p> The passed {@link
+	 * java.util.concurrent.ExecutorService} will execute as many event-loop consuming the
+	 * ringbuffer as subscribers.
+	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> create(ExecutorService service, boolean autoCancel) {
-		return create(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), autoCancel);
+	public static <E> RingBufferProcessor<E> create(ExecutorService service,
+	                                                boolean autoCancel) {
+		return create(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
+				autoCancel);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
-	 * and the passed auto-cancel setting.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy and the passed auto-cancel setting. <p> A new Cached
+	 * ThreadExecutorPool will be implicitely created and will use the passed name to
+	 * qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param <E>        Type of processed signals
-	 * @return
+	 * @param <E> Type of processed signals
 	 */
 	public static <E> RingBufferProcessor<E> create(String name, int bufferSize) {
 		return create(name, bufferSize, new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using the blockingWait Strategy, passed backlog size,
-	 * and auto-cancel settings.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new RingBufferProcessor using the blockingWait Strategy, passed backlog
+	 * size, and auto-cancel settings. <p> The passed {@link java.util.concurrent.ExecutorService}
+	 * will execute as many event-loop consuming the ringbuffer as subscribers.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, boolean autoCancel) {
+	public static <E> RingBufferProcessor<E> create(String name, int bufferSize,
+	                                                boolean autoCancel) {
 		return create(name, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
 	 * Create a new RingBufferProcessor using passed backlog size, blockingWait Strategy
-	 * and will auto-cancel.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * and will auto-cancel. <p> The passed {@link java.util.concurrent.ExecutorService}
+	 * will execute as many event-loop consuming the ringbuffer as subscribers.
+	 * @param service A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param <E>        Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize) {
+	public static <E> RingBufferProcessor<E> create(ExecutorService service,
+	                                                int bufferSize) {
 		return create(service, bufferSize, new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
 	 * Create a new RingBufferProcessor using passed backlog size, blockingWait Strategy
-	 * and the auto-cancel argument.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * and the auto-cancel argument. <p> The passed {@link java.util.concurrent.ExecutorService}
+	 * will execute as many event-loop consuming the ringbuffer as subscribers.
+	 * @param service A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize, boolean autoCancel) {
+	public static <E> RingBufferProcessor<E> create(ExecutorService service,
+	                                                int bufferSize, boolean autoCancel) {
 		return create(service, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
-
 	/**
-	 * Create a new RingBufferProcessor using passed backlog size, wait strategy
-	 * and will auto-cancel.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and will
+	 * auto-cancel. <p> A new Cached ThreadExecutorPool will be implicitely created and
+	 * will use the passed name to qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param <E>        Type of processed signals
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
+	 * BlockingWaitStrategy.
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy) {
+	public static <E> RingBufferProcessor<E> create(String name, int bufferSize,
+	                                                WaitStrategy strategy) {
 		return create(name, bufferSize, strategy, null);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using passed backlog size, wait strategy, signal supplier.
-	 * The created processor is not shared and will auto-cancel.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name           Use a new Cached ExecutorService and assign this name to the created threads
-	 * @param bufferSize     A Backlog Size to mitigate slow subscribers
-	 * @param strategy       A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param signalSupplier A supplier of dispatched signals to preallocate in the ring buffer
-	 * @param <E>            Type of processed signals
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy, signal
+	 * supplier. The created processor is not shared and will auto-cancel. <p> A new
+	 * Cached ThreadExecutorPool will be implicitely created and will use the passed name
+	 * to qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
+	 * BlockingWaitStrategy.
+	 * @param signalSupplier A supplier of dispatched signals to preallocate in the ring
+	 * buffer
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> create(String name, int bufferSize, WaitStrategy strategy, Supplier<E>
-	  signalSupplier) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false, true, signalSupplier);
+	public static <E> RingBufferProcessor<E> create(String name, int bufferSize,
+	                                                WaitStrategy strategy,
+	                                                Supplier<E> signalSupplier) {
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false, true,
+				signalSupplier);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using passed backlog size, wait strategy
-	 * and auto-cancel settings.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and
+	 * auto-cancel settings. <p> A new Cached ThreadExecutorPool will be implicitely
+	 * created and will use the passed name to qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
+	 * BlockingWaitStrategy.
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> create(String name,
-	                                                int bufferSize,
+	public static <E> RingBufferProcessor<E> create(String name, int bufferSize,
 	                                                WaitStrategy strategy,
 	                                                boolean autoCancel) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false, autoCancel, null);
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, false,
+				autoCancel, null);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using passed backlog size, wait strategy
-	 * and will auto-cancel.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and will
+	 * auto-cancel. <p> The passed {@link java.util.concurrent.ExecutorService} will
+	 * execute as many event-loop consuming the ringbuffer as subscribers.
+	 * @param service A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param <E>        Type of processed signals
-	 * @return a fresh processor
-	 */
-	public static <E> RingBufferProcessor<E> create(ExecutorService service, int bufferSize, WaitStrategy strategy) {
-		return create(service, bufferSize, strategy, true);
-	}
-
-	/**
-	 * Create a new RingBufferProcessor using passed backlog size, wait strategy
-	 * and auto-cancel settings.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param service    A provided ExecutorService to manage threading infrastructure
-	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
+	 * BlockingWaitStrategy.
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service,
 	                                                int bufferSize,
-	                                                WaitStrategy strategy,
-	                                                boolean autoCancel) {
-		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, false, autoCancel, null);
+	                                                WaitStrategy strategy) {
+		return create(service, bufferSize, strategy, true);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
-	 * and auto-cancel.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and
+	 * auto-cancel settings. <p> The passed {@link java.util.concurrent.ExecutorService}
+	 * will execute as many event-loop consuming the ringbuffer as subscribers.
+	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
+	 * BlockingWaitStrategy.
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> RingBufferProcessor<E> create(ExecutorService service,
+	                                                int bufferSize, WaitStrategy strategy,
+	                                                boolean autoCancel) {
+		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, false,
+				autoCancel, null);
+	}
+
+	/**
+	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy and auto-cancel. <p> A Shared Processor authorizes concurrent
+	 * onNext calls and is suited for multi-threaded publisher that will fan-in data. <p>
 	 * A new Cached ThreadExecutorPool will be implicitely created.
-	 *
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> share() {
-		return share(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
-		  true);
+		return share(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE,
+				new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
-	 * and the passed auto-cancel setting.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created.
-	 *
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy and the passed auto-cancel setting. <p> A Shared Processor
+	 * authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data. <p> A new Cached ThreadExecutorPool will be implicitely created.
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> share(boolean autoCancel) {
-		return share(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
-		  autoCancel);
+		return share(RingBufferProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE,
+				new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
-	 * and auto-cancel.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
+	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy and auto-cancel. <p> A Shared Processor authorizes concurrent
+	 * onNext calls and is suited for multi-threaded publisher that will fan-in data. <p>
+	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many
+	 * event-loop consuming the ringbuffer as subscribers.
 	 * @param service A provided ExecutorService to manage threading infrastructure
-	 * @param <E>     Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> share(ExecutorService service) {
@@ -352,37 +329,33 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
-	 * and the passed auto-cancel setting.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param service    A provided ExecutorService to manage threading infrastructure
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy and the passed auto-cancel setting. <p> A Shared Processor
+	 * authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data. <p> The passed {@link java.util.concurrent.ExecutorService} will
+	 * execute as many event-loop consuming the ringbuffer as subscribers.
+	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> share(ExecutorService service, boolean autoCancel) {
-		return share(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), autoCancel);
+	public static <E> RingBufferProcessor<E> share(ExecutorService service,
+	                                               boolean autoCancel) {
+		return share(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
+				autoCancel);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size, blockingWait Strategy
-	 * and the passed auto-cancel setting.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy and the passed auto-cancel setting. <p> A Shared Processor
+	 * authorizes concurrent onNext calls and is suited for multi-threaded publisher that
+	 * will fan-in data. <p> A new Cached ThreadExecutorPool will be implicitely created
+	 * and will use the passed name to qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param <E>        Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> share(String name, int bufferSize) {
@@ -390,172 +363,160 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using the blockingWait Strategy, passed backlog size,
-	 * and auto-cancel settings.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * Create a new RingBufferProcessor using the blockingWait Strategy, passed backlog
+	 * size, and auto-cancel settings. <p> A Shared Processor authorizes concurrent onNext
+	 * calls and is suited for multi-threaded publisher that will fan-in data. <p> The
+	 * passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
 	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, boolean autoCancel) {
+	public static <E> RingBufferProcessor<E> share(String name, int bufferSize,
+	                                               boolean autoCancel) {
 		return share(name, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
 	/**
 	 * Create a new RingBufferProcessor using passed backlog size, blockingWait Strategy
-	 * and will auto-cancel.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * and will auto-cancel. <p> A Shared Processor authorizes concurrent onNext calls and
+	 * is suited for multi-threaded publisher that will fan-in data. <p> The passed {@link
+	 * java.util.concurrent.ExecutorService} will execute as many event-loop consuming the
+	 * ringbuffer as subscribers.
+	 * @param service A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param <E>        Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> share(ExecutorService service, int bufferSize) {
+	public static <E> RingBufferProcessor<E> share(ExecutorService service,
+	                                               int bufferSize) {
 		return share(service, bufferSize, new LiteBlockingWaitStrategy(), true);
 	}
 
 	/**
 	 * Create a new RingBufferProcessor using passed backlog size, blockingWait Strategy
-	 * and the auto-cancel argument.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
+	 * and the auto-cancel argument. <p> A Shared Processor authorizes concurrent onNext
+	 * calls and is suited for multi-threaded publisher that will fan-in data. <p> The
+	 * passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
 	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * @param service A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> share(ExecutorService service, int bufferSize, boolean autoCancel) {
+	public static <E> RingBufferProcessor<E> share(ExecutorService service,
+	                                               int bufferSize, boolean autoCancel) {
 		return share(service, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
 	}
 
-
 	/**
-	 * Create a new RingBufferProcessor using passed backlog size, wait strategy
-	 * and will auto-cancel.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and will
+	 * auto-cancel. <p> A Shared Processor authorizes concurrent onNext calls and is
+	 * suited for multi-threaded publisher that will fan-in data. <p> A new Cached
+	 * ThreadExecutorPool will be implicitely created and will use the passed name to
+	 * qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param <E>        Type of processed signals
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
+	 * BlockingWaitStrategy.
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, WaitStrategy strategy) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, true, null);
+	public static <E> RingBufferProcessor<E> share(String name, int bufferSize,
+	                                               WaitStrategy strategy) {
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, true,
+				null);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and signal supplier.
-	 * The created processor will auto-cancel and is shared.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name           Use a new Cached ExecutorService and assign this name to the created threads
-	 * @param bufferSize     A Backlog Size to mitigate slow subscribers
-	 * @param signalSupplier A supplier of dispatched signals to preallocate in the ring buffer
-	 * @param <E>            Type of processed signals
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and
+	 * signal supplier. The created processor will auto-cancel and is shared. <p> A Shared
+	 * Processor authorizes concurrent onNext calls and is suited for multi-threaded
+	 * publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be
+	 * implicitely created and will use the passed name to qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param signalSupplier A supplier of dispatched signals to preallocate in the ring
+	 * buffer
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, Supplier<E> signalSupplier) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, new LiteBlockingWaitStrategy(), true, true,
-		  signalSupplier);
+	public static <E> RingBufferProcessor<E> share(String name, int bufferSize,
+	                                               Supplier<E> signalSupplier) {
+		return new RingBufferProcessor<E>(name, null, bufferSize,
+				new LiteBlockingWaitStrategy(), true, true, signalSupplier);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using passed backlog size, wait strategy
-	 * and auto-cancel settings.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and
+	 * auto-cancel settings. <p> A Shared Processor authorizes concurrent onNext calls and
+	 * is suited for multi-threaded publisher that will fan-in data. <p> A new Cached
+	 * ThreadExecutorPool will be implicitely created and will use the passed name to
+	 * qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
+	 * BlockingWaitStrategy.
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> RingBufferProcessor<E> share(String name,
-	                                               int bufferSize,
+	public static <E> RingBufferProcessor<E> share(String name, int bufferSize,
 	                                               WaitStrategy strategy,
 	                                               boolean autoCancel) {
-		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true, autoCancel, null);
+		return new RingBufferProcessor<E>(name, null, bufferSize, strategy, true,
+				autoCancel, null);
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using passed backlog size, wait strategy
-	 * and will auto-cancel.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param service    A provided ExecutorService to manage threading infrastructure
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and will
+	 * auto-cancel. <p> A Shared Processor authorizes concurrent onNext calls and is
+	 * suited for multi-threaded publisher that will fan-in data. <p> The passed {@link
+	 * java.util.concurrent.ExecutorService} will execute as many event-loop consuming the
+	 * ringbuffer as subscribers.
+	 * @param service A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param <E>        Type of processed signals
-	 * @return a fresh processor
-	 */
-	public static <E> RingBufferProcessor<E> share(ExecutorService service, int bufferSize, WaitStrategy strategy) {
-		return share(service, bufferSize, strategy, true);
-	}
-
-	/**
-	 * Create a new RingBufferProcessor using passed backlog size, wait strategy
-	 * and auto-cancel settings.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param service    A provided ExecutorService to manage threading infrastructure
-	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param strategy   A RingBuffer WaitStrategy to use instead of the default BlockingWaitStrategy.
-	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
+	 * BlockingWaitStrategy.
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferProcessor<E> share(ExecutorService service,
 	                                               int bufferSize,
-	                                               WaitStrategy strategy,
+	                                               WaitStrategy strategy) {
+		return share(service, bufferSize, strategy, true);
+	}
+
+	/**
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and
+	 * auto-cancel settings. <p> A Shared Processor authorizes concurrent onNext calls and
+	 * is suited for multi-threaded publisher that will fan-in data. <p> The passed {@link
+	 * java.util.concurrent.ExecutorService} will execute as many event-loop consuming the
+	 * ringbuffer as subscribers.
+	 * @param service A provided ExecutorService to manage threading infrastructure
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
+	 * BlockingWaitStrategy.
+	 * @param autoCancel Should this propagate cancellation when unregistered by all
+	 * subscribers ?
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> RingBufferProcessor<E> share(ExecutorService service,
+	                                               int bufferSize, WaitStrategy strategy,
 	                                               boolean autoCancel) {
-		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, true, autoCancel, null);
+		return new RingBufferProcessor<E>(null, service, bufferSize, strategy, true,
+				autoCancel, null);
 	}
 
 	private final SequenceBarrier barrier;
@@ -564,8 +525,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 	private final Sequence minimum;
 
-	private final WaitStrategy readWait =
-			PhasedBackoffWaitStrategy.withSleep(5, 5, TimeUnit.SECONDS);
+	private final WaitStrategy readWait = new LiteBlockingWaitStrategy();
 
 	private RingBufferProcessor(String name, ExecutorService executor, int bufferSize,
 	                            WaitStrategy waitStrategy, boolean shared,
@@ -586,8 +546,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		Consumer<Void> spinObserver = new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
-				if (!alive() && SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0)
+				if (!alive() && SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0) {
 					throw CancelException.get();
+				}
 			}
 		};
 
@@ -611,9 +572,12 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
-		if (!alive() && ringBuffer.pending() == 0L) {
-			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-			subscriber.onComplete();
+		if (!alive() && ringBuffer.getCursor() >= minimum.get()) {
+			RingBufferSequencer<E> sequencer = new RingBufferSequencer<E>(
+					ringBuffer, minimum.get()
+			);
+
+			PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
 			return;
 		}
 
@@ -780,7 +744,6 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 	/**
 	 * Get the remaining capacity for the ring buffer
-	 *
 	 * @return number of remaining slots
 	 */
 	public long remainingCapacity() {
@@ -788,15 +751,11 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	}
 
 	/**
-	 * Disruptor BatchEventProcessor port that deals with pending demand.
-	 * <p>
-	 * Convenience class for handling the batching semantics of consuming entries from a {@link reactor.core.processor
-	 * .rb.disruptor
-	 * .RingBuffer}.
-	 * <p>
-	 *
-	 * @param <T> event implementation storing the data for sharing during exchange or parallel coordination of an
-	 *            event.
+	 * Disruptor BatchEventProcessor port that deals with pending demand. <p> Convenience
+	 * class for handling the batching semantics of consuming entries from a {@link
+	 * reactor.core.processor .rb.disruptor .RingBuffer}. <p>
+	 * @param <T> event implementation storing the data for sharing during exchange or
+	 * parallel coordination of an event.
 	 */
 	private final static class BatchSignalProcessor<T> implements Runnable {
 
@@ -814,10 +773,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		private Subscription subscription;
 
 		/**
-		 * Construct a ringbuffer consumer that will automatically track the
-		 * progress by updating
-		 * its
-		 * sequence
+		 * Construct a ringbuffer consumer that will automatically track the progress by
+		 * updating its sequence
 		 */
 		public BatchSignalProcessor(RingBufferProcessor<T> processor,
 		                            Sequence pendingRequest,

@@ -109,7 +109,7 @@ public class Broadcaster<O> extends Action<O, O> {
 		this.ignoreDropped = ignoreDropped;
 
 		//start broadcaster
-		this.upstreamSubscription = (PushSubscription<O>) HOT_SUBSCRIPTION;
+		this.upstreamSubscription = HOT_SUBSCRIPTION;
 	}
 
 
@@ -147,7 +147,8 @@ public class Broadcaster<O> extends Action<O, O> {
 					}
 				}
 			};
-		} else {
+		}
+		else {
 			return super.createSubscription(subscriber, null);
 		}
 	}
@@ -184,6 +185,15 @@ public class Broadcaster<O> extends Action<O, O> {
 	public Broadcaster<O> capacity(long elements) {
 		super.capacity(elements);
 		return this;
+	}
+
+	@Override
+
+	public void cancel() {
+		Subscription parentSub = upstreamSubscription;
+		if (parentSub != null && parentSub != HOT_SUBSCRIPTION) {
+			super.cancel();
+		}
 	}
 
 	@Override

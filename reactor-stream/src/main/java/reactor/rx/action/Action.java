@@ -19,6 +19,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
@@ -27,6 +28,8 @@ import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.Recyclable;
+import reactor.core.support.SignalType;
+import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
@@ -42,6 +45,8 @@ import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * An Action is a reactive component to subscribe to a {@link org.reactivestreams.Publisher} and in particular
@@ -71,24 +76,19 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public abstract class Action<I, O> extends Stream<O>
   implements Processor<I, O>, Consumer<I>, Recyclable, Control, Publishable<I> {
 
-	public static final int          NO_CAPACITY      = -1;
-	@SuppressWarnings("unchecked")
-	static public final Subscription HOT_SUBSCRIPTION = new PushSubscription(null, null) {
-		@Override
-		public void request(long n) {
-			//IGNORE
-		}
+	public static final int NO_CAPACITY = -1;
 
-		@Override
-		public void cancel() {
-			//IGNORE
-		}
-	};
+	@SuppressWarnings("unchecked")
+	static public final Subscription HOT_SUBSCRIPTION = SignalType.NOOP_SUBSCRIPTION;
 
 	/**
 	 * The upstream request tracker to avoid dispatcher overrun, based on the current {@link this#capacity}
 	 */
-	protected PushSubscription<I> upstreamSubscription;
+	protected volatile Subscription upstreamSubscription;
+
+	protected final static AtomicReferenceFieldUpdater<Action, Subscription>
+			SUBSCRIPTION = PlatformDependent.newAtomicReferenceFieldUpdater(Action.class, "upstreamSubscription");
+
 	protected PushSubscription<O> downstreamSubscription;
 
 	protected long capacity;
@@ -104,7 +104,7 @@ public abstract class Action<I, O> extends Stream<O>
 	@Override
 	@SuppressWarnings("unchecked")
 	public Publisher<I> upstream() {
-		return upstreamSubscription != null ? upstreamSubscription.upstream() : null;
+		return Publishers.fromSubscription(upstreamSubscription);
 	}
 
 	/**
@@ -113,28 +113,25 @@ public abstract class Action<I, O> extends Stream<O>
 	 * --------------------------------------------------------------------------------------------------------
 	 */
 
-
 	@Override
 	public void subscribe(final Subscriber<? super O> subscriber) {
 		try {
-			final Bounded asyncSubscriber = Bounded.class.isAssignableFrom(subscriber.getClass()) ?
-			  (Bounded) subscriber :
-			  null;
+			final Bounded asyncSubscriber =
+					Bounded.class.isAssignableFrom(subscriber.getClass()) ?
+							(Bounded) subscriber : null;
 
-			boolean isReactiveCapacity = null == asyncSubscriber || asyncSubscriber.isExposedToOverflow(this);
+			boolean isReactiveCapacity =
+					null == asyncSubscriber || asyncSubscriber.isExposedToOverflow(this);
 
-			final PushSubscription<O> subscription = createSubscription(subscriber, isReactiveCapacity);
+			final PushSubscription<O> subscription =
+					createSubscription(subscriber, isReactiveCapacity);
 
-			if (subscription == null)
-				return;
-
-			if (null != asyncSubscriber && isReactiveCapacity) {
-				subscription.maxCapacity(asyncSubscriber.getCapacity());
-			}
+			if (subscription == null) return;
 
 			subscribeWithSubscription(subscriber, subscription);
 
-		} catch (Throwable throwable) {
+		}
+		catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);
 		}
@@ -142,15 +139,16 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		if(BackpressureUtils.checkSubscription(upstreamSubscription, subscription)) {
+		if (BackpressureUtils.checkSubscription(upstreamSubscription, subscription)) {
 
 			upstreamSubscription = createTrackingSubscription(subscription);
-			upstreamSubscription.maxCapacity(getCapacity());
+			//upstreamSubscription.maxCapacity(getCapacity());
 
 			try {
 				doOnSubscribe(subscription);
 				doStart();
-			} catch (Throwable t) {
+			}
+			catch (Throwable t) {
 				Exceptions.throwIfFatal(t);
 				doError(t);
 			}
@@ -181,9 +179,11 @@ public abstract class Action<I, O> extends Stream<O>
 
 		try {
 			doNext(ev);
-		} catch (CancelException uae) {
+		}
+		catch (CancelException uae) {
 			throw uae;
-		} catch (Throwable cause) {
+		}
+		catch (Throwable cause) {
 			Exceptions.throwIfFatal(cause);
 			doError(Exceptions.addValueAsLastCause(cause, ev));
 		}
@@ -194,9 +194,11 @@ public abstract class Action<I, O> extends Stream<O>
 		try {
 			doComplete();
 			doShutdown();
-		} catch (CancelException uae) {
+		}
+		catch (CancelException uae) {
 			//ignore;
-		} catch (Throwable t) {
+		}
+		catch (Throwable t) {
 			doError(t);
 		}
 	}
@@ -206,7 +208,6 @@ public abstract class Action<I, O> extends Stream<O>
 		if (cause == null) {
 			throw new NullPointerException("Spec 2.13: Signal cannot be null");
 		}
-		if (upstreamSubscription != null) upstreamSubscription.updatePendingRequests(0l);
 		doError(cause);
 		doShutdown();
 	}
@@ -222,7 +223,7 @@ public abstract class Action<I, O> extends Stream<O>
 		capacity = elements;
 
 		if (upstreamSubscription != null) {
-			upstreamSubscription.maxCapacity(capacity);
+			//upstreamSubscription.maxCapacity(capacity);
 		}
 		return this;
 	}
@@ -299,15 +300,13 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@Override
 	public boolean isPublishing() {
-		PushSubscription<I> parentSubscription = upstreamSubscription;
-		return parentSubscription != null && !parentSubscription.isComplete();
+		return upstreamSubscription != null;
 	}
 
 
 	public void cancel() {
-		PushSubscription<I> parentSub = upstreamSubscription;
-		if (parentSub != null && parentSub != HOT_SUBSCRIPTION) {
-			upstreamSubscription = null;
+		Subscription parentSub = SUBSCRIPTION.getAndSet(this, null);
+		if (parentSub != null) {
 			parentSub.cancel();
 		}
 	}
@@ -482,7 +481,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 *
 	 * @return current {@link org.reactivestreams.Subscription}
 	 */
-	public PushSubscription<I> getSubscription() {
+	public Subscription getSubscription() {
 		return upstreamSubscription;
 	}
 
@@ -564,13 +563,8 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	@SuppressWarnings("unchecked")
-	protected PushSubscription<I> createTrackingSubscription(Subscription subscription) {
-		//If not a reactor push subscription, wrap within one
-		if (!PushSubscription.class.isAssignableFrom(subscription.getClass())) {
-			return PushSubscription.wrap(subscription, this);
-		} else {
-			return ((PushSubscription<I>) subscription);
-		}
+	protected Subscription createTrackingSubscription(Subscription subscription) {
+		return subscription;
 	}
 
 	protected void doOnSubscribe(Subscription subscription) {

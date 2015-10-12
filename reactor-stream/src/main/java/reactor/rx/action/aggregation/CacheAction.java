@@ -15,7 +15,12 @@
  */
 package reactor.rx.action.aggregation;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.fn.Consumer;
@@ -23,10 +28,6 @@ import reactor.rx.action.Action;
 import reactor.rx.action.Signal;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Queue;
 
 /**
  * @author Stephane Maldini
@@ -43,7 +44,7 @@ public class CacheAction<T> extends Action<T, T> {
 
 			@Override
 			public void accept(Long elem) {
-				PushSubscription<T> upstream = null;
+				Subscription upstream = null;
 				synchronized (values) {
 					if (values.isEmpty()) {
 						upstream = upstreamSubscription;
@@ -51,7 +52,7 @@ public class CacheAction<T> extends Action<T, T> {
 				}
 
 				if (upstream != null) {
-					upstreamSubscription.request(elem);
+					upstream.request(elem);
 					return;
 				}
 
@@ -78,12 +79,6 @@ public class CacheAction<T> extends Action<T, T> {
 							break;
 						}
 					}
-					toRequest = elem == Long.MAX_VALUE ? elem : elem - toSend.size();
-				}
-
-
-				if (toRequest > 0 && upstreamSubscription != null) {
-					upstreamSubscription.request(toRequest);
 				}
 			}
 		};

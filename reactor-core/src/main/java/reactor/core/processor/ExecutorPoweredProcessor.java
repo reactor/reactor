@@ -67,6 +67,10 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	@Override
 	public void onComplete() {
+		if (executor.getClass() == SingleUseExecutor.class) {
+			executor.shutdown();
+		}
+
 		upstreamSubscription = null;
 		terminated = true;
 	}
@@ -74,6 +78,10 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 	@Override
 	public void onError(Throwable t) {
 		super.onError(t);
+		if (executor.getClass() == SingleUseExecutor.class) {
+			executor.shutdown();
+		}
+
 		upstreamSubscription = null;
 		terminated = true;
 	}

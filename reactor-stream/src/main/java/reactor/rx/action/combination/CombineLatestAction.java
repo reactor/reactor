@@ -75,11 +75,6 @@ public final class CombineLatestAction<O, V, TUPLE extends Tuple>
 	}
 
 	@Override
-	protected PushSubscription<Zippable<O>> createTrackingSubscription(Subscription subscription) {
-		return innerSubscriptions;
-	}
-
-	@Override
 	protected void doNext(Zippable<O> ev) {
 		toZip[ev.index] = ev.data == null ? EMPTY_ZIPPED_DATA : ev.data;
 

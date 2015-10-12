@@ -16,6 +16,8 @@
 package reactor.core.processor.rb.disruptor;
 
 
+import java.util.Iterator;
+
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.rb.disruptor.util.Util;
 import reactor.core.support.internal.PlatformDependent;
@@ -23,6 +25,7 @@ import reactor.core.support.wait.BlockingWaitStrategy;
 import reactor.core.support.wait.BusySpinWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
 

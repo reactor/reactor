@@ -51,16 +51,6 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Publis
 	  .newUpdater(PushSubscription.class, "pendingRequestSignals");
 
 
-	/**
-	 * Wrap the subscription behind a push subscription to start tracking its requests
-	 *
-	 * @param subscription the subscription to wrap
-	 * @return the new ReactiveSubscription
-	 */
-	public static <O> PushSubscription<O> wrap(Subscription subscription, Subscriber<? super O> errorSubscriber) {
-		return new WrappedSubscription<O>(subscription, errorSubscriber);
-	}
-
 	public PushSubscription(Stream<O> publisher, Subscriber<? super O> subscriber) {
 		this.subscriber = subscriber;
 		this.publisher = publisher;

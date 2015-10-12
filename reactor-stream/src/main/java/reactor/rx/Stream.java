@@ -2632,7 +2632,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return thiz.liftAction(new Supplier<Action<O, Long>>() {
 			@Override
 			public Action<O, Long> get() {
-				return new CountAction<O>(i);
+				return new CountAction<O>();
 			}
 		}).last();
 	}

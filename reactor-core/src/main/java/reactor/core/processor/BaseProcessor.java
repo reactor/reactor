@@ -111,9 +111,7 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 		if (subs == 0) {
 			if (subscription != null && autoCancel) {
 				upstreamSubscription = null;
-				if(subscription != SignalType.NOOP_SUBSCRIPTION){
-					cancel(subscription);
-				}
+				cancel(subscription);
 			}
 			return subs;
 		}
@@ -121,7 +119,9 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	}
 
 	protected void cancel(Subscription subscription){
-			subscription.cancel();
+		if(subscription != SignalType.NOOP_SUBSCRIPTION){
+			cancel(subscription);
+		}
 	}
 
 

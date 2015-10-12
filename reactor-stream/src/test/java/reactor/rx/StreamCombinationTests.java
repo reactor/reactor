@@ -15,17 +15,6 @@
  */
 package reactor.rx;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.AbstractReactorTest;
-import reactor.fn.Consumer;
-import reactor.fn.tuple.Tuple2;
-import reactor.rx.action.Control;
-import reactor.rx.broadcast.Broadcaster;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -34,16 +23,31 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.reactivestreams.Processor;
+import org.reactivestreams.Subscriber;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.AbstractReactorTest;
+import reactor.Processors;
+import reactor.fn.Consumer;
+import reactor.fn.tuple.Tuple2;
+import reactor.rx.action.Control;
+
 /**
  * @author Stephane Maldini
  */
 public class StreamCombinationTests extends AbstractReactorTest {
 
-	private static final Logger LOG = LoggerFactory.getLogger(StreamCombinationTests.class);
+	private static final Logger LOG =
+			LoggerFactory.getLogger(StreamCombinationTests.class);
 
 	private ArrayList<Stream<SensorData>> allSensors;
-	private Broadcaster<SensorData>       sensorEven;
-	private Broadcaster<SensorData>       sensorOdd;
+
+	private Processor<SensorData, SensorData>         sensorEven;
+	private Processor<SensorData, SensorData>         sensorOdd;
 
 	@Before
 	public void before() {
@@ -53,6 +57,10 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@After
 	public void after() {
+		sensorEven.onComplete();
+		sensorEven = null;
+		sensorOdd.onComplete();
+		sensorOdd = null;
 	}
 
 	public Consumer<Object> loggingConsumer() {
@@ -69,37 +77,32 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public Stream<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
-			this.sensorOdd = Broadcaster.<SensorData>create();
+			this.sensorOdd = Processors.log(Processors.topic("odd"), "odd");
 
 			// add substream to "master" list
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
 		}
 
-		return sensorOdd.dispatchOn(asyncGroup).log("odd");
+		return Streams.wrap(sensorOdd);
 	}
 
 	public Stream<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
-			this.sensorEven = Broadcaster.<SensorData>create();
+			this.sensorEven = Processors.log(Processors.topic("even"), "even");
 
 			// add substream to "master" list
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
 		}
-
-		return sensorEven.dispatchOn(asyncGroup).log("even");
+		return Streams.wrap(sensorEven);
 	}
 
 	@Test
 	public void testMerge1ToN() throws Exception {
 		final int n = 1000;
 
-
-		Stream<Integer> stream = Streams.merge(
-		  Streams.just(1)
-			.map(i -> Streams.range(0, n))
-		);
-
+		Stream<Integer> stream =
+				Streams.merge(Streams.just(1).map(i -> Streams.range(0, n)));
 
 		final CountDownLatch latch = new CountDownLatch(n);
 		awaitLatch(stream.consume(integer -> latch.countDown()), latch);
@@ -110,7 +113,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements);
 
-		Control tail = sensorOdd().log().mergeWith(sensorEven())
+		Control tail = sensorOdd().mergeWith(sensorEven())
 		  .observe(loggingConsumer())
 		  .consume(i -> latch.countDown());
 
@@ -133,15 +136,12 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Control tail = Streams.concat(sensorOdd(), sensorEven().cache())
+		Control tail = Streams.concat(sensorEven(), sensorOdd())
 		  .log("concat")
 		  .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 
 		System.out.println(tail.debug());
 		generateData(elements);
-
-		sensorEven.onComplete();
-		sensorOdd.onComplete();
 
 		awaitLatch(tail, latch);
 	}
@@ -158,9 +158,6 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		generateData(elements);
 
-		sensorEven.onComplete();
-		sensorOdd.onComplete();
-
 		awaitLatch(tail, latch);
 	}
 
@@ -169,14 +166,11 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Control tail = sensorOdd().concatWith(sensorEven().cache())
+		Control tail = sensorEven().concatWith(sensorOdd())
 		  .log("concat")
 		  .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 
 		generateData(elements);
-
-		sensorEven.onComplete();
-		sensorOdd.onComplete();
 
 		awaitLatch(tail, latch);
 	}
@@ -223,7 +217,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
-		Control tail = sensorOdd().joinWith(sensorEven().cache())
+		Control tail = sensorOdd().joinWith(sensorEven())
 		  .log("joinWithTest")
 		  .consume(i -> latch.countDown());
 
@@ -237,7 +231,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		int elements = 69;
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
-		Control tail = Streams.zip(sensorEven(), sensorOdd().cache(), this::computeMin)
+		Control tail = Streams.zip(sensorEven(), sensorOdd(), this::computeMin)
 		  .log("sampleZipTest")
 		  .consume(x -> latch.countDown());
 
@@ -256,7 +250,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	private void generateData(int elements) {
 		Random random = new Random();
 		SensorData data;
-		Broadcaster<SensorData> upstream;
+		Subscriber<SensorData> upstream;
 
 		for (long i = 0; i < elements; i++) {
 			data = new SensorData(i, random.nextFloat() * 100);
@@ -265,10 +259,11 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			} else {
 				upstream = sensorOdd;
 			}
-			if(upstream.downstreamSubscription() != null) {
-				upstream.onNext(data);
-			}
+			upstream.onNext(data);
 		}
+
+		sensorEven.onComplete();
+		sensorOdd.onComplete();
 
 	}
 

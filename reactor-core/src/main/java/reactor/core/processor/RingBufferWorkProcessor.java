@@ -502,8 +502,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			RETRY_REF = PlatformDependent
 			.newAtomicReferenceFieldUpdater(RingBufferWorkProcessor.class, "retryBuffer");
 
-	private final WaitStrategy readWait =
-			PhasedBackoffWaitStrategy.withSleep(5, 5, TimeUnit.SECONDS);
+	private final WaitStrategy readWait = new LiteBlockingWaitStrategy();
 
 	@SuppressWarnings("unchecked")
 	private RingBufferWorkProcessor(String name, ExecutorService executor, int bufferSize,
@@ -541,7 +540,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
-		if (!alive() && ringBuffer.pending() == 0L) {
+		if (!alive() && ringBuffer.getCursor() <= workSequence.get()) {
 			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 			subscriber.onComplete();
 			return;
@@ -618,10 +617,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 						long n;
 						if (retry != null) {
 							n = retry.pending();
-							if (n > 0) {
-								ringBuffer.getSequencer().getWaitStrategy()
-								          .signalAllWhenBlocking();
-							}
+
 						}
 						else {
 							n = 0l;
@@ -864,7 +860,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 							catch (AlertException ce) {
 								barrier.clearAlert();
 								boolean tempRemove = !isRunning();
-								if(tempRemove) {
+								if (tempRemove) {
 									processor.decrementSubscribers();
 								}
 								try {
@@ -875,7 +871,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 								catch (Exception c) {
 									//IGNORE
 								}
-								if(tempRemove) {
+								if (tempRemove) {
 									processor.incrementSubscribers();
 								}
 								throw ce;

@@ -130,11 +130,6 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
     }
 
     @Override
-    protected PushSubscription<Zippable<O>> createTrackingSubscription(Subscription subscription) {
-        return innerSubscriptions;
-    }
-
-    @Override
     protected void doNext(Zippable<O> ev) {
         count++;
         toZip[ev.index] = ev.data == null ? EMPTY_ZIPPED_DATA : ev.data;

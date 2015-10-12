@@ -61,12 +61,12 @@ public class RetryWhenAction<T> extends Action<T, T> {
 
 		long pendingRequests = Long.MAX_VALUE;
 		if (rootPublisher != null) {
-			PushSubscription<T> upstream = upstreamSubscription;
+			Subscription upstream = upstreamSubscription;
 			if (upstream == null) {
 				rootPublisher.subscribe(RetryWhenAction.this);
 				upstream = upstreamSubscription;
 			} else {
-				pendingRequests = upstream.pendingRequestSignals();
+				pendingRequests = PushSubscription.class.isAssignableFrom(upstream.getClass()) ? ((PushSubscription)upstream).pendingRequestSignals() : 0;
 			}
 			if (upstream != null) {
 				upstream.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);

@@ -15,21 +15,20 @@
  */
 package reactor.rx.action.transformation;
 
-import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SerializedSubscriber;
-import reactor.core.support.Assert;
-import reactor.fn.Function;
-import reactor.fn.timer.Timer;
-import reactor.rx.action.Action;
-import reactor.rx.action.support.DefaultSubscriber;
-import reactor.rx.stream.GroupedStream;
-import reactor.rx.subscription.PushSubscription;
-import reactor.rx.subscription.ReactiveSubscription;
-
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.support.Assert;
+import reactor.fn.Function;
+import reactor.fn.timer.Timer;
+import reactor.rx.action.Action;
+import reactor.rx.stream.GroupedStream;
+import reactor.rx.subscription.PushSubscription;
+import reactor.rx.subscription.ReactiveSubscription;
 
 /**
  * Manage a dynamic registry of substreams for a given key extracted from the incoming data. Each non-existing key
@@ -111,11 +110,11 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 	}
 
 	private void removeGroupedStream(K key) {
-		PushSubscription<T> parentSub = upstreamSubscription;
+		Subscription parentSub = upstreamSubscription;
 		ReactiveSubscription<T> innerSub = groupByMap.remove(key);
 		if (innerSub != null
 				&& groupByMap.isEmpty() &&
-				((parentSub == null || parentSub.isComplete()))) {
+				((parentSub == null ))) {
 
 			PushSubscription<GroupedStream<K, T>> childSub = downstreamSubscription;
 			if (childSub == null || childSub.isComplete()) {

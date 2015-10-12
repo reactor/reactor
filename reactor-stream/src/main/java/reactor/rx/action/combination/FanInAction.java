@@ -110,7 +110,8 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	public void addPublisher(Publisher<? extends I> publisher) {
 		InnerSubscriber<I, E, O> inlineMerge = createSubscriber();
 		if(publishers == null){
-			FanInSubscription.RUNNING_COMPOSABLE_UPDATER.incrementAndGet(innerSubscriptions);
+			FanInSubscription.RUNNING_COMPOSABLE_UPDATER.incrementAndGet(
+					innerSubscriptions);
 		}
 		publisher.subscribe(inlineMerge);
 	}
@@ -184,6 +185,12 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	protected FanInSubscription<I, E, O, SUBSCRIBER> createFanInSubscription() {
 		return new FanInSubscription<I, E, O, SUBSCRIBER>(this, false);
+	}
+
+	@Override
+	protected FanInSubscription<I, E, O, SUBSCRIBER> createTrackingSubscription(Subscription subscription) {
+		innerSubscriptions.maxCapacity(capacity);
+		return innerSubscriptions;
 	}
 
 	@Override

@@ -16,7 +16,6 @@
 
 package reactor;
 
-import java.util.Iterator;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -24,19 +23,18 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.FlatMapOperator;
+import reactor.core.publisher.IteratorSequencer;
 import reactor.core.publisher.LogOperator;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolineOperator;
+import reactor.core.publisher.ValuePublisher;
 import reactor.core.subscriber.BlockingQueueSubscriber;
-import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
-import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 
@@ -62,7 +60,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <T> Publisher<T> from(final Iterable<T> defaultValues) {
-		IteratorPublisher<T> iteratorPublisher = new IteratorPublisher<>(defaultValues);
+		IteratorSequencer<T> iteratorPublisher = new IteratorSequencer<>(defaultValues);
 		return create(iteratorPublisher, iteratorPublisher);
 	}
 
@@ -261,101 +259,6 @@ public final class Publishers extends PublisherFactory {
 		Tap<IN> tap = Tap.create();
 		publisher.subscribe(tap);
 		return tap;
-	}
-
-	/**
-	 * Simple Publisher implementations
-	 */
-
-	//
-
-	private static class IteratorPublisher<T>
-			implements Consumer<SubscriberWithContext<T, Iterator<? extends T>>>,
-			Function<Subscriber<? super T>, Iterator<? extends T>> {
-
-		private final Iterable<T> defaultValues;
-
-		public IteratorPublisher(Iterable<T> defaultValues) {
-			this.defaultValues = defaultValues;
-		}
-
-		@Override
-		public void accept(SubscriberWithContext<T, Iterator<? extends T>> subscriber) {
-			final Iterator<? extends T> iterator = subscriber.context();
-			if (iterator.hasNext()) {
-				subscriber.onNext(iterator.next());
-			}
-			else {
-				subscriber.onComplete();
-				return;
-			}
-
-			if (!iterator.hasNext()) {
-				subscriber.onComplete();
-			}
-		}
-
-		@Override
-		public Iterator<? extends T> apply(Subscriber<? super T> subscriber) {
-			if (defaultValues == null) {
-				throw PrematureCompleteException.INSTANCE;
-			}
-			return defaultValues.iterator();
-		}
-
-		@Override
-		public String toString() {
-			return "iterable=" + defaultValues;
-		}
-	}
-
-	private static class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN> {
-
-		private final IN data;
-
-		public ValuePublisher(IN data) {
-			this.data = data;
-		}
-
-		@Override
-		public void subscribe(final Subscriber<? super IN> s) {
-			try {
-				s.onSubscribe(new Subscription() {
-					boolean terminado = false;
-
-					@Override
-					public void request(long elements) {
-						if (terminado) {
-							return;
-						}
-
-						terminado = true;
-						if (data != null) {
-							s.onNext(data);
-						}
-						s.onComplete();
-					}
-
-					@Override
-					public void cancel() {
-						terminado = true;
-					}
-				});
-			}
-			catch (Throwable throwable) {
-				Publishers.<IN>error(throwable).subscribe(s);
-			}
-		}
-
-		@Override
-		public IN get() {
-			return data;
-		}
-
-		@Override
-		public String toString() {
-			return "single-value=" + data;
-		}
 	}
 
 	private static class MapOperator<I, O>

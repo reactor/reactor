@@ -15,6 +15,8 @@
  */
 package reactor.rx.action.terminal;
 
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -28,8 +30,6 @@ import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.subscription.PushSubscription;
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * @author Stephane Maldini
@@ -167,7 +167,7 @@ public final class AdaptiveConsumerAction<T> extends Action<T, Void> {
 		@Override
 		public void onNext(Long n) {
 			BackpressureUtils.getAndAdd(COUNTED, AdaptiveConsumerAction.this, n);
-			PushSubscription<T> upstreamSubscription = AdaptiveConsumerAction.this.upstreamSubscription;
+			Subscription upstreamSubscription = AdaptiveConsumerAction.this.upstreamSubscription;
 			if(upstreamSubscription != null) {
 				upstreamSubscription.request(n);
 			}
