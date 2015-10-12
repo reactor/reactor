@@ -15,9 +15,17 @@
  */
 package reactor.core.processor;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
 import reactor.Processors;
+import reactor.core.error.ReactorFatalException;
+import reactor.core.support.Assert;
+import reactor.fn.BiConsumer;
+import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
@@ -36,6 +44,32 @@ public class ProcessorGroupWorkTests extends AbstractProcessorVerification {
 	}
 
 
+	@Override
+	public void simpleTest() throws Exception {
+		ProcessorGroup<String> serviceRB = Processors.ioGroup("rbWork", 32);
+		BiConsumer<String, Consumer<? super String>>  r = serviceRB.dataDispatcher();
+
+		long start = System.currentTimeMillis();
+		CountDownLatch latch = new CountDownLatch(1);
+		Consumer<String> c =  ev -> {
+				latch.countDown();
+			try {
+				Thread.sleep(1000);
+			}
+			catch(InterruptedException ie){
+				throw ReactorFatalException.create(ie);
+			}
+		};
+		r.accept("Hello World!", c);
+
+		boolean success = serviceRB.awaitAndShutdown(5, TimeUnit.SECONDS);
+		long end = System.currentTimeMillis();
+
+		Assert.isTrue(success, "Shutdown failed");
+		Assert.isTrue(latch.getCount() == 0, "Event missed");
+		Assert.isTrue((end - start) >= 1000, "Timeout too long");
+
+	}
 
 	@Override
 	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws

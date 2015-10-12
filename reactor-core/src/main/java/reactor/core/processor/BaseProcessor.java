@@ -120,7 +120,7 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 
 	protected void cancel(Subscription subscription){
 		if(subscription != SignalType.NOOP_SUBSCRIPTION){
-			cancel(subscription);
+			subscription.cancel();
 		}
 	}
 

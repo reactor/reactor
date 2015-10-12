@@ -358,9 +358,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 			return;
 		}
 		try {
-			processor.onComplete();
 			if (Resource.class.isAssignableFrom(processor.getClass())) {
 				((Resource) processor).shutdown();
+			}
+			else{
+				processor.onComplete();
 			}
 		} catch (Throwable t) {
 			Exceptions.throwIfFatal(t);
@@ -412,7 +414,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 				subscriber.onError((Throwable) payload);
 			}
 		} catch (CancelException c) {
-			//IGNORE
+			throw c;
 		} catch (Throwable t) {
 			if (type != SignalType.ERROR) {
 				Exceptions.throwIfFatal(t);
@@ -427,7 +429,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 	static private void routeTask(Task task) {
 		try {
 			route(task.payload, task.subscriber, task.type);
-		} finally {
+		}
+		catch (CancelException ce){
+			//IGNORE
+		}
+		finally {
 			task.recycle();
 		}
 	}
@@ -642,14 +648,15 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 
 
 		protected final ProcessorGroup service;
-		protected final AtomicBoolean  terminated;
+		protected volatile int terminated;
+		protected static final AtomicIntegerFieldUpdater<ProcessorBarrier> TERMINATED =
+			AtomicIntegerFieldUpdater.newUpdater(ProcessorBarrier.class, "terminated");
 
-		volatile Subscription subscription;
-		Subscriber<? super V> subscriber;
+		protected volatile Subscription subscription;
+		protected Subscriber<? super V> subscriber;
 
 		public ProcessorBarrier(ProcessorGroup service) {
 			this.service = service;
-			this.terminated = service != null && service.processor == null ? null : new AtomicBoolean(false);
 		}
 
 		@Override
@@ -720,7 +727,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 				if (BackpressureUtils.checkSubscription(subscription, s)) {
 					subscription = s;
 				}
-				subscriber = this.subscriber != null ? this.subscriber : null;
+				subscriber = this.subscriber;
 			}
 
 			if (subscriber != null) {
@@ -732,10 +739,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 		public final void onNext(V o) {
 			super.onNext(o);
 
-			if (subscriber == null) {
-				//cancelled
-				if (subscription == null) return;
-
+			if (terminated == 1) {
 				throw CancelException.get();
 			}
 
@@ -746,47 +750,54 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 		public final void onError(Throwable t) {
 			super.onError(t);
 
-			if (subscriber == null) {
-				//cancelled
-				if (subscription == null) return;
+			if(TERMINATED.compareAndSet(this, 0, 1)) {
+				if (subscriber == null) {
+					//cancelled
+					if (subscription == null) return;
 
-				throw ReactorFatalException.create(t);
+					throw ReactorFatalException.create(t);
+				}
+
+				handleTerminalSignal();
+				dispatchProcessorSequence(t, subscriber, SignalType.ERROR);
 			}
-
-			dispatchProcessorSequence(t, subscriber, SignalType.ERROR);
-			handleTerminalSignal();
 		}
 
 		@Override
 		public final void onComplete() {
-			dispatchProcessorSequence(null, subscriber, SignalType.COMPLETE);
-			handleTerminalSignal();
+			if(TERMINATED.compareAndSet(this, 0, 1)) {
+				handleTerminalSignal();
+				dispatchProcessorSequence(null, subscriber, SignalType.COMPLETE);
+			}
 		}
 
 		@Override
 		public void request(long n) {
-			Subscription subscription = this.subscription;
-			if (subscription != null) {
-				subscription.request(n);
+			if(terminated == 0) {
+				Subscription subscription = this.subscription;
+				if (subscription != null) {
+					subscription.request(n);
+				}
 			}
 		}
 
 		@Override
 		public void cancel() {
-			Subscription subscription = this.subscription;
-			if (subscription != null) {
-				synchronized (this) {
-					this.subscription = null;
-					this.subscriber = null;
-				}
-				subscription.cancel();
+			if(TERMINATED.compareAndSet(this, 0, 1)) {
+				Subscription subscription = this.subscription;
 				handleTerminalSignal();
+				if (subscription != null) {
+					synchronized (this) {
+						this.subscription = null;
+						this.subscriber = null;
+					}
+					subscription.cancel();
+				}
 			}
 		}
 
 		protected void handleTerminalSignal() {
-			if (terminated != null && terminated.compareAndSet(false, true) &&
-			  service != null) {
+			if (service != null) {
 				service.decrementReference();
 			}
 		}
