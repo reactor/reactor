@@ -23,6 +23,7 @@ import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
 import reactor.Processors;
+import reactor.core.publisher.LogOperator;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
@@ -50,30 +51,27 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 
 		return Processors.create(p, Streams.wrap(p).forkJoin(2,
 				(GroupedStream<Integer, Integer> stream) -> stream
-						.scan((prev, next) -> next)
-						.map(integer -> -integer)
+						.scan((prev, next) -> next).map(integer -> -integer)
 						.filter(integer -> integer <= 0).sample(1)
-						.map(integer -> -integer)
-						.buffer(batch, 50, TimeUnit.MILLISECONDS)
-						.<Integer>split()
-						.observe(array -> cumulated.getAndIncrement())
+						.map(integer -> -integer).buffer(batch, 50, TimeUnit.MILLISECONDS)
+						.<Integer>split().observe(array -> cumulated.getAndIncrement())
 						.flatMap(i -> Streams
 								.zip(Streams.just(i), otherStream, Tuple1::getT1))
-						.observe(this::monitorThreadUse)
-				//.log()
-		)
+						.observe(this::monitorThreadUse).log("flatmap", LogOperator.REQUEST))
 				.observe(array -> cumulatedJoin.getAndIncrement())
 				.process(Processors.topic("stream-raw-join", bufferSize))
-				.when(Throwable.class, Throwable::printStackTrace));
+				                           .when(Throwable.class,
+						                           Throwable::printStackTrace));
 	}
 
 	@Override
 	public boolean skipStochasticTests() {
-		return false;
+		return true;
 	}
 
 	@Override
 	public void stochastic_spec103_mustSignalOnMethodsSequentially() throws Throwable {
+		//for(int i = 0 ; i < 1000 ; i++)
 		super.stochastic_spec103_mustSignalOnMethodsSequentially();
 	}
 

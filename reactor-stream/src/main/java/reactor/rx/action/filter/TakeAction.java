@@ -13,7 +13,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 package reactor.rx.action.filter;
+
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import reactor.rx.action.Action;
 
@@ -23,10 +26,12 @@ import reactor.rx.action.Action;
  */
 public class TakeAction<T> extends Action<T, T> {
 
-	private final long         limit;
+	private final long limit;
 	private long counted = 0l;
 
-	private boolean requested = false;
+	private volatile     long                               requested = 0L;
+	private static final AtomicLongFieldUpdater<TakeAction> REQUESTED =
+			AtomicLongFieldUpdater.newUpdater(TakeAction.class, "requested");
 
 	public TakeAction(long limit) {
 		this.limit = limit;
@@ -34,12 +39,27 @@ public class TakeAction<T> extends Action<T, T> {
 
 	@Override
 	public void requestMore(long n) {
-		synchronized (this){
-			if(!requested){
-				requested = true;
+		if (n >= limit) {
+			super.requestMore(limit);
+		}
+		else {
+			long r, toAdd;
+			do {
+				r = requested;
+				if (r >= limit) {
+					return;
+				}
+				toAdd = r + n;
+			}
+			while (!REQUESTED.compareAndSet(this, r, toAdd));
+
+			if (toAdd > limit) {
+				super.requestMore(limit - r);
+			}
+			else {
+				super.requestMore(n);
 			}
 		}
-		super.requestMore(limit);
 	}
 
 	@Override
@@ -51,7 +71,6 @@ public class TakeAction<T> extends Action<T, T> {
 			broadcastComplete();
 		}
 	}
-
 
 	@Override
 	public String toString() {

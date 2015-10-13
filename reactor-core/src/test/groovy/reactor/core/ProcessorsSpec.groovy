@@ -236,9 +236,11 @@ class ProcessorsSpec extends Specification {
 			def r = serviceRB.dataDispatcher()
 			long start = System.currentTimeMillis()
 			def hello = ""
+			def latch = new CountDownLatch(1)
 			def c = { String ev ->
 				hello = ev
 				Thread.sleep(1000)
+			  	latch.countDown()
 			} as Consumer<String>
 
 		when:
@@ -246,7 +248,6 @@ class ProcessorsSpec extends Specification {
 			r.accept("Hello World!", c)
 			def success = serviceRB.awaitAndShutdown(5, TimeUnit.SECONDS)
 			long end = System.currentTimeMillis()
-
 		then:
 			"the Consumer was run, this thread was blocked, and the Dispatcher is shut down"
 			hello == "Hello World!"

@@ -25,6 +25,7 @@ import org.reactivestreams.Processor;
 import reactor.Timers;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.processor.RingBufferWorkProcessor;
+import reactor.core.publisher.LogOperator;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -265,6 +266,7 @@ public class SmokeTests {
 			  windows.getAndIncrement()
 		  )
 		  .flatMap(s -> s
+
 			  .reduce(new Buffer(), Buffer::append)
 		  )
 				.observe(d ->
@@ -286,17 +288,22 @@ public class SmokeTests {
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
 			return request.writeWith(
-					bufferStream.observe(d -> integer.getAndIncrement()).take(takeCount)
-							.observe(d -> integerPostTake.getAndIncrement())
-							.timeout(2, TimeUnit.SECONDS, Streams.<Buffer>empty()
-											.observeComplete(p -> System.out
-													.println("timeout after 2 ")))
-							.observe(
-									d -> integerPostTimeout.getAndIncrement()).concatWith(
-							Streams.just(
-									GpdistCodec.class.equals(codec.getClass()) ? Buffer.wrap(new byte[0]) :
-											Buffer.wrap("END"))
-									.observeComplete(d->integerPostConcat.decrementAndGet()))//END
+					bufferStream
+								.observe(d -> integer.getAndIncrement())
+								.take(takeCount)
+								.observe(d -> integerPostTake.getAndIncrement())
+					            .timeout(2, TimeUnit.SECONDS, Streams.<Buffer>empty()
+					                                                 .observeComplete(
+							                                                 p -> System.out
+									                                                 .println(
+											                                                 "timeout after 2 ")))
+					            .observe(d -> integerPostTimeout
+							            .getAndIncrement()).concatWith(Streams.just(
+									GpdistCodec.class.equals(codec.getClass()) ?
+											Buffer.wrap(new byte[0]) : Buffer.wrap("END"))
+					                                                          .observeComplete(
+							                                                          d -> integerPostConcat
+									                                                          .decrementAndGet()))//END
 							.observe(d -> integerPostConcat.getAndIncrement())
 							.capacity(1L));
 		});

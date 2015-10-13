@@ -42,6 +42,7 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.NetUtil;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
+import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.support.NamedDaemonThreadFactory;
@@ -152,32 +153,36 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> channelHandler) {
-		final Promise<Void> promise = Promises.prepare(getDefaultTimer());
+		return new Promise<Void>(getDefaultTimer()){
 
-		ChannelFuture future = bootstrap.handler(new ChannelInitializer<DatagramChannel>() {
 			@Override
-			public void initChannel(final DatagramChannel ch) throws Exception {
-				if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
-					nettyOptions.pipelineConfigurer().accept(ch.pipeline());
-				}
+			public void subscribe(Subscriber<? super Void> subscriber) {
+				ChannelFuture future = bootstrap.handler(new ChannelInitializer<DatagramChannel>() {
+					@Override
+					public void initChannel(final DatagramChannel ch) throws Exception {
+						if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
+							nettyOptions.pipelineConfigurer().accept(ch.pipeline());
+						}
 
-				bindChannel(channelHandler, ch);
+						bindChannel(channelHandler, ch);
+					}
+				}).bind();
+				future.addListener(new ChannelFutureListener() {
+					@Override
+					public void operationComplete(ChannelFuture future) throws Exception {
+						if (future.isSuccess()) {
+							log.info("BIND {}", future.channel().localAddress());
+							channel = (DatagramChannel) future.channel();
+							onComplete();
+						}
+						else {
+							onError(future.cause());
+						}
+					}
+				});
+				super.subscribe(subscriber);
 			}
-		}).bind();
-		future.addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (future.isSuccess()) {
-					log.info("BIND {}", future.channel().localAddress());
-					channel = (DatagramChannel) future.channel();
-					promise.onComplete();
-				} else {
-					promise.onError(future.cause());
-				}
-			}
-		});
-
-		return promise;
+		};
 	}
 
 	@Override

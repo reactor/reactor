@@ -540,7 +540,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
-		if (!alive() && ringBuffer.getCursor() <= workSequence.get()) {
+		if (!alive()) {
 			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 			subscriber.onComplete();
 			return;
@@ -553,7 +553,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			incrementSubscribers();
 
 			//bind eventProcessor sequence to observe the ringBuffer
-			signalProcessor.sequence.setVolatile(workSequence.get());
+			signalProcessor.sequence.setVolatile(ringBuffer.getCursor());
 			ringBuffer.addGatingSequences(signalProcessor.sequence);
 
 			//prepare the subscriber subscription to this processor
@@ -565,6 +565,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 		}
 		catch (Throwable t) {
+			decrementSubscribers();
 			ringBuffer.removeGatingSequence(signalProcessor.sequence);
 			Exceptions.<E>publisher(t).subscribe(subscriber);
 		}
@@ -631,6 +632,11 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	protected void cancel(Subscription subscription) {
 		super.cancel(subscription);
 		readWait.signalAllWhenBlocking();
+	}
+
+	@Override
+	public long getAvailableCapacity() {
+		return ringBuffer.remainingCapacity();
 	}
 
 	@Override
@@ -859,21 +865,29 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 							}
 							catch (AlertException ce) {
 								barrier.clearAlert();
-								boolean tempRemove = !isRunning();
-								if (tempRemove) {
+								if (!isRunning()) {
 									processor.decrementSubscribers();
 								}
+								else{
+									throw ce;
+								}
 								try {
-									event = processor.ringBuffer
-											.get(barrier.waitFor(nextSequence));
+									for(;;) {
+										try {
+											event = processor.ringBuffer
+													.get(barrier.waitFor(nextSequence));
+											break;
+										}
+										catch (AlertException cee) {
+											barrier.clearAlert();
+										}
+									}
 									reschedule(event);
 								}
 								catch (Exception c) {
 									//IGNORE
 								}
-								if (tempRemove) {
-									processor.incrementSubscribers();
-								}
+								processor.incrementSubscribers();
 								throw ce;
 							}
 						}
@@ -901,8 +915,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				}
 			}
 			finally {
-				processor.ringBuffer.removeGatingSequence(sequence);
 				processor.decrementSubscribers();
+				processor.ringBuffer.removeGatingSequence(sequence);
 				running.set(false);
 				barrier.alert();
 			}
@@ -985,7 +999,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				while (!unbounded &&
 						BackpressureUtils.getAndSub(pendingRequest, 1) == 0L) {
 					if (!isRunning()) {
-						throw CancelException.INSTANCE;
+						throw AlertException.INSTANCE;
 					}
 					//Todo Use WaitStrategy?
 					LockSupport.parkNanos(1l);
@@ -995,15 +1009,11 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				//Complete or Error are terminal events, we shutdown the processor and process the signal
 				running.set(false);
 				RingBufferSubscriberUtils.route(event, subscriber);
-				throw CancelException.INSTANCE;
+				throw AlertException.INSTANCE;
 			}
 		}
 
 	}
 
-	@Override
-	public long getAvailableCapacity() {
-		return ringBuffer.remainingCapacity();
-	}
 
 }

@@ -16,6 +16,7 @@
 package reactor.rx.action.error;
 
 import org.reactivestreams.Publisher;
+import reactor.core.error.CancelException;
 import reactor.fn.Consumer;
 
 /**
@@ -35,7 +36,13 @@ final public class ErrorAction<T, E extends Throwable> extends FallbackAction<T>
 
 	@Override
 	protected void doNormalNext(T ev) {
-		broadcastNext(ev);
+		try {
+			broadcastNext(ev);
+		}
+		catch (CancelException c){
+			doError(c);
+			throw c;
+		}
 	}
 
 	@Override

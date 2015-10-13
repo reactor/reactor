@@ -67,7 +67,6 @@ public class WindowAction<T> extends BatchAction<T, Stream<T>> {
 
 			@Override
 			protected void onRequest(long n) {
-				WindowAction.this.requestMore(n);
 			}
 		};
 		currentWindow = _currentWindow;

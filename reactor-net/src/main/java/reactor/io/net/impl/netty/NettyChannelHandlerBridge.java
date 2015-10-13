@@ -408,6 +408,9 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 						public void operationComplete(ChannelFuture future) throws Exception {
 							if (!future.isSuccess()) {
 								log.error("write error :" + w, future.cause());
+								if(Buffer.class.isAssignableFrom(w.getClass())){
+									((Buffer)w).rewind();
+								}
 							}
 						}
 					});
@@ -490,6 +493,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 				}
 			} catch (Throwable t) {
 				onError(Exceptions.addValueAsLastCause(t, w));
+				throw CancelException.get();
 			}
 		}
 

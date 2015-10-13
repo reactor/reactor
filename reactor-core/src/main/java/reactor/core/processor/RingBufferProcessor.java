@@ -17,6 +17,7 @@
 package reactor.core.processor;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
 
@@ -35,7 +36,6 @@ import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.SequenceBarrier;
 import reactor.core.processor.rb.disruptor.Sequencer;
-import reactor.core.publisher.IteratorSequencer;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
@@ -572,7 +572,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
 
-		if (!alive() && ringBuffer.getCursor() >= minimum.get()) {
+		if (!alive()) {
 			RingBufferSequencer<E> sequencer = new RingBufferSequencer<E>(
 					ringBuffer, minimum.get()
 			);
@@ -598,7 +598,6 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		else {
 			//otherwise only listen to new data
 			//set eventProcessor sequence to ringbuffer index
-			signalProcessor.getSequence().set(ringBuffer.getCursor());
 			ringBuffer.addGatingSequences(signalProcessor.getSequence());
 
 
@@ -616,7 +615,13 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		catch (Throwable t) {
 			ringBuffer.removeGatingSequence(signalProcessor.getSequence());
 			decrementSubscribers();
-			Exceptions.<E>publisher(t).subscribe(subscriber);
+			if (!alive() && RejectedExecutionException.class.isAssignableFrom(t.getClass())){
+				RingBufferSequencer<E> sequencer = new RingBufferSequencer<E>(ringBuffer, minimum.get());
+				PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
+			}
+			else{
+				Exceptions.<E>publisher(t).subscribe(subscriber);
+			}
 		}
 	}
 
