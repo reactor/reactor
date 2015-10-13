@@ -37,4 +37,19 @@ public enum SignalType {
 		public void cancel() {
 		}
 	}
+
+	/**
+	 * A singleton completed subscription
+	 */
+	public static final Subscription COMPLETE_SUBSCRIPTION = new CompleteSubscription();
+
+	private final static class CompleteSubscription implements Subscription {
+		@Override
+		public void request(long n) {
+		}
+
+		@Override
+		public void cancel() {
+		}
+	}
 }

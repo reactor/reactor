@@ -553,7 +553,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			incrementSubscribers();
 
 			//bind eventProcessor sequence to observe the ringBuffer
-			signalProcessor.sequence.setVolatile(ringBuffer.getCursor());
+			//signalProcessor.sequence.setVolatile(ringBuffer.getCursor());
 			ringBuffer.addGatingSequences(signalProcessor.sequence);
 
 			//prepare the subscriber subscription to this processor
@@ -618,7 +618,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 						long n;
 						if (retry != null) {
 							n = retry.pending();
-
 						}
 						else {
 							n = 0l;

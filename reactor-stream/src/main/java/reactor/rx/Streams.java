@@ -23,6 +23,7 @@ import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -654,7 +655,7 @@ public class Streams {
 	 */
 	public static <T> Action<Publisher<? extends T>, T> switchOnNext() {
 		SwitchAction<T> switchAction = new SwitchAction<>();
-		switchAction.onSubscribe(Action.HOT_SUBSCRIPTION);
+		switchAction.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 		return switchAction;
 	}
 

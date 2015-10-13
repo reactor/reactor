@@ -16,13 +16,21 @@
 
 package reactor.io.net.impl.netty;
 
-import io.netty.channel.*;
+import java.net.InetSocketAddress;
+import java.util.concurrent.TimeUnit;
+
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelDuplexHandler;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.CancelException;
+import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
@@ -30,11 +38,7 @@ import reactor.io.codec.Codec;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannel;
 import reactor.rx.Streams;
-import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
-
-import java.net.InetSocketAddress;
-import java.util.concurrent.TimeUnit;
 
 /**
  * {@link ReactorChannel} implementation that delegates to Netty.
@@ -76,7 +80,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 			ioChannel.write(encodedWriter).addListener(new ChannelFutureListener() {
 				@Override
 				public void operationComplete(ChannelFuture future) throws Exception {
-					postWriter.onSubscribe(Action.HOT_SUBSCRIPTION);
+					postWriter.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 					if (future.isSuccess()) {
 						postWriter.onComplete();
 					} else {
@@ -92,7 +96,7 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 					ioChannel.write(encodedWriter).addListener(new ChannelFutureListener() {
 						@Override
 						public void operationComplete(ChannelFuture future) throws Exception {
-							postWriter.onSubscribe(Action.HOT_SUBSCRIPTION);
+							postWriter.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 							if (future.isSuccess()) {
 								postWriter.onComplete();
 							} else {

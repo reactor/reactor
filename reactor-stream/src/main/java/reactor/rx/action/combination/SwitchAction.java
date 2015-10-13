@@ -23,6 +23,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
+import reactor.core.support.SignalType;
 import reactor.rx.action.Action;
 
 /**
@@ -78,7 +79,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 			subscriber.cancel();
 		}
 
-		if (upstreamSubscription != HOT_SUBSCRIPTION) {
+		if (upstreamSubscription != SignalType.NOOP_SUBSCRIPTION) {
 			super.cancel();
 		}
 	}

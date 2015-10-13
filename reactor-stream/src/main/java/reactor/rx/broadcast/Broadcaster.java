@@ -15,17 +15,18 @@
  */
 package reactor.rx.broadcast;
 
+import java.util.Queue;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Timers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.support.SignalType;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
-
-import java.util.Queue;
 
 /**
  * A {@code Broadcaster} is a subclass of {@code Stream} which exposes methods for publishing values into the pipeline.
@@ -109,7 +110,7 @@ public class Broadcaster<O> extends Action<O, O> {
 		this.ignoreDropped = ignoreDropped;
 
 		//start broadcaster
-		this.upstreamSubscription = HOT_SUBSCRIPTION;
+		SUBSCRIPTION.lazySet(this, SignalType.NOOP_SUBSCRIPTION);
 	}
 
 
@@ -120,8 +121,7 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		if (upstreamSubscription == HOT_SUBSCRIPTION) {
-			upstreamSubscription = null;
+		if (SUBSCRIPTION.compareAndSet(this, SignalType.NOOP_SUBSCRIPTION, null)) {
 			super.onSubscribe(subscription);
 
 			PushSubscription<O> downSub = downstreamSubscription;
@@ -191,14 +191,14 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	public void cancel() {
 		Subscription parentSub = upstreamSubscription;
-		if (parentSub != null && parentSub != HOT_SUBSCRIPTION) {
+		if (parentSub != null && parentSub != SignalType.NOOP_SUBSCRIPTION) {
 			super.cancel();
 		}
 	}
 
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		if (upstreamSubscription != null && upstreamSubscription != HOT_SUBSCRIPTION && !terminated) {
+		if (upstreamSubscription != null && upstreamSubscription != SignalType.NOOP_SUBSCRIPTION && !terminated) {
 			requestMore(elements);
 		} else {
 			PushSubscription<O> _downstreamSubscription = downstreamSubscription;

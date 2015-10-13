@@ -31,19 +31,14 @@ import reactor.fn.Function;
 public final class LogOperator<IN>
 		implements Function<Subscriber<? super IN>, Subscriber<? super IN>> {
 
-	public static final int SUBSCRIBE = 0b1000000;
-
-	public static final int ON_SUBSCRIBE = 0b0100000;
-
-	public static final int ON_NEXT = 0b0010000;
-
-	public static final int ON_ERROR = 0b0001000;
-
-	public static final int ON_COMPLETE = 0b0000100;
-
-	public static final int REQUEST = 0b0000010;
-
-	public static final int CANCEL = 0b0000001;
+	public static final int SUBSCRIBE    = 0b01000000;
+	public static final int ON_SUBSCRIBE = 0b00100000;
+	public static final int ON_NEXT      = 0b00010000;
+	public static final int ON_ERROR     = 0b00001000;
+	public static final int ON_COMPLETE  = 0b00000100;
+	public static final int REQUEST      = 0b00000010;
+	public static final int CANCEL       = 0b00000001;
+	public static final int TERMINAL     = CANCEL | ON_COMPLETE | ON_ERROR;
 
 	public static final int ALL = 0b1111111;
 
@@ -69,7 +64,7 @@ public final class LogOperator<IN>
 
 	private static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> {
 
-		private final int options;
+		private final int    options;
 		private final Logger log;
 
 		public LoggerBarrier(Logger log, Subscriber<? super IN> subscriber, int options) {

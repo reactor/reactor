@@ -15,6 +15,10 @@
  */
 package reactor.rx.action.combination;
 
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -22,13 +26,10 @@ import reactor.core.error.Exceptions;
 import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
+import reactor.core.support.SignalType;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
-
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * The best moment of my life so far, not.
@@ -76,7 +77,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 			start();
 		}
 		if(status.get() == COMPLETE){
-			subscriber.onSubscribe(HOT_SUBSCRIPTION);
+			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 			subscriber.onComplete();
 		}else {
 			super.subscribe(SerializedSubscriber.create(subscriber));
@@ -145,6 +146,13 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 				onSubscribe(innerSubscriptions);
 			}
 		}
+	}
+
+	@Override
+	public Action<E, O> capacity(long elements) {
+		super.capacity(elements);
+		innerSubscriptions.maxCapacity(capacity);
+		return this;
 	}
 
 	protected long initUpstreamPublisherAndCapacity() {

@@ -24,6 +24,7 @@ import org.zeromq.ZMQ;
 import org.zeromq.ZMsg;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
@@ -75,7 +76,7 @@ public class ZeroMQChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 					}
 				});
 				subscription.request(Long.MAX_VALUE);
-				postWriter.onSubscribe(Action.HOT_SUBSCRIPTION);
+				postWriter.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 			}
 
 			@Override

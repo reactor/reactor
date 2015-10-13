@@ -43,12 +43,12 @@ public final class RingBufferSequencer<T>
 	public void accept(SubscriberWithContext<T, Sequence> subscriber) {
 		final long cursor = subscriber.context().get() + 1L;
 
-		if (cursor <= ringBuffer.getCursor()) {
-			MutableSignal<T> signal = ringBuffer.get(cursor);
-			RingBufferSubscriberUtils.route(signal, subscriber);
+		if (cursor > ringBuffer.getCursor()) {
+			subscriber.onComplete();
 		}
 		else {
-			subscriber.onComplete();
+			MutableSignal<T> signal = ringBuffer.get(cursor);
+			RingBufferSubscriberUtils.route(signal, subscriber);
 		}
 		subscriber.context().set(cursor);
 	}
