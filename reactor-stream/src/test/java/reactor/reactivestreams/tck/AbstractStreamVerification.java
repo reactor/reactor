@@ -188,6 +188,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 			@Override
 			public void onComplete() {
 				System.out.println("completed!");
+				System.out.println(counters);
 				latch.countDown();
 			}
 		});
@@ -198,7 +199,6 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 			System.out.println(((Action)processor).debug());
 		}
 
-		System.out.println(counters);
 		long count = latch.getCount();
 		Assert.state(latch.getCount() == 0, "Count > 0 : " + count + " (" + list + ")  , Running on " + Processors
 		  .DEFAULT_POOL_SIZE + " CPU");

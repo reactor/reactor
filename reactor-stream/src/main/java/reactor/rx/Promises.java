@@ -397,6 +397,8 @@ public final class Promises {
 	 * @param <T>      The type of the function result.
 	 * @return a {@link Promise}.
 	 */
+	@SafeVarargs
+	@SuppressWarnings("varargs")
 	public static <T> Promise<T> any(Promise<T>... promises) {
 		return any(Arrays.asList(promises));
 	}
@@ -430,8 +432,10 @@ public final class Promises {
 	 * @param <T>      The type of the function result.
 	 * @return a {@link Promise}.
 	 */
+	@SafeVarargs
+	@SuppressWarnings("varargs")
 	private static <T> Promise<List<T>> multiWhen(Promise<T>... promises) {
-		return when(Arrays.asList(promises));
+		return when(Arrays.<Promise<T>>asList(promises));
 	}
 
 }

@@ -44,9 +44,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 	protected final Queue<O> buffer;
 
 	//Guarded by this
-	protected boolean draining = false;
+	protected volatile boolean draining = false;
 
-	//Only read from subscriber context
 	protected volatile long currentNextSignals = 0l;
 	protected volatile boolean terminalSignalled = false;
 
@@ -130,8 +129,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 					last = !draining && terminalSignalled;
 				}
 
-				if (last) {
-					onComplete();
+				if (last && TERMINAL_UPDATER.compareAndSet(this, 0, 1)) {
+					subscriber.onComplete();
 				} else {
 					if (elements != Long.MAX_VALUE) {
 						elements -= list.size;
@@ -182,8 +181,8 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 			} else */
 
 			if (pendingRequestSignals != Long.MAX_VALUE &&
-			  PENDING_UPDATER.decrementAndGet(this) < 0l) {
-				PENDING_UPDATER.incrementAndGet(this);
+					draining ||
+			  BackpressureUtils.getAndSub(PENDING_UPDATER, this, 1L) == 0l) {
 				if (ev != null) {
 					buffer.add(ev);
 				}
@@ -202,10 +201,12 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		if (terminated == 1)
 			return;
 
+
 		synchronized (this) {
 			terminalSignalled = true;
 
-			if (buffer.isEmpty()) {
+
+			if (buffer.isEmpty() && !draining) {
 				if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
 					complete = true;
 				}

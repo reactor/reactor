@@ -399,7 +399,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 
 	/* INTERNAL */
 	@SuppressWarnings("unchecked")
-	static private void route(Object payload, Subscriber subscriber, SignalType type) {
+	private final void route(Object payload, Subscriber subscriber, SignalType type) {
 
 		try {
 			if (subscriber == null) return;
@@ -408,14 +408,17 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 				subscriber.onNext(payload);
 			} else if (type == SignalType.COMPLETE) {
 				subscriber.onComplete();
+				decrementReference();
 			} else if (type == SignalType.SUBSCRIPTION) {
 				subscriber.onSubscribe((Subscription) payload);
 			} else {
 				subscriber.onError((Throwable) payload);
 			}
 		} catch (CancelException c) {
+			decrementReference();
 			throw c;
 		} catch (Throwable t) {
+			decrementReference();
 			if (type != SignalType.ERROR) {
 				Exceptions.throwIfFatal(t);
 				subscriber.onError(t);
@@ -426,7 +429,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 	}
 
 
-	static private void routeTask(Task task) {
+	private final void routeTask(Task task) {
 		try {
 			route(task.payload, task.subscriber, task.type);
 		}
@@ -472,7 +475,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 		}
 	};
 
-	private final static Consumer<Task> DEFAULT_TASK_CONSUMER = new Consumer<Task>() {
+	private final Consumer<Task> DEFAULT_TASK_CONSUMER = new Consumer<Task>() {
 		@Override
 		public void accept(Task task) {
 			routeTask(task);
@@ -563,7 +566,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 	private ProcessorBarrier<T> createBarrier(boolean forceWork) {
 
 		if (processor == null) {
-			return new SyncProcessorBarrier<>(null);
+			return new SyncProcessorBarrier<>(this);
 		}
 
 		if (BaseProcessor.class.isAssignableFrom(processor.getClass())
@@ -758,7 +761,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 					throw ReactorFatalException.create(t);
 				}
 
-				handleTerminalSignal();
 				dispatchProcessorSequence(t, subscriber, SignalType.ERROR);
 			}
 		}
@@ -766,7 +768,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 		@Override
 		public final void onComplete() {
 			if(TERMINATED.compareAndSet(this, 0, 1)) {
-				handleTerminalSignal();
 				dispatchProcessorSequence(null, subscriber, SignalType.COMPLETE);
 			}
 		}
@@ -785,7 +786,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 		public void cancel() {
 			if(TERMINATED.compareAndSet(this, 0, 1)) {
 				Subscription subscription = this.subscription;
-				handleTerminalSignal();
+				if (service != null) {
+					service.decrementReference();
+				};
 				if (subscription != null) {
 					synchronized (this) {
 						this.subscription = null;
@@ -793,12 +796,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 					}
 					subscription.cancel();
 				}
-			}
-		}
-
-		protected void handleTerminalSignal() {
-			if (service != null) {
-				service.decrementReference();
 			}
 		}
 
@@ -892,7 +889,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 
 		@Override
 		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
-			route(data, subscriber, type);
+			service.route(data, subscriber, type);
 		}
 
 
@@ -933,7 +930,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 
 		@Override
 		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
-			route(data, subscriber, type);
+			service.route(data, subscriber, type);
 		}
 
 		@Override

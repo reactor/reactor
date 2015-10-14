@@ -19,15 +19,14 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
 import reactor.rx.stream.GroupedStream;
-import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
 
 /**
@@ -42,6 +41,10 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 
 	private final Function<? super T, ? extends K> fn;
 	private final Timer                      timer;
+
+	private volatile int terminated = 0;
+	private static final AtomicIntegerFieldUpdater<GroupByAction> TERMINATED =
+		AtomicIntegerFieldUpdater.newUpdater(GroupByAction.class, "terminated");
 
 	private final Map<K, ReactiveSubscription<T>> groupByMap = new ConcurrentHashMap<>();
 
@@ -110,30 +113,42 @@ public class GroupByAction<T, K> extends Action<T, GroupedStream<K, T>> {
 	}
 
 	private void removeGroupedStream(K key) {
-		Subscription parentSub = upstreamSubscription;
 		ReactiveSubscription<T> innerSub = groupByMap.remove(key);
-		if (innerSub != null
-				&& groupByMap.isEmpty() &&
-				((parentSub == null ))) {
-
-			PushSubscription<GroupedStream<K, T>> childSub = downstreamSubscription;
-			if (childSub == null || childSub.isComplete()) {
-				cancel();
-			}
-
-			if (innerSub.getBufferSize() == 0l) {
+		if (innerSub != null && groupByMap.isEmpty() && terminated == 1) {
+			if (innerSub.isComplete()) {
 				broadcastComplete();
 			}
 		}
 	}
 
 	@Override
-	protected void doComplete() {
-		for (ReactiveSubscription<T> stream : groupByMap.values()) {
-			stream.onComplete();
+	public void cancel() {
+		if (TERMINATED.compareAndSet(this, 0, 1)) {
+			for (ReactiveSubscription<T> stream : groupByMap.values()) {
+				stream.onComplete();
+			}
+			super.cancel();
 		}
+	}
 
-		super.doComplete();
+	@Override
+	protected void doError(Throwable ev) {
+		if (TERMINATED.compareAndSet(this, 0, 1)) {
+			super.doError(ev);
+			for (ReactiveSubscription<T> stream : groupByMap.values()) {
+				stream.onComplete();
+			}
+		}
+	}
+
+	@Override
+	protected void doComplete() {
+		if (TERMINATED.compareAndSet(this, 0, 1)) {
+			for (ReactiveSubscription<T> stream : groupByMap.values()) {
+				stream.onComplete();
+			}
+			super.doComplete();
+		}
 	}
 
 	@Override

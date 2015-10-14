@@ -189,6 +189,7 @@ public class Streams {
 	 * @param <T>       the type of values passing through the {@literal Stream}
 	 * @return a new {@link reactor.rx.Stream}
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> wrap(final Publisher<T> publisher) {
 		if (Stream.class.isAssignableFrom(publisher.getClass())) {
 			return (Stream<T>) publisher;
@@ -624,6 +625,8 @@ public class Streams {
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
+	@SafeVarargs
+	@SuppressWarnings("varargs")
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8, T... rest) {
 		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8)).concatWith(from
 		  (Arrays.asList(rest)));
