@@ -17,7 +17,6 @@
 package reactor.core.processor;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -41,15 +40,12 @@ import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
-import reactor.core.support.SingleUseExecutor;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.LiteBlockingWaitStrategy;
-import reactor.core.support.wait.PhasedBackoffWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
-import reactor.io.buffer.Buffer;
 
 /**
  * An implementation of a RingBuffer backed message-passing WorkProcessor. <p> The
@@ -668,10 +664,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			retry = RingBuffer
 					.createMultiProducer((Supplier<MutableSignal<E>>) FACTORY, 32,
 							RingBuffer.NO_WAIT);
+			retry.addGatingSequences(retrySequence);
 			if (!RETRY_REF.compareAndSet(this, null, retry)) {
 				retry = retryBuffer;
 			}
-			retry.addGatingSequences(retrySequence);
 		}
 		return retry;
 	}
@@ -684,8 +680,9 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 		private final WorkSignalProcessor eventProcessor;
 
-		public RingBufferSubscription(Subscriber<? super E> subscriber,
-		                              WorkSignalProcessor eventProcessor) {
+		public RingBufferSubscription(
+				Subscriber<? super E> subscriber, WorkSignalProcessor eventProcessor
+		) {
 			this.subscriber = subscriber;
 			this.eventProcessor = eventProcessor;
 		}
@@ -741,8 +738,9 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		 * Construct a ringbuffer consumer that will automatically track the progress by
 		 * updating its sequence
 		 */
-		public WorkSignalProcessor(Subscriber<? super T> subscriber,
-		                           RingBufferWorkProcessor<T> processor) {
+		public WorkSignalProcessor(
+				Subscriber<? super T> subscriber, RingBufferWorkProcessor<T> processor
+		) {
 			this.processor = processor;
 			this.subscriber = subscriber;
 
@@ -797,7 +795,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 					subscriber.onSubscribe(subscription);
 				}
 				catch (Throwable t) {
-					Exceptions.<T>publisher(t).subscribe(subscriber);
+					Exceptions.<T>publisher(t)
+					          .subscribe(subscriber);
 					return;
 				}
 
@@ -806,10 +805,9 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				long nextSequence = sequence.get();
 				MutableSignal<T> event = null;
 
-				if (!RingBufferSubscriberUtils
-						.waitRequestOrTerminalEvent(pendingRequest, processor.ringBuffer,
-								barrier, subscriber, running, processor.workSequence,
-								this)) {
+				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(pendingRequest,
+						processor.ringBuffer, barrier, subscriber, running,
+						processor.workSequence, this)) {
 					return;
 				}
 
@@ -840,8 +838,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 								sequence.set(nextSequence - 1L);
 							}
-							while (!processor.workSequence
-									.compareAndSet(nextSequence - 1L, nextSequence));
+							while (!processor.workSequence.compareAndSet(
+									nextSequence - 1L, nextSequence));
 						}
 
 						if (cachedAvailableSequence >= nextSequence) {
@@ -866,16 +864,15 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 								if (!isRunning()) {
 									processor.decrementSubscribers();
 								}
-								else{
+								else {
 									throw ce;
 								}
 								try {
-									for(;;) {
+									for (; ; ) {
 										try {
-											cachedAvailableSequence = barrier
-													.waitFor(nextSequence);
-											event = processor.ringBuffer
-													.get(nextSequence);
+											cachedAvailableSequence =
+													barrier.waitFor(nextSequence);
+											event = processor.ringBuffer.get(nextSequence);
 											break;
 										}
 										catch (AlertException cee) {

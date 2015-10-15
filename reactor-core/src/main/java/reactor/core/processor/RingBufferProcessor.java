@@ -564,6 +564,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 		this.minimum = Sequencer.newSequence(-1);
 		this.barrier = ringBuffer.newBarrier();
+		ringBuffer.addGatingSequences(minimum);
 	}
 
 	@Override
@@ -592,13 +593,19 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		if (incrementSubscribers()) {
 
 			//set eventProcessor sequence to minimum index (replay)
-			ringBuffer.addGatingSequences(signalProcessor.getSequence());
-			signalProcessor.getSequence().set(minimum.get());
+			signalProcessor.sequence.setVolatile(minimum.get());
+			ringBuffer.addGatingSequences(signalProcessor.sequence);
+
+			Subscription upstreamSubscription = this.upstreamSubscription;
+			if(upstreamSubscription == null ||
+					upstreamSubscription == SignalType.NOOP_SUBSCRIPTION) {
+				ringBuffer.removeGatingSequence(minimum);
+			}
 		}
 		else {
 			//otherwise only listen to new data
 			//set eventProcessor sequence to ringbuffer index
-			ringBuffer.addGatingSequences(signalProcessor.getSequence());
+			ringBuffer.addGatingSequences(signalProcessor.sequence);
 
 
 		}
@@ -613,8 +620,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 		}
 		catch (Throwable t) {
-			ringBuffer.removeGatingSequence(signalProcessor.getSequence());
 			decrementSubscribers();
+			ringBuffer.removeGatingSequence(signalProcessor.getSequence());
 			if (!alive() && RejectedExecutionException.class.isAssignableFrom(t.getClass())){
 				RingBufferSequencer<E> sequencer = new RingBufferSequencer<E>(ringBuffer, minimum.get());
 				PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
@@ -660,7 +667,6 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 	@Override
 	protected void requestTask(Subscription s) {
-		ringBuffer.addGatingSequences(minimum);
 		new NamedDaemonThreadFactory("ringbuffer-request-task", null, null, false)
 				.newThread(new RequestTask(s, new Consumer<Void>() {
 					@Override
@@ -843,6 +849,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 
 				while (true) {
 					try {
+
 						final long availableSequence =
 								processor.barrier.waitFor(nextSequence);
 						while (nextSequence <= availableSequence) {
@@ -906,8 +913,8 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 				}
 			}
 			finally {
-				processor.ringBuffer.removeGatingSequence(sequence);
 				processor.decrementSubscribers();
+				processor.ringBuffer.removeGatingSequence(sequence);
 				running.set(false);
 				processor.readWait.signalAllWhenBlocking();
 			}

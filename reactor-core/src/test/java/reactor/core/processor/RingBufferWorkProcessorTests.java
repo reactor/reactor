@@ -18,9 +18,12 @@ package reactor.core.processor;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.junit.Test;
 import org.reactivestreams.Processor;
 import reactor.Processors;
+import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.core.publisher.LogOperator;
 import reactor.core.support.Assert;
@@ -41,19 +44,36 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 			throws Throwable {
 		//IGNORE since subscribers see distinct data
 	}
+//
+//	@Test
+//	public void simpleTestConsistent() throws Exception {
+//		for(int i = 0; i < 1000; i++){
+//			System.out.println(" new test : "+i);
+//			simpleTest();
+//		}
+//	}
 
 	@Override
 	public void simpleTest() throws Exception {
-		final Processor<Integer, Integer> sink = Processors.log(Processors.topic("topic"), "log", LogOperator.ON_COMPLETE);
+		final Processor<Integer, Integer> sink = Processors.topic("topic");
 		final Processor<Integer, Integer> processor = Processors.queue("queue");
 
-		int elems = 20_000_000;
+		int elems = 1_000_000;
 		CountDownLatch latch = new CountDownLatch(elems);
 
 		//List<Integer> list = new CopyOnWriteArrayList<>();
+		AtomicLong count = new AtomicLong();
+		AtomicLong errorCount = new AtomicLong();
 
-		processor.subscribe(Subscribers.unbounded((d, sub) -> sub.abort()));
 		processor.subscribe(Subscribers.unbounded((d, sub) -> {
+			errorCount.incrementAndGet();
+			sub.abort();
+		}));
+
+		Publishers.lift(processor, (d, sub) -> {
+			count.incrementAndGet();
+			sub.onNext(d);
+		}).subscribe(Subscribers.unbounded((d, sub) -> {
 			latch.countDown();
 			//list.add(d);
 		}));
@@ -61,17 +81,21 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 		sink.subscribe(processor);
 		Subscribers.start(sink);
 		for(int i = 0; i < elems; i++){
+
 			sink.onNext(i);
 			if( i % 100 == 0) {
-				processor.subscribe(Subscribers.unbounded((d, sub) -> sub.abort()));
+				processor.subscribe(Subscribers.unbounded((d, sub) -> {
+					errorCount.incrementAndGet();
+					sub.abort();
+				}));
 			}
 		}
 
-		latch.await(10, TimeUnit.SECONDS);
-		//System.out.println("list "+list.size());
-		Assert.isTrue(latch.getCount() == 0, "Latch is "+latch.getCount());
-
+		latch.await(5, TimeUnit.SECONDS);
+		System.out.println("count " + count+" errors: "+errorCount);
 		sink.onComplete();
+ 		Assert.isTrue(latch.getCount() == 0, "Latch is " + latch.getCount());
+
 
 	}
 
