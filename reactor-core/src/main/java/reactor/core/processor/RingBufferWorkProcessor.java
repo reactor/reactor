@@ -49,6 +49,7 @@ import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
+import reactor.io.buffer.Buffer;
 
 /**
  * An implementation of a RingBuffer backed message-passing WorkProcessor. <p> The
@@ -504,6 +505,12 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 	private final WaitStrategy readWait = new LiteBlockingWaitStrategy();
 
+	private volatile int replaying = 0;
+
+	private static final AtomicIntegerFieldUpdater<RingBufferWorkProcessor> REPLAYING =
+			AtomicIntegerFieldUpdater
+					.newUpdater(RingBufferWorkProcessor.class, "replaying");
+
 	@SuppressWarnings("unchecked")
 	private RingBufferWorkProcessor(String name, ExecutorService executor, int bufferSize,
 	                                WaitStrategy waitStrategy, boolean share,
@@ -873,8 +880,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 								try {
 									for(;;) {
 										try {
+											cachedAvailableSequence = barrier
+													.waitFor(nextSequence);
 											event = processor.ringBuffer
-													.get(barrier.waitFor(nextSequence));
+													.get(nextSequence);
 											break;
 										}
 										catch (AlertException cee) {
@@ -921,16 +930,9 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			}
 		}
 
-		private volatile int replaying = 0;
-
-		private static final AtomicIntegerFieldUpdater<WorkSignalProcessor> REPLAYING =
-				AtomicIntegerFieldUpdater
-						.newUpdater(WorkSignalProcessor.class, "replaying");
-
 		private boolean replay(final boolean unbounded) {
 
-			if (REPLAYING.compareAndSet(this, 0, 1)) {
-
+			if (REPLAYING.compareAndSet(processor, 0, 1)) {
 				MutableSignal<T> signal;
 
 				try {
@@ -964,7 +966,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 					return true;
 				}
 				finally {
-					REPLAYING.compareAndSet(this, 1, 0);
+					REPLAYING.compareAndSet(processor, 1, 0);
 				}
 			}
 			else {
