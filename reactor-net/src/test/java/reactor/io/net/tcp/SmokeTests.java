@@ -272,7 +272,7 @@ public class SmokeTests {
 				.observe(d ->
 								postReduce.getAndIncrement()
 				)
-		  //.log()
+		  .log("log", LogOperator.REQUEST)
 		  .process(workProcessor);
 
 		httpServer = NetStreams.httpServer(server -> server

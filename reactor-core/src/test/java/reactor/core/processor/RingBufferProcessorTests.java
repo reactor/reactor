@@ -22,10 +22,7 @@ import org.reactivestreams.Processor;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class
-
-
-  RingBufferProcessorTests extends AbstractProcessorVerification {
+public class RingBufferProcessorTests extends AbstractProcessorVerification {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {

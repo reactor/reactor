@@ -62,27 +62,29 @@ public final class RequestTask implements Runnable {
 	public void run() {
 		final long bufferSize = ringBuffer.getBufferSize();
 		final long limit = bufferSize - Math.max(bufferSize >> 2, 1);
-		long cursor = -1;
+		long cursor = 0;
+		long next;
 		try {
 			spinObserver.accept(null);
-			upstream.request(bufferSize - 1);
+			upstream.request(bufferSize);
 
 			for (; ; ) {
 				try {
-					cursor = waitStrategy
+					next = waitStrategy
 							.waitFor(cursor + limit,
 									readCount,
 									spinObserver
-							);
+							) + 1L;
 				}
 				catch (AlertException e){
 					continue;
 				}
 				if (postWaitCallback != null) {
-					postWaitCallback.accept(cursor);
+					postWaitCallback.accept(next);
 				}
 				//spinObserver.accept(null);
-				upstream.request(limit);
+				upstream.request(next - cursor);
+				cursor = next;
 			}
 		}
 		catch (CancelException ce) {

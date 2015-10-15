@@ -564,7 +564,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 	}
 
 	static final class InnerSubscriber<T, V>
-	  extends BaseSubscriber<V> implements Bounded {
+	  extends BaseSubscriber<V>  {
 		final long               id;
 		final MergeBarrier<T, V> parent;
 		final int                limit;
@@ -640,16 +640,6 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					s.cancel();
 				}
 			}
-		}
-
-		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return parentPublisher.getCapacity() > bufferSize;
-		}
-
-		@Override
-		public long getCapacity() {
-			return bufferSize;
 		}
 	}
 

@@ -44,7 +44,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 
 	@Override
 	public void simpleTest() throws Exception {
-		final Processor<Integer, Integer> sink = Processors.topic("topic");
+		final Processor<Integer, Integer> sink = Processors.log(Processors.topic("topic"), "log", LogOperator.ON_COMPLETE);
 		final Processor<Integer, Integer> processor = Processors.queue("queue");
 
 		int elems = 20_000_000;

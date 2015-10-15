@@ -924,6 +924,13 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 			}
 			finally {
 				processor.decrementSubscribers();
+				/*if(processor.decrementSubscribers() == 0){
+					long r = processor.ringBuffer.getCursor();
+					long w = processor.workSequence.get();
+					if ( w > r ){
+						processor.workSequence.compareAndSet(w, r);
+					}
+				}*/
 				processor.ringBuffer.removeGatingSequence(sequence);
 				running.set(false);
 				barrier.alert();
@@ -963,6 +970,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 				}
 				catch (CancelException ce) {
+					running.set(false);
 					return true;
 				}
 				finally {
