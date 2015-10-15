@@ -62,7 +62,7 @@ public final class RequestTask implements Runnable {
 	public void run() {
 		final long bufferSize = ringBuffer.getBufferSize();
 		final long limit = bufferSize - Math.max(bufferSize >> 2, 1);
-		long cursor = 0;
+		long cursor = -1L;
 		long next;
 		try {
 			spinObserver.accept(null);
@@ -74,7 +74,7 @@ public final class RequestTask implements Runnable {
 							.waitFor(cursor + limit,
 									readCount,
 									spinObserver
-							) + 1L;
+							);
 				}
 				catch (AlertException e){
 					continue;
