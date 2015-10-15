@@ -75,18 +75,6 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		super.stochastic_spec103_mustSignalOnMethodsSequentially();
 	}
 
-	@Override
-	public void required_spec309_requestZeroMustSignalIllegalArgumentException()
-			throws Throwable {
-		throw new SkipException("TODO");
-	}
-
-	@Override
-	public void required_spec309_requestNegativeNumberMustSignalIllegalArgumentException()
-			throws Throwable {
-		throw new SkipException("TODO");
-	}
-
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
 //		for(int i = 0; i < 1000; i++)
