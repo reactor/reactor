@@ -621,15 +621,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				}, null, new LongSupplier() {
 					@Override
 					public long get() {
-						RingBuffer<?> retry = retryBuffer;
-						long n;
-						if (retry != null) {
-							n = retry.pending();
-						}
-						else {
-							n = 0l;
-						}
-						return ringBuffer.getMinimumGatingSequence() - n;
+						return ringBuffer.getMinimumGatingSequence();
 					}
 				}, readWait, this, ringBuffer)).start();
 	}
