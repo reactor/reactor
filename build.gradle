@@ -121,6 +121,8 @@ configure(subprojects) { project ->
 
 	project.tasks.withType(Test).all {
 		systemProperty("java.awt.headless", "true")
+		systemProperty("reactor.trace.cancel", "true")
+		systemProperty("reactor.trace.nocapacity", "true")
 		systemProperty("testGroups", project.properties.get("testGroups"))
 		scanForTestClasses = false
 		include '**/*Tests.*'
