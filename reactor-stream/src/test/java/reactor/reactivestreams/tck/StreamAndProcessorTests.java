@@ -23,11 +23,9 @@ import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
 import reactor.Processors;
-import reactor.core.publisher.LogOperator;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.stream.GroupedStream;
 
 /**
  * @author Stephane Maldini
@@ -49,19 +47,21 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		cumulated.set(0);
 		cumulatedJoin.set(0);
 
-		return Processors.create(p, Streams.wrap(p).forkJoin(2,
-				(GroupedStream<Integer, Integer> stream) -> stream
-						.scan((prev, next) -> next).map(integer -> -integer)
-						.filter(integer -> integer <= 0).sample(1)
-						.map(integer -> -integer).buffer(batch, 50, TimeUnit.MILLISECONDS)
-						.<Integer>split().observe(array -> cumulated.getAndIncrement())
-						.flatMap(i -> Streams
-								.zip(Streams.just(i), otherStream, Tuple1::getT1))
-						.observe(this::monitorThreadUse).log("flatmap", LogOperator.REQUEST))
-				.observe(array -> cumulatedJoin.getAndIncrement())
-				.process(Processors.topic("stream-raw-join", bufferSize))
-				                           .when(Throwable.class,
-						                           Throwable::printStackTrace));
+		return Processors.create(p, Streams.wrap(p)
+		                                   .forkJoin(2, stream -> stream.scan((prev,
+				                                   next) -> next)
+		                                                                .map(integer -> -integer)
+		                                                                .filter(integer -> integer <= 0)
+		                                                                .sample(1)
+		                                                                .map(integer -> -integer)
+		                                                                .buffer(batch, 50, TimeUnit.MILLISECONDS)
+		                                                                .<Integer>split()
+		                                                                .observe(array -> cumulated.getAndIncrement())
+		                                                                .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
+		                                                                .observe(this::monitorThreadUse))
+		                                   .observe(array -> cumulatedJoin.getAndIncrement())
+		                                   .process(Processors.topic("stream-raw-join", bufferSize))
+		                                   .when(Throwable.class, Throwable::printStackTrace));
 	}
 
 	@Override
@@ -102,13 +102,13 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 	@Test
 	public void testColdIdentityProcessor() throws InterruptedException {
 		//for (int i = 0; i < 1000; i++) {
-			try {
-				super.testColdIdentityProcessor();
-			}
-			finally {
-				System.out.println("cumulated : " + cumulated);
-				System.out.println("cumulated after join : " + cumulatedJoin);
-			}
+		try {
+			super.testColdIdentityProcessor();
+		}
+		finally {
+			System.out.println("cumulated : " + cumulated);
+			System.out.println("cumulated after join : " + cumulatedJoin);
+		}
 //		}
 	}
 }
