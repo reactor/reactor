@@ -632,15 +632,13 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 	}
 
 	@Override
-	public void onError(Throwable t) {
-		super.onError(t);
+	protected void doError(Throwable t) {
 		RingBufferSubscriberUtils.onError(t, ringBuffer);
 		readWait.signalAllWhenBlocking();
 	}
 
 	@Override
-	public void onComplete() {
-		super.onComplete();
+	protected void doComplete() {
 		RingBufferSubscriberUtils.onComplete(ringBuffer);
 		readWait.signalAllWhenBlocking();
 	}

@@ -62,24 +62,35 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 		//implementation might run a specific request task for the given subscription
 	}
 
+	protected void doComplete(){
+
+	}
+
 	@Override
-	public void onComplete() {
+	public final void onComplete() {
 		if(TERMINATED.compareAndSet(this, 0, 1)) {
 			upstreamSubscription = null;
 			if (executor.getClass() == SingleUseExecutor.class) {
 				executor.shutdown();
 			}
+			doComplete();
 		}
 	}
 
+	protected void doError(Throwable throwable){
+
+	}
+
+
 	@Override
-	public void onError(Throwable t) {
+	public final void onError(Throwable t) {
 		super.onError(t);
 		if(TERMINATED.compareAndSet(this, 0, 1)) {
 			upstreamSubscription = null;
 			if (executor.getClass() == SingleUseExecutor.class) {
 				executor.shutdown();
 			}
+			doError(t);
 		}
 	}
 

@@ -823,14 +823,12 @@ public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
 	}
 
 	@Override
-	public void onError(Throwable t) {
-        super.onError(t);
+	protected void doError(Throwable t) {
         subscriber.onError(t);
 	}
 
 	@Override
-	public void onComplete() {
-        super.onComplete();
+	protected void doComplete(){
         subscriber.onComplete();
 	}
 

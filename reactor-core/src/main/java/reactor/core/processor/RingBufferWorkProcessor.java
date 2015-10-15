@@ -581,8 +581,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	}
 
 	@Override
-	public void onError(Throwable t) {
-		super.onError(t);
+	protected void doError(Throwable t) {
 		RingBufferSubscriberUtils.onError(t, ringBuffer);
 		for (long n = ringBuffer.getCursor() - 1; n < workSequence.get(); n++) {
 			RingBufferSubscriberUtils.onError(t, ringBuffer);
@@ -591,8 +590,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 	}
 
 	@Override
-	public void onComplete() {
-		super.onComplete();
+	protected void doComplete() {
 		RingBufferSubscriberUtils.onComplete(ringBuffer);
 		for (long n = ringBuffer.getCursor() - 1; n <= workSequence.get(); n++) {
 			RingBufferSubscriberUtils.onComplete(ringBuffer);
