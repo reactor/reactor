@@ -101,6 +101,7 @@ public final class CompletableFutureConverter
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public Publisher<?> toPublisher(Object future) {
 		return new CompletableFuturePublisher<>((CompletableFuture<?>) future);
 	}

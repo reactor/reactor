@@ -19,6 +19,8 @@ package reactor.core.publisher.convert;
 import java.util.concurrent.Flow;
 
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 /**
  * @author Stephane Maldini
@@ -26,17 +28,113 @@ import org.reactivestreams.Publisher;
 public final class Jdk9FlowConverter extends PublisherConverter<Flow.Publisher> {
 
 	@Override
-	public Flow.Publisher fromPublisher(Publisher<?> o, Class<?> o2) {
+	public Flow.Publisher fromPublisher(final Publisher<?> pub, Class<?> o2) {
+		if (Flow.Publisher.class.isAssignableFrom(o2)) {
+			return new Flow.Publisher<Object>() {
+				@Override
+				public void subscribe(Flow.Subscriber<? super Object> subscriber) {
+					pub.subscribe(new FlowSubscriber(subscriber));
+				}
+			};
+		}
 		return null;
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public Publisher<?> toPublisher(Object o) {
+		final Flow.Publisher<?> pub = (Flow.Publisher<?>) o;
+		if (Flow.Publisher.class.isAssignableFrom(o.getClass())) {
+			return new Publisher<Object>() {
+				@Override
+				public void subscribe(final Subscriber<? super Object> s) {
+					pub.subscribe(new SubscriberToRS(s));
+				}
+			};
+		}
 		return null;
 	}
 
 	@Override
 	public Class<Flow.Publisher> get() {
 		return Flow.Publisher.class;
+	}
+
+	private static class FlowSubscriber implements Subscriber<Object> {
+
+		private final Flow.Subscriber<? super Object> subscriber;
+
+		public FlowSubscriber(Flow.Subscriber<? super Object> subscriber) {
+			this.subscriber = subscriber;
+		}
+
+		@Override
+		public void onSubscribe(final Subscription s) {
+			subscriber.onSubscribe(new Flow.Subscription() {
+				@Override
+				public void request(long l) {
+					s.request(l);
+				}
+
+				@Override
+				public void cancel() {
+					s.cancel();
+				}
+			});
+		}
+
+		@Override
+		public void onNext(Object o) {
+			subscriber.onNext(o);
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			subscriber.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			subscriber.onComplete();
+		}
+	}
+
+	private static class SubscriberToRS implements Flow.Subscriber<Object> {
+
+		private final Subscriber<? super Object> s;
+
+		public SubscriberToRS(Subscriber<? super Object> s) {
+			this.s = s;
+		}
+
+		@Override
+		public void onSubscribe(final Flow.Subscription subscription) {
+			s.onSubscribe(new Subscription() {
+				@Override
+				public void request(long n) {
+					subscription.request(n);
+				}
+
+				@Override
+				public void cancel() {
+					subscription.cancel();
+				}
+			});
+		}
+
+		@Override
+		public void onNext(Object o) {
+			s.onNext(o);
+		}
+
+		@Override
+		public void onError(Throwable throwable) {
+			s.onError(throwable);
+		}
+
+		@Override
+		public void onComplete() {
+			s.onComplete();
+		}
 	}
 }
