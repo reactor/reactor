@@ -16,6 +16,16 @@
 
 package reactor.rx;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.Nonnull;
+
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -23,14 +33,19 @@ import org.reactivestreams.Subscription;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Timers;
+import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.LogOperator;
+import reactor.core.subscriber.Tap;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
-import reactor.core.error.Exceptions;
-import reactor.fn.*;
-import reactor.core.subscriber.Tap;
+import reactor.fn.BiConsumer;
+import reactor.fn.BiFunction;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.fn.Predicate;
+import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
@@ -38,30 +53,62 @@ import reactor.rx.action.Action;
 import reactor.rx.action.CompositeAction;
 import reactor.rx.action.Control;
 import reactor.rx.action.Signal;
-import reactor.rx.action.aggregation.*;
-import reactor.rx.action.combination.*;
+import reactor.rx.action.aggregation.BufferAction;
+import reactor.rx.action.aggregation.BufferShiftAction;
+import reactor.rx.action.aggregation.BufferShiftWhenAction;
+import reactor.rx.action.aggregation.BufferWhenAction;
+import reactor.rx.action.aggregation.CacheAction;
+import reactor.rx.action.aggregation.LastAction;
+import reactor.rx.action.aggregation.SampleAction;
+import reactor.rx.action.aggregation.SortAction;
+import reactor.rx.action.aggregation.WindowAction;
+import reactor.rx.action.aggregation.WindowShiftAction;
+import reactor.rx.action.aggregation.WindowShiftWhenAction;
+import reactor.rx.action.aggregation.WindowWhenAction;
+import reactor.rx.action.combination.DynamicMergeAction;
+import reactor.rx.action.combination.SwitchAction;
+import reactor.rx.action.combination.ZipAction;
 import reactor.rx.action.conditional.ExistsAction;
-import reactor.rx.action.control.*;
-import reactor.rx.action.error.*;
-import reactor.rx.action.filter.*;
+import reactor.rx.action.control.FlowControlAction;
+import reactor.rx.action.control.RepeatAction;
+import reactor.rx.action.control.RepeatWhenAction;
+import reactor.rx.action.control.ThrottleRequestAction;
+import reactor.rx.action.control.ThrottleRequestWhenAction;
+import reactor.rx.action.error.ErrorAction;
+import reactor.rx.action.error.ErrorReturnAction;
+import reactor.rx.action.error.ErrorWithValueAction;
+import reactor.rx.action.error.IgnoreErrorAction;
+import reactor.rx.action.error.RetryAction;
+import reactor.rx.action.error.RetryWhenAction;
+import reactor.rx.action.error.TimeoutAction;
+import reactor.rx.action.filter.DistinctAction;
+import reactor.rx.action.filter.DistinctUntilChangedAction;
+import reactor.rx.action.filter.ElementAtAction;
+import reactor.rx.action.filter.FilterAction;
+import reactor.rx.action.filter.SkipAction;
+import reactor.rx.action.filter.SkipUntilTimeout;
+import reactor.rx.action.filter.TakeAction;
+import reactor.rx.action.filter.TakeUntilTimeout;
+import reactor.rx.action.filter.TakeWhileAction;
 import reactor.rx.action.metrics.CountAction;
 import reactor.rx.action.metrics.ElapsedAction;
 import reactor.rx.action.metrics.TimestampAction;
-import reactor.rx.action.passive.*;
+import reactor.rx.action.passive.CallbackAction;
+import reactor.rx.action.passive.FinallyAction;
+import reactor.rx.action.passive.StreamStateCallbackAction;
 import reactor.rx.action.support.TapAndControls;
 import reactor.rx.action.terminal.AdaptiveConsumerAction;
 import reactor.rx.action.terminal.ConsumerAction;
-import reactor.rx.action.transformation.*;
+import reactor.rx.action.transformation.DefaultIfEmptyAction;
+import reactor.rx.action.transformation.DematerializeAction;
+import reactor.rx.action.transformation.GroupByAction;
+import reactor.rx.action.transformation.MapAction;
+import reactor.rx.action.transformation.MaterializeAction;
+import reactor.rx.action.transformation.ScanAction;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
-
-import javax.annotation.Nonnull;
-import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Base class for components designed to provide a succinct API for working with future values.
@@ -232,12 +279,22 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<Void> after() {
-		return liftAction(new Supplier<Action<O, Void>>() {
+		return new Stream<Void>() {
 			@Override
-			public Action<O, Void> get() {
-				return new AfterAction<O>();
+			public void subscribe(Subscriber<? super Void> s) {
+				Publishers.completable(Stream.this).subscribe(s);
 			}
-		});
+
+			@Override
+			public Timer getTimer() {
+				return Stream.this.getTimer();
+			}
+
+			@Override
+			public long getCapacity() {
+				return Stream.this.getCapacity();
+			}
+		};
 	}
 
 	/**

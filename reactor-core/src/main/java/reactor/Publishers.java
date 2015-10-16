@@ -26,6 +26,7 @@ import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.FlatMapOperator;
+import reactor.core.publisher.IgnoreOnNextOperator;
 import reactor.core.publisher.IteratorSequencer;
 import reactor.core.publisher.LogOperator;
 import reactor.core.publisher.PublisherFactory;
@@ -169,6 +170,23 @@ public final class Publishers extends PublisherFactory {
 			}
 		}
 		return lift(source, new FlatMapOperator(transformer, 1, 32));
+	}
+
+	/**
+	 * Ignore sequence data (onNext) but bridge all other events:
+	 * - downstream: onSubscribe, onComplete, onError
+	 * - upstream: request, cancel
+	 *
+	 * This useful to acknowledge the completion of a data sequence and trigger further
+	 *  processing using for instance {@link #concat(Publisher)}.
+	 *
+	 * @param source the emitted sequence to filter
+	 *
+	 * @return a new filtered {@link Publisher<Void>}
+	 */
+	@SuppressWarnings("unchecked")
+	public static Publisher<Void> completable(Publisher<?> source) {
+		return lift(source, IgnoreOnNextOperator.INSTANCE);
 	}
 
 	/**

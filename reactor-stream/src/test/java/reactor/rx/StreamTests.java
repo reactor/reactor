@@ -1501,10 +1501,19 @@ public class StreamTests extends AbstractReactorTest {
 	/**
 	 * Should work with {@link Processor} but it doesn't.
 	 */
+	//@Test
+	public void forkJoinUsingProcessors1000() throws Exception {
+		for(int i = 0; i < 1000; i++) {
+			System.out.println("new test " + i);
+			forkJoinUsingProcessors();
+			System.out.println();
+		}
+	}
 	@Test(timeout = TIMEOUT)
 	public void forkJoinUsingProcessors() throws Exception {
 
-		final Stream<Integer> forkStream = Streams.just(1, 2, 3).log("log-begin");
+		final Stream<Integer> forkStream = Streams.just(1, 2, 3).log("begin-computation");
+		final Stream<Integer> forkStream2 = Streams.just(1, 2, 3).log("begin-persistence");
 
 		final RingBufferProcessor<Integer> computationBroadcaster = RingBufferProcessor.create("computation", BACKLOG);
 		final Stream<String> computationStream = Streams
@@ -1517,7 +1526,7 @@ public class StreamTests extends AbstractReactorTest {
 		  .map(i -> "done " + i);
 
 		forkStream.subscribe(computationBroadcaster);
-		forkStream.subscribe(persistenceBroadcaster);
+		forkStream2.subscribe(persistenceBroadcaster);
 
 		final Semaphore doneSemaphore = new Semaphore(0);
 

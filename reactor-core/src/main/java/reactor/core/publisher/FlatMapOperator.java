@@ -15,6 +15,10 @@
  */
 package reactor.core.publisher;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -25,15 +29,10 @@ import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * A merge operator that transforms input T to Publisher of V using the assigned map function.
