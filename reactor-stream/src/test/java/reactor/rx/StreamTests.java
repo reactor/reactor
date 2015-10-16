@@ -566,13 +566,6 @@ public class StreamTests extends AbstractReactorTest {
 	}
 
 	@Test
-	public void failureToleranceTestConsistent() throws InterruptedException {
-		for(int i = 0; i < 1000; i++){
-			failureToleranceTest();
-		}
-	}
-
-	@Test
 	public void failureToleranceTest() throws InterruptedException {
 		final Broadcaster<String> closeCircuit = Broadcaster.create();
 		final Stream<String> openCircuit = Streams.just("Alternative Message");
