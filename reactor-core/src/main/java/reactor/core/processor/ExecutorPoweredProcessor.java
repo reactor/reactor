@@ -33,6 +33,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	protected final ExecutorService executor;
 
+	protected volatile boolean cancelled;
 	protected volatile int terminated;
 
 	protected final static AtomicIntegerFieldUpdater<ExecutorPoweredProcessor> TERMINATED =
@@ -112,6 +113,7 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 
 	@Override
 	protected void cancel(Subscription subscription) {
+		cancelled = true;
 		if(TERMINATED.compareAndSet(this, 0, 1)) {
 			if (executor.getClass() == SingleUseExecutor.class) {
 				executor.shutdown();

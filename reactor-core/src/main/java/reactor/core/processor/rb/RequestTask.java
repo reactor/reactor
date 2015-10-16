@@ -68,22 +68,16 @@ public final class RequestTask implements Runnable {
 			upstream.request(bufferSize - 1);
 
 			for (; ; ) {
-				try {
-					cursor = waitStrategy
-							.waitFor(cursor + limit,
-									readCount,
-									spinObserver
-							);
-				}
-				catch (AlertException e){
-					continue;
-				}
+				cursor = waitStrategy.waitFor(cursor + limit, readCount, spinObserver);
 				if (postWaitCallback != null) {
 					postWaitCallback.accept(cursor);
 				}
 				//spinObserver.accept(null);
 				upstream.request(limit);
 			}
+		}
+		catch (AlertException e) {
+			//completed
 		}
 		catch (CancelException ce) {
 			upstream.cancel();

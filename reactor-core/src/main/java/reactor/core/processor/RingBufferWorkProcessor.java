@@ -17,6 +17,7 @@
 package reactor.core.processor;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -31,11 +32,13 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RequestTask;
+import reactor.core.processor.rb.RingBufferSequencer;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.SequenceBarrier;
 import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.Publishable;
@@ -544,8 +547,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		}
 
 		if (!alive()) {
-			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-			subscriber.onComplete();
+			RingBufferSequencer<E> sequencer = new RingBufferSequencer<>(ringBuffer, workSequence.get());
+			PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
 			return;
 		}
 
@@ -570,7 +573,14 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 		catch (Throwable t) {
 			decrementSubscribers();
 			ringBuffer.removeGatingSequence(signalProcessor.sequence);
-			Exceptions.<E>publisher(t).subscribe(subscriber);
+			if(RejectedExecutionException.class.isAssignableFrom(t.getClass())){
+				RingBufferSequencer<E> sequencer = new RingBufferSequencer<>(ringBuffer, workSequence.get());
+				PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
+			}
+			else {
+				Exceptions.<E>publisher(t)
+				          .subscribe(subscriber);
+			}
 		}
 	}
 
@@ -608,8 +618,13 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 				.newThread(new RequestTask(s, new Consumer<Void>() {
 					@Override
 					public void accept(Void aVoid) {
-						if (!alive()) {
-							throw CancelException.INSTANCE;
+						if(!alive()) {
+							if (cancelled) {
+								throw CancelException.INSTANCE;
+							}
+							else {
+								throw AlertException.INSTANCE;
+							}
 						}
 					}
 				}, null, new LongSupplier() {

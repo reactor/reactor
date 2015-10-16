@@ -573,10 +573,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		}
 
 		if (!alive()) {
-			RingBufferSequencer<E> sequencer = new RingBufferSequencer<E>(
-					ringBuffer, minimum.get()
-			);
-
+			RingBufferSequencer<E> sequencer = coldSource();
 			PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
 			return;
 		}
@@ -591,9 +588,9 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		//if only active subscriber, replay missed data
 		if (incrementSubscribers()) {
 
+			ringBuffer.addGatingSequences(signalProcessor.sequence);
 			//set eventProcessor sequence to minimum index (replay)
 			signalProcessor.sequence.setVolatile(minimum.get());
-			ringBuffer.addGatingSequences(signalProcessor.sequence);
 		}
 		else {
 			//otherwise only listen to new data
@@ -643,6 +640,12 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		readWait.signalAllWhenBlocking();
 	}
 
+	protected RingBufferSequencer<E> coldSource(){
+		return new RingBufferSequencer<E>(
+				ringBuffer, minimum.get()
+		);
+	}
+
 	@Override
 	public boolean isWork() {
 		return false;
@@ -664,7 +667,12 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 					@Override
 					public void accept(Void aVoid) {
 						if (!alive()) {
-							throw CancelException.INSTANCE;
+							if(cancelled){
+								throw CancelException.INSTANCE;
+							}
+							else {
+								throw AlertException.INSTANCE;
+							}
 						}
 					}
 				}, new Consumer<Long>() {
@@ -737,6 +745,15 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 		@Override
 		public void cancel() {
 			eventProcessor.halt();
+		}
+
+		@Override
+		public String toString() {
+			return "RingBufferSubscription{" +
+					"pendingRequest=" + pendingRequest +
+					", sequence=" + eventProcessor.sequence +
+					", ringBuffer=" + ringBuffer.getCursor() +
+					'}';
 		}
 	}
 
