@@ -32,6 +32,7 @@ import reactor.core.publisher.LogOperator;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolineOperator;
 import reactor.core.publisher.ValuePublisher;
+import reactor.core.publisher.convert.CompositionDependencyUtils;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.SignalType;
@@ -82,6 +83,45 @@ public final class Publishers extends PublisherFactory {
 	public static <IN> Publisher<IN> empty() {
 		return (EmptyPublisher<IN>) EMPTY;
 	}
+
+	/**
+	 *
+	 * @param source
+	 * @param <IN>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <IN> Publisher<IN> convert(Object source) {
+
+		if(Publisher.class.isAssignableFrom(source.getClass())){
+			return (Publisher<IN>)source;
+		}
+		else if(Iterable.class.isAssignableFrom(source.getClass())){
+			return from((Iterable<IN>)source);
+		}
+		else {
+			return (Publisher<IN>)CompositionDependencyUtils.convertToPublisher(source);
+		}
+	}
+
+	/**
+	 *
+	 * @param source
+	 * @param to
+	 * @param <T>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> T convert(Publisher<?> source, Class<T> to) {
+		if(Publisher.class.isAssignableFrom(to.getClass())){
+			return (T)source;
+		}
+		else {
+			return CompositionDependencyUtils.convertFromPublisher(source, to);
+		}
+	}
+
+
 
 	/**
 	 * @param <IN>

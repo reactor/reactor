@@ -66,7 +66,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Anatoly Kadyshev
  * @author Stephane Maldini
  */
-public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
+public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	/**
 	 * @param <E>
@@ -315,51 +315,46 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, Resource {
 		return createBarrier(false);
 	}
 
-	@Override
 	public boolean awaitAndShutdown() {
 		return awaitAndShutdown(-1, TimeUnit.SECONDS);
 	}
 
-	@Override
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		if (processor == null) {
 			return true;
-		} else if (Resource.class.isAssignableFrom(processor.getClass())) {
-			return ((Resource) processor).awaitAndShutdown(timeout, timeUnit);
+		} else if (BaseProcessor.class.isAssignableFrom(processor.getClass())) {
+			return ((BaseProcessor) processor).awaitAndShutdown(timeout, timeUnit);
 		}
 		throw new UnsupportedOperationException("Underlying Processor doesn't implement Resource");
 	}
 
-	@Override
 	public void forceShutdown() {
 		if (processor == null) {
 			return;
-		} else if (Resource.class.isAssignableFrom(processor.getClass())) {
-			((Resource) processor).forceShutdown();
+		} else if (BaseProcessor.class.isAssignableFrom(processor.getClass())) {
+			((BaseProcessor) processor).forceShutdown();
 			return;
 		}
 		throw new UnsupportedOperationException("Underlying Processor doesn't implement Resource");
 	}
 
-	@Override
 	public boolean alive() {
 		if (processor == null) {
 			return true;
 		}
-		if (Resource.class.isAssignableFrom(processor.getClass())) {
-			return ((Resource) processor).alive();
+		if (BaseProcessor.class.isAssignableFrom(processor.getClass())) {
+			return ((BaseProcessor) processor).alive();
 		}
 		throw new UnsupportedOperationException("Underlying Processor doesn't implement Resource");
 	}
 
-	@Override
 	public void shutdown() {
 		if (processor == null) {
 			return;
 		}
 		try {
-			if (Resource.class.isAssignableFrom(processor.getClass())) {
-				((Resource) processor).shutdown();
+			if (BaseProcessor.class.isAssignableFrom(processor.getClass())) {
+				((BaseProcessor) processor).shutdown();
 			}
 			else{
 				processor.onComplete();

@@ -16,21 +16,19 @@
 package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
 import reactor.Publishers;
-
-import java.util.concurrent.atomic.AtomicLong;
+import rx.Observable;
 
 /**
  * @author Stephane Maldini
  */
 @Test
-public class PublisherFactoryTests extends PublisherVerification<Long> {
+public class RxJavaPublisherTests extends PublisherVerification<Long> {
 
-	public PublisherFactoryTests() {
+	public RxJavaPublisherTests() {
 		super(new TestEnvironment(500, true), 1000);
 	}
 
@@ -40,31 +38,19 @@ public class PublisherFactoryTests extends PublisherVerification<Long> {
 	}
 
 	@Override
+	public long maxElementsFromPublisher() {
+		return Integer.MAX_VALUE;
+	}
+
+	@Override
 	public Publisher<Long> createPublisher(long elements) {
-		return
-		  Publishers.trampoline(
-			Publishers.log(
-			  Publishers.lift(
-			    Publishers.<Long, AtomicLong>create(
-				  (s) -> {
-					  long cursor = s.context().getAndIncrement();
-					  if (cursor < elements) {
-						  s.onNext(cursor);
-					  } else {
-						  s.onComplete();
-					  }
-				  },
-				  s -> new AtomicLong(0L)
-			    ),
-			    (data, sub) -> sub.onNext(data * 10)
-			  ),
-			  "log-test"
-			)
-		  );
+		return Publishers.log(
+				Publishers.convert(Observable.range(0, (int)Math.min(Integer.MAX_VALUE, elements)))
+		);
 	}
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
-		return Publishers.error(new Exception("test"));
+		return Publishers.convert(Observable.error(new Exception("obs-test")));
 	}
 }

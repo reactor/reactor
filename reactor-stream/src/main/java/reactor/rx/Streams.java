@@ -628,8 +628,7 @@ public class Streams {
 	@SafeVarargs
 	@SuppressWarnings("varargs")
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8, T... rest) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8)).concatWith(from
-		  (Arrays.asList(rest)));
+		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8)).concatWith(from(Arrays.asList(rest)));
 	}
 
 
@@ -645,6 +644,14 @@ public class Streams {
 	public static <T> Stream<T> generate(Supplier<? extends T> value) {
 		if (value == null) throw new IllegalArgumentException("Supplier must be provided");
 		return new SupplierStream<T>(value);
+	}
+
+	/**
+	 * @see Publishers#convert(Object)
+	 * @since 2.1
+	 */
+	public static <T> Stream<T> convert(Object source) {
+		return Streams.wrap(Publishers.<T>convert(source));
 	}
 
 	/**

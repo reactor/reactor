@@ -15,15 +15,19 @@
  */
 package reactor.core.processor;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
-import reactor.core.support.*;
+import reactor.core.support.BackpressureUtils;
+import reactor.core.support.Bounded;
+import reactor.core.support.Publishable;
+import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * A base processor with an async boundary trait to manage active subscribers (Threads), upstream subscription
@@ -32,7 +36,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Stephane Maldini
  */
 public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implements
-  Processor<IN, OUT>, Consumer<IN>, Bounded, Resource, Publishable<IN> {
+  Processor<IN, OUT>, Consumer<IN>, Bounded, Publishable<IN> {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -129,4 +133,34 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	public Publisher<IN> upstream() {
 		return PublisherFactory.fromSubscription(upstreamSubscription);
 	}
+
+	/**
+	 * Determine whether this {@code Processor} can be used.
+	 *
+	 * @return {@literal true} if this {@code Resource} is alive and can be used, {@literal false} otherwise.
+	 */
+	public abstract boolean alive();
+
+	/**
+	 * Shutdown this active {@code Processor} such that it can no longer be used. If the resource carries any work,
+	 * it will wait (but NOT blocking the caller) for all the remaining tasks to perform before closing the resource.
+	 */
+	public abstract void shutdown();
+
+
+	/**
+	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
+	 */
+	public abstract boolean awaitAndShutdown();
+
+	/**
+	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
+	 */
+	public abstract boolean awaitAndShutdown(long timeout, TimeUnit timeUnit);
+
+	/**
+	 * Shutdown this {@code Processor}, forcibly halting any work currently executing and discarding any tasks that
+	 * have not yet been executed.
+	 */
+	public abstract void forceShutdown();
 }

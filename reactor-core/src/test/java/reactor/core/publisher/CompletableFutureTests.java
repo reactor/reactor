@@ -15,6 +15,9 @@
  */
 package reactor.core.publisher;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.PublisherVerification;
@@ -22,15 +25,13 @@ import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
 import reactor.Publishers;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 /**
  * @author Stephane Maldini
  */
 @Test
-public class PublisherFactoryTests extends PublisherVerification<Long> {
+public class CompletableFutureTests extends PublisherVerification<Long> {
 
-	public PublisherFactoryTests() {
+	public CompletableFutureTests() {
 		super(new TestEnvironment(500, true), 1000);
 	}
 
@@ -40,31 +41,20 @@ public class PublisherFactoryTests extends PublisherVerification<Long> {
 	}
 
 	@Override
+	public long maxElementsFromPublisher() {
+		return 1l;
+	}
+
+	@Override
 	public Publisher<Long> createPublisher(long elements) {
-		return
-		  Publishers.trampoline(
-			Publishers.log(
-			  Publishers.lift(
-			    Publishers.<Long, AtomicLong>create(
-				  (s) -> {
-					  long cursor = s.context().getAndIncrement();
-					  if (cursor < elements) {
-						  s.onNext(cursor);
-					  } else {
-						  s.onComplete();
-					  }
-				  },
-				  s -> new AtomicLong(0L)
-			    ),
-			    (data, sub) -> sub.onNext(data * 10)
-			  ),
-			  "log-test"
-			)
-		  );
+		return Publishers.convert(CompletableFuture.completedFuture(1));
+
 	}
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
-		return Publishers.error(new Exception("test"));
+		CompletableFuture<Long> c = new CompletableFuture<>();
+		c.completeExceptionally(new Exception("cf-test"));
+		return Publishers.convert(c);
 	}
 }

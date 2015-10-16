@@ -165,8 +165,7 @@ public class StreamTests extends AbstractReactorTest {
 		  stream
 			.map(STRING_2_INTEGER)
 			.observe(i -> {
-				if (i == 3)
-					throw new IllegalArgumentException();
+				if (i == 3) throw new IllegalArgumentException();
 			})
 			.ignoreError()
 			.log()
@@ -566,6 +565,12 @@ public class StreamTests extends AbstractReactorTest {
 		Assert.assertFalse(konamis.get().get(11));
 	}
 
+	@Test
+	public void failureToleranceTestConsistent() throws InterruptedException {
+		for(int i = 0; i < 1000; i++){
+			failureToleranceTest();
+		}
+	}
 
 	@Test
 	public void failureToleranceTest() throws InterruptedException {
@@ -622,7 +627,6 @@ public class StreamTests extends AbstractReactorTest {
 	@Test
 	public void parallelTests() throws InterruptedException {
 		parallelMapManyTest("sync", 1_000_000);
-		if(true)return;
 		parallelMapManyTest("shared", 1_000_000);
 		parallelTest("sync", 1_000_000);
 		parallelTest("shared", 1_000_000);
