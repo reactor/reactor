@@ -208,7 +208,7 @@ project('reactor-core') {
 	  	//Optional RxJava 1 Support
 	  	optional "io.reactivex:rxjava:$rxJavaVersion"
 	  	//Optional JDK 9 Support
-	  	//optional "io.projectreactor:jsr166:1.0.0.BUILD-SNAPSHOT"
+	  	optional "io.projectreactor:jsr166:1.0.0.BUILD-SNAPSHOT"
 	}
 
 	jar {
