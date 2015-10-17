@@ -22,6 +22,8 @@ import rx.Single
 import spock.lang.Specification
 
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Flow
+import java.util.concurrent.SubmissionPublisher
 
 import static reactor.Publishers.from
 import static reactor.Publishers.toReadQueue
@@ -93,10 +95,67 @@ class PublisherConversionSpec extends Specification {
 	v == 1
   }
 
+  def "From and To Flow Publisher"() {
+
+	given: "submission publisher of 1000 to read queue"
+	def source = new SubmissionPublisher()
+	def pub = Publishers.convert(source)
+	def queue = toReadQueue(pub)
+
+	when: "read the queue"
+	def res = []
+	1000.times {
+
+	  source.submit(it)
+	  res[it] = queue.take()
+	}
+
+	source.close()
+
+	then: "queues values correct"
+	res[0] == 0
+	res[1] == 1
+	res[999] == 999
+
+
+	when: "Iterable publisher of 1000 to Flow Publisher"
+	pub = from(1..1000)
+	def obs = Publishers.convert(pub, Flow.Publisher.class)
+	res = []
+	obs.subscribe(new Flow.Subscriber() {
+	  Flow.Subscription s
+	  @Override
+	  void onSubscribe(Flow.Subscription subscription) {
+		this.s = subscription
+		subscription.request(1L)
+	  }
+
+	  @Override
+	  void onNext(Object o) {
+		res << o
+		s.request(1L)
+	  }
+
+	  @Override
+	  void onError(Throwable throwable) {
+		throwable.printStackTrace()
+	  }
+
+	  @Override
+	  void onComplete() {
+		println 'complete'
+	  }
+	})
+
+	then: "queues values correct"
+	res[0] == 1
+	res[1] == 2
+	res[999] == 1000
+  }
+
   def "From and To CompletableFuture"() {
 
 	given: "Iterable publisher of 1 to read queue"
-	def source = [1]
 	def obs = CompletableFuture.completedFuture([1])
 	def pub = Publishers.<List<Integer>>convert(obs)
 	def queue = toReadQueue(pub)

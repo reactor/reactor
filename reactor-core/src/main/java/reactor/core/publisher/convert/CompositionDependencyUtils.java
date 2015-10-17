@@ -53,10 +53,10 @@ public final class CompositionDependencyUtils {
 		try {
 			Class.forName("java.util.concurrent.CompletableFuture");
 			detected |= JDK8_COMPLETABLE_FUTURE;
-			//Class.forName("java.util.concurrent.Flow");
-			//detected |= JDK9_FLOW;
+			Class.forName("java.util.concurrent.Flow");
+			detected |= JDK9_FLOW;
 		}
-		catch (ClassNotFoundException cnfe) {
+		catch (SecurityException | ClassNotFoundException cnfe) {
 			//IGNORE
 		}
 		try {
