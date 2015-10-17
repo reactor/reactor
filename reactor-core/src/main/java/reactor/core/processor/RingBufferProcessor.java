@@ -547,7 +547,7 @@ public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E>
 			@Override
 			public void accept(Void aVoid) {
 				if (!alive() && SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0) {
-					throw CancelException.get();
+					throw AlertException.INSTANCE;
 				}
 			}
 		};

@@ -7,6 +7,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.AlertException;
+import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
@@ -141,7 +142,7 @@ public final class RingBufferSubscriberUtils {
 				LockSupport.parkNanos(1l);
 			}
 		}
-		catch (AlertException ae) {
+		catch (CancelException | AlertException ae) {
 			if (!isRunning.get()) {
 				return false;
 			}
