@@ -93,6 +93,35 @@ class PublisherConversionSpec extends Specification {
 	v == 1
   }
 
+  def "From and To CompletableFuture"() {
+
+	given: "Iterable publisher of 1 to read queue"
+	def obs = CompletableFuture.completedFuture([1])
+	def pub = Publishers.<List<Integer>>convert(obs)
+	def queue = toReadQueue(pub)
+
+	when: "read the queue"
+	def v = queue.take()
+	def v2 = queue.take()
+
+	then: "queues values correct"
+	v == [1]
+	!v2
+
+
+	when: "Iterable publisher of 1000 to observable"
+	pub = from(1..1000)
+	obs = Publishers.<CompletableFuture<List<Integer>>>convert(pub, CompletableFuture.class)
+	def vList = obs.get()
+
+	then: "queues values correct"
+	vList[0] == 1
+	vList[1] == 2
+	vList[999] == 1000
+  }
+
+/*
+
   def "From and To Flow Publisher"() {
 
 	given: "submission publisher of 1000 to read queue"
@@ -150,32 +179,7 @@ class PublisherConversionSpec extends Specification {
 	res[1] == 2
 	res[999] == 1000
   }
+*/
 
-  def "From and To CompletableFuture"() {
-
-	given: "Iterable publisher of 1 to read queue"
-	def obs = CompletableFuture.completedFuture([1])
-	def pub = Publishers.<List<Integer>>convert(obs)
-	def queue = toReadQueue(pub)
-
-	when: "read the queue"
-	def v = queue.take()
-	def v2 = queue.take()
-
-	then: "queues values correct"
-	v == [1]
-	!v2
-
-
-	when: "Iterable publisher of 1000 to observable"
-	pub = from(1..1000)
-	obs = Publishers.<CompletableFuture<List<Integer>>>convert(pub, CompletableFuture.class)
-	def vList = obs.get()
-
-	then: "queues values correct"
-	vList[0] == 1
-	vList[1] == 2
-	vList[999] == 1000
-  }
 
 }

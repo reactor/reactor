@@ -194,6 +194,8 @@ project('reactor-core') {
 
 	configurations {
 	  jsr166backport
+	  testCompile.extendsFrom jsr166backport
+	  compile.extendsFrom jsr166backport
 	}
 
 	  /*task testNG(type: Test) {
@@ -209,7 +211,6 @@ project('reactor-core') {
 	  	optional "io.reactivex:rxjava:$rxJavaVersion"
 	  	//Optional JDK 9 Support
 	  	jsr166backport "io.projectreactor:jsr166:1.0.0.BUILD-SNAPSHOT"
-	  	optional "io.projectreactor:jsr166:1.0.0.BUILD-SNAPSHOT"
 	}
 
 	jar {
@@ -218,15 +219,9 @@ project('reactor-core') {
 		}
 	}
 
-  compileTestGroovy {
-	groovyOptions.forkOptions.jvmArgs = ["-Xbootclasspath/p:" + configurations.jsr166backport.asPath]
-	groovyOptions.fork = true
-	options.fork = true
-  }
-
-  test {
-	jvmArgs = ["-Xbootclasspath/p:" + configurations.jsr166backport.asPath]
-  }
+	test {
+	  jvmArgs = ["-Xbootclasspath/p:" + configurations.jsr166backport.asPath]
+	}
 
 }
 
