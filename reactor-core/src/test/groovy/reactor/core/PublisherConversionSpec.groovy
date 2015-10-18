@@ -109,7 +109,7 @@ class PublisherConversionSpec extends Specification {
 	!v2
 
 
-	when: "Iterable publisher of 1000 to observable"
+	when: "Iterable publisher of 1000 to completable future"
 	pub = from(1..1000)
 	obs = Publishers.<CompletableFuture<List<Integer>>>convert(pub, CompletableFuture.class)
 	def vList = obs.get()
@@ -118,6 +118,14 @@ class PublisherConversionSpec extends Specification {
 	vList[0] == 1
 	vList[1] == 2
 	vList[999] == 1000
+
+	when: "Iterable publisher of 1 to completable future"
+	pub = Publishers.just(1)
+	obs = Publishers.<CompletableFuture<Integer>>convert(pub, CompletableFuture.class)
+	v = obs.get()
+
+	then: "queues values correct"
+	v == 1
   }
 
 /*

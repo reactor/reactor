@@ -200,6 +200,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 								subscriber.onComplete();
 								return p;
 							} else {
+								ch.headers().removeTransferEncodingChunked();
 								subscriber.onNext(ch);
 								subscriber.onComplete();
 								return ch.writeHeaders();

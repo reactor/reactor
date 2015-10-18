@@ -45,8 +45,8 @@ public final class CompletableFutureConverter
 	public CompletableFuture fromPublisher(Publisher<?> pub, Class<?> o2) {
 		if (CompletableFuture.class.isAssignableFrom(o2)) {
 			final AtomicReference<Subscription> ref = new AtomicReference<>();
-			final CompletableFuture<List<Object>> future =
-					new CompletableFuture<List<Object>>() {
+			final CompletableFuture future =
+					new CompletableFuture() {
 						@Override
 						public boolean cancel(boolean mayInterruptIfRunning) {
 							boolean cancelled = super.cancel(mayInterruptIfRunning);
@@ -89,9 +89,15 @@ public final class CompletableFutureConverter
 				}
 
 				@Override
+				@SuppressWarnings("unchecked")
 				public void onComplete() {
 					if(ref.getAndSet(null) != null) {
-						future.complete(values);
+						if(values.size() == 1){
+							future.complete(values.get(0));
+						}
+						else {
+							future.complete(values);
+						}
 					}
 				}
 			});
