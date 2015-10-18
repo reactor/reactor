@@ -102,7 +102,8 @@ public final class CompletableFutureConverter
 		return future;
 	}
 
-	private <T> CompletableFuture<T> completableFuture(AtomicReference<Subscription> ref){
+	private <T> CompletableFuture<T> completableFuture(
+			final AtomicReference<Subscription> ref){
 		return new CompletableFuture<T>() {
 			@Override
 			public boolean cancel(boolean mayInterruptIfRunning) {
