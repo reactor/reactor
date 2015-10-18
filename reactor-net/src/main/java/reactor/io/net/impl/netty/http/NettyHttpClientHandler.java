@@ -65,13 +65,13 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 			httpChannel = new NettyHttpChannel<IN, OUT>(tcpStream, new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")) {
 				@Override
 				protected void doSubscribeHeaders(Subscriber<? super Void> s) {
-					headers().transferEncodingChunked();
 					tcpStream.emitWriter(Streams.just(getNettyRequest()), s);
 				}
 			};
 		}
 
 		httpChannel.keepAlive(true);
+		httpChannel.headers().transferEncodingChunked();
 
 		handler.apply(httpChannel)
 		       .subscribe(new DefaultSubscriber<Void>() {
