@@ -16,18 +16,28 @@
 
 package reactor.io.net.http;
 
-import reactor.bus.selector.HeaderResolver;
-import reactor.fn.timer.Timer;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.http.model.*;
-
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.Publishers;
+import reactor.bus.selector.HeaderResolver;
+import reactor.fn.timer.Timer;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.http.model.HttpHeaders;
+import reactor.io.net.http.model.Method;
+import reactor.io.net.http.model.Protocol;
+import reactor.io.net.http.model.ResponseHeaders;
+import reactor.io.net.http.model.Status;
+import reactor.io.net.http.model.Transfer;
+import reactor.rx.Stream;
+import reactor.rx.Streams;
+
 /**
- * A Request/Response {@link ChannelStream} extension that provides for several helpers to control HTTP behavior and
- * observe its metadata.
- *
+ * A Request/Response {@link ChannelStream} extension that provides for several helpers to
+ * control HTTP behavior and observe its metadata.
  * @author Sebastien Deleuze
  * @author Stephane maldini
  */
@@ -42,11 +52,9 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	private HeaderResolver<String> paramsResolver;
 
 	protected final static AtomicIntegerFieldUpdater<HttpChannel> HEADERS_SENT =
-	  AtomicIntegerFieldUpdater.newUpdater(HttpChannel.class, "statusAndHeadersSent");
+			AtomicIntegerFieldUpdater.newUpdater(HttpChannel.class, "statusAndHeadersSent");
 
-	public HttpChannel(Timer timer,
-	                   long prefetch
-	) {
+	public HttpChannel(Timer timer, long prefetch) {
 		super(timer, null, prefetch);
 	}
 
@@ -54,7 +62,6 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	/**
 	 * Read all URI params
-	 *
 	 * @return a map of resolved parameters against their matching key name
 	 */
 	public final Map<String, String> params() {
@@ -63,7 +70,6 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	/**
 	 * Read URI param from the given key
-	 *
 	 * @param key matching key
 	 * @return the resolved parameter for the given key name
 	 */
@@ -82,15 +88,15 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	/**
 	 * Register an HTTP request header
-	 *
-	 * @param name  Header name
+	 * @param name Header name
 	 * @param value Header content
 	 * @return this
 	 */
 	public final HttpChannel<IN, OUT> header(String name, String value) {
 		if (statusAndHeadersSent == 0) {
-			doHeader(name, value);
-		} else {
+			doAddHeader(name, value);
+		}
+		else {
 			throw new IllegalStateException("Status and headers already sent");
 		}
 		return this;
@@ -98,33 +104,29 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	/**
 	 * Is the request keepAlive
-	 *
 	 * @return is keep alive
 	 */
 	public abstract boolean isKeepAlive();
 
-
 	/**
-	 * set the request keepAlive if true otherwise remove the existing connection keep alive header
-	 *
+	 * set the request keepAlive if true otherwise remove the existing connection keep
+	 * alive header
 	 * @return is keep alive
 	 */
 	public abstract HttpChannel<IN, OUT> keepAlive(boolean keepAlive);
 
-
 	protected abstract void doHeader(String name, String value);
 
 	/**
-	 * Accumulate a Request Header using the given name and value, appending ";" for each new value
-	 *
-	 * @param name
-	 * @param value
+	 * Accumulate a Request Header using the given name and value, appending ";" for each
+	 * new value
 	 * @return this
 	 */
 	public HttpChannel<IN, OUT> addHeader(String name, String value) {
 		if (statusAndHeadersSent == 0) {
 			doAddHeader(name, value);
-		} else {
+		}
+		else {
 			throw new IllegalStateException("Status and headers already sent");
 		}
 		return this;
@@ -147,7 +149,6 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	 */
 	public abstract Method method();
 
-
 	void paramsResolver(HeaderResolver<String> headerResolver) {
 		this.paramsResolver = headerResolver;
 	}
@@ -161,14 +162,14 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	/**
 	 * Set the response status to an outgoing response
-	 *
 	 * @param status the status to define
 	 * @return this
 	 */
 	public HttpChannel<IN, OUT> responseStatus(Status status) {
 		if (statusAndHeadersSent == 0) {
 			doResponseStatus(status);
-		} else {
+		}
+		else {
 			throw new IllegalStateException("Status and headers already sent");
 		}
 		return this;
@@ -183,15 +184,15 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	/**
 	 * Define the response HTTP header for the given key
-	 *
-	 * @param name  the HTTP response header key to override
+	 * @param name the HTTP response header key to override
 	 * @param value the HTTP response header content
 	 * @return this
 	 */
 	public final HttpChannel<IN, OUT> responseHeader(String name, String value) {
 		if (statusAndHeadersSent == 0) {
 			doResponseHeader(name, value);
-		} else {
+		}
+		else {
 			throw new IllegalStateException("Status and headers already sent");
 		}
 		return this;
@@ -200,23 +201,45 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	protected abstract void doResponseHeader(String name, String value);
 
 	/**
-	 * Accumulate a response HTTP header for the given key name, appending ";" for each new value
-	 *
-	 * @param name  the HTTP response header name
+	 * Accumulate a response HTTP header for the given key name, appending ";" for each
+	 * new value
+	 * @param name the HTTP response header name
 	 * @param value the HTTP response header value
 	 * @return this
 	 */
 	public HttpChannel<IN, OUT> addResponseHeader(String name, String value) {
 		if (statusAndHeadersSent == 0) {
 			doAddResponseHeader(name, value);
-		} else {
+		}
+		else {
 			throw new IllegalStateException("Status and headers already sent");
 		}
 		return this;
 	}
 
-	protected abstract void doAddResponseHeader(String name, String value);
-
+	/**
+	 * Flush the headers if not sent. Might be useful for the case
+	 * @return Stream to signal error or successful write to the client
+	 */
+	public Stream<Void> writeHeaders() {
+		if (statusAndHeadersSent == 0) {
+			return new Stream<Void>() {
+				@Override
+				public void subscribe(Subscriber<? super Void> s) {
+					if (markHeadersAsFlushed()) {
+						doSubscribeHeaders(s);
+					}
+					else {
+						Publishers.<Void>error(new IllegalStateException("Status and headers already sent"))
+						          .subscribe(s);
+					}
+				}
+			};
+		}
+		else {
+			throw  new IllegalStateException("Status and headers already sent");
+		}
+	}
 
 	/**
 	 * @return the Transfer setting SSE for this http connection (e.g. event-stream)
@@ -225,20 +248,58 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 		return transfer(Transfer.EVENT_STREAM);
 	}
 
-
 	/**
 	 * @return the Transfer setting for this http connection (e.g. event-stream)
 	 */
 	public abstract Transfer transfer();
 
-
 	/**
 	 * Define the Transfer mode for this http connection
-	 *
 	 * @param transfer the new transfer mode
 	 * @return this
 	 */
 	public abstract HttpChannel<IN, OUT> transfer(Transfer transfer);
 
+	protected abstract void doAddResponseHeader(String name, String value);
 
+	protected boolean markHeadersAsFlushed() {
+		return HEADERS_SENT.compareAndSet(this, 0, 1);
+	}
+
+	protected abstract void doSubscribeHeaders(Subscriber<? super Void> s);
+
+	@Override
+	public final Stream<Void> writeWith(final Publisher<? extends OUT> source) {
+		return new Stream<Void>() {
+			@Override
+			public void subscribe(final Subscriber<? super Void> s) {
+				if(markHeadersAsFlushed()){
+					doSubscribeHeaders(new Subscriber<Void>() {
+						@Override
+						public void onSubscribe(Subscription sub) {
+							sub.request(Long.MAX_VALUE);
+						}
+
+						@Override
+						public void onNext(Void aVoid) {
+							//Ignore
+						}
+
+						@Override
+						public void onError(Throwable t) {
+							s.onError(t);
+						}
+
+						@Override
+						public void onComplete() {
+							HttpChannel.super.writeWith(source).subscribe(s);
+						}
+					});
+				}
+				else{
+					HttpChannel.super.writeWith(source).subscribe(s);
+				}
+			}
+		};
+	}
 }

@@ -69,7 +69,7 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 
 	@Override
 	@SuppressWarnings("unchecked")
-	final public Stream<Void> writeWith(final Publisher<? extends OUT> source) {
+	public Stream<Void> writeWith(final Publisher<? extends OUT> source) {
 		final Stream<? extends OUT> sourceStream;
 
 		if (Stream.class.isAssignableFrom(source.getClass())) {

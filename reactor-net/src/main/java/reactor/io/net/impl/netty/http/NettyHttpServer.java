@@ -97,7 +97,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 				//404
 				if (handlers == null) {
-					if (request.checkHeader()) {
+					if (request.markHeadersAsFlushed()) {
 						request.delegate().writeAndFlush(
 								new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND));
 					}

@@ -21,14 +21,19 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.websocketx.*;
 import io.netty.util.ReferenceCountUtil;
+import org.reactivestreams.Subscriber;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.StringCodec;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.rx.Streams;
 
 /**
  * @author Stephane Maldini
@@ -50,11 +55,6 @@ public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN
 	}
 
 	@Override
-	protected ChannelFuture writeFirst(ChannelHandlerContext ctx) {
-		return ctx.newSucceededFuture();
-	}
-
-	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
 		handshaker.handshake(ctx.channel()).addListener(new ChannelFutureListener() {
 			@Override
@@ -71,7 +71,9 @@ public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN
 
 	@Override
 	protected void postRead(ChannelHandlerContext ctx, Object msg) {
-		//IGNORE
+		if(CloseWebSocketFrame.class.isAssignableFrom(msg.getClass())){
+			ctx.channel().close();
+		}
 	}
 
 	@Override
@@ -80,6 +82,12 @@ public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN
 		Class<?> messageClass = msg.getClass();
 		if (!handshaker.isHandshakeComplete()) {
 			handshaker.finishHandshake(ctx.channel(), (FullHttpResponse) msg);
+			httpChannel = new NettyHttpChannel<IN, OUT>(tcpStream, new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")) {
+				@Override
+				protected void doSubscribeHeaders(Subscriber<? super Void> s) {
+					Streams.<Void>empty().subscribe(s);
+				}
+			};
 			NettyHttpWSClientHandler.super.channelActive(ctx);
 			super.channelRead(ctx, msg);
 			return;
@@ -119,28 +127,4 @@ public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN
 		}
 	}
 
-	@Override
-	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last, final ChannelPromise promise) {
-		if (ctx.channel().isOpen()) {
-			ChannelFutureListener listener = new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					if (future.isSuccess()) {
-						promise.trySuccess();
-					} else {
-						promise.tryFailure(future.cause());
-					}
-				}
-			};
-
-			if (last != null) {
-				ctx.flush();
-				last.addListener(listener);
-			} else {
-				ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(listener);
-			}
-		} else {
-			promise.trySuccess();
-		}
-	}
 }

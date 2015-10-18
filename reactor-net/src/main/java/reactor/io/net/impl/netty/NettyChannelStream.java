@@ -74,7 +74,11 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 			encodedWriter = writer;
 		}
 
+		emitWriter(encodedWriter, postWriter);
+	}
 
+	public void emitWriter(final Publisher<?> encodedWriter,
+			final Subscriber<? super Void> postWriter){
 
 		if(ioChannel.eventLoop().inEventLoop()) {
 			ioChannel.write(encodedWriter).addListener(new ChannelFutureListener() {
@@ -107,7 +111,6 @@ public class NettyChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 				}
 			});
 		}
-
 	}
 
 	@Override

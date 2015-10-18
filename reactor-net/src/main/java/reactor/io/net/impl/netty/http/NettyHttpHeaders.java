@@ -132,6 +132,7 @@ public class NettyHttpHeaders implements HttpHeaders {
 
 	@Override
 	public HttpHeaders transferEncodingChunked() {
+		io.netty.handler.codec.http.HttpHeaders.setTransferEncodingChunked(nettyRequest);
 		return this;
 	}
 

@@ -202,7 +202,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 							} else {
 								subscriber.onNext(ch);
 								subscriber.onComplete();
-								return Streams.empty();
+								return ch.writeHeaders();
 							}
 						} catch (Throwable t) {
 							subscriber.onError(t);

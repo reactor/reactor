@@ -27,6 +27,7 @@ import reactor.core.support.Assert;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.model.*;
 import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.rx.Streams;
 
 import java.net.InetSocketAddress;
 
@@ -36,7 +37,7 @@ import static io.netty.handler.codec.http.HttpHeaders.is100ContinueExpected;
  * @author Sebastien Deleuze
  * @author Stephane Maldini
  */
-public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
+public abstract class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 
 	private static final FullHttpResponse CONTINUE =
 			new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE, Unpooled.EMPTY_BUFFER);
@@ -105,6 +106,11 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 			return Protocol.HTTP_1_1;
 		}
 		throw new IllegalStateException(version.protocolName() + " not supported");
+	}
+
+	@Override
+	public boolean markHeadersAsFlushed() {
+		return super.markHeadersAsFlushed();
 	}
 
 	@Override
@@ -211,10 +217,6 @@ public class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 
 	void setNettyResponse(HttpResponse nettyResponse) {
 		this.nettyResponse = nettyResponse;
-	}
-
-	boolean checkHeader() {
-		return HEADERS_SENT.compareAndSet(this, 0, 1);
 	}
 
 	@Override

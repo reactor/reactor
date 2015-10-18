@@ -90,7 +90,7 @@ class HttpSpec extends Specification {
 
 		then: "data was recieved"
 			//the produced reply should be there soon
-			content.await() == "Hello World!"
+			content.await(500, TimeUnit.SECONDS) == "Hello World!"
 
 		cleanup: "the client/server where stopped"
 			//note how we order first the client then the server shutdown

@@ -33,6 +33,7 @@ import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.rx.Streams;
 import reactor.rx.action.support.DefaultSubscriber;
 
 /**
@@ -62,7 +63,12 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
 		Class<?> messageClass = msg.getClass();
 		if (request == null && io.netty.handler.codec.http.HttpRequest.class.isAssignableFrom(messageClass)) {
-			request = new NettyHttpChannel<>(tcpStream, (io.netty.handler.codec.http.HttpRequest) msg);
+			request = new NettyHttpChannel<IN, OUT>(tcpStream, (io.netty.handler.codec.http.HttpRequest) msg){
+				@Override
+				protected void doSubscribeHeaders(Subscriber<? super Void> s) {
+					tcpStream.emitWriter(Streams.just(getNettyResponse()), s);
+				}
+			};
 
 			final Publisher<Void> closePublisher = handler.apply(request);
 			final Subscriber<Void> closeSub = new DefaultSubscriber<Void>() {
@@ -116,14 +122,14 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	}
 
 	protected void postRead(ChannelHandlerContext ctx, Object msg){
-		if (channelSubscription != null && DefaultLastHttpContent.class.equals(msg.getClass())) {
+		if (channelSubscription != null && LastHttpContent.class.isAssignableFrom(msg.getClass())) {
 			channelSubscription.onComplete();
 			channelSubscription = null;
 		}
 	}
 	protected void writeLast(ChannelHandlerContext ctx){
 		ctx
-		  .writeAndFlush(request.checkHeader() ? request.getNettyResponse() : LastHttpContent.EMPTY_LAST_CONTENT)
+		  .writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT)
 		  .addListener(ChannelFutureListener.CLOSE);
 	}
 
@@ -136,18 +142,9 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		}
 	}
 
-	@Override
-	protected void doOnSubscribe(ChannelHandlerContext ctx, Subscription s, long n, Consumer<Void> cb) {
-		if (request.checkHeader()) {
-			ctx.write(request.getNettyResponse());
-		}
-
-		super.doOnSubscribe(ctx, s, n, cb);
-	}
-
 	NettyHttpServerHandler<IN, OUT> withWebsocketSupport(String url, String protocols){
 		//prevent further header to be sent for handshaking
-		if(!request.checkHeader()){
+		if(!request.markHeadersAsFlushed()){
 			log.error("Cannot enable websocket if headers have already been sent");
 			return this;
 		}

@@ -17,97 +17,84 @@
 package reactor.io.net.impl.netty.http;
 
 import io.netty.buffer.ByteBufHolder;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.LastHttpContent;
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.http.HttpException;
-import reactor.io.net.http.model.Method;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.rx.Streams;
 import reactor.rx.action.support.DefaultSubscriber;
-
-import java.nio.ByteBuffer;
+import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
  */
 public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<IN, OUT> {
 
-	private final NettyChannelStream<IN, OUT> tcpStream;
-	private final Buffer                      body;
-	protected        NettyHttpChannel<IN, OUT>   request;
-
+	protected final NettyChannelStream<IN, OUT> tcpStream;
+	protected     NettyHttpChannel<IN, OUT>   httpChannel;
 
 	/**
 	 * The body of an HTTP response should be discarded.
 	 */
 	private boolean discardBody = false;
 
-
 	public NettyHttpClientHandler(
 			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
 			NettyChannelStream<IN, OUT> tcpStream) {
 		super(handler, tcpStream);
 		this.tcpStream = tcpStream;
-		this.body = new Buffer();
 	}
 
 	@Override
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
 		ctx.fireChannelActive();
 
-		request =
-				new NettyHttpChannel<>(tcpStream,
-						new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")
-				);
+		if(httpChannel == null) {
+			httpChannel = new NettyHttpChannel<IN, OUT>(tcpStream, new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")) {
+				@Override
+				protected void doSubscribeHeaders(Subscriber<? super Void> s) {
+					headers().transferEncodingChunked();
+					tcpStream.emitWriter(Streams.just(getNettyRequest()), s);
+				}
+			};
+		}
 
-		request.keepAlive(true);
+		httpChannel.keepAlive(true);
 
-		handler.apply(request)
-				.subscribe(new DefaultSubscriber<Void>() {
-					@Override
-					public void onSubscribe(final Subscription s) {
-						if (request.checkHeader()) {
-							writeFirst(ctx).addListener(new ChannelFutureListener() {
-								@Override
-								public void operationComplete(ChannelFuture future) throws Exception {
-									if (future.isSuccess()) {
-										s.request(Long.MAX_VALUE);
-									} else {
-										log.error("Error processing initial headers. Closing the channel.", future.cause());
-										s.cancel();
-										if (ctx.channel().isOpen()) {
-											ctx.channel().close();
-										}
-									}
-								}
-							});
-						} else {
-							s.request(Long.MAX_VALUE);
-						}
+		handler.apply(httpChannel)
+		       .subscribe(new DefaultSubscriber<Void>() {
+			       @Override
+			       public void onSubscribe(final Subscription s) {
+				       s.request(Long.MAX_VALUE);
+			       }
 
-					}
+			       @Override
+			       public void onError(Throwable t) {
+				       log.error("Error processing connection. Closing the channel.", t);
+				       if (ctx.channel()
+				              .isOpen()) {
+					       ctx.channel()
+					          .close();
+				       }
+			       }
 
-					@Override
-					public void onError(Throwable t) {
-						log.error("Error processing connection. Closing the channel.", t);
-						if (ctx.channel().isOpen()) {
-							ctx.channel().close();
-						}
-					}
-
-					@Override
-					public void onComplete() {
-						writeLast(ctx);
-					}
-				});
+			       @Override
+			       public void onComplete() {
+				       writeLast(ctx);
+			       }
+		       });
 	}
 
 	@Override
@@ -115,16 +102,19 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		Class<?> messageClass = msg.getClass();
 		if (HttpResponse.class.isAssignableFrom(messageClass)) {
 			HttpResponse response = (HttpResponse) msg;
-			if (request != null) {
-				request.setNettyResponse(response);
+			if (httpChannel != null) {
+				httpChannel.setNettyResponse(response);
 			}
 
 			checkResponseCode(ctx, response);
 
-			if(FullHttpResponse.class.isAssignableFrom(messageClass)){
+			if (FullHttpResponse.class.isAssignableFrom(messageClass)) {
 				postRead(ctx, msg);
 			}
-			channelSubscription.updatePendingRequests(1);
+			PushSubscription<IN> channelSubscription = this.channelSubscription;
+			if (channelSubscription != null) {
+				channelSubscription.updatePendingRequests(1);
+			}
 			ctx.fireChannelRead(msg);
 		} else if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
@@ -153,63 +143,9 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		}
 	}
 
-	protected ChannelFuture writeFirst(ChannelHandlerContext ctx){
-		return ctx.writeAndFlush(request.getNettyRequest());
-	}
-
 	protected void writeLast(final ChannelHandlerContext ctx){
 		ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
 	}
-
-	@Override
-	protected ChannelFuture doOnWrite(Object data, ChannelHandlerContext ctx) {
-		if (data.getClass().equals(Buffer.class)) {
-			body.append((Buffer) data);
-			return null;
-		} else {
-			return ctx.write(data);
-		}
-	}
-
-	@Override
-	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last, final ChannelPromise promise) {
-		if (request.method() == Method.WS){
-			return;
-		}
-
-		ByteBuffer byteBuffer = body.flip().byteBuffer();
-
-		if (request.checkHeader()) {
-			HttpRequest req = new DefaultFullHttpRequest(
-					request.getNettyRequest().getProtocolVersion(),
-					request.getNettyRequest().getMethod(),
-					request.getNettyRequest().getUri(),
-					byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) : Unpooled.EMPTY_BUFFER);
-
-			req.headers().add(request.headers().delegate());
-
-			if (byteBuffer != null) {
-				HttpHeaders.setContentLength(req, body.limit());
-			}
-
-			ctx.writeAndFlush(req).addListener(new ChannelFutureListener() {
-				@Override
-				public void operationComplete(ChannelFuture future) throws Exception {
-					if (future.isSuccess()) {
-						promise.trySuccess();
-					} else {
-						promise.tryFailure(future.cause());
-					}
-				}
-			});
-		} else {
-			ctx.writeAndFlush(new DefaultLastHttpContent(byteBuffer != null ? Unpooled.wrappedBuffer(byteBuffer) :
-			  Unpooled
-			  .EMPTY_BUFFER));
-		}
-		body.reset();
-	}
-
 
 	private void setDiscardBody(boolean discardBody) {
 		this.discardBody = discardBody;

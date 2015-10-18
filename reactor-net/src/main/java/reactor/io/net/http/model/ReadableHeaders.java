@@ -25,26 +25,26 @@ import java.util.Set;
 /**
  * @author Sebastien Deleuze
  */
-public interface ReadableHeaders {
+interface ReadableHeaders {
 
-	public boolean contains(String name);
+	boolean contains(String name);
 
-	public boolean contains(String name, String value, boolean ignoreCaseValue);
+	boolean contains(String name, String value, boolean ignoreCaseValue);
 
-	public List<Map.Entry<String, String>> entries();
+	List<Map.Entry<String, String>> entries();
 
-	public String get(String name);
+	String get(String name);
 
-	public List<String> getAll(String name);
+	List<String> getAll(String name);
 
-	public Date getDate() throws ParseException;
+	Date getDate() throws ParseException;
 
-	public Date getDateHeader(String name) throws ParseException;
+	Date getDateHeader(String name) throws ParseException;
 
-	public String getHost();
+	String getHost();
 
-	public boolean isEmpty();
+	boolean isEmpty();
 
-	public Set<String> names();
+	Set<String> names();
 
 }
