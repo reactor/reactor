@@ -22,8 +22,6 @@ import rx.Single
 import spock.lang.Specification
 
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Flow
-import java.util.concurrent.SubmissionPublisher
 
 import static reactor.Publishers.from
 import static reactor.Publishers.toReadQueue
@@ -98,7 +96,7 @@ class PublisherConversionSpec extends Specification {
   def "From and To Flow Publisher"() {
 
 	given: "submission publisher of 1000 to read queue"
-	def source = new SubmissionPublisher()
+	def source = new java.util.concurrent.SubmissionPublisher()
 	def pub = Publishers.convert(source)
 	def queue = toReadQueue(pub)
 
@@ -120,12 +118,12 @@ class PublisherConversionSpec extends Specification {
 
 	when: "Iterable publisher of 1000 to Flow Publisher"
 	pub = from(1..1000)
-	def obs = Publishers.convert(pub, Flow.Publisher.class)
+	def obs = Publishers.convert(pub, java.util.concurrent.Flow.Publisher.class)
 	res = []
-	obs.subscribe(new Flow.Subscriber() {
-	  Flow.Subscription s
+	obs.subscribe(new java.util.concurrent.Flow.Subscriber<Object>() {
+	  java.util.concurrent.Flow.Subscription s
 	  @Override
-	  void onSubscribe(Flow.Subscription subscription) {
+	  void onSubscribe(java.util.concurrent.Flow.Subscription subscription) {
 		this.s = subscription
 		subscription.request(1L)
 	  }

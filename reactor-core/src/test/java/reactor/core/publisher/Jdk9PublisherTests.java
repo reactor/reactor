@@ -15,21 +15,33 @@
  */
 package reactor.core.publisher;
 
+import java.util.concurrent.SubmissionPublisher;
+import java.util.concurrent.TimeUnit;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
+import org.testng.SkipException;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 import reactor.Publishers;
+import reactor.Timers;
+import reactor.core.publisher.convert.CompositionDependencyUtils;
 import rx.Single;
 
 /**
  * @author Stephane Maldini
  */
 @Test
-public class RxJavaSinglePublisherTests extends PublisherVerification<Long> {
+public class Jdk9PublisherTests extends PublisherVerification<Long> {
 
-	public RxJavaSinglePublisherTests() {
+	public Jdk9PublisherTests() {
 		super(new TestEnvironment(500, true), 1000);
+	}
+
+	@BeforeTest
+	public void before(){
+		Timers.global();
 	}
 
 	@org.junit.Test
@@ -44,11 +56,23 @@ public class RxJavaSinglePublisherTests extends PublisherVerification<Long> {
 
 	@Override
 	public Publisher<Long> createPublisher(long elements) {
-		return Publishers.convert(Single.just(0));
+		if(!CompositionDependencyUtils.hasJdk9Flow()){
+			throw new SkipException("no jdk 9 classes found");
+		}
+
+		SubmissionPublisher<Long> pub = new SubmissionPublisher<>();
+		Timers.global().schedule(pub::submit, 50, TimeUnit.MILLISECONDS);
+		return Publishers.convert(pub);
 	}
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
-		return Publishers.convert(Single.error(new Exception("single-test")));
+		if(!CompositionDependencyUtils.hasJdk9Flow()){
+			throw new SkipException("no jdk 9 classes found");
+		}
+
+		SubmissionPublisher<Long> pub = new SubmissionPublisher<>();
+		pub.closeExceptionally(new Exception("jdk9-test"));
+		return Publishers.convert(pub);
 	}
 }
