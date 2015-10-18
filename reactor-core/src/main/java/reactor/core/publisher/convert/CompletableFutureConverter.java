@@ -41,74 +41,130 @@ import reactor.fn.Consumer;
 public final class CompletableFutureConverter
 		extends PublisherConverter<CompletableFuture> {
 
+	static final CompletableFutureConverter INSTANCE = new CompletableFutureConverter();
+
+	@SuppressWarnings("unchecked")
+	static public <T> CompletableFuture<T> from(Publisher<T> o) {
+		return INSTANCE.fromPublisher(o);
+	}
+
+	@SuppressWarnings("unchecked")
+	static public <T> CompletableFuture<T> fromSingle(Publisher<T> o) {
+		return INSTANCE.fromSinglePublisher(o);
+	}
+
+	@SuppressWarnings("unchecked")
+	static public <T> Publisher<T> from(CompletableFuture<T> o) {
+		return INSTANCE.toPublisher(o);
+	}
+
 	@Override
-	public CompletableFuture fromPublisher(Publisher<?> pub, Class<?> o2) {
-		if (CompletableFuture.class.isAssignableFrom(o2)) {
-			final AtomicReference<Subscription> ref = new AtomicReference<>();
-			final CompletableFuture future =
-					new CompletableFuture() {
-						@Override
-						public boolean cancel(boolean mayInterruptIfRunning) {
-							boolean cancelled = super.cancel(mayInterruptIfRunning);
-							if (cancelled) {
-								Subscription s = ref.getAndSet(null);
-								if(s != null) {
-									s.cancel();
-								}
-							}
-							return cancelled;
-						}
-					};
+	public CompletableFuture fromPublisher(Publisher<?> pub) {
+		final AtomicReference<Subscription> ref = new AtomicReference<>();
+		final CompletableFuture<List<Object>> future = completableFuture(ref);
 
-			pub.subscribe(new Subscriber<Object>() {
-				private List<Object> values = null;
+		pub.subscribe(new Subscriber<Object>() {
+			private List<Object> values = null;
 
-				@Override
-				public void onSubscribe(Subscription s) {
-					if(BackpressureUtils.checkSubscription(ref.getAndSet(s), s)) {
-						s.request(Long.MAX_VALUE);
-					}
-					else{
+			@Override
+			public void onSubscribe(Subscription s) {
+				if (BackpressureUtils.checkSubscription(ref.getAndSet(s), s)) {
+					s.request(Long.MAX_VALUE);
+				}
+				else {
+					s.cancel();
+				}
+			}
+
+			@Override
+			public void onNext(Object t) {
+				if (values == null) {
+					values = new ArrayList<>();
+				}
+				values.add(t);
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				if (ref.getAndSet(null) != null) {
+					future.completeExceptionally(t);
+				}
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public void onComplete() {
+				if (ref.getAndSet(null) != null) {
+					future.complete(values);
+				}
+			}
+		});
+		return future;
+	}
+
+	private <T> CompletableFuture<T> completableFuture(AtomicReference<Subscription> ref){
+		return new CompletableFuture<T>() {
+			@Override
+			public boolean cancel(boolean mayInterruptIfRunning) {
+				boolean cancelled = super.cancel(mayInterruptIfRunning);
+				if (cancelled) {
+					Subscription s = ref.getAndSet(null);
+					if (s != null) {
 						s.cancel();
 					}
 				}
+				return cancelled;
+			}
+		};
+	}
 
-				@Override
-				public void onNext(Object t) {
-					if(values == null){
-						values = new ArrayList<>();
-					}
-					values.add(t);
-				}
+	public CompletableFuture fromSinglePublisher(Publisher<?> pub) {
+		final AtomicReference<Subscription> ref = new AtomicReference<>();
+		final CompletableFuture<Object> future = completableFuture(ref);
 
-				@Override
-				public void onError(Throwable t) {
-					if(ref.getAndSet(null) != null) {
-						future.completeExceptionally(t);
-					}
+		pub.subscribe(new Subscriber<Object>() {
+			@Override
+			public void onSubscribe(Subscription s) {
+				if (BackpressureUtils.checkSubscription(ref.getAndSet(s), s)) {
+					s.request(Long.MAX_VALUE);
 				}
+				else {
+					s.cancel();
+				}
+			}
 
-				@Override
-				@SuppressWarnings("unchecked")
-				public void onComplete() {
-					if(ref.getAndSet(null) != null) {
-						if(values.size() == 1){
-							future.complete(values.get(0));
-						}
-						else {
-							future.complete(values);
-						}
-					}
+			@Override
+			public void onNext(Object t) {
+				Subscription s = ref.getAndSet(null);
+				if( s != null ){
+					future.complete(t);
+					s.cancel();
+				} else {
+					throw CancelException.get();
 				}
-			});
-			return future;
-		}
-		return null;
+			}
+
+			@Override
+			public void onError(Throwable t) {
+				if (ref.getAndSet(null) != null) {
+					future.completeExceptionally(t);
+				}
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public void onComplete() {
+				if (ref.getAndSet(null) != null) {
+					future.complete(null);
+				}
+			}
+		});
+		return future;
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Publisher<?> toPublisher(Object future) {
+	public Publisher toPublisher(Object future) {
 		return new CompletableFuturePublisher<>((CompletableFuture<?>) future);
 	}
 
@@ -117,9 +173,9 @@ public final class CompletableFutureConverter
 		return CompletableFuture.class;
 	}
 
-	private static class CompletableFuturePublisher<T> implements Publisher<T>,
-	                                                              Consumer<Void>,
-	                                                              BiConsumer<Long, SubscriberWithContext<T, Void>>{
+	private static class CompletableFuturePublisher<T>
+			implements Publisher<T>, Consumer<Void>,
+			           BiConsumer<Long, SubscriberWithContext<T, Void>> {
 
 		private final CompletableFuture<? extends T> future;
 		private final Publisher<? extends T>         futurePublisher;
@@ -180,7 +236,8 @@ public final class CompletableFutureConverter
 				}
 			}
 			catch (Throwable throwable) {
-				Exceptions.<T>publisher(throwable).subscribe(subscriber);
+				Exceptions.<T>publisher(throwable)
+				          .subscribe(subscriber);
 			}
 		}
 	}

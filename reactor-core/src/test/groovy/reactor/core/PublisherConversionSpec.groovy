@@ -17,6 +17,7 @@
 package reactor.core
 
 import reactor.Publishers
+import reactor.core.publisher.convert.CompletableFutureConverter
 import rx.Observable
 import rx.Single
 import spock.lang.Specification
@@ -120,8 +121,8 @@ class PublisherConversionSpec extends Specification {
 	vList[999] == 1000
 
 	when: "Iterable publisher of 1 to completable future"
-	pub = Publishers.just(1)
-	obs = Publishers.<CompletableFuture<Integer>>convert(pub, CompletableFuture.class)
+	def newPub = Publishers.just(1)
+	obs = CompletableFutureConverter.fromSingle(newPub)
 	v = obs.get()
 
 	then: "queues values correct"

@@ -34,28 +34,37 @@ import rx.internal.util.ScalarSynchronousObservable;
  */
 public class RxJava1Converter extends PublisherConverter<Observable> {
 
+	static final RxJava1Converter INSTANCE = new RxJava1Converter();
+
+	@SuppressWarnings("unchecked")
+	static public <T> Observable<T> from(Publisher<T> o){
+		return INSTANCE.fromPublisher(o);
+	}
+
+	@SuppressWarnings("unchecked")
+	static public <T> Publisher<T> from(Observable<T> o){
+		return INSTANCE.toPublisher(o);
+	}
+
 	@Override
-	public Observable fromPublisher(final Publisher<?> pub, Class<?> o2) {
-		if (Observable.class.isAssignableFrom(o2)) {
-			return Observable.create(new Observable.OnSubscribe<Object>() {
-				@Override
-				public void call(final rx.Subscriber<? super Object> subscriber) {
-					try {
-						pub.subscribe(new SubscriberToRx(subscriber));
-					}
-					catch (Throwable t) {
-						Exceptions.throwIfFatal(t);
-						subscriber.onError(t);
-					}
+	public Observable fromPublisher(final Publisher<?> pub) {
+		return Observable.create(new Observable.OnSubscribe<Object>() {
+			@Override
+			public void call(final rx.Subscriber<? super Object> subscriber) {
+				try {
+					pub.subscribe(new SubscriberToRx(subscriber));
 				}
-			});
-		}
-		return null;
+				catch (Throwable t) {
+					Exceptions.throwIfFatal(t);
+					subscriber.onError(t);
+				}
+			}
+		});
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Publisher<?> toPublisher(Object o) {
+	public Publisher toPublisher(Object o) {
 		final Observable<Object> obs = (Observable<Object>) o;
 		if (ScalarSynchronousObservable.class.isAssignableFrom(obs.getClass())) {
 			return new ValuePublisher<>(((ScalarSynchronousObservable) obs).get());

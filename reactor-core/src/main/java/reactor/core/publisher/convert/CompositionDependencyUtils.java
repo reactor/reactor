@@ -68,13 +68,13 @@ public final class CompositionDependencyUtils {
 		}
 
 		if ((detected & RXJAVA_1_OBSERVABLE) == RXJAVA_1_OBSERVABLE) {
-			RX_JAVA_1_CONVERTER = new RxJava1Converter();
+			RX_JAVA_1_CONVERTER = RxJava1Converter.INSTANCE;
 		}
 		else {
 			RX_JAVA_1_CONVERTER = null;
 		}
 		if ((detected & RXJAVA_1_SINGLE) == RXJAVA_1_SINGLE) {
-			RX_JAVA_1_SINGLE_CONVERTER = new RxJava1SingleConverter();
+			RX_JAVA_1_SINGLE_CONVERTER = RxJava1SingleConverter.INSTANCE;
 		}
 		else {
 			RX_JAVA_1_SINGLE_CONVERTER = null;
@@ -86,13 +86,13 @@ public final class CompositionDependencyUtils {
 			//TBD
 		}
 		if ((detected & JDK8_COMPLETABLE_FUTURE) == JDK8_COMPLETABLE_FUTURE) {
-			COMPLETABLE_FUTURE_CONVERTER = new CompletableFutureConverter();
+			COMPLETABLE_FUTURE_CONVERTER = CompletableFutureConverter.INSTANCE;
 		}
 		else {
 			COMPLETABLE_FUTURE_CONVERTER = null;
 		}
 		if ((detected & JDK9_FLOW) == JDK9_FLOW) {
-			JDK_9_FLOW_CONVERTER = new Jdk9FlowConverter();
+			JDK_9_FLOW_CONVERTER = Jdk9FlowConverter.INSTANCE;
 		}
 		else {
 			JDK_9_FLOW_CONVERTER = null;

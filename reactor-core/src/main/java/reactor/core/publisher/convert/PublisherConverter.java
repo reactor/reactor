@@ -30,15 +30,19 @@ public abstract class PublisherConverter<TYPE>
 		        Predicate<Object>, Supplier<Class<TYPE>> {
 
 	abstract protected Publisher<?> toPublisher(Object o);
-	abstract protected TYPE fromPublisher(Publisher<?> source, Class<?> to);
+	abstract protected TYPE fromPublisher(Publisher<?> source);
 
 	@Override
 	public final TYPE apply(Publisher<?> source, Class<?> to) {
-		TYPE t = fromPublisher(source, to);
-		if(t == null){
-			throw new IllegalArgumentException("Cannot convert " + source + " source to " + to + " type");
+		if(get().isAssignableFrom(to)) {
+			TYPE t = fromPublisher(source);
+
+			if (t == null) {
+				throw new IllegalArgumentException("Cannot convert " + source + " source to " + to + " type");
+			}
+			return t;
 		}
-		return t;
+		return null;
 	}
 
 	@Override

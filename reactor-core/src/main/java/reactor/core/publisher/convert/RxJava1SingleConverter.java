@@ -25,8 +25,20 @@ import rx.Single;
  */
 public final class RxJava1SingleConverter extends PublisherConverter<Single> {
 
+	static final RxJava1SingleConverter INSTANCE = new RxJava1SingleConverter();
+
+	@SuppressWarnings("unchecked")
+	static public <T> Single<T> from(Publisher<T> o){
+		return INSTANCE.fromPublisher(o);
+	}
+
+	@SuppressWarnings("unchecked")
+	static public <T> Publisher<T> from(Single<T> o){
+		return INSTANCE.toPublisher(o);
+	}
+
 	@Override
-	public Single fromPublisher(Publisher<?> o, Class<?> o2) {
+	public Single fromPublisher(Publisher<?> o) {
 		Observable obs =
 				CompositionDependencyUtils.convertFromPublisher(o, Observable.class);
 		if (obs != null) {
@@ -36,8 +48,8 @@ public final class RxJava1SingleConverter extends PublisherConverter<Single> {
 	}
 
 	@Override
-	public Publisher<?> toPublisher(Object o) {
-		Single<?> single = (Single<?>)o;
+	public Publisher toPublisher(Object o) {
+		Single<?> single = (Single<?>) o;
 		return CompositionDependencyUtils.convertToPublisher(single.toObservable());
 	}
 
