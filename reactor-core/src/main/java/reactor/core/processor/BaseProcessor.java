@@ -15,12 +15,13 @@
  */
 package reactor.core.processor;
 
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.BackpressureUtils;
@@ -94,11 +95,21 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	}
 
 	@Override
+	public void subscribe(Subscriber<? super OUT> s) {
+		if (s == null) {
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
+	}
+
+	@Override
 	public void onSubscribe(final Subscription s) {
 		if(BackpressureUtils.checkSubscription(upstreamSubscription, s)) {
 			this.upstreamSubscription = s;
+			doOnSubscribe(s);
 		}
 	}
+
+	protected abstract void doOnSubscribe(Subscription s);
 
 	@Override
 	public boolean isExposedToOverflow(Bounded parentPublisher) {

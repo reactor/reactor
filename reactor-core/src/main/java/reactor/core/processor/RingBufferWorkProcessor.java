@@ -542,9 +542,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 
 	@Override
 	public void subscribe(final Subscriber<? super E> subscriber) {
-		if (null == subscriber) {
-			throw SpecificationExceptions.spec_2_13_exception();
-		}
+		super.subscribe(subscriber);
 
 		if (!alive()) {
 			RingBufferSequencer<E> sequencer = new RingBufferSequencer<>(ringBuffer, workSequence.get());

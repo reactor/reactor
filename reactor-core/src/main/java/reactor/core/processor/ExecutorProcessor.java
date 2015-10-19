@@ -53,10 +53,8 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> 
 	}
 
 	@Override
-	public void onSubscribe(Subscription s) {
-		Subscription subscription = upstreamSubscription;
-		super.onSubscribe(s);
-		if (subscription == null && s != SignalType.NOOP_SUBSCRIPTION) {
+	protected void doOnSubscribe(Subscription s) {
+		if (s != SignalType.NOOP_SUBSCRIPTION) {
 			requestTask(s);
 		}
 	}

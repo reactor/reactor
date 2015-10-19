@@ -707,7 +707,7 @@ public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 	}
 
 	@Override
-	public void onSubscribe(Subscription s) {
+	protected void doOnSubscribe(Subscription s) {
 		subscriber.onSubscribe(s);
 	}
 
@@ -777,6 +777,7 @@ public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 
 	@Override
 	public void subscribe(Subscriber<? super Buffer> subscriber) {
+		super.subscribe(subscriber);
 		publisher.subscribe(subscriber);
 	}
 

@@ -568,9 +568,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 
 	@Override
 	public void subscribe(final Subscriber<? super E> subscriber) {
-		if (null == subscriber) {
-			throw SpecificationExceptions.spec_2_13_exception();
-		}
+		super.subscribe(subscriber);
 
 		if (!alive()) {
 			RingBufferSequencer<E> sequencer = coldSource();
