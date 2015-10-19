@@ -19,6 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
+import reactor.core.support.SignalType;
 import reactor.fn.Supplier;
 
 /**
@@ -35,6 +36,11 @@ public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN> {
 	@Override
 	public void subscribe(final Subscriber<? super IN> s) {
 		try {
+			if(data == null){
+				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				s.onComplete();
+				return;
+			}
 			s.onSubscribe(new Subscription() {
 				boolean terminado = false;
 
@@ -45,9 +51,7 @@ public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN> {
 					}
 
 					terminado = true;
-					if (data != null) {
-						s.onNext(data);
-					}
+					s.onNext(data);
 					s.onComplete();
 				}
 

@@ -40,9 +40,8 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 		AtomicIntegerFieldUpdater.newUpdater(ExecutorPoweredProcessor.class, "terminated");
 
 	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {
-		super(executor == null ?
-						new ClassLoader(Thread.currentThread().getContextClassLoader()) {
-						} : null, autoCancel);
+		super(new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+		}, autoCancel);
 		if (executor == null) {
 			this.executor = SingleUseExecutor.create(name, contextClassLoader);
 		} else {

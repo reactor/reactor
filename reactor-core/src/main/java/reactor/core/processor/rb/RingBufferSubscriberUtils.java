@@ -106,6 +106,28 @@ public final class RingBufferSubscriberUtils {
 
 	}
 
+
+
+	public static <E> void routeOnce(MutableSignal<E> task, Subscriber<? super E> subscriber) {
+		E value = task.value;
+		task.value = null;
+		try {
+			if (task.type == SignalType.NEXT && null != value) {
+				// most likely case first
+				subscriber.onNext(value);
+			} else if (task.type == SignalType.COMPLETE) {
+				// second most likely case next
+				subscriber.onComplete();
+			} else if (task.type == SignalType.ERROR) {
+				// errors should be relatively infrequent compared to other signals
+				subscriber.onError(task.error);
+			}
+		} catch (Throwable t) {
+			task.value = value;
+			throw t;
+		}
+	}
+
 	public static <T> boolean waitRequestOrTerminalEvent(LongSupplier pendingRequest,
 			RingBuffer<MutableSignal<T>> ringBuffer, SequenceBarrier barrier,
 			Subscriber<? super T> subscriber, AtomicBoolean isRunning,

@@ -805,6 +805,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 
 				//while(processor.alive() && processor.upstreamSubscription == null);
 				try {
+					Thread.currentThread().setContextClassLoader(processor.contextClassLoader);
 					subscriber.onSubscribe(subscription);
 				}
 				catch (Throwable t) {
@@ -861,7 +862,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E
 							readNextEvent(event, unbounded);
 
 							//It's an unbounded subscriber or there is enough capacity to process the signal
-							RingBufferSubscriberUtils.route(event, subscriber);
+							RingBufferSubscriberUtils.routeOnce(event, subscriber);
 
 							processedSequence = true;
 
