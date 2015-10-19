@@ -56,7 +56,7 @@ public class AsyncAppender
 	private boolean includeCallerData = false;
 	private boolean started           = false;
 
-	public long getBacklog() {
+	public int getBacklog() {
 		return backlog;
 	}
 
