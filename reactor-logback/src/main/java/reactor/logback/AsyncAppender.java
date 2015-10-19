@@ -137,6 +137,10 @@ public class AsyncAppender
 	public void onComplete() {
 		try {
 			doStop();
+			if (null != delegate.get()) {
+				delegate.get().stop();
+			}
+			aai.detachAndStopAllAppenders();
 		} catch (Throwable t) {
 			addError(t.getMessage(), t);
 		} finally {
@@ -153,11 +157,6 @@ public class AsyncAppender
 
 	@Override
 	public void stop() {
-		if (null != delegate.get()) {
-			delegate.get().stop();
-		}
-		aai.detachAndStopAllAppenders();
-
 		processor.onComplete();
 	}
 
