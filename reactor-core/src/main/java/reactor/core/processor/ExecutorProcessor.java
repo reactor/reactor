@@ -29,22 +29,25 @@ import reactor.core.support.SingleUseExecutor;
  *
  * @author Stephane Maldini
  */
-public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN, OUT> {
+public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> {
 
 	protected final ExecutorService executor;
 
 	protected volatile boolean cancelled;
-	protected volatile int terminated;
+	protected volatile int     terminated;
 
-	protected final static AtomicIntegerFieldUpdater<ExecutorPoweredProcessor> TERMINATED =
-		AtomicIntegerFieldUpdater.newUpdater(ExecutorPoweredProcessor.class, "terminated");
+	protected final static AtomicIntegerFieldUpdater<ExecutorProcessor> TERMINATED =
+			AtomicIntegerFieldUpdater.newUpdater(ExecutorProcessor.class, "terminated");
 
-	protected ExecutorPoweredProcessor(String name, ExecutorService executor, boolean autoCancel) {
-		super(new ClassLoader(Thread.currentThread().getContextClassLoader()) {
+	protected ExecutorProcessor(String name, ExecutorService executor,
+			boolean autoCancel) {
+		super(new ClassLoader(Thread.currentThread()
+		                            .getContextClassLoader()) {
 		}, autoCancel);
 		if (executor == null) {
 			this.executor = SingleUseExecutor.create(name, contextClassLoader);
-		} else {
+		}
+		else {
 			this.executor = executor;
 		}
 	}
@@ -62,13 +65,13 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 		//implementation might run a specific request task for the given subscription
 	}
 
-	protected void doComplete(){
+	protected void doComplete() {
 
 	}
 
 	@Override
 	public final void onComplete() {
-		if(TERMINATED.compareAndSet(this, 0, 1)) {
+		if (TERMINATED.compareAndSet(this, 0, 1)) {
 			upstreamSubscription = null;
 			if (executor.getClass() == SingleUseExecutor.class) {
 				executor.shutdown();
@@ -77,15 +80,14 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 		}
 	}
 
-	protected void doError(Throwable throwable){
+	protected void doError(Throwable throwable) {
 
 	}
-
 
 	@Override
 	public final void onError(Throwable t) {
 		super.onError(t);
-		if(TERMINATED.compareAndSet(this, 0, 1)) {
+		if (TERMINATED.compareAndSet(this, 0, 1)) {
 			upstreamSubscription = null;
 			if (executor.getClass() == SingleUseExecutor.class) {
 				executor.shutdown();
@@ -94,12 +96,17 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 		}
 	}
 
-	@Override
+
+	/**
+	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
+	 */
 	public boolean awaitAndShutdown() {
 		return awaitAndShutdown(-1, TimeUnit.SECONDS);
 	}
 
-	@Override
+	/**
+	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
+	 */
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		try {
 			shutdown();
@@ -120,18 +127,29 @@ public abstract class ExecutorPoweredProcessor<IN, OUT> extends BaseProcessor<IN
 		}
 	}
 
-	@Override
+	/**
+	 * Shutdown this {@code Processor}, forcibly halting any work currently executing and discarding any tasks that
+	 * have not yet been executed.
+	 */
 	public void forceShutdown() {
 		if (executor.isShutdown()) return;
 		executor.shutdownNow();
 	}
 
-	@Override
+
+	/**
+	 * Determine whether this {@code Processor} can be used.
+	 *
+	 * @return {@literal true} if this {@code Resource} is alive and can be used, {@literal false} otherwise.
+	 */
 	public boolean alive() {
 		return 0 == terminated;
 	}
 
-	@Override
+	/**
+	 * Shutdown this active {@code Processor} such that it can no longer be used. If the resource carries any work,
+	 * it will wait (but NOT blocking the caller) for all the remaining tasks to perform before closing the resource.
+	 */
 	public void shutdown() {
 		try {
 			onComplete();

@@ -57,10 +57,14 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@After
 	public void after() {
-		sensorEven.onComplete();
-		sensorEven = null;
-		sensorOdd.onComplete();
-		sensorOdd = null;
+		if(sensorEven != null) {
+			sensorEven.onComplete();
+			sensorEven = null;
+		}
+		if(sensorOdd != null) {
+			sensorOdd.onComplete();
+			sensorOdd = null;
+		}
 	}
 
 	public Consumer<Object> loggingConsumer() {
@@ -199,10 +203,11 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		  .collect(Collectors.toList());
 
 		LOG.info("range from 0 to " + list.size());
-		Control tail = sensorOdd().zipWith(list, (tuple) -> (tuple.getT1().toString() +
-		  "" +
-		  " " +
-		  "-- " + tuple.getT2()))
+		Control tail = sensorOdd().zipWith(list, (tuple) -> (tuple.getT1()
+		                                                          .toString() +
+				"" +
+				" " +
+				"-- " + tuple.getT2()))
 		  .log("zipWithIterableTest")
 		  .consume(i -> latch.countDown());
 
@@ -214,16 +219,16 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@Test
 	public void joinWithTest() throws Exception {
-		int elements = 40;
-		CountDownLatch latch = new CountDownLatch(elements / 2);
+			int elements = 40;
+			CountDownLatch latch = new CountDownLatch(elements / 2);
 
-		Control tail = sensorOdd().joinWith(sensorEven())
-		  .log("joinWithTest")
-		  .consume(i -> latch.countDown());
+			Control tail = sensorOdd().joinWith(sensorEven())
+			                          .log("joinWithTest")
+			                          .consume(i -> latch.countDown());
 
-		generateData(elements);
+			generateData(elements);
 
-		awaitLatch(tail, latch);
+			awaitLatch(tail, latch);
 	}
 
 	@Test
@@ -263,7 +268,9 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		}
 
 		sensorEven.onComplete();
+		sensorEven = null;
 		sensorOdd.onComplete();
+		sensorOdd = null;
 
 	}
 

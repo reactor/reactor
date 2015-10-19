@@ -70,7 +70,7 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @author Anatoly Kadyshev
  */
-public final class RingBufferProcessor<E> extends ExecutorPoweredProcessor<E, E> {
+public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 
 	/**
 	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,

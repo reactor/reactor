@@ -6,6 +6,7 @@ import static org.junit.Assert.assertEquals;
 
 /**
  * @author Sergey Shcherbakov
+ * @author Stephane Maldini
  */
 public class BaseProcessorGettersTests {
 
@@ -13,7 +14,7 @@ public class BaseProcessorGettersTests {
 	public void testRingBufferProcessorGetters() {
 
 		final int TEST_BUFFER_SIZE = 16;
-		BaseProcessor<Object, Object> processor = RingBufferProcessor.create("testProcessor", TEST_BUFFER_SIZE);
+		ExecutorProcessor<Object, Object> processor = RingBufferProcessor.create("testProcessor", TEST_BUFFER_SIZE);
 
 		assertEquals(TEST_BUFFER_SIZE, processor.getAvailableCapacity());
 
@@ -25,7 +26,7 @@ public class BaseProcessorGettersTests {
 	public void testRingBufferWorkProcessorGetters() {
 
 		final int TEST_BUFFER_SIZE = 16;
-		BaseProcessor<Object, Object> processor = RingBufferWorkProcessor.create("testProcessor", TEST_BUFFER_SIZE);
+		ExecutorProcessor<Object, Object> processor = RingBufferWorkProcessor.create("testProcessor", TEST_BUFFER_SIZE);
 
 		assertEquals(TEST_BUFFER_SIZE, processor.getAvailableCapacity());
 

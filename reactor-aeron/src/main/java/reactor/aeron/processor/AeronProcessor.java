@@ -22,9 +22,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.processor.ExecutorPoweredProcessor;
+import reactor.core.processor.ExecutorProcessor;
 import reactor.core.processor.RingBufferProcessor;
-import reactor.core.support.BackpressureUtils;
 import reactor.io.buffer.Buffer;
 import uk.co.real_logic.aeron.Aeron;
 import uk.co.real_logic.aeron.FragmentAssembler;
@@ -165,7 +164,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * @author Anatoly Kadyshev
  */
-public class AeronProcessor extends ExecutorPoweredProcessor<Buffer, Buffer> {
+public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 
 	private static final Logger logger = LoggerFactory.getLogger(AeronProcessor.class);
 

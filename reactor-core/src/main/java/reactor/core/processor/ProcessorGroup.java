@@ -15,6 +15,12 @@
  */
 package reactor.core.processor;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -25,22 +31,21 @@ import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RingBufferSubscriberUtils;
+import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
-import reactor.core.support.*;
+import reactor.core.support.Assert;
+import reactor.core.support.BackpressureUtils;
+import reactor.core.support.Bounded;
+import reactor.core.support.Publishable;
+import reactor.core.support.Recyclable;
+import reactor.core.support.SignalType;
+import reactor.core.support.Subscribable;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 import reactor.fn.timer.GlobalTimer;
 import reactor.fn.timer.Timer;
-import reactor.core.processor.rb.disruptor.RingBuffer;
-
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * A Shared Processor Service is a {@link Processor} factory eventually sharing one or more internal {@link Processor}.
@@ -322,8 +327,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	public boolean awaitAndShutdown(long timeout, TimeUnit timeUnit) {
 		if (processor == null) {
 			return true;
-		} else if (BaseProcessor.class.isAssignableFrom(processor.getClass())) {
-			return ((BaseProcessor) processor).awaitAndShutdown(timeout, timeUnit);
+		} else if (ExecutorProcessor.class.isAssignableFrom(processor.getClass())) {
+			return ((ExecutorProcessor) processor).awaitAndShutdown(timeout, timeUnit);
 		}
 		throw new UnsupportedOperationException("Underlying Processor doesn't implement Resource");
 	}
@@ -331,8 +336,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	public void forceShutdown() {
 		if (processor == null) {
 			return;
-		} else if (BaseProcessor.class.isAssignableFrom(processor.getClass())) {
-			((BaseProcessor) processor).forceShutdown();
+		} else if (ExecutorProcessor.class.isAssignableFrom(processor.getClass())) {
+			((ExecutorProcessor) processor).forceShutdown();
 			return;
 		}
 		throw new UnsupportedOperationException("Underlying Processor doesn't implement Resource");
@@ -342,8 +347,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		if (processor == null) {
 			return true;
 		}
-		if (BaseProcessor.class.isAssignableFrom(processor.getClass())) {
-			return ((BaseProcessor) processor).alive();
+		if (ExecutorProcessor.class.isAssignableFrom(processor.getClass())) {
+			return ((ExecutorProcessor) processor).alive();
 		}
 		throw new UnsupportedOperationException("Underlying Processor doesn't implement Resource");
 	}
@@ -353,8 +358,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			return;
 		}
 		try {
-			if (BaseProcessor.class.isAssignableFrom(processor.getClass())) {
-				((BaseProcessor) processor).shutdown();
+			if (ExecutorProcessor.class.isAssignableFrom(processor.getClass())) {
+				((ExecutorProcessor) processor).shutdown();
 			}
 			else{
 				processor.onComplete();
@@ -564,8 +569,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			return new SyncProcessorBarrier<>(this);
 		}
 
-		if (BaseProcessor.class.isAssignableFrom(processor.getClass())
-		  && !((BaseProcessor) processor).alive()) {
+		if (ExecutorProcessor.class.isAssignableFrom(processor.getClass())
+		  && !((ExecutorProcessor) processor).alive()) {
 			throw new IllegalStateException("Internal Processor is shutdown");
 		}
 

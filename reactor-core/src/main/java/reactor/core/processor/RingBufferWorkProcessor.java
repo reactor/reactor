@@ -63,7 +63,7 @@ import reactor.fn.Supplier;
  * @param <E> Type of dispatched signal
  * @author Stephane Maldini
  */
-public final class RingBufferWorkProcessor<E> extends ExecutorPoweredProcessor<E, E> {
+public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 
 	/**
 	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,

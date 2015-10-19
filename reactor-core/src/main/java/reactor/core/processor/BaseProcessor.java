@@ -134,33 +134,4 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 		return PublisherFactory.fromSubscription(upstreamSubscription);
 	}
 
-	/**
-	 * Determine whether this {@code Processor} can be used.
-	 *
-	 * @return {@literal true} if this {@code Resource} is alive and can be used, {@literal false} otherwise.
-	 */
-	public abstract boolean alive();
-
-	/**
-	 * Shutdown this active {@code Processor} such that it can no longer be used. If the resource carries any work,
-	 * it will wait (but NOT blocking the caller) for all the remaining tasks to perform before closing the resource.
-	 */
-	public abstract void shutdown();
-
-
-	/**
-	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
-	 */
-	public abstract boolean awaitAndShutdown();
-
-	/**
-	 * Block until all submitted tasks have completed, then do a normal {@link #shutdown()}.
-	 */
-	public abstract boolean awaitAndShutdown(long timeout, TimeUnit timeUnit);
-
-	/**
-	 * Shutdown this {@code Processor}, forcibly halting any work currently executing and discarding any tasks that
-	 * have not yet been executed.
-	 */
-	public abstract void forceShutdown();
 }
