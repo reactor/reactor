@@ -768,7 +768,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		@Override
 		public void request(final long n) {
-			if (service.managedProcessor != null && service.managedProcessor.isInContext()) {
+			if (service.managedProcessor != null) {
 				dispatch(n, new BaseSubscriber<Long>() {
 					@Override
 					public void onNext(Long aLong) {
