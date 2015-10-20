@@ -636,7 +636,12 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 
 	@Override
 	protected void doComplete() {
-		RingBufferSubscriberUtils.onComplete(ringBuffer);
+		try {
+			RingBufferSubscriberUtils.onComplete(ringBuffer);
+		}
+		catch (CancelException ce){
+			//ignore
+		}
 		readWait.signalAllWhenBlocking();
 	}
 

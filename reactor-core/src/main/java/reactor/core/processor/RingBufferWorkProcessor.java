@@ -604,9 +604,14 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 
 	@Override
 	protected void doComplete() {
-		RingBufferSubscriberUtils.onComplete(ringBuffer);
-		for (long n = ringBuffer.getCursor() - 1; n <= workSequence.get(); n++) {
+		try {
 			RingBufferSubscriberUtils.onComplete(ringBuffer);
+			for (long n = ringBuffer.getCursor() - 1; n <= workSequence.get(); n++) {
+				RingBufferSubscriberUtils.onComplete(ringBuffer);
+			}
+		}
+		catch (CancelException ce){
+			//ignore
 		}
 		readWait.signalAllWhenBlocking();
 	}
