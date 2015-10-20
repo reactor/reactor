@@ -237,7 +237,7 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 			};
 		}
 		else {
-			throw  new IllegalStateException("Status and headers already sent");
+			return Streams.empty();
 		}
 	}
 
