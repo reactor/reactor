@@ -18,6 +18,7 @@ package reactor.core.processor;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -45,6 +46,7 @@ import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.LiteBlockingWaitStrategy;
+import reactor.core.support.wait.PhasedBackoffWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
@@ -74,7 +76,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> create() {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE,
-				new LiteBlockingWaitStrategy(), true);
+				null, true);
 	}
 
 	/**
@@ -88,7 +90,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(boolean autoCancel) {
 		return create(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE,
-				new LiteBlockingWaitStrategy(), autoCancel);
+				null, autoCancel);
 	}
 
 	/**
@@ -101,7 +103,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service) {
-		return create(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), true);
+		return create(service, SMALL_BUFFER_SIZE, null, true);
 	}
 
 	/**
@@ -117,7 +119,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service,
 			boolean autoCancel) {
-		return create(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
+		return create(service, SMALL_BUFFER_SIZE, null,
 				autoCancel);
 	}
 
@@ -145,7 +147,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize) {
-		return create(name, bufferSize, new LiteBlockingWaitStrategy(), true);
+		return create(name, bufferSize, null, true);
 	}
 
 	/**
@@ -163,7 +165,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(String name, int bufferSize,
 			boolean autoCancel) {
-		return create(name, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
+		return create(name, bufferSize, null, autoCancel);
 	}
 
 	/**
@@ -177,7 +179,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service,
 			int bufferSize) {
-		return create(service, bufferSize, new LiteBlockingWaitStrategy(), true);
+		return create(service, bufferSize, null, true);
 	}
 
 	/**
@@ -193,7 +195,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> create(ExecutorService service,
 			int bufferSize, boolean autoCancel) {
-		return create(service, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
+		return create(service, bufferSize, null, autoCancel);
 	}
 
 	/**
@@ -279,7 +281,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> share() {
 		return share(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE,
-				new LiteBlockingWaitStrategy(), true);
+				null, true);
 	}
 
 	/**
@@ -294,7 +296,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(boolean autoCancel) {
 		return share(RingBufferWorkProcessor.class.getSimpleName(), SMALL_BUFFER_SIZE,
-				new LiteBlockingWaitStrategy(), autoCancel);
+				null, autoCancel);
 	}
 
 	/**
@@ -307,7 +309,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService service) {
-		return share(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(), true);
+		return share(service, SMALL_BUFFER_SIZE, null, true);
 	}
 
 	/**
@@ -324,7 +326,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService service,
 			boolean autoCancel) {
-		return share(service, SMALL_BUFFER_SIZE, new LiteBlockingWaitStrategy(),
+		return share(service, SMALL_BUFFER_SIZE, null,
 				autoCancel);
 	}
 
@@ -341,7 +343,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 * @return a fresh processor
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(String name, int bufferSize) {
-		return share(name, bufferSize, new LiteBlockingWaitStrategy(), true);
+		return share(name, bufferSize, null, true);
 	}
 
 	/**
@@ -360,7 +362,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(String name, int bufferSize,
 			boolean autoCancel) {
-		return share(name, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
+		return share(name, bufferSize, null, autoCancel);
 	}
 
 	/**
@@ -376,7 +378,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService service,
 			int bufferSize) {
-		return share(service, bufferSize, new LiteBlockingWaitStrategy(), true);
+		return share(service, bufferSize, null, true);
 	}
 
 	/**
@@ -394,7 +396,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	 */
 	public static <E> RingBufferWorkProcessor<E> share(ExecutorService service,
 			int bufferSize, boolean autoCancel) {
-		return share(service, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
+		return share(service, bufferSize, null, autoCancel);
 	}
 
 	/**
@@ -527,14 +529,17 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 			}
 		};
 
+		WaitStrategy strategy = waitStrategy == null ?
+				PhasedBackoffWaitStrategy.withLiteLock(500, 500, TimeUnit.MILLISECONDS) :
+				waitStrategy;
+
 		if (share) {
 			this.ringBuffer = RingBuffer
-					.createMultiProducer(factory, bufferSize, waitStrategy, spinObserver);
+					.createMultiProducer(factory, bufferSize, strategy, spinObserver);
 		}
 		else {
 			this.ringBuffer = RingBuffer
-					.createSingleProducer(factory, bufferSize, waitStrategy,
-							spinObserver);
+					.createSingleProducer(factory, bufferSize, strategy, spinObserver);
 		}
 		ringBuffer.addGatingSequences(workSequence);
 

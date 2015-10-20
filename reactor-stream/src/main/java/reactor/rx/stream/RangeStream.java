@@ -66,7 +66,10 @@ public final class RangeStream {
 	 */
 	public static Stream<Integer> create(final int min, final int count) {
 
-		Assert.isTrue(count >= 0, "Count can not be negative");
+
+		if(count < 0){
+			throw new IllegalArgumentException("Count can not be negative : "+count);
+		}
 
 		if(count == 0) {
 			return Streams.empty();
@@ -74,22 +77,12 @@ public final class RangeStream {
 		else if ( count == 1 ){
 			return Streams.just(min);
 		}
-		Assert.isTrue(min <= Integer.MAX_VALUE - count + 1, "start + count can not exceed Integer.MAX_VALUE");
+		if(min + count > Integer.MAX_VALUE){
+			throw new IllegalArgumentException("start + count can not exceed Integer.MAX_VALUE");
+		}
 
 
-		return Streams.wrap(PublisherFactory.create(new Consumer<SubscriberWithContext<Integer, Range>>() {
-			  @Override
-			  public void accept(SubscriberWithContext<Integer, Range> subscriber) {
-				  Range range = subscriber.context();
-
-				  if (range.cursor < range.count) {
-					  subscriber.onNext(range.start + range.cursor++);
-				  }
-				  if (range.cursor >= range.count) {
-					  subscriber.onComplete();
-				  }
-			  }
-		  }, new Function<Subscriber<? super Integer>, Range>() {
+		return Streams.wrap(PublisherFactory.create(RangeSequence.INSTANCE, new Function<Subscriber<? super Integer>, Range>() {
 			  @Override
 			  public Range apply(Subscriber<? super Integer> subscriber) {
 				  return new Range(min, count);
@@ -115,6 +108,24 @@ public final class RangeStream {
 			return "{" +
 			  "cursor=" + cursor + "" + (count > 0 ? "[" + 100 * (cursor - 1) / count + "%]" : "") +
 			  ", start=" + start + ", count=" + count + "}";
+		}
+	}
+
+	private static class RangeSequence
+			implements Consumer<SubscriberWithContext<Integer, Range>> {
+
+		private final static RangeSequence INSTANCE = new RangeSequence();
+
+		@Override
+		public void accept(SubscriberWithContext<Integer, Range> subscriber) {
+			Range range = subscriber.context();
+
+			if (range.cursor < range.count) {
+				subscriber.onNext(range.start + range.cursor++);
+			}
+			if (range.cursor >= range.count) {
+				subscriber.onComplete();
+			}
 		}
 	}
 }

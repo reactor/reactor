@@ -164,18 +164,27 @@ public class Streams {
 	}
 
 	/**
-	 * A simple decoration of the given {@link Publisher} to expose {@link Stream} API and proxy any subscribe call to
-	 * the publisher.
-	 * The Publisher has to first call onSubscribe and receive a subscription request callback before any onNext
-	 * call or
-	 * will risk loosing events.
-	 *
-	 * @param publisher the publisher to decorate the Stream subscriber
-	 * @param <T>       the type of values passing through the {@literal Stream}
-	 * @return a new {@link reactor.rx.Stream}
+	 * @see Publishers#create(Consumer)
 	 */
-	public static <T> Stream<T> create(final Publisher<T> publisher) {
-		return wrap(publisher);
+	public static <T> Stream<T> create(Consumer<SubscriberWithContext<T, Void>> request) {
+		return wrap(Publishers.create(request));
+	}
+
+	/**
+	 * @see Publishers#create(Consumer, Function)
+	 */
+	public static <T, C> Stream<T> create(Consumer<SubscriberWithContext<T, C>> request,
+			Function<Subscriber<? super T>, C> onSubscribe) {
+		return wrap(Publishers.create(request, onSubscribe));
+	}
+
+	/**
+	 * @see Publishers#create(Consumer, Function, Consumer)
+	 */
+	public static <T, C> Stream<T> create(Consumer<SubscriberWithContext<T, C>> request,
+			Function<Subscriber<? super T>, C> onSubscribe,
+			Consumer<C> onTerminate) {
+		return wrap(Publishers.create(request, onSubscribe, onTerminate));
 	}
 
 	/**
