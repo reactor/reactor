@@ -800,12 +800,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		protected void dispatchProcessorSequence(Object data, Subscriber subscriber,
 				SignalType type) {
-			if (service.managedProcessor != null && service.managedProcessor.isInContext()) {
-				service.route(data, subscriber, type);
-			}
-			else {
-				dispatch(data, subscriber, type);
-			}
+			dispatch(data, subscriber, type);
+
 		}
 
 		protected boolean shouldTailRecruse() {
