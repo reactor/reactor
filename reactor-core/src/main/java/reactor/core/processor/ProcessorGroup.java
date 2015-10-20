@@ -768,17 +768,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		@Override
 		public void request(final long n) {
-			if (service.managedProcessor != null) {
-				dispatch(n, new BaseSubscriber<Long>() {
-					@Override
-					public void onNext(Long aLong) {
-						doRequest(n);
-					}
-				}, SignalType.NEXT);
-			}
-			else {
-				doRequest(n);
-			}
+			doRequest(n);
 		}
 
 		protected final void doRequest(long n) {
