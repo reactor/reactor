@@ -74,7 +74,7 @@ public interface Spec {
 	//
 	//   Client and Server Specifications
 	//
-	abstract class PeerSpec<IN, OUT,
+	public abstract class PeerSpec<IN, OUT,
 	  CONN extends ChannelStream<IN, OUT>,
 	  S extends PeerSpec<IN, OUT, CONN, S, N>,
 	  N extends ReactorPeer<IN, OUT, CONN>>
@@ -184,7 +184,7 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class TcpClientSpec<IN, OUT> implements Supplier<TcpClient<IN, OUT>> {
+	public class TcpClientSpec<IN, OUT> implements Supplier<TcpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.tcp.TcpClient> clientImplConstructor;
 
@@ -329,7 +329,7 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class TcpServerSpec<IN, OUT>
+	public class TcpServerSpec<IN, OUT>
 	  extends PeerSpec<IN, OUT, ChannelStream<IN, OUT>, TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {
 
 		private final Constructor<? extends reactor.io.net.tcp.TcpServer> serverImplConstructor;
@@ -456,7 +456,7 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class HttpServerSpec<IN, OUT>
+	public 	class HttpServerSpec<IN, OUT>
 	  extends PeerSpec<IN, OUT, HttpChannel<IN, OUT>, HttpServerSpec<IN, OUT>, HttpServer<IN, OUT>> {
 
 		private final Constructor<? extends reactor.io.net.http.HttpServer> serverImplConstructor;
@@ -523,7 +523,7 @@ public interface Spec {
 	 * @param <OUT> The type that will be sent by the client
 	 * @author Stephane Maldini
 	 */
-	class HttpClientSpec<IN, OUT> implements Supplier<HttpClient<IN, OUT>> {
+	public class HttpClientSpec<IN, OUT> implements Supplier<HttpClient<IN, OUT>> {
 
 		private final Constructor<reactor.io.net.http.HttpClient> clientImplConstructor;
 
@@ -647,7 +647,7 @@ public interface Spec {
 	/**
 	 * A helper class for configure a new {@code Reconnect}.
 	 */
-	class IncrementalBackoffReconnect implements Supplier<Reconnect> {
+	public class IncrementalBackoffReconnect implements Supplier<Reconnect> {
 
 		public static final long DEFAULT_INTERVAL = 5000;
 

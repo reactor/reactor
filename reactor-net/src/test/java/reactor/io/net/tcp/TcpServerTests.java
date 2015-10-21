@@ -16,40 +16,6 @@
 
 package reactor.io.net.tcp;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.handler.codec.LineBasedFrameDecoder;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.reactivestreams.Processor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.zeromq.ZContext;
-import org.zeromq.ZMQ;
-import org.zeromq.ZMsg;
-import reactor.Timers;
-import reactor.core.processor.RingBufferWorkProcessor;
-import reactor.core.support.UUIDUtils;
-import reactor.fn.Consumer;
-import reactor.fn.Supplier;
-import reactor.io.buffer.Buffer;
-import reactor.io.codec.*;
-import reactor.io.codec.json.JsonCodec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.NetStreams;
-import reactor.io.net.ReactorChannelHandler;
-import reactor.io.net.config.ServerSocketOptions;
-import reactor.io.net.config.SslOptions;
-import reactor.io.net.http.HttpServer;
-import reactor.io.net.impl.netty.NettyServerSocketOptions;
-import reactor.io.net.impl.netty.tcp.NettyTcpClient;
-import reactor.io.net.tcp.support.SocketUtils;
-import reactor.rx.Streams;
-import reactor.rx.broadcast.Broadcaster;
-
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -62,6 +28,41 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.LineBasedFrameDecoder;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.reactivestreams.Processor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.Timers;
+import reactor.core.processor.RingBufferWorkProcessor;
+import reactor.fn.Consumer;
+import reactor.fn.Supplier;
+import reactor.io.buffer.Buffer;
+import reactor.io.codec.Frame;
+import reactor.io.codec.FrameCodec;
+import reactor.io.codec.LengthFieldCodec;
+import reactor.io.codec.PassThroughCodec;
+import reactor.io.codec.StandardCodecs;
+import reactor.io.codec.StringCodec;
+import reactor.io.codec.json.JsonCodec;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.NetStreams;
+import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.config.ServerSocketOptions;
+import reactor.io.net.config.SslOptions;
+import reactor.io.net.http.HttpServer;
+import reactor.io.net.impl.netty.NettyServerSocketOptions;
+import reactor.io.net.impl.netty.tcp.NettyTcpClient;
+import reactor.io.net.tcp.support.SocketUtils;
+import reactor.rx.Streams;
+import reactor.rx.broadcast.Broadcaster;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertNotNull;
@@ -150,11 +151,12 @@ public class TcpServerTests {
 		);
 
 		server.start(channel -> {
-			channel.log("conn").consume(data -> {
-				if ("John Doe".equals(data.getName())) {
-					latch.countDown();
-				}
-			});
+			channel.log("conn")
+			       .consume(data -> {
+				       if ("John Doe".equals(data.getName())) {
+					       latch.countDown();
+				       }
+			       });
 			return Streams.never();
 		});
 
@@ -197,11 +199,14 @@ public class TcpServerTests {
 					  int next = bb.getInt();
 					  if (next != num++) {
 						  System.err.println(this + " expecting: " + next + " but got: " + (num - 1));
-					  } else {
+					  }
+					  else {
 						  log.info("received " + (num - 1));
 					  }
 				  }
-			  }).debug().toString());
+			  })
+			             .debug()
+			             .toString());
 			  return Streams.never();
 		  }
 		).await();
@@ -300,11 +305,8 @@ public class TcpServerTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(2);
 
-		final TcpClient<String, String> client = NetStreams.tcpClient(s ->
-			s
-			  .connect("localhost", port)
-			  .codec(StandardCodecs.LINE_FEED_CODEC)
-		);
+		final TcpClient<String, String> client = NetStreams.tcpClient(s -> s.connect("localhost", port)
+		                                                                    .codec(StandardCodecs.LINE_FEED_CODEC));
 
 		ReactorChannelHandler<String, String, ChannelStream<String, String>> serverHandler = ch -> {
 			ch.consume(data -> {
@@ -636,38 +638,6 @@ public class TcpServerTests {
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-		}
-	}
-
-	private class ZeroMQWriter implements Runnable {
-		private final Random random = new Random();
-		private final ZContext       zmq;
-		private final int            port;
-		private final CountDownLatch latch;
-
-		private ZeroMQWriter(ZContext zmq, int port, CountDownLatch latch) {
-			this.zmq = zmq;
-			this.port = port;
-			this.latch = latch;
-		}
-
-		@Override
-		public void run() {
-			String id = UUIDUtils.random().toString();
-			ZMQ.Socket socket = zmq.createSocket(ZMQ.DEALER);
-			socket.setIdentity(id.getBytes());
-			socket.connect("tcp://127.0.0.1:" + port);
-
-			byte[] data = new byte[128];
-			random.nextBytes(data);
-
-			socket.send(data);
-
-			ZMsg reply = ZMsg.recvMsg(socket);
-			log.info("reply: {}", reply);
-			latch.countDown();
-
-			//zmq.destroySocket(socket);
 		}
 	}
 

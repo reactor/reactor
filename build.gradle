@@ -343,6 +343,7 @@ project('reactor-net') {
 		// Testing
 		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
 		testCompile "org.apache.httpcomponents:fluent-hc:4.3.6"
+		testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 
 		testRuntime project(':reactor-logback'),
 				"org.slf4j:jcl-over-slf4j:$slf4jVersion"
