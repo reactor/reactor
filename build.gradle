@@ -31,7 +31,6 @@ ext {
 	// Libraries
 	gsCollectionsVersion = '5.1.0'
 	nettyVersion = '4.0.31.Final'
-	jeromqVersion = '0.3.4'
 	jacksonDatabindVersion = '2.5.1'
 	jsonPathVersion = '2.0.0'
 	kryoVersion = '3.0.3'
@@ -341,13 +340,8 @@ project('reactor-net') {
 
 		optional "io.netty:netty-all:$nettyVersion"
 
-		optional "org.zeromq:jeromq:$jeromqVersion",
-				"com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
-
 		// Testing
-		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion",
-				"com.esotericsoftware:kryo:$kryoVersion"
-
+		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
 		testCompile "org.apache.httpcomponents:fluent-hc:4.3.6"
 
 		testRuntime project(':reactor-logback'),

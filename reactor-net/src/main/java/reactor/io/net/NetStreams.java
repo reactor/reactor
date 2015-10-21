@@ -26,8 +26,6 @@ import reactor.io.net.impl.netty.http.NettyHttpServer;
 import reactor.io.net.impl.netty.tcp.NettyTcpClient;
 import reactor.io.net.impl.netty.tcp.NettyTcpServer;
 import reactor.io.net.impl.netty.udp.NettyDatagramServer;
-import reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient;
-import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.io.net.tcp.TcpClient;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.udp.DatagramServer;
@@ -975,6 +973,13 @@ public class NetStreams extends Streams {
 	}
 
 	/**
+	 * @return a Specification to configure and supply a Reconnect handler
+	 */
+	static public Spec.IncrementalBackoffReconnect backoffReconnect() {
+		return new Spec.IncrementalBackoffReconnect();
+	}
+
+	/**
 	 * INTERNAL CLASSPATH INIT
 	 */
 
@@ -993,35 +998,34 @@ public class NetStreams extends Streams {
 			DEFAULT_HTTP_SERVER_TYPE = NettyHttpServer.class;
 			DEFAULT_HTTP_CLIENT_TYPE = NettyHttpClient.class;
 		} else {
-			boolean hasZMQ = false;
-
 			DEFAULT_UDP_SERVER_TYPE = null;
 			DEFAULT_HTTP_SERVER_TYPE = null;
 			DEFAULT_HTTP_CLIENT_TYPE = null;
 
+			Class<? extends TcpServer> zmqServer = null;
+			Class<? extends TcpClient> zmqClient = null;
 			try {
-				Class.forName("org.zeromq.ZMQ");
-				hasZMQ = true;
+				zmqServer = zmqServerClazz();
+				zmqClient = zmqClientClazz();
 			} catch (ClassNotFoundException cnfe) {
 				//IGNORE
 			}
 
-
-			if (hasZMQ) {
-				DEFAULT_TCP_SERVER_TYPE = ZeroMQTcpServer.class;
-				DEFAULT_TCP_CLIENT_TYPE = ZeroMQTcpClient.class;
-			} else {
-				DEFAULT_TCP_SERVER_TYPE = null;
-				DEFAULT_TCP_CLIENT_TYPE = null;
-			}
+			DEFAULT_TCP_SERVER_TYPE = zmqServer;
+			DEFAULT_TCP_CLIENT_TYPE = zmqClient;
 		}
 
 	}
 
-	/**
-	 * @return a Specification to configure and supply a Reconnect handler
-	 */
-	static public Spec.IncrementalBackoffReconnect backoffReconnect() {
-		return new Spec.IncrementalBackoffReconnect();
+	@SuppressWarnings("unchecked")
+	private static Class<? extends TcpServer> zmqServerClazz() throws ClassNotFoundException{
+		return (Class<? extends TcpServer>)
+				Class.forName("reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer");
+	}
+
+	@SuppressWarnings("unchecked")
+	private static Class<? extends TcpClient> zmqClientClazz() throws ClassNotFoundException{
+		return (Class<? extends TcpClient>)
+				Class.forName("reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient");
 	}
 }

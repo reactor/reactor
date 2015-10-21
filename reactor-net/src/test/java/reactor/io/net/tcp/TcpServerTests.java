@@ -44,7 +44,6 @@ import reactor.io.net.config.SslOptions;
 import reactor.io.net.http.HttpServer;
 import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.impl.netty.tcp.NettyTcpClient;
-import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.rx.Streams;
 import reactor.rx.broadcast.Broadcaster;
@@ -368,42 +367,6 @@ public class TcpServerTests {
 			server.shutdown();
 		}
 
-	}
-
-	@Test(timeout = 60000)
-	@Ignore
-	public void exposesZeroMQServer() throws InterruptedException {
-		final int port = SocketUtils.findAvailableTcpPort();
-		final CountDownLatch latch = new CountDownLatch(2);
-		ZContext zmq = new ZContext();
-
-		TcpServer<Buffer, Buffer> server = NetStreams.tcpServer(ZeroMQTcpServer.class, spec -> spec
-			.listen("127.0.0.1", port)
-		);
-
-		server.start(ch ->
-			ch.writeWith(
-			  ch
-				.take(1)
-				.observe(buff -> {
-					if (buff.remaining() == 128) {
-						latch.countDown();
-					} else {
-						log.info("data: {}", buff.asString());
-					}
-				})
-				.map(d -> Buffer.wrap("Goodbye World!"))
-				.log("conn")
-			)
-		).await();
-
-		ZeroMQWriter zmqw = new ZeroMQWriter(zmq, port, latch);
-		threadPool.submit(zmqw);
-
-		assertTrue("reply was received", latch.await(500, TimeUnit.SECONDS));
-		assertTrue("Server was stopped", server.shutdown().awaitSuccess(5, TimeUnit.SECONDS));
-
-		//zmq.destroy();
 	}
 
 	@Test

@@ -31,8 +31,6 @@ import reactor.io.codec.StandardCodecs;
 import reactor.io.net.NetStreams;
 import reactor.io.net.impl.netty.NettyClientSocketOptions;
 import reactor.io.net.impl.netty.tcp.NettyTcpClient;
-import reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient;
-import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
@@ -368,43 +366,6 @@ public class TcpClientTests {
 
 
 		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
-	}
-
-	@Test
-	public void zmqClientServerInteraction() throws InterruptedException {
-		final int port = SocketUtils.findAvailableTcpPort();
-		final CountDownLatch latch = new CountDownLatch(2);
-
-		TcpServer<Buffer, Buffer> zmqs = NetStreams.tcpServer(ZeroMQTcpServer.class, spec -> spec
-			.listen(port)
-		);
-
-		zmqs.start(ch ->
-			ch.writeWith(ch.log("zmq").take(1).map(buff -> {
-				if (buff.remaining() == 12) {
-					latch.countDown();
-				}
-				return Buffer.wrap("Goodbye World!");
-			}))
-		).await(5, TimeUnit.SECONDS);
-
-		TcpClient<Buffer, Buffer> zmqc = NetStreams.<Buffer, Buffer>tcpClient(ZeroMQTcpClient.class, s -> s
-			.connect("127.0.0.1", port)
-		);
-
-		final Promise<Buffer> promise = Promises.ready();
-
-		zmqc.start(ch -> {
-			ch.log("zmq-c").subscribe(promise);
-			return ch.writeWith(Streams.just(Buffer.wrap("Hello World!")));
-		}).await(5, TimeUnit.SECONDS);
-
-		String msg = promise
-		  .await(30, TimeUnit.SECONDS)
-		  .asString();
-
-
-		assertThat("messages were exchanged", msg, is("Goodbye World!"));
 	}
 
 	private static final class EchoServer implements Runnable {
