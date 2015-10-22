@@ -156,11 +156,8 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 		pipeline.addLast(new HttpServerCodec());
 
-		if (hasWebsocketEndpoints()) {
-			pipeline.addLast(new HttpObjectAggregator(65536));
-		}
-
-		pipeline.addLast(new NettyHttpServerHandler<IN, OUT>(handler, netChannel));
+		pipeline.addLast(NettyHttpServerHandler.class.getSimpleName(),
+				new NettyHttpServerHandler<IN, OUT>(handler, netChannel));
 
 	}
 }

@@ -29,6 +29,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
@@ -686,7 +687,10 @@ public class Promise<O>
 		lock.lock();
 		try {
 			if (!isPending()) {
-				throw CancelException.get();
+				if(RuntimeException.class.isAssignableFrom(error.getClass())){
+					throw (RuntimeException)error;
+				}
+				throw ReactorFatalException.create(error);
 			}
 
 			this.error = error;
@@ -728,9 +732,7 @@ public class Promise<O>
 		finally {
 			lock.unlock();
 		}
-
-		if (subscriber != null) {
-			requested = 1;
+		if (subscriber != null ) {
 			if (value != null) {
 				subscriber.onNext(value);
 			}

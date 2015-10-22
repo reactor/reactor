@@ -21,6 +21,7 @@ import reactor.rx.Streams
 import reactor.rx.action.Signal
 import spock.lang.Specification
 
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
@@ -190,7 +191,8 @@ class HttpSpec extends Specification {
 		when: "the server is prepared"
 
 			//prepare websocket request consumer on /test/* and capture the URL parameter "param"
-			server.ws('/test/{param}') { HttpChannel<String, String> req ->
+			server
+					.ws('/test/{param}') { HttpChannel<String, String> req ->
 
 				//log then transform then log received http request content from the request body and the resolved URL parameter "param"
 				//the returned stream is bound to the request stream and will auto read/close accordingly
@@ -215,6 +217,7 @@ class HttpSpec extends Specification {
 			def client = NetStreams.httpClient {
 				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port)
 			}
+
 
 			//prepare an http websocket request-reply flow
 			def content = client.ws('/test/World') { HttpChannel<String, String> req ->

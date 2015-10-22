@@ -26,6 +26,7 @@ import org.reactivestreams.Subscriber;
 import reactor.core.support.Assert;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.model.*;
+import reactor.io.net.http.model.HttpHeaders;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.rx.Streams;
 
@@ -197,6 +198,12 @@ public abstract class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 
 	public HttpResponse getNettyResponse() {
 		return nettyResponse;
+	}
+
+	@Override
+	public boolean isWebsocket() {
+		String isWebsocket = headers.get(HttpHeaders.UPGRADE);
+		return isWebsocket != null && isWebsocket.toLowerCase().equals("websocket");
 	}
 
 	@Override

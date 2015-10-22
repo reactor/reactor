@@ -29,6 +29,9 @@ public class ReactorFatalException extends RuntimeException {
 	}
 
 	public static ReactorFatalException create(Throwable root) {
+		if(ReactorFatalException.class.isAssignableFrom(root.getClass())){
+			return (ReactorFatalException)root;
+		}
 		return new ReactorFatalException(root);
 	}
 

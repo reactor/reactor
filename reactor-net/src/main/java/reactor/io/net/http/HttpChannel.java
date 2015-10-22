@@ -260,6 +260,8 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	 */
 	public abstract HttpChannel<IN, OUT> transfer(Transfer transfer);
 
+	public abstract boolean isWebsocket();
+
 	protected abstract void doAddResponseHeader(String name, String value);
 
 	protected boolean markHeadersAsFlushed() {

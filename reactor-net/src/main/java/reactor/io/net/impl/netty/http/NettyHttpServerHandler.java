@@ -24,6 +24,7 @@ import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
@@ -34,6 +35,7 @@ import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.http.model.Method;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.rx.Streams;
@@ -72,6 +74,13 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 					tcpStream.emitWriter(Streams.just(getNettyResponse()), s);
 				}
 			};
+
+			if (request.isWebsocket()) {
+				HttpObjectAggregator agg = new HttpObjectAggregator(65536);
+				ctx.pipeline().addBefore(NettyHttpServerHandler.class.getSimpleName(),
+						HttpObjectAggregator.class.getSimpleName(),
+						agg);
+			}
 
 			final Publisher<Void> closePublisher = handler.apply(request);
 			final Subscriber<Void> closeSub = new DefaultSubscriber<Void>() {
