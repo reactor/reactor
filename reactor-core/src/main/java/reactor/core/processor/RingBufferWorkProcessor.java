@@ -610,7 +610,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 				RingBufferSubscriberUtils.onComplete(ringBuffer);
 			}
 		}
-		catch (CancelException ce){
+		catch (CancelException ce) {
 			//ignore
 		}
 		readWait.signalAllWhenBlocking();
@@ -622,25 +622,25 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 
 	@Override
 	protected void requestTask(Subscription s) {
-		new NamedDaemonThreadFactory("ringbufferwork-request-task", null, null, false)
-				.newThread(new RequestTask(s, new Consumer<Void>() {
-					@Override
-					public void accept(Void aVoid) {
-						if(!alive()) {
-							if (cancelled) {
-								throw CancelException.INSTANCE;
-							}
-							else {
-								throw AlertException.INSTANCE;
-							}
-						}
+		new NamedDaemonThreadFactory("ringbufferwork-request-task", null, null, false).newThread(new RequestTask(s, new Consumer<Void>() {
+			@Override
+			public void accept(Void aVoid) {
+				if (!alive()) {
+					if (cancelled) {
+						throw CancelException.INSTANCE;
 					}
-				}, null, new LongSupplier() {
-					@Override
-					public long get() {
-						return ringBuffer.getMinimumGatingSequence();
+					else {
+						throw AlertException.INSTANCE;
 					}
-				}, readWait, this, ringBuffer)).start();
+				}
+			}
+		}, null, new LongSupplier() {
+			@Override
+			public long get() {
+				return ringBuffer.getMinimumGatingSequence();
+			}
+		}, readWait, this, ringBuffer))
+		                                                                              .start();
 	}
 
 	@Override
@@ -682,9 +682,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	RingBuffer<MutableSignal<E>> retryBuffer() {
 		RingBuffer<MutableSignal<E>> retry = retryBuffer;
 		if (retry == null) {
-			retry = RingBuffer
-					.createMultiProducer((Supplier<MutableSignal<E>>) FACTORY, 32,
-							RingBuffer.NO_WAIT);
+			retry =
+					RingBuffer.createMultiProducer((Supplier<MutableSignal<E>>) FACTORY, 32, RingBuffer.NO_WAIT);
 			retry.addGatingSequences(retrySequence);
 			if (!RETRY_REF.compareAndSet(this, null, retry)) {
 				retry = retryBuffer;
@@ -701,9 +700,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 
 		private final WorkSignalProcessor eventProcessor;
 
-		public RingBufferSubscription(
-				Subscriber<? super E> subscriber, WorkSignalProcessor eventProcessor
-		) {
+		public RingBufferSubscription(Subscriber<? super E> subscriber,
+				WorkSignalProcessor eventProcessor) {
 			this.subscriber = subscriber;
 			this.eventProcessor = eventProcessor;
 		}
@@ -759,9 +757,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 		 * Construct a ringbuffer consumer that will automatically track the progress by
 		 * updating its sequence
 		 */
-		public WorkSignalProcessor(
-				Subscriber<? super T> subscriber, RingBufferWorkProcessor<T> processor
-		) {
+		public WorkSignalProcessor(Subscriber<? super T> subscriber,
+				RingBufferWorkProcessor<T> processor) {
 			this.processor = processor;
 			this.subscriber = subscriber;
 
@@ -805,15 +802,15 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 
 			try {
 				if (!running.compareAndSet(false, true)) {
-					Exceptions.<T>publisher(
-							new IllegalStateException("Thread is already running"))
+					Exceptions.<T>publisher(new IllegalStateException("Thread is already running"))
 					          .subscribe(subscriber);
 					return;
 				}
 
 				//while(processor.alive() && processor.upstreamSubscription == null);
 				try {
-					Thread.currentThread().setContextClassLoader(processor.contextClassLoader);
+					Thread.currentThread()
+					      .setContextClassLoader(processor.contextClassLoader);
 					subscriber.onSubscribe(subscription);
 				}
 				catch (Throwable t) {
@@ -827,9 +824,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 				long nextSequence = sequence.get();
 				MutableSignal<T> event = null;
 
-				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(pendingRequest,
-						processor.ringBuffer, barrier, subscriber, running,
-						processor.workSequence, this)) {
+				if (!RingBufferSubscriberUtils.waitRequestOrTerminalEvent(pendingRequest, processor.ringBuffer, barrier, subscriber, running, processor.workSequence, this)) {
 					return;
 				}
 
@@ -853,24 +848,22 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 								nextSequence = processor.workSequence.get() + 1L;
 
 								if (!unbounded) {
-									readNextEvent(processor.ringBuffer.get(nextSequence),
-											false);
+									readNextEvent(processor.ringBuffer.get(nextSequence), false);
 									pendingRequest.incrementAndGet();
 								}
 
 								sequence.set(nextSequence - 1L);
 							}
-							while (!processor.workSequence.compareAndSet(
-									nextSequence - 1L, nextSequence));
+							while (!processor.workSequence.compareAndSet(nextSequence - 1L, nextSequence));
 						}
 
 						if (cachedAvailableSequence >= nextSequence) {
 							event = processor.ringBuffer.get(nextSequence);
 
-							try{
+							try {
 								readNextEvent(event, unbounded);
 							}
-							catch (AlertException ce){
+							catch (AlertException ce) {
 								barrier.clearAlert();
 								throw CancelException.INSTANCE;
 							}
@@ -1022,8 +1015,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 				}
 
 				//pause until request
-				while (!unbounded &&
-						BackpressureUtils.getAndSub(pendingRequest, 1) == 0L) {
+				while (!unbounded && BackpressureUtils.getAndSub(pendingRequest, 1) == 0L) {
 					if (!isRunning()) {
 						throw AlertException.INSTANCE;
 					}

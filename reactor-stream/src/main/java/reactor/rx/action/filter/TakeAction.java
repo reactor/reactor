@@ -54,7 +54,7 @@ public class TakeAction<T> extends Action<T, T> {
 			}
 			while (!REQUESTED.compareAndSet(this, r, toAdd));
 
-			if (toAdd > limit) {
+			if (toAdd >= limit) {
 				super.requestMore(limit - r);
 			}
 			else {

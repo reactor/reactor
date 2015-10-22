@@ -610,8 +610,8 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 		if (incrementSubscribers()) {
 
 			ringBuffer.addGatingSequences(signalProcessor.sequence);
-			//set eventProcessor sequence to minimum index (replay)
 			signalProcessor.sequence.setVolatile(minimum.get());
+			//set eventProcessor sequence to minimum index (replay)
 		}
 		else {
 			//otherwise only listen to new data
