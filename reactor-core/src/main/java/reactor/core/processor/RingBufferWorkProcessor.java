@@ -867,10 +867,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 						if (cachedAvailableSequence >= nextSequence) {
 							event = processor.ringBuffer.get(nextSequence);
 
-							try {
+							try{
 								readNextEvent(event, unbounded);
 							}
-							catch (AlertException ae){
+							catch (AlertException ce){
 								throw CancelException.INSTANCE;
 							}
 
@@ -949,7 +949,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 					}
 				}*/
 				running.set(false);
-				//barrier.alert();
+				barrier.alert();
 			}
 		}
 
@@ -979,12 +979,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 							processor.readWait.signalAllWhenBlocking();
 							return false;
 						}
-						try {
-							readNextEvent(signal, unbounded);
-						}
-						catch (AlertException ae){
-							throw CancelException.INSTANCE;
-						}
+						readNextEvent(signal, unbounded);
 						RingBufferSubscriberUtils.route(signal, subscriber);
 						processor.retrySequence.set(cursor);
 					}
