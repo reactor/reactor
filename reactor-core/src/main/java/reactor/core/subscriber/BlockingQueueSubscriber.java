@@ -355,8 +355,13 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 
 	private void markRead() {
 		long r = remainingCapacity;
-		if (r == 0l) {
-			request(capacity - store.size());
+		if (r == 0l && target == null) {
+			long toRequest = capacity - store.size();
+			BackpressureUtils.getAndAdd(REMAINING, this, toRequest);
+			Subscription subscription = this.subscription;
+			if (toRequest > 0 && subscription != null) {
+				subscription.request(toRequest);
+			}
 		}
 	}
 

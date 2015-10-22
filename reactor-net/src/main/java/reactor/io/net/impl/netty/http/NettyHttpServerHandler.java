@@ -21,8 +21,11 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -84,8 +87,10 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 				@Override
 				public void onError(Throwable t) {
 					log.error("Error processing connection. Closing the channel.", t);
-					if (CHANNEL_REF.get(NettyHttpServerHandler.this) == 0) {
-						ctx.channel().close();
+					if (request.markHeadersAsFlushed()) {
+						request.delegate()
+						       .writeAndFlush(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR))
+								.addListener(ChannelFutureListener.CLOSE);
 					}
 				}
 

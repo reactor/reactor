@@ -68,6 +68,11 @@ public abstract class ChannelStream<IN, OUT> extends Stream<IN> implements React
 	}
 
 	@Override
+	public Stream<IN> input() {
+		return this;
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	public Stream<Void> writeWith(final Publisher<? extends OUT> source) {
 		final Stream<? extends OUT> sourceStream;

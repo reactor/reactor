@@ -23,7 +23,7 @@ import java.net.InetSocketAddress;
 
 /**
  * {@code Channel} is a virtual connection that often matches with a Socket or a Channel (e.g. Netty).
- * Implementations handle interacting inbound (received data) and errors by subscribing to it.
+ * Implementations handle interacting inbound (received data) and errors by subscribing to {@link #input()}.
  * <p>
  * Writing and "flushing" is controlled by sinking 1 or more {@link #writeWith(Publisher)}
  * that will forward data to outbound.
@@ -51,6 +51,12 @@ public interface ReactorChannel<IN, OUT> extends Publisher<IN> {
 	 */
 	Publisher<Void> writeWith(Publisher<? extends OUT> dataStream);
 
+	/**
+	 * Get the input publisher (request body or incoming tcp traffic for instance)
+	 *
+	 * @return A Publisher to signal reads and stop reading when un-requested.
+	 */
+	Publisher<IN> input();
 
 	/**
 	 * Assign event handlers to certain channel lifecycle events.

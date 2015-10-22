@@ -16,13 +16,20 @@
 
 package reactor.io.net.impl.netty.http;
 
+import java.net.InetSocketAddress;
+
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpServerCodec;
+import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.error.Exceptions;
 import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -38,12 +45,9 @@ import reactor.io.net.tcp.TcpServer;
 import reactor.rx.Promise;
 import reactor.rx.Streams;
 
-import java.net.InetSocketAddress;
-
 /**
  * A Netty-based {@code TcpServer} implementation
- *
- * @param <IN>  The type that will be received by this server
+ * @param <IN> The type that will be received by this server
  * @param <OUT> The type that will be sent by this server
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -54,27 +58,22 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 	protected final TcpServer<IN, OUT> server;
 
-	protected NettyHttpServer(final Timer timer,
-	                          final InetSocketAddress listenAddress,
-	                          final ServerSocketOptions options,
-	                          final SslOptions sslOptions,
-	                          final Codec<Buffer, IN, OUT> codec) {
+	protected NettyHttpServer(final Timer timer, final InetSocketAddress listenAddress,
+			final ServerSocketOptions options, final SslOptions sslOptions,
+			final Codec<Buffer, IN, OUT> codec) {
 
 		super(timer, codec);
 
-		this.server = new NettyTcpServer<IN, OUT>(
-		        timer,
-				listenAddress,
-				options,
-				sslOptions,
-				codec) {
+		this.server =
+				new NettyTcpServer<IN, OUT>(timer, listenAddress, options, sslOptions, codec) {
 
-			@Override
-			protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel
-					nativeChannel) {
-				NettyHttpServer.this.bindChannel(handler, nativeChannel);
-			}
-		};
+					@Override
+					protected void bindChannel(
+							ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
+							SocketChannel nativeChannel) {
+						NettyHttpServer.this.bindChannel(handler, nativeChannel);
+					}
+				};
 	}
 
 	@Override
@@ -83,7 +82,8 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	}
 
 	@Override
-	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
+	protected Promise<Void> doStart(
+			final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		return server.start(new ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>>() {
 			@Override
 			public Publisher<Void> apply(ChannelStream<IN, OUT> ch) {
@@ -98,13 +98,20 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 				//404
 				if (handlers == null) {
 					if (request.markHeadersAsFlushed()) {
-						request.delegate().writeAndFlush(
-								new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND));
+						request.delegate()
+						       .writeAndFlush(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND));
 					}
 
 					return Streams.empty();
 				}
-				return Streams.concat(handlers);
+				try {
+					return Streams.concat(handlers);
+				}
+				catch (Throwable t){
+					Exceptions.throwIfFatal(t);
+					return Streams.fail(t);
+				}
+				//500
 			}
 		});
 	}
@@ -112,9 +119,11 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	@Override
 	protected Iterable<? extends Publisher<Void>> routeChannel(HttpChannel<IN, OUT> ch) {
 		Iterable<? extends Publisher<Void>> handlers = super.routeChannel(ch);
-		if (!handlers.iterator().hasNext()) {
+		if (!handlers.iterator()
+		             .hasNext()) {
 			return null;
-		} else {
+		}
+		else {
 			return handlers;
 		}
 	}
@@ -122,10 +131,8 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	@Override
 	protected void onWebsocket(HttpChannel<IN, OUT> next) {
 		ChannelPipeline pipeline = ((SocketChannel) next.delegate()).pipeline();
-		pipeline.addLast(
-				pipeline.remove(NettyHttpServerHandler.class)
-				.withWebsocketSupport(next.uri(), null)
-		);
+		pipeline.addLast(pipeline.remove(NettyHttpServerHandler.class)
+		                         .withWebsocketSupport(next.uri(), null));
 
 	}
 
@@ -134,16 +141,12 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 		return server.shutdown();
 	}
 
-	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel
-			nativeChannel) {
+	protected void bindChannel(
+			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
+			SocketChannel nativeChannel) {
 
-		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getDefaultTimer(),
-				getDefaultCodec(),
-				getDefaultPrefetchSize(),
-				nativeChannel
-		);
-
+		NettyChannelStream<IN, OUT> netChannel =
+				new NettyChannelStream<IN, OUT>(getDefaultTimer(), getDefaultCodec(), getDefaultPrefetchSize(), nativeChannel);
 
 		ChannelPipeline pipeline = nativeChannel.pipeline();
 
@@ -151,15 +154,13 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 			pipeline.addLast(new LoggingHandler(NettyHttpServer.class));
 		}
 
-		pipeline
-				.addLast(new HttpServerCodec());
+		pipeline.addLast(new HttpServerCodec());
 
 		if (hasWebsocketEndpoints()) {
 			pipeline.addLast(new HttpObjectAggregator(65536));
 		}
 
-		pipeline
-				.addLast(new NettyHttpServerHandler<IN, OUT>(handler, netChannel));
+		pipeline.addLast(new NettyHttpServerHandler<IN, OUT>(handler, netChannel));
 
 	}
 }

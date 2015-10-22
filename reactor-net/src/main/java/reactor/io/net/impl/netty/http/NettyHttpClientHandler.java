@@ -28,8 +28,10 @@ import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpException;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
 import reactor.io.net.impl.netty.NettyChannelStream;
@@ -44,6 +46,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 	protected final NettyChannelStream<IN, OUT> tcpStream;
 	protected     NettyHttpChannel<IN, OUT>   httpChannel;
+	protected Subscriber<? super HttpChannel<IN, OUT>> replySubscriber;
 
 	/**
 	 * The body of an HTTP response should be discarded.
@@ -92,6 +95,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 			       @Override
 			       public void onComplete() {
+				       ctx.read();
 				       writeLast(ctx);
 			       }
 		       });
@@ -111,11 +115,10 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 			if (FullHttpResponse.class.isAssignableFrom(messageClass)) {
 				postRead(ctx, msg);
 			}
-			PushSubscription<IN> channelSubscription = this.channelSubscription;
-			if (channelSubscription != null) {
-				channelSubscription.updatePendingRequests(1);
-			}
 			ctx.fireChannelRead(msg);
+			if(replySubscriber != null){
+				Publishers.just(httpChannel).subscribe(replySubscriber);
+			}
 		} else if (HttpContent.class.isAssignableFrom(messageClass)) {
 			super.channelRead(ctx, ((ByteBufHolder) msg).content());
 			postRead(ctx, msg);
@@ -129,7 +132,8 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 		int code = response.getStatus().code();
 		if (code == HttpResponseStatus.NOT_FOUND.code()
-				|| code == HttpResponseStatus.BAD_REQUEST.code()) {
+				|| code == HttpResponseStatus.BAD_REQUEST.code()
+				|| code == HttpResponseStatus.INTERNAL_SERVER_ERROR.code()) {
 			exceptionCaught(ctx, new HttpException(response.getStatus()));
 			discardBody = true;
 		}
@@ -143,11 +147,43 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		}
 	}
 
+	@Override
+	@SuppressWarnings("unchecked")
+	public void userEventTriggered(ChannelHandlerContext ctx, Object evt)
+			throws Exception {
+
+		if (evt != null && evt.getClass().equals(ChannelInputSubscriberEvent.class)) {
+			replySubscriber = ((ChannelInputSubscriberEvent<IN, OUT>)evt).clientReplySubscriber;
+		}
+		else {
+			super.userEventTriggered(ctx, evt);
+		}
+
+	}
+
 	protected void writeLast(final ChannelHandlerContext ctx){
 		ctx.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
 	}
 
 	private void setDiscardBody(boolean discardBody) {
 		this.discardBody = discardBody;
+	}
+
+	/**
+	 * An event to attach a {@link Subscriber} to the {@link NettyChannelStream}
+	 * created by {@link NettyHttpClient}
+	 *
+	 * @param <IN>
+	 */
+	public static final class ChannelInputSubscriberEvent<IN, OUT> {
+
+		private final Subscriber<? super HttpChannel<IN,OUT>> clientReplySubscriber;
+
+		public ChannelInputSubscriberEvent(Subscriber<? super HttpChannel<IN, OUT>> inputSubscriber) {
+			if (null == inputSubscriber) {
+				throw new IllegalArgumentException("HTTP input subscriber must not be null.");
+			}
+			this.clientReplySubscriber = inputSubscriber;
+		}
 	}
 }

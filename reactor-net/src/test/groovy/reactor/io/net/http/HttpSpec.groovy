@@ -98,6 +98,99 @@ class HttpSpec extends Specification {
             server?.shutdown()
 	}
 
+  def "http error with requests from clients"() {
+	given: "a simple HttpServer"
+
+	//Listen on localhost using default impl (Netty) and assign a global codec to receive/reply String data
+	def server = NetStreams.httpServer {
+	  it.codec(StandardCodecs.STRING_CODEC).listen(0)
+	}
+
+	when: "the server is prepared"
+
+	server.get('/test') { HttpChannel<String, String> req ->
+	  throw new Exception()
+	}.get('/test2') { HttpChannel<String, String> req ->
+	  req.writeWith(Streams.fail(new Exception()))
+	}.get('/test3') { HttpChannel<String, String> req ->
+	  return Streams.fail(new Exception())
+	}
+
+	then: "the server was started"
+	server?.start()?.awaitSuccess(5, TimeUnit.SECONDS)
+
+	when: "data is sent with Reactor HTTP support"
+
+	//Prepare a client using default impl (Netty) to connect on http://localhost:port/ and assign global codec to send/receive String data
+	def client = NetStreams.httpClient {
+	  it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port)
+	}
+
+	//prepare an http post request-reply flow
+	def content = client
+			.get('/test')
+			.flatMap { replies ->
+	  			Streams.just(replies.responseStatus().code)
+						.log("received-status")
+			}
+			.next()
+			.onError {
+			  //something failed during the request or the reply processing
+			  println "Failed requesting server: $it"
+			}
+
+
+
+	then: "data was recieved"
+	//the produced reply should be there soon
+	content.await(500, TimeUnit.SECONDS) == 500
+
+	/*when:
+	//prepare an http post request-reply flow
+	content = client
+			.get('/test2')
+			.flatMap { replies ->
+	  Streams.just(replies.responseStatus().code)
+			  .log("received-status")
+	}
+	.next()
+			.onError {
+	  //something failed during the request or the reply processing
+	  println "Failed requesting server: $it"
+	}
+
+	then: "data was recieved"
+	//the produced reply should be there soon
+	content.await(500, TimeUnit.SECONDS) == 500
+
+	then: "data was recieved"
+	//the produced reply should be there soon
+	content.await(500, TimeUnit.SECONDS) == 500
+
+	when:
+	//prepare an http post request-reply flow
+	content = client
+			.get('/test3')
+			.flatMap { replies ->
+	  Streams.just(replies.responseStatus().code)
+			  .log("received-status")
+	}
+	.next()
+			.onError {
+	  //something failed during the request or the reply processing
+	  println "Failed requesting server: $it"
+	}
+
+	then: "data was recieved"
+	//the produced reply should be there soon
+	content.await(500, TimeUnit.SECONDS) == 500*/
+
+	cleanup: "the client/server where stopped"
+	//note how we order first the client then the server shutdown
+	client?.shutdown()
+	server?.shutdown()
+  }
+
 	def "WebSocket responds to requests from clients"() {
 		given: "a simple HttpServer"
 

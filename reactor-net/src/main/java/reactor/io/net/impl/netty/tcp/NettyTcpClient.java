@@ -250,7 +250,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		);
 	}
 
-	private void openChannel(ChannelFutureListener listener) {
+	public void openChannel(ChannelFutureListener listener) {
 		ChannelFuture channel = connectionSupplier.get();
 		if (null != channel && null != listener) {
 			channel.addListener(listener);
