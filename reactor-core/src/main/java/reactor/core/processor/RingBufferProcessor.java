@@ -457,6 +457,27 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 
 	/**
 	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and
+	 * signal supplier. The created processor will auto-cancel and is shared. <p> A Shared
+	 * Processor authorizes concurrent onNext calls and is suited for multi-threaded
+	 * publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be
+	 * implicitely created and will use the passed name to qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created
+	 * threads
+	 * @param bufferSize A Backlog Size to mitigate slow subscribers
+	 * @param waitStrategy A RingBuffer WaitStrategy to use instead of the default
+	 * BlockingWaitStrategy.
+	 * buffer
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> RingBufferProcessor<E> share(String name, int bufferSize, WaitStrategy waitStrategy,
+	                                               Supplier<E> signalSupplier) {
+		return new RingBufferProcessor<E>(name, null, bufferSize,
+				waitStrategy, true, true, signalSupplier);
+	}
+
+	/**
+	 * Create a new RingBufferProcessor using passed backlog size, wait strategy and
 	 * auto-cancel settings. <p> A Shared Processor authorizes concurrent onNext calls and
 	 * is suited for multi-threaded publisher that will fan-in data. <p> A new Cached
 	 * ThreadExecutorPool will be implicitely created and will use the passed name to
@@ -553,7 +574,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 		};
 
 		WaitStrategy strategy = waitStrategy == null ?
-				PhasedBackoffWaitStrategy.withLiteLock(500, 500, TimeUnit.MILLISECONDS) :
+				new LiteBlockingWaitStrategy() :
 				waitStrategy;
 		if (shared) {
 			this.ringBuffer = RingBuffer

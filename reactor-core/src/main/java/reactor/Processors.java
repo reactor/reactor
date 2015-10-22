@@ -31,6 +31,7 @@ import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
+import reactor.core.support.wait.PhasedBackoffWaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -38,6 +39,7 @@ import reactor.fn.Supplier;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Main gateway to build various asynchronous {@link Processor} or "pool" services that allow their reuse.
@@ -370,6 +372,7 @@ public final class Processors {
 					@Override
 					public Processor<ProcessorGroup.Task, ProcessorGroup.Task> get() {
 						return RingBufferProcessor.share(name, bufferSize,
+								PhasedBackoffWaitStrategy.withLiteLock(200, 200, TimeUnit.SECONDS),
 								ProcessorGroup.DEFAULT_TASK_PROVIDER);
 					}
 				}, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);

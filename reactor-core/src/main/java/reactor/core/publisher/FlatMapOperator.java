@@ -29,6 +29,7 @@ import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.BackpressureUtils;
+import reactor.core.support.Bounded;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Function;
@@ -568,7 +569,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 	}
 
 	static final class InnerSubscriber<T, V>
-	  extends BaseSubscriber<V>  {
+	  extends BaseSubscriber<V> implements Bounded {
 		final long               id;
 		final MergeBarrier<T, V> parent;
 		final int                limit;
@@ -644,6 +645,16 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					s.cancel();
 				}
 			}
+		}
+
+		@Override
+		public boolean isExposedToOverflow(Bounded parentPublisher) {
+			return parentPublisher.getCapacity() > bufferSize;
+		}
+
+		@Override
+		public long getCapacity() {
+			return bufferSize;
 		}
 	}
 

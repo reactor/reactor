@@ -40,7 +40,10 @@ public class LastAction<T> extends Action<T, T> {
 		last = value;
 		if((unbounded != null && !unbounded || !(unbounded = count == Long.MAX_VALUE ))
 		  && COUNTED.decrementAndGet(this) == 0L){
-			requestMore(downstreamSubscription.pendingRequestSignals());
+			long request = downstreamSubscription.pendingRequestSignals();
+			if(request > 0){
+				requestMore(request);
+			}
 		}
 	}
 
