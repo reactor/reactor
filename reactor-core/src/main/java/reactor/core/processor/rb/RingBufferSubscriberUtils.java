@@ -176,13 +176,6 @@ public final class RingBufferSubscriberUtils {
 		return true;
 	}
 
-
-	public static <T> RingBufferSequencer<T> toReactiveSequencer(
-									final RingBuffer<MutableSignal<T>> ringBuffer,
-	                                  final long fromSequence){
-		return new RingBufferSequencer<T>(ringBuffer, fromSequence);
-	}
-
 	public static <E> Publisher<Void> writeWith(final Publisher<? extends E> source,
 			final RingBuffer<MutableSignal<E>> ringBuffer) {
 		final Bounded nonBlockingSource =

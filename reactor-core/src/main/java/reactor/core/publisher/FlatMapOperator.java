@@ -144,10 +144,15 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			final Publisher<? extends V> p = mapper.apply(t);
 
 			if (p instanceof Supplier) {
-				V v = ((Supplier<? extends V>) p).get();
-				if (v != null) {
-					tryEmit(v);
-					return;
+				try {
+					V v = ((Supplier<? extends V>) p).get();
+					if (v != null) {
+						tryEmit(v);
+						return;
+					}
+				}
+				catch (Throwable e){
+					reportError(e);
 				}
 			}
 

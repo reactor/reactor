@@ -184,6 +184,7 @@ public abstract class Action<I, O> extends Stream<O>
 			throw uae;
 		}
 		catch (Throwable cause) {
+			cancel();
 			Exceptions.throwIfFatal(cause);
 			doError(Exceptions.addValueAsLastCause(cause, ev));
 		}

@@ -132,7 +132,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Publis
 	}
 
 	public void start() {
-		if (subscriber != null && terminated == -1L) {
+		if (subscriber != null && TERMINAL_UPDATER.compareAndSet(this, -1, 0)) {
 			subscriber.onSubscribe(this);
 			long toRequest;
 			synchronized (this) {

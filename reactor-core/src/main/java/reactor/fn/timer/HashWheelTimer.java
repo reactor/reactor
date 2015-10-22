@@ -145,7 +145,14 @@ public class HashWheelTimer implements Timer {
 						if (r.isCancelled()) {
 							registrations.remove(r);
 						} else if (r.ready()) {
-							executor.execute(r);
+							try {
+								executor.execute(r);
+							}
+							catch (RejectedExecutionException re){
+								if(loop.isInterrupted())
+									return;
+								throw re;
+							}
 							registrations.remove(r);
 
 							if (!r.isCancelAfterUse()) {

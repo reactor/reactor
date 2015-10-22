@@ -32,7 +32,6 @@ public class RetryAction<T> extends Action<T, T> {
 	private final long                   numRetries;
 	private final Predicate<Throwable>   retryMatcher;
 	private final Publisher<? extends T> rootPublisher;
-	private final Consumer<Throwable> throwableConsumer = new ThrowableConsumer();
 	private       long                currentNumRetries = 0;
 	private       long                pendingRequests   = 0l;
 
@@ -46,7 +45,9 @@ public class RetryAction<T> extends Action<T, T> {
 	@Override
 	protected void doOnSubscribe(Subscription subscription) {
 		long pendingRequests = this.pendingRequests;
-		subscription.request(pendingRequests != Long.MAX_VALUE ? pendingRequests + 1 : pendingRequests);
+		if(pendingRequests > 0){
+			subscription.request(pendingRequests);
+		}
 	}
 
 	@Override
@@ -65,15 +66,15 @@ public class RetryAction<T> extends Action<T, T> {
 	@Override
 	@SuppressWarnings("unchecked")
 	public void onError(Throwable throwable) {
+
 		if ((numRetries != -1 && ++currentNumRetries > numRetries) && (retryMatcher == null || !retryMatcher.test
 		  (throwable))) {
 			doError(throwable);
 			doShutdown();
 			currentNumRetries = 0;
-		} else {
-			cancel();
-			throwableConsumer.accept(throwable);
-
+		} else if (rootPublisher != null) {
+				cancel();
+				rootPublisher.subscribe(RetryAction.this);
 		}
 	}
 
@@ -83,14 +84,5 @@ public class RetryAction<T> extends Action<T, T> {
 			pendingRequests = BackpressureUtils.addOrLongMax(pendingRequests, n);
 		}
 		super.requestMore(n);
-	}
-
-	private class ThrowableConsumer implements Consumer<Throwable> {
-		@Override
-		public void accept(Throwable throwable) {
-				if (rootPublisher != null) {
-					rootPublisher.subscribe(RetryAction.this);
-				}
-		}
 	}
 }

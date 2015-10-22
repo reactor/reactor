@@ -34,6 +34,7 @@ public class TakeAction<T> extends Action<T, T> {
 			AtomicLongFieldUpdater.newUpdater(TakeAction.class, "requested");
 
 	public TakeAction(long limit) {
+		super(limit);
 		this.limit = limit;
 	}
 
@@ -61,6 +62,8 @@ public class TakeAction<T> extends Action<T, T> {
 			}
 		}
 	}
+
+
 
 	@Override
 	protected void doNext(T ev) {

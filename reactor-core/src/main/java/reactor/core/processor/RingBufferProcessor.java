@@ -613,7 +613,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 			ringBuffer.removeGatingSequence(signalProcessor.getSequence());
 			decrementSubscribers();
 			if (!alive() && RejectedExecutionException.class.isAssignableFrom(t.getClass())){
-				RingBufferSequencer<E> sequencer = new RingBufferSequencer<E>(ringBuffer, minimum.get());
+				RingBufferSequencer<E> sequencer = coldSource();
 				PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
 			}
 			else{

@@ -582,8 +582,8 @@ public class StreamTests extends AbstractReactorTest {
 		    .observe(d -> successes.incrementAndGet())
 			.when(Throwable.class, error -> failures.incrementAndGet())
 			.observeStart(s -> {
-				System.out.println("failures: " + failures + " successes:" + successes);
 				if (failures.compareAndSet(maxErrors, 0)) {
+					System.out.println("failures: " + failures + " successes:" + successes);
 					circuitSwitcher.onNext(openCircuit);
 					successes.set(0);
 					Streams.timer(1)
@@ -592,7 +592,7 @@ public class StreamTests extends AbstractReactorTest {
 			})
 		    .log()
 		    .retry()
-			.toList();
+			.consumeAsList();
 
 		circuitSwitcher.onNext(closeCircuit);
 

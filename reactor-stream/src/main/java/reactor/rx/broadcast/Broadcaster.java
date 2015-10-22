@@ -121,8 +121,18 @@ public class Broadcaster<O> extends Action<O, O> {
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		if (SUBSCRIPTION.compareAndSet(this, SignalType.NOOP_SUBSCRIPTION, null)) {
-			super.onSubscribe(subscription);
+		if (SUBSCRIPTION.compareAndSet(this, SignalType.NOOP_SUBSCRIPTION, subscription)) {
+			upstreamSubscription = createTrackingSubscription(subscription);
+				//upstreamSubscription.maxCapacity(getCapacity());
+
+			try {
+					doOnSubscribe(subscription);
+					doStart();
+			}
+			catch (Throwable t) {
+					Exceptions.throwIfFatal(t);
+					doError(t);
+			}
 
 			PushSubscription<O> downSub = downstreamSubscription;
 			if (downSub != null && downSub.pendingRequestSignals() > 0L) {

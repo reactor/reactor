@@ -19,6 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.support.SignalType;
+import reactor.fn.Supplier;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -162,16 +163,7 @@ public final class Exceptions {
 	 */
 	public static <IN> Publisher<IN> publisher(final Throwable error) {
 		throwIfFatal(error);
-		return new Publisher<IN>() {
-			@Override
-			public void subscribe(Subscriber<? super IN> s) {
-				if(s == null){
-					throw SpecificationExceptions.spec_2_13_exception();
-				}
-				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-				s.onError(error);
-			}
-		};
+		return new ErrorPublisher<>(error);
 	}
 
 	/**
@@ -224,6 +216,34 @@ public final class Exceptions {
 				return ((Enum) value).name();
 			}
 			return value.getClass().getName() + ".class : " + value;
+		}
+	}
+
+	private static class ErrorPublisher<IN> implements Publisher<IN>, Supplier<Object> {
+
+		private final Throwable error;
+
+		public ErrorPublisher(Throwable error) {
+			this.error = error;
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super IN> s) {
+			if(s == null){
+				throw SpecificationExceptions.spec_2_13_exception();
+			}
+			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+			s.onError(error);
+		}
+
+		@Override
+		public Object get() {
+			if(RuntimeException.class.isAssignableFrom(error.getClass())){
+				throw (RuntimeException)error;
+			}
+			else{
+				throw ReactorFatalException.create(error);
+			}
 		}
 	}
 }

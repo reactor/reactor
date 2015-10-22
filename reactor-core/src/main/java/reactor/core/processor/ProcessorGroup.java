@@ -716,13 +716,13 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		@Override
 		public final void onSubscribe(Subscription s) {
-			final Subscriber<? super V> subscriber;
+			Subscriber<? super V> subscriber = null;
 
 			synchronized (this) {
 				if (BackpressureUtils.checkSubscription(subscription, s)) {
 					subscription = s;
+					subscriber = this.subscriber;
 				}
-				subscriber = this.subscriber;
 			}
 
 			if (subscriber != null) {

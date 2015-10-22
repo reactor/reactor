@@ -381,12 +381,8 @@ public final class Promises {
 	public static <T> Promise<List<T>> when(final List<? extends Promise<T>> promises) {
 		Assert.isTrue(promises.size() > 0, "Must aggregate at least one promise");
 
-		Promise<List<T>> d = new Promise<>();
-
-		Streams.merge(promises)
-		  .buffer(promises.size()).subscribe(d);
-
-		return d;
+		return Streams.merge(promises)
+		  .buffer(promises.size()).consumeNext();
 	}
 
 

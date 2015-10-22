@@ -67,13 +67,12 @@ public class RepeatAction<T> extends Action<T, T> {
 
 	@Override
 	public void onComplete() {
-		cancel();
-
 		if (numRetries != -1 && ++currentNumRetries > numRetries) {
 			RepeatAction.super.onComplete();
 			currentNumRetries = 0;
 		} else {
 			if (rootPublisher != null) {
+				cancel();
 				rootPublisher.subscribe(RepeatAction.this);
 			}
 		}

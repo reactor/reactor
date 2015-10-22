@@ -18,7 +18,9 @@ package reactor.rx.stream;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.support.SignalType;
+import reactor.fn.Supplier;
 import reactor.rx.Stream;
 
 /**
@@ -46,7 +48,8 @@ import reactor.rx.Stream;
  *
  * @author Stephane Maldini
  */
-public final class ErrorStream<O, T extends Throwable> extends Stream<O> {
+public final class ErrorStream<O, T extends Throwable> extends Stream<O> implements
+                                                                         Supplier<Object> {
 
 	final private T error;
 
@@ -68,5 +71,15 @@ public final class ErrorStream<O, T extends Throwable> extends Stream<O> {
 			s.onError(throwable);
 		}
 		s.onError(error);
+	}
+
+	@Override
+	public Object get() {
+		if(RuntimeException.class.isAssignableFrom(error.getClass())){
+			throw (RuntimeException)error;
+		}
+		else{
+			throw ReactorFatalException.create(error);
+		}
 	}
 }

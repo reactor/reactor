@@ -81,6 +81,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 		} catch (CancelException c) {
 			throw c;
 		} catch (Throwable throwable) {
+			cancel();
 			doError(Exceptions.addValueAsLastCause(throwable, i));
 		}
 	}

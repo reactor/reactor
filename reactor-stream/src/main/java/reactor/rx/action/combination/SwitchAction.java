@@ -15,6 +15,8 @@
  */
 package reactor.rx.action.combination;
 
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -32,7 +34,11 @@ import reactor.rx.action.Action;
  */
 public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 
-	private long pendingRequests = 0l;
+	private volatile long pendingRequests = 0l;
+
+	private final AtomicLongFieldUpdater<SwitchAction> REQUESTED =
+		AtomicLongFieldUpdater.newUpdater(SwitchAction.class, "pendingRequests");
+
 	private SwitchSubscriber switchSubscriber;
 
 
@@ -89,7 +95,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 		SwitchSubscriber subscriber, nextSubscriber;
 		synchronized (this) {
 			if (switchSubscriber != null && switchSubscriber.publisher == ev) return;
-			if (pendingRequests != Long.MAX_VALUE) pendingRequests--;
+			BackpressureUtils.getAndSub(REQUESTED, this, -1L);
 			subscriber = switchSubscriber;
 			switchSubscriber = nextSubscriber = new SwitchSubscriber(ev);
 		}
@@ -133,7 +139,7 @@ public class SwitchAction<T> extends Action<Publisher<? extends T>, T> {
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
 		SwitchSubscriber subscriber;
 		synchronized (this) {
-			pendingRequests = BackpressureUtils.addOrLongMax(pendingRequests, elements);
+			BackpressureUtils.getAndAdd(REQUESTED, this, elements);
 			subscriber = switchSubscriber;
 		}
 		super.requestUpstream(capacity, terminated, elements);

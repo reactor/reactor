@@ -2848,7 +2848,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.1
 	 */
 	public final Promise<List<O>> consumeAsList() {
-		return toList(-1);
+		return consumeAsList(-1);
 	}
 
 	/**

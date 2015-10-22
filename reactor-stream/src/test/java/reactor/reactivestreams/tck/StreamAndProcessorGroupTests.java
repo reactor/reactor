@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import reactor.Processors;
 import reactor.core.processor.ProcessorGroup;
+import reactor.core.publisher.LogOperator;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
@@ -53,17 +54,13 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		                                           .filter(integer -> integer <= 0)
 		                                           .sample(1)
 		                                           .map(integer -> -integer)
-		                                           .buffer(batch, 50,
-				                                        TimeUnit.MILLISECONDS)
+		                                           .buffer(batch, 50, TimeUnit.MILLISECONDS)
 		                                           .<Integer>split()
-		                                           .flatMap(i -> Streams.zip(
-				                                           Streams.just(i), otherStream,
-				                                           Tuple1::getT1))
+		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 
 		                  )
-		                  .dispatchOn(asyncGroup)
-		                  //.log("end ")
-		                  .when(Throwable.class, Throwable::printStackTrace)
+				.dispatchOn(asyncGroup)
+				.when(Throwable.class, Throwable::printStackTrace)
 		                  .combine();
 	}
 
@@ -80,4 +77,5 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 			super.testColdIdentityProcessor();
 
 	}
+
 }
