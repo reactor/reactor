@@ -19,6 +19,7 @@ import reactor.Processors
 import reactor.bus.EventBus
 import reactor.bus.selector.Selectors
 import reactor.core.error.CancelException
+import reactor.core.error.ReactorFatalException
 import reactor.rx.broadcast.Broadcaster
 import spock.lang.Specification
 
@@ -479,7 +480,7 @@ class PromisesSpec extends Specification {
 
 		then:
 			"an IllegalStateException is thrown"
-			thrown(CancelException)
+			thrown(ReactorFatalException)
 	}
 
 	def "An IllegalStateException is thrown if an attempt is made to reject a fulfilled promise"() {
@@ -494,7 +495,7 @@ class PromisesSpec extends Specification {
 
 		then:
 			"an IllegalStateException is thrown"
-			thrown(CancelException)
+			thrown(ReactorFatalException)
 	}
 
 	def "Multiple promises can be combined"() {

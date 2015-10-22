@@ -687,9 +687,6 @@ public class Promise<O>
 		lock.lock();
 		try {
 			if (!isPending()) {
-				if(RuntimeException.class.isAssignableFrom(error.getClass())){
-					throw (RuntimeException)error;
-				}
 				throw ReactorFatalException.create(error);
 			}
 

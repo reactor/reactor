@@ -43,7 +43,13 @@ public class ProcessorGroupWorkTests extends AbstractProcessorVerification {
 		return 1L;
 	}
 
-
+	//@Test
+	public void simpleTestC() throws Exception {
+		for(int i = 0; i < 1000; i++){
+			System.out.println("new test "+i);
+			simpleTest();
+		}
+	}
 	@Override
 	public void simpleTest() throws Exception {
 		ProcessorGroup<String> serviceRB = Processors.ioGroup("rbWork", 32);
@@ -65,8 +71,8 @@ public class ProcessorGroupWorkTests extends AbstractProcessorVerification {
 		boolean success = serviceRB.awaitAndShutdown(5, TimeUnit.SECONDS);
 		long end = System.currentTimeMillis();
 
-		Assert.isTrue(success, "Shutdown failed");
 		Assert.isTrue(latch.getCount() == 0, "Event missed");
+		Assert.isTrue(success, "Shutdown failed");
 		Assert.isTrue((end - start) >= 1000, "Timeout too long");
 
 	}
