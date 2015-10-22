@@ -867,7 +867,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 								throw CancelException.INSTANCE;
 							}
 
-							//It's an unbounded subscriber or there is enough capacity to process the signal
 							RingBufferSubscriberUtils.route(event, subscriber);
 
 							processedSequence = true;

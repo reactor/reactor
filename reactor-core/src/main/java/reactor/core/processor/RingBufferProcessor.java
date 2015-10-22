@@ -609,8 +609,8 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 		//if only active subscriber, replay missed data
 		if (incrementSubscribers()) {
 
-			ringBuffer.addGatingSequences(signalProcessor.sequence);
 			signalProcessor.sequence.setVolatile(minimum.get());
+			ringBuffer.addGatingSequences(signalProcessor.sequence);
 			//set eventProcessor sequence to minimum index (replay)
 		}
 		else {
