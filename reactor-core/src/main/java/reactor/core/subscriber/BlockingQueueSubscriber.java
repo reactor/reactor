@@ -85,15 +85,14 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 					target.onNext(polled);
 				}
 				Subscription subscription = this.subscription;
-				if (subscription != null) {
+				if (toRequest > 0 && subscription != null) {
 					subscription.request(toRequest);
 				}
 			} else {
-				if (BackpressureUtils.getAndAdd(REMAINING, this, n) == 0) {
-					Subscription subscription = this.subscription;
-					if (subscription != null) {
-						subscription.request(n);
-					}
+				BackpressureUtils.getAndAdd(REMAINING, this, n);
+				Subscription subscription = this.subscription;
+				if (subscription != null) {
+					subscription.request(n);
 				}
 			}
 
@@ -249,6 +248,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
 
+		markRead();
 
 		IN res;
 		while ((res = store.poll()) == null) {
@@ -258,7 +258,6 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 			}
 			Thread.sleep(10);
 		}
-		markRead(res);
 		return res;
 	}
 
@@ -269,6 +268,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		}
 		IN res;
 
+		markRead();
 		long timespan = System.currentTimeMillis() +
 		  TimeUnit.MILLISECONDS.convert(timeout, unit);
 
@@ -280,7 +280,6 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 			}
 			Thread.sleep(10);
 		}
-		markRead(res);
 		return res;
 	}
 
@@ -291,7 +290,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 			throw new UnsupportedOperationException("This operation requires a read queue");
 		}
 		if (store.remove(o)) {
-			markRead((IN) o);
+			markRead();
 			return true;
 		}
 		return false;
@@ -336,7 +335,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		if (t == null) {
 			throw new NoSuchElementException();
 		} else {
-			markRead(t);
+			markRead();
 			return t;
 		}
 	}
@@ -348,13 +347,13 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 		}
 
 
+		markRead();
 		IN res = store.poll();
 		if(res == null && blockingTerminatedCheck()) throw CancelException.get();
-		markRead(res);
 		return res;
 	}
 
-	private void markRead(IN data) {
+	private void markRead() {
 		long r = remainingCapacity;
 		if (r == 0l) {
 			request(capacity - store.size());

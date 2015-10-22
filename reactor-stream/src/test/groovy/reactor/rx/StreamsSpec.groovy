@@ -224,7 +224,7 @@ class StreamsSpec extends Specification {
 	def 'A deferred Stream can be translated into a completable queue'() {
 		given:
 			'a composable with an initial value'
-			def stream = Streams.just('test', 'test2', 'test3').dispatchOn(asyncGroup)
+			def stream = Streams.just('test', 'test2', 'test3').log().dispatchOn(asyncGroup)
 
 		when:
 			'the stream is retrieved'
