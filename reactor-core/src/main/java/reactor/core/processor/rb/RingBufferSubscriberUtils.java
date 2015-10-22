@@ -106,23 +106,27 @@ public final class RingBufferSubscriberUtils {
 
 	}
 
+	public static final Object CLEANED = new Object();
 
-
+	@SuppressWarnings("unchecked")
 	public static <E> void routeOnce(MutableSignal<E> task, Subscriber<? super E> subscriber) {
 		E value = task.value;
-		task.value = null;
+		task.value = (E)CLEANED;
 		try {
-			if (task.type == SignalType.NEXT && null != value) {
+			if (task.type == SignalType.NEXT && null != value && CLEANED != value) {
 				// most likely case first
 				subscriber.onNext(value);
-			} else if (task.type == SignalType.COMPLETE) {
+			}
+			else if (task.type == SignalType.COMPLETE) {
 				// second most likely case next
 				subscriber.onComplete();
-			} else if (task.type == SignalType.ERROR) {
+			}
+			else if (task.type == SignalType.ERROR) {
 				// errors should be relatively infrequent compared to other signals
 				subscriber.onError(task.error);
 			}
-		} catch (Throwable t) {
+		}
+		catch (Throwable t) {
 			task.value = value;
 			throw t;
 		}
@@ -170,7 +174,8 @@ public final class RingBufferSubscriberUtils {
 			}
 		}
 		catch (InterruptedException ie) {
-			Thread.currentThread().interrupt();
+			Thread.currentThread()
+			      .interrupt();
 		}
 
 		return true;
@@ -182,8 +187,8 @@ public final class RingBufferSubscriberUtils {
 				Bounded.class.isAssignableFrom(source.getClass()) ? (Bounded) source :
 						null;
 
-		final int capacity = nonBlockingSource != null ? (int) Math
-				.min(nonBlockingSource.getCapacity(), ringBuffer.getBufferSize()) :
+		final int capacity = nonBlockingSource != null ?
+				(int) Math.min(nonBlockingSource.getCapacity(), ringBuffer.getBufferSize()) :
 				ringBuffer.getBufferSize();
 
 		return new WriteWithPublisher<>(source, ringBuffer, capacity);

@@ -574,7 +574,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 		};
 
 		WaitStrategy strategy = waitStrategy == null ?
-				new LiteBlockingWaitStrategy() :
+				PhasedBackoffWaitStrategy.withLiteLock(200, 100, TimeUnit.MILLISECONDS) :
 				waitStrategy;
 		if (shared) {
 			this.ringBuffer = RingBuffer

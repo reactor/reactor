@@ -639,8 +639,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 			public long get() {
 				return ringBuffer.getMinimumGatingSequence();
 			}
-		}, readWait, this, ringBuffer))
-		                                                                              .start();
+		}, readWait, this, ringBuffer)).start();
 	}
 
 	@Override
@@ -869,7 +868,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 							}
 
 							//It's an unbounded subscriber or there is enough capacity to process the signal
-							RingBufferSubscriberUtils.routeOnce(event, subscriber);
+							RingBufferSubscriberUtils.route(event, subscriber);
 
 							processedSequence = true;
 
@@ -995,7 +994,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 		private void reschedule(MutableSignal<T> event) {
 			if (event != null &&
 					event.type == SignalType.NEXT &&
-					event.value != null) {
+					event.value != null &&
+					event.value != RingBufferSubscriberUtils.CLEANED) {
 
 				RingBuffer<MutableSignal<T>> retry = processor.retryBuffer();
 				long seq = retry.next();
@@ -1010,7 +1010,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 				throws AlertException {
 			//if event is Next Signal we need to handle backpressure (pendingRequests)
 			if (event.type == SignalType.NEXT) {
-				if (event.value == null) {
+				if (event.value == null || event.value == RingBufferSubscriberUtils.CLEANED) {
 					return;
 				}
 
