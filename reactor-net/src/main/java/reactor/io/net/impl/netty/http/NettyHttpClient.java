@@ -191,7 +191,7 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 
 		return new Stream<HttpChannel<IN, OUT>>() {
 			@Override
-			public void subscribe(Subscriber<? super HttpChannel<IN, OUT>> subscriber) {
+			public void subscribe(final Subscriber<? super HttpChannel<IN, OUT>> subscriber) {
 				final Promise<HttpChannel<IN, OUT>> channelPromise =
 						Promises.prepare(getDefaultTimer());
 				doStart(new ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>() {
