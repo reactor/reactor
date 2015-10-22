@@ -112,11 +112,11 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 			checkResponseCode(ctx, response);
 
+			ctx.fireChannelRead(msg);
 			if (FullHttpResponse.class.isAssignableFrom(messageClass)) {
 				postRead(ctx, msg);
 			}
-			ctx.fireChannelRead(msg);
-			if(replySubscriber != null){
+			if(!discardBody && replySubscriber != null){
 				Publishers.just(httpChannel).subscribe(replySubscriber);
 			}
 		} else if (HttpContent.class.isAssignableFrom(messageClass)) {
@@ -134,7 +134,11 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		if (code == HttpResponseStatus.NOT_FOUND.code()
 				|| code == HttpResponseStatus.BAD_REQUEST.code()
 				|| code == HttpResponseStatus.INTERNAL_SERVER_ERROR.code()) {
-			exceptionCaught(ctx, new HttpException(response.getStatus()));
+			Exception ex = new HttpException(httpChannel);
+			exceptionCaught(ctx, ex);
+			if(replySubscriber != null){
+				replySubscriber.onError(ex);
+			}
 			discardBody = true;
 		}
 

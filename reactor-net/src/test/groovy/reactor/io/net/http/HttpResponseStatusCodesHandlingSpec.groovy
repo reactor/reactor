@@ -65,7 +65,7 @@ public class HttpResponseStatusCodesHandlingSpec extends Specification {
             try {
                 content.await();
             } catch (RuntimeException ex) {
-                exceptionMessage = ex.getCause().getMessage();
+                exceptionMessage = ex.getMessage();
             }
 
             exceptionMessage == "HTTP request failed with code: 404"

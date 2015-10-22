@@ -130,47 +130,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		}
 
 
-		this.bootstrap = _bootstrap;
-
-		this.connectionSupplier = new Supplier<ChannelFuture>() {
-			@Override
-			public ChannelFuture get() {
-				if (started.get()) {
-					return bootstrap.connect(getConnectAddress());
-				} else {
-					return null;
-				}
-			}
-		};
-	}
-
-	@Override
-	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
-
-		final Promise<Void> promise = Promises.prepare();
-
-		ChannelFutureListener listener = new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if(future.isSuccess()){
-					promise.onComplete();
-				}else{
-					promise.onError(future.cause());
-				}
-			}
-		};
-		addHandler(handler);
-		openChannel(listener);
-		return promise;
-	}
-
-	@SuppressWarnings("unchecked")
-	private void addHandler(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler){
-		final ReactorChannelHandler<IN,OUT, ChannelStream<IN, OUT>> targetHandler = null == handler ?
-				(ReactorChannelHandler<IN,OUT, ChannelStream<IN, OUT>> )PING :
-				handler;
-
-		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
+		this.bootstrap = _bootstrap.handler(new ChannelInitializer<SocketChannel>() {
 			@Override
 			public void initChannel(final SocketChannel ch) throws Exception {
 				if(getOptions() != null) {
@@ -186,10 +146,43 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 				if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
 					nettyOptions.pipelineConfigurer().accept(ch.pipeline());
 				}
-
-				bindChannel(targetHandler, ch);
 			}
 		});
+
+		this.connectionSupplier = new Supplier<ChannelFuture>() {
+			@Override
+			public ChannelFuture get() {
+				if (started.get()) {
+					return bootstrap.connect(getConnectAddress());
+				} else {
+					return null;
+				}
+			}
+		};
+	}
+
+	@Override
+	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
+		final Promise<Void> promise = Promises.prepare();
+
+		ChannelFutureListener listener = new ChannelFutureListener() {
+			@Override
+			@SuppressWarnings("unchecked")
+			public void operationComplete(ChannelFuture future) throws Exception {
+				if(future.isSuccess()){
+					final ReactorChannelHandler<IN,OUT, ChannelStream<IN, OUT>> targetHandler = null == handler ?
+							(ReactorChannelHandler<IN,OUT, ChannelStream<IN, OUT>> )PING :
+							handler;
+
+					bindChannel(targetHandler, (SocketChannel)future.channel());
+					promise.onComplete();
+				}else{
+					promise.onError(future.cause());
+				}
+			}
+		};
+		openChannel(listener);
+		return promise;
 	}
 
 	protected void addSecureHandler(SocketChannel ch) throws Exception {
@@ -205,8 +198,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	protected Stream<Tuple2<InetSocketAddress, Integer>> doStart(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>>
 			handler, final Reconnect reconnect) {
 
-		ReconnectingChannelListener listener = new ReconnectingChannelListener(connectAddress, reconnect);
-		addHandler(handler);
+		ReconnectingChannelListener listener = new ReconnectingChannelListener(connectAddress, reconnect, handler);
 		openChannel(listener);
 		return listener.broadcaster;
 	}
@@ -261,15 +253,18 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 		private final AtomicInteger attempts = new AtomicInteger(0);
 		private final Reconnect reconnect;
+		private final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler;
 		private final Broadcaster<Tuple2<InetSocketAddress, Integer>> broadcaster =
 				BehaviorBroadcaster.create(getDefaultTimer());
 
 		private volatile InetSocketAddress connectAddress;
 
 		private ReconnectingChannelListener(InetSocketAddress connectAddress,
-				Reconnect reconnect) {
+				Reconnect reconnect, ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>>
+				handler) {
 			this.connectAddress = connectAddress;
 			this.reconnect = reconnect;
+			this.handler = handler;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -300,6 +295,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 					log.info("CONNECTED: " + future.channel());
 				}
 				final Channel ioCh = future.channel();
+				bindChannel(handler, (SocketChannel)future.channel());
 				ioCh.pipeline().addLast(new ChannelDuplexHandler() {
 					@Override
 					public void channelInactive(ChannelHandlerContext ctx) throws Exception {
@@ -345,4 +341,8 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		}
 	}
 
+	@Override
+	protected boolean checkStart() {
+		return false;
+	}
 }

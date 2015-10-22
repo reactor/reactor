@@ -18,6 +18,7 @@ package reactor.io.net.http
 import reactor.io.codec.StandardCodecs
 import reactor.io.net.NetStreams
 import reactor.rx.Streams
+import reactor.rx.action.Signal
 import spock.lang.Specification
 
 import java.util.concurrent.TimeUnit
@@ -134,38 +135,28 @@ class HttpSpec extends Specification {
 						.log("received-status")
 			}
 			.next()
-			.onError {
-			  //something failed during the request or the reply processing
-			  println "Failed requesting server: $it"
-			}
+			.await(500, TimeUnit.SECONDS)
 
 
 
 	then: "data was recieved"
 	//the produced reply should be there soon
-	content.await(500, TimeUnit.SECONDS) == 500
+	thrown HttpException
 
-	/*when:
+	when:
 	//prepare an http post request-reply flow
 	content = client
 			.get('/test2')
 			.flatMap { replies ->
-	  Streams.just(replies.responseStatus().code)
+	   		replies
 			  .log("received-status")
 	}
 	.next()
-			.onError {
-	  //something failed during the request or the reply processing
-	  println "Failed requesting server: $it"
-	}
+			.poll(500, TimeUnit.SECONDS)
 
 	then: "data was recieved"
 	//the produced reply should be there soon
-	content.await(500, TimeUnit.SECONDS) == 500
-
-	then: "data was recieved"
-	//the produced reply should be there soon
-	content.await(500, TimeUnit.SECONDS) == 500
+	!content
 
 	when:
 	//prepare an http post request-reply flow
@@ -176,14 +167,11 @@ class HttpSpec extends Specification {
 			  .log("received-status")
 	}
 	.next()
-			.onError {
-	  //something failed during the request or the reply processing
-	  println "Failed requesting server: $it"
-	}
+			.poll(500, TimeUnit.SECONDS)
 
 	then: "data was recieved"
 	//the produced reply should be there soon
-	content.await(500, TimeUnit.SECONDS) == 500*/
+	thrown HttpException
 
 	cleanup: "the client/server where stopped"
 	//note how we order first the client then the server shutdown

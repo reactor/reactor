@@ -63,7 +63,7 @@ public abstract class ReactorPeer<IN, OUT, CONN extends ChannelStream<IN, OUT>> 
 	public final Promise<Void> start(
 	  final ReactorChannelHandler<IN, OUT, CONN> handler) {
 
-		if (!started.compareAndSet(false, true)) {
+		if (!started.compareAndSet(false, true) && checkStart()) {
 			throw new IllegalStateException("Peer already started");
 		}
 
@@ -113,4 +113,8 @@ public abstract class ReactorPeer<IN, OUT, CONN extends ChannelStream<IN, OUT>> 
 	protected abstract Promise<Void> doStart(ReactorChannelHandler<IN, OUT, CONN> handler);
 
 	protected abstract Promise<Void> doShutdown();
+
+	protected boolean checkStart(){
+		return true;
+	}
 }

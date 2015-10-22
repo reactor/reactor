@@ -285,4 +285,9 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 			pipeline.addLast(new NettyHttpClientHandler<IN, OUT>(handler, netChannel));
 		}
 	}
+
+	@Override
+	protected boolean checkStart() {
+		return false;
+	}
 }

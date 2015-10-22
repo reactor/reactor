@@ -729,7 +729,8 @@ public class Promise<O>
 			lock.unlock();
 		}
 
-		if (subscriber != null && REQUESTED.compareAndSet(this, 1, 0)) {
+		if (subscriber != null) {
+			requested = 1;
 			if (value != null) {
 				subscriber.onNext(value);
 			}
