@@ -871,6 +871,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 								readNextEvent(event, unbounded);
 							}
 							catch (AlertException ce){
+								barrier.clearAlert();
 								throw CancelException.INSTANCE;
 							}
 
@@ -939,8 +940,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 				}
 			}
 			finally {
-				processor.ringBuffer.removeGatingSequence(sequence);
 				processor.decrementSubscribers();
+				processor.ringBuffer.removeGatingSequence(sequence);
 				/*if(processor.decrementSubscribers() == 0){
 					long r = processor.ringBuffer.getCursor();
 					long w = processor.workSequence.get();
