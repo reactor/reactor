@@ -46,14 +46,6 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 		//IGNORE since subscribers see distinct data
 	}
 
-	@Test
-	public void simpleTestConsistent() throws Exception {
-		for(int i = 0; i < 1000; i++){
-			System.out.println(" new test : "+i);
-			simpleTest();
-		}
-	}
-
 	@Override
 	public void simpleTest() throws Exception {
 		final Processor<Integer, Integer> sink = Processors.topic("topic");

@@ -867,7 +867,12 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 						if (cachedAvailableSequence >= nextSequence) {
 							event = processor.ringBuffer.get(nextSequence);
 
-							readNextEvent(event, unbounded);
+							try {
+								readNextEvent(event, unbounded);
+							}
+							catch (AlertException ae){
+								throw CancelException.INSTANCE;
+							}
 
 							//It's an unbounded subscriber or there is enough capacity to process the signal
 							RingBufferSubscriberUtils.routeOnce(event, subscriber);
@@ -934,6 +939,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 				}
 			}
 			finally {
+				processor.ringBuffer.removeGatingSequence(sequence);
 				processor.decrementSubscribers();
 				/*if(processor.decrementSubscribers() == 0){
 					long r = processor.ringBuffer.getCursor();
@@ -942,9 +948,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 						processor.workSequence.compareAndSet(w, r);
 					}
 				}*/
-				processor.ringBuffer.removeGatingSequence(sequence);
 				running.set(false);
-				barrier.alert();
+				//barrier.alert();
 			}
 		}
 
@@ -974,7 +979,12 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 							processor.readWait.signalAllWhenBlocking();
 							return false;
 						}
-						readNextEvent(signal, unbounded);
+						try {
+							readNextEvent(signal, unbounded);
+						}
+						catch (AlertException ae){
+							throw CancelException.INSTANCE;
+						}
 						RingBufferSubscriberUtils.route(signal, subscriber);
 						processor.retrySequence.set(cursor);
 					}
