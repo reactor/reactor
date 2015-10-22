@@ -341,7 +341,6 @@ project('reactor-net') {
 		optional "io.netty:netty-all:$nettyVersion"
 
 		// Testing
-		testCompile "org.apache.hadoop:hadoop-client:$hadoopVersion"
 		testCompile "org.apache.httpcomponents:fluent-hc:4.3.6"
 		testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 

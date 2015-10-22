@@ -32,7 +32,7 @@ import java.net.InetSocketAddress;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public interface ReactorChannel<IN, OUT> extends Publisher<IN> {
+public interface ReactorChannel<IN, OUT>  {
 
 	/**
 	 * Get the address of the remote peer.
@@ -64,6 +64,11 @@ public interface ReactorChannel<IN, OUT> extends Publisher<IN> {
 	 * @return ConsumerSpec to build the events handlers
 	 */
 	ConsumerSpec on();
+
+	/**
+	 * @return The underlying IO runtime connection reference (Netty Channel for instance)
+	 */
+	Object delegate();
 
 	/**
 	 * Spec class for assigning multiple event handlers on a channel.

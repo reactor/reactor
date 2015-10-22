@@ -15,8 +15,20 @@
  */
 package reactor.io.net.tcp;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import io.netty.channel.nio.NioEventLoopGroup;
-import org.apache.commons.collections.list.SynchronizedList;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -25,7 +37,6 @@ import org.reactivestreams.Processor;
 import reactor.Timers;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.processor.RingBufferWorkProcessor;
-import reactor.core.publisher.LogOperator;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -38,13 +49,6 @@ import reactor.io.net.impl.netty.NettyClientSocketOptions;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
@@ -93,7 +97,7 @@ public class SmokeTests {
 		.connect("localhost", httpServer.getListenAddress().getPort());
 
 	@SuppressWarnings("unchecked")
-	private List<Integer> windowsData = SynchronizedList.decorate(new ArrayList<>());
+	private List<Integer> windowsData = new ArrayList<>();
 
 	private RingBufferWorkProcessor<Buffer> workProcessor;
 
@@ -280,30 +284,23 @@ public class SmokeTests {
 		);
 
 		httpServer.get("/data", (request) -> {
-			request.responseHeaders().removeTransferEncodingChunked();
+			request.responseHeaders()
+			       .removeTransferEncodingChunked();
 			request.addResponseHeader("Content-type", "text/plain");
 			request.addResponseHeader("Expires", "0");
 			request.addResponseHeader("X-GPFDIST-VERSION", "Spring XD");
 			request.addResponseHeader("X-GP-PROTO", "1");
 			request.addResponseHeader("Cache-Control", "no-cache");
 			request.addResponseHeader("Connection", "close");
-			return request.writeWith(
-					bufferStream
-								.observe(d -> integer.getAndIncrement())
-								.take(takeCount)
-								.observe(d -> integerPostTake.getAndIncrement())
-					            .timeout(2, TimeUnit.SECONDS, Streams.<Buffer>empty()
-					                                                 .observeComplete(
-							                                                 p -> System.out
-									                                                 .println(
-											                                                 "timeout after 2 ")))
-					            .observe(d -> integerPostTimeout
-							            .getAndIncrement()).concatWith(Streams.just(
+			return request.writeWith(bufferStream.observe(d -> integer.getAndIncrement())
+			                                     .take(takeCount)
+			                                     .observe(d -> integerPostTake.getAndIncrement())
+			                                     .timeout(2, TimeUnit.SECONDS, Streams.<Buffer>empty()
+			                                                                          .observeComplete(p -> System.out.println("timeout after 2 ")))
+			                                     .observe(d -> integerPostTimeout.getAndIncrement()).concatWith(Streams.just(
 									GpdistCodec.class.equals(codec.getClass()) ?
 											Buffer.wrap(new byte[0]) : Buffer.wrap("END"))
-					                                                          .observeComplete(
-							                                                          d -> integerPostConcat
-									                                                          .decrementAndGet()))//END
+			                                                                                                           .observeComplete(d -> integerPostConcat.decrementAndGet()))//END
 							.observe(d -> integerPostConcat.getAndIncrement())
 							.capacity(1L));
 		});
@@ -326,7 +323,7 @@ public class SmokeTests {
 	@SuppressWarnings("unchecked")
 	private List<Integer> getClientDatas(int threadCount, final Sender sender, int count) throws Exception {
 		final CountDownLatch latch = new CountDownLatch(1);
-		final List<Integer> datas = SynchronizedList.decorate(new ArrayList<>());
+		final List<Integer> datas = new ArrayList<>();
 
 		windowsData.clear();
 		Thread.sleep(1500);
@@ -363,7 +360,9 @@ public class SmokeTests {
 							//previous empty
 							if (size == 0 && empty) break;
 
-							datas.addAll(collected);
+							synchronized (datas) {
+								datas.addAll(collected);
+							}
 							counter.addAndGet(size);
 							empty = size == 0;
 							System.out.println("Client received " + size + " elements, current total: " + counter +
