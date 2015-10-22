@@ -47,7 +47,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 	protected final int batch = 1024;
 
 	public AbstractStreamVerification() {
-		super(new TestEnvironment(500, true));
+		super(new TestEnvironment(1000, true));
 	}
 
 	final ExecutorService executorService = Executors.newCachedThreadPool();
