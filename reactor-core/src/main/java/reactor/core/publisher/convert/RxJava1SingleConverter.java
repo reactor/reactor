@@ -40,7 +40,7 @@ public final class RxJava1SingleConverter extends PublisherConverter<Single> {
 	@Override
 	public Single fromPublisher(Publisher<?> o) {
 		Observable obs =
-				CompositionDependencyUtils.convertFromPublisher(o, Observable.class);
+				DependencyUtils.convertFromPublisher(o, Observable.class);
 		if (obs != null) {
 			return obs.toSingle();
 		}
@@ -50,7 +50,7 @@ public final class RxJava1SingleConverter extends PublisherConverter<Single> {
 	@Override
 	public Publisher toPublisher(Object o) {
 		Single<?> single = (Single<?>) o;
-		return CompositionDependencyUtils.convertToPublisher(single.toObservable());
+		return DependencyUtils.convertToPublisher(single.toObservable());
 	}
 
 	@Override

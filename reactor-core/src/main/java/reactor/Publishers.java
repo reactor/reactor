@@ -32,7 +32,7 @@ import reactor.core.publisher.LogOperator;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolineOperator;
 import reactor.core.publisher.ValuePublisher;
-import reactor.core.publisher.convert.CompositionDependencyUtils;
+import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.SignalType;
@@ -100,7 +100,7 @@ public final class Publishers extends PublisherFactory {
 			return from((Iterable<IN>)source);
 		}
 		else {
-			return (Publisher<IN>)CompositionDependencyUtils.convertToPublisher(source);
+			return (Publisher<IN>) DependencyUtils.convertToPublisher(source);
 		}
 	}
 
@@ -117,7 +117,7 @@ public final class Publishers extends PublisherFactory {
 			return (T)source;
 		}
 		else {
-			return CompositionDependencyUtils.convertFromPublisher(source, to);
+			return DependencyUtils.convertFromPublisher(source, to);
 		}
 	}
 

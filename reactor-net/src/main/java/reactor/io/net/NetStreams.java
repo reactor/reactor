@@ -16,6 +16,7 @@
 package reactor.io.net;
 
 import reactor.Timers;
+import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -984,6 +985,13 @@ public class NetStreams extends Streams {
 	 */
 
 	static {
+
+		if(!DependencyUtils.hasReactorStream()){
+			throw new IllegalStateException("io.projectreactor:reactor-stream:"
+					+ DependencyUtils.reactorVersion()+
+					" dependency is missing from the classpath.");
+		}
+
 		boolean hasNetty = false;
 		try {
 			Class.forName("io.netty.channel.Channel");

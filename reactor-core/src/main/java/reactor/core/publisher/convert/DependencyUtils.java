@@ -20,8 +20,11 @@ import org.reactivestreams.Publisher;
 
 /**
  * @author Stephane Maldini
+ * @since 2.1
  */
-public final class CompositionDependencyUtils {
+public final class DependencyUtils {
+
+	static private final String VERSION = "2.1.0.BUILD-SNAPSHOT";
 
 	static private final boolean HAS_REACTOR_STREAM;
 
@@ -166,5 +169,9 @@ public final class CompositionDependencyUtils {
 			return (T) JDK_9_FLOW_CONVERTER.apply(source, to);
 		}
 		throw new UnsupportedOperationException("Cannot convert " + source.getClass() + " source to " + to.getClass() + " type");
+	}
+
+	public static String reactorVersion(){
+		return VERSION;
 	}
 }

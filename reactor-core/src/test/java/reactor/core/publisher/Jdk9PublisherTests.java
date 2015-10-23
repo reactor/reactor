@@ -26,8 +26,7 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 import reactor.Publishers;
 import reactor.Timers;
-import reactor.core.publisher.convert.CompositionDependencyUtils;
-import rx.Single;
+import reactor.core.publisher.convert.DependencyUtils;
 
 /**
  * @author Stephane Maldini
@@ -56,7 +55,7 @@ public class Jdk9PublisherTests extends PublisherVerification<Long> {
 
 	@Override
 	public Publisher<Long> createPublisher(long elements) {
-		if(!CompositionDependencyUtils.hasJdk9Flow()){
+		if(!DependencyUtils.hasJdk9Flow()){
 			throw new SkipException("no jdk 9 classes found");
 		}
 
@@ -67,7 +66,7 @@ public class Jdk9PublisherTests extends PublisherVerification<Long> {
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
-		if(!CompositionDependencyUtils.hasJdk9Flow()){
+		if(!DependencyUtils.hasJdk9Flow()){
 			throw new SkipException("no jdk 9 classes found");
 		}
 
