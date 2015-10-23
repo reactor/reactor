@@ -1891,7 +1891,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'ready'
-			res > 950
+			res > 900
 
 		when:
 			'consuming periodic'
