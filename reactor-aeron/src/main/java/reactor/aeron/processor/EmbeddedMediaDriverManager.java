@@ -15,6 +15,7 @@
  */
 package reactor.aeron.processor;
 
+import uk.co.real_logic.aeron.Aeron;
 import uk.co.real_logic.aeron.driver.MediaDriver;
 import uk.co.real_logic.agrona.CloseHelper;
 
@@ -29,34 +30,45 @@ class EmbeddedMediaDriverManager {
 
 	private int counter = 0;
 
-	static EmbeddedMediaDriverManager getInstance() {
+    private Aeron aeron;
+
+    static EmbeddedMediaDriverManager getInstance() {
 		return INSTANCE;
 	}
 
 	synchronized void launchDriver() {
 		if (driver == null) {
 			driver = MediaDriver.launchEmbedded();
+            Aeron.Context ctx = new Aeron.Context();
+            ctx.dirName(driver.contextDirName());
+            this.aeron = Aeron.connect(ctx);
 		}
 		counter++;
 	}
 
 	synchronized void shutdownDriver() {
-		if (counter == 0) {
-			return;
-		}
-		counter--;
-
-		if (counter == 0) {
-			CloseHelper.quietClose(driver);
-			driver = null;
-		}
+		if (counter > 0) {
+            if (--counter == 0) {
+                forceShutdown();
+            }
+        }
 	}
 
-	MediaDriver getDriver() {
-		return driver;
-	}
+    synchronized Aeron getAeron() {
+        return aeron;
+    }
 
-	int getCounter() {
+	synchronized int getCounter() {
 		return counter;
 	}
+
+    synchronized void forceShutdown() {
+        counter = 0;
+
+        aeron.close();
+        aeron = null;
+
+        CloseHelper.quietClose(driver);
+        driver = null;
+    }
 }

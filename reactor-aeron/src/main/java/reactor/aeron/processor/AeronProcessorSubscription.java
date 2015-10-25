@@ -17,7 +17,6 @@ package reactor.aeron.processor;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.BackpressureUtils;
 import reactor.io.buffer.Buffer;
 import uk.co.real_logic.aeron.Publication;

@@ -30,6 +30,10 @@ import java.util.concurrent.TimeUnit;
  */
 public class Builder {
 
+    public static final String DEFAULT_RECEIVER_CHANNEL = "udp://localhost:12001";
+
+    public static final int DEFAULT_SENDER_PORT = 12000;
+
 	/**
 	 * Processor name used as a base name for threads created by
 	 * the processor's executor
@@ -42,46 +46,37 @@ public class Builder {
 	 */
 	boolean autoCancel;
 
-	/**
-	 * Aeron channel used by the signals sender and the receiver
-	 * of the processor
-	 */
-	String channel;
+    String senderChannel = "udp://localhost:" + DEFAULT_SENDER_PORT;
+
+    String receiverChannel = DEFAULT_RECEIVER_CHANNEL;
 
 	/**
 	 * Aeron StreamId used by the signals sender to publish Next and
 	 * Complete signals
 	 */
-	Integer streamId;
+	int streamId = 1;
 
 	/**
 	 * Aeron StreamId used by the signals sender to publish Error signals
 	 */
-	Integer errorStreamId;
+	int errorStreamId = 2;
 
 	/**
 	 * Aeron StreamId used by the signals sender to listen to commands
 	 * from the receiver
 	 */
-	Integer commandRequestStreamId;
+	int commandRequestStreamId = 3;
 
 	/**
 	 * Aeron StreamId used by signals sender to reply to command requests
 	 * from signals receiver
 	 */
-	Integer commandReplyStreamId;
+	int commandReplyStreamId = 4;
 
-	/**
-	 * Context for publishing signals into Aeron
-	 * When <tt>null</tt> a new one is initialized by the processor
-	 */
-	Aeron.Context signalSenderContext;
-
-	/**
-	 * Context for reading signals from Aeron
-	 * When <tt>null</tt> a new one is initialized by the processor
-	 */
-	Aeron.Context signalReceiverContext;
+    /**
+     * Instance of Aeron to be used by the processor
+     */
+    Aeron aeron;
 
 	/**
 	 * If embedded media driver should be launched
@@ -146,22 +141,28 @@ public class Builder {
 	}
 
 	public Builder channel(String channel) {
-		this.channel = channel;
+		this.senderChannel = channel;
+        this.receiverChannel = channel;
 		return this;
 	}
 
-	public Builder streamId(int streamId) {
+    public Builder senderPort(int senderPort) {
+        this.senderChannel = "udp://localhost:" + senderPort;
+        return this;
+    }
+
+    public Builder receiverChannel(String receiverChannel) {
+        this.receiverChannel = receiverChannel;
+        return this;
+    }
+
+    public Builder streamId(int streamId) {
 		this.streamId = streamId;
 		return this;
 	}
 
-	public Builder signalSenderContext(Aeron.Context signalSenderContext) {
-		this.signalSenderContext = signalSenderContext;
-		return this;
-	}
-
-	public Builder signalReceiverContext(Aeron.Context signalReceiverContext) {
-		this.signalReceiverContext = signalReceiverContext;
+	public Builder aeron(Aeron aeron) {
+		this.aeron = aeron;
 		return this;
 	}
 
@@ -240,16 +241,17 @@ public class Builder {
 
 	private void validate() {
 		Assert.isTrue(name != null, "name should be provided");
-		Assert.isTrue(channel != null, "channel should be provided");
+
 		assertStreamIdsAreDifferent();
+
+        if (launchEmbeddedMediaDriver) {
+            Assert.isTrue(aeron == null, "aeron should be null when launchEmbeddedMediaDriver is true");
+        } else {
+            Assert.isTrue(aeron != null, "aeron should provided when launchEmbeddedMediaDriver is false");
+        }
 	}
 
 	private void assertStreamIdsAreDifferent() {
-		Assert.notNull(streamId, "streamId should be provided");
-		Assert.notNull(errorStreamId, "errorStreamId should be provided");
-		Assert.notNull(commandRequestStreamId, "commandRequestStreamId should be provided");
-		Assert.notNull(commandReplyStreamId, "commandReplyStreamId should be provided");
-
 		Set<Integer> streamIdsSet = new HashSet<>();
 		streamIdsSet.add(streamId);
 		streamIdsSet.add(errorStreamId);
@@ -261,4 +263,20 @@ public class Builder {
 								+ "should all be different",
 						streamId, errorStreamId, commandRequestStreamId, commandReplyStreamId));
 	}
+
+	AeronHelper createAeronHelper() {
+		AeronHelper aeronHelper = new AeronHelper(aeron, launchEmbeddedMediaDriver,
+				publicationTimeoutMillis, publicationLingerTimeoutMillis);
+		aeronHelper.initialise();
+		return aeronHelper;
+	}
+
+    public AeronSubscriber createSubscriber() {
+        return new AeronSubscriber(this);
+    }
+
+    public AeronPublisher createPublisher() {
+        return new AeronPublisher(this);
+    }
+
 }

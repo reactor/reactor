@@ -22,6 +22,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
+import uk.co.real_logic.aeron.Aeron;
 import uk.co.real_logic.aeron.driver.MediaDriver;
 
 import java.util.concurrent.TimeUnit;
@@ -58,7 +59,12 @@ public class AeronProcessorTest {
 			processor.shutdown();
 		}
 
-		assertTrue(threadSnapshot.takeAndCompare(new String[] {"hash"}, TimeUnit.SECONDS.toMillis(TIMEOUT_SECS)));
+        Thread.sleep(1000);
+
+        assertThat(EmbeddedMediaDriverManager.getInstance().getCounter(), is(0));
+
+        assertTrue(threadSnapshot.takeAndCompare(new String[] {"hash", "global"},
+                TimeUnit.SECONDS.toMillis(TIMEOUT_SECS)));
 	}
 
 	private AeronProcessor createProcessor() {
@@ -197,7 +203,7 @@ public class AeronProcessorTest {
 
 		subscriber.assertCompleteReceived();
 
-        TestUtils.waitForTrue(TIMEOUT_SECS, "Processor is still alive", processor::alive);
+        TestUtils.waitForTrue(TIMEOUT_SECS, "Processor is still alive", () -> !processor.alive());
 	}
 
 	@Test
@@ -218,6 +224,9 @@ public class AeronProcessorTest {
 	public void testProcessorWorksWithExternalMediaDriver() throws InterruptedException {
 		MediaDriver.Context context = new MediaDriver.Context();
 		final MediaDriver mediaDriver = MediaDriver.launch(context);
+        Aeron.Context ctx = new Aeron.Context();
+        ctx.dirName(mediaDriver.contextDirName());
+        final Aeron aeron = Aeron.connect(ctx);
 		try {
 			processor = AeronProcessor.builder()
 					.name("processor")
@@ -229,6 +238,7 @@ public class AeronProcessorTest {
 					.commandRequestStreamId(STREAM_ID + 2)
 					.commandReplyStreamId(STREAM_ID + 3)
 					.publicationLingerTimeoutMillis(50)
+                    .aeron(aeron)
 					.create();
 
 			Streams.just(
@@ -241,11 +251,13 @@ public class AeronProcessorTest {
 			subscriber.assertAllEventsReceived();
 		} finally {
 			if (processor != null) {
-				processor.awaitAndShutdown(500, TimeUnit.MILLISECONDS);
+				processor.awaitAndShutdown(1500, TimeUnit.MILLISECONDS);
 
 				// Waiting to let all Aeron threads to shutdown
 				Thread.sleep(500);
 			}
+
+            aeron.close();
 
 			mediaDriver.close();
 
@@ -259,8 +271,7 @@ public class AeronProcessorTest {
 
     @Test
     public void testCreate() throws InterruptedException {
-        processor = AeronProcessor.create("aeron", true, true, CHANNEL, STREAM_ID,
-                STREAM_ID + 1, STREAM_ID + 2, STREAM_ID + 3);
+        processor = AeronProcessor.create("aeron", true, CHANNEL);
 
         Streams.just(
                 Buffer.wrap("Live"))
@@ -274,8 +285,7 @@ public class AeronProcessorTest {
 
     @Test
     public void testShare() throws InterruptedException {
-        processor = AeronProcessor.share("aeron", true, true, CHANNEL, STREAM_ID,
-                STREAM_ID + 1, STREAM_ID + 2, STREAM_ID + 3);
+        processor = AeronProcessor.share("aeron", true, CHANNEL);
 
         Streams.just(
                 Buffer.wrap("Live"))

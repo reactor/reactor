@@ -26,7 +26,7 @@ import uk.co.real_logic.agrona.DirectBuffer;
 import uk.co.real_logic.agrona.MutableDirectBuffer;
 import uk.co.real_logic.agrona.concurrent.IdleStrategy;
 
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 /**
  * @author Anatoly Kadyshev
@@ -93,15 +93,16 @@ class CommandsPoller implements Runnable {
 		}
 	}
 
-	CommandsPoller(Logger logger, AeronHelper aeronHelper, int commandRequestStreamId, int commandReplyStreamId) {
+	CommandsPoller(Logger logger, AeronHelper aeronHelper, String senderChannel, String receiverChannel,
+                   int commandRequestStreamId, int commandReplyStreamId) {
 		this.logger = logger;
 		this.aeronHelper = aeronHelper;
-		this.commandsSub = aeronHelper.addSubscription(commandRequestStreamId);
-		this.replyPub = aeronHelper.addPublication(commandReplyStreamId);
+		this.commandsSub = aeronHelper.addSubscription(receiverChannel, commandRequestStreamId);
+		this.replyPub = aeronHelper.addPublication(senderChannel, commandReplyStreamId);
 	}
 
-	void initialize(ExecutorService executorService) {
-		executorService.execute(this);
+	void initialize(Executor executor) {
+		executor.execute(this);
 	}
 
 	public void run() {
@@ -115,10 +116,12 @@ class CommandsPoller implements Runnable {
 			int nFragmentsReceived = commandsSub.poll(fragmentAssembler, 1);
 			idleStrategy.idle(nFragmentsReceived);
 		}
-
-	}
+    }
 
 	void shutdown() {
 		this.running = false;
+
+        commandsSub.close();
+        replyPub.close();
 	}
 }
