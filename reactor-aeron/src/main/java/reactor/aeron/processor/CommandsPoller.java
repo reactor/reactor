@@ -94,7 +94,7 @@ class CommandsPoller implements Runnable {
 	}
 
 	CommandsPoller(Logger logger, AeronHelper aeronHelper, String senderChannel, String receiverChannel,
-                   int commandRequestStreamId, int commandReplyStreamId) {
+				   int commandRequestStreamId, int commandReplyStreamId) {
 		this.logger = logger;
 		this.aeronHelper = aeronHelper;
 		this.commandsSub = aeronHelper.addSubscription(receiverChannel, commandRequestStreamId);
@@ -116,12 +116,12 @@ class CommandsPoller implements Runnable {
 			int nFragmentsReceived = commandsSub.poll(fragmentAssembler, 1);
 			idleStrategy.idle(nFragmentsReceived);
 		}
-    }
+	}
 
 	void shutdown() {
 		this.running = false;
 
-        commandsSub.close();
-        replyPub.close();
+		commandsSub.close();
+		replyPub.close();
 	}
 }

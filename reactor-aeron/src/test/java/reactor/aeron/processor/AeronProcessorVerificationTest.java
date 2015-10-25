@@ -73,10 +73,10 @@ public class AeronProcessorVerificationTest extends IdentityProcessorVerificatio
 				Thread.sleep(2000);
 
 				if (driverManager.getCounter() > 0) {
-                    EmbeddedMediaDriverManager.getInstance().forceShutdown();
+					EmbeddedMediaDriverManager.getInstance().forceShutdown();
 
-                    throw new IllegalStateException("Manual termination of processor after method "
-                            + method.getName() + " didn't shutdown Media driver");
+					throw new IllegalStateException("Manual termination of processor after method "
+							+ method.getName() + " didn't shutdown Media driver");
 				}
 			}
 		}
@@ -88,7 +88,7 @@ public class AeronProcessorVerificationTest extends IdentityProcessorVerificatio
 		counter += 4;
 		int streamId = STREAM_ID + counter;
 
-		processor = AeronProcessor.create(new Builder()
+		processor = AeronProcessor.create(new Context()
 				.name("processor")
 				.autoCancel(true)
 				.launchEmbeddedMediaDriver(true)
@@ -140,21 +140,24 @@ public class AeronProcessorVerificationTest extends IdentityProcessorVerificatio
 	// Disabled due to Exception comparison by equals
 	@Test(enabled = false)
 	@Override
-	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError() throws Throwable {
+	public void required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError()
+			throws Throwable {
 		super.required_spec104_mustCallOnErrorOnAllItsSubscribersIfItEncountersANonRecoverableError();
 	}
 
 	// Disabled due to Exception comparison by equals
 	@Test(enabled = false)
 	@Override
-	public void required_spec210_mustBePreparedToReceiveAnOnErrorSignalWithoutPrecedingRequestCall() throws Throwable {
+	public void required_spec210_mustBePreparedToReceiveAnOnErrorSignalWithoutPrecedingRequestCall()
+			throws Throwable {
 		super.required_spec210_mustBePreparedToReceiveAnOnErrorSignalWithoutPrecedingRequestCall();
 	}
 
 	// Disabled due to Exception comparison by equals
 	@Test(enabled = false)
 	@Override
-	public void required_spec210_mustBePreparedToReceiveAnOnErrorSignalWithPrecedingRequestCall() throws Throwable {
+	public void required_spec210_mustBePreparedToReceiveAnOnErrorSignalWithPrecedingRequestCall()
+			throws Throwable {
 		super.required_spec210_mustBePreparedToReceiveAnOnErrorSignalWithPrecedingRequestCall();
 	}
 
@@ -187,10 +190,10 @@ public class AeronProcessorVerificationTest extends IdentityProcessorVerificatio
 		super.required_spec109_mustIssueOnSubscribeForNonNullSubscriber();
 	}
 
-    // TODO: Disabled as Sender part becomes BACKPRESSURED forever as the receiver part is terminated
-    @Override
-    @Test(enabled = false)
-    public void required_spec317_mustNotSignalOnErrorWhenPendingAboveLongMaxValue() throws Throwable {
-        super.required_spec317_mustNotSignalOnErrorWhenPendingAboveLongMaxValue();
-    }
+	// TODO: Disabled as Sender part becomes BACKPRESSURED forever as the receiver part is terminated
+	@Override
+	@Test(enabled = false)
+	public void required_spec317_mustNotSignalOnErrorWhenPendingAboveLongMaxValue() throws Throwable {
+		super.required_spec317_mustNotSignalOnErrorWhenPendingAboveLongMaxValue();
+	}
 }

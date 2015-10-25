@@ -50,7 +50,8 @@ public class AeronProcessorMulticastTest {
 
 	@After
 	public void doTeardown() throws InterruptedException {
-		assertTrue(threadSnapshot.takeAndCompare(new String[] {"hash", "global"}, TimeUnit.SECONDS.toMillis(TIMEOUT_SECS)));
+		assertTrue(threadSnapshot.takeAndCompare(new String[] {"hash", "global"},
+				TimeUnit.SECONDS.toMillis(TIMEOUT_SECS)));
 	}
 
 	@Test
@@ -188,7 +189,7 @@ public class AeronProcessorMulticastTest {
 	}
 
 	private AeronProcessor createProcessor(String name) {
-		return AeronProcessor.share(new Builder()
+		return AeronProcessor.share(new Context()
 				.name(name)
 				.autoCancel(false)
 				.launchEmbeddedMediaDriver(true)

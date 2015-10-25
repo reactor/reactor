@@ -53,7 +53,7 @@ public class AeronSubscriberPublisherTest {
 		final int senderPort = SocketUtils.findAvailableTcpPort();
 		final String receiverChannel = "udp://localhost:" + SocketUtils.findAvailableUdpPort();
 
-		AeronSubscriber subscriber = AeronSubscriber.create(new Builder()
+		AeronSubscriber subscriber = AeronSubscriber.create(new Context()
 				.name("subscriber")
 				.senderPort(senderPort)
 				.receiverChannel(receiverChannel));
@@ -64,7 +64,7 @@ public class AeronSubscriberPublisherTest {
 				Buffer.wrap("Three"))
 				.subscribe(subscriber);
 
-		AeronPublisher publisher = AeronPublisher.create(new Builder()
+		AeronPublisher publisher = AeronPublisher.create(new Context()
 				.name("publisher")
 				.senderPort(senderPort)
 				.receiverChannel(receiverChannel));

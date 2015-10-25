@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class AeronPublisher implements Publisher<Buffer> {
 
-	private final Builder builder;
+	private final Context context;
 
 	private final AeronHelper aeronHelper;
 
@@ -58,12 +58,12 @@ public class AeronPublisher implements Publisher<Buffer> {
 
 	private final boolean shouldShutdownCreatedObjects;
 
-	public static AeronPublisher create(Builder builder) {
-		builder.validate();
-		return new AeronPublisher(builder);
+	public static AeronPublisher create(Context context) {
+		context.validate();
+		return new AeronPublisher(context);
 	}
 
-	AeronPublisher(Builder builder,
+	AeronPublisher(Context context,
 				   AeronHelper aeronHelper,
 				   Serializer<Throwable> exceptionSerializer,
 				   Logger logger,
@@ -71,7 +71,7 @@ public class AeronPublisher implements Publisher<Buffer> {
 				   Runnable completionTask,
 				   Function<Void, Boolean> processorAliveFunction,
 				   Runnable onSubscribeTask) {
-		this.builder = builder;
+		this.context = context;
 		this.aeronHelper = aeronHelper;
 		this.exceptionSerializer = exceptionSerializer;
 		this.logger = logger;
@@ -80,19 +80,19 @@ public class AeronPublisher implements Publisher<Buffer> {
 		this.shouldShutdownCreatedObjects = false;
 		this.completionTask = completionTask;
 		this.processorAliveFunction = processorAliveFunction;
-		this.commandPub = aeronHelper.addPublication(builder.receiverChannel, builder.commandRequestStreamId);
-		this.aliveSendersChecker = createAliveSendersChecker(builder, aeronHelper, logger);
+		this.commandPub = aeronHelper.addPublication(context.receiverChannel, context.commandRequestStreamId);
+		this.aliveSendersChecker = createAliveSendersChecker(context, aeronHelper, logger);
 	}
 
-	private AliveSendersChecker createAliveSendersChecker(Builder builder, AeronHelper aeronHelper, Logger logger) {
+	private AliveSendersChecker createAliveSendersChecker(Context context, AeronHelper aeronHelper, Logger logger) {
 		return new AliveSendersChecker(logger, aeronHelper, commandPub,
-				builder.senderChannel, builder.commandReplyStreamId,
-				builder.publicationLingerTimeoutMillis, builder.cleanupDelayMillis);
+				context.senderChannel, context.commandReplyStreamId,
+				context.publicationLingerTimeoutMillis, context.cleanupDelayMillis);
 	}
 
-	public AeronPublisher(Builder builder) {
-		this.builder = builder;
-		this.aeronHelper = builder.createAeronHelper();
+	public AeronPublisher(Context context) {
+		this.context = context;
+		this.aeronHelper = context.createAeronHelper();
 		this.exceptionSerializer = new BasicExceptionSerializer();
 		this.logger = LoggerFactory.getLogger(AeronPublisher.class);
 		this.executor = Executors.newCachedThreadPool();
@@ -114,8 +114,8 @@ public class AeronPublisher implements Publisher<Buffer> {
 				return false;
 			}
 		};
-		this.commandPub = aeronHelper.addPublication(builder.receiverChannel, builder.commandRequestStreamId);
-		this.aliveSendersChecker = createAliveSendersChecker(builder, aeronHelper, logger);
+		this.commandPub = aeronHelper.addPublication(context.receiverChannel, context.commandRequestStreamId);
+		this.aliveSendersChecker = createAliveSendersChecker(context, aeronHelper, logger);
 	}
 
 	@Override
@@ -125,7 +125,7 @@ public class AeronPublisher implements Publisher<Buffer> {
 		}
 
 		AeronProcessorSubscription subscription = new AeronProcessorSubscription(subscriber,
-				builder.subscriberFragmentLimit, aeronHelper, commandPub);
+				context.subscriberFragmentLimit, aeronHelper, commandPub);
 
 		SignalsPoller signalsPoller = createSignalsPoller(subscriber, subscription);
 		try {
@@ -137,16 +137,17 @@ public class AeronPublisher implements Publisher<Buffer> {
 		}
 	}
 
-	private SignalsPoller createSignalsPoller(Subscriber<? super Buffer> subscriber, final AeronProcessorSubscription subscription) {
-		return new SignalsPoller(subscriber, subscription, aeronHelper, builder.senderChannel,
-				aliveSendersChecker, exceptionSerializer, builder.streamId, builder.errorStreamId, new Runnable() {
+	private SignalsPoller createSignalsPoller(Subscriber<? super Buffer> subscriber,
+											  final AeronProcessorSubscription subscription) {
+		return new SignalsPoller(subscriber, subscription, aeronHelper, context.senderChannel,
+				aliveSendersChecker, exceptionSerializer, context.streamId, context.errorStreamId, new Runnable() {
 
 			@Override
 			public void run() {
 				if (!subscription.isActive()) {
 					// Executed when subscription was cancelled
 
-					if (builder.autoCancel) {
+					if (context.autoCancel) {
 						sendCancelCommand();
 					}
 				}

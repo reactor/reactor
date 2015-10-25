@@ -41,7 +41,7 @@ class AeronProcessorSubscription implements Subscription {
 	private final RequestCounter requestCounter;
 
 	AeronProcessorSubscription(Subscriber<? super Buffer> subscriber, int fragmentLimit, AeronHelper aeronHelper,
-	                           Publication commandPub) {
+							   Publication commandPub) {
 		this.subscriber = subscriber;
 		this.aeronHelper = aeronHelper;
 		this.commandPub = commandPub;

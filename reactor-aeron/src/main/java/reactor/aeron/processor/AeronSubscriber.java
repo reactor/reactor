@@ -64,13 +64,13 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 
 		private final Serializer<Throwable> exceptionSerializer;
 
-		RingBufferProcessorSubscriber(Builder builder,
+		RingBufferProcessorSubscriber(Context context,
 									  AeronHelper aeronHelper,
 									  Serializer<Throwable> exceptionSerializer) {
 			this.aeronHelper = aeronHelper;
 			this.exceptionSerializer = exceptionSerializer;
-			this.nextCompletePub = aeronHelper.addPublication(builder.senderChannel, builder.streamId);
-			this.errorPub = aeronHelper.addPublication(builder.senderChannel, builder.errorStreamId);
+			this.nextCompletePub = aeronHelper.addPublication(context.senderChannel, context.streamId);
+			this.errorPub = aeronHelper.addPublication(context.senderChannel, context.errorStreamId);
 			this.bufferClaim = new BufferClaim();
 			this.idleStrategy = AeronHelper.newBackoffIdleStrategy();
 		}
@@ -104,7 +104,8 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 			shutdown();
 		}
 
-		boolean publishSignal(Publication publication, Buffer buffer, SignalType signalType, boolean waitLingerTimeout) {
+		boolean publishSignal(Publication publication, Buffer buffer, SignalType signalType,
+							  boolean waitLingerTimeout) {
 			BufferClaim claim = aeronHelper.publish(publication, bufferClaim, buffer.limit() + 1, idleStrategy);
 			if (claim != null) {
 				try {
@@ -128,17 +129,17 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 		}
 	}
 
-	public static AeronSubscriber create(Builder builder) {
-		builder.validate();
-		return new AeronSubscriber(builder, false);
+	public static AeronSubscriber create(Context context) {
+		context.validate();
+		return new AeronSubscriber(context, false);
 	}
 
-	public static AeronSubscriber share(Builder builder) {
-		builder.validate();
-		return new AeronSubscriber(builder, true);
+	public static AeronSubscriber share(Context context) {
+		context.validate();
+		return new AeronSubscriber(context, true);
 	}
 
-	public AeronSubscriber(Builder builder,
+	public AeronSubscriber(Context context,
 						   AeronHelper aeronHelper,
 						   ExecutorService executor,
 						   Serializer<Throwable> exceptionSerializer,
@@ -150,24 +151,25 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 		this.executor = executor;
 		this.shouldShutdownCreatedObjects = false;
 
-		this.delegateProcessor = createProcessor(builder, multiPublishers);
-		subscribeProcessor(builder, aeronHelper, exceptionSerializer);
+		this.delegateProcessor = createProcessor(context, multiPublishers);
+		subscribeProcessor(context, aeronHelper, exceptionSerializer);
 
-		this.commandsPoller = createCommandsPoller(builder, aeronHelper, logger);
+		this.commandsPoller = createCommandsPoller(context, aeronHelper, logger);
 		commandsPoller.initialize(executor);
 	}
 
-	private CommandsPoller createCommandsPoller(Builder builder, AeronHelper aeronHelper, Logger logger) {
-		return new CommandsPoller(logger, aeronHelper, builder.senderChannel, builder.receiverChannel,
-				builder.commandRequestStreamId, builder.commandReplyStreamId);
+	private CommandsPoller createCommandsPoller(Context context, AeronHelper aeronHelper, Logger logger) {
+		return new CommandsPoller(logger, aeronHelper, context.senderChannel, context.receiverChannel,
+				context.commandRequestStreamId, context.commandReplyStreamId);
 	}
 
-	private void subscribeProcessor(Builder builder, AeronHelper aeronHelper, Serializer<Throwable> exceptionSerializer) {
-		delegateProcessor.subscribe(new RingBufferProcessorSubscriber(builder, aeronHelper, exceptionSerializer));
+	private void subscribeProcessor(Context context, AeronHelper aeronHelper,
+									Serializer<Throwable> exceptionSerializer) {
+		delegateProcessor.subscribe(new RingBufferProcessorSubscriber(context, aeronHelper, exceptionSerializer));
 	}
 
-	public AeronSubscriber(Builder builder, boolean multiPublishers) {
-		this.aeronHelper = builder.createAeronHelper();
+	public AeronSubscriber(Context context, boolean multiPublishers) {
+		this.aeronHelper = context.createAeronHelper();
 		this.postShutdownTask = new Runnable() {
 			@Override
 			public void run() {
@@ -175,21 +177,22 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 		};
 		this.executor = Executors.newCachedThreadPool();
 
-		this.delegateProcessor = createProcessor(builder, multiPublishers);
-		subscribeProcessor(builder, aeronHelper, new BasicExceptionSerializer());
+		this.delegateProcessor = createProcessor(context, multiPublishers);
+		subscribeProcessor(context, aeronHelper, new BasicExceptionSerializer());
 
-		this.commandsPoller = createCommandsPoller(builder, aeronHelper, LoggerFactory.getLogger(AeronSubscriber.class));
+		this.commandsPoller = createCommandsPoller(context, aeronHelper,
+				LoggerFactory.getLogger(AeronSubscriber.class));
 		commandsPoller.initialize(executor);
 
 		this.shouldShutdownCreatedObjects = true;
 	}
 
-	RingBufferProcessor<Buffer> createProcessor(Builder builder, boolean multiPublishers) {
+	RingBufferProcessor<Buffer> createProcessor(Context context, boolean multiPublishers) {
 		RingBufferProcessor<Buffer> processor;
 		if (multiPublishers) {
-			processor = RingBufferProcessor.share(builder.name + "-ring-buffer-consumer", builder.ringBufferSize);
+			processor = RingBufferProcessor.share(context.name + "-ring-buffer-consumer", context.ringBufferSize);
 		} else {
-			processor = RingBufferProcessor.create(builder.name + "-ring-buffer-consumer", builder.ringBufferSize);
+			processor = RingBufferProcessor.create(context.name + "-ring-buffer-consumer", context.ringBufferSize);
 		}
 		return processor;
 	}

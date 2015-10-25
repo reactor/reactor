@@ -26,11 +26,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Builder of {@link AeronProcessor}
+ * A class containing parameter values required to create instances of
+ * {@link AeronProcessor}, {@link AeronSubscriber} or {@link AeronPublisher}
  */
-public class Builder {
+public class Context {
 
-    public static final int DEFAULT_SENDER_PORT = 12000;
+	public static final int DEFAULT_SENDER_PORT = 12000;
 
 	public static final int DEFAULT_RECEIVER_PORT = 12001;
 
@@ -46,9 +47,9 @@ public class Builder {
 	 */
 	boolean autoCancel;
 
-    String senderChannel = createChannelForPort(DEFAULT_SENDER_PORT);
+	String senderChannel = createChannelForPort(DEFAULT_SENDER_PORT);
 
-    String receiverChannel = createChannelForPort(DEFAULT_RECEIVER_PORT);
+	String receiverChannel = createChannelForPort(DEFAULT_RECEIVER_PORT);
 
 	/**
 	 * Aeron StreamId used by the signals sender to publish Next and
@@ -73,10 +74,10 @@ public class Builder {
 	 */
 	int commandReplyStreamId = 4;
 
-    /**
-     * Instance of Aeron to be used by the processor
-     */
-    Aeron aeron;
+	/**
+	 * Instance of Aeron to be used by the processor
+	 */
+	Aeron aeron;
 
 	/**
 	 * If embedded media driver should be launched
@@ -90,8 +91,8 @@ public class Builder {
 
 	/**
 	 * Number of fragments that could be read by the signals receiver during
-     * a single call to {@link uk.co.real_logic.aeron.Subscription#poll(FragmentHandler, int)}
-     * method
+	 * a single call to {@link uk.co.real_logic.aeron.Subscription#poll(FragmentHandler, int)}
+	 * method
 	 */
 	int subscriberFragmentLimit;
 
@@ -101,24 +102,24 @@ public class Builder {
 	long publicationLingerTimeoutMillis = TimeUnit.NANOSECONDS.toMillis(Configuration.PUBLICATION_LINGER_NS);
 
 	/**
-     * A timeout during which a message is retied to be published into Aeron.
-     * If the timeout elapses and the message cannot be published because of
-     * either {@link uk.co.real_logic.aeron.Publication#BACK_PRESSURED} or
-     * {@link uk.co.real_logic.aeron.Publication#NOT_CONNECTED} it is discarded.
-     * In the next version of the processor the behaviour is likely to change.
+	 * A timeout during which a message is retied to be published into Aeron.
+	 * If the timeout elapses and the message cannot be published because of
+	 * either {@link uk.co.real_logic.aeron.Publication#BACK_PRESSURED} or
+	 * {@link uk.co.real_logic.aeron.Publication#NOT_CONNECTED} it is discarded.
+	 * In the next version of the processor the behaviour is likely to change.
 	 */
 	long publicationTimeoutMillis = 1000;
 
 	/**
 	 * Size of internal ring buffer used for processing of messages
-     * to be published into Aeron
+	 * to be published into Aeron
 	 */
 	int ringBufferSize = 1024;
 
 	/**
 	 * Delay between clean up task subsequent runs.
 	 * The clean up task ignores all {@link CommandType#IsAliveReply} replies
-     * published by signal senders.
+	 * published by signal senders.
 	 */
 	int cleanupDelayMillis = 100;
 
@@ -126,98 +127,98 @@ public class Builder {
 		return "udp://localhost:" + port;
 	}
 
-	public Builder name(String name) {
+	public Context name(String name) {
 		this.name = name;
 		return this;
 	}
 
-	public Builder autoCancel(boolean autoCancel) {
+	public Context autoCancel(boolean autoCancel) {
 		this.autoCancel = autoCancel;
 		return this;
 	}
 
-	public Builder channel(String channel) {
+	public Context channel(String channel) {
 		this.senderChannel = channel;
-        this.receiverChannel = channel;
+		this.receiverChannel = channel;
 		return this;
 	}
 
-    public Builder senderPort(int senderPort) {
-        this.senderChannel = createChannelForPort(senderPort);
-        return this;
-    }
+	public Context senderPort(int senderPort) {
+		this.senderChannel = createChannelForPort(senderPort);
+		return this;
+	}
 
-	public Builder senderChannel(String senderChannel) {
+	public Context senderChannel(String senderChannel) {
 		this.senderChannel = senderChannel;
 		return this;
 	}
 
-	public Builder receiverPort(int receiverPort) {
+	public Context receiverPort(int receiverPort) {
 		this.receiverChannel = createChannelForPort(receiverPort);
 		return this;
 	}
 
-	public Builder receiverChannel(String receiverChannel) {
-        this.receiverChannel = receiverChannel;
-        return this;
-    }
+	public Context receiverChannel(String receiverChannel) {
+		this.receiverChannel = receiverChannel;
+		return this;
+	}
 
-    public Builder streamId(int streamId) {
+	public Context streamId(int streamId) {
 		this.streamId = streamId;
 		return this;
 	}
 
-	public Builder aeron(Aeron aeron) {
+	public Context aeron(Aeron aeron) {
 		this.aeron = aeron;
 		return this;
 	}
 
-	public Builder launchEmbeddedMediaDriver(boolean useEmbeddedMediaDriver) {
+	public Context launchEmbeddedMediaDriver(boolean useEmbeddedMediaDriver) {
 		this.launchEmbeddedMediaDriver = useEmbeddedMediaDriver;
 		return this;
 	}
 
-	public Builder executorService(ExecutorService executorService) {
+	public Context executorService(ExecutorService executorService) {
 		this.executorService = executorService;
 		return this;
 	}
 
-	public Builder subscriberFragmentLimit(int subscriberFragmentLimit) {
+	public Context subscriberFragmentLimit(int subscriberFragmentLimit) {
 		this.subscriberFragmentLimit = subscriberFragmentLimit;
 		return this;
 	}
 
-	public Builder errorStreamId(int errorStreamId) {
+	public Context errorStreamId(int errorStreamId) {
 		this.errorStreamId = errorStreamId;
 		return this;
 	}
 
-	public Builder commandRequestStreamId(int commandRequestStreamId) {
+	public Context commandRequestStreamId(int commandRequestStreamId) {
 		this.commandRequestStreamId = commandRequestStreamId;
 		return this;
 	}
 
-	public Builder commandReplyStreamId(int commandReplyStreamId) {
+	public Context commandReplyStreamId(int commandReplyStreamId) {
 		this.commandReplyStreamId = commandReplyStreamId;
 		return this;
 	}
 
-	public Builder publicationLingerTimeoutMillis(int publicationLingerTimeoutMillis) {
+	public Context publicationLingerTimeoutMillis(int publicationLingerTimeoutMillis) {
 		this.publicationLingerTimeoutMillis = publicationLingerTimeoutMillis;
 		return this;
 	}
 
-	public Builder publicationTimeoutMillis(long publicationTimeoutMillis) {
+	public Context publicationTimeoutMillis(long publicationTimeoutMillis) {
 		this.publicationTimeoutMillis = publicationTimeoutMillis;
 		return this;
 	}
 
-	public Builder ringBufferSize(int ringBufferSize) {
+	public Context ringBufferSize(int ringBufferSize) {
 		this.ringBufferSize = ringBufferSize;
 		return this;
 	}
 
-	public Builder cleanupDelayMillis(int cleanupDelayMillis) {
+	public Context cleanupDelayMillis(int cleanupDelayMillis) {
 		this.cleanupDelayMillis = cleanupDelayMillis;
 		return this;
 	}
@@ -227,11 +228,11 @@ public class Builder {
 
 		assertStreamIdsAreDifferent();
 
-        if (launchEmbeddedMediaDriver) {
-            Assert.isTrue(aeron == null, "aeron should be null when launchEmbeddedMediaDriver is true");
-        } else {
-            Assert.isTrue(aeron != null, "aeron should provided when launchEmbeddedMediaDriver is false");
-        }
+		if (launchEmbeddedMediaDriver) {
+			Assert.isTrue(aeron == null, "aeron should be null when launchEmbeddedMediaDriver is true");
+		} else {
+			Assert.isTrue(aeron != null, "aeron should provided when launchEmbeddedMediaDriver is false");
+		}
 	}
 
 	private void assertStreamIdsAreDifferent() {

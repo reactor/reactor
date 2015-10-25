@@ -59,16 +59,16 @@ public class AeronProcessorTest {
 			processor.shutdown();
 		}
 
-        Thread.sleep(1000);
+		Thread.sleep(1000);
 
-        assertThat(EmbeddedMediaDriverManager.getInstance().getCounter(), is(0));
+		assertThat(EmbeddedMediaDriverManager.getInstance().getCounter(), is(0));
 
-        assertTrue(threadSnapshot.takeAndCompare(new String[] {"hash", "global"},
-                TimeUnit.SECONDS.toMillis(TIMEOUT_SECS)));
+		assertTrue(threadSnapshot.takeAndCompare(new String[] {"hash", "global"},
+				TimeUnit.SECONDS.toMillis(TIMEOUT_SECS)));
 	}
 
 	private AeronProcessor createProcessor() {
-		return AeronProcessor.share(new Builder()
+		return AeronProcessor.share(new Context()
 				.name("processor")
 				.autoCancel(false)
 				.launchEmbeddedMediaDriver(true)
@@ -98,29 +98,29 @@ public class AeronProcessorTest {
 		subscriber.assertAllEventsReceived();
 	}
 
-    @Test
-    public void testCompleteEventIsPropagated() throws InterruptedException {
-        processor = createProcessor();
-        Streams.just(
-                Buffer.wrap("One"),
-                Buffer.wrap("Two"),
-                Buffer.wrap("Three"))
-                .subscribe(processor);
+	@Test
+	public void testCompleteEventIsPropagated() throws InterruptedException {
+		processor = createProcessor();
+		Streams.just(
+				Buffer.wrap("One"),
+				Buffer.wrap("Two"),
+				Buffer.wrap("Three"))
+				.subscribe(processor);
 
-        StepByStepTestSubscriber subscriber = new StepByStepTestSubscriber(TIMEOUT_SECS);
-        processor.subscribe(subscriber);
+		StepByStepTestSubscriber subscriber = new StepByStepTestSubscriber(TIMEOUT_SECS);
+		processor.subscribe(subscriber);
 
-        subscriber.request(1);
-        subscriber.assertNextSignals("One");
+		subscriber.request(1);
+		subscriber.assertNextSignals("One");
 
-        subscriber.request(1);
-        subscriber.assertNextSignals("One", "Two");
+		subscriber.request(1);
+		subscriber.assertNextSignals("One", "Two");
 
-        subscriber.request(1);
-        subscriber.assertNextSignals("One", "Two", "Three");
+		subscriber.request(1);
+		subscriber.assertNextSignals("One", "Two", "Three");
 
-        subscriber.assertCompleteReceived();
-    }
+		subscriber.assertCompleteReceived();
+	}
 
 	@Test
 	public void testWorksWithTwoSubscribers() throws InterruptedException {
@@ -182,8 +182,8 @@ public class AeronProcessorTest {
 		TestSubscriber subscriber = createTestSubscriber(0);
 		processor.subscribe(subscriber);
 
-        Stream<Buffer> sourceStream = Streams.fail(new RuntimeException());
-        sourceStream.subscribe(processor);
+		Stream<Buffer> sourceStream = Streams.fail(new RuntimeException());
+		sourceStream.subscribe(processor);
 
 		subscriber.assertErrorReceived();
 
@@ -202,7 +202,7 @@ public class AeronProcessorTest {
 
 		subscriber.assertCompleteReceived();
 
-        TestUtils.waitForTrue(TIMEOUT_SECS, "Processor is still alive", () -> !processor.alive());
+		TestUtils.waitForTrue(TIMEOUT_SECS, "Processor is still alive", () -> !processor.alive());
 	}
 
 	@Test
@@ -223,11 +223,11 @@ public class AeronProcessorTest {
 	public void testProcessorWorksWithExternalMediaDriver() throws InterruptedException {
 		MediaDriver.Context context = new MediaDriver.Context();
 		final MediaDriver mediaDriver = MediaDriver.launch(context);
-        Aeron.Context ctx = new Aeron.Context();
-        ctx.dirName(mediaDriver.contextDirName());
-        final Aeron aeron = Aeron.connect(ctx);
+		Aeron.Context ctx = new Aeron.Context();
+		ctx.dirName(mediaDriver.contextDirName());
+		final Aeron aeron = Aeron.connect(ctx);
 		try {
-			processor = AeronProcessor.create(new Builder()
+			processor = AeronProcessor.create(new Context()
 					.name("processor")
 					.autoCancel(false)
 					.launchEmbeddedMediaDriver(false)
@@ -255,7 +255,7 @@ public class AeronProcessorTest {
 				Thread.sleep(500);
 			}
 
-            aeron.close();
+			aeron.close();
 
 			mediaDriver.close();
 
@@ -267,31 +267,31 @@ public class AeronProcessorTest {
 		}
 	}
 
-    @Test
-    public void testCreate() throws InterruptedException {
-        processor = AeronProcessor.create("aeron", true, CHANNEL);
+	@Test
+	public void testCreate() throws InterruptedException {
+		processor = AeronProcessor.create("aeron", true, CHANNEL);
 
-        Streams.just(
-                Buffer.wrap("Live"))
-                .subscribe(processor);
+		Streams.just(
+				Buffer.wrap("Live"))
+				.subscribe(processor);
 
-        TestSubscriber subscriber = createTestSubscriber(1);
-        processor.subscribe(subscriber);
+		TestSubscriber subscriber = createTestSubscriber(1);
+		processor.subscribe(subscriber);
 
-        subscriber.assertAllEventsReceived();
-    }
+		subscriber.assertAllEventsReceived();
+	}
 
-    @Test
-    public void testShare() throws InterruptedException {
-        processor = AeronProcessor.share("aeron", true, CHANNEL);
+	@Test
+	public void testShare() throws InterruptedException {
+		processor = AeronProcessor.share("aeron", true, CHANNEL);
 
-        Streams.just(
-                Buffer.wrap("Live"))
-                .subscribe(processor);
+		Streams.just(
+				Buffer.wrap("Live"))
+				.subscribe(processor);
 
-        TestSubscriber subscriber = createTestSubscriber(1);
-        processor.subscribe(subscriber);
+		TestSubscriber subscriber = createTestSubscriber(1);
+		processor.subscribe(subscriber);
 
-        subscriber.assertAllEventsReceived();
-    }
+		subscriber.assertAllEventsReceived();
+	}
 }

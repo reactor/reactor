@@ -30,45 +30,45 @@ class EmbeddedMediaDriverManager {
 
 	private int counter = 0;
 
-    private Aeron aeron;
+	private Aeron aeron;
 
-    static EmbeddedMediaDriverManager getInstance() {
+	static EmbeddedMediaDriverManager getInstance() {
 		return INSTANCE;
 	}
 
 	synchronized void launchDriver() {
 		if (driver == null) {
 			driver = MediaDriver.launchEmbedded();
-            Aeron.Context ctx = new Aeron.Context();
-            ctx.dirName(driver.contextDirName());
-            this.aeron = Aeron.connect(ctx);
+			Aeron.Context ctx = new Aeron.Context();
+			ctx.dirName(driver.contextDirName());
+			this.aeron = Aeron.connect(ctx);
 		}
 		counter++;
 	}
 
 	synchronized void shutdownDriver() {
 		if (counter > 0) {
-            if (--counter == 0) {
-                forceShutdown();
-            }
-        }
+			if (--counter == 0) {
+				forceShutdown();
+			}
+		}
 	}
 
-    synchronized Aeron getAeron() {
-        return aeron;
-    }
+	synchronized Aeron getAeron() {
+		return aeron;
+	}
 
 	synchronized int getCounter() {
 		return counter;
 	}
 
-    synchronized void forceShutdown() {
-        counter = 0;
+	synchronized void forceShutdown() {
+		counter = 0;
 
-        aeron.close();
-        aeron = null;
+		aeron.close();
+		aeron = null;
 
-        CloseHelper.quietClose(driver);
-        driver = null;
-    }
+		CloseHelper.quietClose(driver);
+		driver = null;
+	}
 }

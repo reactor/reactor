@@ -53,7 +53,7 @@ class AliveSendersChecker {
 
 	private final long publicationLingerTimeoutMillis;
 
-    private final Pausable cleanupTaskPausable;
+	private final Pausable cleanupTaskPausable;
 
 	private volatile boolean scheduled = false;
 
@@ -70,7 +70,7 @@ class AliveSendersChecker {
 	private static final Object CHECK_ALIVE_SENDERS = new Object();
 
 	private final SerializedSubscriber<Object> serializedSubscriber =
-            SerializedSubscriber.create(new Subscriber<Object>() {
+			SerializedSubscriber.create(new Subscriber<Object>() {
 		@Override
 		public void onSubscribe(Subscription s) {
 		}
@@ -93,8 +93,8 @@ class AliveSendersChecker {
 		}
 	});
 
-    AliveSendersChecker(Logger logger, AeronHelper aeronHelper, Publication commandsPub,
-                        String senderChannel,
+	AliveSendersChecker(Logger logger, AeronHelper aeronHelper, Publication commandsPub,
+						String senderChannel,
 						int commandReplyStreamId, long publicationLingerTimeoutMillis, int cleanupDelayMillis) {
 		this.logger = logger;
 		this.aeronHelper = aeronHelper;
@@ -102,13 +102,13 @@ class AliveSendersChecker {
 		this.publicationLingerTimeoutMillis = publicationLingerTimeoutMillis;
 		this.commandsSub = aeronHelper.addSubscription(senderChannel, commandReplyStreamId);
 
-        cleanupTaskPausable = Timers.global().schedule(new Consumer<Long>() {
-            @Override
-            public void accept(Long value) {
-                serializedSubscriber.onNext(CLEANUP);
-            }
-        }, cleanupDelayMillis, TimeUnit.MILLISECONDS);
-    }
+		cleanupTaskPausable = Timers.global().schedule(new Consumer<Long>() {
+			@Override
+			public void accept(Long value) {
+				serializedSubscriber.onNext(CLEANUP);
+			}
+		}, cleanupDelayMillis, TimeUnit.MILLISECONDS);
+	}
 
 	void scheduleCheck() {
 		if (!scheduled) {
@@ -118,53 +118,53 @@ class AliveSendersChecker {
 	}
 
 	void shutdown() {
-        cleanupTaskPausable.cancel();
+		cleanupTaskPausable.cancel();
 		commandsSub.close();
 	}
 
 	void cleanup() {
-        try {
-            int nFragmentsReceived;
-            long startTime = System.nanoTime();
-            do {
-                nFragmentsReceived = commandsSub.poll(cleanupFragmentHandler, 100);
-            } while (nFragmentsReceived > 0 &&
-                    (System.nanoTime() - startTime < TimeUnit.MILLISECONDS.toMillis(50)));
-        } catch (Exception e) {
-            logger.error(this + " - Failed to cleanup");
-        }
+		try {
+			int nFragmentsReceived;
+			long startTime = System.nanoTime();
+			do {
+				nFragmentsReceived = commandsSub.poll(cleanupFragmentHandler, 100);
+			} while (nFragmentsReceived > 0 &&
+					(System.nanoTime() - startTime < TimeUnit.MILLISECONDS.toMillis(50)));
+		} catch (Exception e) {
+			logger.error(this + " - Failed to cleanup");
+		}
 	}
 
-    class AliveCountingFragmentHandler implements FragmentHandler {
+	class AliveCountingFragmentHandler implements FragmentHandler {
 
-        volatile int aliveSendersCounter = 0;
+		volatile int aliveSendersCounter = 0;
 
-        FragmentHandler delegate;
+		FragmentHandler delegate;
 
-        AliveCountingFragmentHandler(UUID id) {
-            this.delegate = new FragmentAssembler(new FragmentHandler() {
-                @Override
-                public void onFragment(DirectBuffer buffer, int offset, int length, Header header) {
-                    byte command = buffer.getByte(offset);
-                    if (command == CommandType.IsAliveReply.getCode()) {
-                        if (id.getMostSignificantBits() == buffer.getLong(offset + 1) &&
-                                id.getLeastSignificantBits() == buffer.getLong(offset + 9)) {
-                            aliveSendersCounter++;
-                        }
-                    }
-                }
-            });
-        }
+		AliveCountingFragmentHandler(UUID id) {
+			this.delegate = new FragmentAssembler(new FragmentHandler() {
+				@Override
+				public void onFragment(DirectBuffer buffer, int offset, int length, Header header) {
+					byte command = buffer.getByte(offset);
+					if (command == CommandType.IsAliveReply.getCode()) {
+						if (id.getMostSignificantBits() == buffer.getLong(offset + 1) &&
+								id.getLeastSignificantBits() == buffer.getLong(offset + 9)) {
+							aliveSendersCounter++;
+						}
+					}
+				}
+			});
+		}
 
-        @Override
-        public void onFragment(DirectBuffer buffer, int offset, int length, Header header) {
-            delegate.onFragment(buffer, offset, length, header);
-        }
+		@Override
+		public void onFragment(DirectBuffer buffer, int offset, int length, Header header) {
+			delegate.onFragment(buffer, offset, length, header);
+		}
 
-        public int getAliveSendersCounter() {
-            return aliveSendersCounter;
-        }
-    }
+		public int getAliveSendersCounter() {
+			return aliveSendersCounter;
+		}
+	}
 
 	void checkAliveSenders() {
 		scheduled = false;
@@ -172,23 +172,23 @@ class AliveSendersChecker {
 		final UUID id = sendRequestAlive();
 		if (id == null) {
 			allDead = true;
-            if (logger.isDebugEnabled()) {
-                logger.info("No alive senders detected");
-            }
+			if (logger.isDebugEnabled()) {
+				logger.info("No alive senders detected");
+			}
 			return;
 		}
 
-        AliveCountingFragmentHandler fragmentHandler = new AliveCountingFragmentHandler(id);
+		AliveCountingFragmentHandler fragmentHandler = new AliveCountingFragmentHandler(id);
 
-        final IdleStrategy idleStrategy = AeronHelper.newBackoffIdleStrategy();
-        final long waitForReplyNs = TimeUnit.MILLISECONDS.toNanos(publicationLingerTimeoutMillis * 2);
+		final IdleStrategy idleStrategy = AeronHelper.newBackoffIdleStrategy();
+		final long waitForReplyNs = TimeUnit.MILLISECONDS.toNanos(publicationLingerTimeoutMillis * 2);
 		long startTime = System.nanoTime();
 		do {
 			int nFragmentsReceived = commandsSub.poll(fragmentHandler, 100);
 			idleStrategy.idle(nFragmentsReceived);
 		} while (System.nanoTime() - startTime < waitForReplyNs);
 
-        allDead = fragmentHandler.getAliveSendersCounter() == 0;
+		allDead = fragmentHandler.getAliveSendersCounter() == 0;
 
 		if (allDead) {
 			if (logger.isDebugEnabled()) {

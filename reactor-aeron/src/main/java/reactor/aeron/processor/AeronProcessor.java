@@ -44,15 +44,15 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>
  * An instance of the processor is created upon a single Aeron channel of
- * {@link Builder#channel} and requires 4 <b>different</b> streamIds to function:<br>
+ * {@link Context#channel} and requires 4 <b>different</b> streamIds to function:<br>
  * <ul>
- *     <li>{@link Builder#streamId} - used for sending Next and Complete signals from
+ *     <li>{@link Context#streamId} - used for sending Next and Complete signals from
  *     the signals sender to the signals receiver</li>
- *     <li>{@link Builder#errorStreamId} - for Error signals</li>
- *     <li>{@link Builder#commandRequestStreamId} - for {@link CommandType#Request},
+ *     <li>{@link Context#errorStreamId} - for Error signals</li>
+ *     <li>{@link Context#commandRequestStreamId} - for {@link CommandType#Request},
  *     {@link CommandType#Cancel} and {@link CommandType#IsAliveRequest}</li>
  *     from the signals receiver to the signals sender
- *     <li>{@link Builder#commandReplyStreamId} - for command execution results from
+ *     <li>{@link Context#commandReplyStreamId} - for command execution results from
  *     the signals sender to the signals receiver</li>
  * </ul>
  *
@@ -60,8 +60,8 @@ import java.util.concurrent.TimeUnit;
  * The processor could launch an embedded Media Driver for the application
  * if requested via <code>launchEmbeddedMediaDriver</code> parameter during
  * the processor creation via static methods or via
- * {@link Builder#launchEmbeddedMediaDriver(boolean)} when created using the
- * {@link Builder}.<br>
+ * {@link Context#launchEmbeddedMediaDriver(boolean)} when created using the
+ * {@link Context}.<br>
  * Only a single instance of the embedded media driver is launched for the
  * application.<br>
  * The launched Media Driver instance is shut down once the last
@@ -69,12 +69,12 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>
  * The processor created via {@link #create(String, boolean, String)}
- * or {@link Builder#create()} methods respects the Reactive Streams contract
+ * or {@link #create(Context)} methods respects the Reactive Streams contract
  * and must not be signalled concurrently on any onXXXX methods.<br>
  * Nonetheless Reactor allows creating of a processor which can be used by
  * publishers from different threads. In this case the processor should be
  * created via either {@link #share(String, boolean, String)}
- * or {@link Builder#share()} methods.
+ * or {@link #share(Context)} methods.
  *
  * <p>
  * Each subscriber is assigned a unique thread that stops either on
@@ -87,7 +87,7 @@ import java.util.concurrent.TimeUnit;
  *
  * <p>
  * The processor could be assigned a custom executor service when is
- * constructed via {@link Builder}. The executor service decides upon threads
+ * constructed via {@link Context}. The executor service decides upon threads
  * allocation for the processor subscribers.
  *
  * <p>
@@ -107,10 +107,10 @@ import java.util.concurrent.TimeUnit;
  * When the Aeron buffer for published messages becomes completely full
  * the processor starts to throttle and as a result method
  * {@link #onNext(Buffer)} blocks until messages are consumed or
- * {@link Builder#publicationTimeoutMillis} timeout elapses.<br>
+ * {@link Context#publicationTimeoutMillis} timeout elapses.<br>
  *
  * If a message cannot be published into Aeron within
- * {@link Builder#publicationTimeoutMillis} then it is discarded.
+ * {@link Context#publicationTimeoutMillis} then it is discarded.
  * In the next version of the processor this behaviour is likely to change.<br>
  *
  * For configuration of Aeron buffers refer to
@@ -119,7 +119,7 @@ import java.util.concurrent.TimeUnit;
  * <p>
  * Instances of {@link AeronProcessor} can communicate with each other over a
  * network.<br>
- * In this case {@link Builder#channel} should be a multicast channel. For more information
+ * In this case {@link Context#channel} should be a multicast channel. For more information
  * regarding Aeron channels configuration please refer to
  * <a href="https://github.com/real-logic/Aeron/wiki/Channel-Configuration">Channel Coniguration</a>.
  * <br>
@@ -174,20 +174,20 @@ public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 	private final AeronHelper aeronHelper;
 
 	/**
-	 * Creates a new processor using the builder
+	 * Creates a new processor using the context
 	 *
-	 * @param builder configuration of the processor
+	 * @param context configuration of the processor
 	 */
-	AeronProcessor(Builder builder, boolean multiPublishers) {
-		super(builder.name, builder.executorService, builder.autoCancel);
+	AeronProcessor(Context context, boolean multiPublishers) {
+		super(context.name, context.executorService, context.autoCancel);
 		this.exceptionSerializer = new BasicExceptionSerializer();
-		this.aeronHelper = builder.createAeronHelper();
-		this.subscriber = createAeronSubscriber(builder, multiPublishers);
-		this.publisher = createAeronPublisher(builder);
+		this.aeronHelper = context.createAeronHelper();
+		this.subscriber = createAeronSubscriber(context, multiPublishers);
+		this.publisher = createAeronPublisher(context);
 	}
 
-	private AeronPublisher createAeronPublisher(Builder builder) {
-		return new AeronPublisher(builder,
+	private AeronPublisher createAeronPublisher(Context context) {
+		return new AeronPublisher(context,
 				aeronHelper,
 				exceptionSerializer,
 				logger,
@@ -220,9 +220,9 @@ public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 				});
 	}
 
-	private AeronSubscriber createAeronSubscriber(Builder builder, boolean multiPublishers) {
+	private AeronSubscriber createAeronSubscriber(Context context, boolean multiPublishers) {
 		return new AeronSubscriber(
-				builder,
+				context,
 				aeronHelper,
 				executor,
 				exceptionSerializer,
@@ -246,18 +246,18 @@ public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 	 * @return a new processor
 	 */
 	public static AeronProcessor create(String name, boolean autoCancel, String channel) {
-		Builder builder = new Builder()
+		Context context = new Context()
 				.name(name)
 				.autoCancel(autoCancel)
 				.launchEmbeddedMediaDriver(true)
 				.channel(channel);
 
-		return create(builder);
+		return create(context);
 	}
 
-	public static AeronProcessor create(Builder builder) {
-		builder.validate();
-		return new AeronProcessor(builder, false);
+	public static AeronProcessor create(Context context) {
+		context.validate();
+		return new AeronProcessor(context, false);
 	}
 
 	/**
@@ -270,18 +270,18 @@ public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 	 * @return a new processor
 	 */
 	public static AeronProcessor share(String name, boolean autoCancel, String channel) {
-		Builder builder = new Builder()
+		Context context = new Context()
 				.name(name)
 				.autoCancel(autoCancel)
 				.launchEmbeddedMediaDriver(true)
 				.channel(channel);
 
-		return share(builder);
+		return share(context);
 	}
 
-	public static AeronProcessor share(Builder builder) {
-		builder.validate();
-		return new AeronProcessor(builder, true);
+	public static AeronProcessor share(Context context) {
+		context.validate();
+		return new AeronProcessor(context, true);
 	}
 
 	/**
