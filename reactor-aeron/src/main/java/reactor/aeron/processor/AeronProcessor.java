@@ -174,24 +174,15 @@ public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 	private final AeronHelper aeronHelper;
 
 	/**
-	 * Creates a new processor builder
-	 *
-	 * @return a processor builder
-	 */
-	public static Builder builder() {
-		return new Builder();
-	}
-
-	/**
 	 * Creates a new processor using the builder
 	 *
 	 * @param builder configuration of the processor
 	 */
-	AeronProcessor(Builder builder) {
+	AeronProcessor(Builder builder, boolean multiPublishers) {
 		super(builder.name, builder.executorService, builder.autoCancel);
 		this.exceptionSerializer = new BasicExceptionSerializer();
 		this.aeronHelper = builder.createAeronHelper();
-		this.subscriber = createAeronSubscriber(builder);
+		this.subscriber = createAeronSubscriber(builder, multiPublishers);
 		this.publisher = createAeronPublisher(builder);
 	}
 
@@ -229,13 +220,14 @@ public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 				});
 	}
 
-	private AeronSubscriber createAeronSubscriber(Builder builder) {
+	private AeronSubscriber createAeronSubscriber(Builder builder, boolean multiPublishers) {
 		return new AeronSubscriber(
 				builder,
 				aeronHelper,
 				executor,
 				exceptionSerializer,
 				logger,
+				multiPublishers,
 				new Runnable() {
 					@Override
 					public void run() {
@@ -254,12 +246,18 @@ public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 	 * @return a new processor
 	 */
 	public static AeronProcessor create(String name, boolean autoCancel, String channel) {
-		return new Builder()
+		Builder builder = new Builder()
 				.name(name)
 				.autoCancel(autoCancel)
 				.launchEmbeddedMediaDriver(true)
-				.channel(channel)
-				.create();
+				.channel(channel);
+
+		return create(builder);
+	}
+
+	public static AeronProcessor create(Builder builder) {
+		builder.validate();
+		return new AeronProcessor(builder, false);
 	}
 
 	/**
@@ -272,12 +270,18 @@ public class AeronProcessor extends ExecutorProcessor<Buffer, Buffer> {
 	 * @return a new processor
 	 */
 	public static AeronProcessor share(String name, boolean autoCancel, String channel) {
-		return new Builder()
+		Builder builder = new Builder()
 				.name(name)
 				.autoCancel(autoCancel)
 				.launchEmbeddedMediaDriver(true)
-				.channel(channel)
-				.share();
+				.channel(channel);
+
+		return share(builder);
+	}
+
+	public static AeronProcessor share(Builder builder) {
+		builder.validate();
+		return new AeronProcessor(builder, true);
 	}
 
 	/**

@@ -30,9 +30,9 @@ import java.util.concurrent.TimeUnit;
  */
 public class Builder {
 
-    public static final String DEFAULT_RECEIVER_CHANNEL = "udp://localhost:12001";
-
     public static final int DEFAULT_SENDER_PORT = 12000;
+
+	public static final int DEFAULT_RECEIVER_PORT = 12001;
 
 	/**
 	 * Processor name used as a base name for threads created by
@@ -46,9 +46,9 @@ public class Builder {
 	 */
 	boolean autoCancel;
 
-    String senderChannel = "udp://localhost:" + DEFAULT_SENDER_PORT;
+    String senderChannel = createChannelForPort(DEFAULT_SENDER_PORT);
 
-    String receiverChannel = DEFAULT_RECEIVER_CHANNEL;
+    String receiverChannel = createChannelForPort(DEFAULT_RECEIVER_PORT);
 
 	/**
 	 * Aeron StreamId used by the signals sender to publish Next and
@@ -89,11 +89,6 @@ public class Builder {
 	ExecutorService executorService;
 
 	/**
-	 * If publishing from multiple threads should be supported
-	 */
-	boolean multiPublishers;
-
-	/**
 	 * Number of fragments that could be read by the signals receiver during
      * a single call to {@link uk.co.real_logic.aeron.Subscription#poll(FragmentHandler, int)}
      * method
@@ -127,7 +122,8 @@ public class Builder {
 	 */
 	int cleanupDelayMillis = 100;
 
-	Builder() {
+	private static String createChannelForPort(int port) {
+		return "udp://localhost:" + port;
 	}
 
 	public Builder name(String name) {
@@ -147,11 +143,21 @@ public class Builder {
 	}
 
     public Builder senderPort(int senderPort) {
-        this.senderChannel = "udp://localhost:" + senderPort;
+        this.senderChannel = createChannelForPort(senderPort);
         return this;
     }
 
-    public Builder receiverChannel(String receiverChannel) {
+	public Builder senderChannel(String senderChannel) {
+		this.senderChannel = senderChannel;
+		return this;
+	}
+
+	public Builder receiverPort(int receiverPort) {
+		this.receiverChannel = createChannelForPort(receiverPort);
+		return this;
+	}
+
+	public Builder receiverChannel(String receiverChannel) {
         this.receiverChannel = receiverChannel;
         return this;
     }
@@ -216,30 +222,7 @@ public class Builder {
 		return this;
 	}
 
-	/**
-	 * Creates a new processor supporting a single publishing thread only
-     * using the builder fields.
-	 *
-	 * @return a new processor
-	 */
-	public AeronProcessor create() {
-		validate();
-		return new AeronProcessor(this);
-	}
-
-	/**
-	 * Creates a new processor supports publishing from multiple threads
-     * using the builder fields.
-	 *
-	 * @return a new processor
-	 */
-	public AeronProcessor share() {
-		this.multiPublishers = true;
-		validate();
-		return new AeronProcessor(this);
-	}
-
-	private void validate() {
+	void validate() {
 		Assert.isTrue(name != null, "name should be provided");
 
 		assertStreamIdsAreDifferent();
@@ -270,13 +253,5 @@ public class Builder {
 		aeronHelper.initialise();
 		return aeronHelper;
 	}
-
-    public AeronSubscriber createSubscriber() {
-        return new AeronSubscriber(this);
-    }
-
-    public AeronPublisher createPublisher() {
-        return new AeronPublisher(this);
-    }
 
 }

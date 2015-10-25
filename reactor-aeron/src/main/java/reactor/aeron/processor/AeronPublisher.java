@@ -58,6 +58,11 @@ public class AeronPublisher implements Publisher<Buffer> {
 
 	private final boolean shouldShutdownCreatedObjects;
 
+	public static AeronPublisher create(Builder builder) {
+		builder.validate();
+		return new AeronPublisher(builder);
+	}
+
 	AeronPublisher(Builder builder,
 				   AeronHelper aeronHelper,
 				   Serializer<Throwable> exceptionSerializer,

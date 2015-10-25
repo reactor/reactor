@@ -128,18 +128,29 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 		}
 	}
 
+	public static AeronSubscriber create(Builder builder) {
+		builder.validate();
+		return new AeronSubscriber(builder, false);
+	}
+
+	public static AeronSubscriber share(Builder builder) {
+		builder.validate();
+		return new AeronSubscriber(builder, true);
+	}
+
 	public AeronSubscriber(Builder builder,
 						   AeronHelper aeronHelper,
 						   ExecutorService executor,
 						   Serializer<Throwable> exceptionSerializer,
 						   Logger logger,
+						   boolean multiPublishers,
 						   Runnable postShutdownTask) {
 		this.aeronHelper = aeronHelper;
 		this.postShutdownTask = postShutdownTask;
 		this.executor = executor;
 		this.shouldShutdownCreatedObjects = false;
 
-		this.delegateProcessor = createProcessor(builder);
+		this.delegateProcessor = createProcessor(builder, multiPublishers);
 		subscribeProcessor(builder, aeronHelper, exceptionSerializer);
 
 		this.commandsPoller = createCommandsPoller(builder, aeronHelper, logger);
@@ -155,7 +166,7 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 		delegateProcessor.subscribe(new RingBufferProcessorSubscriber(builder, aeronHelper, exceptionSerializer));
 	}
 
-	public AeronSubscriber(Builder builder) {
+	public AeronSubscriber(Builder builder, boolean multiPublishers) {
 		this.aeronHelper = builder.createAeronHelper();
 		this.postShutdownTask = new Runnable() {
 			@Override
@@ -164,7 +175,7 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 		};
 		this.executor = Executors.newCachedThreadPool();
 
-		this.delegateProcessor = createProcessor(builder);
+		this.delegateProcessor = createProcessor(builder, multiPublishers);
 		subscribeProcessor(builder, aeronHelper, new BasicExceptionSerializer());
 
 		this.commandsPoller = createCommandsPoller(builder, aeronHelper, LoggerFactory.getLogger(AeronSubscriber.class));
@@ -173,9 +184,9 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 		this.shouldShutdownCreatedObjects = true;
 	}
 
-	RingBufferProcessor<Buffer> createProcessor(Builder builder) {
+	RingBufferProcessor<Buffer> createProcessor(Builder builder, boolean multiPublishers) {
 		RingBufferProcessor<Buffer> processor;
-		if (builder.multiPublishers) {
+		if (multiPublishers) {
 			processor = RingBufferProcessor.share(builder.name + "-ring-buffer-consumer", builder.ringBufferSize);
 		} else {
 			processor = RingBufferProcessor.create(builder.name + "-ring-buffer-consumer", builder.ringBufferSize);

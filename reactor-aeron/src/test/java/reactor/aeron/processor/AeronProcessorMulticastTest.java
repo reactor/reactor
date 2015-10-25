@@ -188,13 +188,12 @@ public class AeronProcessorMulticastTest {
 	}
 
 	private AeronProcessor createProcessor(String name) {
-		return AeronProcessor.builder()
+		return AeronProcessor.share(new Builder()
 				.name(name)
 				.autoCancel(false)
 				.launchEmbeddedMediaDriver(true)
 				.channel(CHANNEL)
-				.publicationLingerTimeoutMillis(250)
-				.share();
+				.publicationLingerTimeoutMillis(250));
 	}
 
 	private TestSubscriber createTestSubscriber(int nExpectedEvents) {

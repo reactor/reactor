@@ -68,7 +68,7 @@ public class AeronProcessorTest {
 	}
 
 	private AeronProcessor createProcessor() {
-		return AeronProcessor.builder()
+		return AeronProcessor.share(new Builder()
 				.name("processor")
 				.autoCancel(false)
 				.launchEmbeddedMediaDriver(true)
@@ -77,8 +77,7 @@ public class AeronProcessorTest {
 				.errorStreamId(STREAM_ID + 1)
 				.commandRequestStreamId(STREAM_ID + 2)
 				.commandReplyStreamId(STREAM_ID + 3)
-				.publicationLingerTimeoutMillis(50)
-				.share();
+				.publicationLingerTimeoutMillis(50));
 	}
 
 	private TestSubscriber createTestSubscriber(int nExpectedEvents) {
@@ -228,7 +227,7 @@ public class AeronProcessorTest {
         ctx.dirName(mediaDriver.contextDirName());
         final Aeron aeron = Aeron.connect(ctx);
 		try {
-			processor = AeronProcessor.builder()
+			processor = AeronProcessor.create(new Builder()
 					.name("processor")
 					.autoCancel(false)
 					.launchEmbeddedMediaDriver(false)
@@ -238,8 +237,7 @@ public class AeronProcessorTest {
 					.commandRequestStreamId(STREAM_ID + 2)
 					.commandReplyStreamId(STREAM_ID + 3)
 					.publicationLingerTimeoutMillis(50)
-                    .aeron(aeron)
-					.create();
+					.aeron(aeron));
 
 			Streams.just(
 					Buffer.wrap("Live"))

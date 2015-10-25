@@ -88,7 +88,7 @@ public class AeronProcessorVerificationTest extends IdentityProcessorVerificatio
 		counter += 4;
 		int streamId = STREAM_ID + counter;
 
-		processor = AeronProcessor.builder()
+		processor = AeronProcessor.create(new Builder()
 				.name("processor")
 				.autoCancel(true)
 				.launchEmbeddedMediaDriver(true)
@@ -99,8 +99,7 @@ public class AeronProcessorVerificationTest extends IdentityProcessorVerificatio
 				.commandReplyStreamId(streamId + 3)
 				.publicationLingerTimeoutMillis(250)
 				.publicationTimeoutMillis(500)
-                .ringBufferSize(1024 * 10)
-				.create();
+				.ringBufferSize(1024 * 10));
 
 		return processor;
 	}
