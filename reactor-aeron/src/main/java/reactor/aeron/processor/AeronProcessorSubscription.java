@@ -63,7 +63,7 @@ class AeronProcessorSubscription implements Subscription {
 
 	void sendRequestCommand(long n) {
 		BufferClaim bufferClaim = aeronHelper.publish(commandPub, new BufferClaim(), 9,
-		  AeronHelper.newBackoffIdleStrategy());
+				AeronHelper.newBackoffIdleStrategy());
 		if (bufferClaim != null) {
 			try {
 				MutableDirectBuffer mutableBuffer = bufferClaim.buffer();
@@ -73,6 +73,8 @@ class AeronProcessorSubscription implements Subscription {
 			} finally {
 				bufferClaim.commit();
 			}
+		} else {
+			//TODO: Handle a situation when request command cannot be sent
 		}
 	}
 

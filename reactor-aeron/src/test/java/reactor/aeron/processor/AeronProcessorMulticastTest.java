@@ -78,7 +78,7 @@ public class AeronProcessorMulticastTest {
 	}
 
 	@Test
-	public void testCompleteSendByOtherProcessorDoesNotShutdownMine() throws InterruptedException {
+	public void testCompleteSentByOtherProcessorDoesNotShutdownMine() throws InterruptedException {
 		AeronProcessor myProcessor = createProcessor("myProcessor");
 		TestSubscriber mySubscriber = createTestSubscriber(3);
 		myProcessor.subscribe(mySubscriber);

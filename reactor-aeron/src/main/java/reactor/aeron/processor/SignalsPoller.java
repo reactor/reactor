@@ -27,17 +27,13 @@ class SignalsPoller implements Runnable {
 
 	private final AliveSendersChecker aliveSendersChecker;
 
-	private final int streamId;
-
-	private final int errorStreamId;
-
 	private final Runnable completionTask;
 
 	private final Function<Void, Boolean> processorAliveFunction;
 
 	private final Serializer<Throwable> exceptionSerializer;
 
-	private final String senderChannel;
+	private final Context context;
 
 	/**
 	 * Complete signal was received from one of senders
@@ -153,31 +149,30 @@ class SignalsPoller implements Runnable {
 
 	}
 
-	public SignalsPoller(Subscriber<? super Buffer> subscriber,
+	public SignalsPoller(Context context,
+						 Subscriber<? super Buffer> subscriber,
 						 AeronProcessorSubscription processorSubscription,
-						 AeronHelper aeronHelper, String senderChannel,
+						 AeronHelper aeronHelper,
 						 AliveSendersChecker aliveSendersChecker,
 						 Serializer<Throwable> exceptionSerializer,
-						 int streamId,
-						 int errorStreamId,
 						 Runnable completionTask,
 						 Function<Void, Boolean> processorAliveFunction) {
+		this.context = context;
 		this.subscriber = subscriber;
 		this.processorSubscription = processorSubscription;
 		this.aeronHelper = aeronHelper;
 		this.aliveSendersChecker = aliveSendersChecker;
 		this.exceptionSerializer = exceptionSerializer;
-		this.senderChannel = senderChannel;
-		this.streamId = streamId;
-		this.errorStreamId = errorStreamId;
 		this.completionTask = completionTask;
 		this.processorAliveFunction = processorAliveFunction;
 	}
 
 	@Override
 	public void run() {
-		uk.co.real_logic.aeron.Subscription nextCompleteSub = aeronHelper.addSubscription(senderChannel, streamId);
-		uk.co.real_logic.aeron.Subscription errorSub = aeronHelper.addSubscription(senderChannel, errorStreamId);
+		uk.co.real_logic.aeron.Subscription nextCompleteSub =
+				aeronHelper.addSubscription(context.receiverChannel, context.streamId);
+		uk.co.real_logic.aeron.Subscription errorSub =
+				aeronHelper.addSubscription(context.receiverChannel, context.errorStreamId);
 
 		//TODO: Possible timing issue due to CommandsPoller termination
 		try {
@@ -200,7 +195,7 @@ class SignalsPoller implements Runnable {
 					break;
 				}
 
-				if (aliveSendersChecker.isAllDead()) {
+				if (aliveSendersChecker.isNoSendersDetected()) {
 					// Executed when Complete was received and all publishers are dead
 					subscriber.onComplete();
 					break;

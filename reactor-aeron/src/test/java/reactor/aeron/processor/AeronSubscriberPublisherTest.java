@@ -51,12 +51,12 @@ public class AeronSubscriberPublisherTest {
 	@Test
 	public void testNextSignalIsReceivedByPublisher() throws InterruptedException {
 		final int senderPort = SocketUtils.findAvailableTcpPort();
-		final String receiverChannel = "udp://localhost:" + SocketUtils.findAvailableUdpPort();
+		final int receiverPort = SocketUtils.findAvailableTcpPort();
 
 		AeronSubscriber subscriber = AeronSubscriber.create(new Context()
 				.name("subscriber")
 				.senderPort(senderPort)
-				.receiverChannel(receiverChannel));
+				.receiverChannel("udp://127.0.0.1:" + receiverPort));
 
 		Streams.just(
 				Buffer.wrap("One"),
@@ -66,8 +66,8 @@ public class AeronSubscriberPublisherTest {
 
 		AeronPublisher publisher = AeronPublisher.create(new Context()
 				.name("publisher")
-				.senderPort(senderPort)
-				.receiverChannel(receiverChannel));
+				.senderChannel("udp://127.0.0.1:" + senderPort)
+				.receiverPort(receiverPort));
 
 		TestSubscriber testSubscriber = new TestSubscriber(1, 3);
 		publisher.subscribe(testSubscriber);

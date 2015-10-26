@@ -57,7 +57,7 @@ class AliveSendersChecker {
 
 	private volatile boolean scheduled = false;
 
-	private volatile boolean allDead = false;
+	private volatile boolean noSendersDetected = false;
 
 	private final FragmentHandler cleanupFragmentHandler = new FragmentHandler() {
 		@Override
@@ -93,21 +93,18 @@ class AliveSendersChecker {
 		}
 	});
 
-	AliveSendersChecker(Logger logger, AeronHelper aeronHelper, Publication commandsPub,
-						String senderChannel,
-						int commandReplyStreamId, long publicationLingerTimeoutMillis, int cleanupDelayMillis) {
+	AliveSendersChecker(Logger logger, Context context, AeronHelper aeronHelper, Publication commandsPub) {
 		this.logger = logger;
 		this.aeronHelper = aeronHelper;
 		this.commandsPub = commandsPub;
-		this.publicationLingerTimeoutMillis = publicationLingerTimeoutMillis;
-		this.commandsSub = aeronHelper.addSubscription(senderChannel, commandReplyStreamId);
-
-		cleanupTaskPausable = Timers.global().schedule(new Consumer<Long>() {
+		this.publicationLingerTimeoutMillis = context.publicationLingerTimeoutMillis;
+		this.commandsSub = aeronHelper.addSubscription(context.receiverChannel, context.commandReplyStreamId);
+		this.cleanupTaskPausable = Timers.global().schedule(new Consumer<Long>() {
 			@Override
 			public void accept(Long value) {
 				serializedSubscriber.onNext(CLEANUP);
 			}
-		}, cleanupDelayMillis, TimeUnit.MILLISECONDS);
+		}, context.cleanupDelayMillis, TimeUnit.MILLISECONDS);
 	}
 
 	void scheduleCheck() {
@@ -171,7 +168,7 @@ class AliveSendersChecker {
 
 		final UUID id = sendRequestAlive();
 		if (id == null) {
-			allDead = true;
+			noSendersDetected = true;
 			if (logger.isDebugEnabled()) {
 				logger.info("No alive senders detected");
 			}
@@ -188,9 +185,9 @@ class AliveSendersChecker {
 			idleStrategy.idle(nFragmentsReceived);
 		} while (System.nanoTime() - startTime < waitForReplyNs);
 
-		allDead = fragmentHandler.getAliveSendersCounter() == 0;
+		noSendersDetected = fragmentHandler.getAliveSendersCounter() == 0;
 
-		if (allDead) {
+		if (noSendersDetected) {
 			if (logger.isDebugEnabled()) {
 				logger.info("No alive senders detected");
 			}
@@ -220,7 +217,7 @@ class AliveSendersChecker {
 		return id;
 	}
 
-	public boolean isAllDead() {
-		return allDead;
+	public boolean isNoSendersDetected() {
+		return noSendersDetected;
 	}
 }

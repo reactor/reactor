@@ -69,8 +69,8 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 									  Serializer<Throwable> exceptionSerializer) {
 			this.aeronHelper = aeronHelper;
 			this.exceptionSerializer = exceptionSerializer;
-			this.nextCompletePub = aeronHelper.addPublication(context.senderChannel, context.streamId);
-			this.errorPub = aeronHelper.addPublication(context.senderChannel, context.errorStreamId);
+			this.nextCompletePub = aeronHelper.addPublication(context.receiverChannel, context.streamId);
+			this.errorPub = aeronHelper.addPublication(context.receiverChannel, context.errorStreamId);
 			this.bufferClaim = new BufferClaim();
 			this.idleStrategy = AeronHelper.newBackoffIdleStrategy();
 		}
@@ -159,8 +159,7 @@ public class AeronSubscriber implements Subscriber<Buffer> {
 	}
 
 	private CommandsPoller createCommandsPoller(Context context, AeronHelper aeronHelper, Logger logger) {
-		return new CommandsPoller(logger, aeronHelper, context.senderChannel, context.receiverChannel,
-				context.commandRequestStreamId, context.commandReplyStreamId);
+		return new CommandsPoller(logger, context, aeronHelper);
 	}
 
 	private void subscribeProcessor(Context context, AeronHelper aeronHelper,

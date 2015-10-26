@@ -80,14 +80,8 @@ public class AeronPublisher implements Publisher<Buffer> {
 		this.shouldShutdownCreatedObjects = false;
 		this.completionTask = completionTask;
 		this.processorAliveFunction = processorAliveFunction;
-		this.commandPub = aeronHelper.addPublication(context.receiverChannel, context.commandRequestStreamId);
+		this.commandPub = createCommandPub(context, aeronHelper);
 		this.aliveSendersChecker = createAliveSendersChecker(context, aeronHelper, logger);
-	}
-
-	private AliveSendersChecker createAliveSendersChecker(Context context, AeronHelper aeronHelper, Logger logger) {
-		return new AliveSendersChecker(logger, aeronHelper, commandPub,
-				context.senderChannel, context.commandReplyStreamId,
-				context.publicationLingerTimeoutMillis, context.cleanupDelayMillis);
 	}
 
 	public AeronPublisher(Context context) {
@@ -114,8 +108,16 @@ public class AeronPublisher implements Publisher<Buffer> {
 				return false;
 			}
 		};
-		this.commandPub = aeronHelper.addPublication(context.receiverChannel, context.commandRequestStreamId);
+		this.commandPub = createCommandPub(context, aeronHelper);
 		this.aliveSendersChecker = createAliveSendersChecker(context, aeronHelper, logger);
+	}
+
+	private Publication createCommandPub(Context context, AeronHelper aeronHelper) {
+		return aeronHelper.addPublication(context.senderChannel, context.commandRequestStreamId);
+	}
+
+	private AliveSendersChecker createAliveSendersChecker(Context context, AeronHelper aeronHelper, Logger logger) {
+		return new AliveSendersChecker(logger, context, aeronHelper, commandPub);
 	}
 
 	@Override
@@ -139,8 +141,8 @@ public class AeronPublisher implements Publisher<Buffer> {
 
 	private SignalsPoller createSignalsPoller(Subscriber<? super Buffer> subscriber,
 											  final AeronProcessorSubscription subscription) {
-		return new SignalsPoller(subscriber, subscription, aeronHelper, context.senderChannel,
-				aliveSendersChecker, exceptionSerializer, context.streamId, context.errorStreamId, new Runnable() {
+		return new SignalsPoller(context, subscriber, subscription, aeronHelper, aliveSendersChecker,
+				exceptionSerializer, new Runnable() {
 
 			@Override
 			public void run() {
