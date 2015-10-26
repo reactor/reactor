@@ -24,24 +24,22 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.bus.selector.HeaderResolver;
-import reactor.fn.timer.Timer;
-import reactor.io.net.ChannelStream;
+import reactor.core.support.Bounded;
+import reactor.io.net.ReactiveChannel;
 import reactor.io.net.http.model.HttpHeaders;
 import reactor.io.net.http.model.Method;
 import reactor.io.net.http.model.Protocol;
 import reactor.io.net.http.model.ResponseHeaders;
 import reactor.io.net.http.model.Status;
 import reactor.io.net.http.model.Transfer;
-import reactor.rx.Stream;
-import reactor.rx.Streams;
 
 /**
- * A Request/Response {@link ChannelStream} extension that provides for several helpers to
+ * An HTTP {@link ReactiveChannel} extension that provides for several helpers to
  * control HTTP behavior and observe its metadata.
  * @author Sebastien Deleuze
  * @author Stephane maldini
  */
-public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
+public abstract class HttpChannel<IN, OUT> implements ReactiveChannel<IN, OUT>, Bounded {
 
 	public static final String WS_SCHEME    = "ws";
 	public static final String WSS_SCHEME   = "wss";
@@ -51,11 +49,13 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	private volatile int statusAndHeadersSent = 0;
 	private HeaderResolver<String> paramsResolver;
 
+	private final long prefetch;
+
 	protected final static AtomicIntegerFieldUpdater<HttpChannel> HEADERS_SENT =
 			AtomicIntegerFieldUpdater.newUpdater(HttpChannel.class, "statusAndHeadersSent");
 
-	public HttpChannel(Timer timer, long prefetch) {
-		super(timer, null, prefetch);
+	public HttpChannel(long prefetch) {
+		this.prefetch = prefetch;
 	}
 
 	// REQUEST contract
@@ -221,9 +221,9 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * Flush the headers if not sent. Might be useful for the case
 	 * @return Stream to signal error or successful write to the client
 	 */
-	public Stream<Void> writeHeaders() {
+	public Publisher<Void> writeHeaders() {
 		if (statusAndHeadersSent == 0) {
-			return new Stream<Void>() {
+			return new Publisher<Void>() {
 				@Override
 				public void subscribe(Subscriber<? super Void> s) {
 					if (markHeadersAsFlushed()) {
@@ -237,7 +237,7 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 			};
 		}
 		else {
-			return Streams.empty();
+			return Publishers.empty();
 		}
 	}
 
@@ -270,9 +270,11 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	protected abstract void doSubscribeHeaders(Subscriber<? super Void> s);
 
+	protected abstract Publisher<Void> writeWithAfterHeaders(Publisher<? extends OUT> s);
+
 	@Override
-	public final Stream<Void> writeWith(final Publisher<? extends OUT> source) {
-		return new Stream<Void>() {
+	public final Publisher<Void> writeWith(final Publisher<? extends OUT> source) {
+		return new Publisher<Void>() {
 			@Override
 			public void subscribe(final Subscriber<? super Void> s) {
 				if(markHeadersAsFlushed()){
@@ -294,14 +296,24 @@ public abstract class HttpChannel<IN, OUT> extends ChannelStream<IN, OUT> {
 
 						@Override
 						public void onComplete() {
-							HttpChannel.super.writeWith(source).subscribe(s);
+							writeWithAfterHeaders(source).subscribe(s);
 						}
 					});
 				}
 				else{
-					HttpChannel.super.writeWith(source).subscribe(s);
+					writeWithAfterHeaders(source).subscribe(s);
 				}
 			}
 		};
+	}
+
+	@Override
+	public boolean isExposedToOverflow(Bounded parentPublisher) {
+		return false;
+	}
+
+	@Override
+	public long getCapacity() {
+		return prefetch;
 	}
 }

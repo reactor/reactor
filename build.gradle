@@ -181,12 +181,6 @@ project('reactor-core') {
 
 
 	ext.bundleImportPackages = [
-			  'net.openhft.chronicle;resolution:=optional',
-			  'net.openhft.chronicle.tools;resolution:=optional',
-			  'com.fasterxml.jackson.core;resolution:=optional',
-			  'com.fasterxml.jackson.databind;resolution:=optional',
-			  'com.fasterxml.jackson.databind.node;resolution:=optional',
-			  'com.fasterxml.jackson.databind.type;resolution:=optional',
 			  'org.slf4j;version="[1.5.4,2)"',
 			  '*'
 	  ]
@@ -230,18 +224,13 @@ project('reactor-stream') {
 	apply plugin: 'osgi'
 	apply plugin: 'groovy'
 
-	ext.bundleImportPackages = [
-			'net.openhft.chronicle;resolution:=optional',
-			'net.openhft.chronicle.tools;resolution:=optional',
-			'*'
-	]
-
 	task testNG(type: Test) {
 		useTestNG()
 	}
 
 	dependencies {
 		compile project(':reactor-core')
+		optional project(':reactor-net')
 
 		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
 		testCompile project(':reactor-bus')
@@ -323,7 +312,6 @@ project('reactor-net') {
 	apply plugin: 'groovy'
 
 	ext.bundleImportPackages = [
-			'org.zeromq;resolution:=optional',
 			'com.fasterxml.jackson.core;resolution:=optional',
 			'com.fasterxml.jackson.databind;resolution:=optional',
 			'com.fasterxml.jackson.module;resolution:=optional',
@@ -331,16 +319,21 @@ project('reactor-net') {
 	]
 
 	dependencies {
+		compile project(':reactor-core')
+
+		//Http routing
 		compile(project(':reactor-bus')) {
 			transitive = false
 		}
 
-		compile project(':reactor-stream')
-		compile project(':reactor-codec')
+		//Codec Preprocessor
+		optional project(':reactor-codec')
 
+		//Default reactor-net impl
 		optional "io.netty:netty-all:$nettyVersion"
 
 		// Testing
+		testCompile project(':reactor-stream')
 		testCompile "org.apache.httpcomponents:fluent-hc:4.3.6"
 		testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 

@@ -16,21 +16,20 @@
 
 package reactor.io.net.tcp;
 
+import java.net.InetSocketAddress;
 
 import org.junit.Test;
 import reactor.fn.tuple.Tuple2;
-import reactor.io.net.NetStreams;
+import reactor.io.net.ReactiveNet;
 import reactor.io.net.Reconnect;
 import reactor.io.net.Spec;
-
-import java.net.InetSocketAddress;
 
 import static org.junit.Assert.assertEquals;
 
 public class IncrementalBackoffReconnectTest {
 	@Test
 	public void testDefaultReconnect() {
-		Reconnect rec = NetStreams.backoffReconnect().get();
+		Reconnect rec = ReactiveNet.backoffReconnect().get();
 
 		InetSocketAddress a1 = new InetSocketAddress("129.168.0.1", 1001);
 		Tuple2<InetSocketAddress, Long> t1 = rec.reconnect(a1, 0);
@@ -49,7 +48,7 @@ public class IncrementalBackoffReconnectTest {
 	public void testReconnectIntervalWithCap() {
 		InetSocketAddress addr1 = new InetSocketAddress("129.168.0.1", 1001);
 
-		Reconnect rec = NetStreams.backoffReconnect()
+		Reconnect rec = ReactiveNet.backoffReconnect()
 		  .address(addr1)
 		  .interval(5000)
 		  .maxInterval(10000)
@@ -68,7 +67,7 @@ public class IncrementalBackoffReconnectTest {
 		InetSocketAddress addr2 = new InetSocketAddress("129.168.0.2", 1002);
 		InetSocketAddress addr3 = new InetSocketAddress("129.168.0.3", 1003);
 
-		Reconnect rec = NetStreams.backoffReconnect()
+		Reconnect rec = ReactiveNet.backoffReconnect()
 		  .address(addr1)
 		  .address(addr2)
 		  .address(addr3)

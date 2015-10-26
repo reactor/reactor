@@ -106,8 +106,9 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 * @return The encoded source sequence.
 	 * @since 2.0.4
 	 */
-	public Publisher<SRC> encode(Publisher<OUT> publisherToEncode) {
-		return PublisherFactory.lift(publisherToEncode,
+	@SuppressWarnings("unchecked")
+	public Publisher<SRC> encode(Publisher<? extends OUT> publisherToEncode) {
+		return PublisherFactory.lift((Publisher<OUT>)publisherToEncode,
 		  new Function<Subscriber<? super SRC>, Subscriber<? super OUT>>() {
 			  @Override
 			  public Subscriber<? super OUT> apply(final Subscriber<? super SRC> subscriber) {

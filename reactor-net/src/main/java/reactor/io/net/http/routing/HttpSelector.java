@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.io.net.http;
+package reactor.io.net.http.routing;
 
 import reactor.bus.selector.HeaderResolver;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.UriPathSelector;
+import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.model.Method;
 import reactor.io.net.http.model.Protocol;
 

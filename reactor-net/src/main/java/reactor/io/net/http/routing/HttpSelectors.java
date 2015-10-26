@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package reactor.io.net;
+package reactor.io.net.http.routing;
 
 import reactor.bus.selector.Selectors;
-import reactor.io.net.http.HttpSelector;
 import reactor.io.net.http.model.Method;
 import reactor.io.net.http.model.Protocol;
 
@@ -26,7 +25,7 @@ import reactor.io.net.http.model.Protocol;
  *
  * @author Stephane Maldini
  */
-public abstract class NetSelectors extends Selectors {
+public abstract class HttpSelectors extends Selectors {
 
 
 	/**
@@ -46,7 +45,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.net.NetSelectors#http}.
+	 * An alias for {@link HttpSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -62,7 +61,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.net.NetSelectors#http}.
+	 * An alias for {@link HttpSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -78,7 +77,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.net.NetSelectors#http}.
+	 * An alias for {@link HttpSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -94,7 +93,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.net.NetSelectors#http}.
+	 * An alias for {@link HttpSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -110,7 +109,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.net.NetSelectors#http}.
+	 * An alias for {@link HttpSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>

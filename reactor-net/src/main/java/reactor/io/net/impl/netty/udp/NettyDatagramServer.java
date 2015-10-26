@@ -41,32 +41,31 @@ import io.netty.channel.socket.nio.NioDatagramChannel;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.NetUtil;
 import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.error.Exceptions;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.SignalType;
 import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.ReactiveChannel;
+import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.config.ServerSocketOptions;
+import reactor.io.net.impl.netty.NettyChannel;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
-import reactor.io.net.impl.netty.NettyChannelStream;
 import reactor.io.net.impl.netty.NettyNativeDetector;
 import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.udp.DatagramServer;
-import reactor.rx.Promise;
-import reactor.rx.Promises;
 
 /**
  * {@link reactor.io.net.udp.DatagramServer} implementation built on Netty.
  *
- * @author Jon Brisbin
  * @author Stephane Maldini
+ * @since 2.1
  */
-public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
+public class NettyDatagramServer extends DatagramServer<Buffer, Buffer> {
 
 	private final static Logger log = LoggerFactory.getLogger(NettyDatagramServer.class);
 
@@ -78,9 +77,8 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 	public NettyDatagramServer(Timer timer,
 			InetSocketAddress listenAddress,
 			final NetworkInterface multicastInterface,
-			final ServerSocketOptions options,
-			Codec<Buffer, IN, OUT> codec) {
-		super(timer, listenAddress, multicastInterface, options, codec);
+			final ServerSocketOptions options) {
+		super(timer, listenAddress, multicastInterface, options);
 
 		if (options instanceof NettyServerSocketOptions) {
 			this.nettyOptions = (NettyServerSocketOptions) options;
@@ -152,11 +150,11 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> channelHandler) {
-		return new Promise<Void>(getDefaultTimer()){
+	protected Publisher<Void> doStart(final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> channelHandler) {
+		return new Publisher<Void>(){
 
 			@Override
-			public void subscribe(Subscriber<? super Void> subscriber) {
+			public void subscribe(final Subscriber<? super Void> subscriber) {
 				ChannelFuture future = bootstrap.handler(new ChannelInitializer<DatagramChannel>() {
 					@Override
 					public void initChannel(final DatagramChannel ch) throws Exception {
@@ -170,62 +168,43 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 				future.addListener(new ChannelFutureListener() {
 					@Override
 					public void operationComplete(ChannelFuture future) throws Exception {
+						subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 						if (future.isSuccess()) {
 							log.info("BIND {}", future.channel().localAddress());
 							channel = (DatagramChannel) future.channel();
-							onComplete();
+							subscriber.onComplete();
 						}
 						else {
-							onError(future.cause());
+							Exceptions.throwIfFatal(future.cause());
+							subscriber.onError(future.cause());
 						}
 					}
 				});
-				super.subscribe(subscriber);
 			}
 		};
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected Promise<Void> doShutdown() {
-		final Promise<Void> d = Promises.prepare(getDefaultTimer());
-
-		ChannelFuture future = channel.close();
-		final GenericFutureListener listener = new GenericFutureListener() {
+	protected Publisher<Void> doShutdown() {
+		return new NettyChannel.FuturePublisher<ChannelFuture>(channel.close()){
 			@Override
-			public void operationComplete(Future future) throws Exception {
-				if (future.isSuccess()) {
-					d.onComplete();
-				} else {
-					d.onError(future.cause());
+			protected void doComplete(ChannelFuture future, Subscriber<? super Void> s) {
+				if (null == nettyOptions || null == nettyOptions.eventLoopGroup()) {
+					new NettyChannel.FuturePublisher<>(ioGroup.shutdownGracefully()).subscribe(s);
+				}
+				else {
+					super.doComplete(future, s);
 				}
 			}
 		};
-
-		future.addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (!future.isSuccess()) {
-					d.onError(future.cause());
-					return;
-				}
-
-				if (null == nettyOptions || null == nettyOptions.eventLoopGroup()) {
-					ioGroup.shutdownGracefully().addListener(listener);
-				}
-			}
-		});
-
-		return d;
 	}
 
 	@Override
-	public Promise<Void> join(final InetAddress multicastAddress, NetworkInterface iface) {
+	public Publisher<Void> join(final InetAddress multicastAddress, NetworkInterface iface) {
 		if (null == channel) {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
-
-		final Promise<Void> d = Promises.prepare(getDefaultTimer());
 
 		if (null == iface && null != getMulticastInterface()) {
 			iface = getMulticastInterface();
@@ -237,23 +216,18 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		} else {
 			future = channel.joinGroup(multicastAddress);
 		}
-		future.addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				log.info("JOIN {}", multicastAddress);
-				if (future.isSuccess()) {
-					d.onComplete();
-				} else {
-					d.onError(future.cause());
-				}
-			}
-		});
 
-		return d;
+		return new NettyChannel.FuturePublisher<Future<?>>(future){
+			@Override
+			protected void doComplete(Future<?> future, Subscriber<? super Void> s) {
+				log.info("JOIN {}", multicastAddress);
+				super.doComplete(future, s);
+			}
+		};
 	}
 
 	@Override
-	public Promise<Void> leave(final InetAddress multicastAddress, NetworkInterface iface) {
+	public Publisher<Void> leave(final InetAddress multicastAddress, NetworkInterface iface) {
 		if (null == channel) {
 			throw new IllegalStateException("DatagramServer not running.");
 		}
@@ -262,35 +236,26 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 			iface = getMulticastInterface();
 		}
 
-		final Promise<Void> d = Promises.prepare(getDefaultTimer());
-
 		final ChannelFuture future;
 		if (null != iface) {
 			future = channel.leaveGroup(new InetSocketAddress(multicastAddress, getListenAddress().getPort()), iface);
 		} else {
 			future = channel.leaveGroup(multicastAddress);
 		}
-		future.addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				log.info("LEAVE {}", multicastAddress);
-				if (future.isSuccess()) {
-					d.onComplete();
-				} else {
-					d.onError(future.cause());
-				}
-			}
-		});
 
-		return d;
+		return new NettyChannel.FuturePublisher<Future<?>>(future){
+			@Override
+			protected void doComplete(Future<?> future, Subscriber<? super Void> s) {
+				log.info("LEAVE {}", multicastAddress);
+				super.doComplete(future, s);
+			}
+		};
 	}
 
-	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
+	protected void bindChannel(ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
 			Object _ioChannel) {
 		DatagramChannel ioChannel = (DatagramChannel) _ioChannel;
-		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
-				getDefaultTimer(),
-				getDefaultCodec(),
+		NettyChannel netChannel = new NettyChannel(
 				getDefaultPrefetchSize(),
 				ioChannel
 		);
@@ -302,7 +267,7 @@ public class NettyDatagramServer<IN, OUT> extends DatagramServer<IN, OUT> {
 		}
 
 		pipeline.addLast(
-				new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel) {
+				new NettyChannelHandlerBridge(handler, netChannel) {
 					@Override
 					public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 						if (msg != null && DatagramPacket.class.isAssignableFrom(msg.getClass())) {

@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package reactor.io.buffer;
 
 /**
- * Reactive network components are located in this package scope implementing the following exposed contract:
- * A {@link reactor.io.net.ReactivePeer} NetServer/NetClient is a {@link org.reactivestreams.Publisher} of
- * {@link reactor.io.net.ReactiveChannel} that are themselves {@link org.reactivestreams.Publisher} of input data.
- * This input data will be the received information from a Server perspective and response information from a Client
- * perspective.
- * A channel also expose useful methods to write, close and generally control the lifecycle of the underlying
- * connection.
+ * @author Stephane Maldini
  */
-package reactor.io.net;
+public final class StringBuffer extends Buffer {
+
+	public StringBuffer(int atLeast, boolean fixed) {
+		super(atLeast, fixed);
+	}
+}

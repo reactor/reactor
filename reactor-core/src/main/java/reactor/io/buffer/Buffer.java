@@ -71,11 +71,11 @@ public class Buffer implements Recyclable,
 
 	private static final Charset UTF8 = Charset.forName("UTF-8");
 	private final boolean        dynamic;
-	private       ByteBuffer     buffer;
 	private       CharsetDecoder decoder;
 	private       CharBuffer     chars;
 	private       int            position;
 	private       int            limit;
+	protected     ByteBuffer     buffer;
 
 	/**
 	 * Create an empty {@literal Buffer} that is dynamic.
@@ -153,9 +153,12 @@ public class Buffer implements Recyclable,
 	@SuppressWarnings("resource")
 	public static Buffer wrap(String str, boolean fixed) {
 		if (fixed) {
-			return wrap(str.getBytes());
+			byte[] bytes = str.getBytes();
+			return new StringBuffer(bytes.length, true)
+					.append(bytes)
+					.flip();
 		} else {
-			return new Buffer(str.length(), false)
+			return new StringBuffer(str.length(), false)
 			  .append(str)
 			  .flip();
 		}
@@ -1456,7 +1459,7 @@ public class Buffer implements Recyclable,
 	}
 
 	/**
-	 * A delimiting buffer is sent to {@link reactor.io.codec.BufferCodec} and other components to signal the end of a
+	 * A delimiting buffer sent to other components to signal the end of a
 	 * sequence of Buffer.
 	 *
 	 * @since 2.0.4

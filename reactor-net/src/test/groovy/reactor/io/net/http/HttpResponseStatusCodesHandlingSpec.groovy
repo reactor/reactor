@@ -1,7 +1,7 @@
 package reactor.io.net.http
 
-import reactor.io.codec.StandardCodecs
 import reactor.io.net.NetStreams
+import reactor.io.net.preprocessor.CodecPreprocessor
 import reactor.rx.Streams
 import spock.lang.Specification
 
@@ -15,7 +15,7 @@ public class HttpResponseStatusCodesHandlingSpec extends Specification {
     def "http status code 404 is handled by the client"() {
         given: "a simple HttpServer"
             def server = NetStreams.httpServer {
-                it.codec(StandardCodecs.STRING_CODEC).listen(0)
+                it.httpProcessor(CodecPreprocessor.string()).listen(0)
             }
 
         when: "the server is prepared"
@@ -30,7 +30,7 @@ public class HttpResponseStatusCodesHandlingSpec extends Specification {
 
         when: "a request with unsupported URI is sent onto the server"
             def client = NetStreams.httpClient {
-                it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port)
+                it.httpProcessor(CodecPreprocessor.string()).connect("localhost", server.listenAddress.port)
             }
 
             def replyReceived = ""

@@ -68,19 +68,6 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		  });
 	}
 
-	@Override
-	public Publisher<Buffer> encode(Publisher<OUT> publisherToEncode) {
-		if (true) {
-			return super.encode(publisherToEncode);
-		}
-		return Publishers.lift(publisherToEncode,
-		  new Function<Subscriber<? super Buffer>, Subscriber<? super OUT>>() {
-			  @Override
-			  public Subscriber<? super OUT> apply(final Subscriber<? super Buffer> subscriber) {
-				  return new AggregatingEncoderBarrier(subscriber);
-			  }
-		  });
-	}
 
 	private static final class AggregatingDecoderBarrier<IN> extends SubscriberBarrier<Buffer, IN> {
 

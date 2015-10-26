@@ -29,24 +29,24 @@ import io.netty.handler.codec.http.LastHttpContent;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannelHandler;
+import reactor.core.subscriber.BaseSubscriber;
+import reactor.core.support.BackpressureUtils;
+import reactor.io.buffer.Buffer;
+import reactor.io.net.ReactiveChannel;
+import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpException;
+import reactor.io.net.impl.netty.NettyChannel;
 import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
-import reactor.io.net.impl.netty.NettyChannelStream;
-import reactor.rx.Streams;
-import reactor.rx.action.support.DefaultSubscriber;
-import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
  */
-public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<IN, OUT> {
+public class NettyHttpClientHandler extends NettyChannelHandlerBridge {
 
-	protected final NettyChannelStream<IN, OUT> tcpStream;
-	protected     NettyHttpChannel<IN, OUT>   httpChannel;
-	protected Subscriber<? super HttpChannel<IN, OUT>> replySubscriber;
+	protected final NettyChannel                    tcpStream;
+	protected       NettyHttpChannel                httpChannel;
+	protected       Subscriber<? super HttpChannel<Buffer, Buffer>> replySubscriber;
 
 	/**
 	 * The body of an HTTP response should be discarded.
@@ -54,8 +54,8 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	private boolean discardBody = false;
 
 	public NettyHttpClientHandler(
-			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
-			NettyChannelStream<IN, OUT> tcpStream) {
+			ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
+			NettyChannel tcpStream) {
 		super(handler, tcpStream);
 		this.tcpStream = tcpStream;
 	}
@@ -65,10 +65,10 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		ctx.fireChannelActive();
 
 		if(httpChannel == null) {
-			httpChannel = new NettyHttpChannel<IN, OUT>(tcpStream, new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")) {
+			httpChannel = new NettyHttpChannel(tcpStream, new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")) {
 				@Override
 				protected void doSubscribeHeaders(Subscriber<? super Void> s) {
-					tcpStream.emitWriter(Streams.just(getNettyRequest()), s);
+					tcpStream.emitWriter(Publishers.just(getNettyRequest()), s);
 				}
 			};
 		}
@@ -77,14 +77,16 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 		httpChannel.headers().transferEncodingChunked();
 
 		handler.apply(httpChannel)
-		       .subscribe(new DefaultSubscriber<Void>() {
+		       .subscribe(new BaseSubscriber<Void>() {
 			       @Override
 			       public void onSubscribe(final Subscription s) {
+				       BackpressureUtils.checkSubscription(null, s);
 				       s.request(Long.MAX_VALUE);
 			       }
 
 			       @Override
 			       public void onError(Throwable t) {
+				       super.onError(t);
 				       log.error("Error processing connection. Closing the channel.", t);
 				       if (ctx.channel()
 				              .isOpen()) {
@@ -157,7 +159,7 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 			throws Exception {
 
 		if (evt != null && evt.getClass().equals(ChannelInputSubscriberEvent.class)) {
-			replySubscriber = ((ChannelInputSubscriberEvent<IN, OUT>)evt).clientReplySubscriber;
+			replySubscriber = ((ChannelInputSubscriberEvent)evt).clientReplySubscriber;
 		}
 		else {
 			super.userEventTriggered(ctx, evt);
@@ -174,16 +176,14 @@ public class NettyHttpClientHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	}
 
 	/**
-	 * An event to attach a {@link Subscriber} to the {@link NettyChannelStream}
+	 * An event to attach a {@link Subscriber} to the {@link NettyChannel}
 	 * created by {@link NettyHttpClient}
-	 *
-	 * @param <IN>
 	 */
-	public static final class ChannelInputSubscriberEvent<IN, OUT> {
+	public static final class ChannelInputSubscriberEvent {
 
-		private final Subscriber<? super HttpChannel<IN,OUT>> clientReplySubscriber;
+		private final Subscriber<? super HttpChannel<Buffer,Buffer>> clientReplySubscriber;
 
-		public ChannelInputSubscriberEvent(Subscriber<? super HttpChannel<IN, OUT>> inputSubscriber) {
+		public ChannelInputSubscriberEvent(Subscriber<? super HttpChannel<Buffer, Buffer>> inputSubscriber) {
 			if (null == inputSubscriber) {
 				throw new IllegalArgumentException("HTTP input subscriber must not be null.");
 			}

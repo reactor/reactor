@@ -16,42 +16,37 @@
 
 package reactor.io.net.impl.netty.http;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpVersion;
-import io.netty.handler.codec.http.websocketx.*;
+import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketClientHandshaker;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.util.ReferenceCountUtil;
 import org.reactivestreams.Subscriber;
+import reactor.Publishers;
 import reactor.io.buffer.Buffer;
-import reactor.io.codec.StringCodec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannelHandler;
-import reactor.io.net.impl.netty.NettyChannelStream;
-import reactor.rx.Streams;
+import reactor.io.net.ReactiveChannel;
+import reactor.io.net.ReactiveChannelHandler;
+import reactor.io.net.impl.netty.NettyChannel;
 
 /**
  * @author Stephane Maldini
  */
-public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN, OUT> {
+public class NettyHttpWSClientHandler extends NettyHttpClientHandler {
 
 	private final WebSocketClientHandshaker handshaker;
-
-	private final boolean plainText;
-
 	public NettyHttpWSClientHandler(
-			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
-			NettyChannelStream<IN, OUT> tcpStream,
+			ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
+			NettyChannel tcpStream,
 			WebSocketClientHandshaker handshaker) {
 		super(handler, tcpStream);
 		this.handshaker = handshaker;
-
-		this.plainText = tcpStream.getEncoder() instanceof StringCodec.StringEncoder;
 	}
 
 	@Override
@@ -82,10 +77,10 @@ public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN
 		Class<?> messageClass = msg.getClass();
 		if (!handshaker.isHandshakeComplete()) {
 			handshaker.finishHandshake(ctx.channel(), (FullHttpResponse) msg);
-			httpChannel = new NettyHttpChannel<IN, OUT>(tcpStream, new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")) {
+			httpChannel = new NettyHttpChannel(tcpStream, new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")) {
 				@Override
 				protected void doSubscribeHeaders(Subscriber<? super Void> s) {
-					Streams.<Void>empty().subscribe(s);
+					Publishers.<Void>empty().subscribe(s);
 				}
 			};
 			NettyHttpWSClientHandler.super.channelActive(ctx);
@@ -95,15 +90,7 @@ public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN
 
 		if (TextWebSocketFrame.class.isAssignableFrom(messageClass)) {
 			try {
-				Buffer buffer = Buffer.wrap(((TextWebSocketFrame) msg).text());
-				if (channelStream.getDecoder() == null) {
-					channelSubscription.onNext((IN) buffer);
-				} else {
-					IN d = channelStream.getDecoder().apply(buffer);
-					if (d != null) {
-						channelSubscription.onNext(d);
-					}
-				}
+				channelSubscriber.onNext(Buffer.wrap(((TextWebSocketFrame) msg).text()));
 			} finally {
 				ReferenceCountUtil.release(msg);
 			}
@@ -116,15 +103,7 @@ public class NettyHttpWSClientHandler<IN, OUT> extends NettyHttpClientHandler<IN
 
 	@Override
 	protected ChannelFuture doOnWrite(Object data, ChannelHandlerContext ctx) {
-		if (data.getClass().equals(Buffer.class)) {
-			if(!plainText) {
-				return ctx.write(new BinaryWebSocketFrame(convertBufferToByteBuff(ctx, (Buffer) data)));
-			}else{
-				return ctx.write(new TextWebSocketFrame(convertBufferToByteBuff(ctx, (Buffer) data)));
-			}
-		} else {
-			return ctx.write(data);
-		}
+		return NettyHttpWSServerHandler.writeWS(data, ctx);
 	}
 
 }

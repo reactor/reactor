@@ -16,154 +16,216 @@
 
 package reactor.io.net.http;
 
+import java.net.InetSocketAddress;
+
+import org.reactivestreams.Publisher;
+import reactor.Publishers;
+import reactor.fn.Function;
 import reactor.fn.timer.Timer;
-import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
-import reactor.io.net.ReactorChannelHandler;
-import reactor.io.net.ReactorClient;
+import reactor.fn.tuple.Tuple2;
+import reactor.io.net.ReactiveChannelHandler;
+import reactor.io.net.ReactiveClient;
+import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.http.model.Method;
-import reactor.rx.Stream;
 
 /**
  * The base class for a Reactor-based Http client.
- *
- * @param <IN>  The type that will be received by this client
+ * @param <IN> The type that will be received by this client
  * @param <OUT> The type that will be sent by this client
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public abstract class HttpClient<IN, OUT>
-  extends ReactorClient<IN, OUT, HttpChannel<IN, OUT>> {
+		extends ReactiveClient<IN, OUT, HttpChannel<IN, OUT>> {
 
-	protected HttpClient(Timer timer,
-	                     Codec<Buffer, IN, OUT> codec,
-	                     ClientSocketOptions options) {
-		super(timer, codec, options != null ? options.prefetch() : 1);
+	protected HttpClient(Timer timer, ClientSocketOptions options) {
+		super(timer, options != null ? options.prefetch() : 1);
 	}
 
 	/**
-	 * HTTP GET the passed URL. When connection has been made, the passed handler is invoked and can be used to build
-	 * precisely the request and write data to it.
-	 *
-	 * @param url     the target remote URL
-	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
+	 * HTTP GET the passed URL. When connection has been made, the passed handler is
+	 * invoked and can be used to build precisely the request and write data to it.
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactiveChannelHandler} to invoke on open channel
+	 * @return a {@link Publisher} of the {@link HttpChannel} ready to consume for
+	 * response
 	 */
-	public final Stream<? extends HttpChannel<IN, OUT>> get(String url,
-	                                                         final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
-	                                                           handler) {
+	public final Publisher<? extends HttpChannel<IN, OUT>> get(String url,
+			final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		return request(Method.GET, url, handler);
 	}
 
-
 	/**
 	 * HTTP GET the passed URL.
-	 *
 	 * @param url the target remote URL
-	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Publisher} of the {@link HttpChannel} ready to consume for
+	 * response
 	 */
-	public final Stream<? extends HttpChannel<IN, OUT>> get(String url) {
+	public final Publisher<? extends HttpChannel<IN, OUT>> get(String url) {
 
 		return request(Method.GET, url, null);
 	}
 
 	/**
-	 * HTTP POST the passed URL. When connection has been made, the passed handler is invoked and can be used to build
-	 * precisely the request and write data to it.
-	 *
-	 * @param url     the target remote URL
-	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
+	 * HTTP POST the passed URL. When connection has been made, the passed handler is
+	 * invoked and can be used to build precisely the request and write data to it.
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactiveChannelHandler} to invoke on open channel
+	 * @return a {@link Publisher} of the {@link HttpChannel} ready to consume for
+	 * response
 	 */
-	public final Stream<? extends HttpChannel<IN, OUT>> post(String url,
-	                                                          final ReactorChannelHandler<IN, OUT, HttpChannel<IN,
-	                                                            OUT>>
-	                                                            handler) {
+	public final Publisher<? extends HttpChannel<IN, OUT>> post(String url,
+			final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		return request(Method.POST, url, handler);
 	}
 
-
 	/**
-	 * HTTP PUT the passed URL. When connection has been made, the passed handler is invoked and can be used to build
-	 * precisely the request and write data to it.
-	 *
-	 * @param url     the target remote URL
-	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
+	 * HTTP PUT the passed URL. When connection has been made, the passed handler is
+	 * invoked and can be used to build precisely the request and write data to it.
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactiveChannelHandler} to invoke on open channel
+	 * @return a {@link Publisher} of the {@link HttpChannel} ready to consume for
+	 * response
 	 */
-	public final Stream<? extends HttpChannel<IN, OUT>> put(String url,
-	                                                         final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
-	                                                           handler) {
+	public final Publisher<? extends HttpChannel<IN, OUT>> put(String url,
+			final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		return request(Method.PUT, url, handler);
 	}
 
 	/**
-	 * HTTP DELETE the passed URL. When connection has been made, the passed handler is invoked and can be used to
-	 * build
-	 * precisely the request and write data to it.
-	 *
-	 * @param url     the target remote URL
-	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
+	 * HTTP DELETE the passed URL. When connection has been made, the passed handler is
+	 * invoked and can be used to build precisely the request and write data to it.
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactiveChannelHandler} to invoke on open channel
+	 * @return a {@link Publisher} of the {@link HttpChannel} ready to consume for
+	 * response
 	 */
-	public final Stream<? extends HttpChannel<IN, OUT>> delete(String url,
-	                                                            final ReactorChannelHandler<IN, OUT, HttpChannel<IN,
-	                                                              OUT>> handler) {
+	public final Publisher<? extends HttpChannel<IN, OUT>> delete(String url,
+			final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		return request(Method.DELETE, url, handler);
 	}
 
 	/**
-	 * HTTP DELETE the passed URL. When connection has been made, the passed handler is invoked and can be used to
-	 * build
-	 * precisely the request and write data to it.
-	 *
+	 * HTTP DELETE the passed URL. When connection has been made, the passed handler is
+	 * invoked and can be used to build precisely the request and write data to it.
 	 * @param url the target remote URL
-	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Publisher} of the {@link HttpChannel} ready to consume for
+	 * response
 	 */
-	public final Stream<? extends HttpChannel<IN, OUT>> delete(String url) {
+	public final Publisher<? extends HttpChannel<IN, OUT>> delete(String url) {
 		return request(Method.DELETE, url, null);
 	}
 
 	/**
 	 * WebSocket to the passed URL.
-	 *
 	 * @param url the target remote URL
-	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
+	 * @return a {@link Publisher} of the {@link HttpChannel} ready to consume for
+	 * response
 	 */
-	public final Stream<? extends HttpChannel<IN, OUT>> ws(String url) {
+	public final Publisher<? extends HttpChannel<IN, OUT>> ws(String url) {
 		return request(Method.WS, url, null);
 	}
 
 	/**
-	 * WebSocket to the passed URL. When connection has been made, the passed handler is invoked and can be used to
-	 * build
+	 * WebSocket to the passed URL. When connection has been made, the passed handler is
+	 * invoked and can be used to build
 	 *
 	 * precisely the request and write data to it.
-	 *
-	 * @param url     the target remote URL
-	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactiveChannelHandler} to invoke on open channel
+	 * @return a {@link Publisher} of the {@link HttpChannel} ready to consume for
+	 * response
 	 */
-	public final Stream<? extends HttpChannel<IN, OUT>> ws(String url,
-	                                                        final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>
-	                                                          handler) {
+	public final Publisher<? extends HttpChannel<IN, OUT>> ws(String url,
+			final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
 		return request(Method.WS, url, handler);
 	}
 
 	/**
-	 * Use the passed HTTP method to send to the given URL.
-	 * When connection has been made, the passed handler is invoked and can be used to build
-	 * precisely the request and write data to it.
-	 *
-	 * @param method  the HTTP method to send
-	 * @param url     the target remote URL
-	 * @param handler the {@link ReactorChannelHandler} to invoke on open channel
-	 * @return a {@link Stream} of the {@link HttpChannel} ready to consume for response
+	 * Use the passed HTTP method to send to the given URL. When connection has been made,
+	 * the passed handler is invoked and can be used to build precisely the request and
+	 * write data to it.
+	 * @param method the HTTP method to send
+	 * @param url the target remote URL
+	 * @param handler the {@link ReactiveChannelHandler} to invoke on open channel
+	 * @return a {@link Publisher} of the {@link HttpChannel} ready to consume for
+	 * response
 	 */
-	public abstract Stream<? extends HttpChannel<IN, OUT>> request(Method method, String url,
-	                                                                final ReactorChannelHandler<IN, OUT,
-	                                                                  HttpChannel<IN,
-	                                                                  OUT>> handler);
+	public abstract Publisher<? extends HttpChannel<IN, OUT>> request(Method method,
+			String url,
+			final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler);
 
+	/**
+	 *
+	 * @param preprocessor
+	 * @param <NEWIN>
+	 * @param <NEWOUT>
+	 * @param <NEWCONN>
+	 * @return
+	 */
+	public <NEWIN, NEWOUT, NEWCONN extends HttpChannel<NEWIN, NEWOUT>> HttpClient<NEWIN, NEWOUT> httpProcessor(
+			final HttpProcessor<IN, OUT, ? super HttpChannel<IN, OUT>, NEWIN, NEWOUT, NEWCONN> preprocessor
+	){
+		return new PreprocessedHttpClient<>(preprocessor);
+	}
+
+	private final class PreprocessedHttpClient<NEWIN, NEWOUT, NEWCONN extends HttpChannel<NEWIN, NEWOUT>>
+			extends HttpClient<NEWIN, NEWOUT> {
+
+		private final HttpProcessor<IN, OUT, ? super HttpChannel<IN, OUT>, NEWIN, NEWOUT, NEWCONN>
+				preprocessor;
+
+		public PreprocessedHttpClient(
+				HttpProcessor<IN, OUT, ? super HttpChannel<IN, OUT>, NEWIN, NEWOUT, NEWCONN> preprocessor) {
+			super(HttpClient.this.getDefaultTimer(), null);
+			this.preprocessor = preprocessor;
+		}
+
+		@Override
+		public Publisher<? extends HttpChannel<NEWIN, NEWOUT>> request(Method method,
+				String url,
+				final ReactiveChannelHandler<NEWIN, NEWOUT, HttpChannel<NEWIN, NEWOUT>> handler) {
+			return Publishers.map(HttpClient.this.request(method, url, handler != null ?
+					new ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>>() {
+				@Override
+				public Publisher<Void> apply(HttpChannel<IN, OUT> conn) {
+					return handler.apply(preprocessor.transform(conn));
+				}
+			} : null), new Function<HttpChannel<IN, OUT>, HttpChannel<NEWIN, NEWOUT>>() {
+				@Override
+				public HttpChannel<NEWIN, NEWOUT> apply(HttpChannel<IN, OUT> channel) {
+					return preprocessor.transform(channel);
+				}
+			});
+		}
+
+		@Override
+		protected Publisher<Tuple2<InetSocketAddress, Integer>> doStart(
+				final ReactiveChannelHandler<NEWIN, NEWOUT, HttpChannel<NEWIN, NEWOUT>> handler,
+				Reconnect reconnect) {
+			return HttpClient.this.start(new ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>>() {
+				@Override
+				public Publisher<Void> apply(HttpChannel<IN, OUT> conn) {
+					return handler.apply(preprocessor.transform(conn));
+				}
+			}, reconnect);
+		}
+
+		@Override
+		protected Publisher<Void> doStart(
+				final ReactiveChannelHandler<NEWIN, NEWOUT, HttpChannel<NEWIN, NEWOUT>> handler) {
+			return HttpClient.this.start(new ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>>() {
+				@Override
+				public Publisher<Void> apply(HttpChannel<IN, OUT> conn) {
+					return handler.apply(preprocessor.transform(conn));
+				}
+			});
+		}
+
+		@Override
+		protected Publisher<Void> doShutdown() {
+			return HttpClient.this.shutdown();
+		}
+	}
 }

@@ -15,26 +15,25 @@
  */
 package reactor.io.net.http;
 
+import java.io.IOException;
+import java.net.SocketAddress;
+import java.net.URLEncoder;
+import java.nio.ByteBuffer;
+
 import org.apache.http.HttpException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.NetStreams;
-import reactor.io.net.ReactorChannelHandler;
 import reactor.rx.Streams;
-
-import java.io.IOException;
-import java.net.SocketAddress;
-import java.net.URLEncoder;
-import java.nio.ByteBuffer;
 
 /**
  * @author tjreactive
  * @author smaldini
  */
 public class PostAndGetTests {
-	private HttpServer<Buffer, Buffer> httpServer;
+	private ReactorHttpServer<Buffer, Buffer> httpServer;
 
 	@Before
 	public void setup() throws InterruptedException {
@@ -48,7 +47,7 @@ public class PostAndGetTests {
 		httpServer.start().awaitSuccess();
 	}
 
-	ReactorChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>> getHandler() {
+	ReactorHttpHandler<Buffer, Buffer> getHandler() {
 		return channel -> {
 			channel.headers().entries().forEach(entry1 -> System.out.println(String.format("header [%s=>%s]", entry1
 			  .getKey
@@ -63,7 +62,7 @@ public class PostAndGetTests {
 		};
 	}
 
-	ReactorChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>> postHandler() {
+	ReactorHttpHandler<Buffer, Buffer> postHandler() {
 		return channel -> {
 
 			channel.headers().entries().forEach(entry -> System.out.println(String.format("header [%s=>%s]", entry

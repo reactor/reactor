@@ -16,15 +16,20 @@
 
 package reactor.io.net.tcp;
 
+import java.net.InetSocketAddress;
+
+import org.reactivestreams.Publisher;
+import reactor.fn.Function;
 import reactor.fn.timer.Timer;
-import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorClient;
+import reactor.fn.tuple.Tuple2;
+import reactor.io.net.Preprocessor;
+import reactor.io.net.ReactiveChannel;
+import reactor.io.net.ReactiveChannelHandler;
+import reactor.io.net.ReactiveClient;
+import reactor.io.net.ReactivePeer;
+import reactor.io.net.Reconnect;
 import reactor.io.net.config.ClientSocketOptions;
 import reactor.io.net.config.SslOptions;
-
-import java.net.InetSocketAddress;
 
 /**
  * The base class for a Reactor-based TCP client.
@@ -35,7 +40,7 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class TcpClient<IN, OUT>
-  extends ReactorClient<IN, OUT, ChannelStream<IN, OUT>> {
+		extends ReactiveClient<IN, OUT, ReactiveChannel<IN, OUT>> {
 
 	private final InetSocketAddress   connectAddress;
 	private final ClientSocketOptions options;
@@ -44,9 +49,8 @@ public abstract class TcpClient<IN, OUT>
 	protected TcpClient(Timer timer,
 	                    InetSocketAddress connectAddress,
 	                    ClientSocketOptions options,
-	                    SslOptions sslOptions,
-	                    Codec<Buffer, IN, OUT> codec) {
-		super(timer, codec, options != null ? options.prefetch() : Long.MAX_VALUE);
+	                    SslOptions sslOptions) {
+		super(timer, options != null ? options.prefetch() : Long.MAX_VALUE);
 		this.connectAddress = (null != connectAddress ? connectAddress : new InetSocketAddress("127.0.0.1", 3000));
 		this.options = options;
 		this.sslOptions = sslOptions;
@@ -79,4 +83,46 @@ public abstract class TcpClient<IN, OUT>
 		return sslOptions;
 	}
 
+	@Override
+	protected <NEWIN, NEWOUT> ReactivePeer<NEWIN, NEWOUT, ReactiveChannel<NEWIN, NEWOUT>> doPreprocessor(
+			Function<? super ReactiveChannel<IN, OUT>, ? extends ReactiveChannel<NEWIN, NEWOUT>> preprocessor) {
+		return new PreprocessedTcpClient<>(preprocessor);
+	}
+
+	private final class PreprocessedTcpClient<NEWIN, NEWOUT, NEWCONN extends ReactiveChannel<NEWIN, NEWOUT>>
+			extends TcpClient<NEWIN, NEWOUT> {
+
+		private final Function<? super ReactiveChannel<IN, OUT>, ? extends NEWCONN>
+				preprocessor;
+
+		public PreprocessedTcpClient(Function<? super ReactiveChannel<IN, OUT>, ? extends NEWCONN> preprocessor) {
+			super(TcpClient.this.getDefaultTimer(), TcpClient.this.getConnectAddress(), TcpClient.this.getOptions(), TcpClient.this.getSslOptions());
+			this.preprocessor = preprocessor;
+		}
+
+		@Override
+		protected Publisher<Void> doStart(
+				ReactiveChannelHandler<NEWIN, NEWOUT, ReactiveChannel<NEWIN, NEWOUT>> handler) {
+			ReactiveChannelHandler<IN, OUT, ReactiveChannel<IN, OUT>> p = Preprocessor.PreprocessedHandler.create(handler, preprocessor);
+			return TcpClient.this.start(p);
+		}
+
+		@Override
+		protected Publisher<Tuple2<InetSocketAddress, Integer>> doStart(
+				ReactiveChannelHandler<NEWIN, NEWOUT, ReactiveChannel<NEWIN, NEWOUT>> handler,
+				Reconnect reconnect) {
+			ReactiveChannelHandler<IN, OUT, ReactiveChannel<IN, OUT>> p = Preprocessor.PreprocessedHandler.create(handler, preprocessor);
+			return TcpClient.this.start(p, reconnect);
+		}
+
+		@Override
+		protected Publisher<Void> doShutdown() {
+			return TcpClient.this.shutdown();
+		}
+
+		@Override
+		protected boolean shouldFailOnStarted() {
+			return false;
+		}
+	}
 }

@@ -1,23 +1,14 @@
 package reactor.io.net.udp;
 
-import io.netty.util.NetUtil;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.Processors;
-import reactor.Timers;
-import reactor.io.codec.StandardCodecs;
-import reactor.io.net.NetStreams;
-import reactor.io.net.config.ServerSocketOptions;
-import reactor.io.net.impl.netty.udp.NettyDatagramServer;
-import reactor.io.net.tcp.support.SocketUtils;
-import reactor.rx.Streams;
-
 import java.io.IOException;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.MulticastSocket;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.net.StandardProtocolFamily;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
@@ -28,6 +19,22 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import io.netty.util.NetUtil;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.Processors;
+import reactor.Timers;
+import reactor.io.net.NetStreams;
+import reactor.io.net.config.ServerSocketOptions;
+import reactor.io.net.impl.netty.udp.NettyDatagramServer;
+import reactor.io.net.preprocessor.CodecPreprocessor;
+import reactor.io.net.tcp.support.SocketUtils;
+import reactor.rx.Streams;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -60,9 +67,9 @@ public class UdpServerTests {
 		final int port = SocketUtils.findAvailableUdpPort();
 		final CountDownLatch latch = new CountDownLatch(4);
 
-		final DatagramServer<byte[], byte[]> server = NetStreams.udpServer(
+		final ReactorDatagramServer<byte[], byte[]> server = NetStreams.udpServer(
 		  s -> s.listen(port)
-			.codec(StandardCodecs.BYTE_ARRAY_CODEC)
+		        .preprocessor(CodecPreprocessor.byteArray())
 		);
 
 		server.start(ch -> {
@@ -97,7 +104,6 @@ public class UdpServerTests {
 
 	@Test
 	@SuppressWarnings("unchecked")
-	@Ignore
 	public void supportsUdpMulticast() throws Exception {
 		final int port = SocketUtils.findAvailableUdpPort();
 		final CountDownLatch latch = new CountDownLatch(4 ^ 2);
@@ -105,17 +111,17 @@ public class UdpServerTests {
 		final InetAddress multicastGroup = InetAddress.getByName("230.0.0.1");
 		final NetworkInterface multicastInterface = findMulticastEnabledIPv4Interface();
 		log.info("Using network interface '{}' for multicast", multicastInterface);
-		final Collection<DatagramServer<byte[], byte[]>> servers = new ArrayList<>();
+		final Collection<ReactorDatagramServer<byte[], byte[]>> servers = new ArrayList<>();
 
 		for (int i = 0; i < 4; i++) {
-			DatagramServer<byte[], byte[]> server = NetStreams.<byte[], byte[]>udpServer(
+			ReactorDatagramServer<byte[], byte[]> server = NetStreams.<byte[], byte[]>udpServer(
 			  NettyDatagramServer.class,
 			  spec -> spec
 				.listen(port)
 				.options(new ServerSocketOptions()
 				  .reuseAddr(true)
 				  .protocolFamily(StandardProtocolFamily.INET))
-				.codec(StandardCodecs.BYTE_ARRAY_CODEC)
+				.preprocessor(CodecPreprocessor.byteArray())
 			);
 
 			server.start(ch -> {
@@ -166,7 +172,7 @@ public class UdpServerTests {
 
 		assertThat("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 
-		for (DatagramServer s : servers) {
+		for (ReactorDatagramServer s : servers) {
 			s.shutdown().await();
 		}
 	}
