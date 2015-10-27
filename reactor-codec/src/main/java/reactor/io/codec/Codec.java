@@ -22,9 +22,8 @@ import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
-
-import java.util.List;
 
 /**
  * Implementations of a {@literal Codec} are responsible for decoding a {@code SRC} into an
@@ -42,7 +41,16 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 
 	static public final byte DEFAULT_DELIMITER = (byte) '\0';
 
+	static final Supplier<?> NO_CONTEXT = new Supplier<Object>() {
+		@Override
+		public Object get() {
+			return null;
+		}
+	};
+
 	protected final Byte delimiter;
+
+	protected final Supplier<?> decoderContextProvider;
 
 	/**
 	 * Create a new Codec set with a \0 delimiter to finish any Buffer encoded value or scan for delimited decoded
@@ -60,7 +68,18 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 *                  time.
 	 */
 	protected Codec(Byte delimiter) {
+		this(delimiter, NO_CONTEXT);
+	}
+	/**
+	 * A delimiter can be used to trail any decoded buffer or to finalize encoding from any incoming value
+	 *
+	 * @param delimiter delimiter can be left undefined (null) to bypass appending at encode time and scanning at
+	 *                     decode
+	 *                  time.
+	 */
+	protected Codec(Byte delimiter, Supplier<?> decoderContextProvider) {
 		this.delimiter = delimiter;
+		this.decoderContextProvider = decoderContextProvider;
 	}
 
 	/**
@@ -97,7 +116,13 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 * @param next The {@link Consumer} to call after the object has been decoded.
 	 * @return The decoded object.
 	 */
-	public abstract Function<SRC, IN> decoder(Consumer<IN> next);
+	public Function<SRC, IN> decoder(Consumer<IN> next){
+		return decoder(next, decoderContextProvider.get());
+	}
+
+	protected <C> Function<SRC, IN> decoder(Consumer<IN> next, C context){
+		return new DefaultInvokeOrReturnFunction<>(next, context);
+	}
 
 	/**
 	 * Provide the caller with an encoder to turn an output sequence into an sequence of the source
@@ -127,31 +152,6 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 		return this;
 	}
 
-	/**
-	 * Helper method to scan for delimiting byte the codec might benefit from, e.g. JSON codec.
-	 * A DelimitedCodec or alike will obviously not require to make use of that helper as it is already delimiting.
-	 *
-	 * @param decoderCallback
-	 * @param buffer
-	 * @return a value if no callback is supplied and there is only one delimited buffer
-	 */
-	protected IN doDelimitedBufferDecode(Consumer<IN> decoderCallback, Buffer buffer) {
-		//split using the delimiter
-		if (delimiter != null) {
-			List<Buffer.View> views = buffer.split(delimiter);
-			int viewCount = views.size();
-
-			if (viewCount == 0) return invokeCallbackOrReturn(decoderCallback, doBufferDecode(buffer));
-
-			for (Buffer.View view : views) {
-				IN in = invokeCallbackOrReturn(decoderCallback, doBufferDecode(view.get()));
-				if (in != null) return in;
-			}
-			return null;
-		} else {
-			return invokeCallbackOrReturn(decoderCallback, doBufferDecode(buffer));
-		}
-	}
 
 	protected static <IN> IN invokeCallbackOrReturn(Consumer<IN> consumer, IN v) {
 		if (consumer != null) {
@@ -160,7 +160,6 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 		} else {
 			return v;
 		}
-
 	}
 
 	/**
@@ -169,9 +168,17 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 	 * @param buffer
 	 * @return
 	 */
-	protected IN doBufferDecode(Buffer buffer) {
-		return null;
+	public final IN decodeNext(SRC buffer) {
+		return decodeNext(buffer, decoderContextProvider.get());
 	}
+
+	/**
+	 *
+	 * @param buffer
+	 * @param context
+	 * @return
+	 */
+	protected abstract IN decodeNext(SRC buffer, Object context);
 
 	/**
 	 * Add a trailing delimiter if defined
@@ -217,6 +224,24 @@ public abstract class Codec<SRC, IN, OUT> implements Function<OUT, SRC> {
 		@Override
 		protected void doNext(OUT src) {
 			subscriber.onNext(encoder.apply(src));
+		}
+	}
+
+	protected class DefaultInvokeOrReturnFunction<C> implements Function<SRC, IN> {
+		protected final Consumer<IN> consumer;
+		protected final C context;
+
+		public DefaultInvokeOrReturnFunction(Consumer<IN> consumer) {
+			this(consumer, null);
+		}
+		public DefaultInvokeOrReturnFunction(Consumer<IN> consumer, C context) {
+			this.consumer = consumer;
+			this.context = context;
+		}
+
+		@Override
+		public IN apply(SRC buffer) {
+			return invokeCallbackOrReturn(consumer, decodeNext(buffer, context));
 		}
 	}
 }

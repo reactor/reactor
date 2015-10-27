@@ -26,14 +26,12 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelPromise;
-import io.netty.util.IllegalReferenceCountException;
 import io.netty.util.ReferenceCountUtil;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.subscriber.BaseSubscriber;
@@ -208,7 +206,8 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 			NettyBuffer buffer = new NettyBuffer(ctx, msg);
 			channelSubscriber.onNext(buffer);
 			if(buffer.getByteBuf() != null){
-				ReferenceCountUtil.release(msg);
+				if(buffer.getByteBuf().isReadable())
+				ReferenceCountUtil.release(buffer.getByteBuf());
 			}
 		}
 		catch (Throwable err) {

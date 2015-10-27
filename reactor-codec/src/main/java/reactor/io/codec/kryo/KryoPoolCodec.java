@@ -21,7 +21,6 @@ import com.esotericsoftware.kryo.io.UnsafeMemoryInput;
 import com.esotericsoftware.kryo.io.UnsafeMemoryOutput;
 import com.esotericsoftware.kryo.pool.KryoFactory;
 import com.esotericsoftware.kryo.pool.KryoPool;
-import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.SerializationCodec;
@@ -31,61 +30,59 @@ import reactor.io.codec.SerializationCodec;
  * @author Khayretdinov Dmitriy
  */
 public class KryoPoolCodec<IN, OUT> extends SerializationCodec<KryoPool, IN, OUT> {
-    public KryoPoolCodec() {
-        this(new KryoFactory() {
-            @Override
-            public Kryo create() {
-                return new Kryo();
-            }
-        }, true);
-    }
 
-    public KryoPoolCodec(KryoFactory kryoFactory, boolean lengthFieldFraming) {
-        this(new KryoPool.Builder(kryoFactory).softReferences().build(), lengthFieldFraming);
-    }
+	public KryoPoolCodec() {
+		this(new KryoFactory() {
+			@Override
+			public Kryo create() {
+				return new Kryo();
+			}
+		}, true);
+	}
 
-    public KryoPoolCodec(KryoPool engine, boolean lengthFieldFraming) {
-        super(engine, lengthFieldFraming);
-    }
+	public KryoPoolCodec(KryoFactory kryoFactory, boolean lengthFieldFraming) {
+		this(new KryoPool.Builder(kryoFactory).softReferences()
+		                                      .build(), lengthFieldFraming);
+	}
 
-    @Override
-    protected Function<byte[], IN> deserializer(final KryoPool engine,
-                                                final Class<IN> type,
-                                                final Consumer<IN> next) {
-        return new Function<byte[], IN>() {
-            @Override
-            public IN apply(byte[] bytes) {
-                final Kryo kryo = engine.borrow();
-                try {
-                    IN obj = kryo.readObject(new UnsafeMemoryInput(bytes), type);
-                    if (null != next) {
-                        next.accept(obj);
-                        return null;
-                    } else {
-                        return obj;
-                    }
-                } finally {
-                    engine.release(kryo);
-                }
-            }
-        };
-    }
+	public KryoPoolCodec(KryoPool engine, boolean lengthFieldFraming) {
+		super(engine, lengthFieldFraming);
+	}
 
-    @Override
-    protected Function<OUT, byte[]> serializer(final KryoPool engine) {
-        return new Function<OUT, byte[]>() {
-            @Override
-            public byte[] apply(OUT o) {
-                final Kryo kryo = engine.borrow();
-                try {
-                    UnsafeMemoryOutput out = new UnsafeMemoryOutput(Buffer.SMALL_BUFFER_SIZE, Buffer.MAX_BUFFER_SIZE);
-                    kryo.writeObject(out, o);
-                    out.flush();
-                    return out.toBytes();
-                } finally {
-                    engine.release(kryo);
-                }
-            }
-        };
-    }
+	@Override
+	protected Function<byte[], IN> deserializer(final KryoPool engine,
+			final Class<IN> type) {
+		return new Function<byte[], IN>() {
+			@Override
+			public IN apply(byte[] bytes) {
+				final Kryo kryo = engine.borrow();
+				try {
+					return kryo.readObject(new UnsafeMemoryInput(bytes), type);
+				}
+				finally {
+					engine.release(kryo);
+				}
+			}
+		};
+	}
+
+	@Override
+	protected Function<OUT, byte[]> serializer(final KryoPool engine) {
+		return new Function<OUT, byte[]>() {
+			@Override
+			public byte[] apply(OUT o) {
+				final Kryo kryo = engine.borrow();
+				try {
+					UnsafeMemoryOutput out =
+							new UnsafeMemoryOutput(Buffer.SMALL_BUFFER_SIZE, Buffer.MAX_BUFFER_SIZE);
+					kryo.writeObject(out, o);
+					out.flush();
+					return out.toBytes();
+				}
+				finally {
+					engine.release(kryo);
+				}
+			}
+		};
+	}
 }

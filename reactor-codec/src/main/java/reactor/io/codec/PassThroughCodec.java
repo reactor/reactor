@@ -18,6 +18,7 @@ package reactor.io.codec;
 
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.io.buffer.Buffer;
 
 /**
  * A simple {@code Codec} that uses the source object as both input and output. Override the {@link
@@ -30,17 +31,13 @@ import reactor.fn.Function;
 public class PassThroughCodec<SRC> extends Codec<SRC, SRC, SRC> {
 	@Override
 	public Function<SRC, SRC> decoder(final Consumer<SRC> next) {
-		return new Function<SRC, SRC>() {
-			@Override
-			public SRC apply(SRC src) {
-				if (null != next) {
-					next.accept(beforeAccept(src));
-					return null;
-				} else {
-					return beforeAccept(src);
-				}
-			}
-		};
+		return new DefaultInvokeOrReturnFunction<>(next);
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	protected SRC decodeNext(SRC buffer, Object context) {
+		return beforeAccept(buffer);
 	}
 
 	@Override

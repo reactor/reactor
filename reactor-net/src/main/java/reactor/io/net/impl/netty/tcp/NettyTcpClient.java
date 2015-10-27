@@ -126,31 +126,11 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 			                       .option(ChannelOption.SO_SNDBUF, options.sndbuf())
 			                       .option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
 			                       .option(ChannelOption.SO_LINGER, options.linger())
-			                       .option(ChannelOption.TCP_NODELAY, options.tcpNoDelay());
+			                       .option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
+									.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, options.timeout());
 		}
 
-		this.bootstrap = _bootstrap.handler(new ChannelInitializer<SocketChannel>() {
-			@Override
-			public void initChannel(final SocketChannel ch) throws Exception {
-				if (getOptions() != null) {
-					ch.config()
-					  .setConnectTimeoutMillis(getOptions().timeout());
-				}
-
-				if (null != getSslOptions()) {
-					addSecureHandler(ch);
-				}
-				else {
-					ch.config()
-					  .setAutoRead(false);
-				}
-
-				if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
-					nettyOptions.pipelineConfigurer()
-					            .accept(ch.pipeline());
-				}
-			}
-		});
+		this.bootstrap = _bootstrap;
 
 		this.connectionSupplier = new Supplier<ChannelFuture>() {
 			@Override
@@ -169,26 +149,56 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 	@SuppressWarnings("unchecked")
 	protected Publisher<Void> doStart(
 			final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler) {
-		ChannelFuture channelFuture = connectionSupplier.get();
-		if (channelFuture == null) {
-			throw new IllegalStateException("Connection supplier didn't return any connection");
-		}
-		return new NettyChannel.FuturePublisher<ChannelFuture>(channelFuture) {
+
+		final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>
+				targetHandler = null == handler ?
+				(ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>) PING :
+				handler;
+
+		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
 			@Override
-			protected void doComplete(ChannelFuture future, Subscriber<? super Void> s) {
-				if(log.isDebugEnabled()){
-					log.debug("CONNECTED : {}", future);
+			public void initChannel(final SocketChannel ch) throws Exception {
+				bindChannel(targetHandler, ch);
+			}
+		});
+
+		return new Publisher<Void>() {
+			@Override
+			public void subscribe(Subscriber<? super Void> s) {
+				ChannelFuture channelFuture = connectionSupplier.get();
+
+				if (channelFuture == null) {
+					throw new IllegalStateException("Connection supplier didn't return any connection");
 				}
 
-				final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>
-						targetHandler = null == handler ?
-						(ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>) PING :
-						handler;
-
-				bindChannel(targetHandler, (SocketChannel)future.channel());
-				super.doComplete(future, s);
+				new NettyChannel.FuturePublisher<>(channelFuture).subscribe(s);
 			}
 		};
+	}
+
+	@Override
+	protected Publisher<Tuple2<InetSocketAddress, Integer>> doStart(
+			final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
+			final Reconnect reconnect) {
+
+		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
+			@Override
+			public void initChannel(final SocketChannel ch) throws Exception {
+				bindChannel(handler, ch);
+			}
+		});
+
+		return new ReconnectingChannelPublisher(connectAddress, reconnect);
+	}
+
+	@Override
+	protected Publisher<Void> doShutdown() {
+
+		if (nettyOptions != null && nettyOptions.eventLoopGroup() != null) {
+			return Publishers.empty();
+		}
+
+		return new NettyChannel.FuturePublisher<Future<?>>(ioGroup.shutdownGracefully());
 	}
 
 	protected void addSecureHandler(SocketChannel ch) throws Exception {
@@ -202,36 +212,31 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 		  .addLast(new SslHandler(ssl));
 	}
 
-	@Override
-	protected Publisher<Tuple2<InetSocketAddress, Integer>> doStart(
-			ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
-			final Reconnect reconnect) {
-
-		return new ReconnectingChannelPublisher(connectAddress, reconnect, handler);
-	}
-
-	@Override
-	protected Publisher<Void> doShutdown() {
-
-		if (nettyOptions != null && nettyOptions.eventLoopGroup() != null) {
-			return Publishers.empty();
-		}
-
-		return new NettyChannel.FuturePublisher<Future<?>>(ioGroup.shutdownGracefully());
-	}
-
 	protected void bindChannel(
 			ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
-			SocketChannel nativeChannel) {
+			SocketChannel ch) throws Exception{
 
-		NettyChannel netChannel =
-				new NettyChannel(getDefaultPrefetchSize(), nativeChannel);
+				if (null != getSslOptions()) {
+					addSecureHandler(ch);
+				}
+				else {
+					ch.config()
+					  .setAutoRead(false);
+				}
 
-		ChannelPipeline pipeline = nativeChannel.pipeline();
-		if (log.isDebugEnabled()) {
-			pipeline.addLast(new LoggingHandler(NettyTcpClient.class));
-		}
-		pipeline.addLast(new NettyChannelHandlerBridge(handler, netChannel));
+				NettyChannel netChannel =
+						new NettyChannel(getDefaultPrefetchSize(), ch);
+
+				ChannelPipeline pipeline = ch.pipeline();
+				if (log.isDebugEnabled()) {
+					pipeline.addLast(new LoggingHandler(NettyTcpClient.class));
+				}
+				pipeline.addLast(new NettyChannelHandlerBridge(handler, netChannel));
+
+				if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
+					nettyOptions.pipelineConfigurer()
+					            .accept(ch.pipeline());
+				}
 	}
 
 	private class ReconnectingChannelPublisher
@@ -239,17 +244,13 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 
 		private final AtomicInteger attempts = new AtomicInteger(0);
 		private final Reconnect reconnect;
-		private final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>
-		                        handler;
 
 		private volatile InetSocketAddress connectAddress;
 
 		private ReconnectingChannelPublisher(InetSocketAddress connectAddress,
-				Reconnect reconnect,
-				ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler) {
+				Reconnect reconnect) {
 			this.connectAddress = connectAddress;
 			this.reconnect = reconnect;
-			this.handler = handler;
 		}
 
 		@Override
@@ -339,7 +340,6 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 						log.info("CONNECTED: " + future.channel());
 					}
 					final Channel ioCh = future.channel();
-					bindChannel(handler, (SocketChannel) future.channel());
 					ioCh.pipeline()
 					    .addLast(new ChannelDuplexHandler() {
 						    @Override

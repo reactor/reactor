@@ -16,6 +16,10 @@
 
 package reactor.bus.selector;
 
+import java.util.Map;
+
+import reactor.fn.Function;
+
 /**
  * Implementation of {@link Selector} that matches
  * all objects.
@@ -35,7 +39,7 @@ public class MatchAllSelector implements Selector {
 	}
 
 	@Override
-	public HeaderResolver getHeaderResolver() {
+	public Function<Object, Map<String,Object>> getHeaderResolver() {
 		return null;
 	}
 }

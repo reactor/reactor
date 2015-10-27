@@ -16,23 +16,20 @@
 
 package reactor.io.codec.json;
 
+import java.io.IOException;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import reactor.core.support.Assert;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.BufferCodec;
 import reactor.io.codec.Codec;
 
-import java.io.IOException;
-
 /**
  * A codec for decoding JSON into Java objects and encoding Java objects into JSON.
- *
- * @param <IN>  The type to decode JSON into
+ * @param <IN> The type to decode JSON into
  * @param <OUT> The type to encode into JSON
  * @author Jon Brisbin
  */
@@ -42,9 +39,8 @@ public class JsonCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 	private final ObjectMapper mapper;
 
 	/**
-	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}  when
-	 * decoding.
-	 *
+	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}
+	 * when decoding.
 	 * @param inputType The type to create when decoding.
 	 */
 	public JsonCodec(Class<IN> inputType) {
@@ -52,11 +48,10 @@ public class JsonCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 	}
 
 	/**
-	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}  when
-	 * decoding. The {@code customModule} will be registered with the underlying {@link
-	 * ObjectMapper}.
-	 *
-	 * @param inputType    The type to create when decoding.
+	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}
+	 * when decoding. The {@code customModule} will be registered with the underlying
+	 * {@link ObjectMapper}.
+	 * @param inputType The type to create when decoding.
 	 * @param customModule The module to register with the underlying ObjectMapper
 	 */
 	@SuppressWarnings("unchecked")
@@ -65,13 +60,12 @@ public class JsonCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 	}
 
 	/**
-	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}  when
-	 * decoding. The {@code customModule} will be registered with the underlying {@link
-	 * ObjectMapper}.
-	 *
-	 * @param inputType    The type to create when decoding.
+	 * Creates a new {@code JsonCodec} that will create instances of {@code inputType}
+	 * when decoding. The {@code customModule} will be registered with the underlying
+	 * {@link ObjectMapper}.
+	 * @param inputType The type to create when decoding.
 	 * @param customModule The module to register with the underlying ObjectMapper
-	 * @param delimiter    A nullable delimiting byte for batch decoding
+	 * @param delimiter A nullable delimiting byte for batch decoding
 	 */
 	@SuppressWarnings("unchecked")
 	public JsonCodec(Class<IN> inputType, Module customModule, Byte delimiter) {
@@ -87,42 +81,49 @@ public class JsonCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected IN doBufferDecode(Buffer buffer) {
+	protected IN decodeNext(Buffer buffer, Object context) {
 		try {
 			if (JsonNode.class.isAssignableFrom(inputType)) {
 				return (IN) mapper.readTree(buffer.inputStream());
-			} else {
+			}
+			else {
 				return mapper.readValue(buffer.inputStream(), inputType);
 			}
-		} catch (IOException e) {
+		}
+		catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
 	}
 
+	static final private byte HEAD_DELIMITER = (byte) '{';
+	static final private byte TAIL_DELIMITER = (byte) '}';
+
 	@Override
-	public Function<Buffer, IN> decoder(Consumer<IN> next) {
-		return new JsonDecoder(next);
-	}
-
-	private class JsonDecoder implements Function<Buffer, IN> {
-		private final Consumer<IN> next;
-
-		private JsonDecoder(Consumer<IN> next) {
-			this.next = next;
+	protected int canDecodeNext(Buffer buffer, Object context) {
+		int countHead = 0;
+		int countTail = 0;
+		int pos = 0;
+		for (byte b : buffer.duplicate()) {
+			pos++;
+			if (b == HEAD_DELIMITER) {
+				countHead++;
+			}
+			else if (b == TAIL_DELIMITER) {
+				countTail++;
+				if (countTail == countHead) {
+					return buffer.position() + pos;
+				}
+			}
 		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public IN apply(Buffer buffer) {
-			return doDelimitedBufferDecode(next, buffer);
-		}
+		return -1;
 	}
 
 	@Override
 	public Buffer apply(OUT out) {
 		try {
 			return addDelimiterIfAny(new Buffer().append(mapper.writeValueAsBytes(out)));
-		} catch (JsonProcessingException e) {
+		}
+		catch (JsonProcessingException e) {
 			throw new IllegalStateException(e);
 		}
 	}

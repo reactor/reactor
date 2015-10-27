@@ -29,10 +29,13 @@ import io.netty.handler.timeout.IdleStateEvent;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.FutureListener;
+import io.netty.util.concurrent.GenericFutureListener;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.support.Bounded;
 import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
@@ -208,37 +211,80 @@ public class NettyChannel
 		return prefetch;
 	}
 
-	public static class FuturePublisher<C extends Future<?>> implements Publisher<Void> {
+	public static class FuturePublisher<C extends Future> implements Publisher<Void> {
 
 		protected final C future;
 
 		public FuturePublisher(C future) {
+			this(future, false);
+		}
+
+		@SuppressWarnings("unchecked")
+		public FuturePublisher(C future, boolean preinit) {
 			this.future = future;
+			if(preinit) {
+				if(future.isSuccess()){
+					init(future);
+					return;
+				}
+				future.addListener(new FutureListener<Object>() {
+					@Override
+					public void operationComplete(Future<Object> future) throws Exception {
+						if (future.isSuccess()) {
+							init((C) future);
+						}
+					}
+				});
+			}
+		}
+
+		protected void init(C future) {
 		}
 
 		@Override
 		@SuppressWarnings("unchecked")
 		public final void subscribe(final Subscriber<? super Void> s) {
-			future.addListener(new FutureListener<Object>() {
-
-				@Override
-				public void operationComplete(Future<Object> future) throws Exception {
-					if(!future.isSuccess()){
-						doError(s, future.cause());
-					}
-					else {
-						doComplete((C)future, s);
-					}
-				}
-			});
+			future.addListener(new SubscriberFutureBridge(s));
 		}
 
 		protected void doComplete(C future, Subscriber<? super Void> s){
-			Publishers.<Void>empty().subscribe(s);
+			s.onComplete();
 		}
 
 		protected void doError(Subscriber<? super Void> s, Throwable throwable){
-			Exceptions.<Void>publisher(throwable).subscribe(s);
+			s.onError(throwable);
+		}
+
+		private final class SubscriberFutureBridge implements GenericFutureListener<Future<?>> {
+
+			private final Subscriber<? super Void> s;
+
+			public SubscriberFutureBridge(Subscriber<? super Void> s) {
+				this.s = s;
+				s.onSubscribe(new Subscription() {
+					@Override
+					public void request(long n) {
+
+					}
+
+					@Override
+					@SuppressWarnings("unchecked")
+					public void cancel() {
+						future.removeListener(SubscriberFutureBridge.this);
+					}
+				});
+			}
+
+			@Override
+			@SuppressWarnings("unchecked")
+			public void operationComplete(Future<?> future) throws Exception {
+				if(!future.isSuccess()){
+					doError(s, future.cause());
+				}
+				else {
+					doComplete((C)future, s);
+				}
+			}
 		}
 	}
 }

@@ -355,7 +355,7 @@ public class ClientServerHttpTests {
 		}
 
 		@Override
-		public Function<Buffer, List<String>> decoder(Consumer<List<String>> next) {
+		protected List<String> decodeNext(Buffer buffer, Object context) {
 			return null;
 		}
 	}

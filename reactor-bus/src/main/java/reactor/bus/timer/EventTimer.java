@@ -21,15 +21,16 @@ import org.slf4j.LoggerFactory;
 import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
-import reactor.bus.selector.HeaderResolver;
 import reactor.bus.selector.Selector;
 import reactor.core.error.CancelException;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.error.ReactorFatalException;
 import reactor.fn.Consumer;
+import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -226,7 +227,7 @@ public class EventTimer implements Timer {
 		}
 
 		@Override
-		public HeaderResolver getHeaderResolver() {
+		public Function<Object, Map<String, Object>> getHeaderResolver() {
 			return null;
 		}
 	}

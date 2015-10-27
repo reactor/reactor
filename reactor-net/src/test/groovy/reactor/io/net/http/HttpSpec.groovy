@@ -38,7 +38,7 @@ class HttpSpec extends Specification {
 		when: "the server is prepared"
 
 			//prepare post request consumer on /test/* and capture the URL parameter "param"
-			server.post('/test/{param}') { HttpChannel<String, String> req ->
+			server.post('/test/{param}') { HttpChannelStream<String, String> req ->
 
 				//log then transform then log received http request content from the request body and the resolved URL parameter "param"
 				//the returned stream is bound to the request stream and will auto read/close accordingly
@@ -64,7 +64,7 @@ class HttpSpec extends Specification {
 			}
 
 			//prepare an http post request-reply flow
-			def content = client.post('/test/World') { HttpChannel<String, String> req ->
+			def content = client.post('/test/World') { HttpChannelStream<String, String> req ->
 				//prepare content-type
 				req.header('Content-Type', 'text/plain')
 
@@ -108,11 +108,11 @@ class HttpSpec extends Specification {
 
 	when: "the server is prepared"
 
-	server.get('/test') { HttpChannel<String, String> req ->
+	server.get('/test') { HttpChannelStream<String, String> req ->
 	  throw new Exception()
-	}.get('/test2') { HttpChannel<String, String> req ->
+	}.get('/test2') { HttpChannelStream<String, String> req ->
 	  req.writeWith(Streams.fail(new Exception()))
-	}.get('/test3') { HttpChannel<String, String> req ->
+	}.get('/test3') { HttpChannelStream<String, String> req ->
 	  return Streams.fail(new Exception())
 	}
 
@@ -190,7 +190,7 @@ class HttpSpec extends Specification {
 
 			//prepare websocket request consumer on /test/* and capture the URL parameter "param"
 			server
-					.ws('/test/{param}') { HttpChannel<String, String> req ->
+					.ws('/test/{param}') { HttpChannelStream<String, String> req ->
 
 				//log then transform then log received http request content from the request body and the resolved URL parameter "param"
 				//the returned stream is bound to the request stream and will auto read/close accordingly
@@ -218,7 +218,7 @@ class HttpSpec extends Specification {
 
 
 			//prepare an http websocket request-reply flow
-			def content = client.ws('/test/World') { HttpChannel<String, String> req ->
+			def content = client.ws('/test/World') { HttpChannelStream<String, String> req ->
 				//prepare content-type
 				req.header('Content-Type', 'text/plain')
 

@@ -182,6 +182,7 @@ public class NettyHttpClient extends HttpClient<Buffer, Buffer> {
 		}
 
 		return new Publisher<HttpChannel<Buffer, Buffer>>() {
+
 			@Override
 			public void subscribe(final Subscriber<? super HttpChannel<Buffer, Buffer>> subscriber) {
 				doStart(new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {

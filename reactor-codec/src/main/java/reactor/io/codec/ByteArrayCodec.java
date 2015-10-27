@@ -16,8 +16,6 @@
 
 package reactor.io.codec;
 
-import reactor.fn.Consumer;
-import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 
 /**
@@ -30,20 +28,10 @@ import reactor.io.buffer.Buffer;
 public class ByteArrayCodec extends BufferCodec<byte[], byte[]> {
 
 	@Override
-	public Function<Buffer, byte[]> decoder(final Consumer<byte[]> next) {
-		return new Function<Buffer, byte[]>() {
-			@Override
-			public byte[] apply(Buffer buffer) {
-				byte[] bytes = buffer.asBytes();
-				buffer.skip(bytes.length);
-				if (null != next) {
-					next.accept(bytes);
-					return null;
-				} else {
-					return bytes;
-				}
-			}
-		};
+	protected byte[] decodeNext(Buffer buffer, Object context) {
+		byte[] bytes = buffer.asBytes();
+		buffer.skip(bytes.length);
+		return bytes;
 	}
 
 	@Override

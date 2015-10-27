@@ -43,7 +43,6 @@ import reactor.io.net.impl.netty.tcp.NettyTcpServer;
 
 /**
  * A Netty-based {@code HttpServer} implementation
- *
  * @author Stephane Maldini
  * @since 2.1
  */
@@ -58,16 +57,15 @@ public class NettyHttpServer extends HttpServer<Buffer, Buffer> {
 
 		super(timer);
 
-		this.server =
-				new NettyTcpServer(timer, listenAddress, options, sslOptions) {
+		this.server = new NettyTcpServer(timer, listenAddress, options, sslOptions) {
 
-					@Override
-					protected void bindChannel(
-							ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
-							SocketChannel nativeChannel) {
-						NettyHttpServer.this.bindChannel(handler, nativeChannel);
-					}
-				};
+			@Override
+			protected void bindChannel(
+					ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
+					SocketChannel nativeChannel) {
+				NettyHttpServer.this.bindChannel(handler, nativeChannel);
+			}
+		};
 	}
 
 	@Override
@@ -77,49 +75,38 @@ public class NettyHttpServer extends HttpServer<Buffer, Buffer> {
 
 	@Override
 	protected Publisher<Void> doStart(
-			final ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>> handler) {
+			final ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>> defaultHandler) {
 		return server.start(new ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>() {
 			@Override
 			public Publisher<Void> apply(ReactiveChannel<Buffer, Buffer> ch) {
 				NettyHttpChannel request = (NettyHttpChannel) ch;
 
-				if (handler != null) {
-					handler.apply(request);
-				}
-
-				Iterable<? extends Publisher<Void>> handlers = routeChannel(request);
-
-				//404
-				if (handlers == null) {
-					if (request.markHeadersAsFlushed()) {
-						request.delegate()
-						       .writeAndFlush(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND));
-					}
-
-					return Publishers.empty();
-				}
 				try {
-					return Publishers.<Void>concat(Publishers.from(handlers));
+					Publisher<Void> afterHandlers = routeChannel(request);
+
+					if (afterHandlers == null) {
+						if (defaultHandler != null) {
+							return defaultHandler.apply(request);
+						}
+						else if (request.markHeadersAsFlushed()) {
+							//404
+							request.delegate()
+							       .writeAndFlush(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND));
+						}
+						return Publishers.empty();
+
+					}
+					else {
+						return afterHandlers;
+					}
 				}
-				catch (Throwable t){
+				catch (Throwable t) {
 					Exceptions.throwIfFatal(t);
 					return Publishers.error(t);
 				}
 				//500
 			}
 		});
-	}
-
-	@Override
-	protected Iterable<? extends Publisher<Void>> routeChannel(HttpChannel<Buffer, Buffer> ch) {
-		Iterable<? extends Publisher<Void>> handlers = super.routeChannel(ch);
-		if (!handlers.iterator()
-		             .hasNext()) {
-			return null;
-		}
-		else {
-			return handlers;
-		}
 	}
 
 	@Override
@@ -150,8 +137,7 @@ public class NettyHttpServer extends HttpServer<Buffer, Buffer> {
 
 		pipeline.addLast(new HttpServerCodec());
 
-		pipeline.addLast(NettyHttpServerHandler.class.getSimpleName(),
-				new NettyHttpServerHandler(handler, netChannel));
+		pipeline.addLast(NettyHttpServerHandler.class.getSimpleName(), new NettyHttpServerHandler(handler, netChannel));
 
 	}
 }

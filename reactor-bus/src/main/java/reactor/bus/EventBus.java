@@ -52,6 +52,7 @@ import javax.annotation.Nullable;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -337,7 +338,8 @@ public class EventBus implements Bus<Event<?>>, Consumer<Event<?>> {
 			@Override
 			public void accept(T e) {
 				if (null != selector.getHeaderResolver()) {
-					e.getHeaders().setAll(selector.getHeaderResolver().resolve(e.getKey()));
+					Function<Object, Map<String,Object>> resolver = selector.getHeaderResolver();
+					e.getHeaders().setAll(resolver.apply(e.getKey()));
 				}
 				if (tClass == null || e.getData() == null || tClass.isAssignableFrom(e.getData().getClass())) {
 					consumer.accept(e);

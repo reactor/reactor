@@ -64,60 +64,63 @@ public class LengthFieldCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 	}
 
 	@Override
-	public Function<Buffer, IN> decoder(Consumer<IN> next) {
-		return new LengthFieldDecoder(next);
-	}
-
-	private class LengthFieldDecoder implements Function<Buffer, IN> {
-		private final Function<Buffer, IN> decoder;
-
-		private LengthFieldDecoder(Consumer<IN> next) {
-			this.decoder = delegate.decoder(next);
-		}
-
-		@Override
-		public IN apply(Buffer buffer) {
-			while (buffer.remaining() > lengthFieldLength) {
-				int expectedLen = readLen(buffer);
-				if (expectedLen < 0 || expectedLen > buffer.remaining()) {
-					// This Buffer doesn't contain a full frame of data
-					// reset to the start and bail out
-					buffer.rewind(lengthFieldLength);
+	public Function<Buffer, IN> decoder(final Consumer<IN> next) {
+		return new DefaultInvokeOrReturnFunction<Object>(next, delegate.decoderContextProvider.get()){
+			@Override
+			public IN apply(Buffer buffer) {
+				if(next != null){
+					while(buffer.remaining() > lengthFieldLength){
+						next.accept(super.apply(buffer));
+					}
 					return null;
 				}
-				// We have at least a full frame of data
-
-				// save the position and limit so we can reset it later
-				int pos = buffer.position();
-				int limit = buffer.limit();
-
-				// create a view of the frame
-				Buffer.View v = buffer.createView(pos, pos + expectedLen);
-				// call the delegate decoder with the full frame
-				IN in = decoder.apply(v.get());
-				// reset the limit
-				buffer.byteBuffer().limit(limit);
-				if (buffer.position() == pos) {
-					// the pointer hasn't advanced, advance it
-					buffer.skip(expectedLen);
-				}
-				if (null != in) {
-					// no Consumer was invoked, return this data
-					return in;
-				}
+				return super.apply(buffer);
 			}
+		};
+	}
 
-			return null;
+	@Override
+	protected IN decodeNext(Buffer buffer, Object context) {
+		if (buffer.remaining() > lengthFieldLength) {
+			int expectedLen = readLen(buffer);
+			if (expectedLen < 0 || expectedLen > buffer.remaining()) {
+				// This Buffer doesn't contain a full frame of data
+				// reset to the start and bail out
+				buffer.rewind(lengthFieldLength);
+				return null;
+			}
+			// We have at least a full frame of data
+
+			// save the position and limit so we can reset it later
+			int pos = buffer.position();
+			int limit = buffer.limit();
+
+			// create a view of the frame
+			Buffer.View v = buffer.createView(pos, pos + expectedLen);
+			// call the delegate decoder with the full frame
+			IN in = delegate.decodeNext(v.get());
+			// reset the limit
+			buffer.byteBuffer().limit(limit);
+			if (buffer.position() == pos) {
+				// the pointer hasn't advanced, advance it
+				buffer.skip(expectedLen);
+			}
+			if (null != in) {
+				// no Consumer was invoked, return this data
+				return in;
+			}
 		}
 
-		private int readLen(Buffer buffer) {
-			if (lengthFieldLength == 4) {
-				return buffer.readInt();
-			} else if (lengthFieldLength == 2) {
-				return buffer.readShort();
-			} else {
-				return (int) buffer.readLong();
-			}
+		return null;
+	}
+
+	private int readLen(Buffer buffer) {
+		if (lengthFieldLength == 4) {
+			return buffer.readInt();
+		} else if (lengthFieldLength == 2) {
+			return buffer.readShort();
+		} else {
+			return (int) buffer.readLong();
 		}
 	}
 

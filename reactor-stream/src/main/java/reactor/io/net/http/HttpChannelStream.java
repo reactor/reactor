@@ -88,7 +88,7 @@ public class HttpChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	/**
 	 * @see HttpChannel#params()
 	 */
-	public final Map<String, String> params() {
+	public final Map<String, Object> params() {
 		return actual.params();
 	}
 
@@ -97,7 +97,7 @@ public class HttpChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	 * @param key matching key
 	 * @return the resolved parameter for the given key name
 	 */
-	public final String param(String key) {
+	public final Object param(String key) {
 		return actual.param(key);
 	}
 

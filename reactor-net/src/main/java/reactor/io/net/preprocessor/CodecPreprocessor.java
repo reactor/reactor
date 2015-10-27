@@ -17,11 +17,13 @@ package reactor.io.net.preprocessor;
 
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
+import java.util.Map;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.support.Bounded;
+import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.DelimitedCodec;
@@ -143,7 +145,7 @@ public final class CodecPreprocessor<IN, OUT>
 	 * @return
 	 */
 	static public CodecPreprocessor<String, String> string(){
-		return from(StandardCodecs.STRING_CODEC);
+		return from(StandardCodecs.DELIMITED_STRING_CODEC);
 	}
 
 	/**
@@ -330,6 +332,13 @@ public final class CodecPreprocessor<IN, OUT>
 		}
 
 		@Override
+		public HttpChannel<IN, OUT> paramsResolver(
+				Function<? super String, Map<String, Object>> headerResolver) {
+			channel.paramsResolver(headerResolver);
+			return this;
+		}
+
+		@Override
 		public ResponseHeaders responseHeaders() {
 			return channel.responseHeaders();
 		}
@@ -425,6 +434,33 @@ public final class CodecPreprocessor<IN, OUT>
 		@Override
 		protected void doSubscribeHeaders(Subscriber<? super Void> s) {
 			channel.writeHeaders().subscribe(s);
+		}
+
+		@Override
+		public HttpChannel<IN, OUT> header(String name, String value) {
+			channel.header(name, value);
+			return this;
+		}
+
+		@Override
+		public Object param(String key) {
+			return channel.param(key);
+		}
+
+		@Override
+		public HttpChannel<IN, OUT> responseHeader(String name, String value) {
+			channel.responseHeader(name, value);
+			return this;
+		}
+
+		@Override
+		public Map<String, Object> params() {
+			return channel.params();
+		}
+
+		@Override
+		public Publisher<Void> writeWith(Publisher<? extends OUT> source) {
+			return channel.writeWith(encoder.encode(source));
 		}
 
 		@Override

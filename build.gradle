@@ -321,8 +321,8 @@ project('reactor-net') {
 	dependencies {
 		compile project(':reactor-core')
 
-		//Http routing
-		compile(project(':reactor-bus')) {
+		//Improved Http routing
+		optional(project(':reactor-bus')) {
 			transitive = false
 		}
 

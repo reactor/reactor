@@ -139,7 +139,7 @@ public class NettyHttpClientHandler extends NettyChannelHandlerBridge {
 			Exception ex = new HttpException(httpChannel);
 			exceptionCaught(ctx, ex);
 			if(replySubscriber != null){
-				replySubscriber.onError(ex);
+				Publishers.<HttpChannel<Buffer, Buffer>>error(ex).subscribe(replySubscriber);
 			}
 			discardBody = true;
 		}

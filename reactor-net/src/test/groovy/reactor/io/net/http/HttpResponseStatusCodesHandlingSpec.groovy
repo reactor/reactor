@@ -19,7 +19,7 @@ public class HttpResponseStatusCodesHandlingSpec extends Specification {
             }
 
         when: "the server is prepared"
-            server.post('/test') { HttpChannel<String, String> req ->
+            server.post('/test') { HttpChannelStream<String, String> req ->
                 req.writeWith(
                         req.log('server-received')
                 )
@@ -34,7 +34,7 @@ public class HttpResponseStatusCodesHandlingSpec extends Specification {
             }
 
             def replyReceived = ""
-            def content = client.get('/unsupportedURI') { HttpChannel<String,String> req ->
+            def content = client.get('/unsupportedURI') { HttpChannelStream<String, String> req ->
                 //prepare content-type
                 req.header('Content-Type', 'text/plain')
 

@@ -16,17 +16,16 @@
 
 package reactor.io.codec;
 
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.io.buffer.Buffer;
-
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
-import java.util.List;
+
+import reactor.fn.Function;
+import reactor.fn.Supplier;
+import reactor.io.buffer.Buffer;
 
 /**
  * @author Jon Brisbin
@@ -48,8 +47,13 @@ public class StringCodec extends BufferCodec<String, String> {
 		this(delimiter, Charset.forName("UTF-8"));
 	}
 
-	public StringCodec(Byte delimiter, Charset charset) {
-		super(delimiter);
+	public StringCodec(Byte delimiter, final Charset charset) {
+		super(delimiter, new Supplier<CharsetDecoder>(){
+			@Override
+			public CharsetDecoder get() {
+				return charset.newDecoder();
+			}
+		});
 		this.charset = charset;
 	}
 
@@ -59,14 +63,20 @@ public class StringCodec extends BufferCodec<String, String> {
 	}
 
 	@Override
-	public Function<Buffer, String> decoder(Consumer<String> next) {
-		return new StringDecoder(next);
+	@SuppressWarnings("unchecked")
+	protected String decodeNext(Buffer buffer, Object context) {
+		Buffer b = buffer;
+		if(delimiter != null){
+			int end = buffer.indexOf(delimiter);
+			if(end != - 1) {
+				b = buffer.duplicate().limit(end - 1);
+				buffer.skip((Math.min(buffer.limit(), end + 1) - buffer.position()));
+			}
+		}
+		return decode(b, (CharsetDecoder)context);
 	}
 
-	@Override
-	protected String doBufferDecode(Buffer buffer) {
-		return decode(buffer, charset.newDecoder());
-	}
+
 
 	@Override
 	public Buffer apply(String s) {
@@ -78,40 +88,6 @@ public class StringCodec extends BufferCodec<String, String> {
 			return charsetDecoder.decode(buffer.byteBuffer()).toString();
 		} catch (CharacterCodingException e) {
 			throw new IllegalStateException(e);
-		}
-	}
-
-	private class StringDecoder implements Function<Buffer, String> {
-
-		private final CharsetDecoder   decoder;
-		private final Consumer<String> next;
-
-		private StringDecoder(Consumer<String> next) {
-			this.next = next;
-			this.decoder = charset.newDecoder();
-		}
-
-		protected String doBufferDecode(Buffer buffer) {
-			return decode(buffer, decoder);
-		}
-
-		@Override
-		public String apply(Buffer buffer) {
-			//split using the delimiter
-			if (delimiter != null) {
-				List<Buffer.View> views = buffer.split(delimiter);
-				int viewCount = views.size();
-
-				if (viewCount == 0) return invokeCallbackOrReturn(next, doBufferDecode(buffer));
-
-				for (Buffer.View view : views) {
-					String in = invokeCallbackOrReturn(next, decode(view.get(), decoder));
-					if (in != null) return in;
-				}
-				return null;
-			} else {
-				return invokeCallbackOrReturn(next, decode(buffer, decoder));
-			}
 		}
 	}
 

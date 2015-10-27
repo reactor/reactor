@@ -23,9 +23,9 @@ import reactor.fn.Predicate;
  *
  * @author Jon Brisbin
  */
-public class PredicateSelector extends ObjectSelector<Object, Predicate<Object>> {
+public class PredicateSelector<T> extends ObjectSelector<T, Predicate<? super T>> {
 
-	public PredicateSelector(Predicate<Object> object) {
+	public PredicateSelector(Predicate<? super T> object) {
 		super(object);
 	}
 
@@ -35,12 +35,12 @@ public class PredicateSelector extends ObjectSelector<Object, Predicate<Object>>
 	 * @param predicate The {@link Predicate} to delegate to when matching objects.
 	 * @return PredicateSelector
 	 */
-	public static PredicateSelector predicateSelector(Predicate<Object> predicate) {
-		return new PredicateSelector(predicate);
+	public static <T> PredicateSelector<T> predicateSelector(Predicate<? super T> predicate) {
+		return new PredicateSelector<>(predicate);
 	}
 
 	@Override
-	public boolean matches(Object key) {
+	public boolean matches(T key) {
 		return getObject().test(key);
 	}
 

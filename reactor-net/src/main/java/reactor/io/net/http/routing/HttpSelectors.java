@@ -16,7 +16,8 @@
 
 package reactor.io.net.http.routing;
 
-import reactor.bus.selector.Selectors;
+import reactor.fn.Predicate;
+import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.model.Method;
 import reactor.io.net.http.model.Protocol;
 
@@ -25,7 +26,7 @@ import reactor.io.net.http.model.Protocol;
  *
  * @author Stephane Maldini
  */
-public abstract class HttpSelectors extends Selectors {
+public abstract class HttpSelectors{
 
 
 	/**
@@ -37,7 +38,7 @@ public abstract class HttpSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static HttpSelector http(String uri, Protocol protocol, Method method) {
+	public static Predicate<HttpChannel> http(String uri, Protocol protocol, Method method) {
 		if (null == uri) {
 			return null;
 		}
@@ -56,7 +57,7 @@ public abstract class HttpSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static HttpSelector get(String uri) {
+	public static Predicate<HttpChannel> get(String uri) {
 		return http(uri, null, Method.GET);
 	}
 
@@ -72,7 +73,7 @@ public abstract class HttpSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static HttpSelector post(String uri) {
+	public static Predicate<HttpChannel> post(String uri) {
 		return http(uri, null, Method.POST);
 	}
 
@@ -88,7 +89,7 @@ public abstract class HttpSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static HttpSelector put(String uri) {
+	public static Predicate<HttpChannel> put(String uri) {
 		return http(uri, null, Method.PUT);
 	}
 
@@ -104,7 +105,7 @@ public abstract class HttpSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static HttpSelector delete(String uri) {
+	public static Predicate<HttpChannel> delete(String uri) {
 		return http(uri, null, Method.DELETE);
 	}
 
@@ -120,7 +121,7 @@ public abstract class HttpSelectors extends Selectors {
 	 * @see reactor.bus.selector.UriPathTemplate
 	 * @see reactor.bus.selector.UriPathSelector
 	 */
-	public static HttpSelector ws(String uri) {
+	public static Predicate<HttpChannel> ws(String uri) {
 		return http(uri, null, Method.WS);
 	}
 }

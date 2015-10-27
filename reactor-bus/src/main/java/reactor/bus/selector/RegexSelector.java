@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import reactor.fn.Function;
+
 /**
  * A {@link Selector} implementation based on the given regular expression. Parses it into a {@link Pattern} for
  * efficient matching against keys.
@@ -39,10 +41,10 @@ import java.util.regex.Pattern;
  */
 public class RegexSelector extends ObjectSelector<Object, Pattern> {
 
-	private final HeaderResolver headerResolver = new HeaderResolver() {
+	private final Function<Object, Map<String,Object>> headerResolver = new Function<Object, Map<String,Object>>() {
 		@Nullable
 		@Override
-		public Map<String, Object> resolve(Object key) {
+		public Map<String, Object> apply(Object key) {
 			Matcher m = getObject().matcher(key.toString());
 			if (!m.matches()) {
 				return null;
@@ -84,7 +86,7 @@ public class RegexSelector extends ObjectSelector<Object, Pattern> {
 	}
 
 	@Override
-	public HeaderResolver getHeaderResolver() {
+	public Function<Object, Map<String,Object>> getHeaderResolver() {
 		return headerResolver;
 	}
 

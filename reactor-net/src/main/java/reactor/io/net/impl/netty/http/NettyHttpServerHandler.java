@@ -73,6 +73,7 @@ public class NettyHttpServerHandler extends NettyChannelHandlerBridge {
 				}
 			};
 
+
 			if (request.isWebsocket()) {
 				HttpObjectAggregator agg = new HttpObjectAggregator(65536);
 				ctx.pipeline().addBefore(NettyHttpServerHandler.class.getSimpleName(),

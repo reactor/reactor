@@ -16,7 +16,10 @@
 
 package reactor.bus.selector;
 
+import java.util.Map;
 import java.util.Set;
+
+import reactor.fn.Function;
 
 /**
  * Implementation of {@link Selector} that matches
@@ -47,7 +50,7 @@ public class SetMembershipSelector implements Selector {
 	}
 
 	@Override
-	public HeaderResolver getHeaderResolver() {
+	public Function<Object, Map<String, Object>> getHeaderResolver() {
 		return null;
 	}
 }

@@ -40,8 +40,7 @@ public class ProtobufCodec<IN, OUT> extends SerializationCodec<Map<Class<?>, Mes
 
 	@Override
 	protected Function<byte[], IN> deserializer(final Map<Class<?>, Message> messages,
-	                                            final Class<IN> type,
-	                                            final Consumer<IN> next) {
+	                                            final Class<IN> type) {
 		Assert.isAssignable(Message.class,
 		                    type,
 		                    "Can only deserialize Protobuf messages. " +
@@ -58,13 +57,7 @@ public class ProtobufCodec<IN, OUT> extends SerializationCodec<Map<Class<?>, Mes
 						msg = (Message)type.getMethod("getDefaultInstance").invoke(null);
 						messages.put(type, msg);
 					}
-					IN obj = (IN)msg.newBuilderForType().mergeFrom(bytes).build();
-					if(null != next) {
-						next.accept(obj);
-						return null;
-					} else {
-						return obj;
-					}
+					return  (IN)msg.newBuilderForType().mergeFrom(bytes).build();
 				} catch(Exception e) {
 					throw new IllegalStateException(e.getMessage(), e);
 				}

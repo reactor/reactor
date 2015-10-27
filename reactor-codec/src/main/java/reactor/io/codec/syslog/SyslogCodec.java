@@ -49,6 +49,11 @@ public class SyslogCodec extends Codec<Buffer, SyslogMessage, Void> {
 		return new SyslogMessageDecoder(next);
 	}
 
+	@Override
+	protected SyslogMessage decodeNext(Buffer buffer, Object context) {
+		return null;
+	}
+
 	private class SyslogMessageDecoder implements Function<Buffer, SyslogMessage> {
 		private final Calendar cal  = Calendar.getInstance();
 		private final int      year = cal.get(Calendar.YEAR);

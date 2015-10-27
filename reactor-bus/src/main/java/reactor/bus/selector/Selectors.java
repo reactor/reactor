@@ -183,8 +183,8 @@ public abstract class Selectors {
 	 * @return PredicateSelector
 	 * @see PredicateSelector
 	 */
-	public static Selector predicate(Predicate<Object> predicate) {
-		return new PredicateSelector(predicate);
+	public static <T> Selector<T> predicate(Predicate<? super T> predicate) {
+		return new PredicateSelector<T>(predicate);
 	}
 
 	/**

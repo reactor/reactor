@@ -16,19 +16,22 @@
 
 package reactor.io.codec;
 
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
+import reactor.core.support.BackpressureUtils;
+import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * Implementations of a {@literal BufferCodec} are codec manipulating Buffer sources
- *
- * @param <IN>  The type produced by decoding
+ * @param <IN> The type produced by decoding
  * @param <OUT> The type consumed by encoding
  * @author Stephane Maldini
  * @since 2.0.4
@@ -36,109 +39,204 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 	/**
-	 * Create a new Codec set with a \0 delimiter to finish any Buffer encoded value or scan for delimited decoded
-	 * Buffers.
+	 * Create a new Codec set with a \0 delimiter to finish any Buffer encoded value or
+	 * scan for delimited decoded Buffers.
 	 */
 	protected BufferCodec() {
 		super();
 	}
 
 	/**
-	 * A delimiter can be used to trail any decoded buffer or to finalize encoding from any incoming value
-	 *
-	 * @param delimiter delimiter can be left undefined (null) to bypass appending at encode time and scanning at
-	 *                     decode
-	 *                  time.
+	 * A delimiter can be used to trail any decoded buffer or to finalize encoding from
+	 * any incoming value
+	 * @param delimiter delimiter can be left undefined (null) to bypass appending at
+	 * encode time and scanning at decode time.
 	 */
 	protected BufferCodec(Byte delimiter) {
 		super(delimiter);
 	}
 
-	@Override
-	public Publisher<IN> decode(final Publisher<Buffer> publisherToDecode) {
-		if (true) {
-			return super.decode(publisherToDecode);
-		}
-		return Publishers.lift(publisherToDecode,
-		  new Function<Subscriber<? super IN>, Subscriber<? super Buffer>>() {
-			  @Override
-			  public Subscriber<? super Buffer> apply(final Subscriber<? super IN> subscriber) {
-				  return new AggregatingDecoderBarrier<IN>(BufferCodec.this, subscriber);
-			  }
-		  });
+	/**
+	 * A delimiter can be used to trail any decoded buffer or to finalize encoding from
+	 * any incoming value
+	 * @param delimiter delimiter can be left undefined (null) to bypass appending at
+	 * encode time and scanning at decode time.
+	 */
+	protected BufferCodec(Byte delimiter, Supplier<?> decoderContext) {
+		super(delimiter, decoderContext);
 	}
 
+	protected int canDecodeNext(Buffer buffer, Object context) {
+		return delimiter == null || buffer == null ? -1 : buffer.indexOf(delimiter);
+	}
 
-	private static final class AggregatingDecoderBarrier<IN> extends SubscriberBarrier<Buffer, IN> {
+	protected Iterator<Buffer.View> iterateDecode(final Buffer buffer, final Object context) {
+		return new Iterator<Buffer.View>() {
+
+			@Override
+			public boolean hasNext() {
+				return canDecodeNext(buffer, context) != -1;
+			}
+
+			@Override
+			public Buffer.View next() {
+				int limit = buffer.limit();
+				Buffer.View view =
+						buffer.createView(buffer.position() != 0 ? buffer.position() + 1 : buffer.position(), canDecodeNext(buffer, context));
+
+				if(buffer.remaining() > 0) {
+					buffer.position(view.getEnd());
+					buffer.limit(limit);
+				}
+				return view;
+			}
+		};
+	}
+
+	@Override
+	public Publisher<IN> decode(final Publisher<Buffer> publisherToDecode) {
+		return Publishers.lift(publisherToDecode, new Function<Subscriber<? super IN>, Subscriber<? super Buffer>>() {
+			@Override
+			public Subscriber<? super Buffer> apply(
+					final Subscriber<? super IN> subscriber) {
+				return new AggregatingDecoderBarrier<IN>(BufferCodec.this, subscriber);
+			}
+		});
+	}
+
+	private static final class AggregatingDecoderBarrier<IN>
+			extends SubscriberBarrier<Buffer, IN> {
 
 		private volatile long pendingDemand = 0l;
 
-		private final static AtomicLongFieldUpdater<AggregatingDecoderBarrier> PENDING_UPDATER =
-		  AtomicLongFieldUpdater.newUpdater(AggregatingDecoderBarrier.class, "pendingDemand");
+		private final static AtomicLongFieldUpdater<AggregatingDecoderBarrier>
+				PENDING_UPDATER =
+				AtomicLongFieldUpdater.newUpdater(AggregatingDecoderBarrier.class, "pendingDemand");
 
-		final Buffer               aggregate;
-		final Function<Buffer, IN> codec;
-		final Byte                 delimiter;
+		final BufferCodec<IN, ?> codec;
+		final Object             decoderContext;
 
-		public AggregatingDecoderBarrier(BufferCodec<IN, ?> codec, Subscriber<? super IN> subscriber) {
+		Buffer aggregate;
+
+		public AggregatingDecoderBarrier(BufferCodec<IN, ?> codec,
+				Subscriber<? super IN> subscriber) {
 			super(subscriber);
-			this.codec = codec.decoder();
-			this.delimiter = codec.delimiter;
-			if (delimiter != null) {
-				aggregate = null;
-			} else {
-				aggregate = null;
-			}
+			this.codec = codec;
+			this.decoderContext = codec.decoderContextProvider.get();
 		}
 
 		@Override
 		protected void doNext(Buffer buffer) {
-			long previous = PENDING_UPDATER.decrementAndGet(this);
-
 			if (aggregate != null) {
-				aggregate.append(buffer);
-				buffer.position(0);
-				//split using the delimiter
-				if (delimiter != null) {
-					int index = buffer.indexOf(delimiter);
-					if (index == -1) {
-						return;
-					}
-
-					int aggregateIndex = aggregate.limit() - buffer.limit() + index;
-					Buffer aggregTmp = aggregate.duplicate();
-					aggregTmp.position(aggregate.position()).flip();
-					for (Buffer.View view : aggregTmp.split(delimiter)) {
-						if (view.getEnd() == aggregTmp.limit()) {
-							return;
-						}
-
-						subscriber.onNext(codec.apply(view.get()));
-					}
-					aggregate.clear();
-				}
+				aggregate = new Buffer().append(aggregate)
+				                        .append(buffer)
+				                        .flip();
+			}
+			else if (-1L == codec.canDecodeNext(buffer, decoderContext)) {
+				aggregate = buffer;
+				super.doRequest(1L);
 				return;
 			}
-			subscriber.onNext(codec.apply(buffer));
+
+			if (aggregate == null) {
+				decodeAndNext(buffer);
+			}
+			else {
+				Buffer agg = aggregate;
+
+				if(-1L != codec.canDecodeNext(agg, decoderContext)){
+					aggregate = null;
+					decodeAndNext(agg);
+				}
+				else {
+					super.doRequest(1L);
+				}
+			}
+		}
+
+		@Override
+		protected void doComplete() {
+			Buffer agg = aggregate;
+			if (agg != null) {
+				aggregate = null;
+				decodeAndNext(agg.position(0));
+			}
+			super.doComplete();
+		}
+
+		private void decodeAndNext(Buffer buffer) {
+
+			IN next;
+
+			Iterator<Buffer.View> views = codec.iterateDecode(buffer, decoderContext);
+
+			if (!views.hasNext()) {
+				aggregate = buffer;
+				return;
+			}
+
+			Buffer.View cursor;
+			while (views.hasNext()) {
+				cursor = views.next();
+				if (BackpressureUtils.getAndSub(PENDING_UPDATER, this, 1L) > 0) {
+					next = codec.decodeNext(cursor.get(), decoderContext);
+					if (next != null) {
+						subscriber.onNext(next);
+					}
+					else {
+						aggregate =
+								new Buffer().append(buffer.slice(cursor.getStart(), buffer.limit()))
+								            .append(aggregate)
+								            .flip();
+						return;
+					}
+				}
+				else {
+					aggregate =
+							new Buffer().append(buffer.slice(cursor.getStart(), buffer.limit()))
+							            .append(aggregate)
+							            .flip();
+					return;
+				}
+			}
+			if (buffer.position() != buffer.limit()) {
+				aggregate = buffer.duplicate();
+			}
 		}
 
 		@Override
 		protected void doRequest(long n) {
-			long previous = PENDING_UPDATER.getAndAdd(this, n);
-			super.doRequest(n);
+			if (BackpressureUtils.getAndAdd(PENDING_UPDATER, this, n) == 0) {
+				super.doRequest(n);
+				Buffer agg = aggregate;
+				if(agg != null){
+					decodeAndNext(agg);
+				}
+			}
+			//TODO deal with complete and remaining
 		}
 	}
 
-	private class AggregatingEncoderBarrier extends SubscriberBarrier<OUT, Buffer> {
-		final Buffer aggregate = new Buffer();
+	protected final class BufferInvokeOrReturnFunction<C>
+			extends DefaultInvokeOrReturnFunction<C> {
 
-		public AggregatingEncoderBarrier(Subscriber<? super Buffer> subscriber) {
-			super(subscriber);
+		public BufferInvokeOrReturnFunction(Consumer<IN> consumer, C context) {
+			super(consumer, context);
 		}
 
 		@Override
-		protected void doNext(OUT src) {
-			//subscriber.onNext(src);
+		public IN apply(Buffer buffer) {
+			if (consumer != null) {
+				int pos;
+				while ((pos = buffer.position()) < buffer.limit()) {
+					super.apply(buffer);
+					if (pos == buffer.position()) {
+						break;
+					}
+				}
+				return null;
+			}
+			return super.apply(buffer);
 		}
 	}
 }

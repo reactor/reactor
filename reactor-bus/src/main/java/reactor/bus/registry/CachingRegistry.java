@@ -99,6 +99,11 @@ public class CachingRegistry<K, V> implements Registry<K, V> {
 	}
 
 	@Override
+	public Iterable<? extends V> selectValues(final K key) {
+		return SimpleCachingRegistry.selectValues(this, key);
+	}
+
+	@Override
 	public List<Registration<K, ? extends V>> select(K key) {
 		// use a thread-local cache
 		UnifiedMap<Object, List<Registration<K, ? extends V>>> allRegs = threadLocalRegs();

@@ -16,11 +16,13 @@
 
 package reactor.io.codec;
 
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.io.buffer.Buffer;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 
-import java.io.*;
+import reactor.io.buffer.Buffer;
 
 /**
  * {@code Codec} to transform Java objects into {@link reactor.io.buffer.Buffer Buffers} and visa-versa.
@@ -31,34 +33,15 @@ import java.io.*;
 public class JavaSerializationCodec<T> extends BufferCodec<T, T> {
 
 	@Override
-	public Function<Buffer, T> decoder(Consumer<T> next) {
-		return new Decoder(next);
-	}
-
-	private class Decoder implements Function<Buffer, T> {
-		private final Consumer<T> next;
-
-		private Decoder(Consumer<T> next) {
-			this.next = next;
+	@SuppressWarnings("unchecked")
+	protected T decodeNext(Buffer buff, Object context) {
+		if (buff.remaining() <= 0) {
+			return null;
 		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public T apply(Buffer buff) {
-			if (buff.remaining() <= 0) {
-				return null;
-			}
-			try {
-				T obj = (T) new ObjectInputStream(new ByteArrayInputStream(buff.asBytes())).readObject();
-				if (null != next) {
-					next.accept(obj);
-					return null;
-				} else {
-					return obj;
-				}
-			} catch (Exception e) {
-				throw new IllegalStateException(e.getMessage(), e);
-			}
+		try {
+			return  (T) new ObjectInputStream(new ByteArrayInputStream(buff.asBytes())).readObject();
+		} catch (Exception e) {
+			throw new IllegalStateException(e.getMessage(), e);
 		}
 	}
 

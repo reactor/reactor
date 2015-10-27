@@ -520,10 +520,9 @@ public class SmokeTests {
 		}
 
 		@Override
-		public Function<Buffer, Buffer> decoder(Consumer<Buffer> next) {
+		protected Buffer decodeNext(Buffer buffer, Object context) {
 			return null;
 		}
-
 	}
 
 	public static class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
@@ -538,7 +537,7 @@ public class SmokeTests {
 		}
 
 		@Override
-		public Function<Buffer, Buffer> decoder(Consumer<Buffer> next) {
+		protected Buffer decodeNext(Buffer buffer, Object context) {
 			return null;
 		}
 	}

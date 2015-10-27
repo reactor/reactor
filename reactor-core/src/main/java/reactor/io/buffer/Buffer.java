@@ -675,7 +675,9 @@ public class Buffer implements Recyclable,
 	 * @return {@literal this}
 	 */
 	public Buffer append(Buffer... buffers) {
+		if( buffers == null ) return this;
 		for (Buffer b : buffers) {
+			if(b == null) continue;
 			int pos = position();
 			int len = b.remaining();
 			ensureCapacity(len);
@@ -1136,7 +1138,7 @@ public class Buffer implements Recyclable,
 	 * @return the position of the char in the buffer or {@code -1} if not found
 	 */
 	public int indexOf(byte b) {
-		return indexOf(b, buffer.position(), buffer.remaining());
+		return indexOf(b, buffer.position(), buffer.capacity());
 	}
 
 	/**
@@ -1452,9 +1454,10 @@ public class Buffer implements Recyclable,
 
 		@Override
 		public Buffer get() {
-			buffer.limit(end);
-			buffer.position(start);
-			return Buffer.this;
+			Buffer b = Buffer.this.duplicate();
+			b.limit(end);
+			b.position(start);
+			return b;
 		}
 	}
 

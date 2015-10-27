@@ -18,7 +18,7 @@ package reactor.io.net.http;
 
 import java.net.InetSocketAddress;
 
-import reactor.bus.selector.Selector;
+import reactor.fn.Predicate;
 import reactor.io.net.ReactivePeer;
 import reactor.io.net.http.routing.HttpSelector;
 import reactor.rx.Promise;
@@ -89,13 +89,13 @@ public final class ReactorHttpServer<IN, OUT> {
 	 * Register an handler for the given Selector condition, incoming connections will query the internal registry
 	 * to invoke the matching handlers. Implementation may choose to reply 404 if no route matches.
 	 *
-	 * @param condition       a {@link Selector} to match the incoming connection with registered handler
+	 * @param condition       a {@link Predicate} to match the incoming connection with registered handler
 	 * @param serviceFunction an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	@SuppressWarnings("unchecked")
 	public ReactorHttpServer<IN, OUT> route(
-	  final Selector<HttpChannel> condition,
+	  final Predicate<HttpChannel> condition,
 	 final ReactorHttpHandler<IN, OUT> serviceFunction) {
 		server.route(condition, HttpChannelStream.wrap(serviceFunction, server.getDefaultTimer(), server.getDefaultPrefetchSize()));
 		return this;

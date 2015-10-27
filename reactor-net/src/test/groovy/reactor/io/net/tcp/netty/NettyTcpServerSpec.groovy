@@ -127,7 +127,7 @@ class NettyTcpServerSpec extends Specification {
 			}.await()
 
 		then: "the client/server were started"
-			latch.await(10, TimeUnit.SECONDS)
+			latch.await(5, TimeUnit.SECONDS)
 
 
 		cleanup: "the client/server where stopped"

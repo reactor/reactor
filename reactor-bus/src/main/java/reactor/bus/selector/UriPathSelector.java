@@ -19,6 +19,8 @@ package reactor.bus.selector;
 import javax.annotation.Nullable;
 import java.util.Map;
 
+import reactor.fn.Function;
+
 /**
  * A {@link Selector} implementation based on a {@link UriPathTemplate}.
  *
@@ -28,10 +30,10 @@ import java.util.Map;
  */
 public class UriPathSelector extends ObjectSelector<Object, UriPathTemplate> {
 
-	private final HeaderResolver headerResolver = new HeaderResolver() {
+	private final Function<Object, Map<String, Object>> headerResolver = new Function<Object, Map<String, Object>>() {
 		@Nullable
 		@Override
-		public Map<String, Object> resolve(Object key) {
+		public Map<String, Object> apply(Object key) {
 			Map<String, Object> headers = getObject().match(key.toString());
 			if (null != headers && !headers.isEmpty()) {
 				return headers;
@@ -66,7 +68,7 @@ public class UriPathSelector extends ObjectSelector<Object, UriPathTemplate> {
 	}
 
 	@Override
-	public HeaderResolver getHeaderResolver() {
+	public Function<Object, Map<String, Object>> getHeaderResolver() {
 		return headerResolver;
 	}
 

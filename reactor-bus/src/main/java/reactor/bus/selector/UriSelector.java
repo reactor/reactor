@@ -23,6 +23,8 @@ import java.net.URLDecoder;
 import java.util.HashMap;
 import java.util.Map;
 
+import reactor.fn.Function;
+
 /**
  * A {@link Selector} implementation that matches on various components of a full URI.
  * <p>
@@ -97,7 +99,7 @@ public class UriSelector extends ObjectSelector<Object, URI> {
 	}
 
 	@Override
-	public HeaderResolver getHeaderResolver() {
+	public Function<Object, Map<String,Object>> getHeaderResolver() {
 		return URI_HEADER_RESOLVER;
 	}
 
@@ -136,10 +138,10 @@ public class UriSelector extends ObjectSelector<Object, URI> {
 		}
 	}
 
-	private static class UriHeaderResolver implements HeaderResolver {
+	private static class UriHeaderResolver implements Function<Object, Map<String, Object>> {
 		@Nullable
 		@Override
-		public Map<String, Object> resolve(Object key) {
+		public Map<String, Object> apply(Object key) {
 			if (null == key) {
 				return null;
 			}

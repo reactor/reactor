@@ -59,6 +59,14 @@ public interface Registry<K, V> extends Iterable<Registration<K, ? extends V>> {
 	List<Registration<K, ? extends V>> select(K key);
 
 	/**
+	 * Select {@link Registration}s whose {@link Selector} {@link Selector#matches(Object)} the given {@code key}.
+	 *
+	 * @param key The key for the Selectors to match
+	 * @return A {@link List} of {@link Registration}s whose {@link Selector} matches the given key.
+	 */
+	Iterable<? extends V> selectValues(K key);
+
+	/**
 	 * Clear the {@link Registry}, resetting its state and calling {@link Registration#cancel()} for any active {@link
 	 * Registration}.
 	 */

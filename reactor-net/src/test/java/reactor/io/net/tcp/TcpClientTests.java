@@ -108,7 +108,7 @@ public class TcpClientTests {
 		abortServer.close();
 		timeoutServer.close();
 		heartbeatServer.close();
-		threadPool.shutdown();
+		threadPool.shutdownNow();
 		threadPool.awaitTermination(5, TimeUnit.SECONDS);
 		Thread.sleep(500);
 	}
@@ -247,14 +247,15 @@ public class TcpClientTests {
 			.connect("localhost", abortServerPort)
 		);
 
-		Publishers.toReadQueue(tcpClient.start(connection -> {
+		tcpClient.start(connection -> {
+			System.out.println("Start");
 			connectionLatch.countDown();
 			connection.input().subscribe(Subscribers.unbounded());
 			return Publishers.never();
 		}, (currentAddress, attempt) -> {
 			reconnectionLatch.countDown();
 			return null;
-		})).take();
+		}).subscribe(Subscribers.unbounded());
 
 		assertTrue("Initial connection is made", connectionLatch.await(5, TimeUnit.SECONDS));
 		assertTrue("A reconnect attempt was made", reconnectionLatch.await(5, TimeUnit.SECONDS));
@@ -329,9 +330,8 @@ public class TcpClientTests {
 			s.connect("localhost", echoServerPort)
 		);
 
-
-
 		client.startAndAwait(connection -> {
+			System.out.println("hello");
 			  connection.on()
 				.writeIdle(500, v -> latch.countDown());
 
@@ -343,6 +343,7 @@ public class TcpClientTests {
 			  return Streams.merge(allWrites);
 		  }
 		);
+		System.out.println("Started");
 
 		assertTrue(latch.await(5, TimeUnit.SECONDS));
 
@@ -380,17 +381,22 @@ public class TcpClientTests {
 
 	private static final class EchoServer implements Runnable {
 		private final    int                 port;
-		private volatile ServerSocketChannel server;
+		private final    ServerSocketChannel server;
 		private volatile Thread              thread;
 
 		private EchoServer(int port) {
 			this.port = port;
+			try {
+				server = ServerSocketChannel.open();
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		@Override
 		public void run() {
 			try {
-				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				thread = Thread.currentThread();
@@ -430,20 +436,26 @@ public class TcpClientTests {
 
 	private static final class ConnectionAbortServer implements Runnable {
 		final            int                 port;
-		private volatile ServerSocketChannel server;
+		private final ServerSocketChannel server;
 
 		private ConnectionAbortServer(int port) {
 			this.port = port;
+			try {
+				server = ServerSocketChannel.open();
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		@Override
 		public void run() {
 			try {
-				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				while (true) {
 					SocketChannel ch = server.accept();
+					System.out.println("ABORTING");
 					ch.close();
 				}
 			} catch (Exception e) {
@@ -461,16 +473,21 @@ public class TcpClientTests {
 
 	private static final class ConnectionTimeoutServer implements Runnable {
 		final            int                 port;
-		private volatile ServerSocketChannel server;
+		private final ServerSocketChannel server;
 
 		private ConnectionTimeoutServer(int port) {
 			this.port = port;
+			try {
+				server = ServerSocketChannel.open();
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		@Override
 		public void run() {
 			try {
-				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				while (true) {
@@ -492,16 +509,21 @@ public class TcpClientTests {
 
 	private static final class HeartbeatServer implements Runnable {
 		final            int                 port;
-		private volatile ServerSocketChannel server;
+		private final ServerSocketChannel server;
 
 		private HeartbeatServer(int port) {
 			this.port = port;
+			try {
+				server = ServerSocketChannel.open();
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		@Override
 		public void run() {
 			try {
-				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				while (true) {

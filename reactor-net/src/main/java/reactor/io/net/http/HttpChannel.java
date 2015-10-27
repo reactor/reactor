@@ -23,8 +23,8 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
-import reactor.bus.selector.HeaderResolver;
 import reactor.core.support.Bounded;
+import reactor.fn.Function;
 import reactor.io.net.ReactiveChannel;
 import reactor.io.net.http.model.HttpHeaders;
 import reactor.io.net.http.model.Method;
@@ -47,7 +47,7 @@ public abstract class HttpChannel<IN, OUT> implements ReactiveChannel<IN, OUT>, 
 	public static final String HTTPS_SCHEME = "https";
 
 	private volatile int statusAndHeadersSent = 0;
-	private HeaderResolver<String> paramsResolver;
+	private Function<? super String, Map<String, Object>> paramsResolver;
 
 	private final long prefetch;
 
@@ -64,8 +64,8 @@ public abstract class HttpChannel<IN, OUT> implements ReactiveChannel<IN, OUT>, 
 	 * Read all URI params
 	 * @return a map of resolved parameters against their matching key name
 	 */
-	public final Map<String, String> params() {
-		return null != paramsResolver ? paramsResolver.resolve(uri()) : null;
+	public Map<String, Object> params() {
+		return null != paramsResolver ? paramsResolver.apply(uri()) : null;
 	}
 
 	/**
@@ -73,10 +73,10 @@ public abstract class HttpChannel<IN, OUT> implements ReactiveChannel<IN, OUT>, 
 	 * @param key matching key
 	 * @return the resolved parameter for the given key name
 	 */
-	public final String param(String key) {
-		Map<String, String> params = null;
+	public Object param(String key) {
+		Map<String, Object> params = null;
 		if (paramsResolver != null) {
-			params = this.paramsResolver.resolve(uri());
+			params = this.paramsResolver.apply(uri());
 		}
 		return null != params ? params.get(key) : null;
 	}
@@ -92,7 +92,7 @@ public abstract class HttpChannel<IN, OUT> implements ReactiveChannel<IN, OUT>, 
 	 * @param value Header content
 	 * @return this
 	 */
-	public final HttpChannel<IN, OUT> header(String name, String value) {
+	public HttpChannel<IN, OUT> header(String name, String value) {
 		if (statusAndHeadersSent == 0) {
 			doAddHeader(name, value);
 		}
@@ -149,8 +149,13 @@ public abstract class HttpChannel<IN, OUT> implements ReactiveChannel<IN, OUT>, 
 	 */
 	public abstract Method method();
 
-	void paramsResolver(HeaderResolver<String> headerResolver) {
+	/**
+	 *
+	 * @param headerResolver
+	 */
+	public HttpChannel<IN, OUT> paramsResolver(Function<? super String, Map<String, Object>> headerResolver) {
 		this.paramsResolver = headerResolver;
+		return this;
 	}
 
 	// RESPONSE contract
@@ -188,7 +193,7 @@ public abstract class HttpChannel<IN, OUT> implements ReactiveChannel<IN, OUT>, 
 	 * @param value the HTTP response header content
 	 * @return this
 	 */
-	public final HttpChannel<IN, OUT> responseHeader(String name, String value) {
+	public HttpChannel<IN, OUT> responseHeader(String name, String value) {
 		if (statusAndHeadersSent == 0) {
 			doResponseHeader(name, value);
 		}
@@ -273,7 +278,7 @@ public abstract class HttpChannel<IN, OUT> implements ReactiveChannel<IN, OUT>, 
 	protected abstract Publisher<Void> writeWithAfterHeaders(Publisher<? extends OUT> s);
 
 	@Override
-	public final Publisher<Void> writeWith(final Publisher<? extends OUT> source) {
+	public Publisher<Void> writeWith(final Publisher<? extends OUT> source) {
 		return new Publisher<Void>() {
 			@Override
 			public void subscribe(final Subscriber<? super Void> s) {

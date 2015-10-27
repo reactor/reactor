@@ -16,6 +16,10 @@
 
 package reactor.bus.selector;
 
+import java.util.Map;
+
+import reactor.fn.Function;
+
 /**
  * A {@literal Selector} is a wrapper around an arbitrary object.
  *
@@ -44,8 +48,8 @@ public interface Selector<T> {
 	/**
 	 * Return a component that can resolve headers from a key
 	 *
-	 * @return A {@link HeaderResolver} applicable to this {@link Selector} type.
+	 * @return A {@link Function} applicable to this {@link Selector} type.
 	 */
-	HeaderResolver getHeaderResolver();
+	Function<Object, Map<String, Object>> getHeaderResolver();
 
 }
