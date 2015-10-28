@@ -60,6 +60,11 @@ public abstract class SerializationCodec<E, IN, OUT> extends BufferCodec<IN, OUT
 	}
 
 	@Override
+	protected int canDecodeNext(Buffer buffer, Object context) {
+		return buffer.remaining() > 0 ? buffer.limit() : -1;
+	}
+
+	@Override
 	public Function<Buffer, IN> decoder(Consumer<IN> next) {
 		if (lengthFieldFraming) {
 			return new LengthFieldCodec<IN, OUT>(new DelegateCodec()).decoder(next);

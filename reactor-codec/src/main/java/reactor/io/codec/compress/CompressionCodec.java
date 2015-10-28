@@ -16,13 +16,15 @@
 
 package reactor.io.codec.compress;
 
-import reactor.fn.Consumer;
-import reactor.fn.Function;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.BufferCodec;
 import reactor.io.codec.Codec;
-
-import java.io.*;
 
 /**
  * @author Jon Brisbin
@@ -50,6 +52,12 @@ public abstract class CompressionCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 		} catch (IOException e) {
 			throw new IllegalStateException(e.getMessage(), e);
 		}
+	}
+
+
+	@Override
+	protected int canDecodeNext(Buffer buffer, Object context) {
+		return buffer.remaining() > 0 ? buffer.limit() : -1;
 	}
 
 	@Override

@@ -86,7 +86,7 @@ public class NettyChannel
 	public void subscribe(Subscriber<? super Buffer> subscriber) {
 		try {
 			ioChannel.pipeline()
-			         .fireUserEventTriggered(new NettyChannelHandlerBridge.ChannelInputSubscriber(subscriber));
+			         .fireUserEventTriggered(new NettyChannelHandlerBridge.ChannelInputSubscriber(subscriber, prefetch));
 		}
 		catch (Throwable throwable) {
 			Publishers.<Buffer>error(throwable).subscribe(subscriber);

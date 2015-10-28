@@ -186,6 +186,9 @@ class HttpSpec extends Specification {
 				it.httpProcessor(CodecPreprocessor.string()).listen(0)
 			}
 
+		def clientRes = 0
+		def serverRes = 0
+
 		when: "the server is prepared"
 
 			//prepare websocket request consumer on /test/* and capture the URL parameter "param"
@@ -200,6 +203,7 @@ class HttpSpec extends Specification {
 						req
 								.log('server-received')
 								.capacity(1)
+								.observe{ serverRes ++ }
 								.map { it + ' ' + req.param('param') + '!' }
 								.log('server-reply')
 				)
@@ -216,7 +220,6 @@ class HttpSpec extends Specification {
 				it.httpProcessor(CodecPreprocessor.string()).connect("localhost", server.listenAddress.port)
 			}
 
-			def res = 0
 			//prepare an http websocket request-reply flow
 			def content = client.ws('/test/World') { HttpChannelStream<String, String> req ->
 				//prepare content-type
@@ -226,6 +229,7 @@ class HttpSpec extends Specification {
 				req.writeWith(
 						Streams
 								.range(1, 1000)
+								.capacity(1)
 								.map{ it.toString() }
 								.log('client-send')
 				)
@@ -233,8 +237,8 @@ class HttpSpec extends Specification {
 			}.flatMap { replies ->
 				//successful handshake, listen for the first returned next replies and pass it downstream
 				replies
-						.observe{ res ++ }
 						.log('client-received')
+						.observe{ clientRes ++ }
 			}.toList(1000)
 			.onError {
 				//something failed during the request or the reply processing
@@ -243,7 +247,7 @@ class HttpSpec extends Specification {
 
 
 		content.await(5, TimeUnit.SECONDS)
-		println "received $res"
+		println "server: $serverRes / client: $clientRes"
 
 		then: "data was recieved"
 			//the produced reply should be there soon

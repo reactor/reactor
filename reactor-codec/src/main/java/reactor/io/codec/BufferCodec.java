@@ -19,12 +19,14 @@ package reactor.io.codec;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.BackpressureUtils;
+import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -68,12 +70,12 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 	}
 
 	protected int canDecodeNext(Buffer buffer, Object context) {
-		return delimiter == null ?
-				(buffer.remaining() > 0 ? buffer.limit() : -1) :
+		return delimiter == null ? (buffer.remaining() > 0 ? buffer.limit() : -1) :
 				buffer.indexOf(delimiter);
 	}
 
-	protected Iterator<Buffer.View> iterateDecode(final Buffer buffer, final Object context) {
+	protected Iterator<Buffer.View> iterateDecode(final Buffer buffer,
+			final Object context) {
 		return new DecodedViewIterator(buffer, context);
 	}
 
@@ -91,12 +93,13 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 	private static final class AggregatingDecoderBarrier<IN>
 			extends SubscriberBarrier<Buffer, IN> {
 
-		private volatile long pendingDemand = 0l;
-		private volatile int terminated = 0;
+		private final static AtomicReferenceFieldUpdater<AggregatingDecoderBarrier, Buffer>
+				AGGREGATE =
+				PlatformDependent.newAtomicReferenceFieldUpdater(AggregatingDecoderBarrier.class, "aggregate");
 
 		private final static AtomicIntegerFieldUpdater<AggregatingDecoderBarrier>
-				TERMINATED
-		= AtomicIntegerFieldUpdater.newUpdater(AggregatingDecoderBarrier.class, "terminated");
+				TERMINATED =
+				AtomicIntegerFieldUpdater.newUpdater(AggregatingDecoderBarrier.class, "terminated");
 
 		private final static AtomicLongFieldUpdater<AggregatingDecoderBarrier>
 				PENDING_UPDATER =
@@ -105,7 +108,9 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		final BufferCodec<IN, ?> codec;
 		final Object             decoderContext;
 
-		Buffer aggregate;
+		private volatile long pendingDemand = 0l;
+		private volatile int  terminated    = 0;
+		private volatile Buffer aggregate;
 
 		public AggregatingDecoderBarrier(BufferCodec<IN, ?> codec,
 				Subscriber<? super IN> subscriber) {
@@ -114,23 +119,24 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 			this.decoderContext = codec.decoderContextProvider.get();
 		}
 
-		private void tryDrain(){
+		private boolean tryDrain() {
 			Buffer agg = aggregate;
-			if(agg != null){
-				decodeAndNext(agg);
+			if (agg != null) {
+				return decodeAndNext(agg);
 			}
+			return true;
 		}
 
 		@Override
 		protected void doRequest(long n) {
 			if (BackpressureUtils.getAndAdd(PENDING_UPDATER, this, n) == 0) {
 				super.doRequest(n);
-				tryDrain();
+				if (!tryDrain()) {
+					super.doRequest(1L);
+				}
 			}
-			else if(terminated == 1){
-				tryDrain();
-				if(aggregate == null){
-					terminated = 2;
+			else if (terminated == 1) {
+				if (tryDrain() && TERMINATED.compareAndSet(this, 1, 2)) {
 					super.doComplete();
 				}
 			}
@@ -138,39 +144,54 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 		@Override
 		protected void doNext(Buffer buffer) {
+			Buffer aggregate = this.aggregate;
 			if (aggregate != null) {
-				aggregate = buffer.newBuffer().append(aggregate)
-				                  .append(buffer)
-				                  .flip();
+				aggregate = combine(buffer);
 			}
 			else if (-1L == codec.canDecodeNext(buffer, decoderContext)) {
-				aggregate = buffer;
+				combine(buffer);
 				super.doRequest(1L);
 				return;
 			}
 
 			if (aggregate == null) {
 				decodeAndNext(buffer);
+				super.doRequest(1L);
 			}
 			else {
-				Buffer agg = aggregate;
-
-				if(-1L != codec.canDecodeNext(agg, decoderContext)){
-					aggregate = null;
-					decodeAndNext(agg);
+				if (-1L == codec.canDecodeNext(aggregate, decoderContext)) {
+					super.doRequest(1L);
+				}
+				else if (AGGREGATE.compareAndSet(this, aggregate, null)) {
+					if (!decodeAndNext(aggregate)) {
+						super.doRequest(1L);
+					}
 				}
 				else {
 					super.doRequest(1L);
 				}
 			}
-			if (aggregate != null){
-				super.doRequest(1L);
+		}
+
+		private Buffer combine(Buffer buffer) {
+			Buffer aggregate = this.aggregate;
+			Buffer combined;
+			for (; ; ) {
+				combined = buffer.newBuffer()
+				                 .append(aggregate)
+				                 .append(buffer)
+				                 .flip();
+
+				if (AGGREGATE.compareAndSet(this, aggregate, combined)) {
+					return combined;
+				}
+				aggregate = this.aggregate;
 			}
 		}
 
 		@Override
 		protected void doError(Throwable throwable) {
-			if(TERMINATED.compareAndSet(this, 0, 1)) {
+			if (TERMINATED.compareAndSet(this, 0, 1)) {
 				tryDrain();
 				super.doError(throwable);
 			}
@@ -178,52 +199,48 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 		@Override
 		protected void doComplete() {
-			if(TERMINATED.compareAndSet(this, 0, 1)) {
-				tryDrain();
-				if(aggregate == null) {
+			if (TERMINATED.compareAndSet(this, 0, 1)) {
+				if (tryDrain()) {
 					super.doComplete();
 				}
 			}
 		}
 
-		private void decodeAndNext(Buffer buffer) {
+		private boolean decodeAndNext(Buffer buffer) {
 
 			IN next;
 
 			Iterator<Buffer.View> views = codec.iterateDecode(buffer, decoderContext);
 
 			if (!views.hasNext()) {
-				aggregate = buffer;
-				return;
+				combine(buffer);
+				return false;
 			}
 
 			Buffer.View cursor;
+
 			while (views.hasNext()) {
 				cursor = views.next();
-				if (cursor != null && BackpressureUtils.getAndSub(PENDING_UPDATER, this, 1L) > 0) {
+				if (cursor != null) {
 					next = codec.decodeNext(cursor.get(), decoderContext);
-					if (next != null) {
+					if (next != null && BackpressureUtils.getAndSub(PENDING_UPDATER, this, 1L) > 0) {
 						subscriber.onNext(next);
 					}
 					else {
-						aggregate =
-								buffer.newBuffer().append(aggregate)
-								            .append(buffer.slice(cursor.getStart(), buffer.limit()))
-								            .flip();
-						return;
+						combine(buffer.slice(cursor.getStart(), buffer.limit()));
+						return next != null;
 					}
 				}
 				else {
-					aggregate =
-							buffer.newBuffer().append(aggregate)
-							            .append(cursor != null ? buffer.slice(cursor.getStart(), buffer.limit()) : buffer)
-							            .flip();
-					return;
+					combine(buffer);
+					return false;
 				}
 			}
-			if (buffer.position() != buffer.limit()) {
-				aggregate = buffer.duplicate();
+			if (buffer.remaining() > 0) {
+				combine(buffer);
+				return false;
 			}
+			return true;
 		}
 	}
 
@@ -276,7 +293,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 			Buffer.View view = buffer.createView(buffer.position(), endchunk);
 
-			if(buffer.remaining() > 0) {
+			if (buffer.remaining() > 0) {
 				buffer.position(Math.min(limit, view.getEnd()));
 				buffer.limit(limit);
 			}

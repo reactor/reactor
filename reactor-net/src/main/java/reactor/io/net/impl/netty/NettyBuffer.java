@@ -37,7 +37,7 @@ public final class NettyBuffer extends Buffer {
 	NettyBuffer(Object msg) {
 		this.msg = msg;
 		if(ByteBuf.class.isAssignableFrom(msg.getClass())){
-			ReferenceCountUtil.retain(msg);
+			//ReferenceCountUtil.retain(msg);
 			this.byteBuf = (ByteBuf)msg;
 			this.buffer = byteBuf.nioBuffer();
 		}

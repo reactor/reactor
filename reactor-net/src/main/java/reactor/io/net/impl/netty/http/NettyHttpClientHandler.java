@@ -71,15 +71,16 @@ public class NettyHttpClientHandler extends NettyChannelHandlerBridge {
 					tcpStream.emitWriter(Publishers.just(getNettyRequest()), s);
 				}
 			};
+			httpChannel.keepAlive(true);
+			httpChannel.headers().transferEncodingChunked();
 		}
 
-		httpChannel.keepAlive(true);
-		httpChannel.headers().transferEncodingChunked();
 
 		handler.apply(httpChannel)
 		       .subscribe(new BaseSubscriber<Void>() {
 			       @Override
 			       public void onSubscribe(final Subscription s) {
+				       ctx.read();
 				       BackpressureUtils.checkSubscription(null, s);
 				       s.request(Long.MAX_VALUE);
 			       }
@@ -97,7 +98,6 @@ public class NettyHttpClientHandler extends NettyChannelHandlerBridge {
 
 			       @Override
 			       public void onComplete() {
-				       ctx.read();
 				       writeLast(ctx);
 			       }
 		       });

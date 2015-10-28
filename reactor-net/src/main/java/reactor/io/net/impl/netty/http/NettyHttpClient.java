@@ -98,6 +98,9 @@ public class NettyHttpClient extends HttpClient<Buffer, Buffer> {
 							                                                                                                .toLowerCase()
 							                                                                                                .equals(HttpChannel.WSS_SCHEME))) {
 								addSecureHandler(nativeChannel);
+							} else {
+								nativeChannel.config()
+								  .setAutoRead(false);
 							}
 						}
 						catch (Exception e) {

@@ -22,6 +22,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
@@ -31,6 +32,7 @@ import io.netty.util.ReferenceCountUtil;
 import org.reactivestreams.Subscriber;
 import reactor.Publishers;
 import reactor.io.buffer.Buffer;
+import reactor.io.buffer.StringBuffer;
 import reactor.io.net.ReactiveChannel;
 import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.impl.netty.NettyChannel;
@@ -76,6 +78,7 @@ public class NettyHttpWSClientHandler extends NettyHttpClientHandler {
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 		Class<?> messageClass = msg.getClass();
 		if (!handshaker.isHandshakeComplete()) {
+			ctx.pipeline().remove(HttpObjectAggregator.class);
 			handshaker.finishHandshake(ctx.channel(), (FullHttpResponse) msg);
 			httpChannel = new NettyHttpChannel(tcpStream, new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")) {
 				@Override
@@ -90,7 +93,8 @@ public class NettyHttpWSClientHandler extends NettyHttpClientHandler {
 
 		if (TextWebSocketFrame.class.isAssignableFrom(messageClass)) {
 			try {
-				channelSubscriber.onNext(Buffer.wrap(((TextWebSocketFrame) msg).text()));
+				//don't inflate the String bytes now
+				channelSubscriber.onNext(new StringBuffer(((TextWebSocketFrame) msg).content().nioBuffer()));
 			} finally {
 				ReferenceCountUtil.release(msg);
 			}

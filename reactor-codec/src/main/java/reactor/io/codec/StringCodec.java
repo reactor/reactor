@@ -98,7 +98,7 @@ public class StringCodec extends BufferCodec<String, String> {
 			if (delimiter != null) {
 				return addDelimiterIfAny(new StringBuffer().append(bb));
 			} else {
-				return new Buffer(bb);
+				return new StringBuffer(bb);
 			}
 		} catch (CharacterCodingException e) {
 			throw new IllegalStateException(e);

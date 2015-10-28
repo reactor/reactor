@@ -143,7 +143,7 @@ public final class CodecPreprocessor<IN, OUT>
 	 * @return
 	 */
 	static public CodecPreprocessor<String, String> string(){
-		return from(StandardCodecs.DELIMITED_STRING_CODEC);
+		return from(StandardCodecs.STRING_CODEC);
 	}
 
 	/**
