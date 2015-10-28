@@ -86,7 +86,7 @@ public class HashWheelTimer implements Timer {
 	 * @param resolution the resolution of this timer, in milliseconds
 	 */
 	public HashWheelTimer(int resolution) {
-		this(resolution, DEFAULT_WHEEL_SIZE, new LiteBlockingWaitStrategy());
+		this(resolution, DEFAULT_WHEEL_SIZE, new SleepingWaitStrategy());
 	}
 
 	/**
