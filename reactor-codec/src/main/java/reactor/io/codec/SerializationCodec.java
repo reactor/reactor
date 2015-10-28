@@ -60,11 +60,32 @@ public abstract class SerializationCodec<E, IN, OUT> extends BufferCodec<IN, OUT
 	}
 
 	@Override
+	protected int canDecodeNext(Buffer buffer, Object context) {
+		return buffer.remaining() > 0 ? buffer.limit() : -1;
+	}
+
+	@Override
 	public Function<Buffer, IN> decoder(Consumer<IN> next) {
 		if (lengthFieldFraming) {
 			return new LengthFieldCodec<IN, OUT>(new DelegateCodec()).decoder(next);
 		} else {
 			return new DelegateCodec().decoder(next);
+		}
+	}
+
+	@Override
+	protected IN decodeNext(Buffer buffer, Object context) {
+		try {
+			Class<IN> clazz = readType(buffer);
+			byte[] bytes = buffer.asBytes();
+			buffer.position(buffer.limit());
+
+			return deserializer(engine, clazz).apply(bytes);
+		} catch (RuntimeException e) {
+			if (log.isErrorEnabled()) {
+				log.error("Could not decode " + buffer, e);
+			}
+			throw e;
 		}
 	}
 
@@ -77,7 +98,7 @@ public abstract class SerializationCodec<E, IN, OUT> extends BufferCodec<IN, OUT
 		return engine;
 	}
 
-	protected abstract Function<byte[], IN> deserializer(E engine, Class<IN> type, Consumer<IN> next);
+	protected abstract Function<byte[], IN> deserializer(E engine, Class<IN> type);
 
 	protected abstract Function<OUT, byte[]> serializer(E engine);
 
@@ -125,24 +146,8 @@ public abstract class SerializationCodec<E, IN, OUT> extends BufferCodec<IN, OUT
 		final Function<OUT, byte[]> fn = serializer(engine);
 
 		@Override
-		public Function<Buffer, IN> decoder(final Consumer<IN> next) {
-			return new Function<Buffer, IN>() {
-				@Override
-				public IN apply(Buffer buffer) {
-					try {
-						Class<IN> clazz = readType(buffer);
-						byte[] bytes = buffer.asBytes();
-						buffer.position(buffer.limit());
-
-						return deserializer(engine, clazz, next).apply(bytes);
-					} catch (RuntimeException e) {
-						if (log.isErrorEnabled()) {
-							log.error("Could not decode " + buffer, e);
-						}
-						throw e;
-					}
-				}
-			};
+		protected IN decodeNext(Buffer buffer, Object context) {
+			return SerializationCodec.this.decodeNext(buffer, context);
 		}
 
 		@Override

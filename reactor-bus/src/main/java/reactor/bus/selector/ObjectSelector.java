@@ -16,6 +16,9 @@
 
 package reactor.bus.selector;
 
+import java.util.Map;
+
+import reactor.fn.Function;
 import reactor.fn.Predicate;
 
 /**
@@ -64,7 +67,7 @@ public class ObjectSelector<K, T> implements Selector<K>, Predicate<K> {
 	}
 
 	@Override
-	public HeaderResolver getHeaderResolver() {
+	public Function<Object, Map<String, Object>> getHeaderResolver() {
 		return null;
 	}
 

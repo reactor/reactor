@@ -15,6 +15,15 @@
  */
 package reactor.io.net.tcp;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -27,15 +36,12 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.codec.StandardCodecs;
 import reactor.io.net.NetStreams;
-import reactor.io.net.http.HttpClient;
+import reactor.io.net.http.ReactorHttpClient;
+import reactor.io.net.http.ReactorHttpServer;
+import reactor.io.net.preprocessor.CodecPreprocessor;
 import reactor.rx.Promise;
 import reactor.rx.Streams;
-
-import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
@@ -45,8 +51,8 @@ import static org.junit.Assert.assertThat;
  */
 @Ignore
 public class ClientServerHttpTests {
-	private reactor.io.net.http.HttpServer<List<String>, List<String>> httpServer;
-	private Processor<String, String>                                  broadcaster;
+	private ReactorHttpServer<List<String>, List<String>> httpServer;
+	private Processor<String, String>                     broadcaster;
 
 	@Test
 	public void testSingleConsumerWithOneSession() throws Exception {
@@ -247,7 +253,7 @@ public class ClientServerHttpTests {
 
 		DummyListCodec codec = new DummyListCodec();
 		httpServer = NetStreams.httpServer(server -> server
-		  .codec(codec).listen(0));
+				.httpProcessor(CodecPreprocessor.from(codec)).listen(0));
 
 		httpServer.get("/data", (request) -> {
 			request.responseHeaders().removeTransferEncodingChunked();
@@ -269,8 +275,8 @@ public class ClientServerHttpTests {
 	}
 
 	private Promise<List<String>> getClientDataPromise() throws Exception {
-		HttpClient<String, String> httpClient = NetStreams.httpClient(t ->
-			t.codec(StandardCodecs.STRING_CODEC).connect("localhost", httpServer.getListenAddress().getPort())
+		ReactorHttpClient<String, String> httpClient = NetStreams.httpClient(t ->
+			t.httpProcessor(CodecPreprocessor.string()).connect("localhost", httpServer.getListenAddress().getPort())
 		);
 
 		return httpClient.get("/data")
@@ -349,7 +355,7 @@ public class ClientServerHttpTests {
 		}
 
 		@Override
-		public Function<Buffer, List<String>> decoder(Consumer<List<String>> next) {
+		protected List<String> decodeNext(Buffer buffer, Object context) {
 			return null;
 		}
 	}

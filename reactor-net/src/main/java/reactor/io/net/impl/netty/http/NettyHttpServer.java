@@ -21,7 +21,6 @@ import java.net.InetSocketAddress;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpServerCodec;
 import io.netty.handler.codec.http.HttpVersion;
@@ -29,51 +28,44 @@ import io.netty.handler.logging.LoggingHandler;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.Publishers;
 import reactor.core.error.Exceptions;
 import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.ReactiveChannel;
+import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpServer;
-import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.net.impl.netty.NettyChannel;
 import reactor.io.net.impl.netty.tcp.NettyTcpServer;
-import reactor.io.net.tcp.TcpServer;
-import reactor.rx.Promise;
-import reactor.rx.Streams;
 
 /**
- * A Netty-based {@code TcpServer} implementation
- * @param <IN> The type that will be received by this server
- * @param <OUT> The type that will be sent by this server
- * @author Jon Brisbin
+ * A Netty-based {@code HttpServer} implementation
  * @author Stephane Maldini
+ * @since 2.1
  */
-public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
+public class NettyHttpServer extends HttpServer<Buffer, Buffer> {
 
 	private static final Logger log = LoggerFactory.getLogger(NettyHttpServer.class);
 
-	protected final TcpServer<IN, OUT> server;
+	protected NettyTcpServer server;
 
 	protected NettyHttpServer(final Timer timer, final InetSocketAddress listenAddress,
-			final ServerSocketOptions options, final SslOptions sslOptions,
-			final Codec<Buffer, IN, OUT> codec) {
+			final ServerSocketOptions options, final SslOptions sslOptions) {
 
-		super(timer, codec);
+		super(timer);
 
-		this.server =
-				new NettyTcpServer<IN, OUT>(timer, listenAddress, options, sslOptions, codec) {
+		this.server = new NettyTcpServer(timer, listenAddress, options, sslOptions) {
 
-					@Override
-					protected void bindChannel(
-							ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
-							SocketChannel nativeChannel) {
-						NettyHttpServer.this.bindChannel(handler, nativeChannel);
-					}
-				};
+			@Override
+			protected void bindChannel(
+					ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
+					SocketChannel nativeChannel) {
+				NettyHttpServer.this.bindChannel(handler, nativeChannel);
+			}
+		};
 	}
 
 	@Override
@@ -82,34 +74,35 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	}
 
 	@Override
-	protected Promise<Void> doStart(
-			final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		return server.start(new ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>>() {
+	protected Publisher<Void> doStart(
+			final ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>> defaultHandler) {
+		return server.start(new ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>() {
 			@Override
-			public Publisher<Void> apply(ChannelStream<IN, OUT> ch) {
-				NettyHttpChannel<IN, OUT> request = (NettyHttpChannel<IN, OUT>) ch;
+			public Publisher<Void> apply(ReactiveChannel<Buffer, Buffer> ch) {
+				NettyHttpChannel request = (NettyHttpChannel) ch;
 
-				if (handler != null) {
-					handler.apply(request);
-				}
-
-				Iterable<? extends Publisher<Void>> handlers = routeChannel(request);
-
-				//404
-				if (handlers == null) {
-					if (request.markHeadersAsFlushed()) {
-						request.delegate()
-						       .writeAndFlush(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND));
-					}
-
-					return Streams.empty();
-				}
 				try {
-					return Streams.concat(handlers);
+					Publisher<Void> afterHandlers = routeChannel(request);
+
+					if (afterHandlers == null) {
+						if (defaultHandler != null) {
+							return defaultHandler.apply(request);
+						}
+						else if (request.markHeadersAsFlushed()) {
+							//404
+							request.delegate()
+							       .writeAndFlush(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND));
+						}
+						return Publishers.empty();
+
+					}
+					else {
+						return afterHandlers;
+					}
 				}
-				catch (Throwable t){
+				catch (Throwable t) {
 					Exceptions.throwIfFatal(t);
-					return Streams.fail(t);
+					return Publishers.error(t);
 				}
 				//500
 			}
@@ -117,19 +110,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	}
 
 	@Override
-	protected Iterable<? extends Publisher<Void>> routeChannel(HttpChannel<IN, OUT> ch) {
-		Iterable<? extends Publisher<Void>> handlers = super.routeChannel(ch);
-		if (!handlers.iterator()
-		             .hasNext()) {
-			return null;
-		}
-		else {
-			return handlers;
-		}
-	}
-
-	@Override
-	protected void onWebsocket(HttpChannel<IN, OUT> next) {
+	protected void onWebsocket(HttpChannel<?, ?> next) {
 		ChannelPipeline pipeline = ((SocketChannel) next.delegate()).pipeline();
 		pipeline.addLast(pipeline.remove(NettyHttpServerHandler.class)
 		                         .withWebsocketSupport(next.uri(), null));
@@ -137,16 +118,16 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 	}
 
 	@Override
-	protected final Promise<Void> doShutdown() {
+	protected final Publisher<Void> doShutdown() {
 		return server.shutdown();
 	}
 
 	protected void bindChannel(
-			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
+			ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
 			SocketChannel nativeChannel) {
 
-		NettyChannelStream<IN, OUT> netChannel =
-				new NettyChannelStream<IN, OUT>(getDefaultTimer(), getDefaultCodec(), getDefaultPrefetchSize(), nativeChannel);
+		NettyChannel netChannel =
+				new NettyChannel(getDefaultPrefetchSize(), nativeChannel);
 
 		ChannelPipeline pipeline = nativeChannel.pipeline();
 
@@ -156,8 +137,7 @@ public class NettyHttpServer<IN, OUT> extends HttpServer<IN, OUT> {
 
 		pipeline.addLast(new HttpServerCodec());
 
-		pipeline.addLast(NettyHttpServerHandler.class.getSimpleName(),
-				new NettyHttpServerHandler<IN, OUT>(handler, netChannel));
+		pipeline.addLast(NettyHttpServerHandler.class.getSimpleName(), new NettyHttpServerHandler(handler, netChannel));
 
 	}
 }

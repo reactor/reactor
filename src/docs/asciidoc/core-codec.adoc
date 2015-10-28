@@ -155,7 +155,7 @@ then: 'The decoded maps have the expected entries'
 |Convert Buffer into Java objects using Kryo with Buffers
 |https://github.com/EsotericSoftware/kryo[com.esotericsoftware.kryo:kryo]
 
-|JsonCodec,JacksonJsonCodec
+|JsonCode
 |Convert Buffer into Java objects using Jackson with Buffers
 |http://jackson.codehaus.org[com.fasterxml.jackson.core:jackson-databind]
 

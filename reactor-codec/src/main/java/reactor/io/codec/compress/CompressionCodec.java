@@ -16,13 +16,15 @@
 
 package reactor.io.codec.compress;
 
-import reactor.fn.Consumer;
-import reactor.fn.Function;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.BufferCodec;
 import reactor.io.codec.Codec;
-
-import java.io.*;
 
 /**
  * @author Jon Brisbin
@@ -37,30 +39,25 @@ public abstract class CompressionCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 	}
 
 	@Override
-	public Function<Buffer, IN> decoder(final Consumer<IN> next) {
-		return new Function<Buffer, IN>() {
-			@Override
-			public IN apply(Buffer buffer) {
-				try {
-					ByteArrayInputStream bin = new ByteArrayInputStream(buffer.asBytes());
-					InputStream zin = createInputStream(bin);
-					Buffer newBuff = new Buffer();
-					while (zin.available() > 0) {
-						newBuff.append((byte) zin.read());
-					}
-					zin.close();
-					IN in = delegate.decoder(null).apply(newBuff.flip());
-					if (null != next) {
-						next.accept(in);
-						return null;
-					} else {
-						return in;
-					}
-				} catch (IOException e) {
-					throw new IllegalStateException(e.getMessage(), e);
-				}
+	protected IN decodeNext(Buffer buffer, Object context) {
+		try {
+			ByteArrayInputStream bin = new ByteArrayInputStream(buffer.asBytes());
+			InputStream zin = createInputStream(bin);
+			Buffer newBuff = new Buffer();
+			while (zin.available() > 0) {
+				newBuff.append((byte) zin.read());
 			}
-		};
+			zin.close();
+			return delegate.decodeNext(newBuff.flip());
+		} catch (IOException e) {
+			throw new IllegalStateException(e.getMessage(), e);
+		}
+	}
+
+
+	@Override
+	protected int canDecodeNext(Buffer buffer, Object context) {
+		return buffer.remaining() > 0 ? buffer.limit() : -1;
 	}
 
 	@Override

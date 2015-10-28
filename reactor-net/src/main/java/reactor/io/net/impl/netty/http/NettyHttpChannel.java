@@ -24,11 +24,12 @@ import io.netty.handler.codec.http.*;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.support.Assert;
+import reactor.io.buffer.Buffer;
+import reactor.io.net.http.BaseHttpChannel;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.model.*;
 import reactor.io.net.http.model.HttpHeaders;
-import reactor.io.net.impl.netty.NettyChannelStream;
-import reactor.rx.Streams;
+import reactor.io.net.impl.netty.NettyChannel;
 
 import java.net.InetSocketAddress;
 
@@ -38,21 +39,22 @@ import static io.netty.handler.codec.http.HttpHeaders.is100ContinueExpected;
  * @author Sebastien Deleuze
  * @author Stephane Maldini
  */
-public abstract class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
+public abstract class NettyHttpChannel extends BaseHttpChannel<Buffer, Buffer>
+		implements Publisher<Buffer> {
 
 	private static final FullHttpResponse CONTINUE =
 			new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE, Unpooled.EMPTY_BUFFER);
 
-	private final NettyChannelStream<IN, OUT> tcpStream;
-	private final HttpRequest                 nettyRequest;
-	private final NettyHttpHeaders            headers;
-	private       HttpResponse                nettyResponse;
-	private       NettyHttpResponseHeaders    responseHeaders;
+	private final NettyChannel             tcpStream;
+	private final HttpRequest              nettyRequest;
+	private final NettyHttpHeaders         headers;
+	private       HttpResponse             nettyResponse;
+	private       NettyHttpResponseHeaders responseHeaders;
 
-	public NettyHttpChannel(NettyChannelStream<IN, OUT> tcpStream,
+	public NettyHttpChannel(NettyChannel tcpStream,
 	                        HttpRequest request
 	) {
-		super(tcpStream.getTimer(), tcpStream.getCapacity());
+		super(tcpStream.getCapacity());
 		this.tcpStream = tcpStream;
 		this.nettyRequest = request;
 		this.nettyResponse = new DefaultHttpResponse(request.getProtocolVersion(), HttpResponseStatus.OK);
@@ -63,17 +65,17 @@ public abstract class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	}
 
 	@Override
-	protected void doSubscribeWriter(Publisher<? extends OUT> writer, Subscriber<? super Void> postWriter) {
-		tcpStream.doSubscribeWriter(writer, postWriter);
+	public Publisher<Void> writeBufferWith(Publisher<? extends Buffer> dataStream) {
+		return tcpStream.writeWith(dataStream);
 	}
 
 	@Override
-	protected void doDecoded(IN in) {
-		tcpStream.doDecoded(in);
+	public Publisher<Buffer> input() {
+		return this;
 	}
 
 	@Override
-	public void subscribe(final Subscriber<? super IN> subscriber) {
+	public void subscribe(final Subscriber<? super Buffer> subscriber) {
 		// Handle the 'Expect: 100-continue' header if necessary.
 		// TODO: Respond with 413 Request Entity Too Large
 		//   and discard the traffic or close the connection.
@@ -97,7 +99,6 @@ public abstract class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 
 	// REQUEST contract
 
-
 	@Override
 	public Protocol protocol() {
 		HttpVersion version = this.nettyRequest.getProtocolVersion();
@@ -107,6 +108,12 @@ public abstract class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 			return Protocol.HTTP_1_1;
 		}
 		throw new IllegalStateException(version.protocolName() + " not supported");
+	}
+
+
+	@Override
+	protected Publisher<Void> writeWithAfterHeaders(Publisher<? extends Buffer> writer) {
+		return tcpStream.writeWith(writer);
 	}
 
 	@Override
@@ -167,7 +174,7 @@ public abstract class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	}
 
 	@Override
-	public HttpChannel<IN, OUT> transfer(Transfer transfer) {
+	public HttpChannel<Buffer, Buffer> transfer(Transfer transfer) {
 		switch (transfer) {
 			case EVENT_STREAM:
 				this.responseHeader(ResponseHeaders.CONTENT_TYPE, "text/event-stream");
@@ -232,7 +239,7 @@ public abstract class NettyHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
 	}
 
 	@Override
-	public HttpChannel<IN, OUT> keepAlive(boolean keepAlive) {
+	public HttpChannel<Buffer, Buffer> keepAlive(boolean keepAlive) {
 		responseHeaders.keepAlive(keepAlive);
 		return this;
 	}

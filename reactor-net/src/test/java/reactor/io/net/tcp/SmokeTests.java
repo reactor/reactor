@@ -41,11 +41,12 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.codec.StringCodec;
 import reactor.io.net.NetStreams;
-import reactor.io.net.http.HttpClient;
-import reactor.io.net.http.HttpServer;
+import reactor.io.net.ReactiveNet;
+import reactor.io.net.http.ReactorHttpClient;
+import reactor.io.net.http.ReactorHttpServer;
 import reactor.io.net.impl.netty.NettyClientSocketOptions;
+import reactor.io.net.preprocessor.CodecPreprocessor;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
@@ -59,8 +60,8 @@ import static org.junit.Assert.assertThat;
  */
 @Ignore
 public class SmokeTests {
-	private Processor<Buffer, Buffer>  processor;
-	private HttpServer<Buffer, Buffer> httpServer;
+	private Processor<Buffer, Buffer>         processor;
+	private ReactorHttpServer<Buffer, Buffer> httpServer;
 
 	private final AtomicInteger postReduce         = new AtomicInteger();
 	private final AtomicInteger windows            = new AtomicInteger();
@@ -90,10 +91,10 @@ public class SmokeTests {
 
 	private NettyClientSocketOptions nettyOptions;
 
-	private final NetStreams.HttpClientFactory<String, String> clientFactory =
+	private final ReactiveNet.HttpClientFactory<String, String> clientFactory =
 	  spec -> spec
 		.options(nettyOptions)
-		.codec(new StringCodec())
+		.httpProcessor(CodecPreprocessor.string())
 		.connect("localhost", httpServer.getListenAddress().getPort());
 
 	@SuppressWarnings("unchecked")
@@ -280,7 +281,7 @@ public class SmokeTests {
 		  .process(workProcessor);
 
 		httpServer = NetStreams.httpServer(server -> server
-			.codec(codec).listen(port)
+			.httpProcessor(CodecPreprocessor.from(codec)).listen(port)
 		);
 
 		httpServer.get("/data", (request) -> {
@@ -309,7 +310,7 @@ public class SmokeTests {
 	}
 
 	private List<String> getClientDataPromise() throws Exception {
-		HttpClient<String, String> httpClient = NetStreams.httpClient(clientFactory);
+		ReactorHttpClient<String, String> httpClient = NetStreams.httpClient(clientFactory);
 
 		Promise<List<String>> content = httpClient.get("/data")
 		  .flatMap(s -> s)
@@ -519,10 +520,9 @@ public class SmokeTests {
 		}
 
 		@Override
-		public Function<Buffer, Buffer> decoder(Consumer<Buffer> next) {
+		protected Buffer decodeNext(Buffer buffer, Object context) {
 			return null;
 		}
-
 	}
 
 	public static class DummyCodec extends Codec<Buffer, Buffer, Buffer> {
@@ -537,7 +537,7 @@ public class SmokeTests {
 		}
 
 		@Override
-		public Function<Buffer, Buffer> decoder(Consumer<Buffer> next) {
+		protected Buffer decodeNext(Buffer buffer, Object context) {
 			return null;
 		}
 	}

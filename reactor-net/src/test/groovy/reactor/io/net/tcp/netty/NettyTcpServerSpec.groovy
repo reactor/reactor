@@ -17,9 +17,10 @@
 package reactor.io.net.tcp.netty
 
 import reactor.io.buffer.Buffer
-import reactor.io.codec.PassThroughCodec
 import reactor.io.codec.json.JsonCodec
 import reactor.io.net.NetStreams
+import reactor.io.net.preprocessor.CodecPreprocessor
+import reactor.io.net.tcp.ReactorTcpServer
 import reactor.io.net.tcp.support.SocketUtils
 import reactor.rx.Streams
 import spock.lang.Specification
@@ -39,13 +40,8 @@ class NettyTcpServerSpec extends Specification {
 
 	def "NettyTcpServer responds to requests from clients"() {
 		given: "a simple TcpServer"
-			def stopLatch = new CountDownLatch(1)
 			def dataLatch = new CountDownLatch(1)
-			def server = NetStreams.<Buffer, Buffer> tcpServer {
-				it.
-						listen(port).
-						codec(new PassThroughCodec<Buffer>())
-			}
+			def server = NetStreams.tcpServer(port)
 
 		when: "the server is started"
 			server.start { conn ->
@@ -67,12 +63,11 @@ class NettyTcpServerSpec extends Specification {
 
 	def "NettyTcpServer can encode and decode JSON"() {
 		given: "a TcpServer with JSON defaultCodec"
-			def stopLatch = new CountDownLatch(1)
 			def dataLatch = new CountDownLatch(1)
-			def server = NetStreams.<Pojo, Pojo> tcpServer {
+			ReactorTcpServer<Pojo, Pojo> server = NetStreams. tcpServer {
 				it.
 						listen(port).
-						codec(new JsonCodec<Pojo, Pojo>(Pojo))
+						preprocessor(CodecPreprocessor.json(Pojo))
 			}
 
 		when: "the server is started"
@@ -95,7 +90,7 @@ class NettyTcpServerSpec extends Specification {
 			dataLatch.count == 0
 
 		cleanup: "the server is stopped"
-			server.shutdown()
+			server?.shutdown()
 	}
 
 	def "flush every 5 elems with manual decoding"() {
@@ -109,8 +104,7 @@ class NettyTcpServerSpec extends Specification {
 		when: "the client/server are prepared"
 			server.start { input ->
 				input.writeWith(
-						input
-								.decode(codec)
+						Streams.wrap(codec.decode(input))
 								.log('serve')
 								.map(codec)
 								.capacity(5l)
@@ -118,8 +112,7 @@ class NettyTcpServerSpec extends Specification {
 			}.await()
 
 			client.start { input ->
-				input
-						.decode(codec)
+				Streams.wrap(codec.decode(input))
 						.log('receive')
 						.consume { latch.countDown() }
 
@@ -134,7 +127,7 @@ class NettyTcpServerSpec extends Specification {
 			}.await()
 
 		then: "the client/server were started"
-			latch.await(10, TimeUnit.SECONDS)
+			latch.await(5, TimeUnit.SECONDS)
 
 
 		cleanup: "the client/server where stopped"
@@ -148,15 +141,15 @@ class NettyTcpServerSpec extends Specification {
 			def elem = 10
 			def latch = new CountDownLatch(elem)
 
-			def server = NetStreams.tcpServer(port)
+			ReactorTcpServer<Buffer, Buffer> server = NetStreams.tcpServer(port)
 			def client = NetStreams.tcpClient("localhost", port)
 			def codec = new JsonCodec<Pojo, Pojo>(Pojo)
 			def i = 0
 
 		when: "the client/server are prepared"
 			server.start { input ->
-				input.writeWith(input
-						.decode(codec)
+				input.writeWith(
+						Streams.wrap(codec.decode(input.input()))
 						.flatMap {
 					Streams.just(it)
 							.log('flatmap-retry')
@@ -173,8 +166,7 @@ class NettyTcpServerSpec extends Specification {
 			}.await()
 
 			client.start { input ->
-				input
-						.decode(codec)
+				Streams.wrap(codec.decode(input))
 						.log('receive')
 						.consume { latch.countDown() }
 
@@ -212,7 +204,7 @@ class NettyTcpServerSpec extends Specification {
 
 		@Override
 		void run() {
-			def ch = SocketChannel.open(new InetSocketAddress(port))
+			def ch = SocketChannel.open(new InetSocketAddress("127.0.0.1", port))
 			def len = ch.write(output.byteBuffer())
 			assert ch.connected
 			data = ByteBuffer.allocate(len)

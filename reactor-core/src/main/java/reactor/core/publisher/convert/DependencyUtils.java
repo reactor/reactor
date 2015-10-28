@@ -27,6 +27,9 @@ public final class DependencyUtils {
 	static private final String VERSION = "2.1.0.BUILD-SNAPSHOT";
 
 	static private final boolean HAS_REACTOR_STREAM;
+	static private final boolean HAS_REACTOR_CODEC;
+	static private final boolean HAS_REACTOR_NET;
+	static private final boolean HAS_REACTOR_BUS;
 
 	static private final CompletableFutureConverter COMPLETABLE_FUTURE_CONVERTER;
 	static private final Jdk9FlowConverter          JDK_9_FLOW_CONVERTER;
@@ -40,6 +43,9 @@ public final class DependencyUtils {
 		final int REACTOR_STREAM = 0b001000;
 		final int JDK8_COMPLETABLE_FUTURE = 0b010000;
 		final int JDK9_FLOW = 0b100000;
+		final int REACTOR_CODEC = 0b1000000;
+		final int REACTOR_BUS = 0b10000000;
+		final int REACTOR_NET = 0b100000000;
 
 		int detected = 0;
 		try {
@@ -65,6 +71,27 @@ public final class DependencyUtils {
 		try {
 			Class.forName("reactor.rx.Stream");
 			detected |= REACTOR_STREAM;
+		}
+		catch (ClassNotFoundException cnfe) {
+			//IGNORE
+		}
+		try {
+			Class.forName("reactor.io.codec.Codec");
+			detected |= REACTOR_CODEC;
+		}
+		catch (ClassNotFoundException cnfe) {
+			//IGNORE
+		}
+		try {
+			Class.forName("reactor.io.net.ReactiveChannel");
+			detected |= REACTOR_NET;
+		}
+		catch (ClassNotFoundException cnfe) {
+			//IGNORE
+		}
+		try {
+			Class.forName("reactor.bus.registry.Registry");
+			detected |= REACTOR_BUS;
 		}
 		catch (ClassNotFoundException cnfe) {
 			//IGNORE
@@ -101,6 +128,9 @@ public final class DependencyUtils {
 			JDK_9_FLOW_CONVERTER = null;
 		}
 		HAS_REACTOR_STREAM = (detected & REACTOR_STREAM) == REACTOR_STREAM;
+		HAS_REACTOR_CODEC = (detected & REACTOR_CODEC) == REACTOR_CODEC;
+		HAS_REACTOR_BUS = (detected & REACTOR_BUS) == REACTOR_BUS;
+		HAS_REACTOR_NET = (detected & REACTOR_NET) == REACTOR_NET;
 
 	}
 
@@ -122,6 +152,18 @@ public final class DependencyUtils {
 
 	public static boolean hasReactorStream() {
 		return HAS_REACTOR_STREAM;
+	}
+
+	public static boolean hasReactorCodec() {
+		return HAS_REACTOR_CODEC;
+	}
+
+	public static boolean hasReactorBus() {
+		return HAS_REACTOR_BUS;
+	}
+
+	public static boolean hasReactorNet() {
+		return HAS_REACTOR_NET;
 	}
 
 	public static Publisher<?> convertToPublisher(Object source) {

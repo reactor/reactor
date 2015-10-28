@@ -16,17 +16,18 @@
 
 package reactor.io.net.tcp;
 
+import java.net.InetSocketAddress;
+
+import org.reactivestreams.Publisher;
 import reactor.Processors;
-import reactor.core.support.Assert;
+import reactor.fn.Function;
 import reactor.fn.timer.Timer;
-import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorPeer;
+import reactor.io.net.Preprocessor;
+import reactor.io.net.ReactiveChannel;
+import reactor.io.net.ReactiveChannelHandler;
+import reactor.io.net.ReactivePeer;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
-
-import java.net.InetSocketAddress;
 
 /**
  * Base functionality needed by all servers that communicate with clients over TCP.
@@ -37,7 +38,7 @@ import java.net.InetSocketAddress;
  * @author Stephane Maldini
  */
 public abstract class TcpServer<IN, OUT>
-  extends ReactorPeer<IN, OUT, ChannelStream<IN, OUT>> {
+		extends ReactivePeer<IN, OUT, ReactiveChannel<IN, OUT>> {
 
 	public static final int DEFAULT_TCP_THREAD_COUNT = Integer.parseInt(
 	  System.getProperty("reactor.tcp.selectThreadCount",
@@ -59,9 +60,8 @@ public abstract class TcpServer<IN, OUT>
 	protected TcpServer(Timer timer,
 	                    InetSocketAddress listenAddress,
 	                    ServerSocketOptions options,
-	                    SslOptions sslOptions,
-	                    Codec<Buffer, IN, OUT> codec) {
-		super(timer, codec, options != null ? options.prefetch() : Long.MAX_VALUE);
+	                    SslOptions sslOptions) {
+		super(timer, options != null ? options.prefetch() : Long.MAX_VALUE);
 		this.listenAddress = listenAddress;
 		this.options = options;
 		this.sslOptions = sslOptions;
@@ -94,4 +94,42 @@ public abstract class TcpServer<IN, OUT>
 		return sslOptions;
 	}
 
+	@Override
+	protected <NEWIN, NEWOUT> ReactivePeer<NEWIN, NEWOUT, ReactiveChannel<NEWIN, NEWOUT>> doPreprocessor(
+			Function<? super ReactiveChannel<IN, OUT>, ? extends ReactiveChannel<NEWIN, NEWOUT>> preprocessor) {
+		return new PreprocessedTcpServer<>(preprocessor);
+	}
+
+	private final class PreprocessedTcpServer<NEWIN, NEWOUT, NEWCONN extends ReactiveChannel<NEWIN, NEWOUT>>
+			extends TcpServer<NEWIN, NEWOUT> {
+
+		private final Function<? super ReactiveChannel<IN, OUT>, ? extends NEWCONN> preprocessor;
+
+		public PreprocessedTcpServer(Function<? super ReactiveChannel<IN, OUT>, ? extends NEWCONN> preprocessor) {
+			super(TcpServer.this.getDefaultTimer(), TcpServer.this.getListenAddress(), TcpServer.this.getOptions(), TcpServer.this.getSslOptions());
+			this.preprocessor = preprocessor;
+		}
+
+		@Override
+		protected Publisher<Void> doStart(
+				ReactiveChannelHandler<NEWIN, NEWOUT, ReactiveChannel<NEWIN, NEWOUT>> handler) {
+			ReactiveChannelHandler<IN, OUT, ReactiveChannel<IN, OUT>> p = Preprocessor.PreprocessedHandler.create(handler, preprocessor);
+			return TcpServer.this.start(p);
+		}
+
+		@Override
+		protected Publisher<Void> doShutdown() {
+			return TcpServer.this.shutdown();
+		}
+
+		@Override
+		public InetSocketAddress getListenAddress() {
+			return TcpServer.this.getListenAddress();
+		}
+
+		@Override
+		protected boolean shouldFailOnStarted() {
+			return false;
+		}
+	}
 }

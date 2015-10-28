@@ -18,8 +18,10 @@ package reactor.rx;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import reactor.Publishers;
 import reactor.Timers;
+import reactor.core.error.Exceptions;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -40,6 +42,32 @@ import java.util.List;
 public final class Promises {
 
 	private final static Promise COMPLETE = success(null);
+
+	/**
+	 * Take the next value from a Publisher on subscribe.
+	 *
+	 * @param publisher
+	 * @param <T> type of the expected value
+	 * @return A {@link Promise}.
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Promise<T> from(final Publisher<T> publisher) {
+		if(Promise.class.isAssignableFrom(publisher.getClass())){
+			return (Promise<T>)publisher;
+		}
+		else if(Supplier.class.isAssignableFrom(publisher.getClass())) {
+			try{
+				return success(((Supplier<T>)publisher).get());
+			}
+			catch (Throwable t){
+				Exceptions.throwIfFatal(t);
+				return error(t);
+			}
+		}
+		Promise<T> p = prepare();
+		publisher.subscribe(p);
+		return p;
+	}
 
 	/**
 	 * Create a synchronous {@link Promise}.

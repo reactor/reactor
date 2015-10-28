@@ -13,11 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.io.net.http;
+package reactor.io.net.http.routing;
 
-import reactor.bus.selector.HeaderResolver;
+import java.util.Map;
+
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.UriPathSelector;
+import reactor.fn.Function;
+import reactor.fn.Predicate;
+import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.model.Method;
 import reactor.io.net.http.model.Protocol;
 
@@ -26,7 +30,7 @@ import reactor.io.net.http.model.Protocol;
  *
  * @author Stephane Maldini
  */
-public class HttpSelector implements Selector<HttpChannel> {
+public class HttpSelector implements Selector<HttpChannel>, Predicate<HttpChannel> {
 
 	final protected Protocol        protocol;
 	final protected Method          method;
@@ -49,20 +53,11 @@ public class HttpSelector implements Selector<HttpChannel> {
 	}
 
 	@Override
-	public HeaderResolver getHeaderResolver() {
-		return uriPathSelector != null ? uriPathSelector.getHeaderResolver() : null;
-	}
-
-	public Protocol getProtocol() {
-		return protocol;
-	}
-
-	public Method getMethod() {
-		return method;
-	}
-
-	public UriPathSelector getUriPathSelector() {
-		return uriPathSelector;
+	@SuppressWarnings("unchecked")
+	public Function<Object, Map<String, Object>> getHeaderResolver() {
+		return uriPathSelector != null ?
+				uriPathSelector.getHeaderResolver() :
+				null;
 	}
 
 	@Override
@@ -70,5 +65,10 @@ public class HttpSelector implements Selector<HttpChannel> {
 		return (protocol == null || protocol.equals(key.protocol()))
 		  && (method == null || method.equals(key.method()))
 		  && (uriPathSelector == null || uriPathSelector.matches(key.uri()));
+	}
+
+	@Override
+	public boolean test(HttpChannel channel) {
+		return matches(channel);
 	}
 }

@@ -17,13 +17,12 @@
 package reactor.io.net.impl.netty.tcp;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Arrays;
 import javax.net.ssl.SSLEngine;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
@@ -33,35 +32,31 @@ import io.netty.channel.socket.SocketChannelConfig;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.GenericFutureListener;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.Publishers;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.ReactiveChannel;
+import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
-import reactor.io.net.impl.netty.NettyChannelStream;
-import reactor.io.net.impl.netty.NettyNativeDetector;
+import reactor.io.net.impl.netty.NettyChannel;
+import reactor.io.net.impl.netty.internal.NettyNativeDetector;
 import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.tcp.ssl.SSLEngineSupplier;
-import reactor.rx.Promise;
-import reactor.rx.Promises;
 
 /**
  * A Netty-based {@code TcpServer} implementation
  *
- * @param <IN>  The type that will be received by this server
- * @param <OUT> The type that will be sent by this server
- * @author Jon Brisbin
  * @author Stephane Maldini
+ * @since 2.1
  */
-public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
+public class NettyTcpServer extends TcpServer<Buffer, Buffer> {
 
 	private final static Logger log = LoggerFactory.getLogger(NettyTcpServer.class);
 
@@ -75,9 +70,8 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	protected NettyTcpServer(Timer timer,
 	                         InetSocketAddress listenAddress,
 	                         final ServerSocketOptions options,
-	                         final SslOptions sslOptions,
-	                         Codec<Buffer, IN, OUT> codec) {
-		super(timer, listenAddress, options, sslOptions, codec);
+	                         final SslOptions sslOptions) {
+		super(timer, listenAddress, options, sslOptions);
 
 		if (options instanceof NettyServerSocketOptions) {
 			this.nettyOptions = (NettyServerSocketOptions) options;
@@ -118,7 +112,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 	}
 
 	@Override
-	protected Promise<Void> doStart(final ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
+	protected Publisher<Void> doStart(final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler) {
 
 		bootstrap.childHandler(new ChannelInitializer<SocketChannel>() {
 			@Override
@@ -156,63 +150,46 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 
 		bindFuture = bootstrap.bind();
 
-
-		final Promise<Void> promise = Promises.prepare();
-		bindFuture.addListener(new ChannelFutureListener() {
+		return new NettyChannel.FuturePublisher<ChannelFuture>(bindFuture){
 			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
+			protected void doComplete(ChannelFuture future, Subscriber<? super Void> s) {
 				log.info("BIND {}", future.channel().localAddress());
-				if (future.isSuccess()) {
-					if (listenAddress.getPort() == 0) {
-						listenAddress =
-								(InetSocketAddress) future.channel().localAddress();
-					}
-					promise.onComplete();
+				if (listenAddress.getPort() == 0) {
+					listenAddress =
+							(InetSocketAddress) future.channel().localAddress();
 				}
-				else {
-					promise.onError(future.cause());
-				}
+				super.doComplete(future, s);
 			}
-		});
-
-		return promise;
+		};
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Promise<Void> doShutdown() {
-
-		final Promise<Void> d = Promises.prepare();
-		final AtomicInteger groupsToShutdown = new AtomicInteger(2);
-		GenericFutureListener listener = new GenericFutureListener() {
-
-			@Override
-			public void operationComplete(Future future) throws Exception {
-				if (groupsToShutdown.decrementAndGet() == 0) {
-					d.onComplete();
-				}
-			}
-		};
+	public Publisher<Void> doShutdown() {
 		try {
 			bindFuture.channel().close().sync();
 		} catch (InterruptedException ie){
-			return Promises.error(ie);
+			return Publishers.error(ie);
 		}
 
-		selectorGroup.shutdownGracefully().addListener(listener);
+		final Publisher<Void> shutdown = new NettyChannel.FuturePublisher<Future<?>>(selectorGroup.shutdownGracefully());
+
 		if (null == nettyOptions || null == nettyOptions.eventLoopGroup()) {
-			ioGroup.shutdownGracefully().addListener(listener);
+			return Publishers.concat(
+					Publishers.from(Arrays.asList(
+						 shutdown,
+						 new NettyChannel.FuturePublisher<Future<?>>(ioGroup.shutdownGracefully())
+					))
+			);
 		}
 
-		return d;
+		return shutdown;
 	}
 
-	protected void bindChannel(ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, SocketChannel
+	protected void bindChannel(ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler, SocketChannel
 	  nativeChannel) {
 
-		NettyChannelStream<IN, OUT> netChannel = new NettyChannelStream<IN, OUT>(
-		  getDefaultTimer(),
-		  getDefaultCodec(),
+		NettyChannel netChannel = new NettyChannel(
 		  getDefaultPrefetchSize(),
 		  nativeChannel
 		);
@@ -223,7 +200,7 @@ public class NettyTcpServer<IN, OUT> extends TcpServer<IN, OUT> {
 			pipeline.addLast(new LoggingHandler(NettyTcpServer.class));
 		}
 		pipeline.addLast(
-		  new NettyChannelHandlerBridge<IN, OUT>(handler, netChannel)
+		  new NettyChannelHandlerBridge(handler, netChannel)
 		);
 	}
 

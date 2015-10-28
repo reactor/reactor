@@ -21,6 +21,7 @@ import reactor.fn.Consumer;
 import reactor.jarjar.jsr166e.ConcurrentHashMapV8;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -114,6 +115,38 @@ public class SimpleCachingRegistry<K, V> implements Registry<K, V> {
 		}
 
 		return regs;
+	}
+
+	@SuppressWarnings("unchecked")
+	public static <K, V> Iterable<? extends V> selectValues(Registry<K, V> reg, final K key) {
+		final List<Registration<K, ? extends V>> registrations = reg.select(key);
+
+		if(registrations.isEmpty()){
+			return Collections.EMPTY_LIST;
+		}
+
+		return new Iterable<V>() {
+			@Override
+			public Iterator<V> iterator() {
+				final Iterator<Registration<K, ? extends V>> it = registrations.iterator();
+				return new Iterator<V>() {
+					@Override
+					public boolean hasNext() {
+						return it.hasNext();
+					}
+
+					@Override
+					public V next() {
+						return it.next().getObject();
+					}
+				};
+			}
+		};
+	}
+
+	@Override
+	public Iterable<? extends V> selectValues(final K key) {
+		return selectValues(this, key);
 	}
 
 	@Override

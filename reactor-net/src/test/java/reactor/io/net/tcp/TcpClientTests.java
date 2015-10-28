@@ -16,26 +16,6 @@
 
 package reactor.io.net.tcp;
 
-import io.netty.channel.ChannelPipeline;
-import io.netty.handler.codec.http.*;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.reactivestreams.Publisher;
-import reactor.Processors;
-import reactor.Timers;
-import reactor.fn.Consumer;
-import reactor.fn.tuple.Tuple;
-import reactor.io.buffer.Buffer;
-import reactor.io.codec.StandardCodecs;
-import reactor.io.net.NetStreams;
-import reactor.io.net.impl.netty.NettyClientSocketOptions;
-import reactor.io.net.impl.netty.tcp.NettyTcpClient;
-import reactor.io.net.tcp.support.SocketUtils;
-import reactor.rx.Promise;
-import reactor.rx.Promises;
-import reactor.rx.Streams;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -51,6 +31,34 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import io.netty.channel.ChannelPipeline;
+import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpObject;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpVersion;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.reactivestreams.Publisher;
+import reactor.Processors;
+import reactor.Publishers;
+import reactor.Subscribers;
+import reactor.Timers;
+import reactor.fn.Consumer;
+import reactor.fn.tuple.Tuple;
+import reactor.io.buffer.Buffer;
+import reactor.io.net.NetStreams;
+import reactor.io.net.ReactiveChannel;
+import reactor.io.net.ReactiveNet;
+import reactor.io.net.impl.netty.NettyBuffer;
+import reactor.io.net.impl.netty.NettyClientSocketOptions;
+import reactor.io.net.impl.netty.tcp.NettyTcpClient;
+import reactor.io.net.preprocessor.CodecPreprocessor;
+import reactor.io.net.tcp.support.SocketUtils;
+import reactor.rx.Streams;
+
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.is;
@@ -58,7 +66,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * @author Jon Brisbin
+ * @author Stephane Maldini
+ * @since 2.1
  */
 public class TcpClientTests {
 
@@ -99,7 +108,7 @@ public class TcpClientTests {
 		abortServer.close();
 		timeoutServer.close();
 		heartbeatServer.close();
-		threadPool.shutdown();
+		threadPool.shutdownNow();
 		threadPool.awaitTermination(5, TimeUnit.SECONDS);
 		Thread.sleep(500);
 	}
@@ -108,16 +117,16 @@ public class TcpClientTests {
 	public void testTcpClient() throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(1);
 
-		TcpClient<String, String> client = NetStreams.tcpClient(s ->
-			s.timer(Timers.global()).codec(StandardCodecs.STRING_CODEC).connect("localhost", echoServerPort)
+		TcpClient<String, String> client = ReactiveNet.tcpClient(s ->
+			s.timer(Timers.global()).preprocessor(CodecPreprocessor.string()).connect("localhost", echoServerPort)
 		);
 
-		client.start(conn -> {
-			conn.log("conn").consume(s -> {
+		client.startAndAwait(conn -> {
+			Streams.wrap(conn.input()).log("conn").consume(s -> {
 				latch.countDown();
 			});
 
-			conn.writeWith(Streams.just("Hello World!")).consume();
+			Streams.wrap(conn.writeWith(Streams.just("Hello World!"))).consume();
 
 			return Streams.never();
 		});
@@ -133,8 +142,8 @@ public class TcpClientTests {
 	public void testTcpClientWithInetSocketAddress() throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(1);
 
-		TcpClient<String, String> client = NetStreams.tcpClient(NettyTcpClient.class, spec -> spec
-			.codec(StandardCodecs.STRING_CODEC)
+		ReactorTcpClient<String, String> client = NetStreams.tcpClient(NettyTcpClient.class, spec -> spec
+			.preprocessor(CodecPreprocessor.string())
 			.connect(new InetSocketAddress(echoServerPort))
 		);
 
@@ -143,9 +152,9 @@ public class TcpClientTests {
 			input.writeWith(Streams.just("Hello")).consume();
 
 			return Streams.never();
-		});
+		}).await(5, TimeUnit.SECONDS);
 
-		latch.await(30, TimeUnit.SECONDS);
+		latch.await(5, TimeUnit.SECONDS);
 
 		client.shutdown();
 
@@ -158,9 +167,9 @@ public class TcpClientTests {
 		final CountDownLatch latch = new CountDownLatch(messages);
 		final List<String> strings = new ArrayList<String>();
 
-		TcpClient<String, String> client = NetStreams.tcpClient(s ->
+		ReactorTcpClient<String, String> client = NetStreams.tcpClient(s ->
 			s
-			  .codec(StandardCodecs.LINE_FEED_CODEC)
+			  .preprocessor(CodecPreprocessor.linefeed())
 			  .connect("localhost", echoServerPort)
 		);
 
@@ -177,7 +186,7 @@ public class TcpClientTests {
 			).consume();
 
 			return Streams.never();
-		});
+		}).await(5, TimeUnit.SECONDS);
 
 		assertTrue("Expected messages not received. Received " + strings.size() + " messages: " + strings,
 		  latch.await(5, TimeUnit.SECONDS));
@@ -191,10 +200,11 @@ public class TcpClientTests {
 
 	@Test
 	public void closingPromiseIsFulfilled() throws InterruptedException {
-		TcpClient<String, String> client = NetStreams.tcpClient(NettyTcpClient.class, spec -> spec
-			.codec(null)
-			.connect("localhost", echoServerPort)
+		ReactorTcpClient<Buffer, Buffer> client = NetStreams.tcpClient(NettyTcpClient.class, spec -> spec
+			.connect("localhost", abortServerPort)
 		);
+
+		client.start(null);
 
 		assertTrue("Client was not closed within 30 seconds", client.shutdown().awaitSuccess(30, TimeUnit.SECONDS));
 	}
@@ -224,7 +234,8 @@ public class TcpClientTests {
 			  }
 		  }).consume(System.out::println);
 
-		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
+		latch.await(5, TimeUnit.SECONDS);
+		assertTrue("latch was counted down:"+latch.getCount(), latch.getCount() == 0 );
 		assertThat("totalDelay was >1.6s", totalDelay.get(), greaterThanOrEqualTo(1600L));
 	}
 
@@ -232,18 +243,19 @@ public class TcpClientTests {
 	public void connectionWillAttemptToReconnectWhenItIsDropped() throws InterruptedException, IOException {
 		final CountDownLatch connectionLatch = new CountDownLatch(1);
 		final CountDownLatch reconnectionLatch = new CountDownLatch(1);
-		TcpClient<Buffer, Buffer> tcpClient = NetStreams.<Buffer, Buffer>tcpClient(s -> s
+		TcpClient<Buffer, Buffer> tcpClient = ReactiveNet.<Buffer, Buffer>tcpClient(s -> s
 			.connect("localhost", abortServerPort)
 		);
 
 		tcpClient.start(connection -> {
+			System.out.println("Start");
 			connectionLatch.countDown();
-			connection.consume();
-			return Streams.never();
+			connection.input().subscribe(Subscribers.unbounded());
+			return Publishers.never();
 		}, (currentAddress, attempt) -> {
 			reconnectionLatch.countDown();
 			return null;
-		});
+		}).subscribe(Subscribers.unbounded());
 
 		assertTrue("Initial connection is made", connectionLatch.await(5, TimeUnit.SECONDS));
 		assertTrue("A reconnect attempt was made", reconnectionLatch.await(5, TimeUnit.SECONDS));
@@ -256,11 +268,11 @@ public class TcpClientTests {
 		final AtomicLong totalDelay = new AtomicLong();
 		final long start = System.currentTimeMillis();
 
-		TcpClient<Buffer, Buffer> client = NetStreams.<Buffer, Buffer>tcpClient(s -> s
+		TcpClient<Buffer, Buffer> client = ReactiveNet.<Buffer, Buffer>tcpClient(s -> s
 			.connect("localhost", timeoutServerPort)
 		);
 
-		client.start(p -> {
+		client.startAndAwait(p -> {
 			  p.on()
 				.close(v -> close.countDown())
 				.readIdle(500, v -> {
@@ -274,7 +286,7 @@ public class TcpClientTests {
 
 			  return Streams.timer(1).after().log();
 		  }
-		).await(5, TimeUnit.SECONDS);
+		);
 
 		assertTrue("latch was counted down", latch.await(5, TimeUnit.SECONDS));
 		assertTrue("close was counted down", close.await(30, TimeUnit.SECONDS));
@@ -286,18 +298,18 @@ public class TcpClientTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 		long start = System.currentTimeMillis();
 
-		TcpClient<Buffer, Buffer> client = NetStreams.tcpClient(s -> s
+		TcpClient<Buffer, Buffer> client = ReactiveNet.tcpClient(s -> s
 			.connect("localhost", heartbeatServerPort)
 		);
 
-		client.start(p -> {
+		client.startAndAwait(p -> {
 			  p.on()
 				.readIdle(500, v -> {
 					latch.countDown();
 				});
 			  return Streams.timer(1).after().log();
 		  }
-		).await();
+		);
 
 		Thread.sleep(700);
 		heartbeatServer.close();
@@ -314,14 +326,12 @@ public class TcpClientTests {
 		final CountDownLatch latch = new CountDownLatch(1);
 		long start = System.currentTimeMillis();
 
-		TcpClient<Buffer, Buffer> client = NetStreams.<Buffer, Buffer>tcpClient(s ->
-			s
-			  .connect("localhost", echoServerPort)
+		TcpClient<Buffer, Buffer> client = ReactiveNet.<Buffer, Buffer>tcpClient(s ->
+			s.connect("localhost", echoServerPort)
 		);
 
-
-
-		client.start(connection -> {
+		client.startAndAwait(connection -> {
+			System.out.println("hello");
 			  connection.on()
 				.writeIdle(500, v -> latch.countDown());
 
@@ -332,7 +342,8 @@ public class TcpClientTests {
 			  }
 			  return Streams.merge(allWrites);
 		  }
-		).await();
+		);
+		System.out.println("Started");
 
 		assertTrue(latch.await(5, TimeUnit.SECONDS));
 
@@ -343,7 +354,7 @@ public class TcpClientTests {
 
 	@Test
 	public void nettyNetChannelAcceptsNettyChannelHandlers() throws InterruptedException {
-		TcpClient<HttpObject, HttpRequest> client = NetStreams.<HttpObject, HttpRequest>tcpClient(NettyTcpClient.class,
+		TcpClient<Buffer, Buffer> client = ReactiveNet.tcpClient(NettyTcpClient.class,
 		  spec -> spec
 			.options(new NettyClientSocketOptions()
 			  .pipelineConfigurer(new Consumer<ChannelPipeline>() {
@@ -357,12 +368,12 @@ public class TcpClientTests {
 
 
 		final CountDownLatch latch = new CountDownLatch(1);
-		client.start(resp -> {
+		client.startAndAwait(resp -> {
 			latch.countDown();
 			System.out.println("resp: " + resp);
 
-			return resp.writeWith(Streams.just(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/")));
-		}).await();
+			return resp.writeWith(Streams.just(NettyBuffer.create(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/"))));
+		});
 
 
 		assertTrue("Latch didn't time out", latch.await(15, TimeUnit.SECONDS));
@@ -370,17 +381,22 @@ public class TcpClientTests {
 
 	private static final class EchoServer implements Runnable {
 		private final    int                 port;
-		private volatile ServerSocketChannel server;
+		private final    ServerSocketChannel server;
 		private volatile Thread              thread;
 
 		private EchoServer(int port) {
 			this.port = port;
+			try {
+				server = ServerSocketChannel.open();
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		@Override
 		public void run() {
 			try {
-				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				thread = Thread.currentThread();
@@ -420,20 +436,26 @@ public class TcpClientTests {
 
 	private static final class ConnectionAbortServer implements Runnable {
 		final            int                 port;
-		private volatile ServerSocketChannel server;
+		private final ServerSocketChannel server;
 
 		private ConnectionAbortServer(int port) {
 			this.port = port;
+			try {
+				server = ServerSocketChannel.open();
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		@Override
 		public void run() {
 			try {
-				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				while (true) {
 					SocketChannel ch = server.accept();
+					System.out.println("ABORTING");
 					ch.close();
 				}
 			} catch (Exception e) {
@@ -451,16 +473,21 @@ public class TcpClientTests {
 
 	private static final class ConnectionTimeoutServer implements Runnable {
 		final            int                 port;
-		private volatile ServerSocketChannel server;
+		private final ServerSocketChannel server;
 
 		private ConnectionTimeoutServer(int port) {
 			this.port = port;
+			try {
+				server = ServerSocketChannel.open();
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		@Override
 		public void run() {
 			try {
-				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				while (true) {
@@ -482,16 +509,21 @@ public class TcpClientTests {
 
 	private static final class HeartbeatServer implements Runnable {
 		final            int                 port;
-		private volatile ServerSocketChannel server;
+		private final ServerSocketChannel server;
 
 		private HeartbeatServer(int port) {
 			this.port = port;
+			try {
+				server = ServerSocketChannel.open();
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 
 		@Override
 		public void run() {
 			try {
-				server = ServerSocketChannel.open();
 				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
 				while (true) {

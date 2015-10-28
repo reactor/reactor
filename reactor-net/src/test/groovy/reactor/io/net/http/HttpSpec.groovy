@@ -15,13 +15,11 @@
  */
 package reactor.io.net.http
 
-import reactor.io.codec.StandardCodecs
 import reactor.io.net.NetStreams
+import reactor.io.net.preprocessor.CodecPreprocessor
 import reactor.rx.Streams
-import reactor.rx.action.Signal
 import spock.lang.Specification
 
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /**
@@ -34,13 +32,13 @@ class HttpSpec extends Specification {
 
 			//Listen on localhost using default impl (Netty) and assign a global codec to receive/reply String data
 			def server = NetStreams.httpServer {
-				it.codec(StandardCodecs.STRING_CODEC).listen(0)
+				it.httpProcessor(CodecPreprocessor.string()).listen(0)
 			}
 
 		when: "the server is prepared"
 
 			//prepare post request consumer on /test/* and capture the URL parameter "param"
-			server.post('/test/{param}') { HttpChannel<String, String> req ->
+			server.post('/test/{param}') { HttpChannelStream<String, String> req ->
 
 				//log then transform then log received http request content from the request body and the resolved URL parameter "param"
 				//the returned stream is bound to the request stream and will auto read/close accordingly
@@ -62,11 +60,11 @@ class HttpSpec extends Specification {
 
 			//Prepare a client using default impl (Netty) to connect on http://localhost:port/ and assign global codec to send/receive String data
 			def client = NetStreams.httpClient {
-				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port)
+				it.httpProcessor(CodecPreprocessor.string()).connect("localhost", server.listenAddress.port)
 			}
 
 			//prepare an http post request-reply flow
-			def content = client.post('/test/World') { HttpChannel<String, String> req ->
+			def content = client.post('/test/World') { HttpChannelStream<String, String> req ->
 				//prepare content-type
 				req.header('Content-Type', 'text/plain')
 
@@ -92,7 +90,7 @@ class HttpSpec extends Specification {
 
 		then: "data was recieved"
 			//the produced reply should be there soon
-			content.await(500, TimeUnit.SECONDS) == "Hello World!"
+			content.await(5, TimeUnit.SECONDS) == "Hello World!"
 
 		cleanup: "the client/server where stopped"
 			//note how we order first the client then the server shutdown
@@ -105,16 +103,16 @@ class HttpSpec extends Specification {
 
 	//Listen on localhost using default impl (Netty) and assign a global codec to receive/reply String data
 	def server = NetStreams.httpServer {
-	  it.codec(StandardCodecs.STRING_CODEC).listen(0)
+	  it.httpProcessor(CodecPreprocessor.string()).listen(0)
 	}
 
 	when: "the server is prepared"
 
-	server.get('/test') { HttpChannel<String, String> req ->
+	server.get('/test') { HttpChannelStream<String, String> req ->
 	  throw new Exception()
-	}.get('/test2') { HttpChannel<String, String> req ->
+	}.get('/test2') { HttpChannelStream<String, String> req ->
 	  req.writeWith(Streams.fail(new Exception()))
-	}.get('/test3') { HttpChannel<String, String> req ->
+	}.get('/test3') { HttpChannelStream<String, String> req ->
 	  return Streams.fail(new Exception())
 	}
 
@@ -125,18 +123,18 @@ class HttpSpec extends Specification {
 
 	//Prepare a client using default impl (Netty) to connect on http://localhost:port/ and assign global codec to send/receive String data
 	def client = NetStreams.httpClient {
-	  it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port)
+	  it.httpProcessor(CodecPreprocessor.string()).connect("localhost", server.listenAddress.port)
 	}
 
 	//prepare an http post request-reply flow
-	def content = client
+	client
 			.get('/test')
 			.flatMap { replies ->
 	  			Streams.just(replies.responseStatus().code)
 						.log("received-status")
 			}
 			.next()
-			.await(500, TimeUnit.SECONDS)
+			.await(5, TimeUnit.SECONDS)
 
 
 
@@ -146,14 +144,14 @@ class HttpSpec extends Specification {
 
 	when:
 	//prepare an http post request-reply flow
-	content = client
+	def content = client
 			.get('/test2')
 			.flatMap { replies ->
 	   		replies
 			  .log("received-status")
 	}
 	.next()
-			.poll(500, TimeUnit.SECONDS)
+			.poll(5, TimeUnit.SECONDS)
 
 	then: "data was recieved"
 	//the produced reply should be there soon
@@ -161,14 +159,14 @@ class HttpSpec extends Specification {
 
 	when:
 	//prepare an http post request-reply flow
-	content = client
+		client
 			.get('/test3')
 			.flatMap { replies ->
 	  Streams.just(replies.responseStatus().code)
 			  .log("received-status")
 	}
 	.next()
-			.poll(500, TimeUnit.SECONDS)
+			.poll(5, TimeUnit.SECONDS)
 
 	then: "data was recieved"
 	//the produced reply should be there soon
@@ -185,14 +183,17 @@ class HttpSpec extends Specification {
 
 			//Listen on localhost using default impl (Netty) and assign a global codec to receive/reply String data
 			def server = NetStreams.httpServer {
-				it.codec(StandardCodecs.STRING_CODEC).listen(0)
+				it.httpProcessor(CodecPreprocessor.string()).listen(0)
 			}
+
+		def clientRes = 0
+		def serverRes = 0
 
 		when: "the server is prepared"
 
 			//prepare websocket request consumer on /test/* and capture the URL parameter "param"
 			server
-					.ws('/test/{param}') { HttpChannel<String, String> req ->
+					.ws('/test/{param}') { HttpChannelStream<String, String> req ->
 
 				//log then transform then log received http request content from the request body and the resolved URL parameter "param"
 				//the returned stream is bound to the request stream and will auto read/close accordingly
@@ -202,6 +203,7 @@ class HttpSpec extends Specification {
 						req
 								.log('server-received')
 								.capacity(1)
+								.observe{ serverRes ++ }
 								.map { it + ' ' + req.param('param') + '!' }
 								.log('server-reply')
 				)
@@ -215,12 +217,11 @@ class HttpSpec extends Specification {
 
 			//Prepare a client using default impl (Netty) to connect on http://localhost:port/ and assign global codec to send/receive String data
 			def client = NetStreams.httpClient {
-				it.codec(StandardCodecs.STRING_CODEC).connect("localhost", server.listenAddress.port)
+				it.httpProcessor(CodecPreprocessor.string()).connect("localhost", server.listenAddress.port)
 			}
 
-
 			//prepare an http websocket request-reply flow
-			def content = client.ws('/test/World') { HttpChannel<String, String> req ->
+			def content = client.ws('/test/World') { HttpChannelStream<String, String> req ->
 				//prepare content-type
 				req.header('Content-Type', 'text/plain')
 
@@ -228,6 +229,7 @@ class HttpSpec extends Specification {
 				req.writeWith(
 						Streams
 								.range(1, 1000)
+								.capacity(1)
 								.map{ it.toString() }
 								.log('client-send')
 				)
@@ -236,6 +238,7 @@ class HttpSpec extends Specification {
 				//successful handshake, listen for the first returned next replies and pass it downstream
 				replies
 						.log('client-received')
+						.observe{ clientRes ++ }
 			}.toList(1000)
 			.onError {
 				//something failed during the request or the reply processing
@@ -243,10 +246,12 @@ class HttpSpec extends Specification {
 			}
 
 
+		content.await(5, TimeUnit.SECONDS)
+		println "server: $serverRes / client: $clientRes"
 
 		then: "data was recieved"
 			//the produced reply should be there soon
-			content.await()[1000 - 1] == "1000 World!"
+			content.get()[1000 - 1] == "1000 World!"
 
 		cleanup: "the client/server where stopped"
 			//note how we order first the client then the server shutdown

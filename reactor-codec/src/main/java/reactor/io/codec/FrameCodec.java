@@ -22,7 +22,6 @@ import reactor.io.buffer.Buffer;
 
 /**
  * {@code Codec} for decoding data into length-field-based {@link Frame Frames}.
- *
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
@@ -43,105 +42,123 @@ public class FrameCodec extends BufferCodec<Frame, Frame> {
 	}
 
 	@Override
-	public Function<Buffer, Frame> decoder(Consumer<Frame> next) {
-		return new FrameDecoder(next);
+	public Function<Buffer, Frame> decoder(final Consumer<Frame> next) {
+		return new DefaultInvokeOrReturnFunction<Void>(next) {
+			@Override
+			public Frame apply(Buffer buffer) {
+				if (next != null) {
+					while (buffer.remaining() > minRequiredLen) {
+						next.accept(super.apply(buffer));
+					}
+					return null;
+				}
+				return super.apply(buffer);
+			}
+		};
 	}
 
-	private class FrameDecoder implements Function<Buffer, Frame> {
-		private final Consumer<Frame> next;
-
-		private FrameDecoder(Consumer<Frame> next) {
-			this.next = next;
-		}
-
-		@Override
-		public Frame apply(Buffer buffer) {
-			while (buffer.remaining() > minRequiredLen) {
-				int pos = buffer.position();
-				int limit = buffer.limit();
-
-				Buffer.View prefix = readPrefix(buffer);
-				if (null == prefix) {
-					// insufficient data
-					buffer.limit(limit);
-					buffer.position(pos);
-					return null;
-				}
-
-				Buffer.View data = readData(buffer);
-				if (null == data) {
-					// insufficient data
-					buffer.limit(limit);
-					buffer.position(pos);
-					return null;
-				}
-
-				Buffer prefixBuff = new Buffer(prefixLength, true).append(prefix.get()).flip();
-				Buffer dataBuff = new Buffer(data.getEnd() - data.getStart(), true).append(data.get()).flip();
-
-				buffer.limit(limit);
-
-				Frame f = new Frame(prefixBuff, dataBuff);
-				if (null != next) {
-					next.accept(f);
-				} else {
-					return f;
-				}
-			}
-			return null;
-		}
-
-		private Buffer.View readPrefix(Buffer buffer) {
-			if (buffer.remaining() < prefixLength) {
-				return null;
-			}
-
-			int pos = buffer.position();
-			Buffer.View prefix = buffer.createView(pos, pos + prefixLength);
-			buffer.position(pos + prefixLength);
-
-			return prefix;
-		}
-
-		private int readLen(Buffer buffer) {
-			switch (lengthField) {
-				case SHORT:
-					if (buffer.remaining() > 2) {
-						return buffer.readShort();
-					}
-					break;
-				case INT:
-					if (buffer.remaining() > 4) {
-						return buffer.readInt();
-					}
-					break;
-				case LONG:
-					if (buffer.remaining() > 8) {
-						return (int) buffer.readLong();
-					}
-					break;
-			}
-
+	@Override
+	protected int canDecodeNext(Buffer buffer, Object context) {
+		if(buffer.remaining() < minRequiredLen){
 			return -1;
 		}
 
-		private Buffer.View readData(Buffer buffer) {
+		int limit = buffer.remaining();
+		int length = readLen(buffer.duplicate());
+
+		limit = limit - prefixLength < length ? -1 : (buffer.position() + length + minRequiredLen - prefixLength);
+
+		return limit;
+	}
+
+	@Override
+	protected Frame decodeNext(Buffer buffer, Object context) {
+		if (buffer.remaining() > minRequiredLen) {
 			int pos = buffer.position();
 			int limit = buffer.limit();
 
-			int len = readLen(buffer);
-			if (len == -1 || buffer.remaining() < len) {
+			Buffer.View prefix = readPrefix(buffer);
+			if (null == prefix) {
+				// insufficient data
 				buffer.limit(limit);
 				buffer.position(pos);
 				return null;
 			}
 
-			pos = buffer.position();
-			Buffer.View data = buffer.createView(pos, pos + len);
-			buffer.position(pos + len);
+			Buffer.View data = readData(prefix, buffer);
+			if (null == data) {
+				// insufficient data
+				buffer.limit(limit);
+				buffer.position(pos);
+				return null;
+			}
 
-			return data;
+			Buffer prefixBuff = new Buffer(prefixLength, true).append(prefix.get())
+			                                                  .flip();
+			Buffer dataBuff =
+					new Buffer(data.getEnd() - data.getStart(), true).append(data.get())
+					                                                 .flip();
+
+			buffer.position(data.getEnd());
+			buffer.limit(limit);
+
+			return new Frame(prefixBuff, dataBuff);
 		}
+		else {
+			return null;
+		}
+	}
+
+	private Buffer.View readPrefix(Buffer buffer) {
+		if (buffer.remaining() < prefixLength) {
+			return null;
+		}
+
+		int pos = buffer.position();
+		Buffer.View prefix = buffer.createView(pos, pos + prefixLength);
+		buffer.position(pos + prefixLength);
+
+		return prefix;
+	}
+
+	private Buffer.View readData(Buffer.View prefix, Buffer buffer) {
+		int pos = buffer.position();
+		int limit = buffer.limit();
+
+		int len = readLen(prefix.get());
+		if (len == -1 || buffer.remaining() < len) {
+			buffer.limit(limit);
+			buffer.position(pos);
+			return null;
+		}
+
+		pos = buffer.position();
+		Buffer.View data = buffer.createView(pos, pos + len);
+		buffer.position(pos + len);
+
+		return data;
+	}
+
+	private int readLen(Buffer buffer) {
+		switch (lengthField) {
+			case SHORT:
+				if (buffer.remaining() >= 2) {
+					return buffer.readShort();
+				}
+				break;
+			case INT:
+				if (buffer.remaining() >= 4) {
+					return buffer.readInt();
+				}
+				break;
+			case LONG:
+				if (buffer.remaining() >= 8) {
+					return (int) buffer.readLong();
+				}
+				break;
+		}
+
+		return -1;
 	}
 
 	@Override

@@ -16,23 +16,21 @@
 
 package reactor.io.net.http;
 
-import org.reactivestreams.Publisher;
-import reactor.bus.registry.Registration;
-import reactor.bus.registry.Registries;
-import reactor.bus.registry.Registry;
-import reactor.bus.selector.Selector;
-import reactor.fn.timer.Timer;
-import reactor.io.buffer.Buffer;
-import reactor.io.codec.Codec;
-import reactor.io.net.NetSelectors;
-import reactor.io.net.ReactorChannelHandler;
-import reactor.io.net.ReactorPeer;
-import reactor.io.net.http.model.HttpHeaders;
-import reactor.rx.Promise;
-
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import org.reactivestreams.Publisher;
+import reactor.Publishers;
+import reactor.fn.Predicate;
+import reactor.fn.timer.Timer;
+import reactor.io.net.ReactiveChannelHandler;
+import reactor.io.net.ReactivePeer;
+import reactor.io.net.http.model.HttpHeaders;
+import reactor.io.net.http.routing.ChannelMappings;
+import reactor.io.net.http.routing.HttpSelector;
+import reactor.io.net.http.routing.HttpSelectors;
 
 /**
  * Base functionality needed by all servers that communicate with clients over HTTP.
@@ -42,23 +40,22 @@ import java.util.List;
  * @author Stephane Maldini
  */
 public abstract class HttpServer<IN, OUT>
-  extends ReactorPeer<IN, OUT, HttpChannel<IN, OUT>> {
+		extends ReactivePeer<IN, OUT, HttpChannel<IN, OUT>> {
 
-	protected final Registry<HttpChannel, ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> routedWriters;
+	protected ChannelMappings<IN, OUT> channelMappings;
 
 	private boolean hasWebsocketEndpoints = false;
 
-	protected HttpServer(Timer timer, Codec<Buffer, IN, OUT> codec) {
-		super(timer, codec);
-		this.routedWriters = Registries.create();
+	protected HttpServer(Timer timer) {
+		super(timer);
 	}
 
-	/**
+	/*** Additional regex matching is available when reactor-bus is on the classpath.
 	 * Start the server without any global handler, only the specific routed methods (get, post...) will apply.
 	 *
 	 * @return a Promise fulfilled when server is started
 	 */
-	public Promise<Void> start() {
+	public Publisher<Void> start() {
 		return start(null);
 	}
 
@@ -73,16 +70,20 @@ public abstract class HttpServer<IN, OUT>
 	 * Register an handler for the given Selector condition, incoming connections will query the internal registry
 	 * to invoke the matching handlers. Implementation may choose to reply 404 if no route matches.
 	 *
-	 * @param condition       a {@link Selector} to match the incoming connection with registered handler
+	 * @param condition       a {@link Predicate} to match the incoming connection with registered handler
 	 * @param serviceFunction an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	@SuppressWarnings("unchecked")
 	public HttpServer<IN, OUT> route(
-	  final Selector<HttpChannel> condition,
-	  final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> serviceFunction) {
+	  final Predicate<HttpChannel> condition,
+	  final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> serviceFunction) {
 
-		routedWriters.register(condition, serviceFunction);
+		if(this.channelMappings == null) {
+			this.channelMappings = ChannelMappings.newMappings();
+		}
+
+		this.channelMappings.add(condition, serviceFunction);
 		return this;
 	}
 
@@ -91,6 +92,7 @@ public abstract class HttpServer<IN, OUT>
 	 * internal registry
 	 * to invoke the matching handlers.
 	 * <p>
+	 * Additional regex matching is available when reactor-bus is on the classpath.
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
 	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
@@ -98,8 +100,8 @@ public abstract class HttpServer<IN, OUT>
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> get(String path,
-	                                     final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(NetSelectors.get(path), handler);
+	                                     final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
+		route(HttpSelectors.get(path), handler);
 		return this;
 	}
 
@@ -108,6 +110,7 @@ public abstract class HttpServer<IN, OUT>
 	 * internal registry
 	 * to invoke the matching handlers.
 	 * <p>
+	 * Additional regex matching is available when reactor-bus is on the classpath.
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
 	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
@@ -115,8 +118,8 @@ public abstract class HttpServer<IN, OUT>
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> post(String path,
-	                                      final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(NetSelectors.post(path), handler);
+	                                      final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
+		route(HttpSelectors.post(path), handler);
 		return this;
 	}
 
@@ -126,6 +129,7 @@ public abstract class HttpServer<IN, OUT>
 	 * internal registry
 	 * to invoke the matching handlers.
 	 * <p>
+	 * Additional regex matching is available when reactor-bus is on the classpath.
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
 	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
@@ -133,8 +137,8 @@ public abstract class HttpServer<IN, OUT>
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> put(String path,
-	                                     final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(NetSelectors.put(path), handler);
+	                                     final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
+		route(HttpSelectors.put(path), handler);
 		return this;
 	}
 
@@ -144,6 +148,7 @@ public abstract class HttpServer<IN, OUT>
 	 * internal registry
 	 * to invoke the matching handlers.
 	 * <p>
+	 * Additional regex matching is available when reactor-bus is on the classpath.
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
 	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
@@ -151,10 +156,14 @@ public abstract class HttpServer<IN, OUT>
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> ws(String path,
-	                                    final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(NetSelectors.get(path), handler);
-		hasWebsocketEndpoints = true;
+	                                    final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
+		route(HttpSelectors.get(path), handler);
+		enableWebsocket();
 		return this;
+	}
+
+	protected void enableWebsocket(){
+		hasWebsocketEndpoints = true;
 	}
 
 	/**
@@ -162,6 +171,7 @@ public abstract class HttpServer<IN, OUT>
 	 * the internal registry
 	 * to invoke the matching handlers.
 	 * <p>
+	 * Additional regex matching is available when reactor-bus is on the classpath.
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
 	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
@@ -169,20 +179,33 @@ public abstract class HttpServer<IN, OUT>
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> delete(String path,
-	                                        final ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(NetSelectors.delete(path), handler);
+	                                        final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
+		route(HttpSelectors.delete(path), handler);
 		return this;
 	}
 
-	protected abstract void onWebsocket(HttpChannel<IN, OUT> next);
-
-	protected final boolean hasWebsocketEndpoints() {
-		return hasWebsocketEndpoints;
+	/**
+	 *
+	 * @param preprocessor
+	 * @param <NEWIN>
+	 * @param <NEWOUT>
+	 * @param <NEWCONN>
+	 * @return
+	 */
+	public <NEWIN, NEWOUT, NEWCONN extends HttpChannel<NEWIN, NEWOUT>> HttpServer<NEWIN, NEWOUT> httpProcessor(
+			final HttpProcessor<IN, OUT, ? super HttpChannel<IN, OUT>, NEWIN, NEWOUT, NEWCONN> preprocessor
+	){
+		return new PreprocessedHttpServer<>(preprocessor);
 	}
 
-	protected Iterable<? extends Publisher<Void>> routeChannel(final HttpChannel<IN, OUT> ch) {
-		final List<Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>>
-		  selected = routedWriters.select(ch);
+	protected abstract void onWebsocket(HttpChannel<?, ?> next);
+
+	protected Publisher<Void> routeChannel(final HttpChannel<IN, OUT> ch) {
+
+		if(channelMappings == null) return null;
+
+		final Iterator<? extends ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>
+		  selected = channelMappings.apply(ch).iterator();
 
 		if (hasWebsocketEndpoints) {
 			String connection = ch.headers().get(HttpHeaders.CONNECTION);
@@ -191,39 +214,83 @@ public abstract class HttpServer<IN, OUT>
 			}
 		}
 
-		return new Iterable<Publisher<Void>>() {
-			@Override
-			public Iterator<Publisher<Void>> iterator() {
-				final Iterator<Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN,
-				  OUT>>>>
-				  iterator = selected.iterator();
+		if(!selected.hasNext()){
+			return null;
+		}
 
-				return new Iterator<Publisher<Void>>() {
-					@Override
-					public boolean hasNext() {
-						return iterator.hasNext();
-					}
+		ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> channelHandler = selected.next();
 
-					@Override
-					public void remove() {
-						iterator.remove();
-					}
+		if (!selected.hasNext()){
+			return channelHandler.apply(ch);
+		}
 
-					//Lazy apply
-					@Override
-					@SuppressWarnings("unchecked")
-					public Publisher<Void> next() {
-						Registration<HttpChannel, ? extends ReactorChannelHandler<IN, OUT, HttpChannel<IN, OUT>>> next
-						  = iterator.next();
-						if (next != null) {
-							ch.paramsResolver(next.getSelector().getHeaderResolver());
-							return next.getObject().apply(ch);
-						} else {
-							return null;
-						}
-					}
-				};
-			}
-		};
+		final List<Publisher<Void>> multiplexing = new ArrayList<>(4);
+
+		multiplexing.add(channelHandler.apply(ch));
+
+		do {
+			channelHandler = selected.next();
+			multiplexing.add(channelHandler.apply(ch));
+
+		}
+		while (selected.hasNext());
+
+		return Publishers.concat(Publishers.from(multiplexing));
+	}
+
+	private final class PreprocessedHttpServer<NEWIN, NEWOUT, NEWCONN extends HttpChannel<NEWIN, NEWOUT>>
+			extends HttpServer<NEWIN, NEWOUT> {
+
+		private final HttpProcessor<IN, OUT, ? super HttpChannel<IN, OUT>, NEWIN, NEWOUT, NEWCONN>
+				preprocessor;
+
+		public PreprocessedHttpServer(
+				HttpProcessor<IN, OUT, ? super HttpChannel<IN, OUT>, NEWIN, NEWOUT, NEWCONN> preprocessor) {
+			super(HttpServer.this.getDefaultTimer());
+			this.preprocessor = preprocessor;
+		}
+
+		@Override
+		public HttpServer<NEWIN, NEWOUT> route(Predicate<HttpChannel> condition,
+				final ReactiveChannelHandler<NEWIN, NEWOUT, HttpChannel<NEWIN, NEWOUT>> serviceFunction) {
+			HttpServer.this.route(condition,  new ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>>() {
+				@Override
+				public Publisher<Void> apply(HttpChannel<IN, OUT> conn) {
+					return serviceFunction.apply(preprocessor.transform(conn));
+				}
+			});
+			return this;
+		}
+
+		@Override
+		public InetSocketAddress getListenAddress() {
+			return HttpServer.this.getListenAddress();
+		}
+
+		@Override
+		protected void onWebsocket(HttpChannel<?, ?> next) {
+			HttpServer.this.onWebsocket(next);
+		}
+
+		@Override
+		protected void enableWebsocket() {
+			HttpServer.this.enableWebsocket();
+		}
+
+		@Override
+		protected Publisher<Void> doStart(
+				final ReactiveChannelHandler<NEWIN, NEWOUT, HttpChannel<NEWIN, NEWOUT>> handler) {
+			return HttpServer.this.start(null != handler ? new ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>>() {
+				@Override
+				public Publisher<Void> apply(HttpChannel<IN, OUT> conn) {
+					return handler.apply(preprocessor.transform(conn));
+				}
+			} : null);
+		}
+
+		@Override
+		protected Publisher<Void> doShutdown() {
+			return HttpServer.this.shutdown();
+		}
 	}
 }

@@ -49,7 +49,7 @@ class StandardCodecsSpec extends Specification {
 
 	def "DelimitedCodec can encode and decode delimited lines"() {
 		given: "delimited data"
-			def codec = new DelimitedCodec<String, String>(false, StandardCodecs.STRING_CODEC)
+			def codec = StandardCodecs.LINE_FEED_CODEC
 			def data = Buffer.wrap("Hello World!\nHello World!\nHello World!\n")
 			def hellos = []
 
@@ -60,7 +60,7 @@ class StandardCodecsSpec extends Specification {
 			decoder.apply(data)
 
 		then: "data was decoded"
-			hellos == ["Hello World!\n", "Hello World!\n", "Hello World!\n"]
+			hellos == ["Hello World!", "Hello World!", "Hello World!"]
 
 		when: "data is encoded"
 			def encoder = codec

@@ -71,11 +71,11 @@ public class Buffer implements Recyclable,
 
 	private static final Charset UTF8 = Charset.forName("UTF-8");
 	private final boolean        dynamic;
-	private       ByteBuffer     buffer;
 	private       CharsetDecoder decoder;
 	private       CharBuffer     chars;
 	private       int            position;
 	private       int            limit;
+	protected     ByteBuffer     buffer;
 
 	/**
 	 * Create an empty {@literal Buffer} that is dynamic.
@@ -153,9 +153,12 @@ public class Buffer implements Recyclable,
 	@SuppressWarnings("resource")
 	public static Buffer wrap(String str, boolean fixed) {
 		if (fixed) {
-			return wrap(str.getBytes());
+			byte[] bytes = str.getBytes();
+			return new StringBuffer(bytes.length, true)
+					.append(bytes)
+					.flip();
 		} else {
-			return new Buffer(str.length(), false)
+			return new StringBuffer(str.length(), false)
 			  .append(str)
 			  .flip();
 		}
@@ -322,7 +325,12 @@ public class Buffer implements Recyclable,
 	 */
 	public Buffer limit(int limit) {
 		if (null != buffer) {
-			buffer.limit(limit);
+			try {
+				buffer.limit(limit);
+			}
+			catch (IllegalArgumentException iae){
+				throw new IllegalArgumentException("Tried limit "+limit+" on capacity "+capacity());
+			}
 		}
 		return this;
 	}
@@ -672,7 +680,9 @@ public class Buffer implements Recyclable,
 	 * @return {@literal this}
 	 */
 	public Buffer append(Buffer... buffers) {
+		if( buffers == null ) return this;
 		for (Buffer b : buffers) {
+			if(b == null) continue;
 			int pos = position();
 			int len = b.remaining();
 			ensureCapacity(len);
@@ -867,6 +877,15 @@ public class Buffer implements Recyclable,
 		buffer.limit(limit);
 		buffer.position(position);
 		return this;
+	}
+
+	/**
+	 * Create a fresh Buffer
+	 *
+	 * @return
+	 */
+	public Buffer newBuffer(){
+		return new Buffer();
 	}
 
 	@Override
@@ -1133,7 +1152,7 @@ public class Buffer implements Recyclable,
 	 * @return the position of the char in the buffer or {@code -1} if not found
 	 */
 	public int indexOf(byte b) {
-		return indexOf(b, buffer.position(), buffer.remaining());
+		return indexOf(b, buffer.position(), buffer.capacity());
 	}
 
 	/**
@@ -1449,14 +1468,15 @@ public class Buffer implements Recyclable,
 
 		@Override
 		public Buffer get() {
-			buffer.limit(end);
-			buffer.position(start);
-			return Buffer.this;
+			Buffer b = Buffer.this.duplicate();
+			b.limit(end);
+			b.position(start);
+			return b;
 		}
 	}
 
 	/**
-	 * A delimiting buffer is sent to {@link reactor.io.codec.BufferCodec} and other components to signal the end of a
+	 * A delimiting buffer sent to other components to signal the end of a
 	 * sequence of Buffer.
 	 *
 	 * @since 2.0.4

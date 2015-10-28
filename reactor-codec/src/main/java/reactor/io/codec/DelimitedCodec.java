@@ -16,10 +16,11 @@
 
 package reactor.io.codec;
 
+import java.util.Iterator;
+
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
-import reactor.io.buffer.Buffer.View;
 
 /**
  * An implementation of {@link Codec} that decodes by splitting a {@link Buffer} into segments
@@ -69,54 +70,38 @@ public class DelimitedCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 	 * @param delegate       The delegate {@link Codec}.
 	 */
 	public DelimitedCodec(byte delimiter, boolean stripDelimiter, Codec<Buffer, IN, OUT> delegate) {
-		super(delimiter);
+		super(delimiter, delegate.decoderContextProvider);
 		this.stripDelimiter = stripDelimiter;
 		this.delegate = delegate;
 	}
 
 	@Override
 	public Function<Buffer, IN> decoder(Consumer<IN> next) {
-		return new DelimitedDecoder(next);
+		return new BufferInvokeOrReturnFunction<>(next, delegate.decoderContextProvider.get());
 	}
 
-	private class DelimitedDecoder implements Function<Buffer, IN> {
-		private final Function<Buffer, IN> decoder;
 
-		DelimitedDecoder(Consumer<IN> next) {
-			this.decoder = delegate.decoder(next);
-		}
 
-		@Override
-		public IN apply(Buffer bytes) {
-			if (bytes.remaining() == 0) {
-				return null;
+	@Override
+	protected IN decodeNext(Buffer buffer, Object context) {
+		Buffer b = buffer;
+		if(delimiter != null){
+			int end = buffer.indexOf(delimiter);
+			if(end != - 1) {
+				b = buffer.duplicate().limit(stripDelimiter ? end - 1 : end);
+				buffer.skip((stripDelimiter ? Math.min(buffer.limit(), end) : end) - buffer.position());
 			}
-
-			Iterable<View> views = bytes.split(delimiter, stripDelimiter);
-
-			int limit = bytes.limit();
-			int position = bytes.position();
-
-			for (Buffer.View view : views) {
-				Buffer b = view.get();
-				decoder.apply(b);
-			}
-
-			bytes.limit(limit);
-			bytes.position(position);
-
-			return null;
 		}
+		return delegate.decodeNext(b, context);
 	}
 
 	@Override
 	public Buffer apply(OUT out) {
-		Buffer buffer = new Buffer();
 		Buffer encoded = delegate.apply(out);
 		if (null != encoded && encoded.remaining() > 0) {
-			buffer.append(encoded).append(delimiter);
+			return encoded.newBuffer().append(encoded).append(delimiter).flip();
 		}
-		return buffer.flip();
+		return null;
 	}
 
 }

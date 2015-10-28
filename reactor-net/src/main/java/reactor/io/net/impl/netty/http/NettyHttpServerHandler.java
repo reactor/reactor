@@ -22,7 +22,6 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -31,29 +30,28 @@ import io.netty.handler.codec.http.LastHttpContent;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.fn.Consumer;
+import reactor.Publishers;
+import reactor.core.subscriber.BaseSubscriber;
 import reactor.io.buffer.Buffer;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannelHandler;
-import reactor.io.net.http.model.Method;
-import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
-import reactor.io.net.impl.netty.NettyChannelStream;
-import reactor.rx.Streams;
-import reactor.rx.action.support.DefaultSubscriber;
+import reactor.io.net.ReactiveChannel;
+import reactor.io.net.ReactiveChannelHandler;
+import reactor.io.net.impl.netty.NettyBuffer;
+import reactor.io.net.impl.netty.NettyChannel;
+import reactor.io.net.impl.netty.tcp.NettyChannelHandlerBridge;
 
 /**
  * Conversion between Netty types  and Reactor types ({@link NettyHttpChannel} and {@link reactor.io.buffer.Buffer}).
  *
  * @author Stephane Maldini
  */
-public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<IN, OUT> {
+public class NettyHttpServerHandler extends NettyChannelHandlerBridge {
 
-	private final NettyChannelStream<IN, OUT> tcpStream;
-	protected     NettyHttpChannel<IN, OUT>   request;
+	private final NettyChannel     tcpStream;
+	protected     NettyHttpChannel request;
 
 	public NettyHttpServerHandler(
-			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler,
-			NettyChannelStream<IN, OUT> tcpStream) {
+			ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
+			NettyChannel tcpStream) {
 		super(handler, tcpStream);
 		this.tcpStream = tcpStream;
 	}
@@ -68,12 +66,13 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	public void channelRead(final ChannelHandlerContext ctx, final Object msg) throws Exception {
 		Class<?> messageClass = msg.getClass();
 		if (request == null && io.netty.handler.codec.http.HttpRequest.class.isAssignableFrom(messageClass)) {
-			request = new NettyHttpChannel<IN, OUT>(tcpStream, (io.netty.handler.codec.http.HttpRequest) msg){
+			request = new NettyHttpChannel(tcpStream, (io.netty.handler.codec.http.HttpRequest) msg){
 				@Override
 				protected void doSubscribeHeaders(Subscriber<? super Void> s) {
-					tcpStream.emitWriter(Streams.just(getNettyResponse()), s);
+					tcpStream.emitWriter(Publishers.just(getNettyResponse()), s);
 				}
 			};
+
 
 			if (request.isWebsocket()) {
 				HttpObjectAggregator agg = new HttpObjectAggregator(65536);
@@ -83,7 +82,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 			}
 
 			final Publisher<Void> closePublisher = handler.apply(request);
-			final Subscriber<Void> closeSub = new DefaultSubscriber<Void>() {
+			final Subscriber<Void> closeSub = new BaseSubscriber<Void>() {
 
 				Subscription subscription;
 
@@ -95,6 +94,7 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 				@Override
 				public void onError(Throwable t) {
+					super.onError(t);
 					log.error("Error processing connection. Closing the channel.", t);
 					if (request.markHeadersAsFlushed()) {
 						request.delegate()
@@ -136,9 +136,9 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	}
 
 	protected void postRead(ChannelHandlerContext ctx, Object msg){
-		if (channelSubscription != null && LastHttpContent.class.isAssignableFrom(msg.getClass())) {
-			channelSubscription.onComplete();
-			channelSubscription = null;
+		if (channelSubscriber != null && LastHttpContent.class.isAssignableFrom(msg.getClass())) {
+			channelSubscriber.onComplete();
+			channelSubscriber = null;
 		}
 	}
 	protected void writeLast(ChannelHandlerContext ctx){
@@ -149,19 +149,22 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 
 	@Override
 	protected ChannelFuture doOnWrite(final Object data, final ChannelHandlerContext ctx) {
-		if (data.getClass().equals(Buffer.class)) {
+		if (Buffer.class.isAssignableFrom(data.getClass())) {
+			if(NettyBuffer.class.equals(data.getClass())){
+				return ctx.write(((NettyBuffer)data).get());
+			}
 			return ctx.write(new DefaultHttpContent(convertBufferToByteBuff(ctx, (Buffer) data)));
 		} else {
 			return ctx.write(data);
 		}
 	}
 
-	NettyHttpServerHandler<IN, OUT> withWebsocketSupport(String url, String protocols){
+	NettyHttpServerHandler withWebsocketSupport(String url, String protocols){
 		//prevent further header to be sent for handshaking
 		if(!request.markHeadersAsFlushed()){
 			log.error("Cannot enable websocket if headers have already been sent");
 			return this;
 		}
-		return new NettyHttpWSServerHandler<>(url, protocols, this);
+		return new NettyHttpWSServerHandler(url, protocols, this);
 	}
 }

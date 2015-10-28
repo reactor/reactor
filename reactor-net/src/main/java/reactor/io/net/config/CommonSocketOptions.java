@@ -20,7 +20,6 @@ import reactor.io.buffer.Buffer;
 
 /**
  * Encapsulates common socket options.
- *
  * @param <SO> A CommonSocketOptions subclass
  * @author Jon Brisbin
  * @author Stephane Maldini
@@ -35,10 +34,10 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 	private int     rcvbuf     = Buffer.SMALL_BUFFER_SIZE;
 	private int     sndbuf     = Buffer.SMALL_BUFFER_SIZE;
 	private long    prefetch   = Long.MAX_VALUE;
+	private boolean israw      = false;
 
 	/**
 	 * Gets the {@code SO_TIMEOUT} value
-	 *
 	 * @return the timeout value
 	 */
 	public int timeout() {
@@ -47,7 +46,6 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Set the {@code SO_TIMEOUT} value.
-	 *
 	 * @param timeout The {@code SO_TIMEOUT} value.
 	 * @return {@code this}
 	 */
@@ -55,10 +53,25 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 		this.timeout = timeout;
 		return (SO) this;
 	}
+	/**
+	 * @return false if emitting {@link Buffer}
+	 */
+	public boolean isRaw() {
+		return israw;
+	}
+
+	/**
+	 * Set the is Raw value.
+	 * @param israw Should the peer emit {@link Buffer} or its native type
+	 * @return {@code this}
+	 */
+	public SO isRaw(boolean israw) {
+		this.israw = israw;
+		return (SO) this;
+	}
 
 	/**
 	 * Gets the {@code prefetch} maximum in-flight value
-	 *
 	 * @return the prefetch value, {@code Long.MAX} if undefined
 	 */
 	public long prefetch() {
@@ -66,14 +79,14 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 	}
 
 	/**
-	 * Set the Consuming capacity along with eventual flushing strategy each given prefetch iteration.
-	 * Long.MAX will instruct the channels to be unbounded (e.g. limited by the dispatcher capacity if any or a slow
-	 * consumer).
-	 * When unbounded the system will take a maximum of data off the channel incoming connection.
-	 * Setting a value of 10 will however pause the channel after 10 successful reads until the next request from the
-	 * consumer.
-	 *
-	 * @param prefetch The {@code prefetch} in-flight data over this channel ({@code Long.MAX_VALUE} for unbounded).
+	 * Set the Consuming capacity along with eventual flushing strategy each given
+	 * prefetch iteration. Long.MAX will instruct the channels to be unbounded (e.g.
+	 * limited by the dispatcher capacity if any or a slow consumer). When unbounded the
+	 * system will take a maximum of data off the channel incoming connection. Setting a
+	 * value of 10 will however pause the channel after 10 successful reads until the next
+	 * request from the consumer.
+	 * @param prefetch The {@code prefetch} in-flight data over this channel ({@code
+	 * Long.MAX_VALUE} for unbounded).
 	 * @return {@code this}
 	 */
 	public SO prefetch(long prefetch) {
@@ -83,7 +96,6 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Returns a boolean indicating whether or not {@code SO_KEEPALIVE} is enabled
-	 *
 	 * @return {@code true} if keep alive is enabled, {@code false} otherwise
 	 */
 	public boolean keepAlive() {
@@ -92,8 +104,8 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Enables or disables {@code SO_KEEPALIVE}.
-	 *
-	 * @param keepAlive {@code true} to enable keepalive, {@code false} to disable keepalive
+	 * @param keepAlive {@code true} to enable keepalive, {@code false} to disable
+	 * keepalive
 	 * @return {@code this}
 	 */
 	public SO keepAlive(boolean keepAlive) {
@@ -103,7 +115,6 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Returns the configuration of {@code SO_LINGER}.
-	 *
 	 * @return the value of {@code SO_LINGER} in seconds
 	 */
 	public int linger() {
@@ -112,7 +123,6 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Configures {@code SO_LINGER}
-	 *
 	 * @param linger The linger period in seconds
 	 * @return {@code this}
 	 */
@@ -123,7 +133,6 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Returns a boolean indicating whether or not {@code TCP_NODELAY} is enabled
-	 *
 	 * @return {@code true} if {@code TCP_NODELAY} is enabled, {@code false} if it is not
 	 */
 	public boolean tcpNoDelay() {
@@ -132,8 +141,8 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Enables or disables {@code TCP_NODELAY}
-	 *
-	 * @param tcpNoDelay {@code true} to enable {@code TCP_NODELAY}, {@code false} to disable it
+	 * @param tcpNoDelay {@code true} to enable {@code TCP_NODELAY}, {@code false} to
+	 * disable it
 	 * @return {@code this}
 	 */
 	public SO tcpNoDelay(boolean tcpNoDelay) {
@@ -143,7 +152,6 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Gets the configured {@code SO_RCVBUF} (receive buffer) size
-	 *
 	 * @return The configured receive buffer size
 	 */
 	public int rcvbuf() {
@@ -152,7 +160,6 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Sets the {@code SO_RCVBUF} (receive buffer) size
-	 *
 	 * @param rcvbuf The size of the receive buffer
 	 * @return {@code this}
 	 */
@@ -163,7 +170,6 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Gets the configured {@code SO_SNDBUF} (send buffer) size
-	 *
 	 * @return The configured send buffer size
 	 */
 	public int sndbuf() {
@@ -172,7 +178,6 @@ public abstract class CommonSocketOptions<SO extends CommonSocketOptions<? super
 
 	/**
 	 * Sets the {@code SO_SNDBUF} (send buffer) size
-	 *
 	 * @param sndbuf The size of the send buffer
 	 * @return {@code this}
 	 */

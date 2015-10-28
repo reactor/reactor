@@ -61,7 +61,7 @@ public class GlobalTimer extends HashWheelTimer {
 			synchronized (globalTimer) {
 				GlobalTimer t = new GlobalTimer();
 				if (!globalTimer.compareAndSet(null, t)) {
-					t.cancel();
+					t._cancel();
 				}
 			}
 		}

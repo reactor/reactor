@@ -39,18 +39,11 @@ public class KryoCodec<IN, OUT> extends SerializationCodec<Kryo, IN, OUT> {
 
 	@Override
 	protected Function<byte[], IN> deserializer(final Kryo engine,
-	                                            final Class<IN> type,
-	                                            final Consumer<IN> next) {
+	                                            final Class<IN> type) {
 		return new Function<byte[], IN>() {
 			@Override
 			public IN apply(byte[] bytes) {
-				IN obj = engine.readObject(new UnsafeMemoryInput(bytes), type);
-				if(null != next) {
-					next.accept(obj);
-					return null;
-				} else {
-					return obj;
-				}
+				return engine.readObject(new UnsafeMemoryInput(bytes), type);
 			}
 		};
 	}

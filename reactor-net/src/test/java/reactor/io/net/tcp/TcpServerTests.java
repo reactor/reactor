@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.LineBasedFrameDecoder;
 import org.junit.After;
 import org.junit.Before;
@@ -48,18 +47,16 @@ import reactor.io.buffer.Buffer;
 import reactor.io.codec.Frame;
 import reactor.io.codec.FrameCodec;
 import reactor.io.codec.LengthFieldCodec;
-import reactor.io.codec.PassThroughCodec;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.codec.StringCodec;
-import reactor.io.codec.json.JsonCodec;
-import reactor.io.net.ChannelStream;
 import reactor.io.net.NetStreams;
 import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
-import reactor.io.net.http.HttpServer;
+import reactor.io.net.http.ReactorHttpServer;
+import reactor.io.net.impl.netty.NettyBuffer;
 import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.impl.netty.tcp.NettyTcpClient;
+import reactor.io.net.preprocessor.CodecPreprocessor;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.rx.Streams;
 import reactor.rx.broadcast.Broadcaster;
@@ -133,21 +130,19 @@ public class TcpServerTests {
 			  }
 		  });
 
-		JsonCodec<Pojo, Pojo> codec = new JsonCodec<Pojo, Pojo>(Pojo.class);
-
 		final CountDownLatch latch = new CountDownLatch(1);
-		final TcpClient<Pojo, Pojo> client = NetStreams.tcpClient(s ->
+		final ReactorTcpClient<Pojo, Pojo> client = NetStreams.tcpClient(s ->
 			s
 			  .ssl(clientOpts)
-			  .codec(codec)
 			  .connect("localhost", port)
+			  .preprocessor(CodecPreprocessor.json(Pojo.class))
 		);
 
-		final TcpServer<Pojo, Pojo> server = NetStreams.tcpServer(s ->
+		final ReactorTcpServer<Pojo, Pojo> server = NetStreams.tcpServer(s ->
 			s
 			  .ssl(serverOpts)
 			  .listen("localhost", port)
-			  .codec(codec)
+			  .preprocessor(CodecPreprocessor.json(Pojo.class))
 		);
 
 		server.start(channel -> {
@@ -173,14 +168,14 @@ public class TcpServerTests {
 	public void tcpServerHandlesLengthFieldData() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 
-		TcpServer<byte[], byte[]> server = NetStreams.tcpServer(s ->
+		ReactorTcpServer<byte[], byte[]> server = NetStreams.tcpServer(s ->
 			s
 			  .options(new ServerSocketOptions()
 				.backlog(1000)
 				.reuseAddr(true)
 				.tcpNoDelay(true))
 			  .listen(port)
-			  .codec(new LengthFieldCodec<>(StandardCodecs.BYTE_ARRAY_CODEC))
+			  .preprocessor(CodecPreprocessor.from(new LengthFieldCodec<>(StandardCodecs.BYTE_ARRAY_CODEC)))
 		);
 
 		System.out.println(latch.getCount());
@@ -233,22 +228,22 @@ public class TcpServerTests {
 	public void tcpServerHandlesFrameData() throws InterruptedException {
 		final int port = SocketUtils.findAvailableTcpPort();
 
-		TcpServer<Frame, Frame> server = NetStreams.tcpServer(spec ->
+		ReactorTcpServer<Frame, Frame> server = NetStreams.tcpServer(spec ->
 			spec
 			  .options(new ServerSocketOptions()
 			    .backlog(1000)
 			    .reuseAddr(true)
 			    .tcpNoDelay(true))
 			  .listen(port)
-			  .codec(new FrameCodec(2, FrameCodec.LengthField.SHORT))
+			  .preprocessor(CodecPreprocessor.from(new FrameCodec(2, FrameCodec.LengthField.SHORT)))
 		);
 
 		server.start(ch -> {
 			ch.consume(frame -> {
 				short prefix = frame.getPrefix().readShort();
-				assertThat("prefix is 0", prefix == 0);
+				assertThat("prefix is not 128: "+prefix, prefix == 128);
 				Buffer data = frame.getData();
-				assertThat("len is 128", data.remaining() == 128);
+				assertThat("len is not 128: "+data.remaining(), data.remaining() == 128);
 
 				latch.countDown();
 			});
@@ -260,8 +255,8 @@ public class TcpServerTests {
 			threadPool.submit(new FramedLengthFieldMessageWriter(port));
 		}
 
-		latch.await(10, TimeUnit.SECONDS);
-		assertTrue("Latch was counted down:" + latch.getCount(), latch.getCount() == 0);
+		latch.await(100, TimeUnit.SECONDS);
+		assertTrue("Latch was not counted down enough :" + latch.getCount()+" left on "+(msgs * threads), latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -276,13 +271,13 @@ public class TcpServerTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(1);
 
-		TcpClient<Buffer, Buffer> client = NetStreams.<Buffer, Buffer>tcpClient(NettyTcpClient.class, s ->
+		ReactorTcpClient<Buffer, Buffer> client = NetStreams.<Buffer, Buffer>tcpClient(NettyTcpClient.class, s ->
 			s.connect("localhost", port)
 		);
 
-		TcpServer<Buffer, Buffer> server = NetStreams.tcpServer(s ->
+		ReactorTcpServer<Buffer, Buffer> server = NetStreams.tcpServer(s ->
 			s.listen(port)
-			  .codec(new PassThroughCodec<Buffer>())
+			  .preprocessor(CodecPreprocessor.passthrough())
 		);
 
 		server.start(ch -> {
@@ -305,10 +300,11 @@ public class TcpServerTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(2);
 
-		final TcpClient<String, String> client = NetStreams.tcpClient(s -> s.connect("localhost", port)
-		                                                                    .codec(StandardCodecs.LINE_FEED_CODEC));
+		final ReactorTcpClient<String, String> client = NetStreams.tcpClient(s -> s.connect("localhost", port)
+		                                                                    .preprocessor(CodecPreprocessor.linefeed()));
 
-		ReactorChannelHandler<String, String, ChannelStream<String, String>> serverHandler = ch -> {
+		ReactorChannelHandler<String, String>
+				serverHandler = ch -> {
 			ch.consume(data -> {
 				log.info("data " + data + " on " + ch);
 				latch.countDown();
@@ -316,12 +312,12 @@ public class TcpServerTests {
 			return Streams.never();
 		};
 
-		TcpServer<String, String> server = NetStreams.tcpServer(s ->
+		ReactorTcpServer<String, String> server = NetStreams.tcpServer(s ->
 			s
 			  .options(new NettyServerSocketOptions()
 			    .pipelineConfigurer(pipeline -> pipeline.addLast(new LineBasedFrameDecoder(8 * 1024))))
 			  .listen(port)
-			  .codec(StandardCodecs.STRING_CODEC)
+			  .preprocessor(CodecPreprocessor.string())
 		);
 
 		server.start(serverHandler).await();
@@ -339,21 +335,21 @@ public class TcpServerTests {
 		final int port = SocketUtils.findAvailableTcpPort();
 		final CountDownLatch latch = new CountDownLatch(msgs);
 
-		TcpServer<ByteBuf, ByteBuf> server = NetStreams.tcpServer(spec -> spec
+		ReactorTcpServer<NettyBuffer, NettyBuffer> server = NetStreams.tcpServer(spec -> spec
 			.listen(port)
-			.rawData(true)
+			.options(new ServerSocketOptions())
 		);
 
 		log.info("Starting raw server on tcp://localhost:{}", port);
 		server.start(ch -> {
 			ch.consume(byteBuf -> {
-				byteBuf.forEachByte(value -> {
+				byteBuf.getByteBuf().forEachByte(value -> {
 					if (value == '\n') {
 						latch.countDown();
 					}
 					return true;
 				});
-				byteBuf.release();
+				byteBuf.getByteBuf().release();
 			});
 			return Streams.never();
 		}).await();
@@ -364,7 +360,8 @@ public class TcpServerTests {
 		}
 
 		try {
-			assertTrue("Latch was counted down", latch.await(10, TimeUnit.SECONDS));
+			latch.await(10, TimeUnit.SECONDS);
+			assertTrue("Latch was counted down : " +latch.getCount(), latch.getCount() == 0 );
 		} finally {
 			server.shutdown();
 		}
@@ -389,8 +386,8 @@ public class TcpServerTests {
 
 
 		//create a server dispatching data on the default shared dispatcher, and serializing/deserializing as string
-		HttpServer<String, String> httpServer = NetStreams.httpServer(server -> server
-		  .codec(StandardCodecs.STRING_CODEC)
+		ReactorHttpServer<String, String> httpServer = NetStreams.httpServer(server -> server
+		  .httpProcessor(CodecPreprocessor.string())
 		  .listen(0)
 		  );
 
@@ -423,6 +420,78 @@ public class TcpServerTests {
 
 	}
 
+	@Test
+	public void testIssue462() throws InterruptedException {
+
+		final CountDownLatch countDownLatch = new CountDownLatch(1);
+
+		ReactorTcpServer<String, String> server =
+		  NetStreams.tcpServer(s ->
+			  s
+				.preprocessor(CodecPreprocessor.string())
+				.listen(0)
+		  );
+
+		server.start(ch -> {
+			ch.log("channel").consume(trip -> {
+				countDownLatch.countDown();
+			});
+			return Streams.never();
+		}).await();
+
+		System.out.println("PORT +"+server.getListenAddress().getPort());
+		ReactorTcpClient<String, String> client =
+		  NetStreams.tcpClient(s ->
+			  s
+				.preprocessor(CodecPreprocessor.string())
+				.connect("127.0.0.1", server.getListenAddress().getPort())
+		  );
+
+
+		client.start(ch ->
+			ch.writeWith(Streams.just("test"))
+		);
+
+		assertThat("countDownLatch counted down", countDownLatch.await(5, TimeUnit.SECONDS));
+	}
+
+	@Test
+	@Ignore
+	public void proxyTest() throws Exception {
+		ReactorHttpServer<Buffer, Buffer> server = NetStreams.httpServer();
+		server.get("/search/{search}", requestIn ->
+			NetStreams.httpClient()
+			  .get("foaas.herokuapp.com/life/" + requestIn.param("search"))
+			  .flatMap(repliesOut ->
+				  requestIn
+					.writeWith(repliesOut)
+			  )
+		);
+		server.start().await();
+		//System.in.read();
+		Thread.sleep(1000000);
+	}
+
+	@Test
+	@Ignore
+	public void wsTest() throws Exception {
+		ReactorHttpServer<Buffer, Buffer> server = NetStreams.httpServer();
+		server.get("/search/{search}", requestIn ->
+			NetStreams.httpClient()
+			  .ws("ws://localhost:3000", requestOut ->
+				  requestOut.writeWith(Streams.just(Buffer.wrap("ping")))
+			  )
+			  .flatMap(repliesOut ->
+				  requestIn
+					.writeWith(repliesOut.capacity(100))
+			  )
+		);
+		server.start().await();
+		//System.in.read();
+		Thread.sleep(1000000);
+	}
+
+
 	public static class Pojo {
 		private String name;
 
@@ -444,8 +513,8 @@ public class TcpServerTests {
 		@Override
 		public String toString() {
 			return "Pojo{" +
-			  "name='" + name + '\'' +
-			  '}';
+					"name='" + name + '\'' +
+					'}';
 		}
 	}
 
@@ -502,14 +571,14 @@ public class TcpServerTests {
 
 				start.set(System.currentTimeMillis());
 				for (int j = 0; j < msgs; j++) {
-					ByteBuffer buff = ByteBuffer.allocate(length + 4);
-					buff.putShort((short) 0);
+					ByteBuffer buff = ByteBuffer.allocate(length + 2);
+
 					buff.putShort(length);
-					for (int i = 4; i < length; i++) {
+					for (int i = 0; i < length; i++) {
 						buff.put((byte) 1);
 					}
 					buff.flip();
-					buff.limit(length + 4);
+					buff.limit(length + 2);
 
 					ch.write(buff);
 
@@ -518,103 +587,6 @@ public class TcpServerTests {
 				ch.close();
 			} catch (IOException e) {
 				e.printStackTrace();
-			}
-		}
-	}
-
-	@Test
-	public void testIssue462() throws InterruptedException {
-
-		final CountDownLatch countDownLatch = new CountDownLatch(1);
-
-		TcpServer<String, String> server =
-		  NetStreams.tcpServer(s ->
-			  s
-				.codec(new StringCodec())
-				.listen(0)
-		  );
-
-		server.start(ch -> {
-			ch.log("channel").consume(trip -> {
-				countDownLatch.countDown();
-			});
-			return Streams.never();
-		}).await();
-
-		TcpClient<String, String> client =
-		  NetStreams.tcpClient(s ->
-			  s
-				.codec(new StringCodec())
-				.connect("127.0.0.1", server.listenAddress.getPort())
-		  );
-
-
-		client.start(ch ->
-			ch.writeWith(Streams.just("test"))
-		);
-
-		assertThat("countDownLatch counted down", countDownLatch.await(5, TimeUnit.SECONDS));
-	}
-
-	@Test
-	@Ignore
-	public void proxyTest() throws Exception {
-		HttpServer<Buffer, Buffer> server = NetStreams.httpServer();
-		server.get("/search/{search}", requestIn ->
-			NetStreams.httpClient()
-			  .get("foaas.herokuapp.com/life/" + requestIn.param("search"))
-			  .flatMap(repliesOut ->
-				  requestIn
-					.writeWith(repliesOut)
-			  )
-		);
-		server.start().await();
-		//System.in.read();
-		Thread.sleep(1000000);
-	}
-
-	@Test
-	@Ignore
-	public void wsTest() throws Exception {
-		HttpServer<Buffer, Buffer> server = NetStreams.httpServer();
-		server.get("/search/{search}", requestIn ->
-			NetStreams.httpClient()
-			  .ws("ws://localhost:3000", requestOut ->
-				  requestOut.writeWith(Streams.just(Buffer.wrap("ping")))
-			  )
-			  .flatMap(repliesOut ->
-				  requestIn
-					.writeWith(repliesOut.capacity(100))
-			  )
-		);
-		server.start().await();
-		//System.in.read();
-		Thread.sleep(1000000);
-	}
-
-	private class HttpRequestWriter implements Runnable {
-		private final int port;
-
-		private HttpRequestWriter(int port) {
-			this.port = port;
-		}
-
-		@Override
-		public void run() {
-
-			start.set(System.currentTimeMillis());
-			for (int i = 0; i < msgs; i++) {
-				try {
-					java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress
-					  (port));
-					ch.write(Buffer.wrap("GET /test HTTP/1.1\r\nConnection: Close\r\n\r\n").byteBuffer());
-					ByteBuffer buff = ByteBuffer.allocate(4 * 1024);
-					ch.read(buff);
-					ch.close();
-
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
 			}
 		}
 	}

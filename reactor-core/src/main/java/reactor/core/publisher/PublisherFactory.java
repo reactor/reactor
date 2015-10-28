@@ -526,8 +526,7 @@ public abstract class PublisherFactory {
 		@Override
 		public String toString() {
 			return "ConsumerSubscriberBarrier{" +
-			  "subscriber=" + subscriber +
-			  ", dataConsumer=" + dataConsumer +
+			   "dataConsumer=" + dataConsumer +
 			  ", errorConsumer=" + errorConsumer +
 			  ", completeConsumer=" + completeConsumer +
 			  '}';

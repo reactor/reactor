@@ -18,6 +18,7 @@ package reactor.io.net;
 
 import org.reactivestreams.Publisher;
 import reactor.fn.Consumer;
+import reactor.io.buffer.Buffer;
 
 import java.net.InetSocketAddress;
 
@@ -29,10 +30,10 @@ import java.net.InetSocketAddress;
  * that will forward data to outbound.
  * When a drained Publisher completes or error, the channel will automatically "flush" its pending writes.
  *
- * @author Jon Brisbin
  * @author Stephane Maldini
+ * @since 2.1
  */
-public interface ReactorChannel<IN, OUT>  {
+public interface ReactiveChannel<IN, OUT>  {
 
 	/**
 	 * Get the address of the remote peer.
@@ -50,6 +51,16 @@ public interface ReactorChannel<IN, OUT>  {
 	 * @return A Publisher to signal successful sequence write (e.g. after "flush") or any error during write
 	 */
 	Publisher<Void> writeWith(Publisher<? extends OUT> dataStream);
+
+	/**
+	 * Send bytes to the peer, listen for any error on write and close on terminal signal (complete|error).
+	 * If more than one publisher is attached (multiple calls to writeWith()) completion occurs after all publishers
+	 * complete.
+	 *
+	 * @param dataStream the dataStream publishing Buffer items to write on this channel
+	 * @return A Publisher to signal successful sequence write (e.g. after "flush") or any error during write
+	 */
+	Publisher<Void> writeBufferWith(Publisher<? extends Buffer> dataStream);
 
 	/**
 	 * Get the input publisher (request body or incoming tcp traffic for instance)
