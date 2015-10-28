@@ -35,6 +35,11 @@ public class ByteArrayCodec extends BufferCodec<byte[], byte[]> {
 	}
 
 	@Override
+	protected int canDecodeNext(Buffer buffer, Object context) {
+		return buffer.remaining() > 0 ? buffer.limit() : -1;
+	}
+
+	@Override
 	public Buffer apply(byte[] bytes) {
 		return Buffer.wrap(bytes);
 	}

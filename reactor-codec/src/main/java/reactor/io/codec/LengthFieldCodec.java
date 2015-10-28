@@ -80,6 +80,20 @@ public class LengthFieldCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 	}
 
 	@Override
+	protected int canDecodeNext(Buffer buffer, Object context) {
+		if(buffer.remaining() < lengthFieldLength){
+			return -1;
+		}
+
+		int limit = buffer.remaining();
+		int length = readLen(buffer.duplicate());
+
+		limit = limit - lengthFieldLength < length ? -1 : (buffer.position() + length + lengthFieldLength);
+
+		return limit;
+	}
+
+	@Override
 	protected IN decodeNext(Buffer buffer, Object context) {
 		if (buffer.remaining() > lengthFieldLength) {
 			int expectedLen = readLen(buffer);

@@ -37,7 +37,7 @@ import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpException;
 import reactor.io.net.impl.netty.NettyChannel;
-import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
+import reactor.io.net.impl.netty.tcp.NettyChannelHandlerBridge;
 
 /**
  * @author Stephane Maldini

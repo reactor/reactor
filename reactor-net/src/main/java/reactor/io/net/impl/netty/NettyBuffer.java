@@ -16,7 +16,6 @@
 package reactor.io.net.impl.netty;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.ReferenceCountUtil;
 import reactor.io.buffer.Buffer;
 
@@ -28,22 +27,15 @@ public final class NettyBuffer extends Buffer {
 
 	private final ByteBuf byteBuf;
 	private final Object msg;
-	private final ChannelHandlerContext ctx;
 
 
 	public static NettyBuffer create(Object o){
-		return create(o, null);
-	}
-
-
-	public static NettyBuffer create(Object o, ChannelHandlerContext ctx){
-		return new NettyBuffer(ctx, o);
+		return new NettyBuffer(o);
 	}
 
 	@SuppressWarnings("unchecked")
-	NettyBuffer(ChannelHandlerContext ctx, Object msg) {
+	NettyBuffer(Object msg) {
 		this.msg = msg;
-		this.ctx = ctx;
 		if(ByteBuf.class.isAssignableFrom(msg.getClass())){
 			ReferenceCountUtil.retain(msg);
 			this.byteBuf = (ByteBuf)msg;
@@ -84,14 +76,6 @@ public final class NettyBuffer extends Buffer {
 	 */
 	public ByteBuf getByteBuf(){
 		return byteBuf;
-	}
-
-	/**
-	 *
-	 * @return
-	 */
-	public ChannelHandlerContext getCtx() {
-		return ctx;
 	}
 
 

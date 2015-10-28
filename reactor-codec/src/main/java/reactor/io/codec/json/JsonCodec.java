@@ -17,6 +17,7 @@
 package reactor.io.codec.json;
 
 import java.io.IOException;
+import java.util.Iterator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -96,12 +97,16 @@ public class JsonCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 	}
 
 	static final private byte HEAD_DELIMITER = (byte) '{';
+	static final private byte HEAD_DELIMITER_2 = (byte) '[';
 	static final private byte TAIL_DELIMITER = (byte) '}';
+	static final private byte TAIL_DELIMITER_2 = (byte) ']';
 
 	@Override
 	protected int canDecodeNext(Buffer buffer, Object context) {
 		int countHead = 0;
+		int countHead2 = 0;
 		int countTail = 0;
+		int countTail2 = 0;
 		int pos = 0;
 		for (byte b : buffer.duplicate()) {
 			pos++;
@@ -110,7 +115,16 @@ public class JsonCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 			}
 			else if (b == TAIL_DELIMITER) {
 				countTail++;
-				if (countTail == countHead) {
+				if (countTail == countHead && countTail2 == countHead2) {
+					return buffer.position() + pos;
+				}
+			}
+			else if (b == HEAD_DELIMITER_2){
+				countHead2++;
+			}
+			else if (b == TAIL_DELIMITER_2){
+				countTail2++;
+				if (countTail == countHead && countTail2 == countHead2) {
 					return buffer.position() + pos;
 				}
 			}
@@ -121,7 +135,7 @@ public class JsonCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 	@Override
 	public Buffer apply(OUT out) {
 		try {
-			return addDelimiterIfAny(new Buffer().append(mapper.writeValueAsBytes(out)));
+			return Buffer.wrap(mapper.writeValueAsBytes(out));
 		}
 		catch (JsonProcessingException e) {
 			throw new IllegalStateException(e);

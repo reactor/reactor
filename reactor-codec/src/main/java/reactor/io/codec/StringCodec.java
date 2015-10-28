@@ -26,6 +26,7 @@ import java.nio.charset.CharsetEncoder;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
+import reactor.io.buffer.StringBuffer;
 
 /**
  * @author Jon Brisbin
@@ -95,7 +96,7 @@ public class StringCodec extends BufferCodec<String, String> {
 		try {
 			ByteBuffer bb = charsetEncoder.encode(CharBuffer.wrap(s));
 			if (delimiter != null) {
-				return addDelimiterIfAny(new Buffer().append(bb));
+				return addDelimiterIfAny(new StringBuffer().append(bb));
 			} else {
 				return new Buffer(bb);
 			}

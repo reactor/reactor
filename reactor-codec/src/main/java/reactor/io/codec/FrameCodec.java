@@ -58,6 +58,20 @@ public class FrameCodec extends BufferCodec<Frame, Frame> {
 	}
 
 	@Override
+	protected int canDecodeNext(Buffer buffer, Object context) {
+		if(buffer.remaining() < minRequiredLen){
+			return -1;
+		}
+
+		int limit = buffer.remaining();
+		int length = readLen(buffer.duplicate());
+
+		limit = limit - prefixLength < length ? -1 : (buffer.position() + length + minRequiredLen - prefixLength);
+
+		return limit;
+	}
+
+	@Override
 	protected Frame decodeNext(Buffer buffer, Object context) {
 		if (buffer.remaining() > minRequiredLen) {
 			int pos = buffer.position();
@@ -71,7 +85,7 @@ public class FrameCodec extends BufferCodec<Frame, Frame> {
 				return null;
 			}
 
-			Buffer.View data = readData(buffer);
+			Buffer.View data = readData(prefix, buffer);
 			if (null == data) {
 				// insufficient data
 				buffer.limit(limit);
@@ -85,6 +99,7 @@ public class FrameCodec extends BufferCodec<Frame, Frame> {
 					new Buffer(data.getEnd() - data.getStart(), true).append(data.get())
 					                                                 .flip();
 
+			buffer.position(data.getEnd());
 			buffer.limit(limit);
 
 			return new Frame(prefixBuff, dataBuff);
@@ -106,11 +121,11 @@ public class FrameCodec extends BufferCodec<Frame, Frame> {
 		return prefix;
 	}
 
-	private Buffer.View readData(Buffer buffer) {
+	private Buffer.View readData(Buffer.View prefix, Buffer buffer) {
 		int pos = buffer.position();
 		int limit = buffer.limit();
 
-		int len = readLen(buffer);
+		int len = readLen(prefix.get());
 		if (len == -1 || buffer.remaining() < len) {
 			buffer.limit(limit);
 			buffer.position(pos);
@@ -127,17 +142,17 @@ public class FrameCodec extends BufferCodec<Frame, Frame> {
 	private int readLen(Buffer buffer) {
 		switch (lengthField) {
 			case SHORT:
-				if (buffer.remaining() > 2) {
+				if (buffer.remaining() >= 2) {
 					return buffer.readShort();
 				}
 				break;
 			case INT:
-				if (buffer.remaining() > 4) {
+				if (buffer.remaining() >= 4) {
 					return buffer.readInt();
 				}
 				break;
 			case LONG:
-				if (buffer.remaining() > 8) {
+				if (buffer.remaining() >= 8) {
 					return (int) buffer.readLong();
 				}
 				break;

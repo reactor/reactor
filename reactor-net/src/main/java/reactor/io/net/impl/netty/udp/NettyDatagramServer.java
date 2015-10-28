@@ -54,8 +54,8 @@ import reactor.io.net.ReactiveChannel;
 import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.impl.netty.NettyChannel;
-import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
-import reactor.io.net.impl.netty.NettyNativeDetector;
+import reactor.io.net.impl.netty.tcp.NettyChannelHandlerBridge;
+import reactor.io.net.impl.netty.internal.NettyNativeDetector;
 import reactor.io.net.impl.netty.NettyServerSocketOptions;
 import reactor.io.net.udp.DatagramServer;
 

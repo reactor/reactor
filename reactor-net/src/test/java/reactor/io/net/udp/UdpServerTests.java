@@ -169,8 +169,8 @@ public class UdpServerTests {
 			}).get(5, TimeUnit.SECONDS);
 		}
 
-
-		assertThat("latch was counted down", latch.await(5, TimeUnit.SECONDS));
+		latch.await(5, TimeUnit.SECONDS);
+		assertThat("latch was not counted down enough: "+latch.getCount()+" left on "+(4 ^ 2), latch.getCount() == 0 );
 
 		for (ReactorDatagramServer s : servers) {
 			s.shutdown().await();

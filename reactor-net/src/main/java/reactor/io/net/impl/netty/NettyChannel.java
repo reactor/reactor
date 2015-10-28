@@ -34,13 +34,12 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
-import reactor.core.error.Exceptions;
-import reactor.core.error.ReactorFatalException;
 import reactor.core.support.Bounded;
 import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ReactiveChannel;
+import reactor.io.net.impl.netty.tcp.NettyChannelHandlerBridge;
 
 /**
  * {@link ReactiveChannel} implementation that delegates to Netty.

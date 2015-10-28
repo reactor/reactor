@@ -216,7 +216,7 @@ class HttpSpec extends Specification {
 				it.httpProcessor(CodecPreprocessor.string()).connect("localhost", server.listenAddress.port)
 			}
 
-
+			def res = 0
 			//prepare an http websocket request-reply flow
 			def content = client.ws('/test/World') { HttpChannelStream<String, String> req ->
 				//prepare content-type
@@ -233,6 +233,7 @@ class HttpSpec extends Specification {
 			}.flatMap { replies ->
 				//successful handshake, listen for the first returned next replies and pass it downstream
 				replies
+						.observe{ res ++ }
 						.log('client-received')
 			}.toList(1000)
 			.onError {
@@ -241,10 +242,12 @@ class HttpSpec extends Specification {
 			}
 
 
+		content.await(5, TimeUnit.SECONDS)
+		println "received $res"
 
 		then: "data was recieved"
 			//the produced reply should be there soon
-			content.await()[1000 - 1] == "1000 World!"
+			content.get()[1000 - 1] == "1000 World!"
 
 		cleanup: "the client/server where stopped"
 			//note how we order first the client then the server shutdown

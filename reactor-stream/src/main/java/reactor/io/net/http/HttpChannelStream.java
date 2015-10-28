@@ -19,11 +19,10 @@ package reactor.io.net.http;
 import java.util.Map;
 
 import org.reactivestreams.Publisher;
+import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactiveChannel;
 import reactor.io.net.ReactiveChannelHandler;
-import reactor.io.net.ReactorChannelHandler;
 import reactor.io.net.http.model.HttpHeaders;
 import reactor.io.net.http.model.Method;
 import reactor.io.net.http.model.Protocol;
@@ -39,7 +38,7 @@ import reactor.rx.Streams;
  * @author Stephane maldini
  * @since 2.1
  */
-public class HttpChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
+public class HttpChannelStream<IN, OUT> extends ChannelStream<IN, OUT> implements HttpChannel<IN, OUT> {
 
 	private final HttpChannel<IN, OUT> actual;
 
@@ -86,7 +85,7 @@ public class HttpChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	// REQUEST contract
 
 	/**
-	 * @see HttpChannel#params()
+	 * @see BaseHttpChannel#params()
 	 */
 	public final Map<String, Object> params() {
 		return actual.params();
@@ -148,23 +147,17 @@ public class HttpChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 		return this;
 	}
 
-	/**
-	 * @return the resolved request protocol (HTTP 1.1 etc)
-	 */
+	@Override
 	public Protocol protocol(){
 		return actual.protocol();
 	}
 
-	/**
-	 * @return the resolved target address
-	 */
+	@Override
 	public String uri(){
 		return actual.uri();
 	}
 
-	/**
-	 * @return the resolved request method (HTTP 1.1 etc)
-	 */
+	@Override
 	public Method method(){
 		return actual.method();
 	}
@@ -172,85 +165,56 @@ public class HttpChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 
 	// RESPONSE contract
 
-	/**
-	 * @return the resolved HTTP Response Status
-	 */
+	@Override
 	public Status responseStatus(){
 		return actual.responseStatus();
 	}
 
-	/**
-	 * Set the response status to an outgoing response
-	 * @param status the status to define
-	 * @return this
-	 */
+	@Override
 	public HttpChannelStream<IN, OUT> responseStatus(Status status) {
 		actual.responseStatus(status);
 		return this;
 	}
 
-	/**
-	 * @return the resolved response HTTP headers
-	 */
+	@Override
 	public ResponseHeaders responseHeaders(){
 		return actual.responseHeaders();
 	}
 
-	/**
-	 * Define the response HTTP header for the given key
-	 * @param name the HTTP response header key to override
-	 * @param value the HTTP response header content
-	 * @return this
-	 */
+	@Override
 	public final HttpChannelStream<IN, OUT> responseHeader(String name, String value) {
 		actual.responseHeader(name, value);
 		return this;
 	}
 
-	/**
-	 * Accumulate a response HTTP header for the given key name, appending ";" for each
-	 * new value
-	 * @param name the HTTP response header name
-	 * @param value the HTTP response header value
-	 * @return this
-	 */
+	@Override
 	public HttpChannelStream<IN, OUT> addResponseHeader(String name, String value) {
 		actual.addResponseHeader(name, value);
 		return this;
 	}
 
-	/**
-	 * Flush the headers if not sent. Might be useful for the case
-	 * @return Stream to signal error or successful write to the client
-	 */
+	@Override
 	public Stream<Void> writeHeaders() {
 		return Streams.wrap(actual.writeHeaders());
 	}
 
-	/**
-	 * @return the Transfer setting SSE for this http connection (e.g. event-stream)
-	 */
+	@Override
 	public HttpChannelStream<IN, OUT> sse() {
 		return transfer(Transfer.EVENT_STREAM);
 	}
 
-	/**
-	 * @return the Transfer setting for this http connection (e.g. event-stream)
-	 */
+	@Override
 	public Transfer transfer(){
 		return actual.transfer();
 	}
 
-	/**
-	 * Define the Transfer mode for this http connection
-	 * @param transfer the new transfer mode
-	 * @return this
-	 */
+	@Override
 	public HttpChannelStream<IN, OUT> transfer(Transfer transfer){
 		actual.transfer(transfer);
 		return this;
 	}
 
+	@Override
 	public boolean isWebsocket(){
 		return actual.isWebsocket();
 	}
@@ -258,5 +222,11 @@ public class HttpChannelStream<IN, OUT> extends ChannelStream<IN, OUT> {
 	@Override
 	public final Stream<Void> writeWith(final Publisher<? extends OUT> source) {
 		return Streams.wrap(actual.writeWith(source));
+	}
+
+	@Override
+	public HttpChannel<IN, OUT> paramsResolver(
+			Function<? super String, Map<String, Object>> headerResolver) {
+		return actual.paramsResolver(headerResolver);
 	}
 }

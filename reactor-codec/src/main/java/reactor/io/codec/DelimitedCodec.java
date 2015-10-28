@@ -16,6 +16,8 @@
 
 package reactor.io.codec;
 
+import java.util.Iterator;
+
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -78,6 +80,8 @@ public class DelimitedCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 		return new BufferInvokeOrReturnFunction<>(next, delegate.decoderContextProvider.get());
 	}
 
+
+
 	@Override
 	protected IN decodeNext(Buffer buffer, Object context) {
 		Buffer b = buffer;
@@ -93,12 +97,11 @@ public class DelimitedCodec<IN, OUT> extends BufferCodec<IN, OUT> {
 
 	@Override
 	public Buffer apply(OUT out) {
-		Buffer buffer = new Buffer();
 		Buffer encoded = delegate.apply(out);
 		if (null != encoded && encoded.remaining() > 0) {
-			buffer.append(encoded).append(delimiter);
+			return encoded.newBuffer().append(encoded).append(delimiter).flip();
 		}
-		return buffer.flip();
+		return null;
 	}
 
 }

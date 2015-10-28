@@ -31,7 +31,7 @@ import reactor.io.net.ReactivePeer;
  * @author Stephane Maldini
  * @since 2.1
  */
-public interface HttpProcessor<IN, OUT, CONN extends HttpChannel<IN, OUT> ,
+public interface HttpProcessor<IN, OUT, CONN extends HttpChannel<IN, OUT>,
 		NEWIN, NEWOUT, NEWCONN extends HttpChannel<NEWIN, NEWOUT>> {
 
 	/**

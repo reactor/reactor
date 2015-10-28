@@ -20,9 +20,7 @@ import java.nio.charset.Charset;
 import java.util.Map;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 import reactor.core.publisher.convert.DependencyUtils;
-import reactor.core.support.Bounded;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -268,7 +266,7 @@ public final class CodecPreprocessor<IN, OUT>
 		}
 	}
 
-	private final static class CodecHttpChannel<IN, OUT> extends HttpChannel<IN, OUT> {
+	private final static class CodecHttpChannel<IN, OUT> implements HttpChannel<IN, OUT> {
 
 		private final Codec<Buffer, IN, ?> decoder;
 		private final Codec<Buffer, ?, OUT> encoder;
@@ -277,7 +275,6 @@ public final class CodecPreprocessor<IN, OUT>
 
 		public CodecHttpChannel(Codec<Buffer, IN, ?> decoder,
 				Codec<Buffer, ?, OUT> encoder, HttpChannel<Buffer, Buffer> channel) {
-			super(channel.getCapacity());
 			this.decoder = decoder;
 			this.encoder = encoder;
 			this.channel = channel;
@@ -377,16 +374,6 @@ public final class CodecPreprocessor<IN, OUT>
 		}
 
 		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return channel.isExposedToOverflow(parentPublisher);
-		}
-
-		@Override
-		public long getCapacity() {
-			return channel.getCapacity();
-		}
-
-		@Override
 		public InetSocketAddress remoteAddress() {
 			return channel.remoteAddress();
 		}
@@ -409,31 +396,6 @@ public final class CodecPreprocessor<IN, OUT>
 		@Override
 		public Object delegate() {
 			return channel.delegate();
-		}
-
-		@Override
-		protected void doHeader(String name, String value) {
-		}
-
-		@Override
-		protected void doAddHeader(String name, String value) {
-		}
-
-		@Override
-		protected void doResponseStatus(Status status) {
-		}
-
-		@Override
-		protected void doResponseHeader(String name, String value) {
-		}
-
-		@Override
-		protected void doAddResponseHeader(String name, String value) {
-		}
-
-		@Override
-		protected void doSubscribeHeaders(Subscriber<? super Void> s) {
-			channel.writeHeaders().subscribe(s);
 		}
 
 		@Override
@@ -461,11 +423,6 @@ public final class CodecPreprocessor<IN, OUT>
 		@Override
 		public Publisher<Void> writeWith(Publisher<? extends OUT> source) {
 			return channel.writeWith(encoder.encode(source));
-		}
-
-		@Override
-		protected Publisher<Void> writeWithAfterHeaders(Publisher<? extends OUT> dataStream) {
-			return channel.writeWith(encoder.encode(dataStream));
 		}
 	}
 }

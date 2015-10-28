@@ -113,6 +113,9 @@ public abstract class ReactivePeer<IN, OUT, CONN extends ReactiveChannel<IN, OUT
 		return (P)doPreprocessor(preprocessor);
 	}
 
+
+	/* Implementation Contract */
+
 	/**
 	 *
 	 * @param preprocessor

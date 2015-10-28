@@ -1,20 +1,20 @@
 /*
- * Copyright (c) 2011-2014 Pivotal Software, Inc.
+ * Copyright (c) 2011-2015 Pivotal Software Inc, All Rights Reserved.
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-package reactor.io.net.impl.netty;
+package reactor.io.net.impl.netty.tcp;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -42,6 +42,8 @@ import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ReactiveChannel;
 import reactor.io.net.ReactiveChannelHandler;
+import reactor.io.net.impl.netty.NettyBuffer;
+import reactor.io.net.impl.netty.NettyChannel;
 
 /**
  * Netty {@link io.netty.channel.ChannelInboundHandler} implementation that passes data to
@@ -200,19 +202,26 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 	protected final void doRead(ChannelHandlerContext ctx, Object msg) {
 		try {
 			if (null == channelSubscriber || msg == Unpooled.EMPTY_BUFFER) {
+				ReferenceCountUtil.release(msg);
 				return;
 			}
 
-			NettyBuffer buffer = new NettyBuffer(ctx, msg);
-			channelSubscriber.onNext(buffer);
-			if(buffer.getByteBuf() != null){
-				if(buffer.getByteBuf().isReadable())
-				ReferenceCountUtil.release(buffer.getByteBuf());
+			NettyBuffer buffer = NettyBuffer.create(msg);
+			try {
+				channelSubscriber.onNext(buffer);
+			}
+			finally {
+				if(buffer.getByteBuf() != null){
+					if(buffer.getByteBuf().isReadable()) {
+						ReferenceCountUtil.release(buffer.getByteBuf());
+					}
+				}
 			}
 		}
 		catch (Throwable err) {
 			Exceptions.throwIfFatal(err);
 			if (channelSubscriber != null) {
+				ReferenceCountUtil.release(msg);
 				channelSubscriber.onError(err);
 			}
 			else {

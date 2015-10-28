@@ -241,9 +241,9 @@ public class TcpServerTests {
 		server.start(ch -> {
 			ch.consume(frame -> {
 				short prefix = frame.getPrefix().readShort();
-				assertThat("prefix is 0", prefix == 0);
+				assertThat("prefix is not 128: "+prefix, prefix == 128);
 				Buffer data = frame.getData();
-				assertThat("len is 128", data.remaining() == 128);
+				assertThat("len is not 128: "+data.remaining(), data.remaining() == 128);
 
 				latch.countDown();
 			});
@@ -255,8 +255,8 @@ public class TcpServerTests {
 			threadPool.submit(new FramedLengthFieldMessageWriter(port));
 		}
 
-		latch.await(10, TimeUnit.SECONDS);
-		assertTrue("Latch was counted down:" + latch.getCount(), latch.getCount() == 0);
+		latch.await(100, TimeUnit.SECONDS);
+		assertTrue("Latch was not counted down enough :" + latch.getCount()+" left on "+(msgs * threads), latch.getCount() == 0);
 		end.set(System.currentTimeMillis());
 
 		double elapsed = (end.get() - start.get()) * 1.0;
@@ -420,105 +420,6 @@ public class TcpServerTests {
 
 	}
 
-	public static class Pojo {
-		private String name;
-
-		private Pojo() {
-		}
-
-		private Pojo(String name) {
-			this.name = name;
-		}
-
-		public String getName() {
-			return name;
-		}
-
-		public void setName(String name) {
-			this.name = name;
-		}
-
-		@Override
-		public String toString() {
-			return "Pojo{" +
-			  "name='" + name + '\'' +
-			  '}';
-		}
-	}
-
-	private class LengthFieldMessageWriter implements Runnable {
-		private final Random rand = new Random();
-		private final int port;
-		private final int length;
-
-		private LengthFieldMessageWriter(int port) {
-			this.port = port;
-			this.length = rand.nextInt(156) + 100;
-		}
-
-		@Override
-		public void run() {
-			try {
-				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
-
-				System.out.println("writing " + msgs + " messages of " + length + " byte length...");
-
-				int num = 1;
-				start.set(System.currentTimeMillis());
-				for (int j = 0; j < msgs; j++) {
-					ByteBuffer buff = ByteBuffer.allocate(length + 4);
-					buff.putInt(length);
-					buff.putInt(num++);
-					buff.position(0);
-					buff.limit(length + 4);
-
-					ch.write(buff);
-
-					count.incrementAndGet();
-				}
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	private class FramedLengthFieldMessageWriter implements Runnable {
-		private final short length = 128;
-		private final int port;
-
-		private FramedLengthFieldMessageWriter(int port) {
-			this.port = port;
-		}
-
-		@Override
-		public void run() {
-			try {
-				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
-
-				System.out.println("writing " + msgs + " messages of " + length + " byte length...");
-
-				start.set(System.currentTimeMillis());
-				for (int j = 0; j < msgs; j++) {
-					ByteBuffer buff = ByteBuffer.allocate(length + 4);
-					buff.putShort((short) 0);
-					buff.putShort(length);
-					for (int i = 4; i < length; i++) {
-						buff.put((byte) 1);
-					}
-					buff.flip();
-					buff.limit(length + 4);
-
-					ch.write(buff);
-
-					count.incrementAndGet();
-				}
-				ch.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
 	@Test
 	public void testIssue462() throws InterruptedException {
 
@@ -590,29 +491,102 @@ public class TcpServerTests {
 		Thread.sleep(1000000);
 	}
 
-	private class HttpRequestWriter implements Runnable {
+
+	public static class Pojo {
+		private String name;
+
+		private Pojo() {
+		}
+
+		private Pojo(String name) {
+			this.name = name;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public void setName(String name) {
+			this.name = name;
+		}
+
+		@Override
+		public String toString() {
+			return "Pojo{" +
+					"name='" + name + '\'' +
+					'}';
+		}
+	}
+
+	private class LengthFieldMessageWriter implements Runnable {
+		private final Random rand = new Random();
+		private final int port;
+		private final int length;
+
+		private LengthFieldMessageWriter(int port) {
+			this.port = port;
+			this.length = rand.nextInt(156) + 100;
+		}
+
+		@Override
+		public void run() {
+			try {
+				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
+
+				System.out.println("writing " + msgs + " messages of " + length + " byte length...");
+
+				int num = 1;
+				start.set(System.currentTimeMillis());
+				for (int j = 0; j < msgs; j++) {
+					ByteBuffer buff = ByteBuffer.allocate(length + 4);
+					buff.putInt(length);
+					buff.putInt(num++);
+					buff.position(0);
+					buff.limit(length + 4);
+
+					ch.write(buff);
+
+					count.incrementAndGet();
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private class FramedLengthFieldMessageWriter implements Runnable {
+		private final short length = 128;
 		private final int port;
 
-		private HttpRequestWriter(int port) {
+		private FramedLengthFieldMessageWriter(int port) {
 			this.port = port;
 		}
 
 		@Override
 		public void run() {
+			try {
+				java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress(port));
 
-			start.set(System.currentTimeMillis());
-			for (int i = 0; i < msgs; i++) {
-				try {
-					java.nio.channels.SocketChannel ch = java.nio.channels.SocketChannel.open(new InetSocketAddress
-					  (port));
-					ch.write(Buffer.wrap("GET /test HTTP/1.1\r\nConnection: Close\r\n\r\n").byteBuffer());
-					ByteBuffer buff = ByteBuffer.allocate(4 * 1024);
-					ch.read(buff);
-					ch.close();
+				System.out.println("writing " + msgs + " messages of " + length + " byte length...");
 
-				} catch (IOException e) {
-					e.printStackTrace();
+				start.set(System.currentTimeMillis());
+				for (int j = 0; j < msgs; j++) {
+					ByteBuffer buff = ByteBuffer.allocate(length + 2);
+
+					buff.putShort(length);
+					for (int i = 0; i < length; i++) {
+						buff.put((byte) 1);
+					}
+					buff.flip();
+					buff.limit(length + 2);
+
+					ch.write(buff);
+
+					count.incrementAndGet();
 				}
+				ch.close();
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 		}
 	}

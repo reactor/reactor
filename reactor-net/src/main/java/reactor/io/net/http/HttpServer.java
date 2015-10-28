@@ -200,10 +200,6 @@ public abstract class HttpServer<IN, OUT>
 
 	protected abstract void onWebsocket(HttpChannel<?, ?> next);
 
-	protected final boolean hasWebsocketEndpoints() {
-		return hasWebsocketEndpoints;
-	}
-
 	protected Publisher<Void> routeChannel(final HttpChannel<IN, OUT> ch) {
 
 		if(channelMappings == null) return null;
@@ -234,7 +230,7 @@ public abstract class HttpServer<IN, OUT>
 
 		do {
 			channelHandler = selected.next();
-			channelHandler.apply(ch);
+			multiplexing.add(channelHandler.apply(ch));
 
 		}
 		while (selected.hasNext());

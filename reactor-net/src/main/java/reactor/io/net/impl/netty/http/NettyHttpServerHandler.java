@@ -37,7 +37,7 @@ import reactor.io.net.ReactiveChannel;
 import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.impl.netty.NettyBuffer;
 import reactor.io.net.impl.netty.NettyChannel;
-import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
+import reactor.io.net.impl.netty.tcp.NettyChannelHandlerBridge;
 
 /**
  * Conversion between Netty types  and Reactor types ({@link NettyHttpChannel} and {@link reactor.io.buffer.Buffer}).

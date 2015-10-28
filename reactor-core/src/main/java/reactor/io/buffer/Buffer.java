@@ -325,7 +325,12 @@ public class Buffer implements Recyclable,
 	 */
 	public Buffer limit(int limit) {
 		if (null != buffer) {
-			buffer.limit(limit);
+			try {
+				buffer.limit(limit);
+			}
+			catch (IllegalArgumentException iae){
+				throw new IllegalArgumentException("Tried limit "+limit+" on capacity "+capacity());
+			}
 		}
 		return this;
 	}
@@ -872,6 +877,15 @@ public class Buffer implements Recyclable,
 		buffer.limit(limit);
 		buffer.position(position);
 		return this;
+	}
+
+	/**
+	 * Create a fresh Buffer
+	 *
+	 * @return
+	 */
+	public Buffer newBuffer(){
+		return new Buffer();
 	}
 
 	@Override

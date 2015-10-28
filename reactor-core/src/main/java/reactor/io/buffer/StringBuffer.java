@@ -15,12 +15,27 @@
  */
 package reactor.io.buffer;
 
+import java.nio.ByteBuffer;
+
 /**
  * @author Stephane Maldini
  */
 public final class StringBuffer extends Buffer {
 
+	public StringBuffer() {
+		super();
+	}
+
+	public StringBuffer(ByteBuffer buffer) {
+		super(buffer);
+	}
+
 	public StringBuffer(int atLeast, boolean fixed) {
 		super(atLeast, fixed);
+	}
+
+	@Override
+	public Buffer newBuffer() {
+		return new StringBuffer();
 	}
 }
