@@ -228,7 +228,7 @@ class SignalsPoller implements Runnable {
 				if (completeReceived) {
 					if (processorAliveFunction.apply(null)) {
 						completeReceived = false;
-						aliveSendersChecker.scheduleCheck();
+						aliveSendersChecker.scheduleCheckForAliveSenders();
 					} else {
 						subscriber.onComplete();
 						break;

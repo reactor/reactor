@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import uk.co.real_logic.aeron.Publication;
+import uk.co.real_logic.aeron.driver.media.UdpChannel;
 import uk.co.real_logic.aeron.logbuffer.BufferClaim;
 import uk.co.real_logic.agrona.MutableDirectBuffer;
 
@@ -117,7 +118,14 @@ public class AeronPublisher implements Publisher<Buffer> {
 	}
 
 	private AliveSendersChecker createAliveSendersChecker(Context context, AeronHelper aeronHelper, Logger logger) {
-		return new AliveSendersChecker(logger, context, aeronHelper, commandPub);
+		return isMulticastCommunication(context) ?
+				new MulticastAliveSendersChecker(logger, context, aeronHelper, commandPub) :
+				new UnicastAliveSendersChecker();
+	}
+
+	private boolean isMulticastCommunication(Context context) {
+		return UdpChannel.parse(context.receiverChannel).isMulticast() ||
+				context.senderChannel.equals(context.receiverChannel);
 	}
 
 	@Override
