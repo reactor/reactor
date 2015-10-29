@@ -425,14 +425,21 @@ public abstract class PublisherFactory {
 		@Override
 		public void accept(Long n, SubscriberWithContext<T, C> sub) {
 
+			if(n == Long.MAX_VALUE){
+				while(!sub.isCancelled()){
+					requestConsumer.accept(sub);
+				}
+				return;
+			}
+
 			if (BackpressureUtils.getAndAdd(PENDING_UPDATER, this, n) > 0) {
 				return;
 			}
 
 			long demand = n;
 			do {
-				long requestCursor = 0l;
-				while ((requestCursor++ < demand || demand == Long.MAX_VALUE) && !sub.isCancelled()) {
+				long requestCursor = 0L;
+				while ((demand == Long.MAX_VALUE || requestCursor++ < demand) && !sub.isCancelled()) {
 					requestConsumer.accept(sub);
 				}
 			} while ((demand == Long.MAX_VALUE ||

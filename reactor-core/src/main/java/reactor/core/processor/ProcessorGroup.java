@@ -214,7 +214,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	final private   Processor<Task, Task>     processor;
 	final protected boolean                   autoShutdown;
 	final protected int                       concurrency;
-	final           BaseProcessor<Task, Task> managedProcessor;
+	final           ExecutorProcessor<Task, Task> executorProcessor;
 
 	@SuppressWarnings("unused")
 	private volatile int refCount = 0;
@@ -497,13 +497,13 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			Assert.isTrue(this.processor != null);
 
 			// Managed Processor, providing for tail recursion,
-			if (BaseProcessor.class.isAssignableFrom(this.processor.getClass())) {
+			if (ExecutorProcessor.class.isAssignableFrom(this.processor.getClass())) {
 
-				this.managedProcessor = (BaseProcessor<Task, Task>) this.processor;
+				this.executorProcessor = (ExecutorProcessor<Task, Task>) this.processor;
 
 				if (concurrency == 1) {
 					int bufferSize =
-							(int) Math.min(this.managedProcessor.getCapacity(), MAX_BUFFER_SIZE);
+							(int) Math.min(this.executorProcessor.getCapacity(), MAX_BUFFER_SIZE);
 
 					this.tailRecurser =
 							new TailRecurser(bufferSize, DEFAULT_TASK_PROVIDER, DEFAULT_TASK_CONSUMER);
@@ -515,7 +515,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 			}
 			else {
-				this.managedProcessor = null;
+				this.executorProcessor = null;
 				this.tailRecurser = null;
 			}
 
@@ -527,7 +527,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 		else {
 			this.processor = null;
-			this.managedProcessor = null;
+			this.executorProcessor = null;
 			this.tailRecurser = null;
 		}
 	}
@@ -793,8 +793,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		protected boolean shouldTailRecruse() {
 			return service.tailRecurser != null &&
-					service.managedProcessor != null &&
-					service.managedProcessor.isInContext();
+					service.executorProcessor != null &&
+					service.executorProcessor.isInContext();
 		}
 
 		@SuppressWarnings("unchecked")
@@ -824,8 +824,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		@Override
 		public long getCapacity() {
-			return service != null && service.managedProcessor != null ?
-					service.managedProcessor.getCapacity() : Long.MAX_VALUE;
+			return service != null && service.executorProcessor != null ?
+					service.executorProcessor.getCapacity() : Long.MAX_VALUE;
 		}
 
 		@Override
@@ -887,8 +887,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		@Override
 		public void request(final long n) {
 			if (STARTED.compareAndSet(this, 0, 1) &&
-					service.managedProcessor != null &&
-					!service.managedProcessor.isInContext()) {
+					service.executorProcessor != null &&
+					!service.executorProcessor.isInContext()) {
 				dispatch(n, new BaseSubscriber<Long>() {
 					@Override
 					public void onNext(Long aLong) {

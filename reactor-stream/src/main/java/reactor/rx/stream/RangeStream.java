@@ -70,14 +70,13 @@ public final class RangeStream {
 		if(count < 0){
 			throw new IllegalArgumentException("Count can not be negative : "+count);
 		}
-
-		if(count == 0) {
+		else if(count == 0) {
 			return Streams.empty();
 		}
 		else if ( count == 1 ){
 			return Streams.just(min);
 		}
-		if(min + count > Integer.MAX_VALUE){
+		else if(min + count > Integer.MAX_VALUE){
 			throw new IllegalArgumentException("start + count can not exceed Integer.MAX_VALUE");
 		}
 

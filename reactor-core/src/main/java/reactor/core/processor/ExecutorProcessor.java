@@ -36,14 +36,17 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> 
 	protected volatile boolean cancelled;
 	protected volatile int     terminated;
 
+	protected final ClassLoader contextClassLoader;
+
 	protected final static AtomicIntegerFieldUpdater<ExecutorProcessor> TERMINATED =
 			AtomicIntegerFieldUpdater.newUpdater(ExecutorProcessor.class, "terminated");
 
 	protected ExecutorProcessor(String name, ExecutorService executor,
 			boolean autoCancel) {
-		super(new ClassLoader(Thread.currentThread()
-		                            .getContextClassLoader()) {
-		}, autoCancel);
+		super(autoCancel);
+		contextClassLoader = new ClassLoader(Thread.currentThread()
+		                                           .getContextClassLoader()) {
+		};
 		if (executor == null) {
 			this.executor = SingleUseExecutor.create(name, contextClassLoader);
 		}
@@ -162,5 +165,13 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> 
 	 * @return true if the attached Subscribers will read exclusive sequences (akin to work-queue pattern)
 	 */
 	public abstract boolean isWork();
+
+
+	/**
+	 * @return true if the classLoader marker is detected in the current thread
+	 */
+	public final boolean isInContext() {
+		return Thread.currentThread().getContextClassLoader() == contextClassLoader;
+	}
 
 }

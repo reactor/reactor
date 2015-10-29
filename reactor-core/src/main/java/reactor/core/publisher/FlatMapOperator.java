@@ -23,6 +23,8 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.Sequencer;
@@ -139,9 +141,6 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		@SuppressWarnings("unchecked")
 		protected void doNext(T t) {
 			// safeguard against misbehaving sources
-			if (done) {
-				throw CancelException.get();
-			}
 			final Publisher<? extends V> p = mapper.apply(t);
 
 			if (p instanceof Supplier) {
@@ -275,7 +274,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		void tryEmit(V value, InnerSubscriber<T, V> inner) {
-			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
+			if (RUNNING.compareAndSet(this, 0, 1)) {
 				long r = requested;
 				if (r != 0L) {
 					subscriber.onNext(value);
@@ -314,10 +313,6 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			drain();
 		}
 
-		public void reportError(Throwable t) {
-			ERROR.compareAndSet(this, null, t);
-		}
-
 		@Override
 		protected void doComplete() {
 			if (done) {
@@ -341,6 +336,13 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					subscription.cancel();
 					unsubscribe();
 				}
+			}
+		}
+
+		void reportError(Throwable t) {
+			if(!ERROR.compareAndSet(this, null, t)){
+				Exceptions.addCause(t, error);
+				throw ReactorFatalException.create(t);
 			}
 		}
 
