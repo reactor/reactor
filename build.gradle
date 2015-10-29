@@ -231,6 +231,7 @@ project('reactor-stream') {
 	dependencies {
 		compile project(':reactor-core')
 		optional project(':reactor-net')
+		optional project(':reactor-codec')
 
 		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
 		testCompile project(':reactor-bus')

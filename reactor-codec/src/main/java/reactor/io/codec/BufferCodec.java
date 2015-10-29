@@ -122,7 +122,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 		private boolean tryDrain() {
 			Buffer agg = aggregate;
 			if (agg != null) {
-				return decodeAndNext(agg);
+				return tryEmit(agg);
 			}
 			return true;
 		}
@@ -155,7 +155,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 			}
 
 			if (aggregate == null) {
-				decodeAndNext(buffer);
+				tryEmit(buffer);
 				super.doRequest(1L);
 			}
 			else {
@@ -163,7 +163,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 					super.doRequest(1L);
 				}
 				else if (AGGREGATE.compareAndSet(this, aggregate, null)) {
-					if (!decodeAndNext(aggregate)) {
+					if (!tryEmit(aggregate)) {
 						super.doRequest(1L);
 					}
 				}
@@ -206,7 +206,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 			}
 		}
 
-		private boolean decodeAndNext(Buffer buffer) {
+		private boolean tryEmit(Buffer buffer) {
 
 			IN next;
 

@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Stephane Maldini
  * @author Jon Brisbin
  */
-public class Tap<T> implements Consumer<T>, Supplier<T>, Subscriber<T> {
+public final class Tap<T> implements Consumer<T>, Supplier<T>, Subscriber<T> {
 
 	private final AtomicReference<T> value = new AtomicReference<T>();
 

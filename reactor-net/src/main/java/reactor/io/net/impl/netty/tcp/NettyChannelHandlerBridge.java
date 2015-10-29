@@ -455,7 +455,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 				long polled = -1;
 				BufferHolder holder;
 
-				while (polled < queue.getCursor() && (demand == Long.MAX_VALUE || remaining-- > 0)) {
+				while (polled <= queue.getCursor() && (demand == Long.MAX_VALUE || remaining-- > 0)) {
 
 					polled = pollCursor.get() + 1L;
 					holder = queue.get(polled);

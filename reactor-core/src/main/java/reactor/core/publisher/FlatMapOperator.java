@@ -74,18 +74,18 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		final int                                                   bufferSize;
 		final int                                                   limit;
 
-		Sequence pollCursor;
-		volatile RingBuffer<Emitted<V>> emitBuffer;
+		private Sequence pollCursor;
+		private volatile RingBuffer<Emitted<V>> emitBuffer;
 
-		volatile boolean done;
+		private volatile boolean done;
 
-		volatile Throwable error;
+		private volatile Throwable error;
 
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<MergeBarrier, Throwable> ERROR =
 		  PlatformDependent.newAtomicReferenceFieldUpdater(MergeBarrier.class, "error");
 
-		volatile boolean cancelled;
+		private volatile boolean cancelled;
 
 		volatile InnerSubscriber<?, ?>[] subscribers;
 		@SuppressWarnings("rawtypes")
@@ -93,7 +93,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		  PlatformDependent.newAtomicReferenceFieldUpdater(MergeBarrier.class, "subscribers");
 
 		@SuppressWarnings("unused")
-		volatile int running;
+		private volatile int running;
 		@SuppressWarnings("rawtypes")
 		static final AtomicIntegerFieldUpdater<MergeBarrier> RUNNING =
 		  AtomicIntegerFieldUpdater.newUpdater(MergeBarrier.class, "running");
@@ -102,7 +102,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		static final InnerSubscriber<?, ?>[] CANCELLED = new InnerSubscriber<?, ?>[0];
 
-		volatile long requested;
+		private volatile long requested;
 		@SuppressWarnings("rawtypes")
 		static final AtomicLongFieldUpdater<MergeBarrier> REQUESTED =
 		  AtomicLongFieldUpdater.newUpdater(MergeBarrier.class, "requested");

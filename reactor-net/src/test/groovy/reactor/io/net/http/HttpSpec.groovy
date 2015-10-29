@@ -246,7 +246,7 @@ class HttpSpec extends Specification {
 			}
 
 
-		content.await(5, TimeUnit.SECONDS)
+		content.await()
 		println "server: $serverRes / client: $clientRes"
 
 		then: "data was recieved"

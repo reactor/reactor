@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
+import reactor.Timers;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.selector.Selector;
@@ -42,8 +43,10 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.IO;
 import reactor.io.buffer.Buffer;
+import reactor.io.codec.StandardCodecs;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
+import reactor.rx.action.support.TapAndControls;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.BarrierStream;
@@ -1144,21 +1147,22 @@ public class StreamTests extends AbstractReactorTest {
 	@Ignore
 	public void testCustomFileStream() throws InterruptedException {
 
-		Stream<Buffer> fileStream = Streams.wrap(IO.readFile("settings.gradle", 20));
+		Stream<?> fileStream = Streams.wrap(StandardCodecs.LINE_FEED_CODEC.decode(IO.readFile("settings.gradle", 1))
+		);
 
-		Stream<Buffer> processor = fileStream
+		Timers.global();
+		Stream<?> processor = fileStream
 		  .log()
+		  .throttle(50)
 		  .flatMap(Streams::just);
 
-		processor
+		TapAndControls<Long> counter = processor
 		  .capacity(5L)
-		  .consume(
-		    System.out::println,
-		    Throwable::printStackTrace,
-		    nothing -> System.out.println("## EOF ##")
-		  );
+		  .count()
+		  .tap();
 
 		Thread.sleep(3000);
+		Assert.assertTrue(counter.get() == 10);
 	/*	processor
 				.capacity(3L)
 				.consume(
