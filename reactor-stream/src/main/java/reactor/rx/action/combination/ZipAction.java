@@ -220,13 +220,13 @@ public final class ZipAction<O, V, TUPLE extends Tuple>
             if (outerAction.status.get() == COMPLETING) {
                 if (TERMINATE_UPDATER.compareAndSet(this, 0, 1)) {
                     outerAction.innerSubscriptions.remove(sequenceId);
+                    outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
                     long left = FanInSubscription.RUNNING_COMPOSABLE_UPDATER.decrementAndGet(outerAction
                       .innerSubscriptions);
                     if (0 == left) {
-                        outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));
                         outerAction.innerSubscriptions.serialComplete();
-                        return;
                     }
+                    return;
                 }
             }
             outerAction.innerSubscriptions.serialNext(new Zippable<O>(index, ev));

@@ -534,22 +534,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	protected void decrementReference() {
 		if ((processor != null || concurrency > 1) && REF_COUNT.decrementAndGet(this) <= 0 && autoShutdown) {
-
-			if (BaseProcessor.CANCEL_TIMEOUT > 0) {
-				final Timer timer = GlobalTimer.globalOrNew();
-				timer.submit(new Consumer<Long>() {
-					@Override
-					public void accept(Long aLong) {
-						if (refCount == 0) {
-							shutdown();
-						}
-						timer.cancel();
-					}
-				}, BaseProcessor.CANCEL_TIMEOUT, TimeUnit.SECONDS);
-			}
-			else {
-				shutdown();
-			}
+			shutdown();
 		}
 	}
 
