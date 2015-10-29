@@ -362,6 +362,11 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 		private final AtomicLongFieldUpdater<ChannelInputSubscriber> REQUESTED =
 				AtomicLongFieldUpdater.newUpdater(ChannelInputSubscriber.class, "requested");
 
+		@SuppressWarnings("unused")
+		private volatile int running;
+		private final AtomicIntegerFieldUpdater<ChannelInputSubscriber> RUNNING =
+				AtomicIntegerFieldUpdater.newUpdater(ChannelInputSubscriber.class, "running");
+
 		Sequence pollCursor;
 		volatile RingBuffer<BufferHolder> readBackpressureBuffer;
 
@@ -382,12 +387,15 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 				return;
 			}
 			if (BackpressureUtils.checkRequest(n, inputSubscriber)) {
-				if (BackpressureUtils.getAndAdd(REQUESTED, this, n) == 0) {
-					long toRequest = drainBackpressureQueue(n);
+				BackpressureUtils.getAndAdd(REQUESTED, this, n);
+				if(n == Long.MAX_VALUE){
 					Subscription subscription = this.subscription;
-					if (toRequest > 0 && subscription != null) {
-						subscription.request(toRequest);
+					if (subscription != null) {
+						subscription.request(n);
 					}
+				}
+				else {
+					drainBackpressureQueue();
 				}
 			}
 		}
@@ -414,8 +422,18 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 		@Override
 		public void onNext(Buffer bytes) {
 			long r = BackpressureUtils.getAndSub(REQUESTED, this, 1L);
-			if (drainBackpressureQueue(r) > 0) {
-				inputSubscriber.onNext(bytes);
+			if (r > 0 && RUNNING.compareAndSet(this, 0, 1)) {
+				try {
+					inputSubscriber.onNext(bytes);
+				}
+				catch (Throwable e){
+					Exceptions.throwIfFatal(e);
+					cancel();
+					inputSubscriber.onError(e);
+				}
+				finally {
+					RUNNING.decrementAndGet(this);
+				}
 				return;
 			}
 
@@ -423,6 +441,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 			long n = queue.next();
 			queue.get(n).buffer = bytes;
 			queue.publish(n);
+			drainBackpressureQueue();
 		}
 
 		@Override
@@ -443,32 +462,39 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 			return requested > 0;
 		}
 
-		long drainBackpressureQueue(long demand) {
-			if(demand <= 0) {
-				return demand;
-			}
-
-			RingBuffer<BufferHolder> queue = readBackpressureBuffer;
-			if (queue != null) {
-
-				long remaining = demand;
-				long polled = -1;
-				BufferHolder holder;
-
-				while (polled <= queue.getCursor() && (demand == Long.MAX_VALUE || remaining-- > 0)) {
-
-					polled = pollCursor.get() + 1L;
-					holder = queue.get(polled);
-					if (holder.buffer != null) {
-						inputSubscriber.onNext(holder.buffer);
-						holder.buffer = null;
-						pollCursor.set(polled);
+		void drainBackpressureQueue() {
+			if(RUNNING.compareAndSet(this, 0, 1)) {
+				try {
+					long demand = requested;
+					if (demand <= 0) {
+						return;
 					}
+
+					long remaining = demand;
+					RingBuffer<BufferHolder> queue = readBackpressureBuffer;
+					if (queue != null) {
+
+						long polled = -1;
+						BufferHolder holder;
+
+						while (polled <= queue.getCursor() && (demand == Long.MAX_VALUE || remaining-- > 0)) {
+
+							polled = pollCursor.get() + 1L;
+							holder = queue.get(polled);
+							if (holder.buffer != null) {
+								inputSubscriber.onNext(holder.buffer);
+								holder.buffer = null;
+								pollCursor.set(polled);
+							}
+						}
+					}
+					Subscription subscription = this.subscription;
+					if (demand != Long.MAX_VALUE && remaining > 0 && subscription != null) {
+						subscription.request(remaining);
+					}
+				} finally {
+					RUNNING.decrementAndGet(this);
 				}
-				return remaining;
-			}
-			else {
-				return demand;
 			}
 
 		}
