@@ -25,6 +25,8 @@ import reactor.fn.Function;
 import reactor.fn.Predicate;
 import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.http.HttpChannel;
+import reactor.io.net.http.model.Method;
+import reactor.io.net.http.model.Protocol;
 
 /**
  * @author Stephane Maldini
@@ -48,6 +50,108 @@ public abstract class ChannelMappings<IN, OUT>
 		else{
 			return new SimpleChannelMappings<>();
 		}
+	}
+
+	/**
+	 * Creates a {@link Predicate} based on a URI template.
+	 * This will listen for all Methods.
+	 *
+	 * @param uri The string to compile into a URI template and use for matching
+	 * @return The new {@link HttpPredicate}.
+	 * @see reactor.bus.selector.UriPathTemplate
+	 * @see Predicate
+	 */
+	public static Predicate<HttpChannel> http(String uri, Protocol protocol, Method method) {
+		if (null == uri) {
+			return null;
+		}
+
+		if(DependencyUtils.hasReactorBus() && !FORCE_SIMPLE_MAPPINGS) {
+			return new RegistryChannelMappings.HttpSelector(uri, protocol, method);
+		}
+		else{
+			return new HttpPredicate(uri, protocol, method);
+		}
+	}
+
+	/**
+	 * An alias for {@link ChannelMappings#http}.
+	 * <p>
+	 * Creates a {@link Predicate} based on a URI template filtering .
+	 * <p>
+	 * This will listen for GET Method.
+	 *
+	 * @param uri The string to compile into a URI template and use for matching
+	 * @return The new {@link Predicate}.
+	 * @see reactor.bus.selector.UriPathTemplate
+	 * @see Predicate
+	 */
+	public static Predicate<HttpChannel> get(String uri) {
+		return http(uri, null, Method.GET);
+	}
+
+	/**
+	 * An alias for {@link ChannelMappings#http}.
+	 * <p>
+	 * Creates a {@link Predicate} based on a URI template filtering .
+	 * <p>
+	 * This will listen for POST Method.
+	 *
+	 * @param uri The string to compile into a URI template and use for matching
+	 * @return The new {@link Predicate}.
+	 * @see reactor.bus.selector.UriPathTemplate
+	 * @see Predicate
+	 */
+	public static Predicate<HttpChannel> post(String uri) {
+		return http(uri, null, Method.POST);
+	}
+
+	/**
+	 * An alias for {@link ChannelMappings#http}.
+	 * <p>
+	 * Creates a {@link Predicate} based on a URI template filtering .
+	 * <p>
+	 * This will listen for PUT Method.
+	 *
+	 * @param uri The string to compile into a URI template and use for matching
+	 * @return The new {@link Predicate}.
+	 * @see reactor.bus.selector.UriPathTemplate
+	 * @see Predicate
+	 */
+	public static Predicate<HttpChannel> put(String uri) {
+		return http(uri, null, Method.PUT);
+	}
+
+	/**
+	 * An alias for {@link ChannelMappings#http}.
+	 * <p>
+	 * Creates a {@link Predicate} based on a URI template filtering .
+	 * <p>
+	 * This will listen for DELETE Method.
+	 *
+	 * @param uri The string to compile into a URI template and use for matching
+	 * @return The new {@link Predicate}.
+	 * @see reactor.bus.selector.UriPathTemplate
+	 * @see Predicate
+	 */
+	public static Predicate<HttpChannel> delete(String uri) {
+		return http(uri, null, Method.DELETE);
+	}
+
+	/**
+	 * An alias for {@link ChannelMappings#http}.
+	 * <p>
+	 * Creates a {@link Predicate} based on a URI template filtering .
+	 * <p>
+	 * This will listen for WebSocket Method.
+	 *
+	 * @param uri The string to compile into a URI template and use for matching
+	 * @return The new {@link Predicate}.
+	 * @see reactor.bus.selector.UriPathTemplate
+	 * @see Predicate
+	 */
+	public static Predicate<HttpChannel> ws(String uri) {
+		return http(uri, null, Method.WS);
 	}
 
 	/**
@@ -160,6 +264,36 @@ public abstract class ChannelMappings<IN, OUT>
 
 			handlers.add(new HttpHandlerMapping<>(condition, handler, null));
 			return this;
+		}
+	}
+
+	/**
+	 * A Predicate to match against ServerRequest
+	 *
+	 * @author Stephane Maldini
+	 */
+	public static class HttpPredicate implements Predicate<HttpChannel> {
+
+		final protected Protocol        protocol;
+		final protected Method          method;
+		final protected String          uri;
+
+		@SuppressWarnings("unused")
+		public HttpPredicate(String uri) {
+			this(uri, null, null);
+		}
+
+		public HttpPredicate(String uri, Protocol protocol, Method method) {
+			this.protocol = protocol;
+			this.uri = uri;
+			this.method = method;
+		}
+
+		@Override
+		public final boolean test(HttpChannel key) {
+			return (protocol == null || protocol.equals(key.protocol()))
+					&& (method == null || method.equals(key.method()))
+					&& (uri == null || uri.equals(key.uri()));
 		}
 	}
 }

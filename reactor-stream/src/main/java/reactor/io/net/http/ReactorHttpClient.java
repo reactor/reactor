@@ -17,8 +17,10 @@
 package reactor.io.net.http;
 
 import reactor.fn.Function;
+import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.ReactivePeer;
+import reactor.io.net.ReactorPeer;
 import reactor.io.net.http.model.Method;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
@@ -26,35 +28,22 @@ import reactor.rx.Stream;
 import reactor.rx.Streams;
 
 /**
- * The base class for a Reactor-based Http client.
+ * The base class for a Reactor-based Http peer.
  * @param <IN> The type that will be received by this client
  * @param <OUT> The type that will be sent by this client
  *
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class ReactorHttpClient<IN, OUT> {
-
-	private final HttpClient<IN, OUT> client;
+public final class ReactorHttpClient<IN, OUT> extends ReactorPeer<IN, OUT, HttpClient<IN, OUT>> {
 
 	public static <IN, OUT> ReactorHttpClient<IN,OUT> create(HttpClient<IN, OUT> client) {
 		return new ReactorHttpClient<>(client);
 	}
 
 	protected ReactorHttpClient(HttpClient<IN, OUT> client) {
-		this.client = client;
+		super(client);
 	}
-
-	/**
-	 * Shutdown this {@literal ReactorPeer} and complete the returned {@link Promise <Void>}
-	 * when shut down.
-	 * @return a {@link Promise<Void>} that will be complete when the {@link
-	 * ReactivePeer} is shutdown
-	 */
-	public Promise<Void> shutdown() {
-		return Promises.from(client.shutdown());
-	}
-
 
 	/**
 	 * HTTP GET the passed URL. When connection has been made, the passed handler is
@@ -170,13 +159,13 @@ public final class ReactorHttpClient<IN, OUT> {
 			final ReactorHttpHandler<IN, OUT> handler){
 
 		return Streams.wrap(
-				client.request(method, url,
-						HttpChannelStream.wrap(handler, client.getDefaultTimer(), client.getDefaultPrefetchSize())
+				peer.request(method, url,
+						HttpChannelStream.wrapHttp(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize())
 				)
 		).map(new Function<HttpChannel<IN, OUT>, HttpChannelStream<IN, OUT>>() {
 			@Override
 			public HttpChannelStream<IN, OUT> apply(HttpChannel<IN, OUT> channel) {
-				return HttpChannelStream.wrap(channel, client.getDefaultTimer(), client.getDefaultPrefetchSize());
+				return HttpChannelStream.wrap(channel, peer.getDefaultTimer(), peer.getDefaultPrefetchSize());
 			}
 		});
 	}

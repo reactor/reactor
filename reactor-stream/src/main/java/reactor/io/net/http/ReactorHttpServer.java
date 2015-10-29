@@ -19,8 +19,10 @@ package reactor.io.net.http;
 import java.net.InetSocketAddress;
 
 import reactor.fn.Predicate;
+import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.ReactivePeer;
-import reactor.io.net.http.routing.HttpSelector;
+import reactor.io.net.ReactorPeer;
+import reactor.io.net.http.routing.ChannelMappings;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 
@@ -33,16 +35,25 @@ import reactor.rx.Promises;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class ReactorHttpServer<IN, OUT> {
-
-	private final  HttpServer<IN, OUT> server;
+public final class ReactorHttpServer<IN, OUT> extends ReactorPeer<IN, OUT, HttpServer<IN,OUT>>{
 
 	public static <IN, OUT> ReactorHttpServer<IN,OUT> create(HttpServer<IN, OUT> server) {
 		return new ReactorHttpServer<>(server);
 	}
 
 	protected ReactorHttpServer(HttpServer<IN, OUT> server) {
-		this.server = server;
+		super(server);
+	}
+
+	/**
+	 * Start this {@literal ReactorPeer}.
+	 * @return a {@link Promise<Void>} that will be complete when the {@link
+	 * ReactivePeer} is started
+	 */
+	public Promise<Void> start(ReactiveChannelHandler<IN, OUT, HttpChannelStream<IN, OUT>> handler) {
+		return Promises.from(peer.start(
+				HttpChannelStream.wrapHttp(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize())
+		));
 	}
 
 	/**
@@ -51,7 +62,7 @@ public final class ReactorHttpServer<IN, OUT> {
 	 * @return a Promise fulfilled when server is started
 	 */
 	public Promise<Void> start() {
-		return Promises.from(server.start(null));
+		return Promises.from(peer.start(null));
 	}
 
 	/**
@@ -60,8 +71,8 @@ public final class ReactorHttpServer<IN, OUT> {
 	 * ReactivePeer} is started
 	 */
 	public Promise<Void> start(ReactorHttpHandler<IN, OUT> handler) {
-		return Promises.from(server.start(
-				HttpChannelStream.wrap(handler, server.getDefaultTimer(), server.getDefaultPrefetchSize())
+		return Promises.from(peer.start(
+				HttpChannelStream.wrapHttp(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize())
 		));
 	}
 
@@ -72,7 +83,7 @@ public final class ReactorHttpServer<IN, OUT> {
 	 * ReactivePeer} is shutdown
 	 */
 	public Promise<Void> shutdown() {
-		return Promises.from(server.shutdown());
+		return Promises.from(peer.shutdown());
 	}
 
 	/**
@@ -81,7 +92,7 @@ public final class ReactorHttpServer<IN, OUT> {
 	 * @return the bind address
 	 */
 	public InetSocketAddress getListenAddress(){
-		return server.getListenAddress();
+		return peer.getListenAddress();
 	}
 
 
@@ -97,7 +108,7 @@ public final class ReactorHttpServer<IN, OUT> {
 	public ReactorHttpServer<IN, OUT> route(
 	  final Predicate<HttpChannel> condition,
 	 final ReactorHttpHandler<IN, OUT> serviceFunction) {
-		server.route(condition, HttpChannelStream.wrap(serviceFunction, server.getDefaultTimer(), server.getDefaultPrefetchSize()));
+		peer.route(condition, HttpChannelStream.wrapHttp(serviceFunction, peer.getDefaultTimer(), peer.getDefaultPrefetchSize()));
 		return this;
 	}
 
@@ -108,13 +119,13 @@ public final class ReactorHttpServer<IN, OUT> {
 	 * <p>
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link ChannelMappings.HttpPredicate} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	public final ReactorHttpServer<IN, OUT> get(String path,
 	                                    final ReactorHttpHandler<IN, OUT> handler) {
-		server.get(path, HttpChannelStream.wrap(handler, server.getDefaultTimer(), server.getDefaultPrefetchSize()));
+		peer.get(path, HttpChannelStream.wrapHttp(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize()));
 		return this;
 	}
 
@@ -125,13 +136,13 @@ public final class ReactorHttpServer<IN, OUT> {
 	 * <p>
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link ChannelMappings.HttpPredicate} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	public final ReactorHttpServer<IN, OUT> post(String path,
 	                                     final ReactorHttpHandler<IN, OUT> handler) {
-		server.post(path, HttpChannelStream.wrap(handler, server.getDefaultTimer(), server.getDefaultPrefetchSize()));
+		peer.post(path, HttpChannelStream.wrapHttp(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize()));
 		return this;
 	}
 
@@ -143,13 +154,13 @@ public final class ReactorHttpServer<IN, OUT> {
 	 * <p>
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link ChannelMappings.HttpPredicate} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	public final ReactorHttpServer<IN, OUT> put(String path,
 	                                    final ReactorHttpHandler<IN, OUT> handler) {
-		server.put(path, HttpChannelStream.wrap(handler, server.getDefaultTimer(), server.getDefaultPrefetchSize()));
+		peer.put(path, HttpChannelStream.wrapHttp(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize()));
 		return this;
 	}
 
@@ -161,13 +172,13 @@ public final class ReactorHttpServer<IN, OUT> {
 	 * <p>
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link ChannelMappings.HttpPredicate} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	public final ReactorHttpServer<IN, OUT> ws(String path,
 	                                    final ReactorHttpHandler<IN, OUT> handler) {
-		server.ws(path, HttpChannelStream.wrap(handler, server.getDefaultTimer(), server.getDefaultPrefetchSize()));
+		peer.ws(path, HttpChannelStream.wrapHttp(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize()));
 		return this;
 	}
 
@@ -178,13 +189,13 @@ public final class ReactorHttpServer<IN, OUT> {
 	 * <p>
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link ChannelMappings.HttpPredicate} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	public final ReactorHttpServer<IN, OUT> delete(String path,
 	                                       final ReactorHttpHandler<IN, OUT> handler) {
-		server.delete(path, HttpChannelStream.wrap(handler, server.getDefaultTimer(), server.getDefaultPrefetchSize()));
+		peer.delete(path, HttpChannelStream.wrapHttp(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize()));
 		return this;
 	}
 

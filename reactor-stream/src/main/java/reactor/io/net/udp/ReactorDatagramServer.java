@@ -20,9 +20,11 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 
-import org.reactivestreams.Publisher;
 import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactiveChannelHandler;
+import reactor.io.net.ReactivePeer;
 import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.ReactorPeer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 
@@ -30,9 +32,7 @@ import reactor.rx.Promises;
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ReactorDatagramServer<IN, OUT>  {
-
-	private final DatagramServer<IN, OUT> datagramServer;
+public class ReactorDatagramServer<IN, OUT> extends ReactorPeer<IN, OUT, DatagramServer<IN, OUT>> {
 
 	/**
 	 *
@@ -46,27 +46,19 @@ public class ReactorDatagramServer<IN, OUT>  {
 		return new ReactorDatagramServer<IN, OUT>(peer);
 	}
 
+	/**
+	 * Start this {@literal ReactorPeer}.
+	 * @return a {@link Promise<Void>} that will be complete when the {@link
+	 * ReactivePeer} is started
+	 */
+	public Promise<Void> start(ReactiveChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
+		return Promises.from(peer.start(
+				ChannelStream.wrap(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize())
+		));
+	}
+
 	protected ReactorDatagramServer(DatagramServer<IN, OUT> datagramServer) {
-		this.datagramServer = datagramServer;
-	}
-
-	/**
-	 *
-	 * @param handler
-	 * @return
-	 */
-	public Promise<Void> start(ReactorChannelHandler<IN, OUT> handler) {
-		return Promises.from(
-				datagramServer.start(ChannelStream.wrap(handler, datagramServer.getDefaultTimer(), datagramServer.getDefaultPrefetchSize()))
-		);
-	}
-
-	/**
-	 *
-	 * @return
-	 */
-	public Promise<Void> shutdown() {
-		return Promises.from(datagramServer.shutdown());
+		super(datagramServer);
 	}
 
 	/**
@@ -74,7 +66,7 @@ public class ReactorDatagramServer<IN, OUT>  {
 	 * @return
 	 */
 	public InetSocketAddress getListenAddress() {
-		return datagramServer.getListenAddress();
+		return peer.getListenAddress();
 	}
 
 	/**
@@ -82,7 +74,7 @@ public class ReactorDatagramServer<IN, OUT>  {
 	 * @return
 	 */
 	public NetworkInterface getMulticastInterface() {
-		return datagramServer.getMulticastInterface();
+		return peer.getMulticastInterface();
 	}
 
 
@@ -94,7 +86,7 @@ public class ReactorDatagramServer<IN, OUT>  {
 	 * @return a {@link Promise} that will be complete when the group has been joined
 	 */
 	public final Promise<Void> join(InetAddress multicastAddress, NetworkInterface iface){
-		return Promises.from(datagramServer.join(multicastAddress, iface));
+		return Promises.from(peer.join(multicastAddress, iface));
 	}
 
 	/**
@@ -115,7 +107,7 @@ public class ReactorDatagramServer<IN, OUT>  {
 	 * @return a {@link Promise} that will be complete when the group has been left
 	 */
 	public final Promise<Void> leave(InetAddress multicastAddress, NetworkInterface iface){
-		return Promises.from(datagramServer.leave(multicastAddress, iface));
+		return Promises.from(peer.leave(multicastAddress, iface));
 	}
 
 	/**
@@ -126,13 +118,5 @@ public class ReactorDatagramServer<IN, OUT>  {
 	 */
 	public final Promise<Void> leave(InetAddress multicastAddress) {
 		return leave(multicastAddress, null);
-	}
-
-	/**
-	 *
-	 * @return
-	 */
-	public DatagramServer<IN, OUT> delegate() {
-		return datagramServer;
 	}
 }

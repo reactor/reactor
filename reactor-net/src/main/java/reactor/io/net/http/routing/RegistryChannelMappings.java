@@ -15,14 +15,20 @@
  */
 package reactor.io.net.http.routing;
 
+import java.util.Map;
+
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
+import reactor.bus.selector.UriPathSelector;
 import reactor.core.publisher.convert.DependencyUtils;
+import reactor.fn.Function;
 import reactor.fn.Predicate;
 import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.http.HttpChannel;
+import reactor.io.net.http.model.Method;
+import reactor.io.net.http.model.Protocol;
 
 /**
  * @author Stephane Maldini
@@ -57,5 +63,37 @@ public class RegistryChannelMappings<IN, OUT> extends ChannelMappings<IN, OUT> {
 		routedWriters.register(selector, new HttpHandlerMapping<>(condition, handler, selector.getHeaderResolver()));
 
 		return this;
+	}
+
+	public final static class HttpSelector
+			extends HttpPredicate
+			implements Selector<HttpChannel> {
+
+		final UriPathSelector uriPathSelector;
+
+		public HttpSelector(String uri, Protocol protocol, Method method) {
+			super(null, protocol, method);
+			this.uriPathSelector = uri != null && !uri.isEmpty() ? new UriPathSelector(uri) : null;
+		}
+
+
+		@Override
+		public Object getObject() {
+			return uriPathSelector != null ? uriPathSelector.getObject() : null;
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public Function<Object, Map<String, Object>> getHeaderResolver() {
+			return uriPathSelector != null ?
+					uriPathSelector.getHeaderResolver() :
+					null;
+		}
+
+		@Override
+		public boolean matches(HttpChannel key) {
+			return test(key)
+					&& (uriPathSelector == null || uriPathSelector.matches(key.uri()));
+		}
 	}
 }

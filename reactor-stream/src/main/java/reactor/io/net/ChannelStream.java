@@ -66,7 +66,9 @@ public class ChannelStream<IN, OUT> extends Stream<IN> implements
 	 * @return
 	 */
 	public static <IN, OUT> ReactiveChannelHandler<IN, OUT, ReactiveChannel<IN, OUT>> wrap(
-			final ReactorChannelHandler<IN, OUT> actual, final Timer timer, final long prefetch){
+			final ReactiveChannelHandler<IN, OUT, ChannelStream<IN, OUT>> actual,
+			final Timer timer,
+			final long prefetch){
 
 		if(actual == null) return null;
 

@@ -23,10 +23,10 @@ import reactor.fn.tuple.Tuple2;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactiveChannel;
 import reactor.io.net.ReactiveChannelHandler;
+import reactor.io.net.ReactivePeer;
 import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.ReactorPeer;
 import reactor.io.net.Reconnect;
-import reactor.io.net.config.ClientSocketOptions;
-import reactor.io.net.config.SslOptions;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;
@@ -39,9 +39,7 @@ import reactor.rx.Streams;
  * @param <OUT> the type of replied data
  * @author Stephane Maldini
  */
-public final class ReactorTcpClient<IN, OUT>{
-
-	private final TcpClient<IN, OUT> client;
+public final class ReactorTcpClient<IN, OUT> extends ReactorPeer<IN, OUT, TcpClient<IN, OUT>>{
 
 	/**
 	 *
@@ -55,17 +53,17 @@ public final class ReactorTcpClient<IN, OUT>{
 	}
 
 	protected ReactorTcpClient(TcpClient<IN, OUT> client) {
-		this.client = client;
+		super(client);
 	}
 
 	/**
-	 *
-	 * @param handler
-	 * @return
+	 * Start this {@literal ReactorPeer}.
+	 * @return a {@link Promise<Void>} that will be complete when the {@link
+	 * ReactivePeer} is started
 	 */
-	public Promise<Void> start(ReactorChannelHandler<IN, OUT> handler) {
-		return Promises.from(client.start(
-				ChannelStream.wrap(handler, client.getDefaultTimer(), client.getDefaultPrefetchSize())
+	public Promise<Void> start(ReactiveChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
+		return Promises.from(peer.start(
+				ChannelStream.wrap(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize())
 		));
 	}
 
@@ -73,16 +71,8 @@ public final class ReactorTcpClient<IN, OUT>{
 	 *
 	 * @return
 	 */
-	public Promise<Void> shutdown() {
-		return Promises.from(client.shutdown());
-	}
-
-	/**
-	 *
-	 * @return
-	 */
 	public InetSocketAddress getConnectAddress() {
-		return client.getConnectAddress();
+		return peer.getConnectAddress();
 	}
 
 
@@ -98,17 +88,10 @@ public final class ReactorTcpClient<IN, OUT>{
 	public Stream<Tuple2<InetSocketAddress, Integer>> start(
 			ReactorChannelHandler<IN, OUT> handler, Reconnect reconnect) {
 		return Streams.wrap(
-				client.start(
-				ChannelStream.wrap(handler, client.getDefaultTimer(), client.getDefaultPrefetchSize())
+				peer.start(
+				ChannelStream.wrap(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize())
 				, reconnect)
 		);
 	}
-
-
-	@SuppressWarnings("unchecked")
-	public TcpClient<IN, OUT> delegate() {
-		return client;
-	}
-
 
 }

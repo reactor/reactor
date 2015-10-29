@@ -29,8 +29,6 @@ import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.ReactivePeer;
 import reactor.io.net.http.model.HttpHeaders;
 import reactor.io.net.http.routing.ChannelMappings;
-import reactor.io.net.http.routing.HttpSelector;
-import reactor.io.net.http.routing.HttpSelectors;
 
 /**
  * Base functionality needed by all servers that communicate with clients over HTTP.
@@ -95,13 +93,13 @@ public abstract class HttpServer<IN, OUT>
 	 * Additional regex matching is available when reactor-bus is on the classpath.
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link ChannelMappings.HttpPredicate} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> get(String path,
 	                                     final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(HttpSelectors.get(path), handler);
+		route(ChannelMappings.get(path), handler);
 		return this;
 	}
 
@@ -113,13 +111,13 @@ public abstract class HttpServer<IN, OUT>
 	 * Additional regex matching is available when reactor-bus is on the classpath.
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link ChannelMappings.HttpPredicate} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> post(String path,
 	                                      final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(HttpSelectors.post(path), handler);
+		route(ChannelMappings.post(path), handler);
 		return this;
 	}
 
@@ -132,13 +130,13 @@ public abstract class HttpServer<IN, OUT>
 	 * Additional regex matching is available when reactor-bus is on the classpath.
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link ChannelMappings.HttpPredicate} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> put(String path,
 	                                     final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(HttpSelectors.put(path), handler);
+		route(ChannelMappings.put(path), handler);
 		return this;
 	}
 
@@ -151,13 +149,13 @@ public abstract class HttpServer<IN, OUT>
 	 * Additional regex matching is available when reactor-bus is on the classpath.
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link ChannelMappings.HttpPredicate} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> ws(String path,
 	                                    final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(HttpSelectors.get(path), handler);
+		route(ChannelMappings.get(path), handler);
 		enableWebsocket();
 		return this;
 	}
@@ -174,13 +172,13 @@ public abstract class HttpServer<IN, OUT>
 	 * Additional regex matching is available when reactor-bus is on the classpath.
 	 * e.g. "/test/{param}". Params are resolved using {@link HttpChannel#param(String)}
 	 *
-	 * @param path    The {@link HttpSelector} to resolve against this path, pattern matching and capture are supported
+	 * @param path    The {@link ChannelMappings.HttpPredicate} to resolve against this path, pattern matching and capture are supported
 	 * @param handler an handler to invoke for the given condition
 	 * @return {@code this}
 	 */
 	public final HttpServer<IN, OUT> delete(String path,
 	                                        final ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> handler) {
-		route(HttpSelectors.delete(path), handler);
+		route(ChannelMappings.delete(path), handler);
 		return this;
 	}
 
@@ -207,15 +205,15 @@ public abstract class HttpServer<IN, OUT>
 		final Iterator<? extends ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>>>
 		  selected = channelMappings.apply(ch).iterator();
 
+		if(!selected.hasNext()){
+			return null;
+		}
+
 		if (hasWebsocketEndpoints) {
 			String connection = ch.headers().get(HttpHeaders.CONNECTION);
 			if (connection != null && connection.equals(HttpHeaders.UPGRADE)) {
 				onWebsocket(ch);
 			}
-		}
-
-		if(!selected.hasNext()){
-			return null;
 		}
 
 		ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> channelHandler = selected.next();

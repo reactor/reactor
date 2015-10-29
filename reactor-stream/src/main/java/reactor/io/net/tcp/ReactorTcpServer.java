@@ -24,6 +24,7 @@ import reactor.io.net.ReactiveChannel;
 import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.ReactivePeer;
 import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.ReactorPeer;
 import reactor.io.net.config.ServerSocketOptions;
 import reactor.io.net.config.SslOptions;
 import reactor.rx.Promise;
@@ -37,9 +38,7 @@ import reactor.rx.Promises;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class ReactorTcpServer<IN, OUT>  {
-
-	protected final TcpServer<IN, OUT> peer;
+public final class ReactorTcpServer<IN, OUT> extends ReactorPeer<IN, OUT, TcpServer<IN, OUT>> {
 
 	/**
 	 *
@@ -53,28 +52,19 @@ public final class ReactorTcpServer<IN, OUT>  {
 	}
 
 	protected ReactorTcpServer(TcpServer<IN, OUT> peer) {
-		this.peer = peer;
+		super(peer);
 	}
+
 
 	/**
 	 * Start this {@literal ReactorPeer}.
 	 * @return a {@link Promise<Void>} that will be complete when the {@link
 	 * ReactivePeer} is started
 	 */
-	public Promise<Void> start(ReactorChannelHandler<IN, OUT> handler) {
+	public Promise<Void> start(ReactiveChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler) {
 		return Promises.from(peer.start(
-				ChannelStream.wrap(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize()))
-		);
-	}
-
-	/**
-	 * Shutdown this {@literal ReactorPeer} and complete the returned {@link Promise<Void>}
-	 * when shut down.
-	 * @return a {@link Promise<Void>} that will be complete when the {@link
-	 * ReactivePeer} is shutdown
-	 */
-	public Promise<Void> shutdown() {
-		return Promises.from(peer.shutdown());
+				ChannelStream.wrap(handler, peer.getDefaultTimer(), peer.getDefaultPrefetchSize())
+		));
 	}
 
 	/**
@@ -85,11 +75,4 @@ public final class ReactorTcpServer<IN, OUT>  {
 		return peer.getListenAddress();
 	}
 
-	/**
-	 *
-	 * @return
-	 */
-	public TcpServer<IN, OUT> delegate() {
-		return peer;
-	}
 }

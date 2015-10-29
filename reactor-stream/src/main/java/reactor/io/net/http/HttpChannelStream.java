@@ -64,8 +64,8 @@ public class HttpChannelStream<IN, OUT> extends ChannelStream<IN, OUT> implement
 	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> wrap(
-			final ReactorHttpHandler<IN, OUT> actual, final Timer timer, final long prefetch){
+	public static <IN, OUT> ReactiveChannelHandler<IN, OUT, HttpChannel<IN, OUT>> wrapHttp(
+			final ReactiveChannelHandler<IN, OUT, HttpChannelStream<IN, OUT>> actual, final Timer timer, final long prefetch){
 
 		if(actual == null) return null;
 
