@@ -19,6 +19,7 @@ package reactor.reactivestreams.tck;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
+import org.testng.annotations.AfterClass;
 import reactor.Processors;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.LogOperator;
@@ -34,6 +35,10 @@ import reactor.rx.broadcast.Broadcaster;
 @org.testng.annotations.Test
 public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 
+	ProcessorGroup<Integer> sharedGroup =
+			Processors.asyncGroup("stream-tck", 32, 2,
+					Throwable::printStackTrace, null, false);
+
 	@Override
 	public CompositeAction<Integer, Integer> createProcessor(int bufferSize) {
 
@@ -41,11 +46,11 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		System.out.println("Providing new processor");
 
 		ProcessorGroup<Integer> asyncGroup =
-				Processors.asyncGroup("stream-tck", bufferSize, 4,
+				Processors.asyncGroup("stream-p-tck", bufferSize, 2,
 						Throwable::printStackTrace);
 
 		return Broadcaster.<Integer>passthrough()
-		                  .dispatchOn(asyncGroup)
+		                  .dispatchOn(sharedGroup)
 		                  .partition(2)
 		                  .flatMap(stream -> stream.dispatchOn(asyncGroup)
 		                                           .observe(this::monitorThreadUse)
@@ -59,9 +64,21 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 
 		                  )
-				.dispatchOn(asyncGroup)
+				.dispatchOn(sharedGroup)
 				.when(Throwable.class, Throwable::printStackTrace)
 		                  .combine();
+	}
+
+	@Override
+	public void stochastic_spec103_mustSignalOnMethodsSequentially() throws Throwable {
+		super.stochastic_spec103_mustSignalOnMethodsSequentially();
+	}
+
+	@AfterClass
+	@Override
+	public void tearDown() {
+		sharedGroup.awaitAndShutdown();
+		super.tearDown();
 	}
 
 	@Override

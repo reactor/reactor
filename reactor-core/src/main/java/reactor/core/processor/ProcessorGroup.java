@@ -63,7 +63,9 @@ import reactor.fn.timer.Timer;
  * references have been released. Each reference (consumer, executor or processor) can be
  * used in combination with {@link ProcessorGroup#release(Object...)} to cleanly
  * unregister and eventually shutdown when no more references use that service.
+ *
  * @param <T> the default type (not enforced at runtime)
+ *
  * @author Anatoly Kadyshev
  * @author Stephane Maldini
  */

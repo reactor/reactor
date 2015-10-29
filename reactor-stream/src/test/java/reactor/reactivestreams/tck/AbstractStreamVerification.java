@@ -68,15 +68,6 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 	@AfterClass
 	@After
 	public void tearDown() {
-		executorService.submit(() -> {
-					Processor<Integer, Integer> p;
-					System.out.println("cleaning proc refs");
-					while ((p = processorReferences.poll()) != null) {
-						p.onComplete();
-					}
-		  }
-		);
-
 		executorService.shutdown();
 		Timers.unregisterGlobal();
 	}
