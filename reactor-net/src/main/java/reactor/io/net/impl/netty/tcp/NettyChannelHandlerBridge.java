@@ -387,8 +387,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 				return;
 			}
 			if (BackpressureUtils.checkRequest(n, inputSubscriber)) {
-				BackpressureUtils.getAndAdd(REQUESTED, this, n);
-				if(n == Long.MAX_VALUE){
+				if(BackpressureUtils.getAndAdd(REQUESTED, this, n) == 0 && n == Long.MAX_VALUE){
 					Subscription subscription = this.subscription;
 					if (subscription != null) {
 						subscription.request(n);
