@@ -226,7 +226,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		void tryEmit(V value) {
-			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
+			if (RUNNING.compareAndSet(this, 0, 1)) {
 				long r = requested;
 				if (r != 0L) {
 					if (null != value) {
@@ -340,9 +340,15 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		void reportError(Throwable t) {
-			if(!ERROR.compareAndSet(this, null, t)){
-				Exceptions.addCause(t, error);
-				throw ReactorFatalException.create(t);
+			Throwable err;
+			for(;;){
+				err = error;
+				if(err != null){
+					Exceptions.addCause(t, err);
+				}
+				if(ERROR.compareAndSet(this, err, t)){
+					return;
+				}
 			}
 		}
 

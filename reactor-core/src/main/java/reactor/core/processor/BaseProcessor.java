@@ -21,6 +21,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
@@ -92,7 +93,14 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	public void onSubscribe(final Subscription s) {
 		if(BackpressureUtils.checkSubscription(upstreamSubscription, s)) {
 			this.upstreamSubscription = s;
-			doOnSubscribe(s);
+			try {
+				doOnSubscribe(s);
+			}
+			catch (Throwable t){
+				Exceptions.throwIfFatal(t);
+				s.cancel();
+				onError(t);
+			}
 		}
 	}
 
