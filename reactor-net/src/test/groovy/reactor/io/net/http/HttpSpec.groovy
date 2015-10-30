@@ -255,7 +255,7 @@ class HttpSpec extends Specification {
 
 		cleanup: "the client/server where stopped"
 			//note how we order first the client then the server shutdown
-			client?.shutdown()
+			client?.shutdown()?.await()
 			server?.shutdown()
 	}
 

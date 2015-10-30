@@ -961,7 +961,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 						}
 						else {
 							processor.readWait.signalAllWhenBlocking();
-							return false;
+							return !processor.alive();
 						}
 						readNextEvent(signal, unbounded);
 						RingBufferSubscriberUtils.route(signal, subscriber);
@@ -978,7 +978,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 				}
 			}
 			else {
-				return false;
+				return !processor.alive();
 			}
 		}
 

@@ -60,6 +60,7 @@ public class ProcessorGroupWorkTests extends AbstractProcessorVerification {
 		Consumer<String> c =  ev -> {
 				latch.countDown();
 			try {
+				System.out.println("ev: "+ev);
 				Thread.sleep(1000);
 			}
 			catch(InterruptedException ie){
