@@ -340,15 +340,8 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		void reportError(Throwable t) {
-			Throwable err;
-			for(;;){
-				err = error;
-				if(err != null){
-					Exceptions.addCause(t, err);
-				}
-				if(ERROR.compareAndSet(this, err, t)){
-					return;
-				}
+			if(!ERROR.compareAndSet(this, null, t)){
+				throw ReactorFatalException.create(t);
 			}
 		}
 
