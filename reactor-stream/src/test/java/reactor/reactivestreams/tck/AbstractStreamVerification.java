@@ -69,7 +69,6 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 	@After
 	public void tearDown() {
 		executorService.shutdown();
-		Timers.unregisterGlobal();
 	}
 
 	@Override

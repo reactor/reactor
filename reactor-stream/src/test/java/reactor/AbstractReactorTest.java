@@ -40,9 +40,9 @@ public abstract class AbstractReactorTest {
 	@AfterClass
 	public static void closeEnv() {
 		timer = null;
-		Timers.unregisterGlobal();
 		ioGroup.shutdown();
 		asyncGroup.shutdown();
+		//Timers.unregisterGlobal();
 	}
 
 	static {

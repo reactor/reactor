@@ -61,8 +61,6 @@ public class HashWheelTimer implements Timer {
 	private final WaitStrategy                   waitStrategy;
 	private final AtomicBoolean started = new AtomicBoolean();
 
-	final LongSupplier                   now;
-
 	/**
 	 * Create a new {@code HashWheelTimer} using the given timer resolution. All times will rounded up to the closest
 	 * multiple of this resolution.
@@ -114,12 +112,12 @@ public class HashWheelTimer implements Timer {
 			this.executor = exec;
 		}
 
-		this.now = TimeUtils.currentTimeMillisResolver();
 		this.resolution = res;
 
 		this.loop = new NamedDaemonThreadFactory(name).newThread(new Runnable() {
 			@Override
 			public void run() {
+				LongSupplier now = TimeUtils.currentTimeMillisResolver();
 				long deadline = now.get();
 
 				Consumer<Void> noop = new Consumer<Void>() {
