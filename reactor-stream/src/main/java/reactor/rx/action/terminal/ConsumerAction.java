@@ -61,13 +61,13 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 		Subscription upstreamSubscription = this.upstreamSubscription;
 		if (upstreamSubscription != null) {
 			long toRequest = Math.min(n, capacity);
-			if (COUNTED.addAndGet(this, toRequest) < 0l) {
+			if (COUNTED.addAndGet(this, toRequest) < 0L) {
 				COUNTED.set(this, Long.MAX_VALUE);
 			}
 			upstreamSubscription.request(toRequest);
 		} else {
 			synchronized (this) {
-				if ((pendingRequests += n) < 0l) {
+				if ((pendingRequests += n) < 0L) {
 					pendingRequests = Long.MAX_VALUE;
 				}
 			}
@@ -79,9 +79,7 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 		if (consumer != null) {
 			consumer.accept(ev);
 		}
-		if (upstreamSubscription != null
-		  && capacity != Long.MAX_VALUE
-				&& COUNTED.decrementAndGet(this) == 0) {
+		if (capacity != Long.MAX_VALUE && COUNTED.decrementAndGet(this) == 0) {
 			requestMore(capacity);
 		}
 	}
@@ -91,9 +89,9 @@ public final class ConsumerAction<T> extends Action<T, Void> {
 		long toRequest;
 		synchronized (this){
 			toRequest = pendingRequests;
-			pendingRequests = 0l;
+			pendingRequests = 0L;
 		}
-		if(toRequest > 0l){
+		if(toRequest > 0L){
 			requestMore(toRequest);
 		}
 	}

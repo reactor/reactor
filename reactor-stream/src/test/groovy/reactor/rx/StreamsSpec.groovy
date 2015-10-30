@@ -94,7 +94,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'an error has been thrown'
-			thrown TimeoutException
+			thrown InterruptedException
 	}
 
 	def 'A deferred Stream with an initial value makes that value available later'() {
