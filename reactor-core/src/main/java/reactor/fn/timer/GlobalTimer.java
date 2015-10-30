@@ -15,7 +15,6 @@
  */
 package reactor.fn.timer;
 
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import reactor.core.support.internal.PlatformDependent;
@@ -44,11 +43,18 @@ public class GlobalTimer extends HashWheelTimer {
 
 	private void _cancel() {
 		super.cancel();
+		TimeUtils.disable();
 	}
 
 	@Override
 	public void cancel() {
 		// IGNORE
+	}
+
+	@Override
+	public void start() {
+		TimeUtils.enable();
+		super.start();
 	}
 
 	/**

@@ -51,13 +51,6 @@ import reactor.fn.Supplier;
  */
 public class HashWheelTimer implements Timer {
 
-	final static private LongSupplier SYSTEM_NOW = new LongSupplier() {
-		@Override
-		public long get() {
-			return System.currentTimeMillis();
-		}
-	};
-
 	public static final  int    DEFAULT_WHEEL_SIZE = 512;
 	private static final String DEFAULT_TIMER_NAME = "hash-wheel-timer";
 
@@ -66,8 +59,9 @@ public class HashWheelTimer implements Timer {
 	private final Thread                         loop;
 	private final Executor                       executor;
 	private final WaitStrategy                   waitStrategy;
-	private final LongSupplier                   now;
 	private final AtomicBoolean started = new AtomicBoolean();
+
+	final LongSupplier                   now;
 
 	/**
 	 * Create a new {@code HashWheelTimer} using the given timer resolution. All times will rounded up to the closest
@@ -120,7 +114,7 @@ public class HashWheelTimer implements Timer {
 			this.executor = exec;
 		}
 
-		this.now = SYSTEM_NOW;
+		this.now = TimeUtils.currentTimeMillisResolver();
 		this.resolution = res;
 
 		this.loop = new NamedDaemonThreadFactory(name).newThread(new Runnable() {
@@ -297,6 +291,7 @@ public class HashWheelTimer implements Timer {
 		private final AtomicInteger status;
 		private final AtomicBoolean cancelAfterUse;
 		private final boolean       lifecycle;
+		private final LongSupplier now;
 
 		/**
 		 * Creates a new Timer Registration with given {@param rounds}, {@param offset} and {@param delegate}.
@@ -306,6 +301,7 @@ public class HashWheelTimer implements Timer {
 		 */
 		public TimerPausable(long rounds, long offset, T delegate, long rescheduleRounds) {
 			Assert.notNull(delegate, "Delegate cannot be null");
+			this.now = TimeUtils.currentTimeMillisResolver();
 			this.rescheduleRounds = rescheduleRounds;
 			this.scheduleOffset = offset;
 			this.delegate = delegate;
@@ -336,7 +332,7 @@ public class HashWheelTimer implements Timer {
 		@Override
 		public void run() {
 			try {
-				delegate.accept(TimeUtils.approxCurrentTimeMillis());
+				delegate.accept(now.get());
 			}
 			catch (CancelException e) {
 				cancel();

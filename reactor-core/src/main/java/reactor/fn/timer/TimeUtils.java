@@ -21,6 +21,8 @@ import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.SleepingWaitStrategy;
+import reactor.fn.LongSupplier;
+
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
@@ -29,6 +31,12 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  */
 public final class TimeUtils {
 
+	final static private LongSupplier SYSTEM_NOW = new LongSupplier() {
+		@Override
+		public long get() {
+			return System.currentTimeMillis();
+		}
+	};
 
 	private static final int      DEFAULT_RESOLUTION = 100;
 	private static final Sequence now                = Sequencer.newSequence(-1);
@@ -46,6 +54,38 @@ public final class TimeUtils {
 	public static long approxCurrentTimeMillis() {
 		INSTANCE.getTimer();
 		return now.get();
+	}
+
+	public static boolean isEnabled(){
+		return INSTANCE.timer != null;
+	}
+
+	public static void enable(){
+		INSTANCE.getTimer();
+	}
+
+	public static void disable(){
+		INSTANCE.cancelTimer();
+	}
+
+	public static LongSupplier currentTimeMillisResolver(){
+		if (isEnabled()){
+			return now;
+		}
+		else{
+			return SYSTEM_NOW;
+		}
+	}
+
+	void cancelTimer(){
+		Timer timer;
+		for(;;){
+			timer = this.timer;
+			if(REF.compareAndSet(this, null, timer)){
+				timer.cancel();
+				break;
+			}
+		}
 	}
 
 	Timer getTimer() {
