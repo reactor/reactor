@@ -32,6 +32,7 @@ import reactor.fn.timer.Timer;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * A hashed wheel timer implementation that uses a {@link reactor.bus.registry.Registry} and custom {@link
@@ -78,6 +79,7 @@ public class EventTimer implements Timer {
 	private final Registry<Long, Consumer<Long>> tasks = Registries.create(true, false, null);
 	private final int    resolution;
 	private final Thread loop;
+	private final AtomicBoolean started = new AtomicBoolean();
 
 
 	/**
@@ -141,7 +143,6 @@ public class EventTimer implements Timer {
 			  }
 		  }
 		);
-		this.loop.start();
 	}
 
 	@Override
@@ -191,6 +192,18 @@ public class EventTimer implements Timer {
 		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
 	}
 
+	/**
+	 * Start the Timer
+	 */
+	@Override
+	public void start() {
+		if (started.compareAndSet(false, true)) {
+			this.loop.start();
+		}
+		else {
+			throw new IllegalStateException("Timer already started");
+		}
+	}
 
 	@Override
 	public void cancel() {
@@ -199,7 +212,7 @@ public class EventTimer implements Timer {
 
 	@Override
 	public boolean isCancelled() {
-		return !loop.isAlive();
+		return loop.isInterrupted();
 	}
 
 	private static long now(int resolution) {

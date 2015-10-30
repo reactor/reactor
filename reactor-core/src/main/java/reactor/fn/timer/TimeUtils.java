@@ -17,43 +17,51 @@
 package reactor.fn.timer;
 
 import reactor.core.error.ReactorFatalException;
+import reactor.core.processor.rb.disruptor.Sequence;
+import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public abstract class TimeUtils {
+public final class TimeUtils {
 
 
-	private static final int        DEFAULT_RESOLUTION = 100;
-	private static final AtomicLong now                = new AtomicLong();
-	private static volatile Timer timer;
+	private static final int      DEFAULT_RESOLUTION = 100;
+	private static final Sequence now                = Sequencer.newSequence(-1);
+
+	private static final TimeUtils INSTANCE = new TimeUtils();
+
+	private volatile Timer timer;
+
+	private static final AtomicReferenceFieldUpdater<TimeUtils, Timer> REF = PlatformDependent
+			.newAtomicReferenceFieldUpdater(TimeUtils.class, "timer");
 
 	protected TimeUtils() {
 	}
 
 	public static long approxCurrentTimeMillis() {
-		getTimer();
+		INSTANCE.getTimer();
 		return now.get();
 	}
 
-	public static void setTimer(Timer timer) {
-		timer.schedule(new Consumer<Long>() {
-			@Override
-			public void accept(Long aLong) {
-				now.set(System.currentTimeMillis());
-			}
-		}, DEFAULT_RESOLUTION, TimeUnit.MILLISECONDS, DEFAULT_RESOLUTION);
-		now.set(System.currentTimeMillis());
-		TimeUtils.timer = timer;
-	}
-
-	public static Timer getTimer() {
+	Timer getTimer() {
+		Timer timer = this.timer;
 		if (null == timer) {
-			setTimer(new HashWheelTimer(DEFAULT_RESOLUTION));
+			timer = new HashWheelTimer(DEFAULT_RESOLUTION);
+			if(!REF.compareAndSet(this, null, timer)){
+				timer.cancel();
+				timer = this.timer;
+			}
+			else {
+				timer.start();
+			}
 		}
 		return timer;
 	}

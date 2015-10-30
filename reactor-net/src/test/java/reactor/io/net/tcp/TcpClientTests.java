@@ -367,12 +367,15 @@ public class TcpClientTests {
 		);
 
 
-		final CountDownLatch latch = new CountDownLatch(1);
+		final CountDownLatch latch = new CountDownLatch(2);
 		client.startAndAwait(resp -> {
 			latch.countDown();
 			System.out.println("resp: " + resp);
 
-			return resp.writeWith(Streams.just(NettyBuffer.create(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/"))));
+			return Streams.wrap(resp
+					.writeWith(Streams.just(
+							NettyBuffer.create(new DefaultHttpRequest(HttpVersion.HTTP_1_1,HttpMethod.GET, "/"))))
+			).observeComplete(d-> latch.countDown());
 		});
 
 

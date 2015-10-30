@@ -15,9 +15,11 @@
  */
 package reactor.fn.timer;
 
-import reactor.core.support.wait.SleepingWaitStrategy;
-
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
+import reactor.core.support.internal.PlatformDependent;
+import reactor.core.support.wait.SleepingWaitStrategy;
 
 /**
  * A Global Timer
@@ -27,7 +29,14 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public class GlobalTimer extends HashWheelTimer {
 
-	private static final AtomicReference<GlobalTimer> globalTimer = new AtomicReference<>();
+	private static final class GlobalContext{
+		volatile GlobalTimer timer;
+	}
+
+	private static final AtomicReferenceFieldUpdater<GlobalContext, GlobalTimer> GLOBAL_TIMER =
+		PlatformDependent.newAtomicReferenceFieldUpdater(GlobalContext.class, "timer");
+
+	private static final GlobalContext context = new GlobalContext();
 
 	public GlobalTimer() {
 		super("global-timer", 50, DEFAULT_WHEEL_SIZE, new SleepingWaitStrategy(), null);
@@ -57,15 +66,19 @@ public class GlobalTimer extends HashWheelTimer {
 	 * @return the globalTimer, usually a {@link HashWheelTimer}
 	 */
 	public static Timer get() {
-		if (null == globalTimer.get()) {
-			synchronized (globalTimer) {
-				GlobalTimer t = new GlobalTimer();
-				if (!globalTimer.compareAndSet(null, t)) {
+		GlobalTimer t = context.timer;
+		while (null == t) {
+				t = new GlobalTimer();
+				if (!GLOBAL_TIMER.compareAndSet(context, null, t)) {
+					t = context.timer;
 					t._cancel();
 				}
-			}
+				else{
+					t.start();
+					break;
+				}
 		}
-		return globalTimer.get();
+		return t;
 	}
 
 	/**
@@ -74,7 +87,7 @@ public class GlobalTimer extends HashWheelTimer {
 	 */
 	public static void unregister() {
 		GlobalTimer timer;
-		while ((timer = globalTimer.getAndSet(null)) != null) {
+		while ((timer = GLOBAL_TIMER.getAndSet(context, null)) != null) {
 			timer._cancel();
 		}
 	}
@@ -85,7 +98,7 @@ public class GlobalTimer extends HashWheelTimer {
 	 * @return true if context timer is initialized
 	 */
 	public static boolean available() {
-		return globalTimer.get() != null;
+		return context.timer != null;
 	}
 
 	/**
@@ -94,13 +107,13 @@ public class GlobalTimer extends HashWheelTimer {
 	 * @return eventually the global timer or if not set a fresh timer.
 	 */
 	public static Timer globalOrNew() {
-		Timer timer = globalTimer.get();
+		Timer timer = context.timer;
 
 		if (timer == null) {
-			return new HashWheelTimer(50, 64, new SleepingWaitStrategy());
-		} else {
-			return timer;
+			timer = new HashWheelTimer(50, 64, new SleepingWaitStrategy());
+			timer.start();
 		}
+		return timer;
 	}
 
 }

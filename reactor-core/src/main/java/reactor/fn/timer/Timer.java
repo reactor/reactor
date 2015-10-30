@@ -93,6 +93,11 @@ public interface Timer {
 	Pausable submit(Consumer<Long> consumer);
 
 	/**
+	 * Start the Timer, may throw an IllegalStateException if already started
+	 */
+	void start();
+
+	/**
 	 * Cancel this timer by interrupting the task thread. No more tasks can be submitted to this timer after
 	 * cancellation.
 	 */

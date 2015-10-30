@@ -65,7 +65,9 @@ public final class Timers {
 	 *                   return a new {@link Timer}
 	 */
 	public static Timer create(int resolution, int bufferSize) {
-		return new HashWheelTimer(resolution, bufferSize, new SleepingWaitStrategy());
+		Timer timer = new HashWheelTimer(resolution, bufferSize, new SleepingWaitStrategy());
+		timer.start();
+		return timer;
 	}
 
 	/**

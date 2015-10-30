@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * @author Oleksandr Petrov
+ * @author Stephane Maldini
  */
 class HashWheelTimerBusySpinStrategy extends Specification {
 
@@ -19,6 +20,7 @@ class HashWheelTimerBusySpinStrategy extends Specification {
 		given:
 			"a new globalTimer"
 			def timer = new HashWheelTimer(10, 8, new BusySpinWaitStrategy())
+			timer.start()
 			def latch = new CountDownLatch(10)
 
 		when:
@@ -49,6 +51,7 @@ class HashWheelTimerBusySpinStrategy extends Specification {
 			"a new globalTimer"
 			def delay = 500
 			def timer = new HashWheelTimer(10, 512, new BusySpinWaitStrategy())
+			timer.start()
 			def latch = new CountDownLatch(1)
 			def start = System.currentTimeMillis()
 			def elapsed = 0
@@ -70,6 +73,8 @@ class HashWheelTimerBusySpinStrategy extends Specification {
 			latch.await(1, TimeUnit.SECONDS)
 			elapsed >= delay
 			elapsed < delay * 2
+
+		cleanup:
 			timer.cancel()
 	}
 
