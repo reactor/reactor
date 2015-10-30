@@ -108,7 +108,7 @@ public class TcpClientTests {
 		abortServer.close();
 		timeoutServer.close();
 		heartbeatServer.close();
-		threadPool.shutdownNow();
+		threadPool.shutdown();
 		threadPool.awaitTermination(5, TimeUnit.SECONDS);
 		Thread.sleep(500);
 	}
@@ -451,8 +451,8 @@ public class TcpClientTests {
 		@Override
 		public void run() {
 			try {
-				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
+				server.socket().bind(new InetSocketAddress(port));
 				while (true) {
 					SocketChannel ch = server.accept();
 					System.out.println("ABORTING");
@@ -488,8 +488,8 @@ public class TcpClientTests {
 		@Override
 		public void run() {
 			try {
-				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
+				server.socket().bind(new InetSocketAddress(port));
 				while (true) {
 					SocketChannel ch = server.accept();
 					ByteBuffer buff = ByteBuffer.allocate(1);
@@ -524,8 +524,8 @@ public class TcpClientTests {
 		@Override
 		public void run() {
 			try {
-				server.socket().bind(new InetSocketAddress(port));
 				server.configureBlocking(true);
+				server.socket().bind(new InetSocketAddress(port));
 				while (true) {
 					SocketChannel ch = server.accept();
 					while (server.isOpen()) {
