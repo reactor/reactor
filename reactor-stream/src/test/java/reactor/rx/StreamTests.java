@@ -489,31 +489,26 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void analyticsTest() throws Exception {
-		Broadcaster<Integer> source = Broadcaster.<Integer>create();
-		long avgTime = 50l;
+			Broadcaster<Integer> source = Broadcaster.<Integer>create();
+			long avgTime = 50l;
 
-		Promise<Long> result = source
-		  .onOverflowBuffer()
-		  .dispatchOn(asyncGroup)
-		  .throttle(avgTime)
-		  .elapsed()
-		  .nest()
-		  .flatMap(self ->
-			  BiStreams.reduceByKey(self, (acc, next) -> acc + next)
-		  )
-		  .sort((a, b) -> a.t1.compareTo(b.t1))
-		  .log("elapsed")
-		  .reduce(-1L, (acc, next) ->
-			  acc > 0l ? ((next.t1 + acc) / 2) : next.t1
-		  )
-		  .next();
+			Promise<Long> result = source.onOverflowBuffer()
+			                             .dispatchOn(asyncGroup)
+			                             .throttle(avgTime)
+			                             .elapsed()
+			                             .nest()
+			                             .flatMap(self -> BiStreams.reduceByKey(self, (acc, next) -> acc + next))
+			                             .sort((a, b) -> a.t1.compareTo(b.t1))
+			                             .log("elapsed")
+			                             .reduce(-1L, (acc, next) -> acc > 0l ? ((next.t1 + acc) / 2) : next.t1)
+			                             .consumeNext();
 
-		for (int i = 0; i < 10; i++) {
-			source.onNext(1);
-		}
-		source.onComplete();
+			for (int j = 0; j < 10; j++) {
+				source.onNext(1);
+			}
+			source.onComplete();
 
-		Assert.assertTrue(result.await(5, TimeUnit.SECONDS) >= avgTime * 0.6);
+			Assert.assertTrue(result.await(5, TimeUnit.SECONDS) >= avgTime * 0.6);
 	}
 
 	@Test

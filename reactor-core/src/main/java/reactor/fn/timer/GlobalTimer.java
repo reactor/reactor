@@ -43,7 +43,7 @@ public class GlobalTimer extends HashWheelTimer {
 
 	private void _cancel() {
 		super.cancel();
-		TimeUtils.disable();
+		//TimeUtils.disable();
 	}
 
 	@Override
@@ -53,7 +53,7 @@ public class GlobalTimer extends HashWheelTimer {
 
 	@Override
 	public void start() {
-		TimeUtils.enable();
+		//TimeUtils.enable();
 		super.start();
 	}
 

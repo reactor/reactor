@@ -71,7 +71,6 @@ public abstract class AbstractProcessorVerification extends org.reactivestreams.
 		);
 
 		executorService.shutdown();
-		Timers.unregisterGlobal();
 	}
 
 	@Override

@@ -104,6 +104,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		static final InnerSubscriber<?, ?>[] CANCELLED = new InnerSubscriber<?, ?>[0];
 
+		@SuppressWarnings("unused")
 		private volatile long requested;
 		@SuppressWarnings("rawtypes")
 		static final AtomicLongFieldUpdater<MergeBarrier> REQUESTED =
@@ -205,7 +206,6 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			}
 		}
 
-		@SuppressWarnings("unchecked")
 		RingBuffer<RingBuffer.Slot<V>> getMainQueue() {
 			RingBuffer<RingBuffer.Slot<V>> q = emitBuffer;
 			if (q == null) {
@@ -255,7 +255,6 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			drainLoop();
 		}
 
-		@SuppressWarnings("unchecked")
 		RingBuffer<RingBuffer.Slot<V>> getInnerQueue(InnerSubscriber<T, V> inner) {
 			RingBuffer<RingBuffer.Slot<V>> q = inner.queue;
 			if (q == null) {

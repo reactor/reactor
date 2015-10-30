@@ -95,7 +95,7 @@ public final class TimeUtils {
 
 	Timer getTimer() {
 		Timer timer = this.timer;
-		if (null == timer) {
+		if (NOOP == timer) {
 			timer = new HashWheelTimer("time-utils", DEFAULT_RESOLUTION, HashWheelTimer.DEFAULT_WHEEL_SIZE, new
 					SleepingWaitStrategy(), null);
 			if(!REF.compareAndSet(this, NOOP, timer)){

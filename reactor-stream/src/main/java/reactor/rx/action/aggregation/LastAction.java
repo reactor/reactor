@@ -32,29 +32,29 @@ public class LastAction<T> extends Action<T, T> {
 	private final AtomicLongFieldUpdater<LastAction> COUNTED = AtomicLongFieldUpdater.newUpdater(LastAction
 	  .class, "count");
 
+	private final AtomicLongFieldUpdater<LastAction> OUTSTANDING = AtomicLongFieldUpdater.newUpdater(LastAction
+			.class, "outstanding");
+
 	private volatile long count;
-	private Boolean unbounded = null;
+	private volatile long outstanding;
 
 	@Override
 	protected void doNext(T value) {
 		last = value;
-		if((unbounded != null && !unbounded || !(unbounded = count == Long.MAX_VALUE ))
-		  && COUNTED.decrementAndGet(this) == 0L){
-			long request = downstreamSubscription.pendingRequestSignals();
-			if(request > 0){
-				requestMore(request);
-			}
+		if(outstanding != Long.MAX_VALUE && COUNTED.decrementAndGet(this) == 0L){
+			super.requestMore(count = outstanding);
 		}
 	}
 
 	@Override
 	public void requestMore(long n) {
 		BackpressureUtils.checkRequest(n);
+		long before = BackpressureUtils.getAndAdd(OUTSTANDING, this, n);
 		BackpressureUtils.getAndAdd(COUNTED, this, n);
-		Subscription subscription = upstreamSubscription;
-		if (subscription != null) {
-			subscription.request(n);
+		if(before == 0) {
+			super.requestMore(n);
 		}
+
 	}
 
 	@Override
