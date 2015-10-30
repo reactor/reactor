@@ -464,7 +464,8 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 		}
 
 		boolean shouldReadMore() {
-			return requested > 0;
+			return requested > 0 ||
+					(readBackpressureBuffer != null && readBackpressureBuffer.pending() == 0);
 		}
 
 		void drain(){
