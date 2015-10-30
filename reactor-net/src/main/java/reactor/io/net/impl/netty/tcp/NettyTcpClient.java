@@ -79,21 +79,21 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 	private volatile InetSocketAddress connectAddress;
 
 	/**
-	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration
-	 * and the given {@code reactor} to send events. The number of IO threads used by the
-	 * client is configured by the environment's {@code reactor.tcp.ioThreadCount}
-	 * property. In its absence the number of IO threads will be equal to the {@link
-	 * reactor.Processors#DEFAULT_POOL_SIZE number of available processors}. </p> The
-	 * client will connect to the given {@code connectAddress}, configuring its socket
-	 * using the given {@code opts}. The given {@code codec} will be used for encoding and
-	 * decoding of data.
+	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code reactor}
+	 * to send events. The number of IO threads used by the client is configured by the environment's {@code
+	 * reactor.tcp.ioThreadCount} property. In its absence the number of IO threads will be equal to the {@link
+	 * reactor.Processors#DEFAULT_POOL_SIZE number of available processors}. </p> The client will connect to the given
+	 * {@code connectAddress}, configuring its socket using the given {@code opts}. The given {@code codec} will be used
+	 * for encoding and decoding of data.
 	 * @param timer The configuration timer
 	 * @param connectAddress The address the client will connect to
 	 * @param options The configuration options for the client's socket
 	 * @param sslOptions The SSL configuration options for the client's socket
 	 */
-	public NettyTcpClient(Timer timer, InetSocketAddress connectAddress,
-			final ClientSocketOptions options, final SslOptions sslOptions) {
+	public NettyTcpClient(Timer timer,
+			InetSocketAddress connectAddress,
+			final ClientSocketOptions options,
+			final SslOptions sslOptions) {
 		super(timer, connectAddress, options, sslOptions);
 		this.connectAddress = connectAddress;
 
@@ -126,7 +126,7 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 			                       .option(ChannelOption.SO_KEEPALIVE, options.keepAlive())
 			                       .option(ChannelOption.SO_LINGER, options.linger())
 			                       .option(ChannelOption.TCP_NODELAY, options.tcpNoDelay())
-									.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, options.timeout());
+			                       .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, options.timeout());
 		}
 
 		this.bootstrap = _bootstrap;
@@ -146,13 +146,11 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	protected Publisher<Void> doStart(
-			final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler) {
+	protected Publisher<Void> doStart(final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler) {
 
-		final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>
-				targetHandler = null == handler ?
-				(ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>) PING :
-				handler;
+		final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> targetHandler =
+				null == handler ? (ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>) PING :
+						handler;
 
 		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
 			@Override
@@ -176,8 +174,7 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 	}
 
 	@Override
-	protected Publisher<Tuple2<InetSocketAddress, Integer>> doStart(
-			final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
+	protected Publisher<Tuple2<InetSocketAddress, Integer>> doStart(final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
 			final Reconnect reconnect) {
 
 		bootstrap.handler(new ChannelInitializer<SocketChannel>() {
@@ -204,57 +201,52 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 		SSLEngine ssl = new SSLEngineSupplier(getSslOptions(), true).get();
 		if (log.isDebugEnabled()) {
 			log.debug("SSL enabled using keystore {}", (
-					null != getSslOptions() && null != getSslOptions().keystoreFile() ?
-							getSslOptions().keystoreFile() : "<DEFAULT>"));
+					null != getSslOptions() && null != getSslOptions().keystoreFile() ? getSslOptions().keystoreFile() :
+							"<DEFAULT>"));
 		}
 		ch.pipeline()
 		  .addLast(new SslHandler(ssl));
 	}
 
-	protected void bindChannel(
-			ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
-			SocketChannel ch) throws Exception{
+	protected void bindChannel(ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
+			SocketChannel ch) throws Exception {
 
-				if (null != getSslOptions()) {
-					addSecureHandler(ch);
-				}
-				else {
-					ch.config()
-					  .setAutoRead(false);
-				}
+		if (null != getSslOptions()) {
+			addSecureHandler(ch);
+		}
+		else {
+			ch.config()
+			  .setAutoRead(false);
+		}
 
-				NettyChannel netChannel =
-						new NettyChannel(getDefaultPrefetchSize(), ch);
+		NettyChannel netChannel = new NettyChannel(getDefaultPrefetchSize(), ch);
 
-				ChannelPipeline pipeline = ch.pipeline();
-				if (log.isDebugEnabled()) {
-					pipeline.addLast(new LoggingHandler(NettyTcpClient.class));
-				}
-				pipeline.addLast(new NettyChannelHandlerBridge(handler, netChannel));
+		ChannelPipeline pipeline = ch.pipeline();
 
-				if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
-					nettyOptions.pipelineConfigurer()
-					            .accept(ch.pipeline());
-				}
+		if (null != nettyOptions && null != nettyOptions.pipelineConfigurer()) {
+			nettyOptions.pipelineConfigurer()
+			            .accept(pipeline);
+		}
+		if (log.isDebugEnabled()) {
+			pipeline.addLast(new LoggingHandler(NettyTcpClient.class));
+		}
+		pipeline.addLast(new NettyChannelHandlerBridge(handler, netChannel));
 	}
 
-	private class ReconnectingChannelPublisher
-			implements Publisher<Tuple2<InetSocketAddress, Integer>> {
+	private class ReconnectingChannelPublisher implements Publisher<Tuple2<InetSocketAddress, Integer>> {
 
 		private final AtomicInteger attempts = new AtomicInteger(0);
 		private final Reconnect reconnect;
 
 		private volatile InetSocketAddress connectAddress;
 
-		private ReconnectingChannelPublisher(InetSocketAddress connectAddress,
-				Reconnect reconnect) {
+		private ReconnectingChannelPublisher(InetSocketAddress connectAddress, Reconnect reconnect) {
 			this.connectAddress = connectAddress;
 			this.reconnect = reconnect;
 		}
 
 		@Override
-		public void subscribe(
-				final Subscriber<? super Tuple2<InetSocketAddress, Integer>> s) {
+		public void subscribe(final Subscriber<? super Tuple2<InetSocketAddress, Integer>> s) {
 			final ChannelFuture channelOpen = connectionSupplier.get();
 			if (null == channelOpen) {
 				throw new IllegalStateException("No connection supplied");
@@ -274,8 +266,7 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 			});
 		}
 
-		private void attemptReconnect(
-				final Subscriber<? super Tuple2<InetSocketAddress, Integer>> subscriber,
+		private void attemptReconnect(final Subscriber<? super Tuple2<InetSocketAddress, Integer>> subscriber,
 				final Tuple2<InetSocketAddress, Long> tup) {
 
 			connectAddress = tup.getT1();
@@ -308,14 +299,12 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 
 			@SuppressWarnings("unchecked")
 			@Override
-			public void operationComplete(final ChannelFuture future)
-					throws Exception {
+			public void operationComplete(final ChannelFuture future) throws Exception {
 				//FIXME demand
 				s.onNext(Tuple.of(connectAddress, attempts.get()));
 				if (!future.isSuccess()) {
 					int attempt = attempts.incrementAndGet();
-					Tuple2<InetSocketAddress, Long> tup =
-							reconnect.reconnect(connectAddress, attempt);
+					Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
 					if (null == tup) {
 						// do not attempt a reconnect
 						if (log.isErrorEnabled()) {
@@ -342,9 +331,7 @@ public class NettyTcpClient extends TcpClient<Buffer, Buffer> {
 					ioCh.pipeline()
 					    .addLast(new ChannelDuplexHandler() {
 						    @Override
-						    public void channelInactive(
-								    ChannelHandlerContext ctx)
-								    throws Exception {
+						    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
 							    if (log.isInfoEnabled()) {
 								    log.info("CLOSED: " + ioCh);
 							    }

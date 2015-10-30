@@ -20,10 +20,7 @@ import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.support.internal.PlatformDependent;
-import reactor.fn.Consumer;
-
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import reactor.core.support.wait.SleepingWaitStrategy;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
@@ -54,7 +51,8 @@ public final class TimeUtils {
 	Timer getTimer() {
 		Timer timer = this.timer;
 		if (null == timer) {
-			timer = new HashWheelTimer(DEFAULT_RESOLUTION);
+			timer = new HashWheelTimer("time-utils", DEFAULT_RESOLUTION, HashWheelTimer.DEFAULT_WHEEL_SIZE, new
+					SleepingWaitStrategy(), null);
 			if(!REF.compareAndSet(this, null, timer)){
 				timer.cancel();
 				timer = this.timer;

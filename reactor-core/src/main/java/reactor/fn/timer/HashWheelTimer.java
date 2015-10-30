@@ -197,14 +197,12 @@ public class HashWheelTimer implements Timer {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Pausable schedule(Consumer<Long> consumer, long period, TimeUnit timeUnit, long delayInMilliseconds) {
-		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), delayInMilliseconds, consumer);
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public Pausable submit(Consumer<Long> consumer, long period, TimeUnit timeUnit) {
-		Assert.isTrue(!loop.isInterrupted(), "Cannot submit tasks to this timer as it has been cancelled.");
 		long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
 		return schedule(0, ms, consumer).cancelAfterUse();
 	}
