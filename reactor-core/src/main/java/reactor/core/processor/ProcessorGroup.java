@@ -45,8 +45,6 @@ import reactor.core.support.Subscribable;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
-import reactor.fn.timer.GlobalTimer;
-import reactor.fn.timer.Timer;
 
 /**
  * A Shared Processor Service is a {@link Processor} factory eventually sharing one or
@@ -483,7 +481,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	};
 
-	private final static int MAX_BUFFER_SIZE = 2 ^ 17;
+	private final static int MAX_BUFFER_SIZE = 2 << 4;
 
 	@SuppressWarnings("unchecked")
 	protected ProcessorGroup(Supplier<? extends Processor<Task, Task>> processor,

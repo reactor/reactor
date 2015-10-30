@@ -121,10 +121,7 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 
 		private boolean tryDrain() {
 			Buffer agg = aggregate;
-			if (agg != null) {
-				return tryEmit(agg);
-			}
-			return true;
+			return agg == null || tryEmit(agg);
 		}
 
 		@Override
@@ -132,13 +129,19 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 			if (BackpressureUtils.getAndAdd(PENDING_UPDATER, this, n) == 0) {
 				super.doRequest(n);
 				if (!tryDrain()) {
-					super.doRequest(1L);
+					requestMissing();
 				}
 			}
 			else if (terminated == 1) {
 				if (tryDrain() && TERMINATED.compareAndSet(this, 1, 2)) {
 					super.doComplete();
 				}
+			}
+		}
+
+		private void requestMissing(){
+			if(pendingDemand != Long.MAX_VALUE){
+				super.doRequest(1L);
 			}
 		}
 
@@ -150,25 +153,25 @@ public abstract class BufferCodec<IN, OUT> extends Codec<Buffer, IN, OUT> {
 			}
 			else if (-1L == codec.canDecodeNext(buffer, decoderContext)) {
 				combine(buffer);
-				super.doRequest(1L);
+				requestMissing();
 				return;
 			}
 
 			if (aggregate == null) {
 				tryEmit(buffer);
-				super.doRequest(1L);
+				requestMissing();
 			}
 			else {
 				if (-1L == codec.canDecodeNext(aggregate, decoderContext)) {
-					super.doRequest(1L);
+					requestMissing();
 				}
 				else if (AGGREGATE.compareAndSet(this, aggregate, null)) {
 					if (!tryEmit(aggregate)) {
-						super.doRequest(1L);
+						requestMissing();
 					}
 				}
 				else {
-					super.doRequest(1L);
+					requestMissing();
 				}
 			}
 		}

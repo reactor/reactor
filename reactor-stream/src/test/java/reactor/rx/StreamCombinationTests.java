@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
+import reactor.Publishers;
 import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.action.Control;
@@ -104,6 +105,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	@Test
 	public void testMerge1ToN() throws Exception {
 		final int n = 1000;
+
+		Streams.await(Streams.range(1,1000000).flatMap(Publishers::just).dispatchOn(Processors.asyncGroup()));
 
 		Stream<Integer> stream =
 				Streams.merge(Streams.just(1).map(i -> Streams.range(0, n)));

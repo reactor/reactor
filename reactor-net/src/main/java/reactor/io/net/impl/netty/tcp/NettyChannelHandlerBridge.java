@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.Sequencer;
@@ -50,29 +51,25 @@ import reactor.io.net.impl.netty.NettyBuffer;
 import reactor.io.net.impl.netty.NettyChannel;
 
 /**
- * Netty {@link io.netty.channel.ChannelInboundHandler} implementation that passes data to
- * a Reactor {@link reactor.io.net.ReactiveChannel}.
+ * Netty {@link io.netty.channel.ChannelInboundHandler} implementation that passes data to a Reactor {@link
+ * reactor.io.net.ReactiveChannel}.
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
 public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 
-	protected static final Logger log =
-			LoggerFactory.getLogger(NettyChannelHandlerBridge.class);
+	protected static final Logger log = LoggerFactory.getLogger(NettyChannelHandlerBridge.class);
 
-	protected final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>>
-			                     handler;
-	protected final NettyChannel reactorNettyChannel;
+	protected final ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler;
+	protected final NettyChannel                                                            reactorNettyChannel;
 
 	protected ChannelInputSubscriber channelSubscriber;
 
-	private volatile       int channelRef  = 0;
-	protected static final AtomicIntegerFieldUpdater<NettyChannelHandlerBridge>
-	                           CHANNEL_REF =
+	private volatile       int                                                  channelRef  = 0;
+	protected static final AtomicIntegerFieldUpdater<NettyChannelHandlerBridge> CHANNEL_REF =
 			AtomicIntegerFieldUpdater.newUpdater(NettyChannelHandlerBridge.class, "channelRef");
 
-	public NettyChannelHandlerBridge(
-			ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
+	public NettyChannelHandlerBridge(ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler,
 			NettyChannel reactorNettyChannel) {
 		this.handler = handler;
 		this.reactorNettyChannel = reactorNettyChannel;
@@ -83,13 +80,11 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 	}
 
 	@Override
-	public void userEventTriggered(final ChannelHandlerContext ctx, Object evt)
-			throws Exception {
+	public void userEventTriggered(final ChannelHandlerContext ctx, Object evt) throws Exception {
 		if (evt != null && evt.getClass()
 		                      .equals(ChannelInputSubscriber.class)) {
 
-			@SuppressWarnings("unchecked") ChannelInputSubscriber subscriberEvent =
-					(ChannelInputSubscriber) evt;
+			@SuppressWarnings("unchecked") ChannelInputSubscriber subscriberEvent = (ChannelInputSubscriber) evt;
 
 			if (null == channelSubscriber) {
 				CHANNEL_REF.incrementAndGet(NettyChannelHandlerBridge.this);
@@ -161,7 +156,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 
 		try {
 			super.channelReadComplete(ctx);
-			if (channelSubscriber.drainNext()) {
+			if (channelSubscriber.shouldReadMore()) {
 				ctx.read();
 			}
 
@@ -235,15 +230,12 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 	}
 
 	@Override
-	public void write(final ChannelHandlerContext ctx, Object msg,
-			final ChannelPromise promise) throws Exception {
+	public void write(final ChannelHandlerContext ctx, Object msg, final ChannelPromise promise) throws Exception {
 		if (msg instanceof Publisher) {
 			CHANNEL_REF.incrementAndGet(this);
 
 			@SuppressWarnings("unchecked") Publisher<?> data = (Publisher<?>) msg;
-			final long capacity =
-					msg instanceof Bounded ? ((Bounded) data).getCapacity() :
-							Long.MAX_VALUE;
+			final long capacity = msg instanceof Bounded ? ((Bounded) data).getCapacity() : Long.MAX_VALUE;
 
 			if (capacity == Long.MAX_VALUE) {
 				data.subscribe(new FlushOnTerminateSubscriber(ctx, promise));
@@ -258,8 +250,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 	}
 
 	@Override
-	public void exceptionCaught(ChannelHandlerContext ctx, Throwable err)
-			throws Exception {
+	public void exceptionCaught(ChannelHandlerContext ctx, Throwable err) throws Exception {
 		Exceptions.throwIfFatal(err);
 		if (channelSubscriber != null) {
 			channelSubscriber.onError(err);
@@ -284,15 +275,13 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 		return null;
 	}
 
-	protected static ByteBuf convertBufferToByteBuff(ChannelHandlerContext ctx,
-			Buffer data) {
+	protected static ByteBuf convertBufferToByteBuff(ChannelHandlerContext ctx, Buffer data) {
 		ByteBuf buff = ctx.alloc()
 		                  .buffer(data.remaining());
 		return buff.writeBytes(data.byteBuffer());
 	}
 
-	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last,
-			final ChannelPromise promise) {
+	protected void doOnTerminate(ChannelHandlerContext ctx, ChannelFuture last, final ChannelPromise promise) {
 		CHANNEL_REF.decrementAndGet(this);
 
 		if (ctx.channel()
@@ -324,8 +313,10 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 	}
 
 	@SuppressWarnings("unused")
-	protected void doOnSubscribe(ChannelHandlerContext ctx, final Subscription s,
-			long request, final Consumer<Void> cb) {
+	protected void doOnSubscribe(ChannelHandlerContext ctx,
+			final Subscription s,
+			long request,
+			final Consumer<Void> cb) {
 		ctx.channel()
 		   .closeFuture()
 		   .addListener(new ChannelFutureListener() {
@@ -342,11 +333,9 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 	}
 
 	/**
-	 * An event to attach a {@link Subscriber} to the {@link NettyChannel} created by
-	 * {@link NettyChannelHandlerBridge}
+	 * An event to attach a {@link Subscriber} to the {@link NettyChannel} created by {@link NettyChannelHandlerBridge}
 	 */
-	public static final class ChannelInputSubscriber
-			implements Subscription, Subscriber<Buffer> {
+	public static final class ChannelInputSubscriber implements Subscription, Subscriber<Buffer> {
 
 		private final Subscriber<? super Buffer> inputSubscriber;
 
@@ -368,12 +357,12 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 				AtomicIntegerFieldUpdater.newUpdater(ChannelInputSubscriber.class, "running");
 
 		Sequence pollCursor;
+		volatile Throwable error;
 		volatile RingBuffer<BufferHolder> readBackpressureBuffer;
 
 		final int bufferSize;
 
-		public ChannelInputSubscriber(Subscriber<? super Buffer> inputSubscriber,
-				long bufferSize) {
+		public ChannelInputSubscriber(Subscriber<? super Buffer> inputSubscriber, long bufferSize) {
 			if (null == inputSubscriber) {
 				throw new IllegalArgumentException("Connection input subscriber must not be null.");
 			}
@@ -387,14 +376,14 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 				return;
 			}
 			if (BackpressureUtils.checkRequest(n, inputSubscriber)) {
-				if(BackpressureUtils.getAndAdd(REQUESTED, this, n) == 0 && n == Long.MAX_VALUE){
+				if (BackpressureUtils.getAndAdd(REQUESTED, this, n) == 0 && n == Long.MAX_VALUE) {
 					Subscription subscription = this.subscription;
 					if (subscription != null) {
 						subscription.request(n);
 					}
 				}
 				else {
-					drainBackpressureQueue();
+					drain();
 				}
 			}
 		}
@@ -420,68 +409,103 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 
 		@Override
 		public void onNext(Buffer bytes) {
-			long r = BackpressureUtils.getAndSub(REQUESTED, this, 1L);
-			if (r > 0 && RUNNING.compareAndSet(this, 0, 1)) {
-				try {
-					inputSubscriber.onNext(bytes);
+			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
+				long r = BackpressureUtils.getAndSub(REQUESTED, this, 1L);
+				if(r != 0) {
+					try {
+						inputSubscriber.onNext(bytes);
+					}
+					catch (Throwable e) {
+						Exceptions.throwIfFatal(e);
+						cancel();
+						onError(e);
+						return;
+					}
 				}
-				catch (Throwable e){
-					Exceptions.throwIfFatal(e);
-					cancel();
-					inputSubscriber.onError(e);
+				else{
+					RingBuffer<BufferHolder> queue = getReadBackpressureBuffer();
+					long n = queue.next();
+					queue.get(n).buffer = bytes;
+					queue.publish(n);
 				}
-				finally {
-					RUNNING.decrementAndGet(this);
+				if(RUNNING.decrementAndGet(this) == 0){
+					return;
 				}
-				return;
+			}
+			else {
+				RingBuffer<BufferHolder> queue = getReadBackpressureBuffer();
+				long n = queue.next();
+				queue.get(n).buffer = bytes;
+				queue.publish(n);
+				if(RUNNING.getAndIncrement(this) == 0){
+					return;
+				}
 			}
 
-			RingBuffer<BufferHolder> queue = getReadBackpressureBuffer();
-			long n = queue.next();
-			queue.get(n).buffer = bytes;
-			queue.publish(n);
 			drainBackpressureQueue();
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			if (TERMINATED.compareAndSet(this, 0, 1)) {
-				inputSubscriber.onError(t);
+			if (!TERMINATED.compareAndSet(this, 0, 1)) {
+				throw ReactorFatalException.create(t);
 			}
+			error = t;
+			drain();
 		}
 
 		@Override
 		public void onComplete() {
-			if (TERMINATED.compareAndSet(this, 0, 1)) {
-				inputSubscriber.onComplete();
+			if (!TERMINATED.compareAndSet(this, 0, 1)) {
+				drain();
+				throw CancelException.get();
 			}
+			drain();
 		}
 
-		boolean drainNext() {
+		boolean shouldReadMore() {
 			return requested > 0;
 		}
 
-		void drainBackpressureQueue() {
-			if(RUNNING.compareAndSet(this, 0, 1)) {
-				try {
-					long demand = requested;
-					if (demand <= 0) {
-						return;
-					}
+		void drain(){
+			if(RUNNING.getAndIncrement(this) == 0){
+				drainBackpressureQueue();
+			}
+		}
 
+		void drainBackpressureQueue() {
+			int missed = 1;
+			final Sequence pollCursor = this.pollCursor;
+			final Subscriber<? super Buffer> child = this.inputSubscriber;
+			for (; ; ) {
+				long demand = requested;
+
+				if(terminated == 1){
+					if(error != null){
+						inputSubscriber.onError(error);
+					}
+					else {
+						inputSubscriber.onComplete();
+					}
+					return;
+				}
+				if (demand != 0) {
 					long remaining = demand;
 					RingBuffer<BufferHolder> queue = readBackpressureBuffer;
 					if (queue != null) {
 
 						long polled = -1;
 						BufferHolder holder;
-
 						while (polled <= queue.getCursor() && (demand == Long.MAX_VALUE || remaining-- > 0)) {
+
+							if(subscription == null){
+								break;
+							}
 
 							polled = pollCursor.get() + 1L;
 							holder = queue.get(polled);
 							if (holder.buffer != null) {
-								inputSubscriber.onNext(holder.buffer);
+								child.onNext(holder.buffer);
 								holder.buffer = null;
 								pollCursor.set(polled);
 							}
@@ -491,8 +515,11 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 					if (demand != Long.MAX_VALUE && remaining > 0 && subscription != null) {
 						subscription.request(remaining);
 					}
-				} finally {
-					RUNNING.decrementAndGet(this);
+				}
+
+				missed = RUNNING.addAndGet(this, -missed);
+				if (missed == 0){
+					break;
 				}
 			}
 
@@ -502,8 +529,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 		RingBuffer<BufferHolder> getReadBackpressureBuffer() {
 			RingBuffer<BufferHolder> q = readBackpressureBuffer;
 			if (q == null) {
-				q =
-						RingBuffer.createSingleProducer((Supplier<BufferHolder>) EMITTED, bufferSize, RingBuffer.NO_WAIT);
+				q = RingBuffer.createSingleProducer((Supplier<BufferHolder>) EMITTED, bufferSize, RingBuffer.NO_WAIT);
 				q.addGatingSequences(pollCursor = Sequencer.newSequence(-1L));
 				readBackpressureBuffer = q;
 			}
@@ -532,16 +558,14 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 		}
 	}
 
-	private class FlushOnTerminateSubscriber extends BaseSubscriber<Object>
-			implements Consumer<Void> {
+	private class FlushOnTerminateSubscriber extends BaseSubscriber<Object> implements Consumer<Void> {
 
 		private final ChannelHandlerContext ctx;
 		private final ChannelPromise        promise;
 		ChannelFuture lastWrite;
 		Subscription  subscription;
 
-		public FlushOnTerminateSubscriber(ChannelHandlerContext ctx,
-				ChannelPromise promise) {
+		public FlushOnTerminateSubscriber(ChannelHandlerContext ctx, ChannelPromise promise) {
 			this.ctx = ctx;
 			this.promise = promise;
 		}
@@ -571,8 +595,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 				if (cf != null && log.isDebugEnabled()) {
 					cf.addListener(new ChannelFutureListener() {
 						@Override
-						public void operationComplete(ChannelFuture future)
-								throws Exception {
+						public void operationComplete(ChannelFuture future) throws Exception {
 							if (!future.isSuccess()) {
 								log.error("write error :" + w, future.cause());
 								if (Buffer.class.isAssignableFrom(w.getClass())) {
@@ -609,8 +632,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 		}
 	}
 
-	private class FlushOnCapacitySubscriber extends BaseSubscriber<Object>
-			implements Runnable, Consumer<Void> {
+	private class FlushOnCapacitySubscriber extends BaseSubscriber<Object> implements Runnable, Consumer<Void> {
 
 		private final ChannelHandlerContext ctx;
 		private final ChannelPromise        promise;
@@ -636,8 +658,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 			}
 		};
 
-		public FlushOnCapacitySubscriber(ChannelHandlerContext ctx,
-				ChannelPromise promise, long capacity) {
+		public FlushOnCapacitySubscriber(ChannelHandlerContext ctx, ChannelPromise promise, long capacity) {
 			this.ctx = ctx;
 			this.promise = promise;
 			this.capacity = capacity;
@@ -711,6 +732,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 		public void accept(Void aVoid) {
 			subscription = null;
 		}
+
 	}
 
 	public ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> getHandler() {

@@ -21,6 +21,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.Timers;
+import reactor.core.error.Exceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.SignalType;
@@ -1842,7 +1843,7 @@ public class Streams {
 	 *
 	 * @param publisher the publisher to listen for terminal signals
 	 */
-	public static void await(Publisher<?> publisher) throws Throwable {
+	public static void await(Publisher<?> publisher) throws InterruptedException {
 		await(publisher, 30000, TimeUnit.MILLISECONDS, true);
 	}
 
@@ -1855,7 +1856,7 @@ public class Streams {
 	 * @param publisher the publisher to listen for terminal signals
 	 * @param timeout   the maximum wait time in seconds
 	 */
-	public static void await(Publisher<?> publisher, long timeout) throws Throwable {
+	public static void await(Publisher<?> publisher, long timeout) throws InterruptedException {
 		await(publisher, timeout, TimeUnit.SECONDS, true);
 	}
 
@@ -1869,7 +1870,7 @@ public class Streams {
 	 * @param timeout   the maximum wait time in unit
 	 * @param unit      the TimeUnit to use for the timeout
 	 */
-	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit) throws Throwable {
+	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit) throws InterruptedException {
 		await(publisher, timeout, unit, true);
 	}
 
@@ -1884,7 +1885,7 @@ public class Streams {
 	 * @param unit      the TimeUnit to use for the timeout
 	 */
 	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit, final boolean request) throws
-	  Throwable {
+	                                                                                                     InterruptedException {
 		final AtomicReference<Throwable> exception = new AtomicReference<>();
 
 		final CountDownLatch latch = new CountDownLatch(1);
@@ -1911,24 +1912,13 @@ public class Streams {
 				s = null;
 				latch.countDown();
 			}
-
-			void cancel() {
-				Subscription s = this.s;
-				if (s != null) {
-					this.s = null;
-					try {
-						s.cancel();
-					} catch (Throwable t) {
-						exception.set(t);
-					}
-
-				}
-			}
 		});
 
 		latch.await(timeout, unit);
 		if (exception.get() != null) {
-			throw exception.get();
+			InterruptedException ie = new InterruptedException();
+			Exceptions.addCause(ie, exception.get());
+			throw ie;
 		}
 	}
 
