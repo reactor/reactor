@@ -479,19 +479,10 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 			final Subscriber<? super Buffer> child = this.inputSubscriber;
 			for (; ; ) {
 				long demand = requested;
-
-				if(terminated == 1){
-					if(error != null){
-						inputSubscriber.onError(error);
-					}
-					else {
-						inputSubscriber.onComplete();
-					}
-					return;
-				}
+				RingBuffer<BufferHolder> queue;
 				if (demand != 0) {
 					long remaining = demand;
-					RingBuffer<BufferHolder> queue = readBackpressureBuffer;
+					queue = readBackpressureBuffer;
 					if (queue != null) {
 
 						long polled = -1;
@@ -516,7 +507,16 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 						subscription.request(remaining);
 					}
 				}
-
+				queue = readBackpressureBuffer;
+				if((queue == null || queue.pending() == 0) && terminated == 1){
+					if(error != null){
+						inputSubscriber.onError(error);
+					}
+					else {
+						inputSubscriber.onComplete();
+					}
+					return;
+				}
 				missed = RUNNING.addAndGet(this, -missed);
 				if (missed == 0){
 					break;
