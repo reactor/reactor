@@ -33,7 +33,13 @@ class HashWheelTimerBusySpinStrategy extends Specification {
 		then:
 			"the latch was counted down"
 			latch.await(1, TimeUnit.SECONDS)
+
+		when:
+			"Cancelled"
 			timer.cancel()
+
+		then:
+			timer.isCancelled()
 
 	}
 

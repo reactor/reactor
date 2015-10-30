@@ -197,6 +197,11 @@ public class EventTimer implements Timer {
 		this.loop.interrupt();
 	}
 
+	@Override
+	public boolean isCancelled() {
+		return !loop.isAlive();
+	}
+
 	private static long now(int resolution) {
 		return (long) (Math.ceil(System.currentTimeMillis() / resolution) * resolution);
 	}

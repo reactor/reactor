@@ -46,7 +46,6 @@ import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.LiteBlockingWaitStrategy;
-import reactor.core.support.wait.PhasedBackoffWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
@@ -807,14 +806,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 				}
 
 				//while(processor.alive() && processor.upstreamSubscription == null);
-				try {
-					Thread.currentThread()
-					      .setContextClassLoader(processor.contextClassLoader);
-					subscriber.onSubscribe(subscription);
-				}
-				catch (Throwable t) {
-					Exceptions.<T>publisher(t)
-					          .subscribe(subscriber);
+				if(!processor.startSubscriber(subscriber, subscription)){
 					return;
 				}
 

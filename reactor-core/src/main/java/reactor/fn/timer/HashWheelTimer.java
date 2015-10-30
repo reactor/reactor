@@ -61,13 +61,6 @@ public class HashWheelTimer implements Timer {
 		}
 	};
 
-	final static private Consumer<Void> noop = new Consumer<Void>() {
-		@Override
-		public void accept(Void noop) {
-			//NOOP
-		}
-	};
-
 	public static final  int    DEFAULT_WHEEL_SIZE = 512;
 	private static final String DEFAULT_TIMER_NAME = "hash-wheel-timer";
 
@@ -121,7 +114,7 @@ public class HashWheelTimer implements Timer {
 		this.wheel = RingBuffer.createSingleProducer(new Supplier<Set<TimerPausable>>() {
 			@Override
 			public Set<TimerPausable> get() {
-				return new ConcurrentSkipListSet<TimerPausable>();
+				return new ConcurrentSkipListSet<>();
 			}
 		}, wheelSize);
 
@@ -140,6 +133,13 @@ public class HashWheelTimer implements Timer {
 			public void run() {
 				long deadline = now.get();
 
+				Consumer<Void> noop = new Consumer<Void>() {
+					@Override
+					public void accept(Void noop) {
+						if(loop.isInterrupted()) throw AlertException.INSTANCE;
+					}
+				};
+
 				while (true) {
 					Set<TimerPausable> registrations = wheel.get(wheel.getCursor());
 
@@ -152,7 +152,7 @@ public class HashWheelTimer implements Timer {
 							}
 							catch (RejectedExecutionException re){
 								if(loop.isInterrupted())
-									return;
+									break;
 								throw re;
 							}
 							registrations.remove(r);
@@ -172,10 +172,15 @@ public class HashWheelTimer implements Timer {
 					try {
 						waitStrategy.waitFor(deadline, now, noop);
 					} catch (AlertException | InterruptedException e) {
-						return;
+						break;
 					}
 
 					wheel.publish(wheel.next());
+				}
+				if(executor instanceof Processor){
+					((Processor)executor).onComplete();
+				}else if(executor instanceof ExecutorService){
+					((ExecutorService)executor).shutdown();
 				}
 			}
 		});
@@ -229,6 +234,9 @@ public class HashWheelTimer implements Timer {
 	private TimerPausable schedule(long recurringTimeout,
 	                               long firstDelay,
 	                               Consumer<Long> consumer) {
+		if(loop.isInterrupted() || !loop.isAlive()){
+			throw CancelException.get();
+		}
 		if (recurringTimeout != 0) {
 			TimeUtils.checkResolution(recurringTimeout, resolution);
 		}
@@ -242,6 +250,11 @@ public class HashWheelTimer implements Timer {
 		TimerPausable r = new TimerPausable(firstFireRounds, offset, consumer, rounds);
 		wheel.get(wheel.getCursor() + firstFireOffset + (recurringTimeout != 0 ? 1 : 0)).add(r);
 		return r;
+	}
+
+	@Override
+	public boolean isCancelled() {
+		return !loop.isAlive();
 	}
 
 	/**
@@ -267,11 +280,6 @@ public class HashWheelTimer implements Timer {
 	 */
 	public void cancel() {
 		this.loop.interrupt();
-		if(executor instanceof Processor){
-			((Processor)executor).onComplete();
-		}else if(executor instanceof ExecutorService){
-			((ExecutorService)executor).shutdown();
-		}
 	}
 
 	@Override

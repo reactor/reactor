@@ -66,7 +66,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 			catch (Throwable throwable) {
 				Exceptions.throwIfFatal(throwable);
 				s.cancel();
-				doError(throwable);
+				doOnSubscriberError(throwable);
 			}
 		}
 	}
@@ -84,7 +84,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 			throw c;
 		} catch (Throwable throwable) {
 			cancel();
-			doError(Exceptions.addValueAsLastCause(throwable, i));
+			doOnSubscriberError(Exceptions.addValueAsLastCause(throwable, i));
 		}
 	}
 
@@ -103,12 +103,16 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 		subscriber.onError(throwable);
 	}
 
+	protected void doOnSubscriberError(Throwable throwable){
+		subscriber.onError(throwable);
+	}
+
 	@Override
 	public final void onComplete() {
 		try {
 			doComplete();
 		} catch (Throwable throwable) {
-			doError(throwable);
+			doOnSubscriberError(throwable);
 		}
 	}
 
@@ -122,7 +126,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 			BackpressureUtils.checkRequest(n);
 			doRequest(n);
 		} catch (Throwable throwable) {
-			doError(throwable);
+			doOnSubscriberError(throwable);
 		}
 	}
 
@@ -138,7 +142,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 		try {
 			doCancel();
 		} catch (Throwable throwable) {
-			doError(throwable);
+			doOnSubscriberError(throwable);
 		}
 	}
 

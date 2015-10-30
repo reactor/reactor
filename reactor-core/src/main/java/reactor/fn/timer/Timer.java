@@ -98,4 +98,9 @@ public interface Timer {
 	 */
 	void cancel();
 
+	/**
+	 * Is this timer cancelled ?
+	 */
+	boolean isCancelled();
+
 }

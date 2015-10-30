@@ -77,7 +77,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		final int                                                   limit;
 
 		private Sequence pollCursor;
-		private volatile RingBuffer<Emitted<V>> emitBuffer;
+		private volatile RingBuffer<RingBuffer.Slot<V>> emitBuffer;
 
 		private volatile boolean done;
 
@@ -144,15 +144,10 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			final Publisher<? extends V> p = mapper.apply(t);
 
 			if (p instanceof Supplier) {
-				try {
-					V v = ((Supplier<? extends V>) p).get();
-					if (v != null) {
-						tryEmit(v);
-						return;
-					}
-				}
-				catch (Throwable e){
-					reportError(e);
+				V v = ((Supplier<? extends V>) p).get();
+				if (v != null) {
+					tryEmit(v);
+					return;
 				}
 			}
 
@@ -211,13 +206,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		@SuppressWarnings("unchecked")
-		RingBuffer<Emitted<V>> getMainQueue() {
-			RingBuffer<Emitted<V>> q = emitBuffer;
+		RingBuffer<RingBuffer.Slot<V>> getMainQueue() {
+			RingBuffer<RingBuffer.Slot<V>> q = emitBuffer;
 			if (q == null) {
 				q = RingBuffer.createSingleProducer(
-				  (Supplier<Emitted<V>>) EMITTED,
-				  maxConcurrency == Integer.MAX_VALUE ? bufferSize : maxConcurrency,
-				  RingBuffer.NO_WAIT
+				  maxConcurrency == Integer.MAX_VALUE ? bufferSize : maxConcurrency
 				);
 				q.addGatingSequences(pollCursor = Sequencer.newSequence(-1L));
 				emitBuffer = q;
@@ -241,7 +234,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 						subscription.request(limit);
 					}
 				} else {
-					RingBuffer<Emitted<V>> q = getMainQueue();
+					RingBuffer<RingBuffer.Slot<V>> q = getMainQueue();
 					long seq = q.tryNext();
 					q.get(seq).value = value;
 					q.publish(seq);
@@ -251,7 +244,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					return;
 				}
 			} else {
-				RingBuffer<Emitted<V>> q = getMainQueue();
+				RingBuffer<RingBuffer.Slot<V>> q = getMainQueue();
 				long seq = q.tryNext();
 				q.get(seq).value = value;
 				q.publish(seq);
@@ -263,10 +256,10 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		@SuppressWarnings("unchecked")
-		RingBuffer<Emitted<V>> getInnerQueue(InnerSubscriber<T, V> inner) {
-			RingBuffer<Emitted<V>> q = inner.queue;
+		RingBuffer<RingBuffer.Slot<V>> getInnerQueue(InnerSubscriber<T, V> inner) {
+			RingBuffer<RingBuffer.Slot<V>> q = inner.queue;
 			if (q == null) {
-				q = RingBuffer.createSingleProducer((Supplier<Emitted<V>>) EMITTED, bufferSize, RingBuffer.NO_WAIT);
+				q = RingBuffer.createSingleProducer(bufferSize);
 				q.addGatingSequences(inner.pollCursor = Sequencer.newSequence(-1L));
 				inner.queue = q;
 			}
@@ -283,7 +276,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					}
 					inner.requestMore(1);
 				} else {
-					RingBuffer<Emitted<V>> q = getInnerQueue(inner);
+					RingBuffer<RingBuffer.Slot<V>> q = getInnerQueue(inner);
 					long seq = q.tryNext();
 					q.get(seq).value = value;
 					q.publish(seq);
@@ -292,7 +285,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					return;
 				}
 			} else {
-				RingBuffer<Emitted<V>> q = getInnerQueue(inner);
+				RingBuffer<RingBuffer.Slot<V>> q = getInnerQueue(inner);
 				long seq = q.tryNext();
 				q.get(seq).value = value;
 				q.publish(seq);
@@ -358,7 +351,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 				if (checkTerminate()) {
 					return;
 				}
-				RingBuffer<Emitted<V>> svq = emitBuffer;
+				RingBuffer<RingBuffer.Slot<V>> svq = emitBuffer;
 
 				long r = requested;
 				boolean unbounded = r == Long.MAX_VALUE;
@@ -368,7 +361,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 				if (svq != null) {
 					for (; ; ) {
 						long scalarEmission = 0;
-						Emitted<V> o;
+						RingBuffer.Slot<V> o;
 						V oo = null;
 						while (r != 0L) {
 							long cursor = pollCursor.get() + 1;
@@ -456,7 +449,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 						@SuppressWarnings("unchecked")
 						InnerSubscriber<T, V> is = (InnerSubscriber<T, V>) inner[j];
 
-						Emitted<V> o;
+						RingBuffer.Slot<V> o;
 						V oo = null;
 						for (; ; ) {
 							long produced = 0;
@@ -464,7 +457,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 								if (checkTerminate()) {
 									return;
 								}
-								RingBuffer<Emitted<V>> q = is.queue;
+								RingBuffer<RingBuffer.Slot<V>> q = is.queue;
 								if (q == null) {
 									break;
 								}
@@ -502,7 +495,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 							}
 						}
 						boolean innerDone = is.done;
-						RingBuffer<Emitted<V>> innerQueue = is.queue;
+						RingBuffer<RingBuffer.Slot<V>> innerQueue = is.queue;
 						if (innerDone && (innerQueue == null || innerQueue.pending() == 0)) {
 							removeInner(is);
 							if (checkTerminate()) {
@@ -584,7 +577,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		Sequence pollCursor;
 
 		volatile boolean                done;
-		volatile RingBuffer<Emitted<V>> queue;
+		volatile RingBuffer<RingBuffer.Slot<V>> queue;
 		int outstanding;
 
 		public InnerSubscriber(MergeBarrier<T, V> parent, long id) {
@@ -657,19 +650,6 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		public long getCapacity() {
 			return bufferSize;
 		}
-	}
-
-
-	@SuppressWarnings("raw")
-	static final Supplier EMITTED = new Supplier() {
-		@Override
-		public Emitted get() {
-			return new Emitted<>();
-		}
-	};
-
-	static final class Emitted<T> {
-		T value = null;
 	}
 
 }

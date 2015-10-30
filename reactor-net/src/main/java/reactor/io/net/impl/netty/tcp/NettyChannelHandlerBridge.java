@@ -212,7 +212,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 			finally {
 				if (buffer.getByteBuf() != null) {
 					if (buffer.getByteBuf()
-					          .isReadable()) {
+					          .refCnt() != 0) {
 						ReferenceCountUtil.release(buffer.getByteBuf());
 					}
 				}
@@ -358,7 +358,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 
 		Sequence pollCursor;
 		volatile Throwable error;
-		volatile RingBuffer<BufferHolder> readBackpressureBuffer;
+		volatile RingBuffer<RingBuffer.Slot<Buffer>> readBackpressureBuffer;
 
 		final int bufferSize;
 
@@ -423,9 +423,9 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 					}
 				}
 				else{
-					RingBuffer<BufferHolder> queue = getReadBackpressureBuffer();
+					RingBuffer<RingBuffer.Slot<Buffer>> queue = getReadBackpressureBuffer();
 					long n = queue.next();
-					queue.get(n).buffer = bytes;
+					queue.get(n).value = bytes;
 					queue.publish(n);
 				}
 				if(RUNNING.decrementAndGet(this) == 0){
@@ -433,9 +433,9 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 				}
 			}
 			else {
-				RingBuffer<BufferHolder> queue = getReadBackpressureBuffer();
+				RingBuffer<RingBuffer.Slot<Buffer>> queue = getReadBackpressureBuffer();
 				long n = queue.next();
-				queue.get(n).buffer = bytes;
+				queue.get(n).value = bytes;
 				queue.publish(n);
 				if(RUNNING.getAndIncrement(this) == 0){
 					return;
@@ -479,14 +479,14 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 			final Subscriber<? super Buffer> child = this.inputSubscriber;
 			for (; ; ) {
 				long demand = requested;
-				RingBuffer<BufferHolder> queue;
+				RingBuffer<RingBuffer.Slot<Buffer>> queue;
 				if (demand != 0) {
 					long remaining = demand;
 					queue = readBackpressureBuffer;
 					if (queue != null) {
 
 						long polled = -1;
-						BufferHolder holder;
+						RingBuffer.Slot<Buffer> holder;
 						while (polled <= queue.getCursor() && (demand == Long.MAX_VALUE || remaining-- > 0)) {
 
 							if(subscription == null){
@@ -495,9 +495,9 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 
 							polled = pollCursor.get() + 1L;
 							holder = queue.get(polled);
-							if (holder.buffer != null) {
-								child.onNext(holder.buffer);
-								holder.buffer = null;
+							if (holder.value != null) {
+								child.onNext(holder.value);
+								holder.value = null;
 								pollCursor.set(polled);
 							}
 						}
@@ -526,10 +526,10 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 		}
 
 		@SuppressWarnings("unchecked")
-		RingBuffer<BufferHolder> getReadBackpressureBuffer() {
-			RingBuffer<BufferHolder> q = readBackpressureBuffer;
+		RingBuffer<RingBuffer.Slot<Buffer>> getReadBackpressureBuffer() {
+			RingBuffer<RingBuffer.Slot<Buffer>> q = readBackpressureBuffer;
 			if (q == null) {
-				q = RingBuffer.createSingleProducer((Supplier<BufferHolder>) EMITTED, bufferSize, RingBuffer.NO_WAIT);
+				q = RingBuffer.createSingleProducer(bufferSize);
 				q.addGatingSequences(pollCursor = Sequencer.newSequence(-1L));
 				readBackpressureBuffer = q;
 			}
@@ -542,19 +542,6 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 					"terminated=" + terminated +
 					", requested=" + requested +
 					'}';
-		}
-
-		@SuppressWarnings("raw")
-		static final Supplier EMITTED = new Supplier() {
-			@Override
-			public BufferHolder get() {
-				return new BufferHolder();
-			}
-		};
-
-		private static final class BufferHolder {
-
-			Buffer buffer;
 		}
 	}
 

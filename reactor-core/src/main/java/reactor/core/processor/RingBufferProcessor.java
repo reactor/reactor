@@ -864,12 +864,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 					return;
 				}
 
-				try {
-					Thread.currentThread().setContextClassLoader(processor.contextClassLoader);
-					subscriber.onSubscribe(subscription);
-				}
-				catch (Throwable t) {
-					Exceptions.<T>publisher(t).subscribe(subscriber);
+				if(!processor.startSubscriber(subscriber, subscription)){
 					return;
 				}
 

@@ -19,6 +19,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.support.SignalType;
@@ -172,6 +173,20 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> 
 	 */
 	public final boolean isInContext() {
 		return Thread.currentThread().getContextClassLoader() == contextClassLoader;
+	}
+
+	protected final boolean startSubscriber(Subscriber<? super OUT> subscriber, Subscription subscription){
+		try {
+			Thread.currentThread()
+			      .setContextClassLoader(contextClassLoader);
+			subscriber.onSubscribe(subscription);
+			return true;
+		}
+		catch (Throwable t) {
+			Exceptions.<OUT>publisher(t)
+					.subscribe(subscriber);
+			return false;
+		}
 	}
 
 }
