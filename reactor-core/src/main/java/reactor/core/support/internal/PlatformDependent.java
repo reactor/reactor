@@ -28,6 +28,7 @@ public class PlatformDependent {
 
 	private static final boolean HAS_UNSAFE = hasUnsafe0();
 
+	@SuppressWarnings("unchecked")
 	public static <U, W> AtomicReferenceFieldUpdater<U, W> newAtomicReferenceFieldUpdater(
 			Class<U> tclass, String fieldName) {
 		if (hasUnsafe()) {
@@ -37,7 +38,7 @@ public class PlatformDependent {
 				// ignore
 			}
 		}
-		return null;
+		return AtomicReferenceFieldUpdater.newUpdater(tclass, (Class<W>)Object.class, fieldName);
 	}
 
 	/**
