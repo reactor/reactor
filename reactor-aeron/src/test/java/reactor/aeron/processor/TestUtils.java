@@ -27,21 +27,16 @@ public class TestUtils {
 
 	public static void waitForTrue(long timeoutSecs,
 								   Supplier<String> errorMessageSupplier,
-								   Supplier<Boolean> resultSupplier)
-			throws InterruptedException {
+								   Supplier<Boolean> conditionSupplier) throws InterruptedException {
 		Assert.notNull(errorMessageSupplier);
-		Assert.notNull(resultSupplier);
+		Assert.notNull(conditionSupplier);
 		Assert.isTrue(timeoutSecs > 0);
 
-		long startTime = System.nanoTime();
 		long timeoutNs = TimeUnit.SECONDS.toNanos(timeoutSecs);
+		long startTime = System.nanoTime();
 		do {
-			try {
-				if(resultSupplier.get()) {
-					return;
-				}
-			} catch (Exception e) {
-				throw new RuntimeException(e);
+			if(conditionSupplier.get()) {
+				return;
 			}
 			Thread.sleep(100);
 		} while (System.nanoTime() - startTime < timeoutNs);
@@ -50,8 +45,7 @@ public class TestUtils {
 
 	public static void waitForTrue(long timeoutSecs,
 								   String errorMessage,
-								   Supplier<Boolean> resultSupplier)
-			throws InterruptedException {
+								   Supplier<Boolean> resultSupplier) throws InterruptedException {
 		waitForTrue(timeoutSecs, () -> errorMessage, resultSupplier);
 	}
 

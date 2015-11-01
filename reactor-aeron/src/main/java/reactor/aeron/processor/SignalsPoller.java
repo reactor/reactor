@@ -7,6 +7,7 @@ import reactor.core.error.Exceptions;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import uk.co.real_logic.aeron.FragmentAssembler;
+import uk.co.real_logic.aeron.Subscription;
 import uk.co.real_logic.aeron.logbuffer.FragmentHandler;
 import uk.co.real_logic.aeron.logbuffer.Header;
 import uk.co.real_logic.agrona.DirectBuffer;
@@ -35,26 +36,25 @@ class SignalsPoller implements Runnable {
 
 	private final Context context;
 
-	/**
-	 * Complete signal was received from one of senders
-	 */
-	private volatile boolean completeReceived = false;
+	private final ErrorFragmentHandler errorFragmentHandler;
 
-	/**
-	 * Error signal was received from one of senders
-	 */
-	private volatile boolean errorReceived = false;
+	private final CompleteNextFragmentHandler completeNextFragmentHandler;
 
 	private abstract class SignalsPollerFragmentHandler implements FragmentHandler {
 
+		private final FragmentAssembler fragmentAssembler = new FragmentAssembler(new FragmentHandler() {
+			@Override
+			public void onFragment(DirectBuffer buffer, int offset, int length, Header header) {
+				doOnFragment(buffer, offset, length, header);
+			}
+		});
+
 		@Override
 		public void onFragment(DirectBuffer buffer, int offset, int length, Header header) {
+			fragmentAssembler.onFragment(buffer, offset, length, header);
+		}
 
-			// terminal event was received => all other Next and Complete events should be ignored
-			if (errorReceived) {
-				return;
-			}
-
+		private void doOnFragment(DirectBuffer buffer, int offset, int length, Header header) {
 			byte[] data = new byte[length - 1];
 			buffer.getBytes(offset + 1, data);
 			byte signalTypeCode = buffer.getByte(offset);
@@ -92,24 +92,29 @@ class SignalsPoller implements Runnable {
 		 * Used to check if Complete signal was sent before any events were
 		 * requested via a subscription
 		 */
-		boolean shouldSnap;
+		boolean checkForComplete;
 
 		/**
-		 * Message received from Aeron when {link #shouldSnap} was set
+		 * Message read from Aeron but not yet forwarded into a subscriber
 		 */
-		Buffer snappedNextMsg;
+		Buffer reservedNextSignal;
 
 		/**
 		 * Number of Next signals received
 		 */
 		int nNextSignalsReceived;
 
+		/**
+		 * Complete signal was received from one of senders
+		 */
+		private boolean completeReceived = false;
+
 		@Override
 		boolean handleSignal(byte signalTypeCode, byte[] data, int sessionId) {
 			if (signalTypeCode == SignalType.Next.getCode()) {
 				Buffer buffer = Buffer.wrap(data);
-				if (shouldSnap) {
-					snappedNextMsg = buffer;
+				if (checkForComplete) {
+					reservedNextSignal = buffer;
 				} else {
 					subscriber.onNext(buffer);
 					nNextSignalsReceived++;
@@ -128,12 +133,31 @@ class SignalsPoller implements Runnable {
 			return result;
 		}
 
+		public boolean hasReservedNextSignal() {
+			return reservedNextSignal != null;
+		}
+
+		public void processReservedNextSignal() {
+			subscriber.onNext(reservedNextSignal);
+			reservedNextSignal = null;
+		}
+
+		public boolean getAndResetCompleteReceived() {
+			boolean result = completeReceived;
+			completeReceived = false;
+			return result;
+		}
 	}
 
 	/**
 	 * Handler for Error signals
 	 */
 	private class ErrorFragmentHandler extends SignalsPollerFragmentHandler {
+
+		/**
+		 * Error signal was received from one of senders
+		 */
+		private boolean errorReceived = false;
 
 		@Override
 		boolean handleSignal(byte signalTypeCode, byte[] data, int sessionId) {
@@ -145,6 +169,10 @@ class SignalsPoller implements Runnable {
 				return true;
 			}
 			return false;
+		}
+
+		boolean isErrorReceived() {
+			return errorReceived;
 		}
 
 	}
@@ -165,69 +193,52 @@ class SignalsPoller implements Runnable {
 		this.exceptionSerializer = exceptionSerializer;
 		this.completionTask = completionTask;
 		this.processorAliveFunction = processorAliveFunction;
+		this.errorFragmentHandler = new ErrorFragmentHandler();
+		this.completeNextFragmentHandler = new CompleteNextFragmentHandler();
 	}
 
 	@Override
 	public void run() {
-		uk.co.real_logic.aeron.Subscription nextCompleteSub =
-				aeronHelper.addSubscription(context.receiverChannel, context.streamId);
-		uk.co.real_logic.aeron.Subscription errorSub =
-				aeronHelper.addSubscription(context.receiverChannel, context.errorStreamId);
+		uk.co.real_logic.aeron.Subscription nextCompleteSub = createNextCompleteSub();
+		uk.co.real_logic.aeron.Subscription errorSub = createErrorSub();
 
-		//TODO: Possible timing issue due to CommandsPoller termination
-		try {
-			subscriber.onSubscribe(processorSubscription);
-		} catch (Throwable t) {
-			Exceptions.throwIfFatal(t);
-			subscriber.onError(t);
-		}
-
-		final FragmentHandler errorFragmentAssembler = new FragmentAssembler(new ErrorFragmentHandler());
-		final CompleteNextFragmentHandler completeNextFragmentHandler = new CompleteNextFragmentHandler();
-		final FragmentAssembler completeNextFragmentAssembler = new FragmentAssembler(completeNextFragmentHandler);
+		passSubscriptionToSubscriber();
 
 		final IdleStrategy idleStrategy = AeronHelper.newBackoffIdleStrategy();
 		final RequestCounter requestCounter = processorSubscription.getRequestCounter();
 		try {
 			while (processorSubscription.isActive()) {
-				errorSub.poll(errorFragmentAssembler, 1);
-				if (errorReceived) {
+				errorSub.poll(errorFragmentHandler, 1);
+				if (errorFragmentHandler.isErrorReceived()) {
 					break;
 				}
 
 				if (aliveSendersChecker.isNoSendersDetected()) {
-					// Executed when Complete was received and all publishers are dead
 					subscriber.onComplete();
 					break;
 				}
 
-				int fragmentLimit = (int) requestCounter.getNextRequestLimit();
-				if (fragmentLimit == 0 && completeNextFragmentHandler.snappedNextMsg == null) {
-					fragmentLimit = 1;
-					completeNextFragmentHandler.shouldSnap = true;
-				} else {
-					completeNextFragmentHandler.shouldSnap = false;
-				}
-
 				int nFragmentsReceived = 0;
-				if (fragmentLimit > 0) {
-					if (completeNextFragmentHandler.snappedNextMsg != null) {
-						subscriber.onNext(completeNextFragmentHandler.snappedNextMsg);
-						completeNextFragmentHandler.snappedNextMsg = null;
+				int fragmentLimit = (int) requestCounter.getNextRequestLimit();
+				if (fragmentLimit == 0) {
+					if (!completeNextFragmentHandler.hasReservedNextSignal()) {
+						checkForCompleteSignal(nextCompleteSub);
+					}
+				} else {
+					if (completeNextFragmentHandler.hasReservedNextSignal()) {
+						completeNextFragmentHandler.processReservedNextSignal();
 						fragmentLimit--;
 						requestCounter.release(1);
-						nFragmentsReceived = 1;
 					}
 					if (fragmentLimit > 0) {
-						nFragmentsReceived += nextCompleteSub.poll(completeNextFragmentAssembler, fragmentLimit);
+						nFragmentsReceived = nextCompleteSub.poll(completeNextFragmentHandler, fragmentLimit);
 						requestCounter.release(completeNextFragmentHandler.getAndClearNextEventsReceived());
 					}
 				}
 				idleStrategy.idle(nFragmentsReceived);
 
-				if (completeReceived) {
+				if (completeNextFragmentHandler.getAndResetCompleteReceived()) {
 					if (processorAliveFunction.apply(null)) {
-						completeReceived = false;
 						aliveSendersChecker.scheduleCheckForAliveSenders();
 					} else {
 						subscriber.onComplete();
@@ -241,6 +252,30 @@ class SignalsPoller implements Runnable {
 
 			completionTask.run();
 		}
+	}
+
+	private void passSubscriptionToSubscriber() {
+		//TODO: Possible timing issue due to CommandsPoller termination
+		try {
+			subscriber.onSubscribe(processorSubscription);
+		} catch (Throwable t) {
+			Exceptions.throwIfFatal(t);
+			subscriber.onError(t);
+		}
+	}
+
+	private Subscription createErrorSub() {
+		return aeronHelper.addSubscription(context.receiverChannel, context.errorStreamId);
+	}
+
+	private Subscription createNextCompleteSub() {
+		return aeronHelper.addSubscription(context.receiverChannel, context.streamId);
+	}
+
+	private void checkForCompleteSignal(Subscription nextCompleteSub) {
+		completeNextFragmentHandler.checkForComplete = true;
+		nextCompleteSub.poll(completeNextFragmentHandler, 1);
+		completeNextFragmentHandler.checkForComplete = false;
 	}
 
 }

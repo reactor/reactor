@@ -57,12 +57,14 @@ public class AeronProcessorMulticastTest {
 	@Test
 	public void testErrorSentByOtherProcessorShutdownsMine() throws InterruptedException {
 		AeronProcessor myProcessor = createProcessor("myProcessor");
-		TestSubscriber mySubscriber = createTestSubscriber(3);
+		TestSubscriber mySubscriber = createTestSubscriber();
 		myProcessor.subscribe(mySubscriber);
+		mySubscriber.requestUnlimited();
 
 		AeronProcessor otherProcessor = createProcessor("otherProcessor");
-		TestSubscriber otherSubscriber = createTestSubscriber(3);
+		TestSubscriber otherSubscriber = createTestSubscriber();
 		otherProcessor.subscribe(otherSubscriber);
+		otherSubscriber.requestUnlimited();
 
 		otherProcessor.onError(new RuntimeException("Bah"));
 
@@ -80,12 +82,14 @@ public class AeronProcessorMulticastTest {
 	@Test
 	public void testCompleteSentByOtherProcessorDoesNotShutdownMine() throws InterruptedException {
 		AeronProcessor myProcessor = createProcessor("myProcessor");
-		TestSubscriber mySubscriber = createTestSubscriber(3);
+		TestSubscriber mySubscriber = createTestSubscriber();
 		myProcessor.subscribe(mySubscriber);
+		mySubscriber.requestUnlimited();
 
 		AeronProcessor otherProcessor = createProcessor("otherProcessor");
-		TestSubscriber otherSubscriber = createTestSubscriber(3);
+		TestSubscriber otherSubscriber = createTestSubscriber();
 		otherProcessor.subscribe(otherSubscriber);
+		otherSubscriber.requestUnlimited();
 
 		otherProcessor.onComplete();
 
@@ -107,10 +111,11 @@ public class AeronProcessorMulticastTest {
 		AeronProcessor otherProcessor = createProcessor("otherProcessor");
 		otherProcessor.onNext(Buffer.wrap("Glory"));
 
-		TestSubscriber mySubscriber = createTestSubscriber(2);
+		TestSubscriber mySubscriber = createTestSubscriber();
 		myProcessor.subscribe(mySubscriber);
+		mySubscriber.requestUnlimited();
 
-		mySubscriber.assertAllEventsReceived();
+		mySubscriber.assertNextSignals("Live", "Glory");
 		mySubscriber.assertCompleteReceived();
 
 		otherProcessor.onComplete();
@@ -126,11 +131,11 @@ public class AeronProcessorMulticastTest {
 				.subscribe(server);
 
 		AeronProcessor client1 = createProcessor("client-1");
-		StepByStepTestSubscriber subscriber1 = new StepByStepTestSubscriber(TIMEOUT_SECS);
+		TestSubscriber subscriber1 = createTestSubscriber();
 		client1.subscribe(subscriber1);
 
 		AeronProcessor client2 = createProcessor("client-2");
-		StepByStepTestSubscriber subscriber2 = new StepByStepTestSubscriber(TIMEOUT_SECS);
+		TestSubscriber subscriber2 = createTestSubscriber();
 		client2.subscribe(subscriber2);
 
 		subscriber1.request(1);
@@ -166,11 +171,11 @@ public class AeronProcessorMulticastTest {
 				.subscribe(server);
 
 		AeronProcessor client1 = createProcessor("client-1");
-		StepByStepTestSubscriber subscriber1 = new StepByStepTestSubscriber(TIMEOUT_SECS);
+		TestSubscriber subscriber1 = createTestSubscriber();
 		client1.subscribe(subscriber1);
 
 		AeronProcessor client2 = createProcessor("client-2");
-		StepByStepTestSubscriber subscriber2 = new StepByStepTestSubscriber(TIMEOUT_SECS);
+		TestSubscriber subscriber2 = createTestSubscriber();
 		client2.subscribe(subscriber2);
 
 		subscriber1.request(1);
@@ -197,8 +202,8 @@ public class AeronProcessorMulticastTest {
 				.publicationLingerTimeoutMillis(250));
 	}
 
-	private TestSubscriber createTestSubscriber(int nExpectedEvents) {
-		return new TestSubscriber(TIMEOUT_SECS, nExpectedEvents);
+	private TestSubscriber createTestSubscriber() {
+		return TestSubscriber.createWithTimeoutSecs(TIMEOUT_SECS);
 	}
 
 }

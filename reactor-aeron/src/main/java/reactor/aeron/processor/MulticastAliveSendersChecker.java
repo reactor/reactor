@@ -141,7 +141,7 @@ class MulticastAliveSendersChecker implements AliveSendersChecker {
 
 		FragmentHandler delegate;
 
-		AliveCountingFragmentHandler(UUID id) {
+		AliveCountingFragmentHandler(final UUID id) {
 			this.delegate = new FragmentAssembler(new FragmentHandler() {
 				@Override
 				public void onFragment(DirectBuffer buffer, int offset, int length, Header header) {

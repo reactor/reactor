@@ -69,9 +69,11 @@ public class AeronSubscriberPublisherTest {
 				.senderChannel("udp://127.0.0.1:" + senderPort)
 				.receiverPort(receiverPort));
 
-		TestSubscriber testSubscriber = new TestSubscriber(1, 3);
-		publisher.subscribe(testSubscriber);
-		testSubscriber.assertAllEventsReceived();
+		TestSubscriber clientSubscriber = TestSubscriber.createWithTimeoutSecs(1);
+		publisher.subscribe(clientSubscriber);
+		clientSubscriber.requestUnlimited();
+
+		clientSubscriber.assertNextSignals("One", "Two", "Three");
 
 		subscriber.shutdown();
 		publisher.shutdown();
