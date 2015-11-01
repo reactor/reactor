@@ -26,9 +26,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Builder of {@link AeronProcessor}
+ * A class containing parameter values required to create instances of
+ * {@link AeronProcessor}, {@link AeronSubscriber} or {@link AeronPublisher}
  */
-public class Builder {
+public class Context {
+
+	public static final int DEFAULT_SENDER_PORT = 12000;
+
+	public static final int DEFAULT_RECEIVER_PORT = 12001;
 
 	/**
 	 * Processor name used as a base name for threads created by
@@ -42,46 +47,37 @@ public class Builder {
 	 */
 	boolean autoCancel;
 
-	/**
-	 * Aeron channel used by the signals sender and the receiver
-	 * of the processor
-	 */
-	String channel;
+	String senderChannel = createChannelForPort(DEFAULT_SENDER_PORT);
+
+	String receiverChannel = createChannelForPort(DEFAULT_RECEIVER_PORT);
 
 	/**
 	 * Aeron StreamId used by the signals sender to publish Next and
 	 * Complete signals
 	 */
-	Integer streamId;
+	int streamId = 1;
 
 	/**
 	 * Aeron StreamId used by the signals sender to publish Error signals
 	 */
-	Integer errorStreamId;
+	int errorStreamId = 2;
 
 	/**
 	 * Aeron StreamId used by the signals sender to listen to commands
 	 * from the receiver
 	 */
-	Integer commandRequestStreamId;
+	int commandRequestStreamId = 3;
 
 	/**
 	 * Aeron StreamId used by signals sender to reply to command requests
 	 * from signals receiver
 	 */
-	Integer commandReplyStreamId;
+	int commandReplyStreamId = 4;
 
 	/**
-	 * Context for publishing signals into Aeron
-	 * When <tt>null</tt> a new one is initialized by the processor
+	 * Instance of Aeron to be used by the processor
 	 */
-	Aeron.Context signalSenderContext;
-
-	/**
-	 * Context for reading signals from Aeron
-	 * When <tt>null</tt> a new one is initialized by the processor
-	 */
-	Aeron.Context signalReceiverContext;
+	Aeron aeron;
 
 	/**
 	 * If embedded media driver should be launched
@@ -94,14 +90,9 @@ public class Builder {
 	ExecutorService executorService;
 
 	/**
-	 * If publishing from multiple threads should be supported
-	 */
-	boolean multiPublishers;
-
-	/**
 	 * Number of fragments that could be read by the signals receiver during
-     * a single call to {@link uk.co.real_logic.aeron.Subscription#poll(FragmentHandler, int)}
-     * method
+	 * a single call to {@link uk.co.real_logic.aeron.Subscription#poll(FragmentHandler, int)}
+	 * method
 	 */
 	int subscriberFragmentLimit;
 
@@ -111,145 +102,140 @@ public class Builder {
 	long publicationLingerTimeoutMillis = TimeUnit.NANOSECONDS.toMillis(Configuration.PUBLICATION_LINGER_NS);
 
 	/**
-     * A timeout during which a message is retied to be published into Aeron.
-     * If the timeout elapses and the message cannot be published because of
-     * either {@link uk.co.real_logic.aeron.Publication#BACK_PRESSURED} or
-     * {@link uk.co.real_logic.aeron.Publication#NOT_CONNECTED} it is discarded.
-     * In the next version of the processor the behaviour is likely to change.
+	 * A timeout during which a message is retied to be published into Aeron.
+	 * If the timeout elapses and the message cannot be published because of
+	 * either {@link uk.co.real_logic.aeron.Publication#BACK_PRESSURED} or
+	 * {@link uk.co.real_logic.aeron.Publication#NOT_CONNECTED} it is discarded.
+	 * In the next version of the processor the behaviour is likely to change.
 	 */
 	long publicationTimeoutMillis = 1000;
 
 	/**
 	 * Size of internal ring buffer used for processing of messages
-     * to be published into Aeron
+	 * to be published into Aeron
 	 */
 	int ringBufferSize = 1024;
 
 	/**
 	 * Delay between clean up task subsequent runs.
 	 * The clean up task ignores all {@link CommandType#IsAliveReply} replies
-     * published by signal senders.
+	 * published by signal senders.
 	 */
 	int cleanupDelayMillis = 100;
 
-	Builder() {
+	private static String createChannelForPort(int port) {
+		return "udp://localhost:" + port;
 	}
 
-	public Builder name(String name) {
+	public Context name(String name) {
 		this.name = name;
 		return this;
 	}
 
-	public Builder autoCancel(boolean autoCancel) {
+	public Context autoCancel(boolean autoCancel) {
 		this.autoCancel = autoCancel;
 		return this;
 	}
 
-	public Builder channel(String channel) {
-		this.channel = channel;
+	public Context channel(String channel) {
+		this.senderChannel = channel;
+		this.receiverChannel = channel;
 		return this;
 	}
 
-	public Builder streamId(int streamId) {
+	public Context senderPort(int senderPort) {
+		this.senderChannel = createChannelForPort(senderPort);
+		return this;
+	}
+
+	public Context senderChannel(String senderChannel) {
+		this.senderChannel = senderChannel;
+		return this;
+	}
+
+	public Context receiverPort(int receiverPort) {
+		this.receiverChannel = createChannelForPort(receiverPort);
+		return this;
+	}
+
+	public Context receiverChannel(String receiverChannel) {
+		this.receiverChannel = receiverChannel;
+		return this;
+	}
+
+	public Context streamId(int streamId) {
 		this.streamId = streamId;
 		return this;
 	}
 
-	public Builder signalSenderContext(Aeron.Context signalSenderContext) {
-		this.signalSenderContext = signalSenderContext;
+	public Context aeron(Aeron aeron) {
+		this.aeron = aeron;
 		return this;
 	}
 
-	public Builder signalReceiverContext(Aeron.Context signalReceiverContext) {
-		this.signalReceiverContext = signalReceiverContext;
-		return this;
-	}
-
-	public Builder launchEmbeddedMediaDriver(boolean useEmbeddedMediaDriver) {
+	public Context launchEmbeddedMediaDriver(boolean useEmbeddedMediaDriver) {
 		this.launchEmbeddedMediaDriver = useEmbeddedMediaDriver;
 		return this;
 	}
 
-	public Builder executorService(ExecutorService executorService) {
+	public Context executorService(ExecutorService executorService) {
 		this.executorService = executorService;
 		return this;
 	}
 
-	public Builder subscriberFragmentLimit(int subscriberFragmentLimit) {
+	public Context subscriberFragmentLimit(int subscriberFragmentLimit) {
 		this.subscriberFragmentLimit = subscriberFragmentLimit;
 		return this;
 	}
 
-	public Builder errorStreamId(int errorStreamId) {
+	public Context errorStreamId(int errorStreamId) {
 		this.errorStreamId = errorStreamId;
 		return this;
 	}
 
-	public Builder commandRequestStreamId(int commandRequestStreamId) {
+	public Context commandRequestStreamId(int commandRequestStreamId) {
 		this.commandRequestStreamId = commandRequestStreamId;
 		return this;
 	}
 
-	public Builder commandReplyStreamId(int commandReplyStreamId) {
+	public Context commandReplyStreamId(int commandReplyStreamId) {
 		this.commandReplyStreamId = commandReplyStreamId;
 		return this;
 	}
 
-	public Builder publicationLingerTimeoutMillis(int publicationLingerTimeoutMillis) {
+	public Context publicationLingerTimeoutMillis(int publicationLingerTimeoutMillis) {
 		this.publicationLingerTimeoutMillis = publicationLingerTimeoutMillis;
 		return this;
 	}
 
-	public Builder publicationTimeoutMillis(long publicationTimeoutMillis) {
+	public Context publicationTimeoutMillis(long publicationTimeoutMillis) {
 		this.publicationTimeoutMillis = publicationTimeoutMillis;
 		return this;
 	}
 
-	public Builder ringBufferSize(int ringBufferSize) {
+	public Context ringBufferSize(int ringBufferSize) {
 		this.ringBufferSize = ringBufferSize;
 		return this;
 	}
 
-	public Builder cleanupDelayMillis(int cleanupDelayMillis) {
+	public Context cleanupDelayMillis(int cleanupDelayMillis) {
 		this.cleanupDelayMillis = cleanupDelayMillis;
 		return this;
 	}
 
-	/**
-	 * Creates a new processor supporting a single publishing thread only
-     * using the builder fields.
-	 *
-	 * @return a new processor
-	 */
-	public AeronProcessor create() {
-		validate();
-		return new AeronProcessor(this);
-	}
-
-	/**
-	 * Creates a new processor supports publishing from multiple threads
-     * using the builder fields.
-	 *
-	 * @return a new processor
-	 */
-	public AeronProcessor share() {
-		this.multiPublishers = true;
-		validate();
-		return new AeronProcessor(this);
-	}
-
-	private void validate() {
+	void validate() {
 		Assert.isTrue(name != null, "name should be provided");
-		Assert.isTrue(channel != null, "channel should be provided");
+
 		assertStreamIdsAreDifferent();
+
+		if (launchEmbeddedMediaDriver) {
+			Assert.isTrue(aeron == null, "aeron should be null when launchEmbeddedMediaDriver is true");
+		} else {
+			Assert.isTrue(aeron != null, "aeron should provided when launchEmbeddedMediaDriver is false");
+		}
 	}
 
 	private void assertStreamIdsAreDifferent() {
-		Assert.notNull(streamId, "streamId should be provided");
-		Assert.notNull(errorStreamId, "errorStreamId should be provided");
-		Assert.notNull(commandRequestStreamId, "commandRequestStreamId should be provided");
-		Assert.notNull(commandReplyStreamId, "commandReplyStreamId should be provided");
-
 		Set<Integer> streamIdsSet = new HashSet<>();
 		streamIdsSet.add(streamId);
 		streamIdsSet.add(errorStreamId);
@@ -261,4 +247,12 @@ public class Builder {
 								+ "should all be different",
 						streamId, errorStreamId, commandRequestStreamId, commandReplyStreamId));
 	}
+
+	AeronHelper createAeronHelper() {
+		AeronHelper aeronHelper = new AeronHelper(aeron, launchEmbeddedMediaDriver,
+				publicationTimeoutMillis, publicationLingerTimeoutMillis);
+		aeronHelper.initialise();
+		return aeronHelper;
+	}
+
 }

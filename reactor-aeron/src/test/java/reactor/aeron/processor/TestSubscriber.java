@@ -15,98 +15,150 @@
  */
 package reactor.aeron.processor;
 
-import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.subscriber.BaseSubscriber;
+import reactor.core.support.BackpressureUtils;
+import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Anatoly Kadyshev
  */
-public class TestSubscriber implements Subscriber<Buffer> {
+public class TestSubscriber extends BaseSubscriber<Buffer> {
 
-    private final CountDownLatch eventsCountDownLatch;
+	private volatile Subscription subscription;
 
-    private final CountDownLatch completeLatch = new CountDownLatch(1);
+	private final AtomicInteger numNextSignalsReceived = new AtomicInteger(0);
 
-    private final CountDownLatch errorLatch = new CountDownLatch(1);
+	private final List<String> receivedSignals = new ArrayList<>();
 
-    private final int timeoutSecs;
+	private final CountDownLatch completeLatch = new CountDownLatch(1);
 
-    private Throwable lastError;
+	private final CountDownLatch errorLatch = new CountDownLatch(1);
 
-    private Subscription subscription;
+	private final int timeoutSecs;
 
-    public TestSubscriber(int timeoutSecs, int nExpectedEvents) {
-        this.timeoutSecs = timeoutSecs;
-        this.eventsCountDownLatch = new CountDownLatch(nExpectedEvents);
-    }
+	private Throwable lastError;
 
-    @Override
-    public void onSubscribe(Subscription s) {
-        this.subscription = s;
-        s.request(Long.MAX_VALUE);
-    }
+	public static TestSubscriber createWithTimeoutSecs(int timeoutSecs) {
+		return new TestSubscriber(timeoutSecs);
+	}
 
-    @Override
-    public void onNext(Buffer buffer) {
-        eventsCountDownLatch.countDown();
-    }
+	private TestSubscriber(int timeoutSecs) {
+		this.timeoutSecs = timeoutSecs;
+	}
 
-    @Override
-    public void onError(Throwable t) {
-        this.lastError = t;
-        errorLatch.countDown();
-    }
+	@Override
+	public void onSubscribe(Subscription s) {
+		if(BackpressureUtils.checkSubscription(subscription, s)) {
+			this.subscription = s;
+		}
+	}
 
-    public void cancel() {
-        subscription.cancel();
-    }
+	@Override
+	public void onNext(Buffer buffer) {
+		super.onNext(buffer);
 
-    @Override
-    public void onComplete() {
-        completeLatch.countDown();
-    }
+		numNextSignalsReceived.incrementAndGet();
 
-    public void assertAllEventsReceived() throws InterruptedException {
-        boolean result = eventsCountDownLatch.await(timeoutSecs, TimeUnit.SECONDS);
-        if (!result) {
-            throw new AssertionError(
-                    String.format("Didn't receive %d events within %d seconds",
-                            eventsCountDownLatch.getCount(), timeoutSecs));
-        }
-    }
+		synchronized (receivedSignals) {
+			receivedSignals.add(buffer.asString());
+		}
+	}
 
-    public void assertCompleteReceived() throws InterruptedException {
-        boolean result = completeLatch.await(timeoutSecs, TimeUnit.SECONDS);
-        if (!result) {
-            throw new AssertionError(
-                    String.format("Haven't received Complete event within %d seconds", timeoutSecs));
-        }
-    }
+	@Override
+	public void onComplete() {
+		completeLatch.countDown();
+	}
 
-    public void assertNoCompleteReceived() throws InterruptedException {
-        long startTime = System.nanoTime();
-        do {
-            if (completeLatch.getCount() == 0) {
-                throw new AssertionError("Unexpected Complete event received");
-            }
-            Thread.sleep(100);
-        } while (TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime) < 1);
-    }
+	@Override
+	public void onError(Throwable t) {
+		super.onError(t);
+		this.lastError = t;
+		errorLatch.countDown();
+	}
 
-    public void assertErrorReceived() throws InterruptedException {
-        boolean result = errorLatch.await(timeoutSecs, TimeUnit.SECONDS);
-        if (!result) {
-            throw new AssertionError(
-                    String.format("Haven't received Error event within %d seconds", timeoutSecs));
-        }
-    }
+	public void requestUnlimited() throws InterruptedException {
+		request(Long.MAX_VALUE);
+	}
 
-    public Throwable getLastError() {
-        return lastError;
-    }
+	public void request(long n) throws InterruptedException {
+		TestUtils.waitForTrue(timeoutSecs,
+				String.format("onSubscribe wasn't called within %d secs", timeoutSecs),
+				() -> subscription != null);
+
+		subscription.request(n);
+	}
+
+	public void assertNextSignals(String... expectedSignals) throws InterruptedException {
+		assertNumNextSignalsReceived(expectedSignals.length);
+
+		Set<String> signalsSnapshot;
+		synchronized (receivedSignals) {
+			signalsSnapshot = new HashSet<>(receivedSignals);
+		}
+
+		if (signalsSnapshot.size() != expectedSignals.length) {
+			throw new AssertionError(String.format("Expected %d number of signals but received %d",
+					expectedSignals.length, signalsSnapshot.size()));
+		}
+
+		for (String signal : expectedSignals) {
+			signalsSnapshot.remove(signal);
+		}
+
+		if (signalsSnapshot.size() != 0) {
+			throw new AssertionError("Unexpected signals received: " + signalsSnapshot);
+		}
+	}
+
+	public void assertNumNextSignalsReceived(int n) throws InterruptedException {
+		Supplier<String> errorSupplier = () -> String.format("%d out of %d Next signals received within %d secs",
+				numNextSignalsReceived.get(), n, timeoutSecs);
+
+		TestUtils.waitForTrue(timeoutSecs, errorSupplier, () -> numNextSignalsReceived.get() == n);
+	}
+
+	public void assertCompleteReceived() throws InterruptedException {
+		boolean result = completeLatch.await(timeoutSecs, TimeUnit.SECONDS);
+		if (!result) {
+			throw new AssertionError(
+					String.format("Haven't received Complete signal within %d seconds", timeoutSecs));
+		}
+	}
+
+	public void assertNoCompleteReceived() throws InterruptedException {
+		long startTime = System.nanoTime();
+		do {
+			if (completeLatch.getCount() == 0) {
+				throw new AssertionError();
+			}
+			Thread.sleep(100);
+		} while (TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime) < 1);
+	}
+
+	public void assertErrorReceived() throws InterruptedException {
+		boolean result = errorLatch.await(timeoutSecs, TimeUnit.SECONDS);
+		if (!result) {
+			throw new AssertionError(
+					String.format("Haven't received Error signal within %d seconds", timeoutSecs));
+		}
+	}
+
+	public Throwable getLastError() {
+		return lastError;
+	}
+
+	public void cancelSubscription() {
+		subscription.cancel();
+	}
 
 }

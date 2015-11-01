@@ -30,11 +30,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Anatoly Kadyshev
  */
-class AeronHelper {
-
-	private final Aeron.Context ctx;
-
-	private final String channel;
+public class AeronHelper {
 
 	private final boolean launchEmbeddedMediaDriver;
 
@@ -44,27 +40,16 @@ class AeronHelper {
 
 	/**
 	 * How long to try to publish into Aeron before giving up.
-     * @see Builder#publicationLingerTimeoutMillis
+	 * @see Context#publicationLingerTimeoutMillis
 	 */
-    private final long publicationTimeoutNs;
+	private final long publicationTimeoutNs;
 
-    AeronHelper(Aeron.Context ctx, boolean launchEmbeddedMediaDriver,
-				String channel, long publicationTimeoutMillis,
+	public AeronHelper(Aeron aeron, boolean launchEmbeddedMediaDriver, long publicationTimeoutMillis,
 				long publicationLingerTimeoutMillis) {
 		this.launchEmbeddedMediaDriver = launchEmbeddedMediaDriver;
 		this.publicationLingerTimeoutMillis = publicationLingerTimeoutMillis;
-		if (ctx == null) {
-			ctx = new Aeron.Context();
-		}
-		if (launchEmbeddedMediaDriver) {
-			EmbeddedMediaDriverManager driverManager = EmbeddedMediaDriverManager.getInstance();
-			driverManager.launchDriver();
-			ctx.dirName(driverManager.getDriver().contextDirName());
-		}
-
-		this.ctx = ctx;
-		this.channel = channel;
-        this.publicationTimeoutNs = TimeUnit.MILLISECONDS.toNanos(publicationTimeoutMillis);
+		this.aeron = aeron;
+		this.publicationTimeoutNs = TimeUnit.MILLISECONDS.toNanos(publicationTimeoutMillis);
 	}
 
 	static BackoffIdleStrategy newBackoffIdleStrategy() {
@@ -78,23 +63,25 @@ class AeronHelper {
 		buffer.putLong(offset + 8, leastSignificantBits);
 	}
 
-	void initialise() {
-		this.aeron = Aeron.connect(ctx);
+	public void initialise() {
+		if (launchEmbeddedMediaDriver) {
+			EmbeddedMediaDriverManager driverManager = EmbeddedMediaDriverManager.getInstance();
+			driverManager.launchDriver();
+			this.aeron = driverManager.getAeron();
+		}
 	}
 
-	void shutdown() {
-		aeron.close();
-
+	public void shutdown() {
 		if (launchEmbeddedMediaDriver) {
 			EmbeddedMediaDriverManager.getInstance().shutdownDriver();
 		}
 	}
 
-	Publication addPublication(int streamId) {
+	public Publication addPublication(String channel, int streamId) {
 		return aeron.addPublication(channel, streamId);
 	}
 
-	uk.co.real_logic.aeron.Subscription addSubscription(int streamId) {
+	public uk.co.real_logic.aeron.Subscription addSubscription(String channel, int streamId) {
 		return aeron.addSubscription(channel, streamId);
 	}
 
@@ -105,9 +92,9 @@ class AeronHelper {
 	 * @param bufferClaim  to be used for publishing
 	 * @param limit        number of bytes to be published
 	 * @param idleStrategy idle strategy to use when an attempt
-     *                     to claim a buffer for publishing fails
+	 *                     to claim a buffer for publishing fails
 	 * @return the reserved buffer claim or <code>null</code> when failed to
-     * claim a buffer for publishing within {@link #publicationTimeoutNs} nanos
+	 * claim a buffer for publishing within {@link #publicationTimeoutNs} nanos
 	 */
 	BufferClaim publish(Publication publication, BufferClaim bufferClaim, int limit, IdleStrategy idleStrategy) {
 		long result;
@@ -116,20 +103,24 @@ class AeronHelper {
 			if (result != Publication.BACK_PRESSURED && result != Publication.NOT_CONNECTED) {
 				throw new RuntimeException("Could not publish into Aeron because of an unknown reason");
 			}
+
 			idleStrategy.idle(0);
 
-			if (System.nanoTime() - startTime > publicationTimeoutNs) {
-				// TODO: Rethink handling back-pressured publication
+			long now = System.nanoTime();
+			if (result == Publication.NOT_CONNECTED && now - startTime > publicationTimeoutNs) {
 				return null;
 			}
 		}
+
+		idleStrategy.idle(1);
+
 		return bufferClaim;
 	}
 
-    /**
-     * Wait till a message is published into Aeron. A message is considered
-     * published after {@link #publicationLingerTimeoutMillis} elapses.
-     */
+	/**
+	 * Wait till a message is published into Aeron. A message is considered
+	 * published after {@link #publicationLingerTimeoutMillis} elapses.
+	 */
 	void waitLingerTimeout() {
 		try {
 			Thread.sleep(publicationLingerTimeoutMillis);

@@ -25,34 +25,28 @@ import java.util.concurrent.TimeUnit;
  */
 public class TestUtils {
 
-    public static void waitForTrue(long timeoutSecs,
-                                   Supplier<String> errorMessageSupplier,
-                                   Supplier<Boolean> resultSupplier)
-            throws InterruptedException {
-        Assert.notNull(errorMessageSupplier);
-        Assert.notNull(resultSupplier);
-        Assert.isTrue(timeoutSecs > 0);
+	public static void waitForTrue(long timeoutSecs,
+								   Supplier<String> errorMessageSupplier,
+								   Supplier<Boolean> conditionSupplier) throws InterruptedException {
+		Assert.notNull(errorMessageSupplier);
+		Assert.notNull(conditionSupplier);
+		Assert.isTrue(timeoutSecs > 0);
 
-        long startTime = System.nanoTime();
-        long timeoutNs = TimeUnit.SECONDS.toNanos(timeoutSecs);
-        do {
-            try {
-                if(resultSupplier.get()) {
-                    return;
-                }
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            Thread.sleep(100);
-        } while (System.nanoTime() - startTime < timeoutNs);
-        throw new AssertionError(errorMessageSupplier.get());
-    }
+		long timeoutNs = TimeUnit.SECONDS.toNanos(timeoutSecs);
+		long startTime = System.nanoTime();
+		do {
+			if(conditionSupplier.get()) {
+				return;
+			}
+			Thread.sleep(100);
+		} while (System.nanoTime() - startTime < timeoutNs);
+		throw new AssertionError(errorMessageSupplier.get());
+	}
 
-    public static void waitForTrue(long timeoutSecs,
-                                   String errorMessage,
-                                   Supplier<Boolean> resultSupplier)
-            throws InterruptedException {
-        waitForTrue(timeoutSecs, () -> errorMessage, resultSupplier);
-    }
+	public static void waitForTrue(long timeoutSecs,
+								   String errorMessage,
+								   Supplier<Boolean> resultSupplier) throws InterruptedException {
+		waitForTrue(timeoutSecs, () -> errorMessage, resultSupplier);
+	}
 
 }

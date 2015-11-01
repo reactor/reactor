@@ -22,6 +22,7 @@ import reactor.io.buffer.Buffer;
 import reactor.io.net.tcp.support.SocketUtils;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
+import uk.co.real_logic.aeron.Aeron;
 import uk.co.real_logic.aeron.driver.MediaDriver;
 
 import java.util.concurrent.TimeUnit;
@@ -35,7 +36,7 @@ import static org.junit.Assert.assertTrue;
  */
 public class AeronProcessorTest {
 
-	private static final int TIMEOUT_SECS = 5;
+	private static final int TIMEOUT_SECS = 1;
 
 	private String CHANNEL = "udp://localhost:" + SocketUtils.findAvailableUdpPort();
 
@@ -58,11 +59,16 @@ public class AeronProcessorTest {
 			processor.shutdown();
 		}
 
-		assertTrue(threadSnapshot.takeAndCompare(new String[] {"hash"}, TimeUnit.SECONDS.toMillis(TIMEOUT_SECS)));
+		Thread.sleep(1000);
+
+		assertThat(EmbeddedMediaDriverManager.getInstance().getCounter(), is(0));
+
+		assertTrue(threadSnapshot.takeAndCompare(new String[] {"hash", "global"},
+				TimeUnit.SECONDS.toMillis(TIMEOUT_SECS)));
 	}
 
 	private AeronProcessor createProcessor() {
-		return AeronProcessor.builder()
+		return AeronProcessor.share(new Context()
 				.name("processor")
 				.autoCancel(false)
 				.launchEmbeddedMediaDriver(true)
@@ -71,67 +77,74 @@ public class AeronProcessorTest {
 				.errorStreamId(STREAM_ID + 1)
 				.commandRequestStreamId(STREAM_ID + 2)
 				.commandReplyStreamId(STREAM_ID + 3)
-				.publicationLingerTimeoutMillis(50)
-				.share();
+				.publicationLingerTimeoutMillis(50));
 	}
 
-	private TestSubscriber createTestSubscriber(int nExpectedEvents) {
-		return new TestSubscriber(TIMEOUT_SECS, nExpectedEvents);
+	private TestSubscriber createTestSubscriber() {
+		return TestSubscriber.createWithTimeoutSecs(TIMEOUT_SECS);
 	}
 
 	@Test
 	public void testOnNext() throws InterruptedException {
 		processor = createProcessor();
-		TestSubscriber subscriber = createTestSubscriber(4);
+
+		TestSubscriber subscriber = createTestSubscriber();
 		processor.subscribe(subscriber);
+		subscriber.request(4);
 
 		processor.onNext(Buffer.wrap("Live"));
 		processor.onNext(Buffer.wrap("Hard"));
 		processor.onNext(Buffer.wrap("Die"));
 		processor.onNext(Buffer.wrap("Harder"));
+		processor.onNext(Buffer.wrap("Extra"));
 
-		subscriber.assertAllEventsReceived();
+		subscriber.assertNextSignals("Live", "Hard", "Die", "Harder");
+
+		subscriber.request(1);
 	}
 
-    @Test
-    public void testCompleteEventIsPropagated() throws InterruptedException {
-        processor = createProcessor();
-        Streams.just(
-                Buffer.wrap("One"),
-                Buffer.wrap("Two"),
-                Buffer.wrap("Three"))
-                .subscribe(processor);
+	@Test
+	public void testCompleteEventIsPropagated() throws InterruptedException {
+		processor = createProcessor();
+		Streams.just(
+				Buffer.wrap("One"),
+				Buffer.wrap("Two"),
+				Buffer.wrap("Three"))
+				.subscribe(processor);
 
-        StepByStepTestSubscriber subscriber = new StepByStepTestSubscriber(TIMEOUT_SECS);
-        processor.subscribe(subscriber);
+		TestSubscriber subscriber = createTestSubscriber();
+		processor.subscribe(subscriber);
 
-        subscriber.request(1);
-        subscriber.assertNextSignals("One");
+		subscriber.request(1);
+		subscriber.assertNextSignals("One");
 
-        subscriber.request(1);
-        subscriber.assertNextSignals("One", "Two");
+		subscriber.request(1);
+		subscriber.assertNextSignals("One", "Two");
 
-        subscriber.request(1);
-        subscriber.assertNextSignals("One", "Two", "Three");
+		subscriber.request(1);
+		subscriber.assertNextSignals("One", "Two", "Three");
 
-        subscriber.assertCompleteReceived();
-    }
+		subscriber.assertCompleteReceived();
+	}
 
 	@Test
 	public void testWorksWithTwoSubscribers() throws InterruptedException {
 		processor = createProcessor();
-		TestSubscriber subscriber1 = createTestSubscriber(4);
+		TestSubscriber subscriber1 = createTestSubscriber();
 		processor.subscribe(subscriber1);
-		TestSubscriber subscriber2 = createTestSubscriber(4);
+		TestSubscriber subscriber2 = createTestSubscriber();
 		processor.subscribe(subscriber2);
+
+		subscriber1.requestUnlimited();
+		subscriber2.requestUnlimited();
 
 		processor.onNext(Buffer.wrap("Live"));
 		processor.onNext(Buffer.wrap("Hard"));
 		processor.onNext(Buffer.wrap("Die"));
 		processor.onNext(Buffer.wrap("Harder"));
 
-		subscriber1.assertAllEventsReceived();
-		subscriber2.assertAllEventsReceived();
+		subscriber1.assertNextSignals("Live", "Hard", "Die", "Harder");
+		subscriber2.assertNextSignals("Live", "Hard", "Die", "Harder");
 	}
 
 	@Test
@@ -144,10 +157,11 @@ public class AeronProcessorTest {
 				Buffer.wrap("Harder"))
 			.subscribe(processor);
 
-		TestSubscriber subscriber = createTestSubscriber(4);
+		TestSubscriber subscriber = createTestSubscriber();
 		processor.subscribe(subscriber);
+		subscriber.requestUnlimited();
 
-		subscriber.assertAllEventsReceived();
+		subscriber.assertNextSignals("Live", "Hard", "Die", "Harder");
 		subscriber.assertCompleteReceived();
 	}
 
@@ -161,8 +175,9 @@ public class AeronProcessorTest {
 				Streams.fail(new RuntimeException("Something went wrong")))
 			.subscribe(processor);
 
-		TestSubscriber subscriber = createTestSubscriber(1);
+		TestSubscriber subscriber = createTestSubscriber();
 		processor.subscribe(subscriber);
+		subscriber.requestUnlimited();
 
 		subscriber.assertErrorReceived();
 
@@ -174,11 +189,12 @@ public class AeronProcessorTest {
 	public void testExceptionWithNullMessageIsHandled() throws InterruptedException {
 		processor = createProcessor();
 
-		TestSubscriber subscriber = createTestSubscriber(0);
+		TestSubscriber subscriber = createTestSubscriber();
 		processor.subscribe(subscriber);
+		subscriber.requestUnlimited();
 
-        Stream<Buffer> sourceStream = Streams.fail(new RuntimeException());
-        sourceStream.subscribe(processor);
+		Stream<Buffer> sourceStream = Streams.fail(new RuntimeException());
+		sourceStream.subscribe(processor);
 
 		subscriber.assertErrorReceived();
 
@@ -192,34 +208,41 @@ public class AeronProcessorTest {
 		Stream<Buffer> sourceStream = Streams.empty();
 		sourceStream.subscribe(processor);
 
-		TestSubscriber subscriber = createTestSubscriber(0);
+		TestSubscriber subscriber = createTestSubscriber();
 		processor.subscribe(subscriber);
+		subscriber.requestUnlimited();
 
 		subscriber.assertCompleteReceived();
 
-        TestUtils.waitForTrue(TIMEOUT_SECS, "Processor is still alive", processor::alive);
+		TestUtils.waitForTrue(TIMEOUT_SECS, "Processor is still alive", () -> !processor.alive());
 	}
 
 	@Test
 	public void testOnNextAfterCancel() throws InterruptedException {
 		processor = createProcessor();
-		TestSubscriber subscriber = createTestSubscriber(1);
+		TestSubscriber subscriber = createTestSubscriber();
 		processor.subscribe(subscriber);
+		subscriber.requestUnlimited();
 
 		processor.onNext(Buffer.wrap("Hello"));
 
-		subscriber.assertAllEventsReceived();
-		subscriber.cancel();
+		subscriber.assertNextSignals("Hello");
+		subscriber.cancelSubscription();
 
 		processor.onNext(Buffer.wrap("world"));
+
+		subscriber.assertNextSignals("Hello");
 	}
 
 	@Test
 	public void testProcessorWorksWithExternalMediaDriver() throws InterruptedException {
 		MediaDriver.Context context = new MediaDriver.Context();
 		final MediaDriver mediaDriver = MediaDriver.launch(context);
+		Aeron.Context ctx = new Aeron.Context();
+		ctx.dirName(mediaDriver.contextDirName());
+		final Aeron aeron = Aeron.connect(ctx);
 		try {
-			processor = AeronProcessor.builder()
+			processor = AeronProcessor.create(new Context()
 					.name("processor")
 					.autoCancel(false)
 					.launchEmbeddedMediaDriver(false)
@@ -229,23 +252,26 @@ public class AeronProcessorTest {
 					.commandRequestStreamId(STREAM_ID + 2)
 					.commandReplyStreamId(STREAM_ID + 3)
 					.publicationLingerTimeoutMillis(50)
-					.create();
+					.aeron(aeron));
 
 			Streams.just(
 					Buffer.wrap("Live"))
 					.subscribe(processor);
 
-			TestSubscriber subscriber = createTestSubscriber(1);
+			TestSubscriber subscriber = createTestSubscriber();
 			processor.subscribe(subscriber);
+			subscriber.requestUnlimited();
 
-			subscriber.assertAllEventsReceived();
+			subscriber.assertNextSignals("Live");
 		} finally {
 			if (processor != null) {
-				processor.awaitAndShutdown(500, TimeUnit.MILLISECONDS);
+				processor.awaitAndShutdown(1500, TimeUnit.MILLISECONDS);
 
 				// Waiting to let all Aeron threads to shutdown
 				Thread.sleep(500);
 			}
+
+			aeron.close();
 
 			mediaDriver.close();
 
@@ -257,33 +283,35 @@ public class AeronProcessorTest {
 		}
 	}
 
-    @Test
-    public void testCreate() throws InterruptedException {
-        processor = AeronProcessor.create("aeron", true, true, CHANNEL, STREAM_ID,
-                STREAM_ID + 1, STREAM_ID + 2, STREAM_ID + 3);
+	@Test
+	public void testCreate() throws InterruptedException {
+		processor = AeronProcessor.create("aeron", true, CHANNEL);
 
-        Streams.just(
-                Buffer.wrap("Live"))
-                .subscribe(processor);
+		Streams.just(
+				Buffer.wrap("Live"))
+				.subscribe(processor);
 
-        TestSubscriber subscriber = createTestSubscriber(1);
-        processor.subscribe(subscriber);
+		TestSubscriber subscriber = createTestSubscriber();
+		processor.subscribe(subscriber);
+		subscriber.requestUnlimited();
 
-        subscriber.assertAllEventsReceived();
-    }
+		subscriber.assertNextSignals("Live");
+		subscriber.assertCompleteReceived();
+	}
 
-    @Test
-    public void testShare() throws InterruptedException {
-        processor = AeronProcessor.share("aeron", true, true, CHANNEL, STREAM_ID,
-                STREAM_ID + 1, STREAM_ID + 2, STREAM_ID + 3);
+	@Test
+	public void testShare() throws InterruptedException {
+		processor = AeronProcessor.share("aeron", true, CHANNEL);
 
-        Streams.just(
-                Buffer.wrap("Live"))
-                .subscribe(processor);
+		Streams.just(
+				Buffer.wrap("Live"))
+				.subscribe(processor);
 
-        TestSubscriber subscriber = createTestSubscriber(1);
-        processor.subscribe(subscriber);
+		TestSubscriber subscriber = createTestSubscriber();
+		processor.subscribe(subscriber);
+		subscriber.requestUnlimited();
 
-        subscriber.assertAllEventsReceived();
-    }
+		subscriber.assertNextSignals("Live");
+		subscriber.assertCompleteReceived();
+	}
 }

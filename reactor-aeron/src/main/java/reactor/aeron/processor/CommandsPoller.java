@@ -26,7 +26,7 @@ import uk.co.real_logic.agrona.DirectBuffer;
 import uk.co.real_logic.agrona.MutableDirectBuffer;
 import uk.co.real_logic.agrona.concurrent.IdleStrategy;
 
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 
 /**
  * @author Anatoly Kadyshev
@@ -37,7 +37,7 @@ class CommandsPoller implements Runnable {
 
 	private final uk.co.real_logic.aeron.Subscription commandsSub;
 
-	private final Publication replyPub;
+	private final Publication commandsReplyPub;
 
 	private final AeronHelper aeronHelper;
 
@@ -69,8 +69,6 @@ class CommandsPoller implements Runnable {
 				}
 			} else if (command == CommandType.IsAliveRequest.getCode()) {
 				handleIsAliveRequest(buffer.getLong(offset + 1), buffer.getLong(offset + 9));
-			} else if (command == CommandType.IsAliveReply.getCode()) {
-				// Skip
 			} else {
 				logger.error("Unknown command code: {} received", command);
 			}
@@ -79,7 +77,7 @@ class CommandsPoller implements Runnable {
 		void handleIsAliveRequest(long mostSignificantBits, long leastSignificantBits) {
 			IdleStrategy idleStrategy = AeronHelper.newBackoffIdleStrategy();
 
-			BufferClaim bufferClaim = aeronHelper.publish(replyPub, new BufferClaim(), 1 + 16, idleStrategy);
+			BufferClaim bufferClaim = aeronHelper.publish(commandsReplyPub, new BufferClaim(), 1 + 16, idleStrategy);
 			if (bufferClaim != null) {
 				try {
 					int offset = bufferClaim.offset();
@@ -93,15 +91,15 @@ class CommandsPoller implements Runnable {
 		}
 	}
 
-	CommandsPoller(Logger logger, AeronHelper aeronHelper, int commandRequestStreamId, int commandReplyStreamId) {
+	CommandsPoller(Logger logger, Context context, AeronHelper aeronHelper) {
 		this.logger = logger;
 		this.aeronHelper = aeronHelper;
-		this.commandsSub = aeronHelper.addSubscription(commandRequestStreamId);
-		this.replyPub = aeronHelper.addPublication(commandReplyStreamId);
+		this.commandsSub = aeronHelper.addSubscription(context.senderChannel, context.commandRequestStreamId);
+		this.commandsReplyPub = aeronHelper.addPublication(context.receiverChannel, context.commandReplyStreamId);
 	}
 
-	void initialize(ExecutorService executorService) {
-		executorService.execute(this);
+	void initialize(Executor executor) {
+		executor.execute(this);
 	}
 
 	public void run() {
@@ -115,10 +113,12 @@ class CommandsPoller implements Runnable {
 			int nFragmentsReceived = commandsSub.poll(fragmentAssembler, 1);
 			idleStrategy.idle(nFragmentsReceived);
 		}
-
 	}
 
 	void shutdown() {
 		this.running = false;
+
+		commandsSub.close();
+		commandsReplyPub.close();
 	}
 }

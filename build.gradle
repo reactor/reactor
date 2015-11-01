@@ -38,7 +38,7 @@ ext {
 	snappyVersion = '1.1.1.6'
 	hadoopVersion = '1.1.2'
 	openHftChronicleVersion = '3.4.2'
-	aeronVersion = '0.1.3'
+	aeronVersion = '0.1.5'
   	rxJavaVersion = '1.0.14'
 
 	// Testing
