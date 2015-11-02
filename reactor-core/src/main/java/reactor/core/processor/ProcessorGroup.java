@@ -694,7 +694,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				          .subscribe(s);
 			}
 			else if (subscribed) {
-				dispatch(this, s, SignalType.SUBSCRIPTION);
+				dispatchSubscribe(s);
 			}
 
 		}
@@ -711,8 +711,12 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			}
 
 			if (subscriber != null) {
-				dispatch(this, subscriber, SignalType.SUBSCRIPTION);
+				dispatchSubscribe(subscriber);
 			}
+		}
+
+		protected void dispatchSubscribe(Subscriber<? super V> subscriber){
+			dispatchProcessorSequence(this, subscriber, SignalType.SUBSCRIPTION);
 		}
 
 		@Override
@@ -897,6 +901,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			else {
 				doRequest(n);
 			}
+		}
+
+		@Override
+		protected void dispatchSubscribe(Subscriber<? super V> subscriber) {
+			dispatch(this, subscriber, SignalType.SUBSCRIPTION);
 		}
 
 		@Override

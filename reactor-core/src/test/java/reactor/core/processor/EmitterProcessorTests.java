@@ -15,6 +15,8 @@
  */
 package reactor.core.processor;
 
+import java.util.concurrent.TimeUnit;
+
 import org.reactivestreams.Processor;
 import org.testng.annotations.AfterClass;
 import reactor.Processors;
@@ -42,11 +44,12 @@ public class EmitterProcessorTests extends AbstractProcessorVerification {
 
 	@AfterClass
 	@Override
-	public void tearDown() {
+	public void tearDown() throws InterruptedException{
 		executorService.shutdown();
+		executorService.awaitTermination(1, TimeUnit.SECONDS);
 	}
-
-	/*@Override
+/*
+	@Override
 	public void optional_spec111_multicast_mustProduceTheSameElementsInTheSameSequenceToAllOfItsSubscribersWhenRequestingOneByOne()
 			throws Throwable {
 		for(int i = 0 ; i < 1000; i++) {

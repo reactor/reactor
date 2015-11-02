@@ -61,7 +61,7 @@ public abstract class AbstractProcessorVerification extends org.reactivestreams.
 	}
 
 	@AfterClass
-	public void tearDown() {
+	public void tearDown() throws InterruptedException {
 		executorService.submit(() -> {
 			  Processor<Long, Long> p;
 			  while ((p = processorReferences.poll()) != null) {

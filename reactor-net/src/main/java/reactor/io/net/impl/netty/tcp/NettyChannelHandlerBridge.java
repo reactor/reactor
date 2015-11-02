@@ -531,7 +531,7 @@ public class NettyChannelHandlerBridge extends ChannelDuplexHandler {
 			RingBuffer<RingBuffer.Slot<Buffer>> q = readBackpressureBuffer;
 			if (q == null) {
 				q = RingBuffer.createSingleProducer(bufferSize);
-				q.addGatingSequences(pollCursor = Sequencer.newSequence(-1L));
+				q.addGatingSequence(pollCursor = Sequencer.newSequence(-1L));
 				readBackpressureBuffer = q;
 			}
 			return q;

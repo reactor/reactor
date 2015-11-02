@@ -205,6 +205,33 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
+	public static <E> ProcessorGroup<E> singleGroup() {
+		return singleGroup(null, BaseProcessor.MEDIUM_BUFFER_SIZE);
+	}
+
+	/**
+	 * @param name
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorGroup<E> singleGroup(String name) {
+		return singleGroup(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
+	}
+
+	/**
+	 * @param name
+	 * @param bufferSize
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorGroup<E> singleGroup(String name, int bufferSize) {
+		return asyncGroup(name, bufferSize, 1);
+	}
+
+	/**
+	 * @param <E>
+	 * @return
+	 */
 	public static <E> ProcessorGroup<E> asyncGroup() {
 		return asyncGroup(null, BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}

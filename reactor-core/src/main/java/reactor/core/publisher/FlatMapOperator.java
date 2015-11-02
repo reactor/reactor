@@ -212,7 +212,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 				q = RingBuffer.createSingleProducer(
 				  maxConcurrency == Integer.MAX_VALUE ? bufferSize : maxConcurrency
 				);
-				q.addGatingSequences(pollCursor = Sequencer.newSequence(-1L));
+				q.addGatingSequence(pollCursor = Sequencer.newSequence(-1L));
 				emitBuffer = q;
 			}
 			return q;
@@ -259,7 +259,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			RingBuffer<RingBuffer.Slot<V>> q = inner.queue;
 			if (q == null) {
 				q = RingBuffer.createSingleProducer(bufferSize);
-				q.addGatingSequences(inner.pollCursor = Sequencer.newSequence(-1L));
+				q.addGatingSequence(inner.pollCursor = Sequencer.newSequence(-1L));
 				inner.queue = q;
 			}
 			return q;
