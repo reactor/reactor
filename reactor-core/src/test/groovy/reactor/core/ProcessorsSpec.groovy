@@ -202,7 +202,7 @@ class ProcessorsSpec extends Specification {
 
 		given:
 			"ring buffer eventBus"
-			def serviceRB = Processors.asyncGroup("rb", 32)
+			def serviceRB = Processors.singleGroup("rb", 32)
 			def r = serviceRB.dataDispatcher()
 			def latch = new CountDownLatch(2)
 
@@ -259,7 +259,7 @@ class ProcessorsSpec extends Specification {
 	def "RingBufferDispatcher executes tasks in correct thread"() {
 
 		given:
-			def serviceRB = Processors.asyncGroup("rb", 8)
+			def serviceRB = Processors.singleGroup("rb", 8)
 			def dispatcher = serviceRB.executor()
 			def t1 = Thread.currentThread()
 			def t2 = Thread.currentThread()

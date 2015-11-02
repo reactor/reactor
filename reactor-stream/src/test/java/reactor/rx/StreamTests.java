@@ -1565,7 +1565,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		final Broadcaster<Integer> computationBroadcaster = Broadcaster.create();
 		final Stream<List<String>> computationStream = computationBroadcaster
-		  .dispatchOn(Processors.asyncGroup("computation", BACKLOG))
+		  .dispatchOn(Processors.singleGroup("computation", BACKLOG))
 		  .map(i -> {
 			  final List<String> list = new ArrayList<>(i);
 			  for (int j = 0; j < i; j++) {
@@ -1579,19 +1579,19 @@ public class StreamTests extends AbstractReactorTest {
 
 		final Broadcaster<Integer> persistenceBroadcaster = Broadcaster.create();
 		final Stream<List<String>> persistenceStream = persistenceBroadcaster
-		  .dispatchOn(Processors.asyncGroup("persistence", BACKLOG))
+		  .dispatchOn(Processors.singleGroup("persistence", BACKLOG))
 		  .observe(i -> println("Persisted: ", i))
 		  .map(i -> Collections.singletonList("done" + i))
 		  .log("persistence");
 
-		Stream<Integer> forkStream = forkBroadcaster.dispatchOn(Processors.asyncGroup("fork", BACKLOG));
+		Stream<Integer> forkStream = forkBroadcaster.dispatchOn(Processors.singleGroup("fork", BACKLOG));
 		forkStream.subscribe(computationBroadcaster);
 		forkStream.subscribe(persistenceBroadcaster);
 
 		final Stream<List<String>> joinStream = Streams
 		  .join(computationStream, persistenceStream)
 			// MPSC seems perfect for joining threads.
-		  .dispatchOn(Processors.asyncGroup("join", BACKLOG))
+		  .dispatchOn(Processors.singleGroup("join", BACKLOG))
 //        .dispatchOn( Environment.newDispatcher( "join", BACKLOG ) )
 		  .map(listOfLists -> {
 			  listOfLists.get(0).addAll(listOfLists.get(1));

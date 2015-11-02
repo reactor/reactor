@@ -118,25 +118,29 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@Test
 	public void testEmitter() throws Exception {
-		BaseProcessor<Integer, Integer> processor = Processors.emitter();
+			BaseProcessor<Integer, Integer> processor = Processors.emitter();
 
-		int n = 1_000_000;
-		final CountDownLatch latch = new CountDownLatch(n + 1);
-		processor.process(Processors.singleGroup().get())
-		         .subscribe(Subscribers.create(
-				         s -> {s.request(1L); return null; },
-				         (d, s) -> {latch.countDown(); s.request(1L);},
-				         null, d -> latch.countDown()));
+			int n = 1_000_000;
+			final CountDownLatch latch = new CountDownLatch(n + 1);
+			processor.process(Processors.singleGroup()
+			                            .get())
+			         .subscribe(Subscribers.create(s -> {
+				         s.request(1L);
+				         return null;
+			         }, (d, s) -> {
+				         latch.countDown();
+				         s.request(1L);
+			         }, null, d -> latch.countDown()));
 
-		processor.start();
+			processor.start();
 
-		for(int i = 0; i < n; i++){
-			processor.onNext(i);
-		}
-		processor.onComplete();
+			for (int i = 0; i < n; i++) {
+				processor.onNext(i);
+			}
+			processor.onComplete();
 
-		boolean waited = latch.await(5, TimeUnit.SECONDS);
-		Assert.isTrue(waited, "latch : "+latch.getCount());
+			boolean waited = latch.await(5, TimeUnit.SECONDS);
+			Assert.isTrue(waited, "latch : " + latch.getCount());
 	}
 
 	@Test

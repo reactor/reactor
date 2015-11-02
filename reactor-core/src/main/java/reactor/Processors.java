@@ -239,6 +239,16 @@ public final class Processors {
 	}
 
 	/**
+	 * @param name
+	 * @param bufferSize
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorGroup<E> singleGroup(String name, int bufferSize, Consumer<Throwable> errorC) {
+		return asyncGroup(name, bufferSize, 1, errorC);
+	}
+
+	/**
 	 * @param <E>
 	 * @return
 	 */
@@ -347,7 +357,7 @@ public final class Processors {
 			Consumer<Throwable> uncaughtExceptionHandler,
 			Consumer<Void> shutdownHandler,
 			boolean autoShutdown) {
-		return asyncGroup(name, bufferSize, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		return asyncGroup(name, bufferSize, DEFAULT_POOL_SIZE, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**

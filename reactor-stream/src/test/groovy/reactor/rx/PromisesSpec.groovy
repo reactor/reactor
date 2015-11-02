@@ -798,7 +798,7 @@ class PromisesSpec extends Specification {
 		when:
 			"p1 is consumed by p2"
 			Promise p2 = p1
-					.dispatchOn(Processors.asyncGroup('test'))
+					.dispatchOn(Processors.singleGroup('test'))
 					.map {
 			  println Thread.currentThread();
 			  sleep(3000);

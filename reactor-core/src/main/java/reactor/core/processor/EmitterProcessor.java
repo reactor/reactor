@@ -78,7 +78,7 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		super(autoCancel);
 		this.maxConcurrency = maxConcurrency;
 		this.bufferSize = bufferSize;
-		this.limit = Math.max(1, maxConcurrency / 2);
+		this.limit = Math.max(1, bufferSize / 2);
 		this.outstanding = 0;
 		SUBSCRIBERS.lazySet(this, EMPTY);
 	}
@@ -160,26 +160,22 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 					long r = is.requested;
 					is.unbounded = r == Long.MAX_VALUE;
 					Sequence poll = is.unbounded ? null : is.pollCursor;
-
-					if (r > 0L && (poll == null || poll.get() == emitBuffer.getCursor())) {
+					if(poll != null){
+						if (seq == -1L) {
+							seq = buffer(t);
+							resetInnerCursors(inner, seq, j, i - 1, n);
+						}
+					}
+					else if (r != 0L) {
 						BackpressureUtils.getAndSub(InnerSubscriber.REQUESTED, is, 1);
-						if (seq != -1L) {
-							if (poll != null && poll.compareAndSet(emitBuffer.getCursor(), seq)) {
-								is.actual.onNext(t);
-							}
-						}
-						else {
-							is.actual.onNext(t);
-						}
+						is.actual.onNext(t);
 					}
 					else {
 						if (seq == -1L) {
 							seq = buffer(t);
 							resetInnerCursors(inner, seq, j, i - 1, n);
 						}
-						if (poll == null) {
-							is.setPollCursor(seq);
-						}
+						is.setPollCursor(seq);
 					}
 				}
 
@@ -315,7 +311,7 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 					checkTerminal(is, innerSequence, d, _r);
 
-					if(!d && r - _r == 0){
+					if(!d && r == _r){
 						requestMore(r - _r);
 					}
 
@@ -390,7 +386,7 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			}
 			if (produced != 0L) {
 				if (!unbounded) {
-					r = InnerSubscriber.REQUESTED.addAndGet(is, -produced);
+					r = Math.max( 0L, BackpressureUtils.getAndSub(InnerSubscriber.REQUESTED, is, produced) - produced);
 				}
 				else {
 					r = Long.MAX_VALUE;
@@ -580,6 +576,9 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		static final     AtomicLongFieldUpdater<InnerSubscriber> REQUESTED =
 				AtomicLongFieldUpdater.newUpdater(InnerSubscriber.class, "requested");
 
+		static final AtomicReferenceFieldUpdater<InnerSubscriber, Sequence> CURSOR = PlatformDependent
+				.newAtomicReferenceFieldUpdater(InnerSubscriber.class, "pollCursor");
+
 		public InnerSubscriber(EmitterProcessor<T> parent, final Subscriber<? super T> actual, long id) {
 			this.id = id;
 			this.actual = actual;
@@ -631,8 +630,9 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 		void setPollCursor(long seq) {
 			Sequence pollSequence = Sequencer.newSequence(seq - 1L);
-			parent.emitBuffer.addGatingSequence(pollSequence);
-			pollCursor = pollSequence;
+			if(CURSOR.compareAndSet(this, null, pollSequence)){
+				parent.emitBuffer.addGatingSequence(pollSequence);
+			}
 		}
 
 		void start() {
