@@ -33,6 +33,9 @@ import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
 import reactor.Publishers;
+import reactor.Subscribers;
+import reactor.core.processor.BaseProcessor;
+import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.action.Control;
@@ -111,6 +114,29 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		final CountDownLatch latch = new CountDownLatch(n);
 		awaitLatch(stream.consume(integer -> latch.countDown()), latch);
+	}
+
+	@Test
+	public void testEmitter() throws Exception {
+		BaseProcessor<Integer, Integer> processor = Processors.emitter();
+
+		int n = 1_000_000;
+		final CountDownLatch latch = new CountDownLatch(n + 1);
+		processor.process(Processors.singleGroup().get())
+		         .subscribe(Subscribers.create(
+				         s -> {s.request(1L); return null; },
+				         (d, s) -> {latch.countDown(); s.request(1L);},
+				         null, d -> latch.countDown()));
+
+		processor.start();
+
+		for(int i = 0; i < n; i++){
+			processor.onNext(i);
+		}
+		processor.onComplete();
+
+		boolean waited = latch.await(5, TimeUnit.SECONDS);
+		Assert.isTrue(waited, "latch : "+latch.getCount());
 	}
 
 	@Test

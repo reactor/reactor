@@ -63,7 +63,7 @@ public final class Processors {
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> EmitterProcessor<E> emitter() {
+	public static <E> BaseProcessor<E, E> emitter() {
 		return emitter(BaseProcessor.SMALL_BUFFER_SIZE);
 	}
 
@@ -73,8 +73,18 @@ public final class Processors {
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> EmitterProcessor<E> emitter(int bufferSize) {
-		return new EmitterProcessor<>(true, DEFAULT_POOL_SIZE, bufferSize);
+	public static <E> BaseProcessor<E, E> emitter(int bufferSize) {
+		return emitter(bufferSize, Integer.MAX_VALUE);
+	}
+
+	/**
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p>
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> BaseProcessor<E, E> emitter(int bufferSize, int concurrency) {
+		return new EmitterProcessor<>(true, concurrency, bufferSize);
 	}
 
 	/**
@@ -206,7 +216,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> singleGroup() {
-		return singleGroup(null, BaseProcessor.MEDIUM_BUFFER_SIZE);
+		return singleGroup("single", BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -233,7 +243,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> asyncGroup() {
-		return asyncGroup(null, BaseProcessor.MEDIUM_BUFFER_SIZE);
+		return asyncGroup("async", BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -362,6 +372,14 @@ public final class Processors {
 				return RingBufferProcessor.share(name, bufferSize, ProcessorGroup.DEFAULT_TASK_PROVIDER);
 			}
 		}, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+	}
+
+	/**
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorGroup<E> ioGroup() {
+		return ioGroup("io", BaseProcessor.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**

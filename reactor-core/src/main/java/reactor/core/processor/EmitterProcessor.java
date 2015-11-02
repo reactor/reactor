@@ -24,6 +24,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.error.CancelException;
+import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
@@ -347,7 +348,7 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		boolean unbounded = r == Long.MAX_VALUE;
 
 		RingBuffer.Slot<T> o;
-		T oo = null;
+		T oo;
 		for (; ; ) {
 
 			if (innerSequence == null) {
@@ -357,7 +358,7 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			long produced = 0;
 
 			long cursor;
-			while (r > 0L) {
+			while (r != 0L) {
 				cursor = innerSequence.get() + 1;
 				if (q.getCursor() >= cursor) {
 					o = q.get(cursor);
@@ -453,6 +454,9 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				Publishers.<T>empty().subscribe(inner.actual);
 			}
 			int n = a.length;
+			if(n + 1 > maxConcurrency){
+				throw InsufficientCapacityException.get();
+			}
 			InnerSubscriber<?>[] b = new InnerSubscriber[n + 1];
 			System.arraycopy(a, 0, b, 0, n);
 			b[n] = inner;
@@ -593,12 +597,13 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 						final RingBuffer<RingBuffer.Slot<T>> q = parent.emitBuffer;
 						InnerSubscriber<?>[] inner = parent.subscribers;
 
-						if (inner.length != 0 && poll.get() == q.getCursor()) {
-							while ((n == Long.MAX_VALUE || (demand = requested) > 0L) && !done) {
+						if (inner.length != 0 && poll.get() < q.getCursor()) {
+							while (!done) {
 								if (poll.get() == q.getCursor()) {
 									break;
 								}
-								if (parent.innerDrain(this, poll, demand, parent.emitBuffer) == 0L) {
+								demand = parent.innerDrain(this, poll, demand, parent.emitBuffer);
+								if (demand == 0L) {
 									break;
 								}
 							}

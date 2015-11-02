@@ -83,6 +83,23 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 		}
 	}
 
+	/**
+	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
+	 *
+	 * {@code
+	 *  Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded())
+	 * }
+	 *
+	 *
+	 * @param s
+	 * @param <E>
+	 * @return
+	 */
+	public <E extends Subscriber<? super OUT>> E process(E s) {
+		subscribe(s);
+		return s;
+	}
+
 	@Override
 	public void onSubscribe(final Subscription s) {
 		if(BackpressureUtils.checkSubscription(upstreamSubscription, s)) {
