@@ -39,6 +39,12 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> 
 
 	protected final ClassLoader contextClassLoader;
 
+	@SuppressWarnings("unused")
+	private volatile       int                                      subscriberCount  = 0;
+	protected static final AtomicIntegerFieldUpdater<ExecutorProcessor> SUBSCRIBER_COUNT =
+			AtomicIntegerFieldUpdater
+					.newUpdater(ExecutorProcessor.class, "subscriberCount");
+
 	protected final static AtomicIntegerFieldUpdater<ExecutorProcessor> TERMINATED =
 			AtomicIntegerFieldUpdater.newUpdater(ExecutorProcessor.class, "terminated");
 
@@ -187,6 +193,23 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> 
 					.subscribe(subscriber);
 			return false;
 		}
+	}
+
+	protected boolean incrementSubscribers() {
+		return SUBSCRIBER_COUNT.getAndIncrement(this) == 0;
+	}
+
+	protected int decrementSubscribers() {
+		Subscription subscription = upstreamSubscription;
+		int subs = SUBSCRIBER_COUNT.decrementAndGet(this);
+		if (subs == 0) {
+			if (subscription != null && autoCancel) {
+				upstreamSubscription = null;
+				cancel(subscription);
+			}
+			return subs;
+		}
+		return subs;
 	}
 
 }

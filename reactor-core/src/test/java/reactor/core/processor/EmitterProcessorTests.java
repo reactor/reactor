@@ -15,7 +15,6 @@
  */
 package reactor.core.processor;
 
-import org.junit.Test;
 import org.reactivestreams.Processor;
 import reactor.Processors;
 
@@ -23,19 +22,21 @@ import reactor.Processors;
  * @author Stephane Maldini
  */
 @org.testng.annotations.Test
-public class RingBufferProcessorTests extends AbstractProcessorVerification {
+public class EmitterProcessorTests extends AbstractProcessorVerification {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
-		return Processors.<Long>topic("rb-async", bufferSize);
-	}
+		Processor<Long, Long> p = Processors.<Long>emitter(bufferSize);
 
-	@Test
-	public void testShutdown() {
-		for (int i = 0; i < 1000; i++) {
-			ExecutorProcessor dispatcher = Processors.topic("rb-test-shutdown", 16);
-			dispatcher.awaitAndShutdown();
-		}
+		/*Processor<Long, Long> p2 = Processors.queue();
+		Processor<Long, Long> p3 = Processors.topic();
+
+		Processors.log(p2, "queue").subscribe(p);
+		Processors.log(p, "emitter").subscribe(p3);
+
+		return Processors.create(p2, Processors.log(p3, "topic"));*/
+
+		return p;
 	}
 
 }

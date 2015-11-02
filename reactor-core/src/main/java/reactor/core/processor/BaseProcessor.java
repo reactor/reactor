@@ -49,12 +49,6 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 
 	protected final boolean     autoCancel;
 
-	@SuppressWarnings("unused")
-	private volatile       int                                      subscriberCount  = 0;
-	protected static final AtomicIntegerFieldUpdater<BaseProcessor> SUBSCRIBER_COUNT =
-	  AtomicIntegerFieldUpdater
-		.newUpdater(BaseProcessor.class, "subscriberCount");
-
 	protected Subscription upstreamSubscription;
 
 	protected BaseProcessor(boolean autoCancel) {
@@ -109,23 +103,6 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	@Override
 	public boolean isExposedToOverflow(Bounded parentPublisher) {
 		return false;
-	}
-
-	protected boolean incrementSubscribers() {
-		return SUBSCRIBER_COUNT.getAndIncrement(this) == 0;
-	}
-
-	protected int decrementSubscribers() {
-		Subscription subscription = upstreamSubscription;
-		int subs = SUBSCRIBER_COUNT.decrementAndGet(this);
-		if (subs == 0) {
-			if (subscription != null && autoCancel) {
-				upstreamSubscription = null;
-				cancel(subscription);
-			}
-			return subs;
-		}
-		return subs;
 	}
 
 	protected void cancel(Subscription subscription){

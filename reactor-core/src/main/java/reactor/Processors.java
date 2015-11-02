@@ -21,6 +21,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.processor.EmitterProcessor;
 import reactor.core.processor.ExecutorProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
@@ -55,6 +56,32 @@ public final class Processors {
 	 * @see Runtime#availableProcessors()
 	 */
 	public static final int DEFAULT_POOL_SIZE = Math.max(Runtime.getRuntime().availableProcessors(), 2);
+
+	/**
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy
+	 * and auto-cancel.
+	 * <p>
+	 *
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> EmitterProcessor<E> emitter() {
+		return emitter(BaseProcessor.SMALL_BUFFER_SIZE);
+	}
+
+	/**
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
+	 * blockingWait Strategy
+	 * and auto-cancel.
+	 * <p>
+	 *
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> EmitterProcessor<E> emitter(int bufferSize) {
+		return new EmitterProcessor<>(true, DEFAULT_POOL_SIZE, bufferSize);
+	}
 
 	/**
 	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,

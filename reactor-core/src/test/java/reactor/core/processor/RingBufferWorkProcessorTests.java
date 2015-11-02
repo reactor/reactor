@@ -20,12 +20,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.junit.Test;
 import org.reactivestreams.Processor;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
-import reactor.core.publisher.LogOperator;
 import reactor.core.support.Assert;
 
 /**
@@ -37,7 +35,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
 		System.out.println("new processor");
-		return Processors.log(RingBufferWorkProcessor.<Long>create("rb-work", bufferSize));
+		return Processors.log(Processors.<Long>queue("rb-work", bufferSize));
 	}
 
 	@Override
