@@ -65,6 +65,7 @@ public abstract class AbstractProcessorVerification extends org.reactivestreams.
 		executorService.submit(() -> {
 			  Processor<Long, Long> p;
 			  while ((p = processorReferences.poll()) != null) {
+				  System.out.println("aborting");
 				  p.onComplete();
 			  }
 		  }
@@ -88,6 +89,11 @@ public abstract class AbstractProcessorVerification extends org.reactivestreams.
 	}
 
 	protected abstract Processor<Long, Long> createProcessor(int bufferSize);
+
+	/*@Override
+	public Publisher<Long> createHelperPublisher(long elements) {
+		return Publishers.log(super.createHelperPublisher(elements), "publisher");
+	}*/
 
 	/*@Override
 	public Publisher<Long> createHelperPublisher(long elements) {

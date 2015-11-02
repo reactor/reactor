@@ -16,6 +16,7 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Processor;
+import org.testng.annotations.AfterClass;
 import reactor.Processors;
 
 /**
@@ -36,7 +37,21 @@ public class EmitterProcessorTests extends AbstractProcessorVerification {
 
 		return Processors.create(p2, Processors.log(p3, "topic"));*/
 
-		return p;
+		return Processors.log(p, "emitter");
 	}
 
+	@AfterClass
+	@Override
+	public void tearDown() {
+		executorService.shutdown();
+	}
+
+	/*@Override
+	public void optional_spec111_multicast_mustProduceTheSameElementsInTheSameSequenceToAllOfItsSubscribersWhenRequestingOneByOne()
+			throws Throwable {
+		for(int i = 0 ; i < 1000; i++) {
+			System.out.println("NEW "+i);
+			super.optional_spec111_multicast_mustProduceTheSameElementsInTheSameSequenceToAllOfItsSubscribersWhenRequestingOneByOne();
+		}
+	}*/
 }

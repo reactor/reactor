@@ -13,7 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor;
+
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
@@ -36,15 +41,10 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 
-import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-
 /**
- * Main gateway to build various asynchronous {@link Processor} or "pool" services that allow their reuse.
- * Reactor offers a few management API via the subclassed {@link BaseProcessor} for the underlying {@link
+ * Main gateway to build various asynchronous {@link Processor} or "pool" services that allow their reuse. Reactor
+ * offers a few management API via the subclassed {@link BaseProcessor} for the underlying {@link
  * java.util.concurrent.Executor} in use.
- *
  * @author Stephane Maldini
  * @since 2.1
  */
@@ -52,17 +52,14 @@ public final class Processors {
 
 	/**
 	 * Default number of processors available to the runtime on init (min 2)
-	 *
 	 * @see Runtime#availableProcessors()
 	 */
-	public static final int DEFAULT_POOL_SIZE = Math.max(Runtime.getRuntime().availableProcessors(), 2);
+	public static final int DEFAULT_POOL_SIZE = Math.max(Runtime.getRuntime()
+	                                                            .availableProcessors(), 2);
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
-	 * blockingWait Strategy
-	 * and auto-cancel.
-	 * <p>
-	 *
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -71,11 +68,8 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
-	 * blockingWait Strategy
-	 * and auto-cancel.
-	 * <p>
-	 *
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -84,25 +78,18 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
-	 * blockingWait Strategy
-	 * and auto-cancel.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created.
-	 *
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p> A new Cached ThreadExecutorPool will be implicitely created.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> topic() {
 		return topic("async", BaseProcessor.SMALL_BUFFER_SIZE, true);
 	}
+
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
-	 * blockingWait Strategy
-	 * and auto-cancel.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created.
-	 *
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p> A new Cached ThreadExecutorPool will be implicitely created.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -111,17 +98,12 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
-	 * blockingWait Strategy
-	 * and the passed auto-cancel setting.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created.
-	 *
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and the passed auto-cancel setting. <p> A Shared Processor authorizes concurrent onNext calls and is
+	 * suited for multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be
+	 * implicitely created.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> topic(boolean autoCancel) {
@@ -129,19 +111,13 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
-	 * blockingWait Strategy
-	 * and the passed auto-cancel setting.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and the passed auto-cancel setting. <p> A Shared Processor authorizes concurrent onNext calls and is
+	 * suited for multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be
+	 * implicitely created and will use the passed name to qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param <E>        Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> topic(String name, int bufferSize) {
@@ -149,19 +125,14 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using the blockingWait Strategy, passed backlog size,
-	 * and auto-cancel settings.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many event-loop
-	 * consuming the ringbuffer as subscribers.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new {@link BaseProcessor} using the blockingWait Strategy, passed backlog size, and auto-cancel
+	 * settings. <p> A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher
+	 * that will fan-in data. <p> The passed {@link java.util.concurrent.ExecutorService} will execute as many
+	 * event-loop consuming the ringbuffer as subscribers.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> topic(String name, int bufferSize, boolean autoCancel) {
@@ -169,15 +140,9 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
-	 * blockingWait Strategy
-	 * and auto-cancel.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created.
-	 *
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p> A Shared Processor authorizes concurrent onNext calls and is suited for
+	 * multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be implicitely created.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -186,15 +151,9 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
-	 * blockingWait Strategy
-	 * and auto-cancel.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created.
-	 *
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p> A Shared Processor authorizes concurrent onNext calls and is suited for
+	 * multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be implicitely created.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -203,17 +162,12 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
-	 * blockingWait Strategy
-	 * and the passed auto-cancel setting.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created.
-	 *
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and the passed auto-cancel setting. <p> A Shared Processor authorizes concurrent onNext calls and is
+	 * suited for multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be
+	 * implicitely created.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> queue(boolean autoCancel) {
@@ -221,19 +175,13 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size,
-	 * blockingWait Strategy
-	 * and the passed auto-cancel setting.
-	 * <p>
-	 * A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher that
-	 * will fan-in data.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and the passed auto-cancel setting. <p> A Shared Processor authorizes concurrent onNext calls and is
+	 * suited for multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be
+	 * implicitely created and will use the passed name to qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
-	 * @param <E>        Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> queue(String name, int bufferSize) {
@@ -241,16 +189,12 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using the passed buffer size
-	 * and auto-cancel settings.
-	 * <p>
-	 * A new Cached ThreadExecutorPool will be implicitely created and will use the passed name to qualify
-	 * the created threads.
-	 *
-	 * @param name       Use a new Cached ExecutorService and assign this name to the created threads
+	 * Create a new {@link BaseProcessor} using the passed buffer size and auto-cancel settings. <p> A new Cached
+	 * ThreadExecutorPool will be implicitely created and will use the passed name to qualify the created threads.
+	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param autoCancel Should this propagate cancellation when unregistered by all subscribers ?
-	 * @param <E>        Type of processed signals
+	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> queue(String name, int bufferSize, boolean autoCancel) {
@@ -280,8 +224,7 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> asyncGroup(String name,
-	                                               int bufferSize) {
+	public static <E> ProcessorGroup<E> asyncGroup(String name, int bufferSize) {
 		return asyncGroup(name, bufferSize, null);
 	}
 
@@ -291,9 +234,7 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> asyncGroup(String name,
-	                                               int bufferSize,
-	                                               int concurrency) {
+	public static <E> ProcessorGroup<E> asyncGroup(String name, int bufferSize, int concurrency) {
 		return asyncGroup(name, bufferSize, concurrency, null);
 	}
 
@@ -305,11 +246,10 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> asyncGroup(String name,
-	                                               int bufferSize,
-	                                               Consumer<Throwable> uncaughtExceptionHandler) {
+			int bufferSize,
+			Consumer<Throwable> uncaughtExceptionHandler) {
 		return asyncGroup(name, bufferSize, uncaughtExceptionHandler, null);
 	}
-
 
 	/**
 	 * @param name
@@ -319,9 +259,9 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> asyncGroup(String name,
-	                                               int bufferSize,
-	                                               int concurrency,
-	                                               Consumer<Throwable> uncaughtExceptionHandler) {
+			int bufferSize,
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler) {
 		return asyncGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, null);
 	}
 
@@ -334,13 +274,11 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> asyncGroup(String name,
-	                                               int bufferSize,
-	                                               Consumer<Throwable> uncaughtExceptionHandler,
-	                                               Consumer<Void> shutdownHandler
-	) {
+			int bufferSize,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler) {
 		return asyncGroup(name, bufferSize, uncaughtExceptionHandler, shutdownHandler, true);
 	}
-
 
 	/**
 	 * @param name
@@ -351,11 +289,10 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> asyncGroup(String name,
-	                                               int bufferSize,
-	                                               int concurrency,
-	                                               Consumer<Throwable> uncaughtExceptionHandler,
-	                                               Consumer<Void> shutdownHandler
-	) {
+			int bufferSize,
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler) {
 		return asyncGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
 	}
 
@@ -369,10 +306,10 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> asyncGroup(String name,
-	                                               int bufferSize,
-	                                               Consumer<Throwable> uncaughtExceptionHandler,
-	                                               Consumer<Void> shutdownHandler,
-	                                               boolean autoShutdown) {
+			int bufferSize,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler,
+			boolean autoShutdown) {
 		return asyncGroup(name, bufferSize, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
@@ -386,20 +323,18 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> asyncGroup(final String name,
-	                                               final int bufferSize,
-	                                               int concurrency,
-	                                               Consumer<Throwable> uncaughtExceptionHandler,
-	                                               Consumer<Void> shutdownHandler,
-	                                               boolean autoShutdown) {
+			final int bufferSize,
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler,
+			boolean autoShutdown) {
 
-		return ProcessorGroup.create(
-				new Supplier<Processor<ProcessorGroup.Task, ProcessorGroup.Task>>() {
-					@Override
-					public Processor<ProcessorGroup.Task, ProcessorGroup.Task> get() {
-						return RingBufferProcessor.share(name, bufferSize,
-								ProcessorGroup.DEFAULT_TASK_PROVIDER);
-					}
-				}, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		return ProcessorGroup.create(new Supplier<Processor<ProcessorGroup.Task, ProcessorGroup.Task>>() {
+			@Override
+			public Processor<ProcessorGroup.Task, ProcessorGroup.Task> get() {
+				return RingBufferProcessor.share(name, bufferSize, ProcessorGroup.DEFAULT_TASK_PROVIDER);
+			}
+		}, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**
@@ -417,11 +352,9 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> ioGroup(String name,
-	                                            int bufferSize) {
+	public static <E> ProcessorGroup<E> ioGroup(String name, int bufferSize) {
 		return ioGroup(name, bufferSize, DEFAULT_POOL_SIZE);
 	}
-
 
 	/**
 	 * @param name
@@ -430,12 +363,9 @@ public final class Processors {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> ioGroup(String name,
-	                                            int bufferSize,
-	                                            int concurrency) {
+	public static <E> ProcessorGroup<E> ioGroup(String name, int bufferSize, int concurrency) {
 		return ioGroup(name, bufferSize, concurrency, null, null, true);
 	}
-
 
 	/**
 	 * @param name
@@ -446,9 +376,9 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> ioGroup(String name,
-	                                            int bufferSize,
-	                                            int concurrency,
-	                                            Consumer<Throwable> uncaughtExceptionHandler) {
+			int bufferSize,
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler) {
 		return ioGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, null, true);
 	}
 
@@ -462,13 +392,12 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> ioGroup(String name,
-	                                            int bufferSize,
-	                                            int concurrency,
-	                                            Consumer<Throwable> uncaughtExceptionHandler,
-	                                            Consumer<Void> shutdownHandler) {
+			int bufferSize,
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler) {
 		return ioGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
 	}
-
 
 	/**
 	 * @param name
@@ -481,14 +410,12 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> ioGroup(final String name,
-	                                            final int bufferSize,
-	                                            int concurrency,
-	                                            Consumer<Throwable> uncaughtExceptionHandler,
-	                                            Consumer<Void> shutdownHandler,
-	                                            boolean autoShutdown) {
-		return ProcessorGroup.create(
-				RingBufferWorkProcessor.<ProcessorGroup.Task>share(name, bufferSize),
-				concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+			final int bufferSize,
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler,
+			boolean autoShutdown) {
+		return ProcessorGroup.create(RingBufferWorkProcessor.<ProcessorGroup.Task>share(name, bufferSize), concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**
@@ -500,6 +427,7 @@ public final class Processors {
 	public static <IN, OUT> Processor<IN, OUT> log(Processor<IN, OUT> processor) {
 		return log(processor, null, LogOperator.ALL);
 	}
+
 	/**
 	 * @param processor
 	 * @param <IN>
@@ -517,7 +445,9 @@ public final class Processors {
 	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> Processor<IN, OUT> log(final Processor<IN, OUT> processor, final String category, final int options) {
+	public static <IN, OUT> Processor<IN, OUT> log(final Processor<IN, OUT> processor,
+			final String category,
+			final int options) {
 		return lift(processor, new Function<Processor<IN, OUT>, Publisher<OUT>>() {
 			@Override
 			public Publisher<OUT> apply(Processor<IN, OUT> processor) {
@@ -561,7 +491,6 @@ public final class Processors {
 		return new DelegateProcessor<>(downstream, upstream);
 	}
 
-
 	/**
 	 * @param processor
 	 * @param liftTransformation
@@ -569,55 +498,14 @@ public final class Processors {
 	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> Processor<IN, OUT> lift(
-	  final Processor<IN, OUT> processor,
-	  final Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation) {
-		return new LiftProcessor<>(liftTransformation, processor);
+	public static <IN, OUT> Processor<IN, OUT> lift(final Processor<IN, OUT> processor,
+			final Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation) {
+		return new DelegateProcessor<>(liftTransformation.apply(processor), processor);
 
 	}
+	private static class DelegateProcessor<IN, OUT>
+			implements Processor<IN, OUT>, Publishable<OUT>, Subscribable<IN>, Bounded {
 
-	private static class LiftProcessor<IN, OUT> implements Processor<IN, OUT> {
-		private final Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation;
-		private final Processor<IN, OUT>                                             processor;
-
-		public LiftProcessor(Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation,
-		                     Processor<IN, OUT> processor) {
-			this.liftTransformation = liftTransformation;
-			this.processor = processor;
-		}
-
-		@Override
-		public void subscribe(Subscriber<? super OUT> s) {
-			try {
-				liftTransformation.apply(processor).subscribe(s);
-			} catch (Throwable t) {
-				Exceptions.<OUT>publisher(t).subscribe(s);
-			}
-		}
-
-		@Override
-		public void onSubscribe(Subscription s) {
-			processor.onSubscribe(s);
-		}
-
-		@Override
-		public void onNext(IN in) {
-			processor.onNext(in);
-		}
-
-		@Override
-		public void onError(Throwable t) {
-			processor.onError(t);
-		}
-
-		@Override
-		public void onComplete() {
-			processor.onComplete();
-		}
-	}
-
-	private static class DelegateProcessor<IN, OUT> implements Processor<IN, OUT>, Publishable<OUT>, Subscribable<IN>,
-	  Bounded {
 		private final Publisher<OUT> downstream;
 		private final Subscriber<IN> upstream;
 
@@ -663,14 +551,13 @@ public final class Processors {
 
 		@Override
 		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return Bounded.class.isAssignableFrom(upstream.getClass()) && ((Bounded) upstream).isExposedToOverflow
-			  (parentPublisher);
+			return Bounded.class.isAssignableFrom(upstream.getClass()) && ((Bounded) upstream).isExposedToOverflow(parentPublisher);
 		}
 
 		@Override
 		public long getCapacity() {
-			return Bounded.class.isAssignableFrom(upstream.getClass()) ? ((Bounded) upstream).getCapacity() : Long
-			  .MAX_VALUE;
+			return Bounded.class.isAssignableFrom(upstream.getClass()) ? ((Bounded) upstream).getCapacity() :
+					Long.MAX_VALUE;
 		}
 	}
 

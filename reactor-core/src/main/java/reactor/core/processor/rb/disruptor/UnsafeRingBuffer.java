@@ -165,6 +165,12 @@ public final class UnsafeRingBuffer<E> extends RingBufferFields<E>
     }
 
     @Override
+    public void addGatingSequence(Sequence gatingSequence)
+    {
+        sequencer.addGatingSequence(gatingSequence);
+    }
+
+    @Override
     public long getMinimumGatingSequence()
     {
         return getMinimumGatingSequence(null);

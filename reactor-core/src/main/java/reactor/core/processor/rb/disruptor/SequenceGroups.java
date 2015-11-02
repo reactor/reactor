@@ -55,6 +55,24 @@ class SequenceGroups
         }
     }
 
+    static <T> void addSequence(final T holder,
+            final AtomicReferenceFieldUpdater<T, Sequence[]> updater,
+            final Sequence sequence)
+    {
+
+        Sequence[] updatedSequences;
+        Sequence[] currentSequences;
+
+        do
+        {
+            currentSequences = updater.get(holder);
+            updatedSequences = copyOf(currentSequences, currentSequences.length + 1);
+
+            updatedSequences[currentSequences.length] = sequence;
+        }
+        while (!updater.compareAndSet(holder, currentSequences, updatedSequences));
+    }
+
     static <T> boolean removeSequence(final T holder,
                                       final AtomicReferenceFieldUpdater<T, Sequence[]> sequenceUpdater,
                                       final Sequence sequence)

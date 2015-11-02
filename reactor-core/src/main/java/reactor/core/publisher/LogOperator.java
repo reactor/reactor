@@ -46,6 +46,8 @@ public final class LogOperator<IN>
 
 	private final int options;
 
+	private long uniqueId = 1L;
+
 	public LogOperator(final String category, int options) {
 
 		this.log = category != null && !category.isEmpty() ?
@@ -56,27 +58,42 @@ public final class LogOperator<IN>
 
 	@Override
 	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
+		long newId =  uniqueId++;
 		if ((options & SUBSCRIBE) == SUBSCRIBE && log.isInfoEnabled()) {
-			log.trace("subscribe: {}", subscriber.getClass().getSimpleName());
+			log.trace("subscribe: [{}] {}", newId, subscriber.getClass().getSimpleName());
 		}
-		return new LoggerBarrier<>(log, subscriber, options);
+		return new LoggerBarrier<>(this, newId, subscriber);
 	}
 
 	private static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> {
 
 		private final int    options;
 		private final Logger log;
+		private final long uniqueId;
 
-		public LoggerBarrier(Logger log, Subscriber<? super IN> subscriber, int options) {
+		private final LogOperator parent;
+
+		public LoggerBarrier(LogOperator<IN> parent, long uniqueId, Subscriber<? super IN> subscriber) {
 			super(subscriber);
-			this.log = log;
-			this.options = options;
+			this.parent = parent;
+			this.log = parent.log;
+			this.options = parent.options;
+			this.uniqueId = uniqueId;
+		}
+
+		private String concatId(){
+			if(parent.uniqueId == 2L){
+				return "";
+			}
+			else{
+				return "["+uniqueId+"].";
+			}
 		}
 
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
 			if ((options & ON_SUBSCRIBE) == ON_SUBSCRIBE && log.isInfoEnabled()) {
-				log.info("⇩ onSubscribe({})", this.subscription);
+				log.info("⇩ "+concatId()+"onSubscribe({})", this.subscription);
 			}
 			super.doOnSubscribe(subscription);
 		}
@@ -84,7 +101,7 @@ public final class LogOperator<IN>
 		@Override
 		protected void doNext(IN in) {
 			if ((options & ON_NEXT) == ON_NEXT && log.isInfoEnabled()) {
-				log.info("↓ onNext({})", in);
+				log.info("↓ "+concatId()+"onNext({})", in);
 			}
 			super.doNext(in);
 		}
@@ -92,7 +109,7 @@ public final class LogOperator<IN>
 		@Override
 		protected void doError(Throwable throwable) {
 			if ((options & ON_ERROR) == ON_ERROR && log.isErrorEnabled()) {
-				log.error("↯ onError({})", throwable);
+				log.error("↯ "+concatId()+"onError({})", throwable);
 			}
 			super.doError(throwable);
 		}
@@ -100,7 +117,7 @@ public final class LogOperator<IN>
 		@Override
 		protected void doComplete() {
 			if ((options & ON_COMPLETE) == ON_COMPLETE && log.isInfoEnabled()) {
-				log.info("↧ onComplete()");
+				log.info("↧ "+concatId()+"onComplete()");
 			}
 			super.doComplete();
 		}
@@ -108,7 +125,7 @@ public final class LogOperator<IN>
 		@Override
 		protected void doRequest(long n) {
 			if ((options & REQUEST) == REQUEST && log.isInfoEnabled()) {
-				log.info("⇡ request({})", Long.MAX_VALUE == n ? "unbounded" : n);
+				log.info("⇡ "+concatId()+"request({})", Long.MAX_VALUE == n ? "unbounded" : n);
 			}
 			super.doRequest(n);
 		}
@@ -116,14 +133,14 @@ public final class LogOperator<IN>
 		@Override
 		protected void doCancel() {
 			if ((options & CANCEL) == CANCEL && log.isInfoEnabled()) {
-				log.info("↥ cancel()");
+				log.info("↥ "+concatId()+"cancel()");
 			}
 			super.doCancel();
 		}
 
 		@Override
 		public String toString() {
-			return "{logger=" + log.getName() + "}";
+			return "{subId="+uniqueId+", logger=" + log.getName() + "}";
 		}
 	}
 

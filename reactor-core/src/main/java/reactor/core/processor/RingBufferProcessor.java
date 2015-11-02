@@ -609,14 +609,15 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 		//if only active subscriber, replay missed data
 		if (incrementSubscribers()) {
 
-			signalProcessor.sequence.setVolatile(minimum.get());
-			ringBuffer.addGatingSequences(signalProcessor.sequence);
+			signalProcessor.sequence.set(minimum.get());
+			ringBuffer.addGatingSequence(signalProcessor.sequence);
 			//set eventProcessor sequence to minimum index (replay)
 		}
 		else {
 			//otherwise only listen to new data
 			//set eventProcessor sequence to ringbuffer index
-			ringBuffer.addGatingSequences(signalProcessor.sequence);
+			signalProcessor.sequence.set(ringBuffer.getCursor());
+			ringBuffer.addGatingSequence(signalProcessor.sequence);
 
 
 		}
@@ -687,7 +688,8 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 
 	@Override
 	protected void requestTask(Subscription s) {
-		ringBuffer.addGatingSequences(minimum);
+		minimum.set(ringBuffer.getCursor());
+		ringBuffer.addGatingSequence(minimum);
 		new NamedDaemonThreadFactory("ringbuffer-request-task", null, null, false)
 				.newThread(new RequestTask(s, new Consumer<Void>() {
 					@Override

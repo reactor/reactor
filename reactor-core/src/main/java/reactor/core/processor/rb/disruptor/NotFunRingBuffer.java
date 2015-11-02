@@ -135,6 +135,12 @@ public final class NotFunRingBuffer<E> extends NotFunRingBufferFields<E>
     }
 
     @Override
+    public void addGatingSequence(Sequence gatingSequence)
+    {
+        sequencer.addGatingSequence(gatingSequence);
+    }
+
+    @Override
     public long getMinimumGatingSequence()
     {
         return getMinimumGatingSequence(null);

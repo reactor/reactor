@@ -540,7 +540,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 			this.ringBuffer = RingBuffer
 					.createSingleProducer(factory, bufferSize, strategy, spinObserver);
 		}
-		ringBuffer.addGatingSequences(workSequence);
+		ringBuffer.addGatingSequence(workSequence);
 
 	}
 
@@ -561,8 +561,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 			incrementSubscribers();
 
 			//bind eventProcessor sequence to observe the ringBuffer
-			signalProcessor.sequence.setVolatile(workSequence.get());
-			ringBuffer.addGatingSequences(signalProcessor.sequence);
+			signalProcessor.sequence.set(workSequence.get());
+			ringBuffer.addGatingSequence(signalProcessor.sequence);
 
 			//prepare the subscriber subscription to this processor
 			signalProcessor.setSubscription(
@@ -682,7 +682,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 		if (retry == null) {
 			retry =
 					RingBuffer.createMultiProducer((Supplier<MutableSignal<E>>) FACTORY, 32, RingBuffer.NO_WAIT);
-			retry.addGatingSequences(retrySequence);
+			retry.addGatingSequence(retrySequence);
 			if (!RETRY_REF.compareAndSet(this, null, retry)) {
 				retry = retryBuffer;
 			}

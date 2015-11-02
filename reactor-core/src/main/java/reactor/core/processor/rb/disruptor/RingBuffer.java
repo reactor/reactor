@@ -272,6 +272,13 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	abstract public void addGatingSequences(Sequence... gatingSequences);
 
 	/**
+	 * Add the specified gating sequence to this instance of the Disruptor.  It will safely and atomically be added to
+	 * the list of gating sequences and not RESET to the current ringbuffer cursor unlike addGatingSequences.
+	 * @param gatingSequence The sequences to add.
+	 */
+	abstract public void addGatingSequence(Sequence gatingSequence);
+
+	/**
 	 * Get the minimum sequence value from all of the gating sequences added to this ringBuffer.
 	 * @return The minimum gating sequence or the cursor sequence if no sequences have been added.
 	 */
