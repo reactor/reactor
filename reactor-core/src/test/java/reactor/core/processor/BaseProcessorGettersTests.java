@@ -30,7 +30,7 @@ public class BaseProcessorGettersTests {
 
 		assertEquals(TEST_BUFFER_SIZE, processor.getAvailableCapacity());
 
-		processor.accept(new Object());
+		processor.onNext(new Object());
 
 		assertEquals(TEST_BUFFER_SIZE - 1, processor.getAvailableCapacity());
 		processor.awaitAndShutdown();

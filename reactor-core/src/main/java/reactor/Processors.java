@@ -37,7 +37,6 @@ import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
-import reactor.core.support.wait.BusySpinWaitStrategy;
 import reactor.core.support.wait.PhasedBackoffWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
@@ -425,7 +424,7 @@ public final class Processors {
 	 * @param uncaughtExceptionHandler
 	 * @param shutdownHandler
 	 * @param autoShutdown
-	 * @param waitStrategyProvider
+	 * @param waitprovider
 	 * @param <E>
 	 * @return
 	 */
@@ -435,12 +434,12 @@ public final class Processors {
 			Consumer<Throwable> uncaughtExceptionHandler,
 			Consumer<Void> shutdownHandler,
 			boolean autoShutdown,
-			Supplier<? extends WaitStrategy> waitprovider) {
+			final Supplier<? extends WaitStrategy> waitprovider) {
 
 		return ProcessorGroup.create(new Supplier<Processor<ProcessorGroup.Task, ProcessorGroup.Task>>() {
 			@Override
 			public Processor<ProcessorGroup.Task, ProcessorGroup.Task> get() {
-				return RingBufferProcessor.share(name, bufferSize, DEFAULT_WAIT_STRATEGY.get(), ProcessorGroup
+				return RingBufferProcessor.share(name, bufferSize, waitprovider.get(), ProcessorGroup
 						.DEFAULT_TASK_PROVIDER);
 			}
 		}, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);

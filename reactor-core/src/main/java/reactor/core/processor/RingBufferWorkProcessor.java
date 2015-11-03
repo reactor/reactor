@@ -605,14 +605,15 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	@Override
 	protected void doComplete() {
 		try {
-			if(isInContext()){
+			boolean isInContext = isInContext();
+			if(isInContext){
 				RingBufferSubscriberUtils.tryOnComplete(ringBuffer);
 			}
 			else {
 				RingBufferSubscriberUtils.onComplete(ringBuffer);
 			}
 			for (long n = ringBuffer.getCursor() - 1; n <= workSequence.get(); n++) {
-				if(isInContext()){
+				if(isInContext){
 					RingBufferSubscriberUtils.tryOnComplete(ringBuffer);
 				}
 				else {

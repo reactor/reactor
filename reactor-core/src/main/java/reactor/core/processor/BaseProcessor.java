@@ -15,8 +15,6 @@
  */
 package reactor.core.processor;
 
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -25,11 +23,12 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
+import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
-import reactor.fn.Consumer;
+import reactor.fn.Supplier;
 
 /**
  * A base processor with an async boundary trait to manage active subscribers (Threads), upstream subscription
@@ -38,14 +37,12 @@ import reactor.fn.Consumer;
  * @author Stephane Maldini
  */
 public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implements
-  Processor<IN, OUT>, Consumer<IN>, Bounded, Publishable<IN> {
+  Processor<IN, OUT>, Bounded, Publishable<IN> {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
 	public static final int SMALL_BUFFER_SIZE  = 256;
 	public static final int MEDIUM_BUFFER_SIZE = 8192;
-	public static final int CANCEL_TIMEOUT     =
-	  Integer.parseInt(System.getProperty("reactor.processor.cancel.timeout", "3"));
 
 	protected final boolean     autoCancel;
 
@@ -61,26 +58,33 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 		return this;
 	}
 
-	@Override
-	public final void accept(IN e) {
-		onNext(e);
+	/**
+	 *
+	 * @return
+	 */
+	public ReactiveSession<IN> emitSession() {
+		return emitSession(true);
 	}
 
 	/**
-	 * @return a snapshot number of available onNext before starving the resource
+	 *
+	 * @return
 	 */
-	public abstract long getAvailableCapacity();
-
-	@Override
-	public long getCapacity() {
-		return Long.MAX_VALUE;
+	public ReactiveSession<IN> emitSession(boolean autostart) {
+		return ReactiveSession.create(this, autostart);
 	}
-
-	@Override
-	public void subscribe(Subscriber<? super OUT> s) {
-		if (s == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
-		}
+	/**
+	 *
+	 * @return
+	 */
+	public Supplier<ReactiveSession<IN>> multiSessions() {
+		return new Supplier<ReactiveSession<IN>>() {
+			@Override
+			public ReactiveSession<IN> get() {
+				//TODO
+				return null;
+			}
+		};
 	}
 
 	/**
@@ -120,6 +124,25 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	@Override
 	public boolean isExposedToOverflow(Bounded parentPublisher) {
 		return false;
+	}
+
+	@Override
+	public long getCapacity() {
+		return Long.MAX_VALUE;
+	}
+
+	@Override
+	public void subscribe(Subscriber<? super OUT> s) {
+		if (s == null) {
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
+	}
+
+	/**
+	 * @return a snapshot number of available onNext before starving the resource
+	 */
+	public long getAvailableCapacity(){
+		return getCapacity();
 	}
 
 	protected void cancel(Subscription subscription){

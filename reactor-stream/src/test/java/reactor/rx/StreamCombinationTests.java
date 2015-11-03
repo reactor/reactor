@@ -35,6 +35,7 @@ import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple2;
@@ -132,12 +133,22 @@ public class StreamCombinationTests extends AbstractReactorTest {
 				         s.request(1L);
 			         }, null, d -> latch.countDown()));
 
-			processor.start();
-
+			ReactiveSession<Integer> session = processor.emitSession();
+		ReactiveSession.Emission emission;
 			for (int i = 0; i < n; i++) {
-				processor.onNext(i);
+
+				while((emission = session.emit(i)) != ReactiveSession.Emission.OK){
+					//System.out.println(emission);
+					if(session.hasFailed()){
+						session.getError().printStackTrace();
+						return;
+					}
+					if(session.hasEnded()){
+						return;
+					}
+				}
 			}
-			processor.onComplete();
+			session.end();
 
 			boolean waited = latch.await(5, TimeUnit.SECONDS);
 			Assert.isTrue(waited, "latch : " + latch.getCount());

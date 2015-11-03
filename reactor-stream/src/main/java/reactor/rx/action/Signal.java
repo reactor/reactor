@@ -90,7 +90,7 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 	}
 
 	/**
-	 * Creates and returns a {@code Signal} of variety {@code Type.ERROR}, and assigns it an error.
+	 * Creates and returns a {@code Signal} of variety {@code Type.FAILED}, and assigns it an error.
 	 *
 	 * @param e the error to assign to the signal
 	 * @return an {@code OnError} variety of {@code Signal}

@@ -221,7 +221,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			AtomicIntegerFieldUpdater.newUpdater(ProcessorGroup.class, "refCount");
 
 	@Override
-	public Processor<T, T> get() {
+	public BaseProcessor<T, T> get() {
 		return dispatchOn();
 	}
 
@@ -231,14 +231,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <V> Processor<V, V> dispatchOn(Class<V> clazz) {
-		return (Processor<V, V>) dispatchOn();
+	public <V> BaseProcessor<V, V> dispatchOn(Class<V> clazz) {
+		return (BaseProcessor<V, V>) dispatchOn();
 	}
 
 	/**
 	 * @return
 	 */
-	public Processor<T, T> dispatchOn() {
+	public BaseProcessor<T, T> dispatchOn() {
 		return createBarrier(false);
 	}
 
@@ -248,14 +248,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <V> Processor<V, V> publishOn(Class<V> clazz) {
-		return (Processor<V, V>) publishOn();
+	public <V> BaseProcessor<V, V> publishOn(Class<V> clazz) {
+		return (BaseProcessor<V, V>) publishOn();
 	}
 
 	/**
 	 * @return
 	 */
-	public Processor<T, T> publishOn() {
+	public BaseProcessor<T, T> publishOn() {
 		return createBarrier(true);
 	}
 
@@ -621,9 +621,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	}
 
-	private static class ProcessorBarrier<V> extends BaseSubscriber<V>
+	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
 			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>,
-			           Processor<V, V>, Executor, Subscription, Bounded, Publishable<V>,
+			           Executor, Subscription, Bounded, Publishable<V>,
 			           Subscribable<V> {
 
 		protected final    ProcessorGroup service;
@@ -631,16 +631,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		protected static final AtomicIntegerFieldUpdater<ProcessorBarrier> TERMINATED =
 				AtomicIntegerFieldUpdater.newUpdater(ProcessorBarrier.class, "terminated");
 
-		protected volatile Subscription          subscription;
 		protected          Subscriber<? super V> subscriber;
 
 		public ProcessorBarrier(ProcessorGroup service) {
+			super(true);
 			this.service = service;
 		}
 
 		@Override
 		public Publisher<V> upstream() {
-			return PublisherFactory.fromSubscription(subscription);
+			return PublisherFactory.fromSubscription(upstreamSubscription);
 		}
 
 		@Override
@@ -686,7 +686,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				else {
 					set = false;
 				}
-				subscribed = this.subscription != null;
+				subscribed = this.upstreamSubscription != null;
 			}
 
 			if (!set) {
@@ -700,12 +700,22 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
+		public long getAvailableCapacity() {
+			return getCapacity();
+		}
+
+		@Override
+		protected void doOnSubscribe(Subscription s) {
+			//IGNORE
+		}
+
+		@Override
 		public final void onSubscribe(Subscription s) {
 			Subscriber<? super V> subscriber = null;
 
 			synchronized (this) {
-				if (BackpressureUtils.checkSubscription(subscription, s)) {
-					subscription = s;
+				if (BackpressureUtils.checkSubscription(upstreamSubscription, s)) {
+					upstreamSubscription = s;
 					subscriber = this.subscriber;
 				}
 			}
@@ -737,7 +747,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			if (TERMINATED.compareAndSet(this, 0, 1)) {
 				if (subscriber == null) {
 					//cancelled
-					if (subscription == null) {
+					if (upstreamSubscription == null) {
 						return;
 					}
 
@@ -762,7 +772,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		protected final void doRequest(long n) {
 			if (terminated == 0) {
-				Subscription subscription = this.subscription;
+				Subscription subscription = this.upstreamSubscription;
 				if (subscription != null) {
 					subscription.request(n);
 				}
@@ -772,14 +782,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		@Override
 		public void cancel() {
 			if (TERMINATED.compareAndSet(this, 0, 1)) {
-				Subscription subscription = this.subscription;
+				Subscription subscription = this.upstreamSubscription;
 				if (service != null) {
 					service.decrementReference();
 				}
 				;
 				if (subscription != null) {
 					synchronized (this) {
-						this.subscription = null;
+						this.upstreamSubscription = null;
 						this.subscriber = null;
 					}
 					subscription.cancel();
@@ -833,7 +843,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		@Override
 		public String toString() {
 			return getClass().getSimpleName() + "{" +
-					"subscription=" + subscription +
+					"subscription=" + upstreamSubscription +
 					'}';
 		}
 	}
@@ -921,8 +931,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> {
 
-		Subscription cachedSubscription;
-
 		public SyncProcessorBarrier(ProcessorGroup service) {
 			super(service);
 		}
@@ -944,20 +952,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		@Override
 		public void request(long n) {
-			if (cachedSubscription == null) {
-				cachedSubscription = subscription;
-			}
-
-			Subscription subscription = cachedSubscription;
+			Subscription subscription = upstreamSubscription;
 			if (subscription != null) {
 				subscription.request(n);
 			}
-		}
-
-		@Override
-		public void cancel() {
-			super.cancel();
-			cachedSubscription = null;
 		}
 	}
 
@@ -1140,12 +1138,12 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		public Processor<T, T> dispatchOn() {
+		public BaseProcessor<T, T> dispatchOn() {
 			return next().dispatchOn();
 		}
 
 		@Override
-		public Processor<T, T> publishOn() {
+		public BaseProcessor<T, T> publishOn() {
 			return next().publishOn();
 		}
 
@@ -1155,7 +1153,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		public Processor<T, T> get() {
+		public BaseProcessor<T, T> get() {
 			return next().get();
 		}
 	}
