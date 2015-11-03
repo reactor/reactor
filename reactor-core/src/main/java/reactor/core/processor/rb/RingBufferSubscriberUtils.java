@@ -89,6 +89,17 @@ public final class RingBufferSubscriberUtils {
 		ringBuffer.publish(seqId);
 	}
 
+	public static <E> void tryOnComplete(RingBuffer<MutableSignal<E>> ringBuffer) {
+		final long seqId = ringBuffer.tryNext();
+		final MutableSignal<E> signal = ringBuffer.get(seqId);
+
+		signal.type = SignalType.COMPLETE;
+		signal.value = null;
+		signal.error = null;
+
+		ringBuffer.publish(seqId);
+	}
+
 	public static <E> void route(MutableSignal<E> task,
 			Subscriber<? super E> subscriber) {
 		if (task.type == SignalType.NEXT && null != task.value) {

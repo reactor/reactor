@@ -19,12 +19,12 @@ package reactor;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.EmitterProcessor;
 import reactor.core.processor.ExecutorProcessor;
@@ -37,6 +37,9 @@ import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
+import reactor.core.support.wait.BusySpinWaitStrategy;
+import reactor.core.support.wait.PhasedBackoffWaitStrategy;
+import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -56,6 +59,20 @@ public final class Processors {
 	 */
 	public static final int DEFAULT_POOL_SIZE = Math.max(Runtime.getRuntime()
 	                                                            .availableProcessors(), 2);
+
+	private static final Supplier<? extends WaitStrategy> DEFAULT_WAIT_STRATEGY = new Supplier<WaitStrategy>() {
+		@Override
+		public WaitStrategy get() {
+			return PhasedBackoffWaitStrategy.withLiteLock(200, 200, TimeUnit.MILLISECONDS);
+		}
+	};
+
+	private static final Supplier<? extends WaitStrategy> SINGLE_WAIT_STRATEGY = new Supplier<WaitStrategy>() {
+		@Override
+		public WaitStrategy get() {
+			return PhasedBackoffWaitStrategy.withLiteLock(500, 50, TimeUnit.MILLISECONDS);
+		}
+	};
 
 	/**
 	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
@@ -235,7 +252,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> singleGroup(String name, int bufferSize) {
-		return asyncGroup(name, bufferSize, 1);
+		return singleGroup(name, bufferSize, null);
 	}
 
 	/**
@@ -245,7 +262,30 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> singleGroup(String name, int bufferSize, Consumer<Throwable> errorC) {
-		return asyncGroup(name, bufferSize, 1, errorC);
+		return singleGroup(name, bufferSize, errorC, null);
+	}
+
+
+	/**
+	 * @param name
+	 * @param bufferSize
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorGroup<E> singleGroup(String name, int bufferSize, Consumer<Throwable> errorC,
+			Consumer<Void> shutdownC) {
+		return singleGroup(name, bufferSize, errorC, shutdownC, SINGLE_WAIT_STRATEGY);
+	}
+
+	/**
+	 * @param name
+	 * @param bufferSize
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorGroup<E> singleGroup(String name, int bufferSize, Consumer<Throwable> errorC,
+			Consumer<Void> shutdownC, Supplier<? extends WaitStrategy> waitStrategy) {
+		return asyncGroup(name, bufferSize, 1, errorC, shutdownC, true, waitStrategy);
 	}
 
 	/**
@@ -376,10 +416,32 @@ public final class Processors {
 			Consumer<Void> shutdownHandler,
 			boolean autoShutdown) {
 
+		return asyncGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown, DEFAULT_WAIT_STRATEGY);
+	}
+
+	/**
+	 * @param name
+	 * @param bufferSize
+	 * @param uncaughtExceptionHandler
+	 * @param shutdownHandler
+	 * @param autoShutdown
+	 * @param waitStrategyProvider
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorGroup<E> asyncGroup(final String name,
+			final int bufferSize,
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler,
+			boolean autoShutdown,
+			Supplier<? extends WaitStrategy> waitprovider) {
+
 		return ProcessorGroup.create(new Supplier<Processor<ProcessorGroup.Task, ProcessorGroup.Task>>() {
 			@Override
 			public Processor<ProcessorGroup.Task, ProcessorGroup.Task> get() {
-				return RingBufferProcessor.share(name, bufferSize, ProcessorGroup.DEFAULT_TASK_PROVIDER);
+				return RingBufferProcessor.share(name, bufferSize, DEFAULT_WAIT_STRATEGY.get(), ProcessorGroup
+						.DEFAULT_TASK_PROVIDER);
 			}
 		}, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
@@ -470,7 +532,31 @@ public final class Processors {
 			Consumer<Throwable> uncaughtExceptionHandler,
 			Consumer<Void> shutdownHandler,
 			boolean autoShutdown) {
-		return ProcessorGroup.create(RingBufferWorkProcessor.<ProcessorGroup.Task>share(name, bufferSize), concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+		return ioGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown,
+				DEFAULT_WAIT_STRATEGY.get());
+	}
+
+	/**
+	 * @param name
+	 * @param bufferSize
+	 * @param concurrency
+	 * @param uncaughtExceptionHandler
+	 * @param shutdownHandler
+	 * @param autoShutdown
+	 * @param waitStrategy
+	 * @param <E>
+	 * @return
+	 */
+	public static <E> ProcessorGroup<E> ioGroup(final String name,
+			final int bufferSize,
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler,
+			boolean autoShutdown,
+			WaitStrategy waitStrategy) {
+		return ProcessorGroup.create(RingBufferWorkProcessor.<ProcessorGroup.Task>share(name, bufferSize,
+				waitStrategy),
+				concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
 
 	/**

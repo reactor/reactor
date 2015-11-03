@@ -30,6 +30,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RequestTask;
@@ -604,12 +605,22 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 	@Override
 	protected void doComplete() {
 		try {
-			RingBufferSubscriberUtils.onComplete(ringBuffer);
-			for (long n = ringBuffer.getCursor() - 1; n <= workSequence.get(); n++) {
+			if(isInContext()){
+				RingBufferSubscriberUtils.tryOnComplete(ringBuffer);
+			}
+			else {
 				RingBufferSubscriberUtils.onComplete(ringBuffer);
 			}
+			for (long n = ringBuffer.getCursor() - 1; n <= workSequence.get(); n++) {
+				if(isInContext()){
+					RingBufferSubscriberUtils.tryOnComplete(ringBuffer);
+				}
+				else {
+					RingBufferSubscriberUtils.onComplete(ringBuffer);
+				}
+			}
 		}
-		catch (CancelException ce) {
+		catch (CancelException | InsufficientCapacityException ce){
 			//ignore
 		}
 		readWait.signalAllWhenBlocking();

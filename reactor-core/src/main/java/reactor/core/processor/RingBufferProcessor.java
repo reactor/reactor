@@ -28,6 +28,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RequestTask;
 import reactor.core.processor.rb.RingBufferSequencer;
@@ -659,9 +660,15 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 	@Override
 	protected void doComplete() {
 		try {
-			RingBufferSubscriberUtils.onComplete(ringBuffer);
+			if(isInContext()){
+				RingBufferSubscriberUtils.tryOnComplete(ringBuffer);
+			}
+			else {
+				RingBufferSubscriberUtils.onComplete(ringBuffer);
+			}
 		}
-		catch (CancelException ce){
+		catch (CancelException | InsufficientCapacityException ce){
+			barrier.alert();
 			//ignore
 		}
 		readWait.signalAllWhenBlocking();
@@ -896,7 +903,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 												0) {
 									//Todo Use WaitStrategy?
 									processor.barrier.checkAlert();
-									LockSupport.parkNanos(1l);
+									LockSupport.parkNanos(1L);
 								}
 
 								//It's an unbounded subscriber or there is enough capacity to process the signal
