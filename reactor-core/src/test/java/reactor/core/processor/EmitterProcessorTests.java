@@ -48,7 +48,6 @@ public class EmitterProcessorTests extends AbstractProcessorVerification {
 		executorService.shutdown();
 		executorService.awaitTermination(1, TimeUnit.SECONDS);
 	}
-/*
 	@Override
 	public void optional_spec111_multicast_mustProduceTheSameElementsInTheSameSequenceToAllOfItsSubscribersWhenRequestingOneByOne()
 			throws Throwable {
@@ -56,5 +55,5 @@ public class EmitterProcessorTests extends AbstractProcessorVerification {
 			System.out.println("NEW "+i);
 			super.optional_spec111_multicast_mustProduceTheSameElementsInTheSameSequenceToAllOfItsSubscribersWhenRequestingOneByOne();
 		}
-	}*/
+	}
 }
