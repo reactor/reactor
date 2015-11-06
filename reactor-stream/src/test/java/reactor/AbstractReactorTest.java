@@ -16,6 +16,10 @@
 
 package reactor;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import reactor.core.processor.ProcessorGroup;
@@ -29,6 +33,8 @@ public abstract class AbstractReactorTest {
 	protected static ProcessorGroup<?> asyncGroup;
 	protected static ProcessorGroup<?> ioGroup;
 	protected static Timer             timer;
+
+	protected final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
 
 	@BeforeClass
 	public static void loadEnv() {
@@ -49,4 +55,19 @@ public abstract class AbstractReactorTest {
 		System.setProperty("reactor.trace.cancel", "true");
 	}
 
+	protected void monitorThreadUse() {
+		monitorThreadUse(null);
+	}
+
+	protected void monitorThreadUse(Object val) {
+		AtomicLong counter = counters.get(Thread.currentThread());
+		if (counter == null) {
+			counter = new AtomicLong();
+			AtomicLong prev = counters.putIfAbsent(Thread.currentThread(), counter);
+			if(prev != null){
+				counter = prev;
+			}
+		}
+		counter.incrementAndGet();
+	}
 }

@@ -17,9 +17,12 @@ package reactor.rx;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -122,16 +125,21 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			BaseProcessor<Integer, Integer> processor = Processors.emitter();
 
 			int n = 1_000_000;
-			final CountDownLatch latch = new CountDownLatch(n + 1);
+			int subs = 1;
+			final CountDownLatch latch = new CountDownLatch((n + 1) * subs);
+
+		for(int i = 0;  i < subs; i++) {
 			processor.process(Processors.singleGroup()
 			                            .get())
 			         .subscribe(Subscribers.create(s -> {
 				         s.request(1L);
 				         return null;
 			         }, (d, s) -> {
-				         latch.countDown();
+				         monitorThreadUse();
 				         s.request(1L);
+				         latch.countDown();
 			         }, null, d -> latch.countDown()));
+		}
 
 			ReactiveSession<Integer> session = processor.emitSession();
 		ReactiveSession.Emission emission;
@@ -151,6 +159,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			session.end();
 
 			boolean waited = latch.await(5, TimeUnit.SECONDS);
+			System.out.println(counters);
 			Assert.isTrue(waited, "latch : " + latch.getCount());
 	}
 

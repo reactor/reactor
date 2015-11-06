@@ -160,26 +160,20 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 					Sequence poll = is.unbounded ? null : is.pollCursor;
 
 					//existing tracking buffer cursor, we buffer if not previously buffered
-					if (r > 0L && (poll == null || poll.get() == emitBuffer.getCursor())) {
-						BackpressureUtils.getAndSub(InnerSubscriber.REQUESTED, is, 1);
-						if (seq != -1L) {
-							if (poll != null && poll.compareAndSet(emitBuffer.getCursor(), seq)) {
-								is.actual.onNext(t);
-							}
-						}
-						else {
-							is.actual.onNext(t);
-						}
+					if (r > 0L && poll == null
+							&& BackpressureUtils.getAndSub(InnerSubscriber.REQUESTED,is, 1L) != 0L) {
+						is.actual.onNext(t);
 					}
 					//if failed, we buffer if not previously buffered and we assign a tracking cursor to that slot
 					else {
 						if (seq == -1L) {
 							seq = buffer(t);
-							startAllTrackers(inner, seq, j, i - 1, n);
+							if (i > 0) {
+								startAllTrackers(inner, seq, j, i - 1, n);
+							}
+
 						}
-						if (poll == null) {
-							is.startTracking(seq);
-						}
+						is.startTracking(seq);
 					}
 				}
 
@@ -282,16 +276,13 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				int j = getLastIndex(n, inner);
 				Sequence innerSequence;
 				RingBuffer<RingBuffer.Slot<T>> q = null;
-				long produced = 0;
+				long _r;
+				long remaining = 0L;
 
 				for (int i = 0; i < n; i++) {
-
 					@SuppressWarnings("unchecked") InnerSubscriber<T> is = (InnerSubscriber<T>) inner[j];
 
-					innerSequence = is.pollCursor;
-					if (q == null) {
-						q = emitBuffer;
-					}
+					long r = is.requested;
 
 					if (is.done) {
 						removeInner(is, autoCancel ? CANCELLED : EMPTY);
@@ -302,24 +293,32 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 						continue;
 					}
 
-					long r = is.requested;
+					innerSequence = is.pollCursor;
+					if (q == null) {
+						q = emitBuffer;
+					}
 
 					if (innerSequence == null) {
 						if (!d) {
-							produced += r;
+							remaining += r;
 						}
 					}
 
+					if(r > 0) {
+						_r = innerDrain(is, innerSequence, r, q);
 
-					long _r = innerDrain(is, innerSequence, r, q);
+						if (r > _r) {
+							BackpressureUtils.getAndSub(InnerSubscriber.REQUESTED, is, r - _r);
+						}
+						remaining += _r;
+					}
+					else{
+						_r = 0L;
+					}
 
-					if(d) {
+					if(d){
 						checkTerminal(is, innerSequence, _r);
 					}
-					else if(r > _r){
-						produced += r - _r;
-					}
-
 
 					j++;
 					if (j == n) {
@@ -329,8 +328,13 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				lastIndex = j;
 				lastId = inner[j].id;
 
-				if (produced != 0L && subscribers != CANCELLED && !d) {
-					requestMore(produced);
+				if (!d && remaining != 0L && subscribers != CANCELLED) {
+					if (q != null) {
+						requestMore(q.remainingCapacity());
+					}
+					else {
+						requestMore(remaining);
+					}
 				}
 			}
 
@@ -341,64 +345,44 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		}
 	}
 
-	final long innerDrain(InnerSubscriber<T> is,
-			Sequence innerSequence,
-			long r,
-			RingBuffer<RingBuffer.Slot<T>> q) {
+	final long innerDrain(InnerSubscriber<T> is, Sequence innerSequence, long r, RingBuffer<RingBuffer.Slot<T>> q) {
+
+		if (innerSequence == null) {
+			return r;
+		}
 
 		boolean unbounded = r == Long.MAX_VALUE;
 
 		RingBuffer.Slot<T> o;
 		T oo;
-		for (; ; ) {
-
-			if (innerSequence == null) {
+		long cursor;
+		while (r != 0L) {
+			cursor = innerSequence.get() + 1;
+			if (q.getCursor() >= cursor) {
+				o = q.get(cursor);
+				oo = o.value;
+			}
+			else {
 				break;
 			}
 
-			long produced = 0;
+			if (oo == null) {
+				break;
+			}
 
-			long cursor;
-			while (r != 0L) {
-				cursor = innerSequence.get() + 1;
-				if (q.getCursor() >= cursor) {
-					o = q.get(cursor);
-					oo = o.value;
-				}
-				else {
-					if(produced != 0){
-						break;
-					}
-					return r;
-				}
-
-				if (oo == null) {
-					break;
-				}
-
-				if (innerSequence.compareAndSet(cursor - 1L, cursor)) {
-					is.actual.onNext(oo);
-				}
-				else {
-					if(produced != 0){
-						break;
-					}
-					return r;
-				}
-
+			if (innerSequence.compareAndSet(cursor - 1L, cursor)) {
 				r--;
-				produced++;
+				is.actual.onNext(oo);
 			}
-			if (produced != 0L) {
-				if (!unbounded) {
-					r = InnerSubscriber.REQUESTED.addAndGet(is, -produced);
-				}
-				else {
-					r = Long.MAX_VALUE;
-				}
-			}
-			if (r == 0 || produced == 0) {
+			else {
 				break;
+			}
+
+		}
+
+		if (r != 0L) {
+			if (unbounded) {
+				r = Long.MAX_VALUE;
 			}
 		}
 		return r;
@@ -422,22 +406,19 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 	final void startAllTrackers(InnerSubscriber<?>[] inner, long seq, int startIndex, int times, int size) {
 		int k = startIndex;
 		Sequence poll;
-		for (int l = times == -1 ? size : times; l > 0; l--) {
+		for (int l = times; l > 0; l--) {
 			k--;
 			if (k == -1) {
 				k = size - 1;
 			}
 
-			if (times != -1 && k == startIndex) {
+			if (k == startIndex) {
 				continue;
 			}
 
 			poll = inner[k].pollCursor;
 			if (poll == null) {
 				inner[k].startTracking(seq);
-			}
-			else if (times != -1) {
-				poll.set(seq + 1L);
 			}
 		}
 	}
@@ -583,12 +564,6 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		static final AtomicReferenceFieldUpdater<InnerSubscriber, Sequence> CURSOR =
 				PlatformDependent.newAtomicReferenceFieldUpdater(InnerSubscriber.class, "pollCursor");
 
-		@SuppressWarnings("unused")
-		private volatile int running;
-		@SuppressWarnings("rawtypes")
-		static final AtomicIntegerFieldUpdater<InnerSubscriber> RUNNING =
-				AtomicIntegerFieldUpdater.newUpdater(InnerSubscriber.class, "running");
-
 		public InnerSubscriber(EmitterProcessor<T> parent, final Subscriber<? super T> actual, long id) {
 			this.id = id;
 			this.actual = actual;
@@ -598,28 +573,22 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		@Override
 		public void request(long n) {
 			if (BackpressureUtils.checkRequest(n, actual)) {
-				if (BackpressureUtils.getAndAdd(REQUESTED, this, n) == 0) {
-					long demand = n;
-					final Sequence poll = pollCursor;
-					if (poll != null) {
-
-						final RingBuffer<RingBuffer.Slot<T>> q = parent.emitBuffer;
-						InnerSubscriber<?>[] inner = parent.subscribers;
-
-						if (inner.length != 0 && poll.get() == q.getCursor()) {
-							while (!done) {
-								if (poll.get() == q.getCursor()) {
-									break;
-								}
-								demand = parent.innerDrain(this, poll, demand, parent.emitBuffer);
-								if (demand == 0L) {
-									break;
-								}
-							}
+				if (EmitterProcessor.RUNNING.getAndIncrement(parent) == 0) {
+					BackpressureUtils.getAndAdd(REQUESTED, this, n);
+					parent.drainLoop();
+				}
+				else {
+					Sequence innerSequence = pollCursor;
+					if (innerSequence != null) {
+						long p = parent.innerDrain(this, innerSequence, n, parent.emitBuffer);
+						if (p > 0) {
+							BackpressureUtils.getAndAdd(REQUESTED, this, p);
 						}
 					}
+					else {
+						BackpressureUtils.getAndAdd(REQUESTED, this, n);
+					}
 				}
-				parent.drain();
 			}
 		}
 
@@ -651,6 +620,7 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				if (ringBuffer != null) {
 					startTracking(Math.max(0L, ringBuffer.getMinimumGatingSequence()));
 				}
+
 				actual.onSubscribe(this);
 			}
 		}
