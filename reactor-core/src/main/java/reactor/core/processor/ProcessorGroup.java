@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
@@ -47,23 +48,18 @@ import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
 /**
- * A Shared Processor Service is a {@link Processor} factory eventually sharing one or
- * more internal {@link Processor}. <p> Its purpose is to mutualize some threading and
- * event loop resources, thus creating an (a)sync gateway reproducing the input sequence
- * of signals to their attached subscriber context. Its default behavior will be to
- * request a fair share of the internal {@link Processor} to allow many concurrent use of
- * a single async resource. <p> Alongside building Processor, SharedProcessor can generate
- * unbounded dispatchers as: - a {@link BiConsumer} that schedules the data argument over
- * the  {@link Consumer} task argument. - a {@link Consumer} that schedules  {@link
- * Consumer} task argument. - a {@link Executor} that runs an arbitrary {@link Runnable}
- * task. <p> SharedProcessor maintains a reference count on how many artefacts have been
- * built. Therefore it will automatically shutdown the internal async resource after all
- * references have been released. Each reference (consumer, executor or processor) can be
- * used in combination with {@link ProcessorGroup#release(Object...)} to cleanly
- * unregister and eventually shutdown when no more references use that service.
- *
+ * A Shared Processor Service is a {@link Processor} factory eventually sharing one or more internal {@link Processor}.
+ * <p> Its purpose is to mutualize some threading and event loop resources, thus creating an (a)sync gateway reproducing
+ * the input sequence of signals to their attached subscriber context. Its default behavior will be to request a fair
+ * share of the internal {@link Processor} to allow many concurrent use of a single async resource. <p> Alongside
+ * building Processor, SharedProcessor can generate unbounded dispatchers as: - a {@link BiConsumer} that schedules the
+ * data argument over the  {@link Consumer} task argument. - a {@link Consumer} that schedules  {@link Consumer} task
+ * argument. - a {@link Executor} that runs an arbitrary {@link Runnable} task. <p> SharedProcessor maintains a
+ * reference count on how many artefacts have been built. Therefore it will automatically shutdown the internal async
+ * resource after all references have been released. Each reference (consumer, executor or processor) can be used in
+ * combination with {@link ProcessorGroup#release(Object...)} to cleanly unregister and eventually shutdown when no more
+ * references use that service.
  * @param <T> the default type (not enforced at runtime)
- *
  * @author Anatoly Kadyshev
  * @author Stephane Maldini
  */
@@ -102,8 +98,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> create(
-			Supplier<? extends Processor<Task, Task>> p, int concurrency) {
+	public static <E> ProcessorGroup<E> create(Supplier<? extends Processor<Task, Task>> p, int concurrency) {
 		return create(p, concurrency, null, null, true);
 	}
 
@@ -113,8 +108,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> create(Processor<Task, Task> p,
-			boolean autoShutdown) {
+	public static <E> ProcessorGroup<E> create(Processor<Task, Task> p, boolean autoShutdown) {
 		return create(p, null, null, autoShutdown);
 	}
 
@@ -126,7 +120,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> create(Processor<Task, Task> p,
-			Consumer<Throwable> uncaughtExceptionHandler, boolean autoShutdown) {
+			Consumer<Throwable> uncaughtExceptionHandler,
+			boolean autoShutdown) {
 		return create(p, uncaughtExceptionHandler, null, autoShutdown);
 	}
 
@@ -139,7 +134,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> create(final Processor<Task, Task> p,
-			Consumer<Throwable> uncaughtExceptionHandler, Consumer<Void> shutdownHandler,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler,
 			boolean autoShutdown) {
 		return create(p, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
@@ -154,9 +150,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <E> ProcessorGroup<E> create(
-			Supplier<? extends Processor<Task, Task>> p, int concurrency,
-			Consumer<Throwable> uncaughtExceptionHandler, Consumer<Void> shutdownHandler,
+	public static <E> ProcessorGroup<E> create(Supplier<? extends Processor<Task, Task>> p,
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler,
 			boolean autoShutdown) {
 		if (p != null && concurrency > 1) {
 			return new PooledProcessorGroup<>(p, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
@@ -177,8 +174,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <E> ProcessorGroup<E> create(final Processor<Task, Task> p,
-			int concurrency, Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler, boolean autoShutdown) {
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler,
+			boolean autoShutdown) {
 		return new SingleProcessorGroup<E>(new Supplier<Processor<Task, Task>>() {
 			@Override
 			public Processor<Task, Task> get() {
@@ -209,9 +208,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	final private TailRecurser tailRecurser;
 
-	final private   Processor<Task, Task>     processor;
-	final protected boolean                   autoShutdown;
-	final protected int                       concurrency;
+	final private   Processor<Task, Task>         processor;
+	final protected boolean                       autoShutdown;
+	final protected int                           concurrency;
 	final           ExecutorProcessor<Task, Task> executorProcessor;
 
 	@SuppressWarnings("unused")
@@ -439,8 +438,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static final ProcessorGroup SYNC_SERVICE =
-			new ProcessorGroup(null, -1, null, null, false);
+	private static final ProcessorGroup SYNC_SERVICE = new ProcessorGroup(null, -1, null, null, false);
 
 	/**
 	 * Singleton delegating consumer for synchronous data dispatchers
@@ -456,13 +454,12 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	/**
 	 * Singleton delegating consumer for synchronous dispatchers
 	 */
-	private final static Consumer<Consumer<Void>> SYNC_DISPATCHER =
-			new Consumer<Consumer<Void>>() {
-				@Override
-				public void accept(Consumer<Void> callback) {
-					callback.accept(null);
-				}
-			};
+	private final static Consumer<Consumer<Void>> SYNC_DISPATCHER = new Consumer<Consumer<Void>>() {
+		@Override
+		public void accept(Consumer<Void> callback) {
+			callback.accept(null);
+		}
+	};
 
 	/**
 	 * Singleton delegating executor for synchronous executor
@@ -485,8 +482,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	@SuppressWarnings("unchecked")
 	protected ProcessorGroup(Supplier<? extends Processor<Task, Task>> processor,
-			int concurrency, Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler, boolean autoShutdown) {
+			int concurrency,
+			Consumer<Throwable> uncaughtExceptionHandler,
+			Consumer<Void> shutdownHandler,
+			boolean autoShutdown) {
 		this.autoShutdown = autoShutdown;
 		this.concurrency = concurrency;
 
@@ -500,11 +499,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				this.executorProcessor = (ExecutorProcessor<Task, Task>) this.processor;
 
 				if (concurrency == 1) {
-					int bufferSize =
-							(int) Math.min(this.executorProcessor.getCapacity(), MAX_BUFFER_SIZE);
+					int bufferSize = (int) Math.min(this.executorProcessor.getCapacity(), MAX_BUFFER_SIZE);
 
-					this.tailRecurser =
-							new TailRecurser(bufferSize, DEFAULT_TASK_PROVIDER, DEFAULT_TASK_CONSUMER);
+					this.tailRecurser = new TailRecurser(bufferSize, DEFAULT_TASK_PROVIDER, DEFAULT_TASK_CONSUMER);
 				}
 				else {
 					this.tailRecurser = null;
@@ -583,8 +580,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		private int next = 0;
 
-		public TailRecurser(int backlogSize, Supplier<Task> taskSupplier,
-				Consumer<Task> taskConsumer) {
+		public TailRecurser(int backlogSize, Supplier<Task> taskSupplier, Consumer<Task> taskConsumer) {
 			this.pileSizeIncrement = backlogSize * 2;
 			this.taskSupplier = taskSupplier;
 			this.taskConsumer = taskConsumer;
@@ -622,16 +618,17 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	}
 
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
-			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>,
-			           Executor, Subscription, Bounded, Publishable<V>,
-			           Subscribable<V> {
+			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription, Bounded,
+			           Publishable<V>, Subscribable<V> {
 
-		protected final    ProcessorGroup service;
-		protected volatile int            terminated;
+		protected final ProcessorGroup service;
+
+		@SuppressWarnings("unused")
+		private volatile int terminated;
 		protected static final AtomicIntegerFieldUpdater<ProcessorBarrier> TERMINATED =
 				AtomicIntegerFieldUpdater.newUpdater(ProcessorBarrier.class, "terminated");
 
-		protected          Subscriber<? super V> subscriber;
+		protected Subscriber<? super V> subscriber;
 
 		public ProcessorBarrier(ProcessorGroup service) {
 			super(true);
@@ -690,8 +687,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			}
 
 			if (!set) {
-				Exceptions.<V>publisher(new IllegalStateException("Shared Processors do not support multi-subscribe"))
-				          .subscribe(s);
+				Exceptions.<V>publisher(new IllegalStateException("Shared Processors do not support multi-subscribe")).subscribe(
+						s);
 			}
 			else if (subscribed) {
 				dispatchSubscribe(s);
@@ -723,10 +720,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			if (subscriber != null) {
 				dispatchSubscribe(subscriber);
 			}
-		}
-
-		protected void dispatchSubscribe(Subscriber<? super V> subscriber){
-			dispatchProcessorSequence(this, subscriber, SignalType.SUBSCRIPTION);
 		}
 
 		@Override
@@ -797,16 +790,13 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			}
 		}
 
-		protected void dispatchProcessorSequence(Object data, Subscriber subscriber,
-				SignalType type) {
-			dispatch(data, subscriber, type);
-
+		protected void dispatchSubscribe(Subscriber<? super V> subscriber) {
+			dispatchProcessorSequence(this, subscriber, SignalType.SUBSCRIPTION);
 		}
 
-		protected boolean shouldTailRecruse() {
-			return service.tailRecurser != null &&
-					service.executorProcessor != null &&
-					service.executorProcessor.isInContext();
+		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
+			dispatch(data, subscriber, type);
+
 		}
 
 		@SuppressWarnings("unchecked")
@@ -827,6 +817,12 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			}
 		}
 
+		protected boolean shouldTailRecruse() {
+			return service.tailRecurser != null &&
+					service.executorProcessor != null &&
+					service.executorProcessor.isInContext();
+		}
+
 		@Override
 		public boolean isExposedToOverflow(Bounded parentPublisher) {
 			Subscriber sub = subscriber;
@@ -836,8 +832,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		@Override
 		public long getCapacity() {
-			return service != null && service.executorProcessor != null ?
-					service.executorProcessor.getCapacity() : Long.MAX_VALUE;
+			return service != null && service.executorProcessor != null ? service.executorProcessor.getCapacity() :
+					Long.MAX_VALUE;
 		}
 
 		@Override
@@ -848,12 +844,75 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	}
 
+	private static class ThreadBarrier<V> extends ProcessorBarrier<V> {
+
+		@SuppressWarnings("unused")
+		protected volatile long requested = 0L;
+
+		@SuppressWarnings("rawtypes")
+		static final AtomicLongFieldUpdater<ThreadBarrier> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(ThreadBarrier.class, "requested");
+
+		@SuppressWarnings("unused")
+		protected volatile int running = 1;
+
+		@SuppressWarnings("rawtypes")
+		static final AtomicIntegerFieldUpdater<ThreadBarrier> RUNNING =
+				AtomicIntegerFieldUpdater.newUpdater(ThreadBarrier.class, "running");
+
+		public ThreadBarrier(ProcessorGroup service) {
+			super(service);
+		}
+
+		@Override
+		protected void dispatchSubscribe(Subscriber<? super V> subscriber) {
+			service.route(this, subscriber, SignalType.SUBSCRIPTION);
+			drainRequests();
+		}
+
+		@Override
+		public void request(long n) {
+			if (BackpressureUtils.checkRequest(n, subscriber)) {
+				BackpressureUtils.getAndAdd(REQUESTED, this, n);
+				if (RUNNING.getAndIncrement(this) == 0) {
+					drainRequests();
+				}
+			}
+		}
+
+		protected void drainRequests() {
+			long r = requested;
+			int missed = 1;
+			for (; ; ) {
+				if (r == Long.MAX_VALUE) {
+					doRequest(r);
+					return;
+				}
+				r = REQUESTED.getAndSet(this, 0L);
+				if (r != 0L) {
+					doRequest(r);
+				}
+				missed = RUNNING.addAndGet(this, -missed);
+				if (missed == 0L) {
+					break;
+				}
+			}
+		}
+
+		@Override
+		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
+			super.dispatchProcessorSequence(data, subscriber, type);
+			if (type == SignalType.NEXT && RUNNING.getAndIncrement(this) == 0) {
+				drainRequests();
+			}
+		}
+	}
+
 	private static final class RingBufferProcessorBarrier<V> extends ProcessorBarrier<V> {
 
 		private final RingBuffer<MutableSignal<Task>> ringBuffer;
 
-		public RingBufferProcessorBarrier(ProcessorGroup service,
-				RingBuffer<MutableSignal<Task>> ringBuffer) {
+		public RingBufferProcessorBarrier(ProcessorGroup service, RingBuffer<MutableSignal<Task>> ringBuffer) {
 			super(service);
 			this.ringBuffer = ringBuffer;
 		}
@@ -866,11 +925,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				task.type = type;
 				task.payload = data;
 				task.subscriber = subscriber;
+				//service.route(data, subscriber, type);
 			}
 			else {
 				MutableSignal<Task> signal = RingBufferSubscriberUtils.next(ringBuffer);
-				task = signal.value != null ? signal.value :
-						new Task(); //TODO should always assume supplied?
+				task = signal.value != null ? signal.value : new Task(); //TODO should always assume supplied?
 				task.type = type;
 				task.payload = data;
 				task.subscriber = subscriber;
@@ -891,8 +950,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		protected void dispatchProcessorSequence(Object data, Subscriber subscriber,
-				SignalType type) {
+		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
 			service.route(data, subscriber, type);
 		}
 
@@ -1002,8 +1060,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		private final Consumer<Throwable> uncaughtExceptionHandler;
 		private final Consumer<Void>      shutdownHandler;
 
-		public TaskSubscriber(Consumer<Throwable> uncaughtExceptionHandler,
-				Consumer<Void> shutdownHandler) {
+		public TaskSubscriber(Consumer<Throwable> uncaughtExceptionHandler, Consumer<Void> shutdownHandler) {
 			this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 			this.shutdownHandler = shutdownHandler;
 		}
@@ -1042,8 +1099,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	final static class SingleProcessorGroup<T> extends ProcessorGroup<T> {
 
 		public SingleProcessorGroup(Supplier<? extends Processor<Task, Task>> processor,
-				int concurrency, Consumer<Throwable> uncaughtExceptionHandler,
-				Consumer<Void> shutdownHandler, boolean autoShutdown) {
+				int concurrency,
+				Consumer<Throwable> uncaughtExceptionHandler,
+				Consumer<Void> shutdownHandler,
+				boolean autoShutdown) {
 			super(processor, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 		}
 	}
@@ -1055,8 +1114,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		volatile int index = 0;
 
 		public PooledProcessorGroup(Supplier<? extends Processor<Task, Task>> processor,
-				int concurrency, Consumer<Throwable> uncaughtExceptionHandler,
-				Consumer<Void> shutdownHandler, boolean autoShutdown) {
+				int concurrency,
+				Consumer<Throwable> uncaughtExceptionHandler,
+				Consumer<Void> shutdownHandler,
+				boolean autoShutdown) {
 			super(null, concurrency, null, null, autoShutdown);
 
 			processorGroups = new ProcessorGroup[concurrency];

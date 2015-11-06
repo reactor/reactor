@@ -126,10 +126,10 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		int n = inner.length;
 		if (n != 0) {
 
-			int j = getLastIndex(n, inner);
+			long seq = -1L;
+			int j = n == 1 ? 0 : getLastIndex(n, inner);
 			boolean unbounded = true;
 
-			long seq = -1L;
 			for (int i = 0; i < n; i++) {
 
 				InnerSubscriber<T> is = (InnerSubscriber<T>) inner[j];
@@ -159,9 +159,9 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 					is.unbounded = r == Long.MAX_VALUE;
 					Sequence poll = is.unbounded ? null : is.pollCursor;
 
-					//existing tracking buffer cursor, we buffer if not previously buffered
-					if (r > 0L && poll == null
-							&& BackpressureUtils.getAndSub(InnerSubscriber.REQUESTED,is, 1L) != 0L) {
+					//no tracking and remaining demand positive
+					if (r > 0L && poll == null) {
+						is.requested--;
 						is.actual.onNext(t);
 					}
 					//if failed, we buffer if not previously buffered and we assign a tracking cursor to that slot
@@ -304,7 +304,7 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 						}
 					}
 
-					if(r > 0) {
+					if (r > 0) {
 						_r = innerDrain(is, innerSequence, r, q);
 
 						if (r > _r) {
@@ -312,11 +312,11 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 						}
 						remaining += _r;
 					}
-					else{
+					else {
 						_r = 0L;
 					}
 
-					if(d){
+					if (d) {
 						checkTerminal(is, innerSequence, _r);
 					}
 
@@ -353,37 +353,24 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 		boolean unbounded = r == Long.MAX_VALUE;
 
-		RingBuffer.Slot<T> o;
 		T oo;
 		long cursor;
 		while (r != 0L) {
 			cursor = innerSequence.get() + 1;
 			if (q.getCursor() >= cursor) {
-				o = q.get(cursor);
-				oo = o.value;
+				oo = q.get(cursor).value;
 			}
 			else {
 				break;
 			}
 
-			if (oo == null) {
-				break;
-			}
-
-			if (innerSequence.compareAndSet(cursor - 1L, cursor)) {
-				r--;
-				is.actual.onNext(oo);
-			}
-			else {
-				break;
-			}
-
+			innerSequence.setVolatile(cursor);
+			r--;
+			is.actual.onNext(oo);
 		}
 
-		if (r != 0L) {
-			if (unbounded) {
-				r = Long.MAX_VALUE;
-			}
+		if (unbounded) {
+			r = Long.MAX_VALUE;
 		}
 		return r;
 	}
