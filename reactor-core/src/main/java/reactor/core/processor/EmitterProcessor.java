@@ -244,7 +244,16 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 	final long buffer(T value) {
 		RingBuffer<RingBuffer.Slot<T>> q = getMainQueue();
 
-		long seq = q.next();
+		long seq;
+		try{
+			seq = q.tryNext();
+		}
+		catch(InsufficientCapacityException ice){
+			if(RUNNING.compareAndSet(this, 0, 1)){
+				drainLoop();
+			}
+			seq = q.next();
+		}
 
 		q.get(seq).value = value;
 		q.publish(seq);

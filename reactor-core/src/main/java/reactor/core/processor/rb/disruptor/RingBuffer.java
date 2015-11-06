@@ -84,6 +84,16 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	}
 
 	/**
+	 * Create a new single producer RingBuffer using the default wait strategy  {@link this#NO_WAIT}.
+	 * @param bufferSize number of elements to create within the ring buffer.
+	 * @see MultiProducerSequencer
+	 */
+	@SuppressWarnings("unchecked")
+	public static <E> RingBuffer<Slot<E>> createSingleProducer(int bufferSize, Consumer<Void> spinObserver) {
+		return createSingleProducer(EMITTED, bufferSize, NO_WAIT, spinObserver);
+	}
+
+	/**
 	 * Create a new single producer RingBuffer using the default wait strategy   {@link this#NO_WAIT}.
 	 * @param factory used to create the events within the ring buffer.
 	 * @param bufferSize number of elements to create within the ring buffer.

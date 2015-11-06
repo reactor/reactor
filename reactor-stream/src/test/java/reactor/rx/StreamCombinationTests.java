@@ -125,7 +125,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			BaseProcessor<Integer, Integer> processor = Processors.emitter();
 
 			int n = 1_000_000;
-			int subs = 1;
+			int subs = 3;
 			final CountDownLatch latch = new CountDownLatch((n + 1) * subs);
 
 		for(int i = 0;  i < subs; i++) {
