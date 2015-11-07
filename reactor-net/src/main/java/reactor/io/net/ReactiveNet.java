@@ -964,12 +964,6 @@ public class ReactiveNet {
 
 	static {
 
-		if(!DependencyUtils.hasReactorStream()){
-			throw new IllegalStateException("io.projectreactor:reactor-stream:"
-					+ DependencyUtils.reactorVersion()+
-					" dependency is missing from the classpath.");
-		}
-
 		boolean hasNetty = false;
 		try {
 			Class.forName("io.netty.channel.Channel");
