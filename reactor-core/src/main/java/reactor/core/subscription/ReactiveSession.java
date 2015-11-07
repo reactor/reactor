@@ -16,7 +16,9 @@
 
 package reactor.core.subscription;
 
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.locks.LockSupport;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -26,16 +28,45 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
+import reactor.fn.Consumer;
+import reactor.fn.LongSupplier;
+import reactor.fn.Predicate;
+import reactor.fn.timer.TimeUtils;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ReactiveSession<E> implements Subscription, Bounded {
+public class ReactiveSession<E> implements Subscription, Bounded, Consumer<E> {
 
 	public enum Emission {
-		FAILED, BACKPRESSURED, OK, DROPPED, CANCELLED
+		FAILED, BACKPRESSURED, OK, DROPPED, CANCELLED;
+
+		public boolean isBackpressured(){
+			return this == BACKPRESSURED;
+		}
+		public boolean isDropped(){
+			return this == DROPPED;
+		}
+		public boolean isOk(){
+			return this == OK;
+		}
+		public boolean isFailed(){
+			return this == FAILED;
+		}
+		public boolean isCancelled(){
+			return this == CANCELLED;
+		}
 	}
+
+	private static final LongSupplier NOW = TimeUtils.currentTimeMillisResolver();
+
+	private static final Predicate NEVER = new Predicate(){
+		@Override
+		public boolean test(Object o) {
+			return false;
+		}
+	};
 
 	private final Subscriber<? super E> actual;
 
@@ -143,14 +174,14 @@ public class ReactiveSession<E> implements Subscription, Bounded {
 	 *
 	 * @return
 	 */
-	public Emission end(){
+	public Emission finish() {
 		if (cancelled) {
 			return Emission.CANCELLED;
 		}
 		if (uncaughtException != null) {
 			return Emission.FAILED;
 		}
-		try{
+		try {
 			cancelled = true;
 			actual.onComplete();
 			return Emission.OK;
@@ -170,12 +201,90 @@ public class ReactiveSession<E> implements Subscription, Bounded {
 
 	/**
 	 *
+	 * @param data
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public long submit(E data) {
+		return submit(data, -1L, TimeUnit.MILLISECONDS, NEVER);
+	}
+
+	/**
+	 *
+	 * @param data
+	 * @param timeout
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public long submit(E data, long timeout) {
+		return submit(data, timeout, TimeUnit.MILLISECONDS, NEVER);
+	}
+
+	/**
+	 *
+	 * @param data
+	 * @param timeout
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public long submit(E data, long timeout, Predicate<E> dropPredicate) {
+		return submit(data, timeout, TimeUnit.MILLISECONDS, dropPredicate);
+	}
+
+	/**
+	 *
+	 * @param data
+	 * @param timeout
+	 * @param unit
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public long submit(E data, long timeout, TimeUnit unit) {
+		return submit(data, timeout, unit, NEVER);
+	}
+
+	/**
+	 *
+	 * @param data
+	 * @param timeout
+	 * @param unit
+	 * @param dropPredicate
+	 * @return
+	 */
+	public long submit(E data, long timeout, TimeUnit unit, Predicate<E> dropPredicate) {
+		final long start = NOW.get();
+		long timespan =
+				timeout != -1L ? (start + TimeUnit.MILLISECONDS.convert(timeout, unit)) :
+						Long.MAX_VALUE;
+
+		Emission res;
+		try {
+			while ((res = emit(data)).isBackpressured()) {
+				if (timeout != -1L && NOW.get() > timespan) {
+					if(dropPredicate.test(data)){
+						timespan += TimeUnit.MILLISECONDS.convert(timeout, unit);
+					}
+					else{
+						break;
+					}
+				}
+				Thread.sleep(10);
+			}
+		}
+		catch (InterruptedException ie) {
+			return -1L;
+		}
+
+		return res == Emission.OK ? unit.convert(System.currentTimeMillis() - start, TimeUnit.MILLISECONDS) : -1L;
+	}
+
+	/**
+	 *
 	 * @return
 	 */
 	public boolean hasFailed() {
 		return uncaughtException != null;
 	}
-
 
 	/**
 	 *
@@ -206,8 +315,16 @@ public class ReactiveSession<E> implements Subscription, Bounded {
 	}
 
 	@Override
+	public void accept(E e) {
+		while (emit(e) == Emission.BACKPRESSURED) {
+			LockSupport.parkNanos(1L);
+		}
+	}
+
+	@Override
 	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return Bounded.class.isAssignableFrom(actual.getClass()) && ((Bounded) actual).isExposedToOverflow(parentPublisher);
+		return Bounded.class.isAssignableFrom(actual.getClass()) && ((Bounded) actual).isExposedToOverflow(
+				parentPublisher);
 	}
 
 	@Override

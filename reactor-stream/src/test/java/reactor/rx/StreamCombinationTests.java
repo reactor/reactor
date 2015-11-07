@@ -13,16 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.rx;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -35,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.subscription.ReactiveSession;
@@ -49,13 +47,12 @@ import reactor.rx.action.Control;
  */
 public class StreamCombinationTests extends AbstractReactorTest {
 
-	private static final Logger LOG =
-			LoggerFactory.getLogger(StreamCombinationTests.class);
+	private static final Logger LOG = LoggerFactory.getLogger(StreamCombinationTests.class);
 
 	private ArrayList<Stream<SensorData>> allSensors;
 
-	private Processor<SensorData, SensorData>         sensorEven;
-	private Processor<SensorData, SensorData>         sensorOdd;
+	private Processor<SensorData, SensorData> sensorEven;
+	private Processor<SensorData, SensorData> sensorOdd;
 
 	@Before
 	public void before() {
@@ -65,11 +62,11 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@After
 	public void after() {
-		if(sensorEven != null) {
+		if (sensorEven != null) {
 			sensorEven.onComplete();
 			sensorEven = null;
 		}
-		if(sensorOdd != null) {
+		if (sensorOdd != null) {
 			sensorOdd.onComplete();
 			sensorOdd = null;
 		}
@@ -113,22 +110,54 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public void testMerge1ToN() throws Exception {
 		final int n = 1000;
 
-		Stream<Integer> stream =
-				Streams.merge(Streams.just(1).map(i -> Streams.range(0, n)));
+		Stream<Integer> stream = Streams.merge(Streams.just(1)
+		                                              .map(i -> Streams.range(0, n)));
 
 		final CountDownLatch latch = new CountDownLatch(n);
 		awaitLatch(stream.consume(integer -> latch.countDown()), latch);
 	}
 
 	@Test
+	public void tesSubmitSession() throws Exception {
+		BaseProcessor<Integer, Integer> processor = Processors.emitter();
+		AtomicInteger count = new AtomicInteger();
+		processor.process(Processors.ioGroup().get())
+		         .subscribe(Subscribers.create(s -> {
+			         try {
+				         Thread.sleep(1000);
+			         }
+			         catch (InterruptedException ie) {
+				         //IGNORE
+			         }
+			         s.request(1L);
+			         return null;
+		         }, (d, s) -> count.incrementAndGet()));
+
+		ReactiveSession<Integer> session = processor.emitSession();
+		long emission = session.submit(1);
+		if (emission == -1L) {
+			throw new IllegalStateException("Negatime " + emission);
+		}
+		//System.out.println(emission);
+		if (session.hasFailed()) {
+			session.getError()
+			       .printStackTrace();
+		}
+		session.finish();
+
+		Assert.isTrue(count.get() == 1, "latch : " + count);
+		Assert.isTrue(emission >= 1, "time : " + emission);
+	}
+
+	@Test
 	public void testEmitter() throws Exception {
-			BaseProcessor<Integer, Integer> processor = Processors.emitter();
+		BaseProcessor<Integer, Integer> processor = Processors.emitter();
 
-			int n = 1_000_000;
-			int subs = 3;
-			final CountDownLatch latch = new CountDownLatch((n + 1) * subs);
+		int n = 1_000_000;
+		int subs = 3;
+		final CountDownLatch latch = new CountDownLatch((n + 1) * subs);
 
-		for(int i = 0;  i < subs; i++) {
+		for (int i = 0; i < subs; i++) {
 			processor.process(Processors.singleGroup()
 			                            .get())
 			         .subscribe(Subscribers.create(s -> {
@@ -141,26 +170,26 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			         }, null, d -> latch.countDown()));
 		}
 
-			ReactiveSession<Integer> session = processor.emitSession();
-		ReactiveSession.Emission emission;
-			for (int i = 0; i < n; i++) {
+		ReactiveSession<Integer> session = processor.emitSession();
 
-				while((emission = session.emit(i)) != ReactiveSession.Emission.OK){
-					//System.out.println(emission);
-					if(session.hasFailed()){
-						session.getError().printStackTrace();
-						return;
-					}
-					if(session.hasEnded()){
-						return;
-					}
+		for (int i = 0; i < n; i++) {
+			while (!session.emit(i).isOk()) {
+				//System.out.println(emission);
+				if (session.hasFailed()) {
+					session.getError()
+					       .printStackTrace();
+					return;
+				}
+				if (session.hasEnded()) {
+					return;
 				}
 			}
-			session.end();
+		}
+		session.finish();
 
-			boolean waited = latch.await(5, TimeUnit.SECONDS);
-			System.out.println(counters);
-			Assert.isTrue(waited, "latch : " + latch.getCount());
+		boolean waited = latch.await(5, TimeUnit.SECONDS);
+		System.out.println(counters);
+		Assert.isTrue(waited, "latch : " + latch.getCount());
 	}
 
 	@Test
@@ -169,8 +198,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements);
 
 		Control tail = sensorOdd().mergeWith(sensorEven())
-		  .observe(loggingConsumer())
-		  .consume(i -> latch.countDown());
+		                          .observe(loggingConsumer())
+		                          .consume(i -> latch.countDown());
 
 		generateData(elements);
 
@@ -192,8 +221,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
 		Control tail = Streams.concat(sensorEven(), sensorOdd())
-		  .log("concat")
-		  .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
+		                      .log("concat")
+		                      .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 
 		System.out.println(tail.debug());
 		generateData(elements);
@@ -201,15 +230,14 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		awaitLatch(tail, latch);
 	}
 
-
 	@Test
 	public void sampleCombineLatestTest() throws Exception {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements / 2 + 1);
 
 		Control tail = Streams.combineLatest(sensorOdd(), sensorEven(), this::computeMin)
-		  .log("combineLatest")
-		  .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
+		                      .log("combineLatest")
+		                      .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 
 		generateData(elements);
 
@@ -222,8 +250,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
 		Control tail = sensorEven().concatWith(sensorOdd())
-		  .log("concat")
-		  .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
+		                           .log("concat")
+		                           .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
 
 		generateData(elements);
 
@@ -236,8 +264,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
 		Control tail = sensorOdd().zipWith(sensorEven(), this::computeMin)
-		  .log("zipWithTest")
-		  .consume(i -> latch.countDown());
+		                          .log("zipWithTest")
+		                          .consume(i -> latch.countDown());
 
 		generateData(elements);
 
@@ -250,17 +278,18 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch((elements / 2) - 1);
 
 		List<Integer> list = IntStream.range(0, elements / 2)
-		  .boxed()
-		  .collect(Collectors.toList());
+		                              .boxed()
+		                              .collect(Collectors.toList());
 
 		LOG.info("range from 0 to " + list.size());
-		Control tail = sensorOdd().zipWith(list, (tuple) -> (tuple.getT1()
-		                                                          .toString() +
-				"" +
-				" " +
-				"-- " + tuple.getT2()))
-		  .log("zipWithIterableTest")
-		  .consume(i -> latch.countDown());
+		Control tail = sensorOdd().zipWith(list,
+				(tuple) -> (tuple.getT1()
+				                 .toString() +
+						"" +
+						" " +
+						"-- " + tuple.getT2()))
+		                          .log("zipWithIterableTest")
+		                          .consume(i -> latch.countDown());
 
 		System.out.println(tail.debug());
 		generateData(elements);
@@ -270,16 +299,16 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	@Test
 	public void joinWithTest() throws Exception {
-			int elements = 40;
-			CountDownLatch latch = new CountDownLatch(elements / 2);
+		int elements = 40;
+		CountDownLatch latch = new CountDownLatch(elements / 2);
 
-			Control tail = sensorOdd().joinWith(sensorEven())
-			                          .log("joinWithTest")
-			                          .consume(i -> latch.countDown());
+		Control tail = sensorOdd().joinWith(sensorEven())
+		                          .log("joinWithTest")
+		                          .consume(i -> latch.countDown());
 
-			generateData(elements);
+		generateData(elements);
 
-			awaitLatch(tail, latch);
+		awaitLatch(tail, latch);
 	}
 
 	@Test
@@ -288,8 +317,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements / 2);
 
 		Control tail = Streams.zip(sensorEven(), sensorOdd(), this::computeMin)
-		  .log("sampleZipTest")
-		  .consume(x -> latch.countDown());
+		                      .log("sampleZipTest")
+		                      .consume(x -> latch.countDown());
 
 		generateData(elements);
 
@@ -299,7 +328,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	@SuppressWarnings("unchecked")
 	private void awaitLatch(Control tail, CountDownLatch latch) throws Exception {
 		if (!latch.await(10, TimeUnit.SECONDS)) {
-			throw new Exception("Never completed: (" + latch.getCount() + ") "  + tail.debug());
+			throw new Exception("Never completed: (" + latch.getCount() + ") " + tail.debug());
 		}
 	}
 
@@ -312,7 +341,8 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			data = new SensorData(i, random.nextFloat() * 100);
 			if (i % 2 == 0) {
 				upstream = sensorEven;
-			} else {
+			}
+			else {
 				upstream = sensorOdd;
 			}
 			upstream.onNext(data);
@@ -363,8 +393,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 				return false;
 			}
 			SensorData other = (SensorData) obj;
-			return (Long.compare(other.getId(), id) == 0)
-			  && (Float.compare(other.getValue(), value) == 0);
+			return (Long.compare(other.getId(), id) == 0) && (Float.compare(other.getValue(), value) == 0);
 		}
 
 		@Override
@@ -375,9 +404,9 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		@Override
 		public String toString() {
 			return "SensorData{" +
-			  "id=" + id +
-			  ", value=" + value +
-			  '}';
+					"id=" + id +
+					", value=" + value +
+					'}';
 		}
 	}
 }
