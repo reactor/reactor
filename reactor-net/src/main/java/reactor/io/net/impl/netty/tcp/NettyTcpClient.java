@@ -124,7 +124,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 						//.remoteAddress(this.connectAddress)
 				;
 
-		if(env != null && Boolean.parseBoolean(env.getProperty("reactor.tcp.netty.alloc", "false"))){
+		if(env != null && Boolean.parseBoolean(env.getProperty("reactor.tcp.netty.alloc", "true"))){
 			_bootstrap = _bootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 		}
 
