@@ -50,7 +50,6 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 						Throwable::printStackTrace);
 
 		return Broadcaster.<Integer>passthrough()
-				.log("firstGroup", LogOperator.REQUEST)
 				.dispatchOn(sharedGroup)
 		                  .partition(2)
 		                  .flatMap(stream -> stream.dispatchOn(asyncGroup)
@@ -64,7 +63,6 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		                                           .<Integer>split()
 		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
 		                  )
-						.log("lastGroup", LogOperator.REQUEST)
 				.dispatchOn(sharedGroup)
 				.when(Throwable.class, Throwable::printStackTrace)
 		                  .combine();
