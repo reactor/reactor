@@ -119,10 +119,14 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		Bootstrap _bootstrap = new Bootstrap()
 		        .group(ioGroup)
 		        .channel(NettyNativeDetector.getChannel(ioGroup))
-				.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+				//.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
 				.option(ChannelOption.AUTO_READ, sslOptions != null)
 						//.remoteAddress(this.connectAddress)
 				;
+
+		if(env != null && Boolean.parseBoolean(env.getProperty("reactor.tcp.netty.alloc", "false"))){
+			_bootstrap = _bootstrap.option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+		}
 
 		if (options != null) {
 			_bootstrap = _bootstrap.option(ChannelOption.SO_RCVBUF, options.rcvbuf())
