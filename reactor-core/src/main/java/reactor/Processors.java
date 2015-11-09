@@ -436,11 +436,10 @@ public final class Processors {
 			boolean autoShutdown,
 			final Supplier<? extends WaitStrategy> waitprovider) {
 
-		return ProcessorGroup.create(new Supplier<Processor<ProcessorGroup.Task, ProcessorGroup.Task>>() {
+		return ProcessorGroup.create(new Supplier<Processor<Runnable, Runnable>>() {
 			@Override
-			public Processor<ProcessorGroup.Task, ProcessorGroup.Task> get() {
-				return RingBufferProcessor.share(name, bufferSize, waitprovider.get(), ProcessorGroup
-						.DEFAULT_TASK_PROVIDER);
+			public Processor<Runnable, Runnable> get() {
+				return RingBufferProcessor.share(name, bufferSize, waitprovider.get());
 			}
 		}, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
@@ -553,7 +552,7 @@ public final class Processors {
 			Consumer<Void> shutdownHandler,
 			boolean autoShutdown,
 			WaitStrategy waitStrategy) {
-		return ProcessorGroup.create(RingBufferWorkProcessor.<ProcessorGroup.Task>share(name, bufferSize,
+		return ProcessorGroup.create(RingBufferWorkProcessor.<Runnable>share(name, bufferSize,
 				waitStrategy),
 				concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
@@ -625,7 +624,7 @@ public final class Processors {
 	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> Processor<IN, OUT> create(final Subscriber<IN> upstream, final Publisher<OUT> downstream) {
+	public static <IN, OUT> BaseProcessor<IN, OUT> create(final Subscriber<IN> upstream, final Publisher<OUT> downstream) {
 		Assert.notNull(upstream, "Upstream must not be null");
 		Assert.notNull(downstream, "Downstream must not be null");
 		return new DelegateProcessor<>(downstream, upstream);
@@ -638,25 +637,21 @@ public final class Processors {
 	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> Processor<IN, OUT> lift(final Processor<IN, OUT> processor,
+	public static <IN, OUT> BaseProcessor<IN, OUT> lift(final Processor<IN, OUT> processor,
 			final Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation) {
 		return new DelegateProcessor<>(liftTransformation.apply(processor), processor);
 
 	}
 	private static class DelegateProcessor<IN, OUT>
-			implements Processor<IN, OUT>, Publishable<OUT>, Subscribable<IN>, Bounded {
+			extends BaseProcessor<IN, OUT> implements Subscribable<IN>, Bounded {
 
 		private final Publisher<OUT> downstream;
 		private final Subscriber<IN> upstream;
 
 		public DelegateProcessor(Publisher<OUT> downstream, Subscriber<IN> upstream) {
+			super(false);
 			this.downstream = downstream;
 			this.upstream = upstream;
-		}
-
-		@Override
-		public Publisher<OUT> upstream() {
-			return downstream;
 		}
 
 		@Override

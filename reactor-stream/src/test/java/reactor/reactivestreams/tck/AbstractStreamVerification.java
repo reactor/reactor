@@ -27,7 +27,9 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import reactor.Processors;
 import reactor.Timers;
+import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
+import reactor.rx.StreamUtils;
 import reactor.rx.Streams;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
@@ -212,7 +214,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 		Processor<Integer, Integer> processor = createProcessor(1024);
 
 		Broadcaster<Integer> stream = Broadcaster.create();
-
+		ReactiveSession<Integer> session = ReactiveSession.create(stream);
 		stream.subscribe(processor);
 		if(Action.class.isAssignableFrom(processor.getClass())) {
 			System.out.println(((Action)processor).debug());
@@ -242,12 +244,11 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 		});
 
 
-		stream.onNext(0);
-		stream.onNext(1);
-
 		System.out.println(stream.debug());
-		for (int i = 2; i < elements; i++) {
-			stream.onNext(i);
+		for (int i = 0; i < elements; i++) {
+			if(session.submit(i, 1000) == -1){
+				System.out.println(stream.debug());
+			}
 		}
 		//stream.onComplete();
 

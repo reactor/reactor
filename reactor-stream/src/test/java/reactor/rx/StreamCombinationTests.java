@@ -154,7 +154,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		BaseProcessor<Integer, Integer> processor = Processors.emitter();
 
 		int n = 1_000_000;
-		int subs = 3;
+		int subs = 4;
 		final CountDownLatch latch = new CountDownLatch((n + 1) * subs);
 
 		for (int i = 0; i < subs; i++) {
@@ -165,6 +165,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 				         return null;
 			         }, (d, s) -> {
 				         monitorThreadUse();
+//				         System.out.println(d);
 				         s.request(1L);
 				         latch.countDown();
 			         }, null, d -> latch.countDown()));

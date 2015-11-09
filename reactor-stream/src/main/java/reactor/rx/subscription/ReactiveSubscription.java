@@ -251,10 +251,6 @@ public class ReactiveSubscription<O> extends PushSubscription<O> {
 		this.maxCapacity = maxCapacity;
 	}
 
-	public final long getBufferSize() {
-		return buffer != null ? buffer.size() : -1l;
-	}
-
 	public final long capacity() {
 		return pendingRequestSignals;
 	}

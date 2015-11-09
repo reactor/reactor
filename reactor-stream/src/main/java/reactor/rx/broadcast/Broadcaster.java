@@ -173,20 +173,6 @@ public class Broadcaster<O> extends Action<O, O> {
 	}
 
 	@Override
-	protected void subscribeWithSubscription(Subscriber<? super O> subscriber, PushSubscription<O> subscription) {
-		try {
-			if (!addSubscription(subscription)) {
-				subscriber.onError(new IllegalStateException("The subscription cannot be linked to this Stream"));
-			} else {
-				subscriber.onSubscribe(subscription);
-			}
-		} catch (Exception e) {
-			Exceptions.throwIfFatal(e);
-			subscriber.onError(e);
-		}
-	}
-
-	@Override
 	public Timer getTimer() {
 		return timer != null ? timer : Timers.globalOrNull();
 	}

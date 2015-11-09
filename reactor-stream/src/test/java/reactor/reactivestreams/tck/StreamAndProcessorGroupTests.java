@@ -50,7 +50,8 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 						Throwable::printStackTrace);
 
 		return Broadcaster.<Integer>passthrough()
-		                  .dispatchOn(sharedGroup)
+				.log("firstGroup", LogOperator.REQUEST)
+				.dispatchOn(sharedGroup)
 		                  .partition(2)
 		                  .flatMap(stream -> stream.dispatchOn(asyncGroup)
 		                                           .observe(this::monitorThreadUse)
@@ -62,8 +63,8 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		                                           .buffer(batch, 50, TimeUnit.MILLISECONDS)
 		                                           .<Integer>split()
 		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
-
 		                  )
+						.log("lastGroup", LogOperator.REQUEST)
 				.dispatchOn(sharedGroup)
 				.when(Throwable.class, Throwable::printStackTrace)
 		                  .combine();
@@ -84,6 +85,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 	@Override
 	@Test
 	public void testHotIdentityProcessor() throws InterruptedException {
+		//for(int i =0; i < 1000; i++)
 		super.testHotIdentityProcessor();
 	}
 

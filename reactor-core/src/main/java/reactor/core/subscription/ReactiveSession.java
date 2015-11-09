@@ -28,6 +28,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
+import reactor.core.support.Subscribable;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Predicate;
@@ -37,7 +38,7 @@ import reactor.fn.timer.TimeUtils;
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ReactiveSession<E> implements Subscription, Bounded, Consumer<E> {
+public class ReactiveSession<E> implements Subscribable<E>, Subscription, Bounded, Consumer<E> {
 
 	public enum Emission {
 		FAILED, BACKPRESSURED, OK, DROPPED, CANCELLED;
@@ -330,5 +331,19 @@ public class ReactiveSession<E> implements Subscription, Bounded, Consumer<E> {
 	@Override
 	public long getCapacity() {
 		return Bounded.class.isAssignableFrom(actual.getClass()) ? ((Bounded) actual).getCapacity() : Long.MAX_VALUE;
+	}
+
+	@Override
+	public Subscriber<? super E> downstream() {
+		return actual;
+	}
+
+	@Override
+	public String toString() {
+		return "ReactiveSession{" +
+				"requested=" + requested +
+				", uncaughtException=" + uncaughtException +
+				", cancelled=" + cancelled +
+				'}';
 	}
 }

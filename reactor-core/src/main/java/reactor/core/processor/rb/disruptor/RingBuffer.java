@@ -36,7 +36,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	public static final BusySpinWaitStrategy NO_WAIT = new BusySpinWaitStrategy();
 
 	@SuppressWarnings("raw")
-	static final Supplier EMITTED = new Supplier() {
+	public static final Supplier EMITTED = new Supplier() {
 		@Override
 		public Slot get() {
 			return new Slot<>();

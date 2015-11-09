@@ -569,21 +569,9 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		@Override
 		public void request(long n) {
 			if (BackpressureUtils.checkRequest(n, actual)) {
+				BackpressureUtils.getAndAdd(REQUESTED, this, n);
 				if (EmitterProcessor.RUNNING.getAndIncrement(parent) == 0) {
-					BackpressureUtils.getAndAdd(REQUESTED, this, n);
 					parent.drainLoop();
-				}
-				else {
-					Sequence innerSequence = pollCursor;
-					if (innerSequence != null) {
-						long p = parent.innerDrain(this, innerSequence, n, parent.emitBuffer);
-						if (p > 0) {
-							BackpressureUtils.getAndAdd(REQUESTED, this, p);
-						}
-					}
-					else {
-						BackpressureUtils.getAndAdd(REQUESTED, this, n);
-					}
 				}
 			}
 		}

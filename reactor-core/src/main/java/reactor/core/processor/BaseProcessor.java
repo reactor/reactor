@@ -119,7 +119,9 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 		}
 	}
 
-	protected abstract void doOnSubscribe(Subscription s);
+	protected void doOnSubscribe(Subscription s){
+		//IGNORE
+	}
 
 	@Override
 	public boolean isExposedToOverflow(Bounded parentPublisher) {

@@ -16,7 +16,6 @@
 
 package reactor.core.processor;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -29,18 +28,17 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.processor.rb.MutableSignal;
-import reactor.core.processor.rb.RingBufferSubscriberUtils;
 import reactor.core.processor.rb.disruptor.RingBuffer;
+import reactor.core.processor.rb.disruptor.Sequence;
+import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
-import reactor.core.support.Recyclable;
 import reactor.core.support.SignalType;
 import reactor.core.support.Subscribable;
 import reactor.fn.BiConsumer;
@@ -79,7 +77,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> create(Processor<Task, Task> p) {
+	public static <E> ProcessorGroup<E> create(Processor<Runnable, Runnable> p) {
 		return create(p, null, null, true);
 	}
 
@@ -88,7 +86,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> create(Processor<Task, Task> p, int concurrency) {
+	public static <E> ProcessorGroup<E> create(Processor<Runnable, Runnable> p, int concurrency) {
 		return create(p, concurrency, null, null, true);
 	}
 
@@ -98,7 +96,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> create(Supplier<? extends Processor<Task, Task>> p, int concurrency) {
+	public static <E> ProcessorGroup<E> create(Supplier<? extends Processor<Runnable, Runnable>> p, int concurrency) {
 		return create(p, concurrency, null, null, true);
 	}
 
@@ -108,7 +106,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> create(Processor<Task, Task> p, boolean autoShutdown) {
+	public static <E> ProcessorGroup<E> create(Processor<Runnable, Runnable> p, boolean autoShutdown) {
 		return create(p, null, null, autoShutdown);
 	}
 
@@ -119,7 +117,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> create(Processor<Task, Task> p,
+	public static <E> ProcessorGroup<E> create(Processor<Runnable, Runnable> p,
 			Consumer<Throwable> uncaughtExceptionHandler,
 			boolean autoShutdown) {
 		return create(p, uncaughtExceptionHandler, null, autoShutdown);
@@ -133,7 +131,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @param <E>
 	 * @return
 	 */
-	public static <E> ProcessorGroup<E> create(final Processor<Task, Task> p,
+	public static <E> ProcessorGroup<E> create(final Processor<Runnable, Runnable> p,
 			Consumer<Throwable> uncaughtExceptionHandler,
 			Consumer<Void> shutdownHandler,
 			boolean autoShutdown) {
@@ -150,7 +148,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <E> ProcessorGroup<E> create(Supplier<? extends Processor<Task, Task>> p,
+	public static <E> ProcessorGroup<E> create(Supplier<? extends Processor<Runnable, Runnable>> p,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
 			Consumer<Void> shutdownHandler,
@@ -173,14 +171,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <E> ProcessorGroup<E> create(final Processor<Task, Task> p,
+	public static <E> ProcessorGroup<E> create(final Processor<Runnable, Runnable> p,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
 			Consumer<Void> shutdownHandler,
 			boolean autoShutdown) {
-		return new SingleProcessorGroup<E>(new Supplier<Processor<Task, Task>>() {
+		return new SingleProcessorGroup<E>(new Supplier<Processor<Runnable, Runnable>>() {
 			@Override
-			public Processor<Task, Task> get() {
+			public Processor<Runnable, Runnable> get() {
 				return p;
 			}
 		}, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
@@ -208,10 +206,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	final private TailRecurser tailRecurser;
 
-	final private   Processor<Task, Task>         processor;
-	final protected boolean                       autoShutdown;
-	final protected int                           concurrency;
-	final           ExecutorProcessor<Task, Task> executorProcessor;
+	final private   Processor<Runnable, Runnable>         processor;
+	final protected boolean                               autoShutdown;
+	final protected int                                   concurrency;
+	final           ExecutorProcessor<Runnable, Runnable> executorProcessor;
 
 	@SuppressWarnings("unused")
 	private volatile int refCount = 0;
@@ -359,33 +357,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	}
 
-	/**
-	 * A mutable transport for materialized signal dispatching
-	 */
-	public static final class Task implements Recyclable, Serializable {
-
-		Subscriber subscriber;
-		Object     payload;
-		SignalType type;
-
-		@Override
-		public void recycle() {
-			type = null;
-			payload = null;
-			subscriber = null;
-		}
-	}
-
-	/**
-	 * Simple Task {@link Supplier} used for tail recursion or by a ring buffer
-	 */
-	public final static Supplier<Task> DEFAULT_TASK_PROVIDER = new Supplier<Task>() {
-		@Override
-		public Task get() {
-			return new Task();
-		}
-	};
-
 	/* INTERNAL */
 	@SuppressWarnings("unchecked")
 	private final void route(Object payload, Subscriber subscriber, SignalType type) {
@@ -425,18 +396,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	}
 
-	private final void routeTask(Task task) {
-		try {
-			route(task.payload, task.subscriber, task.type);
-		}
-		catch (CancelException ce) {
-			//IGNORE
-		}
-		finally {
-			task.recycle();
-		}
-	}
-
 	@SuppressWarnings("unchecked")
 	private static final ProcessorGroup SYNC_SERVICE = new ProcessorGroup(null, -1, null, null, false);
 
@@ -471,17 +430,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	};
 
-	private final Consumer<Task> DEFAULT_TASK_CONSUMER = new Consumer<Task>() {
-		@Override
-		public void accept(Task task) {
-			routeTask(task);
-		}
-	};
-
-	private final static int MAX_BUFFER_SIZE = 2 << 4;
+	private final static int LIMIT_BUFFER_SIZE = 2 << 4;
 
 	@SuppressWarnings("unchecked")
-	protected ProcessorGroup(Supplier<? extends Processor<Task, Task>> processor,
+	protected ProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
 			Consumer<Void> shutdownHandler,
@@ -496,12 +448,17 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			// Managed Processor, providing for tail recursion,
 			if (ExecutorProcessor.class.isAssignableFrom(this.processor.getClass())) {
 
-				this.executorProcessor = (ExecutorProcessor<Task, Task>) this.processor;
+				this.executorProcessor = (ExecutorProcessor<Runnable, Runnable>) this.processor;
 
 				if (concurrency == 1) {
-					int bufferSize = (int) Math.min(this.executorProcessor.getCapacity(), MAX_BUFFER_SIZE);
+					int bufferSize = (int) Math.min(this.executorProcessor.getCapacity(), LIMIT_BUFFER_SIZE);
 
-					this.tailRecurser = new TailRecurser(bufferSize, DEFAULT_TASK_PROVIDER, DEFAULT_TASK_CONSUMER);
+					this.tailRecurser = new TailRecurser(bufferSize, new Consumer<Runnable>() {
+						@Override
+						public void accept(Runnable task) {
+							task.run();
+						}
+					});
 				}
 				else {
 					this.tailRecurser = null;
@@ -516,7 +473,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 			for (int i = 0; i < concurrency; i++) {
 				this.processor.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-				this.processor.subscribe(new TaskSubscriber(uncaughtExceptionHandler, shutdownHandler));
+				this.processor.subscribe(new TaskSubscriber(tailRecurser, uncaughtExceptionHandler, shutdownHandler));
 			}
 
 		}
@@ -554,15 +511,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			return new WorkProcessorBarrier<>(this);
 		}
 
-		if (RingBufferProcessor.class == processor.getClass()) {
-			return new RingBufferProcessorBarrier<>(this, ((RingBufferProcessor) processor).ringBuffer());
-		}
-
-		if (RingBufferWorkProcessor.class == processor.getClass()) {
-			return new RingBufferProcessorBarrier<>(this, ((RingBufferWorkProcessor) processor).ringBuffer());
-		}
-
-		return new ProcessorBarrier<>(this);
+		return new ProcessorBarrier<>(true, this);
 	}
 
 	/**
@@ -571,20 +520,21 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	static class TailRecurser {
 
-		private final ArrayList<Task> pile;
+		@SuppressWarnings("unchecked")
+		private static final Supplier<RingBuffer.Slot<Runnable>> EMITTED = RingBuffer.EMITTED;
 
-		private final int            pileSizeIncrement;
-		private final Supplier<Task> taskSupplier;
+		private final ArrayList<RingBuffer.Slot<Runnable>> pile;
 
-		private final Consumer<Task> taskConsumer;
+		private final int pileSizeIncrement;
+
+		private final Consumer<Runnable> taskConsumer;
 
 		private int next = 0;
 
-		public TailRecurser(int backlogSize, Supplier<Task> taskSupplier, Consumer<Task> taskConsumer) {
+		public TailRecurser(int backlogSize, Consumer<Runnable> taskConsumer) {
 			this.pileSizeIncrement = backlogSize * 2;
-			this.taskSupplier = taskSupplier;
 			this.taskConsumer = taskConsumer;
-			this.pile = new ArrayList<Task>(pileSizeIncrement);
+			this.pile = new ArrayList<>(pileSizeIncrement);
 			ensureEnoughTasks();
 		}
 
@@ -592,12 +542,12 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			if (next >= pile.size()) {
 				pile.ensureCapacity(pile.size() + pileSizeIncrement);
 				for (int i = 0; i < pileSizeIncrement; i++) {
-					pile.add(taskSupplier.get());
+					pile.add(EMITTED.get());
 				}
 			}
 		}
 
-		public Task next() {
+		public RingBuffer.Slot<Runnable> next() {
 			ensureEnoughTasks();
 			return pile.get(next++);
 		}
@@ -605,7 +555,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		public void consumeTasks() {
 			if (next > 0) {
 				for (int i = 0; i < next; i++) {
-					taskConsumer.accept(pile.get(i));
+					taskConsumer.accept(pile.get(i).value);
 				}
 
 				for (int i = next - 1; i >= pileSizeIncrement; i--) {
@@ -619,20 +569,49 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
 			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription, Bounded,
-			           Publishable<V>, Subscribable<V> {
+			           Publishable<V>, Subscribable<V>, Runnable {
 
 		protected final ProcessorGroup service;
+
+		private final RingBuffer<RingBuffer.Slot<V>> emitBuffer;
+		private final Sequence                       pollCursor;
+
+		private volatile Throwable error;
+
+		private volatile boolean cancelled;
+
+		private int outstanding;
+
+		@SuppressWarnings("unused")
+		private volatile int running;
+		protected static final AtomicIntegerFieldUpdater<ProcessorBarrier> RUNNING =
+				AtomicIntegerFieldUpdater.newUpdater(ProcessorBarrier.class, "running");
 
 		@SuppressWarnings("unused")
 		private volatile int terminated;
 		protected static final AtomicIntegerFieldUpdater<ProcessorBarrier> TERMINATED =
 				AtomicIntegerFieldUpdater.newUpdater(ProcessorBarrier.class, "terminated");
 
+		@SuppressWarnings("unused")
+		private volatile long requested;
+		protected static final AtomicLongFieldUpdater<ProcessorBarrier> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(ProcessorBarrier.class, "requested");
+
 		protected Subscriber<? super V> subscriber;
 
-		public ProcessorBarrier(ProcessorGroup service) {
+		public ProcessorBarrier(boolean buffer, final ProcessorGroup service) {
 			super(true);
 			this.service = service;
+			if (!buffer) {
+				emitBuffer = null;
+				pollCursor = null;
+			}
+			else {
+				outstanding = SMALL_BUFFER_SIZE;
+				emitBuffer = RingBuffer.<V>createSingleProducer(SMALL_BUFFER_SIZE);
+				pollCursor = Sequencer.newSequence(-1L);
+				emitBuffer.addGatingSequence(pollCursor);
+			}
 		}
 
 		@Override
@@ -650,7 +629,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			if (consumer == null) {
 				throw SpecificationExceptions.spec_2_13_exception();
 			}
-			dispatch(data, new ConsumerSubscriber<>(consumer), SignalType.NEXT);
+			dispatch(new ConsumerRunnable<>(data, consumer));
 		}
 
 		@Override
@@ -658,7 +637,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			if (consumer == null) {
 				throw SpecificationExceptions.spec_2_13_exception();
 			}
-			dispatch(null, new ConsumerSubscriber<>(consumer), SignalType.NEXT);
+			dispatch(new ConsumerRunnable<>(null, consumer));
 		}
 
 		@Override
@@ -666,7 +645,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			if (command == null) {
 				throw SpecificationExceptions.spec_2_13_exception();
 			}
-			dispatch(null, new RunnableSubscriber(command), SignalType.NEXT);
+			dispatch(command);
 		}
 
 		@Override
@@ -691,19 +670,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 						s);
 			}
 			else if (subscribed) {
-				dispatchSubscribe(s);
+				doStart(s);
 			}
 
-		}
-
-		@Override
-		public long getAvailableCapacity() {
-			return getCapacity();
-		}
-
-		@Override
-		protected void doOnSubscribe(Subscription s) {
-			//IGNORE
 		}
 
 		@Override
@@ -718,7 +687,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			}
 
 			if (subscriber != null) {
-				dispatchSubscribe(subscriber);
+				doStart(subscriber);
 			}
 		}
 
@@ -730,14 +699,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				throw CancelException.get();
 			}
 
-			dispatchProcessorSequence(o, subscriber, SignalType.NEXT);
+			doNext(o);
 		}
 
 		@Override
 		public final void onError(Throwable t) {
 			super.onError(t);
-
 			if (TERMINATED.compareAndSet(this, 0, 1)) {
+				if (error == null) {
+					error = t;
+				}
 				if (subscriber == null) {
 					//cancelled
 					if (upstreamSubscription == null) {
@@ -747,20 +718,64 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 					throw ReactorFatalException.create(t);
 				}
 
-				dispatchProcessorSequence(t, subscriber, SignalType.ERROR);
+				doError(t);
 			}
 		}
 
 		@Override
 		public final void onComplete() {
 			if (TERMINATED.compareAndSet(this, 0, 1)) {
-				dispatchProcessorSequence(null, subscriber, SignalType.COMPLETE);
+				doComplete();
+			}
+		}
+		@SuppressWarnings("unchecked")
+		protected void doStart(final Subscriber<? super V> subscriber) {
+			RUNNING.incrementAndGet(this);
+
+			subscriber.onSubscribe(this);
+			service.processor.onNext(new Runnable() {
+				@Override
+				public void run() {
+					doRequest(SMALL_BUFFER_SIZE);
+					if(RUNNING.decrementAndGet(ProcessorBarrier.this) != 0){
+						ProcessorBarrier.this.run();
+					}
+				}
+			});
+		}
+
+		@SuppressWarnings("unchecked")
+		protected void doNext(V o) {
+			long seq = emitBuffer.next();
+			emitBuffer.get(seq).value = o;
+			emitBuffer.publish(seq);
+
+			if (RUNNING.getAndIncrement(this) == 0) {
+				service.processor.onNext(this);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		protected void doError(Throwable t) {
+			if (RUNNING.getAndIncrement(this) == 0) {
+				service.processor.onNext(this);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		protected void doComplete() {
+			if (RUNNING.getAndIncrement(this) == 0) {
+				service.processor.onNext(this);
 			}
 		}
 
 		@Override
+		@SuppressWarnings("unchecked")
 		public void request(final long n) {
-			doRequest(n);
+			BackpressureUtils.getAndAdd(REQUESTED, this, n);
+			if (RUNNING.getAndIncrement(this) == 0) {
+				service.processor.onNext(this);
+			}
 		}
 
 		protected final void doRequest(long n) {
@@ -773,47 +788,115 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		public void cancel() {
+		public final void cancel() {
 			if (TERMINATED.compareAndSet(this, 0, 1)) {
-				Subscription subscription = this.upstreamSubscription;
+				cancelled = true;
 				if (service != null) {
 					service.decrementReference();
 				}
-				;
-				if (subscription != null) {
-					synchronized (this) {
-						this.upstreamSubscription = null;
-						this.subscriber = null;
-					}
-					subscription.cancel();
-				}
+				doCancel();
 			}
 		}
 
-		protected void dispatchSubscribe(Subscriber<? super V> subscriber) {
-			dispatchProcessorSequence(this, subscriber, SignalType.SUBSCRIPTION);
-		}
-
-		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
-			dispatch(data, subscriber, type);
-
+		protected void doCancel() {
+			Subscription subscription = this.upstreamSubscription;
+			if (subscription != null) {
+				this.upstreamSubscription = null;
+				this.subscriber = null;
+				subscription.cancel();
+			}
 		}
 
 		@SuppressWarnings("unchecked")
-		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
-			final Task task;
+		protected void dispatch(Runnable runnable) {
 			if (shouldTailRecruse()) {
-				task = service.tailRecurser.next();
-				task.type = type;
-				task.payload = data;
-				task.subscriber = subscriber;
+				service.tailRecurser.next().value = runnable;
 			}
 			else {
-				task = new Task();
-				task.type = type;
-				task.payload = data;
-				task.subscriber = subscriber;
-				service.processor.onNext(task);
+				service.processor.onNext(runnable);
+			}
+		}
+
+		@Override
+		public void run() {
+			int missed = 1;
+			long cursor = pollCursor.get();
+			long r;
+			int outstanding;
+			for (; ; ) {
+				outstanding = this.outstanding;
+				long produced = 0L;
+				r = requested;
+
+				for (; ; ) {
+					if (cancelled) {
+						return;
+					}
+
+					if (r != 0L
+							&& outstanding > LIMIT_BUFFER_SIZE
+							&& cursor + 1L <= emitBuffer.getCursor()) {
+						service.route(emitBuffer.get(++cursor).value, subscriber, SignalType.NEXT);
+
+						if(r != Long.MAX_VALUE){
+							r--;
+						}
+						outstanding--;
+						produced++;
+					}
+					else {
+						break;
+					}
+				}
+
+				if (produced > 0L) {
+					pollCursor.set(cursor);
+					if (r != Long.MAX_VALUE) {
+						REQUESTED.addAndGet(this, -produced);
+					}
+				}
+
+				Throwable error;
+				if (terminated == 1) {
+					if ((error = this.error) != null) {
+						service.route(error, subscriber, SignalType.ERROR);
+						return;
+					}
+					else if (emitBuffer.pending() == 0) {
+						service.route(null, subscriber, SignalType.COMPLETE);
+						return;
+					}
+				}
+
+				if(produced > 0L) {
+					if (outstanding == LIMIT_BUFFER_SIZE) {
+
+						Subscription subscription = upstreamSubscription;
+						if (subscription != null) {
+							subscription.request(SMALL_BUFFER_SIZE - outstanding);
+						}
+						this.outstanding = SMALL_BUFFER_SIZE;
+						if (r != 0L && (emitBuffer.pending() != 0)) {
+							continue;
+						}
+					}
+					else {
+						this.outstanding = outstanding;
+					}
+				}
+
+				missed = RUNNING.addAndGet(this, -missed);
+				if (missed == 0) {
+					break;
+				}
+			}
+
+			Subscription subscription = upstreamSubscription;
+			if (outstanding > LIMIT_BUFFER_SIZE // not previously requested
+					&& outstanding < SMALL_BUFFER_SIZE //produced at least a data for the last batch
+					&& subscription != null) {
+				this.outstanding = SMALL_BUFFER_SIZE;
+				subscription.request(SMALL_BUFFER_SIZE - outstanding);
 			}
 		}
 
@@ -831,149 +914,90 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
+		public long getAvailableCapacity() {
+			return emitBuffer != null ? emitBuffer.pending() : getCapacity();
+		}
+
+		@Override
 		public long getCapacity() {
-			return service != null && service.executorProcessor != null ? service.executorProcessor.getCapacity() :
-					Long.MAX_VALUE;
+			return emitBuffer != null ? SMALL_BUFFER_SIZE : Long.MAX_VALUE;
 		}
 
 		@Override
 		public String toString() {
 			return getClass().getSimpleName() + "{" +
 					"subscription=" + upstreamSubscription +
+					(emitBuffer != null ? ", outstanding="+outstanding+", waiting="+emitBuffer.pending() : "") +
+					(requested != 0 ? ", pending="+requested: "") +
 					'}';
 		}
 	}
 
-	private static class ThreadBarrier<V> extends ProcessorBarrier<V> {
+	private static final class WorkProcessorBarrier<V> extends ProcessorBarrier<V> {
 
-		@SuppressWarnings("unused")
-		protected volatile long requested = 0L;
-
-		@SuppressWarnings("rawtypes")
-		static final AtomicLongFieldUpdater<ThreadBarrier> REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(ThreadBarrier.class, "requested");
-
-		@SuppressWarnings("unused")
-		protected volatile int running = 1;
-
-		@SuppressWarnings("rawtypes")
-		static final AtomicIntegerFieldUpdater<ThreadBarrier> RUNNING =
-				AtomicIntegerFieldUpdater.newUpdater(ThreadBarrier.class, "running");
-
-		public ThreadBarrier(ProcessorGroup service) {
-			super(service);
+		public WorkProcessorBarrier(ProcessorGroup service) {
+			super(false, service);
 		}
 
 		@Override
-		protected void dispatchSubscribe(Subscriber<? super V> subscriber) {
-			service.route(this, subscriber, SignalType.SUBSCRIPTION);
-			drainRequests();
-		}
-
-		@Override
-		public void request(long n) {
-			if (BackpressureUtils.checkRequest(n, subscriber)) {
-				BackpressureUtils.getAndAdd(REQUESTED, this, n);
-				if (RUNNING.getAndIncrement(this) == 0) {
-					drainRequests();
+		protected void doStart(final Subscriber<? super V> subscriber) {
+			dispatch(new Runnable() {
+				@Override
+				public void run() {
+					subscriber.onSubscribe(WorkProcessorBarrier.this);
 				}
-			}
+			});
 		}
 
-		protected void drainRequests() {
-			long r = requested;
+		@Override
+		protected void doComplete() {
+			service.route(null, subscriber, SignalType.COMPLETE);
+		}
+
+		@Override
+		protected void doNext(V o) {
+			service.route(o, subscriber, SignalType.NEXT);
+		}
+
+		@Override
+		protected void doError(Throwable t) {
+			service.route(t, subscriber, SignalType.ERROR);
+		}
+
+		@Override
+		public void run() {
 			int missed = 1;
-			for (; ; ) {
-				if (r == Long.MAX_VALUE) {
-					doRequest(r);
+			long r;
+			for(;;){
+				r = REQUESTED.getAndSet(this, 0);
+				if(r == Long.MAX_VALUE){
+					doRequest(Long.MAX_VALUE);
 					return;
 				}
-				r = REQUESTED.getAndSet(this, 0L);
-				if (r != 0L) {
+
+				if(r != 0L) {
 					doRequest(r);
 				}
+
 				missed = RUNNING.addAndGet(this, -missed);
-				if (missed == 0L) {
+				if(missed == 0){
 					break;
 				}
 			}
 		}
 
 		@Override
-		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
-			super.dispatchProcessorSequence(data, subscriber, type);
-			if (type == SignalType.NEXT && RUNNING.getAndIncrement(this) == 0) {
-				drainRequests();
-			}
-		}
-	}
-
-	private static final class RingBufferProcessorBarrier<V> extends ProcessorBarrier<V> {
-
-		private final RingBuffer<MutableSignal<Task>> ringBuffer;
-
-		public RingBufferProcessorBarrier(ProcessorGroup service, RingBuffer<MutableSignal<Task>> ringBuffer) {
-			super(service);
-			this.ringBuffer = ringBuffer;
-		}
-
-		@Override
-		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
-			final Task task;
-			if (shouldTailRecruse()) {
-				task = service.tailRecurser.next();
-				task.type = type;
-				task.payload = data;
-				task.subscriber = subscriber;
-				//service.route(data, subscriber, type);
-			}
-			else {
-				MutableSignal<Task> signal = RingBufferSubscriberUtils.next(ringBuffer);
-				task = signal.value != null ? signal.value : new Task(); //TODO should always assume supplied?
-				task.type = type;
-				task.payload = data;
-				task.subscriber = subscriber;
-
-				RingBufferSubscriberUtils.publish(ringBuffer, signal);
-			}
-		}
-	}
-
-	private static final class WorkProcessorBarrier<V> extends ProcessorBarrier<V> {
-
-		private volatile     int                                             start   = 0;
-		private static final AtomicIntegerFieldUpdater<WorkProcessorBarrier> STARTED =
-				AtomicIntegerFieldUpdater.newUpdater(WorkProcessorBarrier.class, "start");
-
-		public WorkProcessorBarrier(ProcessorGroup service) {
-			super(service);
-		}
-
-		@Override
-		protected void dispatchProcessorSequence(Object data, Subscriber subscriber, SignalType type) {
-			service.route(data, subscriber, type);
-		}
-
-		@Override
+		@SuppressWarnings("unchecked")
 		public void request(final long n) {
-			if (STARTED.compareAndSet(this, 0, 1) &&
-					service.executorProcessor != null &&
-					!service.executorProcessor.isInContext()) {
-				dispatch(n, new BaseSubscriber<Long>() {
-					@Override
-					public void onNext(Long aLong) {
-						doRequest(n);
-					}
-				}, SignalType.NEXT);
+			BackpressureUtils.getAndAdd(REQUESTED, this, n);
+			if(RUNNING.getAndIncrement(this) == 0) {
+				if (service.executorProcessor != null && !service.executorProcessor.isInContext()) {
+					service.processor.onNext(this);
+				}
+				else {
+					run();
+				}
 			}
-			else {
-				doRequest(n);
-			}
-		}
-
-		@Override
-		protected void dispatchSubscribe(Subscriber<? super V> subscriber) {
-			dispatch(this, subscriber, SignalType.SUBSCRIPTION);
 		}
 
 		@Override
@@ -990,12 +1014,32 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> {
 
 		public SyncProcessorBarrier(ProcessorGroup service) {
-			super(service);
+			super(false, service);
 		}
 
 		@Override
-		protected void dispatch(Object data, Subscriber subscriber, SignalType type) {
-			service.route(data, subscriber, type);
+		protected void dispatch(Runnable runnable) {
+			runnable.run();
+		}
+
+		@Override
+		protected void doStart(Subscriber<? super V> subscriber) {
+			service.route(this, subscriber, SignalType.SUBSCRIPTION);
+		}
+
+		@Override
+		protected void doComplete() {
+			service.route(null, subscriber, SignalType.COMPLETE);
+		}
+
+		@Override
+		protected void doNext(V o) {
+			service.route(o, subscriber, SignalType.NEXT);
+		}
+
+		@Override
+		protected void doError(Throwable t) {
+			service.route(t, subscriber, SignalType.ERROR);
 		}
 
 		@Override
@@ -1017,52 +1061,33 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	}
 
-	private static abstract class SubscriberWrapper<T> extends BaseSubscriber<T> {
-
-		@Override
-		public void onError(Throwable t) {
-			throw new UnsupportedOperationException("OnError has not been implemented", t);
-		}
-	}
-
-	private static final class ConsumerSubscriber<T> extends SubscriberWrapper<T> {
+	private static final class ConsumerRunnable<T> implements Runnable {
 
 		private final Consumer<? super T> consumer;
+		private final T                   data;
 
-		public ConsumerSubscriber(Consumer<? super T> consumer) {
+		public ConsumerRunnable(T data, Consumer<? super T> consumer) {
 			this.consumer = consumer;
+			this.data = data;
 		}
 
 		@Override
-		public void onNext(T t) {
-			consumer.accept(t);
+		public void run() {
+			consumer.accept(data);
 		}
-
 	}
 
-	private static final class RunnableSubscriber extends SubscriberWrapper<Void> {
-
-		private final Runnable runnable;
-
-		public RunnableSubscriber(Runnable runnable) {
-			this.runnable = runnable;
-		}
-
-		@Override
-		public void onNext(Void t) {
-			runnable.run();
-		}
-
-	}
-
-	private class TaskSubscriber implements Subscriber<Task> {
+	private static class TaskSubscriber implements Subscriber<Runnable> {
 
 		private final Consumer<Throwable> uncaughtExceptionHandler;
 		private final Consumer<Void>      shutdownHandler;
+		private final TailRecurser tailRecurser;
 
-		public TaskSubscriber(Consumer<Throwable> uncaughtExceptionHandler, Consumer<Void> shutdownHandler) {
+		public TaskSubscriber(TailRecurser tailRecurser, Consumer<Throwable> uncaughtExceptionHandler, Consumer<Void>
+				shutdownHandler) {
 			this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 			this.shutdownHandler = shutdownHandler;
+			this.tailRecurser = tailRecurser;
 		}
 
 		@Override
@@ -1071,10 +1096,17 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		public void onNext(Task task) {
-			routeTask(task);
+		public void onNext(Runnable task) {
+			try {
+				task.run();
+
 			if (tailRecurser != null) {
 				tailRecurser.consumeTasks();
+			}
+
+			}
+			catch (CancelException ce) {
+				//IGNORE
 			}
 		}
 
@@ -1098,7 +1130,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	final static class SingleProcessorGroup<T> extends ProcessorGroup<T> {
 
-		public SingleProcessorGroup(Supplier<? extends Processor<Task, Task>> processor,
+		public SingleProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 				int concurrency,
 				Consumer<Throwable> uncaughtExceptionHandler,
 				Consumer<Void> shutdownHandler,
@@ -1113,7 +1145,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		volatile int index = 0;
 
-		public PooledProcessorGroup(Supplier<? extends Processor<Task, Task>> processor,
+		public PooledProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 				int concurrency,
 				Consumer<Throwable> uncaughtExceptionHandler,
 				Consumer<Void> shutdownHandler,
