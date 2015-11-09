@@ -358,43 +358,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	}
 
 	/* INTERNAL */
-	@SuppressWarnings("unchecked")
-	private final void route(Object payload, Subscriber subscriber, SignalType type) {
-
-		try {
-			if (subscriber == null) {
-				return;
-			}
-
-			if (type == SignalType.NEXT) {
-				subscriber.onNext(payload);
-			}
-			else if (type == SignalType.COMPLETE) {
-				subscriber.onComplete();
-				decrementReference();
-			}
-			else if (type == SignalType.SUBSCRIPTION) {
-				subscriber.onSubscribe((Subscription) payload);
-			}
-			else {
-				subscriber.onError((Throwable) payload);
-			}
-		}
-		catch (CancelException c) {
-			decrementReference();
-			throw c;
-		}
-		catch (Throwable t) {
-			decrementReference();
-			if (type != SignalType.ERROR) {
-				Exceptions.throwIfFatal(t);
-				subscriber.onError(t);
-			}
-			else {
-				throw t;
-			}
-		}
-	}
+	
 
 	@SuppressWarnings("unchecked")
 	private static final ProcessorGroup SYNC_SERVICE = new ProcessorGroup(null, -1, null, null, false);
@@ -837,7 +801,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 					if (r != 0L
 							&& outstanding > LIMIT_BUFFER_SIZE
 							&& cursor + 1L <= emitBuffer.getCursor()) {
-						service.route(emitBuffer.get(++cursor).value, subscriber, SignalType.NEXT);
+						route(emitBuffer.get(++cursor).value, subscriber, SignalType.NEXT);
 
 						if(r != Long.MAX_VALUE){
 							r--;
@@ -860,11 +824,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				Throwable error;
 				if (terminated == 1) {
 					if ((error = this.error) != null) {
-						service.route(error, subscriber, SignalType.ERROR);
+						route(error, subscriber, SignalType.ERROR);
 						return;
 					}
 					else if (emitBuffer.pending() == 0) {
-						service.route(null, subscriber, SignalType.COMPLETE);
+						route(null, subscriber, SignalType.COMPLETE);
 						return;
 					}
 				}
@@ -899,6 +863,44 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 					&& subscription != null) {
 				this.outstanding = SMALL_BUFFER_SIZE;
 				subscription.request(SMALL_BUFFER_SIZE - outstanding);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		protected final void route(Object payload, Subscriber subscriber, SignalType type) {
+
+			try {
+				if (subscriber == null) {
+					return;
+				}
+
+				if (type == SignalType.NEXT) {
+					subscriber.onNext(payload);
+				}
+				else if (type == SignalType.COMPLETE) {
+					subscriber.onComplete();
+					service.decrementReference();
+				}
+				else if (type == SignalType.SUBSCRIPTION) {
+					subscriber.onSubscribe((Subscription) payload);
+				}
+				else {
+					subscriber.onError((Throwable) payload);
+				}
+			}
+			catch (CancelException c) {
+				service.decrementReference();
+				throw c;
+			}
+			catch (Throwable t) {
+				service.decrementReference();
+				if (type != SignalType.ERROR) {
+					Exceptions.throwIfFatal(t);
+					subscriber.onError(t);
+				}
+				else {
+					throw t;
+				}
 			}
 		}
 
@@ -953,17 +955,17 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		@Override
 		protected void doComplete() {
-			service.route(null, subscriber, SignalType.COMPLETE);
+			route(null, subscriber, SignalType.COMPLETE);
 		}
 
 		@Override
 		protected void doNext(V o) {
-			service.route(o, subscriber, SignalType.NEXT);
+			route(o, subscriber, SignalType.NEXT);
 		}
 
 		@Override
 		protected void doError(Throwable t) {
-			service.route(t, subscriber, SignalType.ERROR);
+			route(t, subscriber, SignalType.ERROR);
 		}
 
 		@Override
@@ -1026,22 +1028,22 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		@Override
 		protected void doStart(Subscriber<? super V> subscriber) {
-			service.route(this, subscriber, SignalType.SUBSCRIPTION);
+			route(this, subscriber, SignalType.SUBSCRIPTION);
 		}
 
 		@Override
 		protected void doComplete() {
-			service.route(null, subscriber, SignalType.COMPLETE);
+			route(null, subscriber, SignalType.COMPLETE);
 		}
 
 		@Override
 		protected void doNext(V o) {
-			service.route(o, subscriber, SignalType.NEXT);
+			route(o, subscriber, SignalType.NEXT);
 		}
 
 		@Override
 		protected void doError(Throwable t) {
-			service.route(t, subscriber, SignalType.ERROR);
+			route(t, subscriber, SignalType.ERROR);
 		}
 
 		@Override

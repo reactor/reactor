@@ -83,29 +83,6 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		return allSensors;
 	}
 
-	public Stream<SensorData> sensorOdd() {
-		if (sensorOdd == null) {
-			// this is the stream we publish odd-numbered events to
-			this.sensorOdd = Processors.log(Processors.topic("odd"), "odd");
-
-			// add substream to "master" list
-			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
-		}
-
-		return Streams.wrap(sensorOdd);
-	}
-
-	public Stream<SensorData> sensorEven() {
-		if (sensorEven == null) {
-			// this is the stream we publish even-numbered events to
-			this.sensorEven = Processors.log(Processors.topic("even"), "even");
-
-			// add substream to "master" list
-			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
-		}
-		return Streams.wrap(sensorEven);
-	}
-
 	@Test
 	public void testMerge1ToN() throws Exception {
 		final int n = 1000;
@@ -191,6 +168,29 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		boolean waited = latch.await(5, TimeUnit.SECONDS);
 		System.out.println(counters);
 		Assert.isTrue(waited, "latch : " + latch.getCount());
+	}
+
+	public Stream<SensorData> sensorOdd() {
+		if (sensorOdd == null) {
+			// this is the stream we publish odd-numbered events to
+			this.sensorOdd = Processors.log(Processors.topic("odd"), "odd");
+
+			// add substream to "master" list
+			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
+		}
+
+		return Streams.wrap(sensorOdd);
+	}
+
+	public Stream<SensorData> sensorEven() {
+		if (sensorEven == null) {
+			// this is the stream we publish even-numbered events to
+			this.sensorEven = Processors.log(Processors.topic("even"), "even");
+
+			// add substream to "master" list
+			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
+		}
+		return Streams.wrap(sensorEven);
 	}
 
 	@Test
