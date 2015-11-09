@@ -823,6 +823,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			long cursor = pollCursor.get();
 			long r;
 			int outstanding;
+
 			for (; ; ) {
 				outstanding = this.outstanding;
 				long produced = 0L;
@@ -892,8 +893,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			}
 
 			Subscription subscription = upstreamSubscription;
-			if (outstanding > LIMIT_BUFFER_SIZE // not previously requested
-					&& outstanding < SMALL_BUFFER_SIZE //produced at least a data for the last batch
+			if (r != 0L // previously requested
+					&& outstanding < SMALL_BUFFER_SIZE - Math.min(r, LIMIT_BUFFER_SIZE) //produced at least a data for
+					// the last batch
 					&& subscription != null) {
 				this.outstanding = SMALL_BUFFER_SIZE;
 				subscription.request(SMALL_BUFFER_SIZE - outstanding);

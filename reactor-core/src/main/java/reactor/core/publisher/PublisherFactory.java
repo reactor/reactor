@@ -28,6 +28,7 @@ import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
@@ -100,7 +101,7 @@ public abstract class PublisherFactory {
 	                                                   Function<Subscriber<? super T>, C> contextFactory,
 	                                                   Consumer<C> shutdownConsumer) {
 
-		return new ReactorPublisher<T, C>(requestConsumer, contextFactory, shutdownConsumer);
+		return new ReactorPublisher<T, C>(new RecursiveConsumer<>(requestConsumer), contextFactory, shutdownConsumer);
 	}
 
 
@@ -316,6 +317,8 @@ public abstract class PublisherFactory {
 		}
 	}
 
+
+
 	private final static class SubscriberProxy<T, C> extends SubscriberWithContext<T, C>
 	  implements Subscription, Publishable<T> {
 
@@ -445,6 +448,55 @@ public abstract class PublisherFactory {
 			} while ((demand == Long.MAX_VALUE ||
 			  (demand = PENDING_UPDATER.addAndGet(this, -demand)) > 0L)
 			  && !sub.isCancelled());
+
+		}
+	}
+
+	private final static class RecursiveConsumer<T, C> implements BiConsumer<Long, SubscriberWithContext<T, C>> {
+
+		private final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
+
+		private volatile int running = 0;
+
+		private final static AtomicIntegerFieldUpdater<RecursiveConsumer> RUNNING =
+				AtomicIntegerFieldUpdater.newUpdater(RecursiveConsumer.class, "running");
+
+		private volatile long pending = 0L;
+
+		private final static AtomicLongFieldUpdater<RecursiveConsumer> PENDING_UPDATER =
+				AtomicLongFieldUpdater.newUpdater(RecursiveConsumer.class, "pending");
+
+		public RecursiveConsumer(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer) {
+			this.requestConsumer = requestConsumer;
+		}
+
+		@Override
+		public void accept(Long n, SubscriberWithContext<T, C> sub) {
+			BackpressureUtils.getAndAdd(PENDING_UPDATER, this, n);
+			if(RUNNING.getAndIncrement(this) == 0){
+				int missed = 1;
+				long r;
+				for(;;){
+					if(sub.isCancelled()){
+						return;
+					}
+
+					r = PENDING_UPDATER.getAndSet(this, 0L);
+					if(r == Long.MAX_VALUE){
+						requestConsumer.accept(Long.MAX_VALUE, sub);
+						return;
+					}
+
+					if(r != 0L) {
+						requestConsumer.accept(r, sub);
+					}
+
+					missed = RUNNING.addAndGet(this, -missed);
+					if(missed == 0){
+						break;
+					}
+				}
+			}
 
 		}
 	}
