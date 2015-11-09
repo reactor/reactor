@@ -16,12 +16,14 @@
 package reactor.rx.broadcast;
 
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Timers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.SignalType;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
@@ -103,6 +105,12 @@ public class Broadcaster<O> extends Action<O, O> {
 	private final Timer   timer;
 	private final boolean ignoreDropped;
 
+	@SuppressWarnings("unused")
+	private volatile long requested;
+	protected static final AtomicLongFieldUpdater<Broadcaster> REQUESTED =
+			AtomicLongFieldUpdater.newUpdater(Broadcaster.class, "requested");
+
+
 	@SuppressWarnings("unchecked")
 	protected Broadcaster(Timer timer, boolean ignoreDropped) {
 		super();
@@ -134,10 +142,7 @@ public class Broadcaster<O> extends Action<O, O> {
 					doError(t);
 			}
 
-			PushSubscription<O> downSub = downstreamSubscription;
-			if (downSub != null && downSub.pendingRequestSignals() > 0L) {
-				subscription.request(downSub.pendingRequestSignals());
-			}
+			drainSubscription(subscription);
 
 		} else {
 			super.onSubscribe(subscription);
@@ -152,7 +157,6 @@ public class Broadcaster<O> extends Action<O, O> {
 				@Override
 				protected void onRequest(long elements) {
 					if (upstreamSubscription != null) {
-						super.onRequest(elements);
 						requestUpstream(capacity, terminalSignalled, elements);
 					}
 				}
@@ -186,20 +190,39 @@ public class Broadcaster<O> extends Action<O, O> {
 	@Override
 
 	public void cancel() {
-		Subscription parentSub = upstreamSubscription;
-		if (parentSub != null && parentSub != SignalType.NOOP_SUBSCRIPTION) {
-			super.cancel();
+		Subscription parentSub = SUBSCRIPTION.getAndSet(this, SignalType.NOOP_SUBSCRIPTION);
+		if (parentSub != null) {
+			parentSub.cancel();
+		}
+	}
+
+	protected void drainSubscription(Subscription subscription){
+		long toRequest = 0L;
+		for(;;){
+			long n = REQUESTED.getAndSet(this, 0L);
+			if(n == 0){
+				break;
+			}
+			toRequest = BackpressureUtils.addOrLongMax(toRequest, n);
+			if(toRequest == Long.MAX_VALUE){
+				break;
+			}
+		}
+		if(toRequest > 0L){
+			subscription.request(toRequest);
 		}
 	}
 
 	@Override
 	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		if (upstreamSubscription != null && upstreamSubscription != SignalType.NOOP_SUBSCRIPTION && !terminated) {
-			requestMore(elements);
-		} else {
-			PushSubscription<O> _downstreamSubscription = downstreamSubscription;
-			if (_downstreamSubscription != null && _downstreamSubscription.pendingRequestSignals() == 0L) {
-				_downstreamSubscription.updatePendingRequests(elements);
+		if(terminated){
+			return;
+		}
+
+		if(BackpressureUtils.getAndAdd(REQUESTED, this, elements) == 0) {
+			Subscription upstreamSubscription = this.upstreamSubscription;
+			if (upstreamSubscription != null && upstreamSubscription != SignalType.NOOP_SUBSCRIPTION) {
+				drainSubscription(upstreamSubscription);
 			}
 		}
 	}
