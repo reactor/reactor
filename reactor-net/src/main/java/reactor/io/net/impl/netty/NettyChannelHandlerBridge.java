@@ -58,7 +58,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 
 	private volatile int channelRef = 0;
 	protected static final AtomicIntegerFieldUpdater<NettyChannelHandlerBridge> CHANNEL_REF =
-	  AtomicIntegerFieldUpdater.newUpdater(NettyChannelHandlerBridge.class, "channelRef");
+			AtomicIntegerFieldUpdater.newUpdater(NettyChannelHandlerBridge.class, "channelRef");
 
 	public NettyChannelHandlerBridge(
 			ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> handler, NettyChannelStream<IN, OUT> channelStream
@@ -113,24 +113,24 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 	public void channelActive(final ChannelHandlerContext ctx) throws Exception {
 		super.channelActive(ctx);
 		handler.apply(channelStream)
-				.subscribe(new DefaultSubscriber<Void>() {
-					@Override
-					public void onSubscribe(Subscription s) {
-						s.request(Long.MAX_VALUE);
-					}
+		       .subscribe(new DefaultSubscriber<Void>() {
+			       @Override
+			       public void onSubscribe(Subscription s) {
+				       s.request(Long.MAX_VALUE);
+			       }
 
-					@Override
-					public void onError(Throwable t) {
-						log.error("Error processing connection. Closing the channel.", t);
+			       @Override
+			       public void onError(Throwable t) {
+				       log.error("Error processing connection. Closing the channel.", t);
 
-						ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
-					}
+				       ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+			       }
 
-					@Override
-					public void onComplete() {
-						ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
-					}
-				});
+			       @Override
+			       public void onComplete() {
+				       ctx.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
+			       }
+		       });
 	}
 
 	@Override
@@ -337,20 +337,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		data.skipBytes(b.position() - start);
 	}
 
-	@SuppressWarnings("unused")
-	protected void doOnSubscribe(ChannelHandlerContext ctx, final Subscription s, long request, final Consumer<Void>
-			cb) {
-		ctx.channel().closeFuture().addListener(new ChannelFutureListener() {
-			@Override
-			public void operationComplete(ChannelFuture future) throws Exception {
-				if (log.isDebugEnabled()) {
-					log.debug("Cancel connection");
-				}
-				s.cancel();
-				cb.accept(null);
-			}
-		});
-		s.request(request);
+	protected void doOnSubscribe(ChannelHandlerContext ctx, final Subscription s) {
 	}
 
 	/**
@@ -370,7 +357,7 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		}
 	}
 
-	private class FlushOnTerminateSubscriber extends DefaultSubscriber<Object> implements Consumer<Void> {
+	private class FlushOnTerminateSubscriber extends DefaultSubscriber<Object> implements ChannelFutureListener  {
 
 		private final ChannelHandlerContext ctx;
 		private final ChannelPromise        promise;
@@ -382,15 +369,27 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 			this.promise = promise;
 		}
 
-		@Override
-		public void accept(Void aVoid) {
+		public void operationComplete(ChannelFuture future) throws Exception {
+			if (log.isDebugEnabled()) {
+				log.debug("Cancel connection");
+			}
+			if(subscription != null) {
+				subscription.cancel();
+			}
 			subscription = null;
 		}
 
 		@Override
 		public void onSubscribe(final Subscription s) {
 			this.subscription = s;
-			doOnSubscribe(ctx, s, Long.MAX_VALUE, this);
+
+			ctx.channel()
+			   .closeFuture()
+			   .addListener(this);
+
+			doOnSubscribe(ctx, s);
+
+			s.request(Long.MAX_VALUE);
 		}
 
 		@Override
@@ -419,8 +418,12 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		@Override
 		public void onError(Throwable t) {
 			if (subscription == null) throw new IllegalStateException("already flushed", t);
-			subscription = null;
 			log.error("Write error", t);
+			subscription = null;
+			ctx.channel()
+			   .closeFuture()
+			   .removeListener(this);
+
 			doOnTerminate(ctx, lastWrite, promise);
 		}
 
@@ -428,12 +431,16 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		public void onComplete() {
 			if (subscription == null) throw new IllegalStateException("already flushed");
 			subscription = null;
+			ctx.channel()
+			   .closeFuture()
+			   .removeListener(this);
+
 			doOnTerminate(ctx, lastWrite, promise);
 		}
 	}
 
 	private class FlushOnCapacitySubscriber extends DefaultSubscriber<Object>
-			implements Runnable, Consumer<Void> {
+			implements Runnable, ChannelFutureListener  {
 
 		private final ChannelHandlerContext ctx;
 		private final ChannelPromise        promise;
@@ -469,7 +476,13 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 		@Override
 		public void onSubscribe(final Subscription s) {
 			subscription = s;
-			doOnSubscribe(ctx, s, capacity, this);
+			ctx.channel()
+			   .closeFuture()
+			   .addListener(this);
+
+			doOnSubscribe(ctx, s);
+
+			s.request(capacity);
 		}
 
 		@Override
@@ -497,6 +510,10 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 			if (subscription == null) throw new IllegalStateException("already flushed", t);
 			log.error("Write error", t);
 			subscription = null;
+			ctx.channel()
+			   .closeFuture()
+			   .removeListener(this);
+
 			doOnTerminate(ctx, null, promise);
 		}
 
@@ -507,6 +524,10 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 			if (log.isDebugEnabled()) {
 				log.debug("Flush Connection");
 			}
+			ctx.channel()
+			   .closeFuture()
+			   .removeListener(this);
+
 			doOnTerminate(ctx, null, promise);
 		}
 
@@ -517,10 +538,17 @@ public class NettyChannelHandlerBridge<IN, OUT> extends ChannelDuplexHandler {
 			}
 		}
 
-		@Override
-		public void accept(Void aVoid) {
+
+		public void operationComplete(ChannelFuture future) throws Exception {
+			if (log.isDebugEnabled()) {
+				log.debug("Cancel connection");
+			}
+			if(subscription != null) {
+				subscription.cancel();
+			}
 			subscription = null;
 		}
+
 	}
 
 	public ReactorChannelHandler<IN, OUT, ChannelStream<IN, OUT>> getHandler() {

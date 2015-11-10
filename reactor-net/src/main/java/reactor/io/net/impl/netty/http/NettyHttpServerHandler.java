@@ -137,12 +137,10 @@ public class NettyHttpServerHandler<IN, OUT> extends NettyChannelHandlerBridge<I
 	}
 
 	@Override
-	protected void doOnSubscribe(ChannelHandlerContext ctx, Subscription s, long n, Consumer<Void> cb) {
+	protected void doOnSubscribe(ChannelHandlerContext ctx, Subscription s) {
 		if (request.checkHeader()) {
 			ctx.write(request.getNettyResponse());
 		}
-
-		super.doOnSubscribe(ctx, s, n, cb);
 	}
 
 	NettyHttpServerHandler<IN, OUT> withWebsocketSupport(String url, String protocols){

@@ -110,6 +110,8 @@ class NettyTcpServerSpec extends Specification {
 			Environment.terminate()
 	}
 
+
+
 	def "flush every 5 elems with manual decoding"() {
 		given: "a TcpServer and a TcpClient"
 			Environment.initializeIfEmpty()
