@@ -283,6 +283,14 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscription, Bounde
 	 *
 	 * @return
 	 */
+	public boolean hasRequested() {
+		return requested != 0L;
+	}
+
+	/**
+	 *
+	 * @return
+	 */
 	public boolean hasFailed() {
 		return uncaughtException != null;
 	}
@@ -337,6 +345,7 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscription, Bounde
 	public Subscriber<? super E> downstream() {
 		return actual;
 	}
+
 
 	@Override
 	public String toString() {
