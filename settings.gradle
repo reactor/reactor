@@ -7,4 +7,5 @@ include 'reactor-core',
 		'reactor-stream',
 		'reactor-net',
 		'reactor-logback',
-		'reactor-aeron'
+		'reactor-aeron',
+		'docs'

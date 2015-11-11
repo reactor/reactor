@@ -13,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-configure(rootProject) {
+project('docs') {
+	apply plugin: "java"
+	apply plugin: 'org.asciidoctor.convert'
+
 	task api(type: Javadoc) {
 		group = "Reactor Framework Javadoc"
-		apply plugin: "java"
 
 		description = "Generates aggregated Javadoc API documentation."
 		title = "${rootProject.description} ${version} API"
@@ -38,7 +40,7 @@ configure(rootProject) {
 		options.header = rootProject.description
 		options.overview = "src/api/overview.html"
 		options.stylesheetFile = file("src/api/stylesheet.css")
-		options.links(project.ext.javadocLinks)
+		options.links(rootProject.ext.javadocLinks)
 
 		source subprojects.collect { project ->
 			project.sourceSets.main.allJava
@@ -53,7 +55,6 @@ configure(rootProject) {
 	}
 
 
-	apply plugin: 'org.asciidoctor.convert'
 
 	asciidoctor {
 		sources {
