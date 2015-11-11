@@ -18,7 +18,7 @@
 description = 'Reactive fast data framework for the JVM'
 
 ext {
-	gradleVersion = '2.3'
+	gradleVersion = '2.8'
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
 
 	// Languages
