@@ -60,7 +60,7 @@ project('docs') {
 		sources {
 			include "index.asciidoc"
 		}
-		outputDir file("$buildDir/asciidoc")
+		outputDir file("$buildDir/asciidoc/$version")
 		backends = ['html5', 'pdf']
 		logDocuments = true
 		options = [
@@ -75,7 +75,7 @@ project('docs') {
 				'source-highlighter': 'coderay'
 
 		doLast {
-			file("$outputDir/pdf/index.pdf").renameTo("$outputDir/pdf/reference-guide.pdf")
+			file("$outputDir/pdf/index.pdf").renameTo("$outputDir/pdf/reference-guide-${version}.pdf")
 		}
 
 	}
