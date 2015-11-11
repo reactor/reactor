@@ -31,7 +31,7 @@ project('docs') {
 		}
 
 		dependsOn {
-			subprojects.collect {
+			rootProject.subprojects.collect {
 				it.tasks.getByName("jar")
 			}
 		}
@@ -42,7 +42,7 @@ project('docs') {
 		options.stylesheetFile = file("src/api/stylesheet.css")
 		options.links(rootProject.ext.javadocLinks)
 
-		source subprojects.collect { project ->
+		source rootProject.subprojects.collect { project ->
 			project.sourceSets.main.allJava
 		}
 
@@ -50,7 +50,7 @@ project('docs') {
 		destinationDir = new File(buildDir, "api")
 
 		doFirst {
-			classpath = files(subprojects.collect { it.sourceSets.main.compileClasspath })
+			classpath = files(rootProject.subprojects.collect { it.sourceSets.main.compileClasspath })
 		}
 	}
 
