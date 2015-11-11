@@ -14,6 +14,21 @@
  * limitations under the License.
  */
 
+buildscript {
+	repositories {
+		maven { url "http://repo.spring.io/plugins-release" }
+	}
+	dependencies {
+		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.7',
+				'io.spring.gradle:spring-io-plugin:0.0.4.RELEASE',
+				'com.github.jengelman.gradle.plugins:shadow:1.2.0',
+				'org.asciidoctor:asciidoctorj-pdf:1.5.0-alpha.8'
+	}
+}
+
+plugins {
+	id 'org.asciidoctor.convert' version '1.5.2'
+}
 
 description = 'Reactive fast data framework for the JVM'
 
@@ -54,16 +69,6 @@ ext {
 	] as String[]
 }
 
-buildscript {
-	repositories {
-		maven { url "http://repo.spring.io/plugins-release" }
-	}
-	dependencies {
-		classpath 'org.springframework.build.gradle:propdeps-plugin:0.0.7',
-				'io.spring.gradle:spring-io-plugin:0.0.4.RELEASE',
-				'com.github.jengelman.gradle.plugins:shadow:1.2.0'
-	}
-}
 apply from: "$gradleScriptDir/setup.gradle"
 apply from: "$gradleScriptDir/doc.gradle"
 
