@@ -1,3 +1,0 @@
-[[net-endToEnd]]
-== End To End
-Combining Reactor Net, Stream and Core to create standalone Ingesters or Data (micro)Services

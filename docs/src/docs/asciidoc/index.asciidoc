@@ -16,15 +16,6 @@ include::gettingstarted.adoc[]
 
 include::20to21.adoc[]
 
-[[reactor-core]]
-= *reactor-core*
-include::core.adoc[]
-include::core-publisher.adoc[]
-include::core-subscriber.adoc[]
-include::core-processor.adoc[]
-include::core-timer.adoc[]
-include::core-buffer.adoc[]
-
 [[reactor-stream]]
 = *reactor-stream*
 include::streams.adoc[]
@@ -32,13 +23,6 @@ include::streams.adoc[]
 [[reactor-bus]]
 = *reactor-bus*
 include::event-bus.adoc[]
-
-[[reactor-net]]
-= *reactor-net*
-include::net.adoc[]
-include::net-tcp.adoc[]
-include::net-http.adoc[]
-include::net-e2e.adoc[]
 
 [[reactor-extensions]]
 = *Extensions*
