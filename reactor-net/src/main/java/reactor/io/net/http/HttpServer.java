@@ -53,8 +53,17 @@ public abstract class HttpServer<IN, OUT>
 	 *
 	 * @return a Promise fulfilled when server is started
 	 */
-	public Publisher<Void> start() {
+	public final Publisher<Void> start() {
 		return start(null);
+	}
+
+	/**
+	 * @see this#start()
+	 * @throws InterruptedException
+	 */
+	public final void startAndAwait()
+			throws InterruptedException {
+		Publishers.toReadQueue(start()).take();
 	}
 
 	/**
