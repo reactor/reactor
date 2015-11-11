@@ -60,7 +60,7 @@ project('docs') {
 		sources {
 			include "index.asciidoc"
 		}
-		outputDir file("$buildDir/asciidoc/$version")
+		outputDir file("$buildDir/asciidoc")
 		backends = ['html5', 'pdf']
 		logDocuments = true
 		options = [
