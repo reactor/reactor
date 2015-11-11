@@ -75,8 +75,7 @@ project('docs') {
 				'source-highlighter': 'coderay'
 
 		doLast {
-			def formattedVersion = version.replaceAll('\\.','-')
-			file("$outputDir/pdf/index.pdf").renameTo("$outputDir/pdf/reference-guide-${formattedVersion}.pdf")
+			file("$outputDir/pdf/index.pdf").renameTo("$outputDir/pdf/reference-guide-${version}.pdf")
 		}
 
 	}
