@@ -25,7 +25,6 @@ import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.support.Bounded;
 import reactor.fn.Function;
-import reactor.io.net.ReactiveChannel;
 import reactor.io.net.http.model.Status;
 import reactor.io.net.http.model.Transfer;
 

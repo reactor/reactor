@@ -32,35 +32,35 @@ import reactor.io.net.tcp.TcpServer;
 import reactor.io.net.udp.DatagramServer;
 
 /**
- * A Streams add-on to work with network facilities from reactor-net, e.g.:
+ * Reactive Client/Server Network facilities
  * <p>
  * <pre>
  * {@code
  * //echo server
- * NetStreams.tcpServer(1234).start( connection -> ch.writeWith(connection) );
+ * ReactiveNet.tcpServer(1234).start( connection -> ch.writeWith(connection) );
  *
- * NetStreams.tcpClient(1234).start( connection ->
+ * ReactiveNet.tcpClient(1234).start( connection ->
  *    connection
  *      //Listen for any incoming data on that connection, they will be Buffer an IOStream can easily decode
  *      .nest()
- *      .flatMap(self -> IOStreams.decode(new StringCodec('\n'), self))
+ *      .flatMap(self -> new StringCodec('\n').decode(self))
  *      .consume(log::info);
  *
  *    //Push anything from the publisher returned, here a simple Reactor Stream. By default a Buffer is expected
  *    //Will close after write
- *    return connection.writeWith(Streams.just(Buffer.wrap("hello\n")));
+ *    return connection.writeWith(Publishers.just(Buffer.wrap("hello\n")));
  * });
  *
  * //We can also preconfigure global codecs and other custom client/server parameter with the Function signature:
- * NetStreams.tcpServer(spec -> spec.codec(kryoCodec).listen(1235)).start( intput -> {
- *      input.consume(log::info);
- *      return input.writeWith(Streams.period(1l));
+ * ReactiveNet.tcpServer(spec -> spec.preprocessor(CodecPreprocessor.from(kryoCodec)).listen(1235)).start( intput -> {
+ *      input.subscribe(Subscribers.unbounded(log::info));
+ *      return input.writeWith(Publishers.period(1l));
  * });
  *
  * //Assigning the same codec to a client and a server greatly improve readability and provide for extended type safety.
- * NetStreams.tcpClient(spec -> spec.connect("localhost", 1235).codec(kryoCodec)).start( input -> {
- *   input.consume(log::info);
- *   return input.writeWith(Streams.just("hello"));
+ * ReactiveNet.tcpServer(spec -> spec.preprocessor(CodecPreprocessor.from(kryoCodec)).connect("localhost", 1235)).start( input -> {
+ *      input.subscribe(Subscribers.unbounded(log::info));
+ *   return input.writeWith(Publishers.just("hello"));
  * });
  *
  * }
@@ -111,8 +111,7 @@ public class ReactiveNet {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -144,8 +143,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -179,8 +177,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -214,8 +211,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -256,8 +252,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -294,8 +289,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -337,8 +331,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -371,8 +364,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -406,8 +398,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -441,8 +432,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -483,8 +473,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -521,8 +510,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -655,8 +643,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -697,8 +684,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -737,8 +723,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -766,8 +751,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -797,8 +781,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -828,8 +811,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -867,8 +849,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.
@@ -902,8 +883,7 @@ public class ReactiveNet {
 	 * From the emitted {@link ReactiveChannel}, one can decide to add in-channel consumers to read any incoming
 	 * data.
 	 * <p>
-	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org
-	 * .reactivestreams.Publisher}.
+	 * To reply data on the active connection, {@link ReactiveChannel#writeWith} can subscribe to any passed {@link org.reactivestreams.Publisher}.
 	 * <p>
 	 * Note that {@link reactor.core.support.Bounded#getCapacity} will be used to switch on/off a channel in auto-read / flush on
 	 * write mode.

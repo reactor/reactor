@@ -23,7 +23,7 @@ import reactor.io.net.ReactivePeer;
 /**
  * A {@link HttpChannel} callback that is attached on {@link ReactivePeer} or {@link ReactiveClient} initialization
  * and receives
- * all connected {@link HttpChannel}. The {@link #transform implementation must return a Publisher to complete or error
+ * all connected {@link HttpChannel}. The implementation must return a Publisher to complete or error
  * in order to close the {@link ReactiveChannel}.
  *
  * @param <IN>  the type of the received data
