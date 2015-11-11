@@ -61,7 +61,7 @@ project('docs') {
 			include "index.asciidoc"
 		}
 		outputDir file("$buildDir/asciidoc")
-		backends = ['html5', 'docbook', 'pdf']
+		backends = ['html5', 'pdf']
 		logDocuments = true
 		options = [
 				doctype: 'book'
@@ -73,6 +73,10 @@ project('docs') {
 				stylesheet: 'golo.css',
 				appversion: "$version",
 				'source-highlighter': 'coderay'
+
+		doLast {
+			file("$outputDir/pdf/index.pdf").renameTo("$outputDir/pdf/reference-guide.pdf")
+		}
 
 	}
 
