@@ -1,7 +1,0 @@
-package reactor.io.codec.protobuf;
-
-message RichObject {
-	required string name = 1;
-	required float percent = 2;
-	required int64 total = 3;
-}

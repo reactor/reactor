@@ -48,10 +48,6 @@ ext {
 	nettyVersion = '4.0.31.Final'
 	jacksonDatabindVersion = '2.5.1'
 	jsonPathVersion = '2.0.0'
-	kryoVersion = '3.0.3'
-	protobufVersion = '2.6.1'
-	snappyVersion = '1.1.1.6'
-	hadoopVersion = '1.1.2'
 	openHftChronicleVersion = '3.4.2'
 	aeronVersion = '0.1.5'
   	rxJavaVersion = '1.0.14'
@@ -236,7 +232,7 @@ project('reactor-stream') {
 	dependencies {
 		compile project(':reactor-core')
 		optional project(':reactor-net')
-		optional project(':reactor-codec')
+		optional "io.projectreactor:reactor-codec:$version"
 
 		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
 		testCompile project(':reactor-bus')
@@ -333,7 +329,7 @@ project('reactor-net') {
 		}
 
 		//Codec Preprocessor
-		optional project(':reactor-codec')
+		optional "io.projectreactor:reactor-codec:$version"
 
 		//Default reactor-net impl
 		optional "io.netty:netty-all:$nettyVersion"
@@ -361,22 +357,6 @@ project('reactor-alloc') {
 		compile project(':reactor-core')
 
 		optional project(':reactor-bus')
-	}
-}
-
-project('reactor-codec') {
-	description = 'Codec families'
-
-	dependencies {
-		compile project(':reactor-core')
-
-		// JSON handling
-		optional "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
-
-		// Serialization
-		optional "com.esotericsoftware:kryo:$kryoVersion",
-				"com.google.protobuf:protobuf-java:$protobufVersion",
-				"org.xerial.snappy:snappy-java:$snappyVersion"
 	}
 }
 
