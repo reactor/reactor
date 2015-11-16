@@ -58,7 +58,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 	final int                                                   bufferSize;
 
 	public FlatMapOperator(
-	  Function<? super T, ? extends Publisher<? extends V>> mapper, int maxConcurrency, int bufferSize) {
+			Function<? super T, ? extends Publisher<? extends V>> mapper, int maxConcurrency, int bufferSize) {
 		this.mapper = mapper;
 		this.maxConcurrency = maxConcurrency;
 		this.bufferSize = bufferSize;
@@ -85,20 +85,20 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<MergeBarrier, Throwable> ERROR =
-		  PlatformDependent.newAtomicReferenceFieldUpdater(MergeBarrier.class, "error");
+				PlatformDependent.newAtomicReferenceFieldUpdater(MergeBarrier.class, "error");
 
 		private volatile boolean cancelled;
 
 		volatile InnerSubscriber<?, ?>[] subscribers;
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<MergeBarrier, InnerSubscriber[]> SUBSCRIBERS =
-		  PlatformDependent.newAtomicReferenceFieldUpdater(MergeBarrier.class, "subscribers");
+				PlatformDependent.newAtomicReferenceFieldUpdater(MergeBarrier.class, "subscribers");
 
 		@SuppressWarnings("unused")
 		private volatile int running;
 		@SuppressWarnings("rawtypes")
 		static final AtomicIntegerFieldUpdater<MergeBarrier> RUNNING =
-		  AtomicIntegerFieldUpdater.newUpdater(MergeBarrier.class, "running");
+				AtomicIntegerFieldUpdater.newUpdater(MergeBarrier.class, "running");
 
 		static final InnerSubscriber<?, ?>[] EMPTY = new InnerSubscriber<?, ?>[0];
 
@@ -108,7 +108,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		private volatile long requested;
 		@SuppressWarnings("rawtypes")
 		static final AtomicLongFieldUpdater<MergeBarrier> REQUESTED =
-		  AtomicLongFieldUpdater.newUpdater(MergeBarrier.class, "requested");
+				AtomicLongFieldUpdater.newUpdater(MergeBarrier.class, "requested");
 
 
 		long lastRequest;
@@ -117,7 +117,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		int  lastIndex;
 
 		public MergeBarrier(Subscriber<? super V> actual, Function<? super T, ? extends Publisher<? extends V>>
-		  mapper, int maxConcurrency, int bufferSize) {
+				mapper, int maxConcurrency, int bufferSize) {
 			super(actual);
 			this.mapper = mapper;
 			this.maxConcurrency = maxConcurrency;
@@ -210,7 +210,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			RingBuffer<RingBuffer.Slot<V>> q = emitBuffer;
 			if (q == null) {
 				q = RingBuffer.createSingleProducer(
-				  maxConcurrency == Integer.MAX_VALUE ? bufferSize : maxConcurrency
+						maxConcurrency == Integer.MAX_VALUE ? bufferSize : maxConcurrency
 				);
 				q.addGatingSequence(pollCursor = Sequencer.newSequence(-1L));
 				emitBuffer = q;
@@ -229,7 +229,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 						REQUESTED.decrementAndGet(this);
 					}
 					if (maxConcurrency != Integer.MAX_VALUE && !cancelled
-					  && ++lastRequest == limit) {
+							&& ++lastRequest == limit) {
 						lastRequest = 0;
 						subscription.request(limit);
 					}
@@ -562,7 +562,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 	}
 
 	static final class InnerSubscriber<T, V>
-	  extends BaseSubscriber<V> implements Bounded {
+			extends BaseSubscriber<V> implements Bounded {
 		final long               id;
 		final MergeBarrier<T, V> parent;
 		final int                limit;
@@ -571,7 +571,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		@SuppressWarnings("unused")
 		volatile Subscription subscription;
 		final static AtomicReferenceFieldUpdater<InnerSubscriber, Subscription> SUBSCRIPTION =
-		  PlatformDependent.newAtomicReferenceFieldUpdater(InnerSubscriber.class, "subscription");
+				PlatformDependent.newAtomicReferenceFieldUpdater(InnerSubscriber.class, "subscription");
 
 		Sequence pollCursor;
 

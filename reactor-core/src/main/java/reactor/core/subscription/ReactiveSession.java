@@ -41,13 +41,10 @@ import reactor.fn.timer.TimeUtils;
 public class ReactiveSession<E> implements Subscribable<E>, Subscription, Bounded, Consumer<E> {
 
 	public enum Emission {
-		FAILED, BACKPRESSURED, OK, DROPPED, CANCELLED;
+		FAILED, BACKPRESSURED, OK, CANCELLED;
 
 		public boolean isBackpressured(){
 			return this == BACKPRESSURED;
-		}
-		public boolean isDropped(){
-			return this == DROPPED;
 		}
 		public boolean isOk(){
 			return this == OK;
