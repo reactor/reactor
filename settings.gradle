@@ -4,7 +4,6 @@ include 'reactor-core',
 		'reactor-bus',
 		'reactor-alloc',
 		'reactor-stream',
-		'reactor-net',
 		'reactor-logback',
 		'reactor-aeron',
 		'docs'
