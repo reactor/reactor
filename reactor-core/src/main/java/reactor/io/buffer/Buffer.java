@@ -882,7 +882,7 @@ public class Buffer implements Recyclable,
 	/**
 	 * Create a fresh Buffer
 	 *
-	 * @return
+	 * @return a new Buffer of the same type
 	 */
 	public Buffer newBuffer(){
 		return new Buffer();

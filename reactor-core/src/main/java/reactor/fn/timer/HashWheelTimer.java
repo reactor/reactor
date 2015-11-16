@@ -71,7 +71,7 @@ public class HashWheelTimer implements Timer {
 	}
 
 	/**
-	 * Create a new {@code HashWheelTimer} using the given timer {@param res} and {@param wheelSize}. All times will
+	 * Create a new {@code HashWheelTimer} using the given timer {@code res} and {@code wheelSize}. All times will
 	 * rounded up to the closest multiple of this resolution.
 	 * @param res resolution of this timer in milliseconds
 	 * @param wheelSize size of the Ring Buffer supporting the Timer, the larger the wheel, the less the lookup time is
@@ -83,7 +83,7 @@ public class HashWheelTimer implements Timer {
 	}
 
 	/**
-	 * Create a new {@code HashWheelTimer} using the given timer {@param resolution} and {@param wheelSize}. All times
+	 * Create a new {@code HashWheelTimer} using the given timer {@code resolution} and {@code wheelSize}. All times
 	 * will rounded up to the closest multiple of this resolution.
 	 * @param name name for daemon thread factory to be displayed
 	 * @param res resolution of this timer in milliseconds
@@ -292,7 +292,7 @@ public class HashWheelTimer implements Timer {
 		private final LongSupplier now;
 
 		/**
-		 * Creates a new Timer Registration with given {@param rounds}, {@param offset} and {@param delegate}.
+		 * Creates a new Timer Registration with given {@code rounds}, {@code offset} and {@code delegate}.
 		 * @param rounds amount of rounds the Registration should go through until it's elapsed
 		 * @param offset offset of in the Ring Buffer for rescheduling
 		 * @param delegate delegate that will be ran whenever the timer is elapsed

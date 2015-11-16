@@ -41,7 +41,7 @@ public final class Timers {
 	}
 
 	/**
-	 * Create a new {@link Timer} using the the given timer {@param resolution} and backlog size (64). All times
+	 * Create a new {@link Timer} using the the given timer {@code resolution} and backlog size (64). All times
 	 * will
 	 * rounded up to the closest multiple of this resolution.
 	 *
@@ -54,7 +54,7 @@ public final class Timers {
 	}
 
 	/**
-	 * Create a new {@code HashWheelTimer} using the given timer {@param resolution} and {@param bufferSize}. All times
+	 * Create a new {@code HashWheelTimer} using the given timer {@code resolution} and {@code bufferSize}. All times
 	 * will
 	 * rounded up to the closest multiple of this resolution.
 	 *

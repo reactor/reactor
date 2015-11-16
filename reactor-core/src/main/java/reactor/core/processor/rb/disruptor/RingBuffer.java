@@ -52,7 +52,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	}
 
 	/**
-	 * Create a new multiple producer RingBuffer using the default wait strategy   {@link this#NO_WAIT}.
+	 * Create a new multiple producer RingBuffer using the default wait strategy   {@link #NO_WAIT}.
 	 * @param bufferSize number of elements to create within the ring buffer.
 	 * @throws IllegalArgumentException if <tt>bufferSize</tt> is less than 1 or not a power of 2
 	 * @see MultiProducerSequencer
@@ -63,7 +63,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	}
 
 	/**
-	 * Create a new multiple producer RingBuffer using the default wait strategy   {@link this#NO_WAIT}.
+	 * Create a new multiple producer RingBuffer using the default wait strategy   {@link #NO_WAIT}.
 	 * @param factory used to create the events within the ring buffer.
 	 * @param bufferSize number of elements to create within the ring buffer.
 	 * @throws IllegalArgumentException if <tt>bufferSize</tt> is less than 1 or not a power of 2
@@ -74,7 +74,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	}
 
 	/**
-	 * Create a new single producer RingBuffer using the default wait strategy  {@link this#NO_WAIT}.
+	 * Create a new single producer RingBuffer using the default wait strategy  {@link #NO_WAIT}.
 	 * @param bufferSize number of elements to create within the ring buffer.
 	 * @see MultiProducerSequencer
 	 */
@@ -84,7 +84,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	}
 
 	/**
-	 * Create a new single producer RingBuffer using the default wait strategy  {@link this#NO_WAIT}.
+	 * Create a new single producer RingBuffer using the default wait strategy  {@link #NO_WAIT}.
 	 * @param bufferSize number of elements to create within the ring buffer.
 	 * @see MultiProducerSequencer
 	 */
@@ -94,7 +94,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	}
 
 	/**
-	 * Create a new single producer RingBuffer using the default wait strategy   {@link this#NO_WAIT}.
+	 * Create a new single producer RingBuffer using the default wait strategy   {@link #NO_WAIT}.
 	 * @param factory used to create the events within the ring buffer.
 	 * @param bufferSize number of elements to create within the ring buffer.
 	 * @see MultiProducerSequencer

@@ -157,9 +157,9 @@ public final class Exceptions {
 
 	/**
 	 * Return a failed {@link Publisher} if the given error is not fatal
-	 * @param error
-	 * @param <IN>
-	 * @return
+	 * @param error the error to {link Subscriber#onError}
+	 * @param <IN> the nominal type flowing through
+	 * @return a failed {@link Publisher}
 	 */
 	public static <IN> Publisher<IN> publisher(final Throwable error) {
 		throwIfFatal(error);
