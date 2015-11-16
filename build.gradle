@@ -353,7 +353,7 @@ project('reactor-aeron') {
 				"uk.co.real-logic:aeron-client:$aeronVersion"
 
 		testCompile project(':reactor-stream')
-		testCompile project(':reactor-net')
+		testCompile "io.projectreactor:reactor-net:$version"
 		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
     }
 }
