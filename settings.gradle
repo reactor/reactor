@@ -5,5 +5,4 @@ include 'reactor-core',
 		'reactor-alloc',
 		'reactor-stream',
 		'reactor-logback',
-		'reactor-aeron',
 		'docs'

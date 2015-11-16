@@ -342,18 +342,3 @@ project('reactor-logback') {
 		}
 	}
 }
-
-project('reactor-aeron') {
-	description = 'Integration of Aeron library with reactor'
-
-	dependencies {
-		compile project(':reactor-core')
-
-		compile "uk.co.real-logic:aeron-driver:$aeronVersion",
-				"uk.co.real-logic:aeron-client:$aeronVersion"
-
-		testCompile project(':reactor-stream')
-		testCompile "io.projectreactor:reactor-net:$version"
-		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
-    }
-}
