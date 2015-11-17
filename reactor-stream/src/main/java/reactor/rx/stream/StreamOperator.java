@@ -54,11 +54,6 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 	}
 
 	@Override
-	public Publisher<I> upstream() {
-		return source;
-	}
-
-	@Override
 	public boolean isExposedToOverflow(Bounded parentPublisher) {
 		return Bounded.class.isAssignableFrom(source.getClass()) && ((Bounded) source).isExposedToOverflow(
 				parentPublisher);
@@ -78,14 +73,14 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 		Publisher<?> oldestSender = this;
 
 		while( oldestSender != null && Publishable.class.isAssignableFrom(oldestSender.getClass())){
-			oldestSender = ((Publishable)oldestSender).upstream();
+			oldestSender = ((Publishable<?>)oldestSender).upstream();
 			if (oldestSender != null){
 				if(Subscriber.class.isAssignableFrom(oldestSender.getClass())){
 					oldestReceiver = (Subscriber)oldestSender;
 				}
 				if(PublisherFactory.LiftOperator.class.isAssignableFrom(oldestSender.getClass())){
 					oldestOperator = Publishers.<Object, Object, Object>opFusion(
-							((PublisherFactory.LiftOperator<Object, Object>)oldestSender).get(),
+							((PublisherFactory.LiftOperator<Object, Object>)oldestSender).operator(),
 							oldestOperator
 					);
 				}
@@ -108,7 +103,7 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 	}
 
 	@Override
-	public Function<Subscriber<? super O>, Subscriber<? super I>> get() {
+	public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
 		return barrierProvider;
 	}
 

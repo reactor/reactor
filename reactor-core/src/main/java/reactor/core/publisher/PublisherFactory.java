@@ -289,10 +289,9 @@ public abstract class PublisherFactory {
 	 * @param <O>
 	 */
 	public interface LiftOperator<I, O> extends
-			Supplier<Function<Subscriber<? super O>, Subscriber<? super I>>>,
-			Publisher<O>,
-			Publishable<I>{
+			Publisher<O> {
 
+		Function<Subscriber<? super O>, Subscriber<? super I>> operator();
 	}
 
 	private static class ReactorPublisher<T, C> implements Publisher<T> {
@@ -555,20 +554,15 @@ public abstract class PublisherFactory {
 		}
 
 		@Override
-		public Function<Subscriber<? super O>, Subscriber<? super I>> get() {
+		public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
 			return barrierProvider;
 		}
 
 		@Override
 		public String toString() {
-			return "ProxyPublisher{" +
+			return "OpPub{" +
 			  "source=" + source +
 			  '}';
-		}
-
-		@Override
-		public Publisher<I> upstream() {
-			return source;
 		}
 
 		@Override

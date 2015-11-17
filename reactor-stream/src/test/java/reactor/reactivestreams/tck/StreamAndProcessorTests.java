@@ -48,8 +48,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		cumulatedJoin.set(0);
 
 		return Processors.create(p, Streams.wrap(p)
-		                                   .forkJoin(2, stream -> stream.scan((prev,
-				                                   next) -> next)
+		                                   .forkJoin(2, stream -> stream.scan((prev, next) -> next)
 		                                                                .map(integer -> -integer)
 		                                                                .filter(integer -> integer <= 0)
 		                                                                .sample(1)

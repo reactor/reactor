@@ -15,8 +15,10 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
+import reactor.core.support.Publishable;
 import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
