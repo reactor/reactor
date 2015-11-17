@@ -41,7 +41,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 	public Processor<Integer, Integer> createProcessor(int bufferSize) {
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
-		System.out.println("Providing new processor");
+		System.out.println("Providing new downstream");
 		Processor<Integer, Integer> p = Processors.queue("stream-raw-fork", bufferSize);
 
 		cumulated.set(0);

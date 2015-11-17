@@ -22,11 +22,10 @@ import org.junit.Test;
 import org.testng.annotations.AfterClass;
 import reactor.Processors;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.publisher.LogOperator;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.CompositeAction;
+import reactor.rx.action.ProcessorAction;
 import reactor.rx.broadcast.Broadcaster;
 
 /**
@@ -40,10 +39,10 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 					Throwable::printStackTrace, null, false);
 
 	@Override
-	public CompositeAction<Integer, Integer> createProcessor(int bufferSize) {
+	public ProcessorAction<Integer, Integer> createProcessor(int bufferSize) {
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
-		System.out.println("Providing new processor");
+		System.out.println("Providing new downstream");
 
 		ProcessorGroup<Integer> asyncGroup =
 				Processors.asyncGroup("stream-p-tck", bufferSize, 2,

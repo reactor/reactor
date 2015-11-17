@@ -25,20 +25,22 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.publisher.FlatMapOperator;
-import reactor.core.publisher.IgnoreOnNextOperator;
+import reactor.core.publisher.operator.FlatMapOperator;
+import reactor.core.publisher.operator.IgnoreOnNextOperator;
 import reactor.core.publisher.IteratorSequencer;
-import reactor.core.publisher.LogOperator;
+import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolineOperator;
 import reactor.core.publisher.ValuePublisher;
 import reactor.core.publisher.convert.DependencyUtils;
+import reactor.core.publisher.operator.MapOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
+import reactor.fn.tuple.Tuple2;
 
 /**
  * @author Stephane Maldini
@@ -142,7 +144,18 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <I, O> Publisher<O> map(Publisher<I> source,
 			final Function<? super I, ? extends O> transformer) {
-		return lift(source, new MapOperator<>(transformer), null, null);
+		return lift(source, new MapOperator<>(transformer));
+	}
+
+	/**
+	 * Intercept a source
+	 * {@link Publisher} onNext signal to eventually timestamp to the right operand {@link Subscriber}.
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<Tuple2<Long, I>> timestamp(Publisher<I> source) {
+		return lift(source, MapOperator.<I>timestamp());
 	}
 
 	/**
@@ -319,21 +332,13 @@ public final class Publishers extends PublisherFactory {
 		return tap;
 	}
 
-	private static class MapOperator<I, O>
-			implements BiConsumer<I, Subscriber<? super O>> {
-
-		private final Function<? super I, ? extends O> transformer;
-
-		public MapOperator(Function<? super I, ? extends O> transformer) {
-			this.transformer = transformer;
-		}
-
-		@Override
-		public void accept(I i, Subscriber<? super O> subscriber) {
-			subscriber.onNext(transformer.apply(i));
-		}
-
-	}
+	/**
+	 * A marker interface for components responsible for augmenting subscribers with features
+	 * {@link #lift(Publisher, Function)}
+	 * @param <I>
+	 * @param <O>
+	 */
+	public interface Operator<I, O> extends Function<Subscriber<? super O>, Subscriber<? super I>>{}
 
 	private static final NeverPublisher<?> NEVER = new NeverPublisher<>();
 

@@ -31,11 +31,10 @@ import reactor.core.processor.ExecutorProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.processor.RingBufferWorkProcessor;
-import reactor.core.publisher.LogOperator;
+import reactor.core.publisher.operator.LogOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
 import reactor.core.support.wait.PhasedBackoffWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
@@ -635,10 +634,11 @@ public final class Processors {
 	 * @param liftTransformation
 	 * @param <IN>
 	 * @param <OUT>
+	 * @param <NOUT>
 	 * @return
 	 */
-	public static <IN, OUT> BaseProcessor<IN, OUT> lift(final Processor<IN, OUT> processor,
-			final Function<? super Processor<IN, OUT>, ? extends Publisher<OUT>> liftTransformation) {
+	public static <IN, OUT, NOUT> BaseProcessor<IN, NOUT> lift(final Processor<IN, OUT> processor,
+			final Function<? super Processor<IN, OUT>, ? extends Publisher<NOUT>> liftTransformation) {
 		return new DelegateProcessor<>(liftTransformation.apply(processor), processor);
 
 	}

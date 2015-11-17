@@ -16,26 +16,6 @@
 
 package reactor.rx;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.Publishers;
-import reactor.Timers;
-import reactor.core.error.Exceptions;
-import reactor.core.publisher.PublisherFactory;
-import reactor.core.subscriber.SubscriberWithContext;
-import reactor.core.support.SignalType;
-import reactor.fn.BiConsumer;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.fn.Supplier;
-import reactor.fn.timer.Timer;
-import reactor.fn.tuple.*;
-import reactor.rx.action.Action;
-import reactor.rx.action.combination.*;
-import reactor.rx.action.support.DefaultSubscriber;
-import reactor.rx.stream.*;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -43,6 +23,47 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.Publishers;
+import reactor.Timers;
+import reactor.core.error.Exceptions;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.BaseSubscriber;
+import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.support.SignalType;
+import reactor.fn.BiConsumer;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.fn.Supplier;
+import reactor.fn.timer.Timer;
+import reactor.fn.tuple.Tuple;
+import reactor.fn.tuple.Tuple2;
+import reactor.fn.tuple.Tuple3;
+import reactor.fn.tuple.Tuple4;
+import reactor.fn.tuple.Tuple5;
+import reactor.fn.tuple.Tuple6;
+import reactor.fn.tuple.Tuple7;
+import reactor.fn.tuple.Tuple8;
+import reactor.fn.tuple.TupleN;
+import reactor.rx.action.Action;
+import reactor.rx.action.combination.CombineLatestAction;
+import reactor.rx.action.combination.DynamicMergeAction;
+import reactor.rx.action.combination.SwitchAction;
+import reactor.rx.action.combination.ZipAction;
+import reactor.rx.stream.DeferredStream;
+import reactor.rx.stream.ErrorStream;
+import reactor.rx.stream.FutureStream;
+import reactor.rx.stream.IterableStream;
+import reactor.rx.stream.PeriodicTimerStream;
+import reactor.rx.stream.PublisherStream;
+import reactor.rx.stream.RangeStream;
+import reactor.rx.stream.SingleTimerStream;
+import reactor.rx.stream.SingleValueStream;
+import reactor.rx.stream.StreamOperator;
+import reactor.rx.stream.SupplierStream;
 
 /**
  * A public factory to build {@link Stream}, Streams provide for common transformations from a few structures such as
@@ -216,6 +237,19 @@ public class Streams {
 				publisher.subscribe(s);
 			}
 		};
+	}
+
+	/**
+	 *
+	 * @param publisher
+	 * @param operator
+	 * @param <I>
+	 * @param <O>
+	 * @return
+	 */
+	public static <I, O> Stream<O> lift(final Publisher<I> publisher,
+			Function<Subscriber<? super O>, Subscriber<? super I>> operator) {
+		return new StreamOperator<>(publisher, operator);
 	}
 
 
@@ -1889,7 +1923,7 @@ public class Streams {
 		final AtomicReference<Throwable> exception = new AtomicReference<>();
 
 		final CountDownLatch latch = new CountDownLatch(1);
-		publisher.subscribe(new DefaultSubscriber<Object>() {
+		publisher.subscribe(new BaseSubscriber<Object>() {
 			Subscription s;
 
 			@Override

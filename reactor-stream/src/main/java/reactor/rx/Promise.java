@@ -32,6 +32,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
@@ -154,7 +155,7 @@ public class Promise<O>
 	 * @param onComplete the completion {@link Consumer}
 	 * @return {@literal the new Promise}
 	 */
-	public Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
+	public final Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
 		request(1);
 		lock.lock();
 		try {
@@ -174,56 +175,32 @@ public class Promise<O>
 			lock.unlock();
 		}
 
-		return stream().liftAction(new Supplier<Action<O, O>>() {
+		return stream().lift(new Function<Subscriber<? super O>, Subscriber<? super O>>() {
 			@Override
-			public Action<O, O> get() {
-				return new Action<O, O>() {
+			public Subscriber<? super O> apply(final Subscriber<? super O> subscriber) {
+				return new SubscriberBarrier<O, O>(subscriber){
 					@Override
-					protected void doNext(O ev) {
+					protected void doNext(O o) {
+						doCancel();
 						onComplete.accept(Promise.this);
-						broadcastNext(ev);
-						broadcastComplete();
+						subscriber.onNext(o);
+						subscriber.onComplete();
 					}
 
 					@Override
-					protected void doError(Throwable ev) {
+					protected void doError(Throwable throwable) {
 						onComplete.accept(Promise.this);
-						broadcastError(ev);
+						subscriber.onError(throwable);
 					}
 
 					@Override
 					protected void doComplete() {
 						onComplete.accept(Promise.this);
-						broadcastComplete();
+						subscriber.onComplete();
 					}
 				};
 			}
-		}).next();
-	}
-
-	/**
-	 * Only forward onError and onComplete signals into the returned stream.
-	 * @return {@literal new Promise}
-	 */
-	public final Promise<Void> after() {
-		lock.lock();
-		try {
-			if (finalState == FinalState.COMPLETE) {
-				return Promises.<Void>success(timer, null);
-			}
-		}
-		catch (Throwable t) {
-			return Promises.<Void>error(timer, t);
-		}
-		finally {
-			lock.unlock();
-		}
-		return stream().after().next();
-	}
-
-	@Override
-	public Publisher<O> upstream() {
-		return PublisherFactory.fromSubscription(subscription);
+		}).consumeNext();
 	}
 
 	/**
@@ -233,7 +210,7 @@ public class Promise<O>
 	 * @param onSuccess the success {@link Consumer}
 	 * @return {@literal the new Promise}
 	 */
-	public Promise<O> onSuccess(@Nonnull final Consumer<O> onSuccess) {
+	public final Promise<O> onSuccess(@Nonnull final Consumer<O> onSuccess) {
 		request(1);
 		lock.lock();
 		try {
@@ -250,7 +227,7 @@ public class Promise<O>
 		finally {
 			lock.unlock();
 		}
-		return stream().observe(onSuccess).next();
+		return stream().observe(onSuccess).consumeNext();
 	}
 
 	/**
@@ -260,7 +237,7 @@ public class Promise<O>
 	 * @param transformation the function to apply on signal to the transformed Promise
 	 * @return {@literal the new Promise}
 	 */
-	public <V> Promise<V> map(@Nonnull final Function<? super O, V> transformation) {
+	public final <V> Promise<V> map(@Nonnull final Function<? super O, V> transformation) {
 		lock.lock();
 		try {
 			if (finalState == FinalState.ERROR) {
@@ -290,7 +267,7 @@ public class Promise<O>
 	 * will be merged back.
 	 * @return {@literal the new Promise}
 	 */
-	public <V> Promise<V> flatMap(
+	public final <V> Promise<V> flatMap(
 			@Nonnull final Function<? super O, ? extends Publisher<? extends V>> transformation) {
 		lock.lock();
 		try {
@@ -326,7 +303,7 @@ public class Promise<O>
 	 * @param onError the error {@link Consumer}
 	 * @return {@literal the new Promise}
 	 */
-	public Promise<O> onError(@Nonnull final Consumer<Throwable> onError) {
+	public final Promise<O> onError(@Nonnull final Consumer<Throwable> onError) {
 		request(1);
 		lock.lock();
 		try {
@@ -345,7 +322,7 @@ public class Promise<O>
 			lock.unlock();
 		}
 
-		return stream().when(Throwable.class, onError).next();
+		return stream().when(Throwable.class, onError).consumeNext();
 	}
 
 	/**
@@ -372,6 +349,31 @@ public class Promise<O>
 	 */
 	public final Promise<O> dispatchOn(final ProcessorGroup<O> processorProvider) {
 		return stream().dispatchOn(processorProvider).next();
+	}
+
+	/**
+	 * Only forward onError and onComplete signals into the returned stream.
+	 * @return {@literal new Promise}
+	 */
+	public final Promise<Void> after() {
+		lock.lock();
+		try {
+			if (finalState == FinalState.COMPLETE) {
+				return Promises.<Void>success(timer, null);
+			}
+		}
+		catch (Throwable t) {
+			return Promises.<Void>error(timer, t);
+		}
+		finally {
+			lock.unlock();
+		}
+		return stream().after().next();
+	}
+
+	@Override
+	public final Publisher<O> upstream() {
+		return PublisherFactory.fromSubscription(subscription);
 	}
 
 	/**
@@ -759,8 +761,15 @@ public class Promise<O>
 		}
 	}
 
+	/**
+	 *
+	 */
+	public final void fulfill(){
+		request(1L);
+	}
+
 	@Override
-	public void request(long n) {
+	public final void request(long n) {
 		try {
 			BackpressureUtils.checkRequest(n);
 		}
@@ -806,7 +815,7 @@ public class Promise<O>
 	}
 
 	@Override
-	public long getCapacity() {
+	public final long getCapacity() {
 		return 1;
 	}
 

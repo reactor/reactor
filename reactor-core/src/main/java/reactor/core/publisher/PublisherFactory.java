@@ -27,6 +27,7 @@ import reactor.core.error.SpecificationExceptions;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.Supplier;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -244,7 +245,7 @@ public abstract class PublisherFactory {
 	                                         barrierProvider) {
 		Assert.notNull(source, "A data source must be provided");
 		Assert.notNull(barrierProvider, "A lift interceptor must be provided");
-		return new ProxyPublisher<>(source, barrierProvider);
+		return new PublisherOperator<>(source, barrierProvider);
 	}
 
 	/**
@@ -259,6 +260,39 @@ public abstract class PublisherFactory {
 		return subscription != null && Publishable.class.isAssignableFrom(subscription.getClass()) ?
 		  ((Publishable<T>) subscription).upstream() :
 		  null;
+	}
+
+	/**
+	 *
+	 * @param left
+	 * @param right
+	 * @param <I>
+	 * @param <O>
+	 * @param <E>
+	 * @return
+	 */
+	public static <I, O, E> Function<Subscriber<? super I>, Subscriber<? super O>> opFusion(
+			final Function<Subscriber<? super I>, Subscriber<? super E>> left,
+			final Function<Subscriber<? super E>, Subscriber<? super O>> right
+	){
+		return new Function<Subscriber<? super I>, Subscriber<? super O>>() {
+			@Override
+			public Subscriber<? super O> apply(Subscriber<? super I> subscriber) {
+				return right.apply(left.apply(subscriber));
+			}
+		};
+	}
+
+	/**
+	 * Marker interface for publishers refering to an operator {@link Function} used to augment {@link Subscriber}
+	 * @param <I>
+	 * @param <O>
+	 */
+	public interface LiftOperator<I, O> extends
+			Supplier<Function<Subscriber<? super O>, Subscriber<? super I>>>,
+			Publisher<O>,
+			Publishable<I>{
+
 	}
 
 	private static class ReactorPublisher<T, C> implements Publisher<T> {
@@ -501,12 +535,12 @@ public abstract class PublisherFactory {
 		}
 	}
 
-	private final static class ProxyPublisher<I, O> implements Publisher<O>, Bounded {
+	private final static class PublisherOperator<I, O> implements Bounded, LiftOperator<I, O> {
 
-		final private Publisher<? extends I>                                 source;
+		final private Publisher<I>                                 source;
 		final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
 
-		public ProxyPublisher(Publisher<? extends I> source,
+		public PublisherOperator(Publisher<I> source,
 		                      Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider) {
 			this.source = source;
 			this.barrierProvider = barrierProvider;
@@ -521,10 +555,20 @@ public abstract class PublisherFactory {
 		}
 
 		@Override
+		public Function<Subscriber<? super O>, Subscriber<? super I>> get() {
+			return barrierProvider;
+		}
+
+		@Override
 		public String toString() {
 			return "ProxyPublisher{" +
 			  "source=" + source +
 			  '}';
+		}
+
+		@Override
+		public Publisher<I> upstream() {
+			return source;
 		}
 
 		@Override

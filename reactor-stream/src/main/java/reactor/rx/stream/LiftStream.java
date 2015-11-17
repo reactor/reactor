@@ -21,7 +21,7 @@ import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
-import reactor.rx.action.CompositeAction;
+import reactor.rx.action.ProcessorAction;
 
 import java.util.concurrent.locks.LockSupport;
 
@@ -46,7 +46,7 @@ public class LiftStream<O, V> extends Stream<V> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final <E> CompositeAction<E, V> combine() {
+	public final <E> ProcessorAction<E, V> combine() {
 		Action<O, V> action = onLift();
 
 		if (action == null) {

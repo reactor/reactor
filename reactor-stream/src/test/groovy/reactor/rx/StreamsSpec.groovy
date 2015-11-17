@@ -484,7 +484,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'a Subscribe Consumer is registered'
-			stream = stream.observeSubscribe { signals << 'subscribe' }
+			stream = stream.observeStart { signals << 'subscribe' }
 
 		and:
 			'a Cancel Consumer is registered'
@@ -503,7 +503,6 @@ class StreamsSpec extends Specification {
 			values == [1, 2, 3, 4, 5]
 			'subscribe' == signals[0]
 			'complete' == signals[1]
-			'cancel' == signals[2]
 	}
 
 	def "Stream can emit a default value if empty"() {
@@ -1064,11 +1063,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'element with negative index is requested'
-			s.elementAt(-1).when(IndexOutOfBoundsException, errorConsumer).consume()
+			s.elementAt(-1)
 
 		then:
 			'error is thrown'
-			error == 1
+			thrown(IndexOutOfBoundsException)
 
 		when:
 			'element with index > number of values is requested'
@@ -1076,7 +1075,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'error is thrown'
-			error == 2
+			error == 1
 	}
 
 	def 'A Stream can return a value at a certain index or a default value'() {
@@ -1168,7 +1167,7 @@ class StreamsSpec extends Specification {
 
 	def "When a processor is streamed"() {
 		given:
-			'a source composable and a async processor'
+			'a source composable and a async downstream'
 			def source = Broadcaster.<Integer> create()
 			def processor = RingBufferProcessor.<Integer> create()
 
@@ -2308,7 +2307,7 @@ class StreamsSpec extends Specification {
 			)
 
 		then:
-			res == ['NEXT', 'ERROR']
+			res == ['NEXT', 'ERROR', 'complete']
 	}
 
 	def 'Streams can be dematerialized'() {

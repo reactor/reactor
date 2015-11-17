@@ -892,7 +892,7 @@ public class StreamTests extends AbstractReactorTest {
 			    .log("merged")
 			    .dispatchOn(asyncGroup)
 			    .log("dispatched")
-			    .observeSubscribe(x -> afterSubscribe.countDown())
+			    .observeStart(x -> afterSubscribe.countDown())
 			    .filter(nearbyLoc -> 3333 >= nearbyLoc)
 			    .filter(nearbyLoc -> 2222 <= nearbyLoc)
 
@@ -1158,7 +1158,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Thread.sleep(3000);
 		Assert.assertTrue(counter.get() == 10);
-	/*	processor
+	/*	downstream
 				.capacity(3L)
 				.consume(
 						System.out::println,

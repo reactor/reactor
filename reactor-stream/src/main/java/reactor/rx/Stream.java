@@ -36,7 +36,8 @@ import reactor.Timers;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.publisher.LogOperator;
+import reactor.core.publisher.operator.LogOperator;
+import reactor.core.publisher.operator.MapOperator;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
@@ -50,7 +51,7 @@ import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
-import reactor.rx.action.CompositeAction;
+import reactor.rx.action.ProcessorAction;
 import reactor.rx.action.Control;
 import reactor.rx.action.Signal;
 import reactor.rx.action.aggregation.BufferAction;
@@ -68,7 +69,7 @@ import reactor.rx.action.aggregation.WindowWhenAction;
 import reactor.rx.action.combination.DynamicMergeAction;
 import reactor.rx.action.combination.SwitchAction;
 import reactor.rx.action.combination.ZipAction;
-import reactor.rx.action.conditional.ExistsAction;
+import reactor.rx.action.conditional.ExistsOperator;
 import reactor.rx.action.control.FlowControlAction;
 import reactor.rx.action.control.RepeatAction;
 import reactor.rx.action.control.RepeatWhenAction;
@@ -77,34 +78,32 @@ import reactor.rx.action.control.ThrottleRequestWhenAction;
 import reactor.rx.action.error.ErrorAction;
 import reactor.rx.action.error.ErrorReturnAction;
 import reactor.rx.action.error.ErrorWithValueAction;
-import reactor.rx.action.error.IgnoreErrorAction;
+import reactor.rx.action.error.IgnoreErrorOperator;
 import reactor.rx.action.error.RetryAction;
 import reactor.rx.action.error.RetryWhenAction;
 import reactor.rx.action.error.TimeoutAction;
-import reactor.rx.action.filter.DistinctAction;
-import reactor.rx.action.filter.DistinctUntilChangedAction;
-import reactor.rx.action.filter.ElementAtAction;
-import reactor.rx.action.filter.FilterAction;
-import reactor.rx.action.filter.SkipAction;
-import reactor.rx.action.filter.SkipUntilTimeout;
+import reactor.rx.action.filter.DistinctOperator;
+import reactor.rx.action.filter.DistinctUntilChangedOperator;
+import reactor.rx.action.filter.ElementAtOperator;
+import reactor.rx.action.filter.FilterOperator;
+import reactor.rx.action.filter.SkipOperator;
+import reactor.rx.action.filter.SkipUntilTimeoutOperator;
 import reactor.rx.action.filter.TakeAction;
-import reactor.rx.action.filter.TakeUntilTimeout;
-import reactor.rx.action.filter.TakeWhileAction;
+import reactor.rx.action.filter.TakeUntilTimeoutOperator;
+import reactor.rx.action.filter.TakeWhileOperator;
 import reactor.rx.action.metrics.CountAction;
-import reactor.rx.action.metrics.ElapsedAction;
-import reactor.rx.action.metrics.TimestampAction;
-import reactor.rx.action.passive.CallbackAction;
-import reactor.rx.action.passive.FinallyAction;
-import reactor.rx.action.passive.StreamStateCallbackAction;
+import reactor.rx.action.metrics.ElapsedOperator;
+import reactor.rx.action.passive.CallbackOperator;
+import reactor.rx.action.passive.FinallyOperator;
+import reactor.rx.action.passive.StreamStateCallbackOperator;
 import reactor.rx.action.support.TapAndControls;
 import reactor.rx.action.terminal.AdaptiveConsumerAction;
 import reactor.rx.action.terminal.ConsumerAction;
-import reactor.rx.action.transformation.DefaultIfEmptyAction;
-import reactor.rx.action.transformation.DematerializeAction;
+import reactor.rx.action.transformation.DefaultIfEmptyOperator;
+import reactor.rx.action.transformation.DematerializeOperator;
 import reactor.rx.action.transformation.GroupByAction;
-import reactor.rx.action.transformation.MapAction;
-import reactor.rx.action.transformation.MaterializeAction;
-import reactor.rx.action.transformation.ScanAction;
+import reactor.rx.action.transformation.MaterializeOperator;
+import reactor.rx.action.transformation.ScanOperator;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.stream.LiftStream;
@@ -169,7 +168,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.1
 	 */
 	public <V> Stream<V> lift(@Nonnull final Function<Subscriber<? super V>, Subscriber<? super O>> operator) {
-		return Streams.wrap(Publishers.lift(this, operator));
+		return Streams.lift(this, operator);
 	}
 
 	/**
@@ -305,13 +304,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 *
 	 * @return {@literal new Stream}
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<Signal<O>> materialize() {
-		return liftAction(new Supplier<Action<O, Signal<O>>>() {
-			@Override
-			public Action<O, Signal<O>> get() {
-				return new MaterializeAction<O>();
-			}
-		});
+		return lift(MaterializeOperator.INSTANCE);
 	}
 
 
@@ -326,12 +321,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	@SuppressWarnings("unchecked")
 	public final <X> Stream<X> dematerialize() {
 		Stream<Signal<X>> thiz = (Stream<Signal<X>>) this;
-		return thiz.liftAction(new Supplier<Action<Signal<X>, X>>() {
-			@Override
-			public Action<Signal<X>, X> get() {
-				return new DematerializeAction<X>();
-			}
-		});
+		return thiz.lift(DematerializeOperator.INSTANCE);
 	}
 
 	/**
@@ -815,12 +805,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> observe(@Nonnull final Consumer<? super O> consumer) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new CallbackAction<O>(consumer, null);
-			}
-		});
+		return lift(new CallbackOperator<O>(consumer, null));
 	}
 
 	/**
@@ -896,28 +881,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> observeComplete(@Nonnull final Consumer<Void> consumer) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new CallbackAction<O>(null, consumer);
-			}
-		});
-	}
-
-	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will observe any subscribe signal
-	 *
-	 * @param consumer the consumer to invoke ont subscribe
-	 * @return {@literal a new stream}
-	 * @since 2.0
-	 */
-	public final Stream<O> observeSubscribe(@Nonnull final Consumer<? super Subscriber<? super O>> consumer) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new StreamStateCallbackAction<O>(consumer, null, null);
-			}
-		});
+		return lift(new CallbackOperator<O>(null, consumer));
 	}
 
 	/**
@@ -928,12 +892,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> observeStart(@Nonnull final Consumer<? super Subscription> consumer) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new StreamStateCallbackAction<O>(null, null, consumer);
-			}
-		});
+		return lift(new StreamStateCallbackOperator<O>(null, consumer));
 	}
 
 	/**
@@ -944,12 +903,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> observeCancel(@Nonnull final Consumer<Void> consumer) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new StreamStateCallbackAction<O>(null, consumer, null);
-			}
-		});
+		return lift(new StreamStateCallbackOperator<O>(consumer, null));
 	}
 
 	/**
@@ -973,12 +927,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new fail-proof {@link Stream}
 	 */
 	public <E> Stream<O> ignoreError(final Predicate<? super Throwable> ignorePredicate) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new IgnoreErrorAction<O>(ignorePredicate);
-			}
-		});
+		return lift(new IgnoreErrorOperator<O>(ignorePredicate));
 	}
 
 	/**
@@ -990,12 +939,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> finallyDo(final Consumer<Signal<O>> consumer) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new FinallyAction<O>(consumer);
-			}
-		});
+		return lift(new FinallyOperator<O>(consumer));
 	}
 
 	/**
@@ -1006,12 +950,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> defaultIfEmpty(final O defaultValue) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new DefaultIfEmptyAction<O>(defaultValue);
-			}
-		});
+		return lift(new DefaultIfEmptyOperator<O>(defaultValue));
 	}
 
 	/**
@@ -1023,12 +962,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream} containing the transformed values
 	 */
 	public final <V> Stream<V> map(@Nonnull final Function<? super O, ? extends V> fn) {
-		return liftAction(new Supplier<Action<O, V>>() {
-			@Override
-			public Action<O, V> get() {
-				return new MapAction<O, V>(fn);
-			}
-		});
+		return lift(new MapOperator<O, V>(fn));
 	}
 
 	/**
@@ -1494,12 +1428,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream} containing only values that pass the predicate test
 	 */
 	public final Stream<O> filter(final Predicate<? super O> p) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new FilterAction<O>(p);
-			}
-		});
+		return lift(new FilterOperator<>(p));
 	}
 
 	/**
@@ -1511,7 +1440,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Boolean> filter() {
-		return ((Stream<Boolean>) this).filter(FilterAction.simplePredicate);
+		return ((Stream<Boolean>) this).filter(FilterOperator.simplePredicate);
 	}
 
 
@@ -1637,7 +1566,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * produced by the passed mapper emits any next data or complete signal. It will propagate the error if the backOff
 	 * stream emits an error signal.
 	 *
-	 * @param backOffStream the function taking the error stream as an input and returning a new stream that applies
+	 * @param backOffStream the function taking the error stream as an downstream and returning a new stream that applies
 	 *                      some backoff policy e.g. Streams.timer
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
@@ -1686,7 +1615,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * produced by the passed mapper emits any next signal. It will propagate the complete and error if the backoff
 	 * stream emits the relative signals.
 	 *
-	 * @param backOffStream the function taking a stream of complete timestamp in millis as an input and returning a
+	 * @param backOffStream the function taking a stream of complete timestamp in millis as an downstream and returning a
 	 *                         new
 	 *                      stream that applies some backoff policy, e.g. @{link Streams#timer(long)}
 	 * @return a new repeated {@code Stream}
@@ -1757,12 +1686,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	public final Stream<O> take(final long time, final TimeUnit unit, final Timer timer) {
 		if (time > 0) {
 			Assert.isTrue(timer != null, "Timer can't be found, try assigning an environment to the stream");
-			return liftAction(new Supplier<Action<O, O>>() {
-				@Override
-				public Action<O, O> get() {
-					return new TakeUntilTimeout<O>(time, unit, timer);
-				}
-			});
+			return lift(new TakeUntilTimeoutOperator<O>(time, unit, timer));
 		} else {
 			return Streams.empty();
 		}
@@ -1776,12 +1700,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> takeWhile(final Predicate<O> limitMatcher) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new TakeWhileAction<O>(limitMatcher);
-			}
-		});
+		return lift(new TakeWhileOperator<O>(limitMatcher));
 	}
 
 	/**
@@ -1819,12 +1738,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	public final Stream<O> skip(final long time, final TimeUnit unit, final Timer timer) {
 		if (time > 0) {
 			Assert.isTrue(timer != null, "Timer can't be found, try assigning an environment to the stream");
-			return liftAction(new Supplier<Action<O, O>>() {
-				@Override
-				public Action<O, O> get() {
-					return new SkipUntilTimeout<O>(time, unit, timer);
-				}
-			});
+			return lift(new SkipUntilTimeoutOperator<O>(time, unit, timer));
 		} else {
 			return this;
 		}
@@ -1852,12 +1766,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	public final Stream<O> skipWhile(final long max, final Predicate<O> limitMatcher) {
 		if (max > 0) {
-			return liftAction(new Supplier<Action<O, O>>() {
-				@Override
-				public Action<O, O> get() {
-					return new SkipAction<O>(limitMatcher, max);
-				}
-			});
+			return lift(new SkipOperator<O>(limitMatcher, max));
 		} else {
 			return this;
 		}
@@ -1870,13 +1779,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream} that emits tuples of millis time and matching data
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<Tuple2<Long, O>> timestamp() {
-		return liftAction(new Supplier<Action<O, Tuple2<Long, O>>>() {
-			@Override
-			public Action<O, Tuple2<Long, O>> get() {
-				return new TimestampAction<O>();
-			}
-		});
+		return lift(MapOperator.<O>timestamp());
 	}
 
 	/**
@@ -1887,13 +1792,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream} that emits tuples of time elapsed in milliseconds and matching data
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<Tuple2<Long, O>> elapsed() {
-		return liftAction(new Supplier<Action<O, Tuple2<Long, O>>>() {
-			@Override
-			public Action<O, Tuple2<Long, O>> get() {
-				return new ElapsedAction<O>();
-			}
-		});
+		return lift(ElapsedOperator.INSTANCE);
 	}
 
 	/**
@@ -1903,12 +1804,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a source item at a specified index
 	 */
 	public final Stream<O> elementAt(final int index) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new ElementAtAction<O>(index);
-			}
-		});
+		return lift(new ElementAtOperator<O>(index));
 	}
 
 	/**
@@ -1919,12 +1815,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a source item at a specified index or a default value
 	 */
 	public final Stream<O> elementAtOrDefault(final int index, final O defaultValue) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new ElementAtAction<O>(index, defaultValue);
-			}
-		});
+		return lift(new ElementAtOperator<O>(index, defaultValue));
 	}
 
 	/**
@@ -2078,12 +1969,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> distinctUntilChanged() {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new DistinctUntilChangedAction<O, O>(null);
-			}
-		});
+		return lift(new DistinctUntilChangedOperator<O, O>(null));
 	}
 
 	/**
@@ -2094,12 +1980,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final <V> Stream<O> distinctUntilChanged(final Function<? super O, ? extends V> keySelector) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new DistinctUntilChangedAction<O, V>(keySelector);
-			}
-		});
+		return lift(new DistinctUntilChangedOperator<>(keySelector));
 	}
 
 	/**
@@ -2108,12 +1989,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream} with unique values
 	 */
 	public final Stream<O> distinct() {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new DistinctAction<O, O>(null);
-			}
-		});
+		return lift(new DistinctOperator<O, O>(null));
 	}
 
 	/**
@@ -2123,12 +1999,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Stream} with values having distinct keys
 	 */
 	public final <V> Stream<O> distinct(final Function<? super O, ? extends V> keySelector) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new DistinctAction<O, V>(keySelector);
-			}
-		});
+		return lift(new DistinctOperator<>(keySelector));
 	}
 
 	/**
@@ -2141,19 +2012,14 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<Boolean> exists(final Predicate<? super O> predicate) {
-		return liftAction(new Supplier<Action<O, Boolean>>() {
-			@Override
-			public Action<O, Boolean> get() {
-				return new ExistsAction<O>(predicate);
-			}
-		});
+		return lift(new ExistsOperator<O>(predicate));
 	}
 
 	/**
 	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
 	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 *
-	 * @return a new {@link Stream} whose values result from the iterable input
+	 * @return a new {@link Stream} whose values result from the iterable downstream
 	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
@@ -2663,12 +2529,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 1.1, 2.0
 	 */
 	public final <A> Stream<A> scan(final A initial, final @Nonnull BiFunction<A, ? super O, A> fn) {
-		return liftAction(new Supplier<Action<O, A>>() {
-			@Override
-			public Action<O, A> get() {
-				return new ScanAction<O, A>(initial, fn);
-			}
-		});
+		return lift(new ScanOperator<O, A>(fn, initial));
 	}
 
 	/**
@@ -2792,7 +2653,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Combine the most ancient upstream action to act as the {@link org.reactivestreams.Subscriber} input component
+	 * Combine the most ancient upstream action to act as the {@link org.reactivestreams.Subscriber} downstream component
 	 * and
 	 * the current stream to act as the {@link org.reactivestreams.Publisher}.
 	 * <p>
@@ -2802,10 +2663,10 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * be any Subscriber (Input) side to combine. {@link reactor.rx.action.Action#combine()} is the usual reference
 	 * implementation used.
 	 *
-	 * @param <E> the type of the most ancien action input.
+	 * @param <E> the type of the most ancien action downstream.
 	 * @return new Combined Action
 	 */
-	public <E> CompositeAction<E, O> combine() {
+	public <E> ProcessorAction<E, O> combine() {
 		throw new IllegalStateException("Cannot combine a single Stream");
 	}
 
@@ -2965,15 +2826,15 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Subscribe the {@link reactor.rx.action.CompositeAction#input()} to this Stream. Combining action
+	 * Subscribe the {@link ProcessorAction#downstream()} to this Stream. Combining action
 	 * through {@link
 	 * reactor.rx.action.Action#combine()} allows for easy distribution of a full flow.
 	 *
 	 * @param subscriber the combined actions to subscribe
 	 * @since 2.0
 	 */
-	public final <A> void subscribe(final CompositeAction<O, A> subscriber) {
-		subscribe(subscriber.input());
+	public final <A> void subscribe(final ProcessorAction<O, A> subscriber) {
+		subscribe(subscriber.downstream());
 	}
 
 	@Override

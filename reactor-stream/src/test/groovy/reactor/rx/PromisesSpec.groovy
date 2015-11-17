@@ -432,6 +432,7 @@ class PromisesSpec extends Specification {
 		when:
 			"the promise is fulfilled"
 			promise.onNext 2
+			mapped.request(1)
 
 		then:
 			"the mapped promise is rejected"

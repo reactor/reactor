@@ -532,8 +532,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	}
 
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
-			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription, Bounded,
-			           Publishable<V>, Subscribable<V>, Runnable {
+			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
+			           Subscribable<V>, Runnable {
 
 		protected final ProcessorGroup service;
 

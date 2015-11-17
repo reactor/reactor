@@ -15,14 +15,14 @@
  */
 package reactor.rx;
 
+import java.util.Map;
+
 import org.reactivestreams.Publisher;
 import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple2;
-import reactor.rx.action.pair.ReduceByKeyAction;
-import reactor.rx.action.pair.ScanByKeyAction;
+import reactor.rx.action.pair.ReduceByKeyOperator;
+import reactor.rx.action.pair.ScanByKeyOperator;
 import reactor.rx.stream.MapStream;
-
-import java.util.Map;
 
 /**
  * A Streams add-on to work with key/value pairs hydrated in {@link reactor.fn.tuple.Tuple2}.
@@ -92,9 +92,7 @@ public class BiStreams extends Streams {
 	                                                                    Publisher<? extends MapStream.Signal<KEY,
 	                                                                      VALUE>> listener,
 	                                                                    BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		ReduceByKeyAction<KEY, VALUE> reduceByKeyAction = new ReduceByKeyAction<>(accumulator, store, listener);
-		publisher.subscribe(reduceByKeyAction);
-		return reduceByKeyAction;
+		return Streams.lift(publisher, new ReduceByKeyOperator<>(accumulator, store, listener));
 	}
 
 	//scan
@@ -156,8 +154,6 @@ public class BiStreams extends Streams {
 	                                                                  Publisher<? extends MapStream.Signal<KEY,
 	                                                                    VALUE>> listener,
 	                                                                  BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		ScanByKeyAction<KEY, VALUE> scanByKeyAction = new ScanByKeyAction<>(accumulator, store, listener);
-		publisher.subscribe(scanByKeyAction);
-		return scanByKeyAction;
+		return Streams.lift(publisher, new ScanByKeyOperator<>(accumulator, listener, store));
 	}
 }

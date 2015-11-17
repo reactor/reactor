@@ -29,6 +29,7 @@ import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.Recyclable;
 import reactor.core.support.SignalType;
+import reactor.core.support.Subscribable;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -45,7 +46,6 @@ import reactor.rx.subscription.ReactiveSubscription;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
@@ -68,7 +68,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Usually an implementation will override any doXXXXX method where 'do' is an hint that logic will
  * safely be dispatched to avoid race-conditions.
  *
- * @param <I> The input {@link this#onNext(Object)} signal
+ * @param <I> The downstream {@link this#onNext(Object)} signal
  * @param <O> The output type to listen for with {@link this#subscribe(org.reactivestreams.Subscriber)}
  * @author Stephane Maldini
  * @since 1.1, 2.0
@@ -338,7 +338,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 	/**
 	 * Consume a Stream to allow for dynamic {@link Action} update. Everytime
-	 * the {@param controlStream} receives a next signal, the current Action and the input data will be published as a
+	 * the {@param controlStream} receives a next signal, the current Action and the downstream data will be published as a
 	 * {@link reactor.fn.tuple.Tuple2} to the attached {@param controller}.
 	 * <p>
 	 * This is particulary useful to dynamically adapt the {@link Stream} instance : capacity(), pause(), resume()...
@@ -385,10 +385,10 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final <E> CompositeAction<E, O> combine() {
+	public final <E> ProcessorAction<E, O> combine() {
 		final Action<E, ?> subscriber = (Action<E, ?>) findOldestUpstream(this, Action.class);
 		subscriber.cancel();
-		return new CompositeAction<E, O>(subscriber, this);
+		return new ProcessorAction<E, O>(subscriber, this);
 	}
 
 	/**

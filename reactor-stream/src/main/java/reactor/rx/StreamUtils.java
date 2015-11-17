@@ -21,7 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
 import reactor.fn.Consumer;
-import reactor.rx.action.CompositeAction;
+import reactor.rx.action.ProcessorAction;
 import reactor.rx.action.aggregation.WindowAction;
 import reactor.rx.action.combination.DynamicMergeAction;
 import reactor.rx.action.combination.FanInAction;
@@ -294,9 +294,9 @@ public abstract class StreamUtils {
 
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderCombine(Stream<O> consumer, final List<Object> streamTree) {
-			if (CompositeAction.class.isAssignableFrom(consumer.getClass())) {
-				CompositeAction<O, ?> operation = (CompositeAction<O, ?>) consumer;
-				parseComposable(operation.input(), streamTree);
+			if (ProcessorAction.class.isAssignableFrom(consumer.getClass())) {
+				ProcessorAction<O, ?> operation = (ProcessorAction<O, ?>) consumer;
+				//parseComposable(operation.downstream(), streamTree);
 				return true;
 			}
 			return false;

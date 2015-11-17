@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.core.publisher;
+package reactor.core.publisher.operator;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.subscriber.SubscriberBarrier;

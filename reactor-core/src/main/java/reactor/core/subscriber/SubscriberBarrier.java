@@ -167,4 +167,9 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 		  ((Bounded) subscriber).getCapacity() :
 		  Long.MAX_VALUE;
 	}
+
+	@Override
+	public String toString() {
+		return getClass().getSimpleName();
+	}
 }

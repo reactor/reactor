@@ -28,6 +28,7 @@ import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
+import reactor.core.support.Subscribable;
 import reactor.fn.Supplier;
 
 /**
@@ -37,7 +38,7 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  */
 public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implements
-  Processor<IN, OUT>, Bounded, Publishable<IN> {
+                                                                        Processor<IN, OUT>, Bounded, Publishable<IN> {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
