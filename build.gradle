@@ -49,7 +49,6 @@ ext {
 	jacksonDatabindVersion = '2.5.1'
 	jsonPathVersion = '2.0.0'
 	openHftChronicleVersion = '3.4.2'
-	aeronVersion = '0.1.5'
   	rxJavaVersion = '1.0.14'
 
 	// Testing
