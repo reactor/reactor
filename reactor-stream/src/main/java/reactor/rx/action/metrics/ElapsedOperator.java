@@ -47,7 +47,7 @@ public final class ElapsedOperator<T> implements Publishers.Operator<T, Tuple2<L
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
 			lastTime = System.currentTimeMillis();
-			subscriber.onSubscribe(subscription);
+			subscriber.onSubscribe(this);
 		}
 
 		@Override

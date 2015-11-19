@@ -24,16 +24,19 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Processors;
 import reactor.Publishers;
+import reactor.Subscribers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
+import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
-import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -49,14 +52,14 @@ import reactor.fn.tuple.Tuple7;
 import reactor.fn.tuple.Tuple8;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
+import reactor.rx.action.ProcessorAction;
 import reactor.rx.action.combination.CombineLatestAction;
 import reactor.rx.action.combination.DynamicMergeAction;
-import reactor.rx.action.combination.SwitchAction;
+import reactor.rx.action.combination.SwitchOperator;
 import reactor.rx.action.combination.ZipAction;
 import reactor.rx.stream.DeferredStream;
 import reactor.rx.stream.ErrorStream;
 import reactor.rx.stream.FutureStream;
-import reactor.rx.stream.IterableStream;
 import reactor.rx.stream.PeriodicTimerStream;
 import reactor.rx.stream.PublisherStream;
 import reactor.rx.stream.RangeStream;
@@ -240,6 +243,26 @@ public class Streams {
 	}
 
 	/**
+	 * A simple decoration of the given {@link Processor} to expose {@link Stream} API and proxy any subscribe call to
+	 * the Processor.
+	 * The Processor has to first call onSubscribe and receive a subscription request callback before any onNext
+	 * call or
+	 * will risk loosing events.
+	 *
+	 * @param processor the processor to decorate with the Stream API
+	 * @param <I>       the type of values observed by the receiving subscriber
+	 * @param <O>       the type of values passing through the sending {@literal Stream}
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I, O> ProcessorAction<I, O> wrap(final Processor<I, O> processor) {
+		if (ProcessorAction.class.isAssignableFrom(processor.getClass())) {
+			return ( ProcessorAction<I, O>) processor;
+		}
+		return ProcessorAction.create(processor);
+	}
+
+	/**
 	 *
 	 * @param publisher
 	 * @param operator
@@ -310,7 +333,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> from(Iterable<? extends T> values) {
-		return IterableStream.create(values);
+		return Streams.wrap(Publishers.from(values));
 	}
 
 	/**
@@ -323,7 +346,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> from(T[] values) {
-		return IterableStream.create(Arrays.asList(values));
+		return from(Arrays.asList(values));
 	}
 
 
@@ -707,10 +730,12 @@ public class Streams {
 	 * @return a {@link Action} accepting publishers and producing inner data T
 	 * @since 2.0
 	 */
-	public static <T> Action<Publisher<? extends T>, T> switchOnNext() {
-		SwitchAction<T> switchAction = new SwitchAction<>();
-		switchAction.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-		return switchAction;
+	@SuppressWarnings("unchecked")
+	public static <T> ProcessorAction<Publisher<? extends T>, T> switchOnNext() {
+		Processor<Publisher<? extends T>, Publisher<? extends T>> emitter = Processors.replay();
+		return Subscribers.start(
+				ProcessorAction.create(emitter, lift(emitter, SwitchOperator.INSTANCE))
+		);
 	}
 
 	/**
@@ -722,12 +747,10 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> switchOnNext(
 	  Publisher<? extends Publisher<? extends T>> mergedPublishers) {
-		final Action<Publisher<? extends T>, T> mergeAction = new SwitchAction<>();
-
-		mergedPublishers.subscribe(mergeAction);
-		return mergeAction;
+		return lift(mergedPublishers, SwitchOperator.INSTANCE);
 	}
 
 

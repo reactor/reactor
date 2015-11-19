@@ -66,7 +66,7 @@ public final  class TakeUntilTimeoutOperator<T> implements Publishers.Operator<T
 
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
-			subscriber.onSubscribe(subscription);
+			subscriber.onSubscribe(this);
 			timer.submit(new Consumer<Long>() {
 				@Override
 				public void accept(Long aLong) {

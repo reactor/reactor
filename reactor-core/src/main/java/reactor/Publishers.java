@@ -63,7 +63,7 @@ public final class Publishers extends PublisherFactory {
 	 * @param <T>
 	 * @return
 	 */
-	public static <T> Publisher<T> from(final Iterable<T> defaultValues) {
+	public static <T> Publisher<T> from(final Iterable<? extends T> defaultValues) {
 		IteratorSequencer<T> iteratorPublisher = new IteratorSequencer<>(defaultValues);
 		return create(iteratorPublisher, iteratorPublisher);
 	}

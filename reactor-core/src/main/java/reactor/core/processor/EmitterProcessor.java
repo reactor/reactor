@@ -43,6 +43,7 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 	final int maxConcurrency;
 	final int bufferSize;
 	final int limit;
+	final int replay;
 
 	private volatile RingBuffer<RingBuffer.Slot<T>> emitBuffer;
 
@@ -74,13 +75,17 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 	int  lastIndex;
 	int  outstanding;
 
-	public EmitterProcessor(boolean autoCancel, int maxConcurrency, int bufferSize) {
+	public EmitterProcessor(boolean autoCancel, int maxConcurrency, int bufferSize, int replayLastN) {
 		super(autoCancel);
 		this.maxConcurrency = maxConcurrency;
 		this.bufferSize = bufferSize;
 		this.limit = Math.max(1, bufferSize / 2);
 		this.outstanding = 0;
+		this.replay = Math.min(replayLastN, bufferSize);
 		SUBSCRIBERS.lazySet(this, EMPTY);
+		if(replayLastN > 0){
+			getMainQueue();
+		}
 	}
 
 	@Override
@@ -151,13 +156,13 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				}
 
 				unbounded = unbounded && is.unbounded;
-				if (is.unbounded) {
+				if (is.unbounded && replay == -1) {
 					is.actual.onNext(t);
 				}
 				else {
 					long r = is.requested;
 					is.unbounded = r == Long.MAX_VALUE;
-					Sequence poll = is.unbounded ? null : is.pollCursor;
+					Sequence poll = is.unbounded && replay == -1 ? null : is.pollCursor;
 
 					//no tracking and remaining demand positive
 					if (r > 0L && poll == null) {
@@ -593,7 +598,21 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			if (REQUESTED.compareAndSet(this, -1L, 0)) {
 				RingBuffer<RingBuffer.Slot<T>> ringBuffer = parent.emitBuffer;
 				if (ringBuffer != null) {
-					startTracking(Math.max(0L, ringBuffer.getMinimumGatingSequence()));
+					if(parent.replay > 0) {
+						long cursor = ringBuffer.getCursor();
+						if(cursor < ringBuffer.getBufferSize()){
+							startTracking(0L);
+						}
+						else {
+							startTracking(Math.min(
+									0L,
+									cursor - Math.min(parent.replay, cursor % ringBuffer.getBufferSize()))
+							);
+						}
+					}
+					else{
+						startTracking(Math.min(0L, ringBuffer.getMinimumGatingSequence()));
+					}
 				}
 
 				actual.onSubscribe(this);

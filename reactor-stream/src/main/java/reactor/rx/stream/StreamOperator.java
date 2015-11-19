@@ -28,6 +28,7 @@ import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
 import reactor.fn.Function;
+import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.ProcessorAction;
 
@@ -62,6 +63,11 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 	@Override
 	public long getCapacity() {
 		return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() : Long.MAX_VALUE;
+	}
+
+	@Override
+	public Timer getTimer() {
+		return Stream.class.isAssignableFrom(source.getClass()) ? ((Stream) source).getTimer() : super.getTimer();
 	}
 
 	@Override

@@ -29,7 +29,6 @@ import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.Recyclable;
 import reactor.core.support.SignalType;
-import reactor.core.support.Subscribable;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -300,7 +299,7 @@ public abstract class Action<I, O> extends Stream<O>
 	}
 
 	@Override
-	public boolean isPublishing() {
+	public boolean isTerminated() {
 		return upstreamSubscription != null;
 	}
 
@@ -317,17 +316,6 @@ public abstract class Action<I, O> extends Stream<O>
 		if (downstreamSubscription == null) {
 			requestMore(Long.MAX_VALUE);
 		}
-	}
-
-	/**
-	 * Print a debugged form of the root action relative to this one. The output will be an acyclic directed graph of
-	 * composed actions.
-	 *
-	 * @since 2.0
-	 */
-	@SuppressWarnings("unchecked")
-	public StreamUtils.StreamVisitor debug() {
-		return StreamUtils.browse(findOldestUpstream(this, Action.class));
 	}
 
 	/**
@@ -360,29 +348,6 @@ public abstract class Action<I, O> extends Stream<O>
 		return this;
 	}
 
-	@Override
-	public final Stream<O> onOverflowBuffer(final Supplier<? extends Queue<O>> queueSupplier) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				Broadcaster<O> newStream = Broadcaster.<O>create(getTimer()).capacity(capacity);
-				if (queueSupplier == null) {
-					subscribeWithSubscription(newStream, new DropSubscription<O>(Action.this, newStream) {
-						@Override
-						public void request(long elements) {
-							super.request(elements);
-							requestUpstream(capacity, isComplete(), elements);
-						}
-					});
-				} else {
-					subscribeWithSubscription(newStream,
-					  createSubscription(newStream, queueSupplier.get()));
-				}
-				return newStream;
-			}
-		});
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	public final <E> ProcessorAction<E, O> combine() {
@@ -391,51 +356,6 @@ public abstract class Action<I, O> extends Stream<O>
 		return new ProcessorAction<E, O>(subscriber, this);
 	}
 
-	/**
-	 * Create a consumer that broadcast complete signal from any accepted value.
-	 *
-	 * @return a new {@link Consumer} ready to forward complete signal to this stream
-	 * @since 2.0
-	 */
-	public final Consumer<?> toBroadcastCompleteConsumer() {
-		return new Consumer<Object>() {
-			@Override
-			public void accept(Object o) {
-				broadcastComplete();
-			}
-		};
-	}
-
-
-	/**
-	 * Create a consumer that broadcast next signal from accepted values.
-	 *
-	 * @return a new {@link Consumer} ready to forward values to this stream
-	 * @since 2.0
-	 */
-	public final Consumer<O> toBroadcastNextConsumer() {
-		return new Consumer<O>() {
-			@Override
-			public void accept(O o) {
-				broadcastNext(o);
-			}
-		};
-	}
-
-	/**
-	 * Create a consumer that broadcast error signal from any accepted value.
-	 *
-	 * @return a new {@link Consumer} ready to forward error to this stream
-	 * @since 2.0
-	 */
-	public final Consumer<Throwable> toBroadcastErrorConsumer() {
-		return new Consumer<Throwable>() {
-			@Override
-			public void accept(Throwable o) {
-				broadcastError(o);
-			}
-		};
-	}
 
 	/**
 	 * Utility to find the most ancient subscribed Action.

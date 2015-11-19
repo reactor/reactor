@@ -167,7 +167,7 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 	}
 
 	protected final boolean checkDynamicMerge() {
-		return dynamicMergeAction != null && dynamicMergeAction.isPublishing();
+		return dynamicMergeAction != null && dynamicMergeAction.isTerminated();
 	}
 
 	@Override

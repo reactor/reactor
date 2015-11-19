@@ -110,7 +110,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			         return null;
 		         }, (d, s) -> count.incrementAndGet()));
 
-		ReactiveSession<Integer> session = processor.emitSession();
+		ReactiveSession<Integer> session = processor.startSession();
 		long emission = session.submit(1);
 		if (emission == -1L) {
 			throw new IllegalStateException("Negatime " + emission);
@@ -148,7 +148,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			         }, null, d -> latch.countDown()));
 		}
 
-		ReactiveSession<Integer> session = processor.emitSession();
+		ReactiveSession<Integer> session = processor.startSession();
 
 		for (int i = 0; i < n; i++) {
 			while (!session.emit(i).isOk()) {

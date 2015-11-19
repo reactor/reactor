@@ -38,9 +38,11 @@ import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
+import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
+import reactor.core.support.Publishable;
 import reactor.fn.BiConsumer;
 import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
@@ -51,47 +53,47 @@ import reactor.fn.timer.Timer;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
-import reactor.rx.action.ProcessorAction;
 import reactor.rx.action.Control;
+import reactor.rx.action.ProcessorAction;
 import reactor.rx.action.Signal;
-import reactor.rx.action.aggregation.BufferAction;
-import reactor.rx.action.aggregation.BufferShiftAction;
-import reactor.rx.action.aggregation.BufferShiftWhenAction;
-import reactor.rx.action.aggregation.BufferWhenAction;
-import reactor.rx.action.aggregation.CacheAction;
-import reactor.rx.action.aggregation.LastAction;
-import reactor.rx.action.aggregation.SampleAction;
-import reactor.rx.action.aggregation.SortAction;
-import reactor.rx.action.aggregation.WindowAction;
-import reactor.rx.action.aggregation.WindowShiftAction;
-import reactor.rx.action.aggregation.WindowShiftWhenAction;
-import reactor.rx.action.aggregation.WindowWhenAction;
+import reactor.rx.action.aggregation.BatchOperator;
+import reactor.rx.action.aggregation.BufferOperator;
+import reactor.rx.action.aggregation.BufferShiftOperator;
+import reactor.rx.action.aggregation.BufferShiftWhenOperator;
+import reactor.rx.action.aggregation.BufferWhenOperator;
+import reactor.rx.action.aggregation.LastOperator;
+import reactor.rx.action.aggregation.SampleOperator;
+import reactor.rx.action.aggregation.SortOperator;
+import reactor.rx.action.aggregation.WindowOperator;
+import reactor.rx.action.aggregation.WindowShiftOperator;
+import reactor.rx.action.aggregation.WindowShiftWhenOperator;
+import reactor.rx.action.aggregation.WindowWhenOperator;
 import reactor.rx.action.combination.DynamicMergeAction;
-import reactor.rx.action.combination.SwitchAction;
+import reactor.rx.action.combination.SwitchOperator;
 import reactor.rx.action.combination.ZipAction;
 import reactor.rx.action.conditional.ExistsOperator;
-import reactor.rx.action.control.FlowControlAction;
-import reactor.rx.action.control.RepeatAction;
-import reactor.rx.action.control.RepeatWhenAction;
-import reactor.rx.action.control.ThrottleRequestAction;
-import reactor.rx.action.control.ThrottleRequestWhenAction;
-import reactor.rx.action.error.ErrorAction;
-import reactor.rx.action.error.ErrorReturnAction;
-import reactor.rx.action.error.ErrorWithValueAction;
+import reactor.rx.action.control.DropOperator;
+import reactor.rx.action.control.RepeatOperator;
+import reactor.rx.action.control.RepeatWhenOperator;
+import reactor.rx.action.control.ThrottleRequestOperator;
+import reactor.rx.action.control.ThrottleRequestWhenOperator;
+import reactor.rx.action.error.ErrorOperator;
+import reactor.rx.action.error.ErrorReturnOperator;
+import reactor.rx.action.error.ErrorWithValueOperator;
 import reactor.rx.action.error.IgnoreErrorOperator;
-import reactor.rx.action.error.RetryAction;
-import reactor.rx.action.error.RetryWhenAction;
-import reactor.rx.action.error.TimeoutAction;
+import reactor.rx.action.error.RetryOperator;
+import reactor.rx.action.error.RetryWhenOperator;
+import reactor.rx.action.error.TimeoutOperator;
 import reactor.rx.action.filter.DistinctOperator;
 import reactor.rx.action.filter.DistinctUntilChangedOperator;
 import reactor.rx.action.filter.ElementAtOperator;
 import reactor.rx.action.filter.FilterOperator;
 import reactor.rx.action.filter.SkipOperator;
 import reactor.rx.action.filter.SkipUntilTimeoutOperator;
-import reactor.rx.action.filter.TakeAction;
+import reactor.rx.action.filter.TakeOperator;
 import reactor.rx.action.filter.TakeUntilTimeoutOperator;
 import reactor.rx.action.filter.TakeWhileOperator;
-import reactor.rx.action.metrics.CountAction;
+import reactor.rx.action.metrics.CountOperator;
 import reactor.rx.action.metrics.ElapsedOperator;
 import reactor.rx.action.passive.CallbackOperator;
 import reactor.rx.action.passive.FinallyOperator;
@@ -101,7 +103,7 @@ import reactor.rx.action.terminal.AdaptiveConsumerAction;
 import reactor.rx.action.terminal.ConsumerAction;
 import reactor.rx.action.transformation.DefaultIfEmptyOperator;
 import reactor.rx.action.transformation.DematerializeOperator;
-import reactor.rx.action.transformation.GroupByAction;
+import reactor.rx.action.transformation.GroupByOperator;
 import reactor.rx.action.transformation.MaterializeOperator;
 import reactor.rx.action.transformation.ScanOperator;
 import reactor.rx.broadcast.Broadcaster;
@@ -110,16 +112,11 @@ import reactor.rx.stream.LiftStream;
 import reactor.rx.subscription.PushSubscription;
 
 /**
- * Base class for components designed to provide a succinct API for working with future values.
- * Provides base functionality and an internal contract for subclasses.
- * <p>
- * A Stream can be implemented to perform specific actions on callbacks (onNext,onComplete,onError,onSubscribe).
- * Stream can eventually produce result data {@code <O>} and will offer error cascading over to its subscribers.
- * <p>
- * <p>
- * Typically, new {@code Stream} aren't created directly. To create a {@code Stream},
- * use {@link Streams} static API.
- *
+ * Base class for components designed to provide a succinct API for working with future values. Provides base
+ * functionality and an internal contract for subclasses. <p> A Stream can be implemented to perform specific actions on
+ * callbacks (onNext,onComplete,onError,onSubscribe). Stream can eventually produce result data {@code <O>} and will
+ * offer error cascading over to its subscribers. <p> <p> Typically, new {@code Stream} aren't created directly. To
+ * create a {@code Stream}, use {@link Streams} static API.
  * @param <O> The type of the output values
  * @author Stephane Maldini
  * @author Jon Brisbin
@@ -127,13 +124,11 @@ import reactor.rx.subscription.PushSubscription;
  */
 public abstract class Stream<O> implements Publisher<O>, Bounded {
 
-
 	protected Stream() {
 	}
 
 	/**
 	 * Cast the current Stream flowing data type into a target class type.
-	 *
 	 * @param <E> the {@link Action} output type
 	 * @return the current {link Stream} instance casted
 	 * @since 2.0
@@ -144,27 +139,22 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Defer the subscription of an {@link Action} to the actual pipeline.
-	 * Terminal operations such as {@link #consume(reactor.fn.Consumer)} will start the subscription chain.
-	 * It will listen for current Stream signals and will be eventually producing signals as well (subscribe,error,
-	 * complete,next).
-	 * <p>
-	 * The action is returned for functional-style chaining.
-	 *
-	 * @param <V>    the {@link reactor.rx.action.Action} output type
+	 * Defer the subscription of an {@link Action} to the actual pipeline. Terminal operations such as {@link
+	 * #consume(reactor.fn.Consumer)} will start the subscription chain. It will listen for current Stream signals and
+	 * will be eventually producing signals as well (subscribe,error, complete,next). <p> The action is returned for
+	 * functional-style chaining.
+	 * @param <V> the {@link reactor.rx.action.Action} output type
 	 * @param action the function to map a provided dispatcher to a fresh Action to subscribe.
 	 * @return the passed action
 	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
 	 * @since 2.0
 	 */
-	public <V> Stream<V> liftAction(@Nonnull final Supplier<? extends Action<O, V>>
-			action) {
+	public <V> Stream<V> liftAction(@Nonnull final Supplier<? extends Action<O, V>> action) {
 		return new LiftStream<>(this, action);
 	}
 
 	/**
 	 * @see {@link Publishers#lift(Publisher, Function)}
-	 * 
 	 * @since 2.1
 	 */
 	public <V> Stream<V> lift(@Nonnull final Function<Subscriber<? super V>, Subscriber<? super O>> operator) {
@@ -174,48 +164,33 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	/**
 	 * Assign an error handler to exceptions of the given type. Will not stop error propagation, use when(class,
 	 * publisher), retry, ignoreError or recover to actively deal with the error
-	 *
 	 * @param exceptionType the type of exceptions to handle
-	 * @param onError       the error handler for each error
-	 * @param <E>           type of the error to handle
+	 * @param onError the error handler for each error
+	 * @param <E> type of the error to handle
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
 	public final <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
-	                                                  @Nonnull final Consumer<E> onError) {
-		return liftAction(new Supplier<Action<O, O>>() {
-
-			@Override
-			public Action<O, O> get() {
-				return new ErrorAction<O, E>(exceptionType, onError, null);
-			}
-		});
+			@Nonnull final Consumer<E> onError) {
+		return lift(new ErrorOperator<O, E>(exceptionType, onError, null));
 	}
 
 	/**
-	 * Assign an error handler that will pass eventual associated values and exceptions of the given type.
-	 * Will not stop error propagation, use when(class,
-	 * publisher), retry, ignoreError or recover to actively deal with the error.
-	 *
+	 * Assign an error handler that will pass eventual associated values and exceptions of the given type. Will not stop
+	 * error propagation, use when(class, publisher), retry, ignoreError or recover to actively deal with the error.
 	 * @param exceptionType the type of exceptions to handle
-	 * @param onError       the error handler for each error
-	 * @param <E>           type of the error to handle
+	 * @param onError the error handler for each error
+	 * @param <E> type of the error to handle
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
 	public final <E extends Throwable> Stream<O> observeError(@Nonnull final Class<E> exceptionType,
-	                                                          @Nonnull final BiConsumer<Object, ? super E> onError) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new ErrorWithValueAction<O, E>(exceptionType, onError, null);
-			}
-		});
+			@Nonnull final BiConsumer<Object, ? super E> onError) {
+		return lift(new ErrorWithValueOperator<O, E>(exceptionType, onError, null));
 	}
 
 	/**
 	 * Subscribe to a fallback publisher when any error occurs.
-	 *
 	 * @param fallback the error handler for each error
 	 * @return {@literal new Stream}
 	 */
@@ -225,26 +200,19 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Subscribe to a fallback publisher when exceptions of the given type occur, otherwise propagate the error.
-	 *
 	 * @param exceptionType the type of exceptions to handle
-	 * @param fallback      the error handler for each error
-	 * @param <E>           type of the error to handle
+	 * @param fallback the error handler for each error
+	 * @param <E> type of the error to handle
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
 	public final <E extends Throwable> Stream<O> onErrorResumeNext(@Nonnull final Class<E> exceptionType,
-	                                                               @Nonnull final Publisher<? extends O> fallback) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new ErrorAction<O, E>(exceptionType, null, fallback);
-			}
-		});
+			@Nonnull final Publisher<? extends O> fallback) {
+		return lift(new ErrorOperator<O, E>(exceptionType, null, fallback));
 	}
 
 	/**
 	 * Produce a default value if any error occurs.
-	 *
 	 * @param fallback the error handler for each error
 	 * @return {@literal new Stream}
 	 */
@@ -254,34 +222,27 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Produce a default value when exceptions of the given type occur, otherwise propagate the error.
-	 *
 	 * @param exceptionType the type of exceptions to handle
-	 * @param fallback      the error handler for each error
-	 * @param <E>           type of the error to handle
+	 * @param fallback the error handler for each error
+	 * @param <E> type of the error to handle
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
 	public final <E extends Throwable> Stream<O> onErrorReturn(@Nonnull final Class<E> exceptionType,
-	                                                           @Nonnull final Function<E, ? extends O> fallback) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new ErrorReturnAction<O, E>(exceptionType, fallback);
-			}
-		});
+			@Nonnull final Function<E, ? extends O> fallback) {
+		return lift(new ErrorReturnOperator<O, E>(exceptionType, fallback));
 	}
-
 
 	/**
 	 * Only forward onError and onComplete signals into the returned stream.
-	 *
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<Void> after() {
 		return new Stream<Void>() {
 			@Override
 			public void subscribe(Subscriber<? super Void> s) {
-				Publishers.completable(Stream.this).subscribe(s);
+				Publishers.completable(Stream.this)
+				          .subscribe(s);
 			}
 
 			@Override
@@ -298,10 +259,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.action
-	 * .Signal}.
-	 * Since the error is materialized as a {@code Signal}, the propagation will be stopped.
-	 * Complete signal will first emit a {@code Signal.complete()} and then effectively complete the stream.
-	 *
+	 * .Signal}. Since the error is materialized as a {@code Signal}, the propagation will be stopped. Complete signal
+	 * will first emit a {@code Signal.complete()} and then effectively complete the stream.
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
@@ -309,13 +268,10 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return lift(MaterializeOperator.INSTANCE);
 	}
 
-
 	/**
 	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.action
-	 * .Signal}.
-	 * Since the error is materialized as a {@code Signal}, the propagation will be stopped.
-	 * Complete signal will first emit a {@code Signal.complete()} and then effectively complete the stream.
-	 *
+	 * .Signal}. Since the error is materialized as a {@code Signal}, the propagation will be stopped. Complete signal
+	 * will first emit a {@code Signal.complete()} and then effectively complete the stream.
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")
@@ -327,9 +283,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	/**
 	 * Subscribe a new {@link Broadcaster} and return it for future subscribers interactions. Effectively it turns any
 	 * stream into an Hot Stream where subscribers will only values from the time T when they subscribe to the returned
-	 * stream. Complete and Error signals are however retained unless {@link #keepAlive()} has been called before.
-	 * <p>
-	 *
+	 * stream. Complete and Error signals are however retained unless {@link #keepAlive()} has been called before. <p>
 	 * @return a new {@literal stream} whose values are broadcasted to all subscribers
 	 */
 	public final Stream<O> broadcast() {
@@ -337,16 +291,12 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return broadcastTo(broadcaster);
 	}
 
-
 	/**
-	 * Subscribe the passed subscriber, only creating once necessary upstream Subscriptions and returning itself.
-	 * Mostly used by other broadcast actions which transform any Stream into a publish-subscribe Stream (every
-	 * subscribers
-	 * see all values).
-	 * <p>
-	 *
+	 * Subscribe the passed subscriber, only creating once necessary upstream Subscriptions and returning itself. Mostly
+	 * used by other broadcast actions which transform any Stream into a publish-subscribe Stream (every subscribers see
+	 * all values). <p>
 	 * @param subscriber the subscriber to subscribe to this stream and return
-	 * @param <E>        the hydrated generic type for the passed argument, allowing for method chaining
+	 * @param <E> the hydrated generic type for the passed argument, allowing for method chaining
 	 * @return {@param subscriber}
 	 */
 	public final <E extends Subscriber<? super O>> E broadcastTo(E subscriber) {
@@ -355,10 +305,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a {@link Tap} that maintains a reference to the last value seen by this {@code
-	 * Stream}. The {@link Tap} is
+	 * Create a {@link Tap} that maintains a reference to the last value seen by this {@code Stream}. The {@link Tap} is
 	 * continually updated when new values pass through the {@code Stream}.
-	 *
 	 * @return the new {@link Tap}
 	 * @see Consumer
 	 */
@@ -395,30 +343,26 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			public void subscribe(Subscriber<? super E> s) {
 				try {
 					processor.subscribe(s);
-				} catch (Throwable t) {
+				}
+				catch (Throwable t) {
 					s.onError(t);
 				}
 			}
 		};
 	}
 
-
 	/**
-	 * Defer the subscription of an {@link Action} to the actual pipeline.
-	 * Terminal operations such as {@link #consume(reactor.fn.Consumer)} will start the subscription chain.
-	 * It will listen for current Stream signals and will be eventually producing signals as well (subscribe,error,
-	 * complete,next).
-	 * <p>
-	 * The action is returned for functional-style chaining.
-	 *
-	 * @param <V>    the {@link reactor.rx.Stream} output type
+	 * Defer the subscription of an {@link Action} to the actual pipeline. Terminal operations such as {@link
+	 * #consume(reactor.fn.Consumer)} will start the subscription chain. It will listen for current Stream signals and
+	 * will be eventually producing signals as well (subscribe,error, complete,next). <p> The action is returned for
+	 * functional-style chaining.
+	 * @param <V> the {@link reactor.rx.Stream} output type
 	 * @param processorSupplier the function to map a provided dispatcher to a fresh Action to subscribe.
 	 * @return the passed action
 	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
 	 * @since 2.0
 	 */
-	public <V> Stream<V> liftProcess(@Nonnull final Supplier<? extends Processor<O, V>>
-			processorSupplier) {
+	public <V> Stream<V> liftProcess(@Nonnull final Supplier<? extends Processor<O, V>> processorSupplier) {
 		final long capacity = getCapacity();
 
 		return new Stream<V>() {
@@ -439,7 +383,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 					Processor<O, V> processor = processorSupplier.get();
 					processor.subscribe(s);
 					Stream.this.subscribe(processor);
-				} catch (Throwable t) {
+				}
+				catch (Throwable t) {
 					s.onError(t);
 				}
 			}
@@ -471,7 +416,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 					Processor<O, O> processor = processorProvider.dispatchOn();
 					processor.subscribe(s);
 					Stream.this.subscribe(processor);
-				} catch (Throwable t) {
+				}
+				catch (Throwable t) {
 					s.onError(t);
 				}
 			}
@@ -503,7 +449,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 					Processor<O, O> processor = processorProvider.publishOn();
 					processor.subscribe(s);
 					Stream.this.subscribe(processor);
-				} catch (Throwable t) {
+				}
+				catch (Throwable t) {
 					s.onError(t);
 				}
 			}
@@ -512,7 +459,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Defer a Controls operations ready to be requested.
-	 *
 	 * @return the consuming action
 	 */
 	public Control consumeLater() {
@@ -520,9 +466,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Instruct the stream to request the produced subscription indefinitely. If the dispatcher
-	 * is asynchronous (RingBufferDispatcher for instance), it will proceed the request asynchronously as well.
-	 *
+	 * Instruct the stream to request the produced subscription indefinitely. If the dispatcher is asynchronous
+	 * (RingBufferDispatcher for instance), it will proceed the request asynchronously as well.
 	 * @return the consuming action
 	 */
 	@SuppressWarnings("unchecked")
@@ -539,7 +484,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Instruct the action to request upstream subscription if any for N elements.
-	 *
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public Control consume(final long n) {
@@ -551,149 +495,116 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow.
-	 * It will also eagerly prefetch upstream publisher.
-	 * <p>
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
 	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
-	 *
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control consume(final Consumer<? super O> consumer) {
-		ConsumerAction<O> consumerAction = new ConsumerAction<O>(
-		  getCapacity(),
-		  consumer,
-		  null,
-		  null
-		);
+		ConsumerAction<O> consumerAction = new ConsumerAction<O>(getCapacity(), consumer, null, null);
 		subscribe(consumerAction);
 		return consumerAction;
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
-	 * publisher.
-	 * <p>
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
 	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
-	 *
-	 * @param concurrency    the concurrent subscribers to run the consumer (result in N subscribe())
-	 * @param consumer   the consumer to invoke on each value
+	 * @param concurrency the concurrent subscribers to run the consumer (result in N subscribe())
+	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control[] multiConsume(int concurrency, final Consumer<? super O> consumer) {
 		Control[] controls = new Control[concurrency];
-		for(int i = 0; i < concurrency; i++){
+		for (int i = 0; i < concurrency; i++) {
 			controls[i] = consume(consumer);
 		}
 		return controls;
 	}
 
 	/**
-	 * Attach 2 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow.
-	 * Any Error signal will be consumed by the error consumer.
-	 * It will also eagerly prefetch upstream publisher.
-	 * <p>
-	 *
-	 * @param consumer      the consumer to invoke on each next signal
+	 * Attach 2 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. Any Error signal will be consumed by the error
+	 * consumer. It will also eagerly prefetch upstream publisher. <p>
+	 * @param consumer the consumer to invoke on each next signal
 	 * @param errorConsumer the consumer to invoke on each error signal
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control consume(final Consumer<? super O> consumer,
-	                             Consumer<? super Throwable> errorConsumer) {
+	public final Control consume(final Consumer<? super O> consumer, Consumer<? super Throwable> errorConsumer) {
 		return consume(consumer, errorConsumer, null);
 	}
 
 	/**
-	 * Attach 2 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow.
-	 * Any Error signal will be consumed by the error consumer.
-	 * It will also eagerly prefetch upstream publisher.
-	 * <p>
-	 *
-	 * @param concurrency    the concurrent subscribers to run the consumer (result in N subscribe())
-	 * @param consumer      the consumer to invoke on each next signal
+	 * Attach 2 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. Any Error signal will be consumed by the error
+	 * consumer. It will also eagerly prefetch upstream publisher. <p>
+	 * @param concurrency the concurrent subscribers to run the consumer (result in N subscribe())
+	 * @param consumer the consumer to invoke on each next signal
 	 * @param errorConsumer the consumer to invoke on each error signal
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final Control[] multiConsume(int concurrency, final Consumer<? super O> consumer,
-	                                  Consumer<? super Throwable> errorConsumer) {
+	public final Control[] multiConsume(int concurrency,
+			final Consumer<? super O> consumer,
+			Consumer<? super Throwable> errorConsumer) {
 		return multiConsume(concurrency, consumer, errorConsumer, null);
 	}
 
 	/**
-	 * Attach 3 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow.
-	 * Any Error signal will be consumed by the error consumer.
-	 * The Complete signal will be consumed by the complete consumer.
-	 * Only error and complete signal will be signaled downstream. It will also eagerly prefetch upstream publisher.
-	 * <p>
-	 *
-	 * @param consumer         the consumer to invoke on each value
-	 * @param errorConsumer    the consumer to invoke on each error signal
+	 * Attach 3 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. Any Error signal will be consumed by the error
+	 * consumer. The Complete signal will be consumed by the complete consumer. Only error and complete signal will be
+	 * signaled downstream. It will also eagerly prefetch upstream publisher. <p>
+	 * @param consumer the consumer to invoke on each value
+	 * @param errorConsumer the consumer to invoke on each error signal
 	 * @param completeConsumer the consumer to invoke on complete signal
 	 * @return {@literal new Stream}
 	 */
 	public final Control consume(final Consumer<? super O> consumer,
-	                             Consumer<? super Throwable> errorConsumer,
-	                             Consumer<Void> completeConsumer) {
+			Consumer<? super Throwable> errorConsumer,
+			Consumer<Void> completeConsumer) {
 		ConsumerAction<O> consumerAction =
-		  new ConsumerAction<O>(
-			getCapacity(),
-			consumer,
-			errorConsumer,
-			completeConsumer);
+				new ConsumerAction<O>(getCapacity(), consumer, errorConsumer, completeConsumer);
 
 		subscribe(consumerAction);
 		return consumerAction;
 	}
 
 	/**
-	 * Attach 3 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow.
-	 * Any Error signal will be consumed by the error consumer.
-	 * The Complete signal will be consumed by the complete consumer.
-	 * Only error and complete signal will be signaled downstream. It will also eagerly prefetch upstream publisher.
-	 * <p>
-	 *
-	 * @param concurrency    the concurrent subscribers to run the consumer (result in N subscribe())
-	 * @param consumer         the consumer to invoke on each value
-	 * @param errorConsumer    the consumer to invoke on each error signal
+	 * Attach 3 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. Any Error signal will be consumed by the error
+	 * consumer. The Complete signal will be consumed by the complete consumer. Only error and complete signal will be
+	 * signaled downstream. It will also eagerly prefetch upstream publisher. <p>
+	 * @param concurrency the concurrent subscribers to run the consumer (result in N subscribe())
+	 * @param consumer the consumer to invoke on each value
+	 * @param errorConsumer the consumer to invoke on each error signal
 	 * @param completeConsumer the consumer to invoke on complete signal
 	 * @return {@literal new Stream}
 	 */
-	public final Control[] multiConsume(int concurrency, final Consumer<? super O> consumer,
-	                                  Consumer<? super Throwable> errorConsumer,
-	                                  Consumer<Void> completeConsumer) {
+	public final Control[] multiConsume(int concurrency,
+			final Consumer<? super O> consumer,
+			Consumer<? super Throwable> errorConsumer,
+			Consumer<Void> completeConsumer) {
 		Control[] controls = new Control[concurrency];
-		for(int i = 0; i < concurrency; i++){
+		for (int i = 0; i < concurrency; i++) {
 			controls[i] = consume(consumer, errorConsumer, completeConsumer);
 		}
 		return controls;
 	}
 
-
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
-	 * publisher.
-	 * <p>
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
 	 * The passed {code requestMapper} function will receive the {@link Stream} of the last N requested elements
-	 * -starting with the
-	 * capacity defined for the stream- when the N elements have been consumed. It will return a {@link Publisher} of
-	 * long signals
-	 * S that will instruct the consumer to request S more elements, possibly altering the "batch" size if wished.
-	 * <p>
-	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
-	 *
+	 * -starting with the capacity defined for the stream- when the N elements have been consumed. It will return a
+	 * {@link Publisher} of long signals S that will instruct the consumer to request S more elements, possibly altering
+	 * the "batch" size if wished. <p> <p> For a passive version that observe and forward incoming data see {@link
+	 * #observe(reactor.fn.Consumer)}
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control batchConsume(final Consumer<? super O> consumer,
-	                                  final Function<Long, ? extends Long> requestMapper) {
+			final Function<Long, ? extends Long> requestMapper) {
 		return adaptiveConsume(consumer, new Function<Stream<Long>, Publisher<? extends Long>>() {
 			@Override
 			public Publisher<? extends Long> apply(Stream<Long> longStream) {
@@ -703,26 +614,19 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
-	 * publisher.
-	 * <p>
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
 	 * The passed {code requestMapper} function will receive the {@link Stream} of the last N requested elements
-	 * -starting with the
-	 * capacity defined for the stream- when the N elements have been consumed. It will return a {@link Publisher} of
-	 * long signals
-	 * S that will instruct the consumer to request S more elements.
-	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
-	 *
+	 * -starting with the capacity defined for the stream- when the N elements have been consumed. It will return a
+	 * {@link Publisher} of long signals S that will instruct the consumer to request S more elements. <p> For a passive
+	 * version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control adaptiveConsume(final Consumer<? super O> consumer,
-	                                     final Function<Stream<Long>, ? extends Publisher<? extends Long>>
-	                                       requestMapper) {
+			final Function<Stream<Long>, ? extends Publisher<? extends Long>> requestMapper) {
 		AdaptiveConsumerAction<O> consumerAction =
-		  new AdaptiveConsumerAction<O>(getTimer(), getCapacity(), consumer, requestMapper);
+				new AdaptiveConsumerAction<O>(getTimer(), getCapacity(), consumer, requestMapper);
 
 		subscribe(consumerAction);
 		if (consumer != null) {
@@ -731,75 +635,54 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return consumerAction;
 	}
 
-
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
-	 * publisher.
-	 * <p>
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
 	 * The passed {code requestMapper} function will receive the {@link Stream} of the last N requested elements
-	 * -starting with the
-	 * capacity defined for the stream- when the N elements have been consumed. It will return a {@link Publisher} of
-	 * long signals
-	 * S that will instruct the consumer to request S more elements, possibly altering the "batch" size if wished.
-	 * <p>
-	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
-	 *
-	 * @param concurrency    the concurrent subscribers to run the consumer (result in N subscribe())
+	 * -starting with the capacity defined for the stream- when the N elements have been consumed. It will return a
+	 * {@link Publisher} of long signals S that will instruct the consumer to request S more elements, possibly altering
+	 * the "batch" size if wished. <p> <p> For a passive version that observe and forward incoming data see {@link
+	 * #observe(reactor.fn.Consumer)}
+	 * @param concurrency the concurrent subscribers to run the consumer (result in N subscribe())
 	 * @param consumer the consumer to invoke on each value
 	 * @param requestMapper the function evaluating each request
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control[] multiBatchConsume(final int concurrency,
-	                                       final Consumer<? super O> consumer,
-	                                       final Function<Long, ? extends Long>
-	                                         requestMapper) {
-		return multiAdaptiveConsume(concurrency, consumer,
-				new Function<Stream<Long>, Publisher<? extends Long>>() {
-					@Override
-					public Publisher<? extends Long> apply(Stream<Long> longStream) {
-						return longStream.map(requestMapper);
-					}
-				});
+			final Consumer<? super O> consumer,
+			final Function<Long, ? extends Long> requestMapper) {
+		return multiAdaptiveConsume(concurrency, consumer, new Function<Stream<Long>, Publisher<? extends Long>>() {
+			@Override
+			public Publisher<? extends Long> apply(Stream<Long> longStream) {
+				return longStream.map(requestMapper);
+			}
+		});
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code
-	 * Stream}. As such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream
-	 * publisher.
-	 * <p>
+	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
+	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
 	 * The passed {code requestMapper} function will receive the {@link Stream} of the last N requested elements
-	 * -starting with the
-	 * capacity defined for the stream- when the N elements have been consumed. It will return a {@link Publisher} of
-	 * long signals
-	 * S that will instruct the consumer to request S more elements.
-	 * <p>
-	 * Multiple long signals S can be requested before a given request complete and therefore
-	 * an approriate ordering Dispatcher should be used.
-	 * <p>
-	 * <p>
-	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
-	 *
+	 * -starting with the capacity defined for the stream- when the N elements have been consumed. It will return a
+	 * {@link Publisher} of long signals S that will instruct the consumer to request S more elements. <p> Multiple long
+	 * signals S can be requested before a given request complete and therefore an approriate ordering Dispatcher should
+	 * be used. <p> <p> For a passive version that observe and forward incoming data see {@link
+	 * #observe(reactor.fn.Consumer)}
 	 * @param consumer the consumer to invoke on each value
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public final Control[] multiAdaptiveConsume(final int concurrency,
-	                                          final Consumer<? super O> consumer,
-	                                          final Function<Stream<Long>, ? extends Publisher<? extends Long>>
-	                                            requestMapper) {
+			final Consumer<? super O> consumer,
+			final Function<Stream<Long>, ? extends Publisher<? extends Long>> requestMapper) {
 		Control[] controls = new Control[concurrency];
-		for(int i = 0; i < concurrency; i++){
+		for (int i = 0; i < concurrency; i++) {
 			controls[i] = adaptiveConsume(consumer, requestMapper);
 		}
 		return controls;
 	}
 
-
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will observe any values accepted by this {@code
-	 * Stream}.
-	 *
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe any values accepted by this {@code Stream}.
 	 * @param consumer the consumer to invoke on each value
 	 * @return {@literal new Stream}
 	 * @since 2.0
@@ -809,24 +692,30 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Cache all signal to this {@code Stream} and release them on request that will observe any values accepted by
-	 * this
-	 * {@code
-	 * Stream}.
-	 *
+	 * Cache last {@link BaseProcessor#SMALL_BUFFER_SIZE} signal to this {@code Stream} and release them on request that
+	 * will observe any values accepted by this {@code Stream}.
 	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> cache() {
-		Action<O, O> cacheAction = new CacheAction<O>();
-		subscribe(cacheAction);
-		return cacheAction;
+		return cache(BaseProcessor.SMALL_BUFFER_SIZE);
 	}
 
+	/**
+	 * Cache all signal to this {@code Stream} and release them on request that will observe any values accepted by this
+	 * {@code Stream}.
+	 * @param last number of events retained in history
+	 * @return {@literal new Stream}
+	 * @since 2.1
+	 */
+	public final Stream<O> cache(int last) {
+		Processor<O, O> emitter = Processors.replay(last);
+		subscribe(emitter);
+		return ProcessorAction.create(emitter);
+	}
 
 	/**
 	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
-	 *
 	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
@@ -836,7 +725,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
-	 *
 	 * @param category The logger name
 	 * @return {@literal new Stream}
 	 * @since 2.0
@@ -847,35 +735,17 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
-	 *
 	 * @param category The logger name
 	 * @param options the bitwise checked flags for observed signals
 	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> log(final String category, int options) {
-		final Publisher<O> logger = Publishers.log(this, category, options);
-		return new Stream<O>(){
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			public void subscribe(Subscriber<? super O> s) {
-				logger.subscribe(s);
-			}
-		};
+		return lift(new LogOperator<O>(category, options));
 	}
 
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will observe any complete signal
-	 *
 	 * @param consumer the consumer to invoke on complete
 	 * @return {@literal a new stream}
 	 * @since 2.0
@@ -886,7 +756,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will observe any onSubscribe signal
-	 *
 	 * @param consumer the consumer to invoke on onSubscribe
 	 * @return {@literal a new stream}
 	 * @since 2.0
@@ -897,7 +766,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will observe any cancel signal
-	 *
 	 * @param consumer the consumer to invoke on cancel
 	 * @return {@literal a new stream}
 	 * @since 2.0
@@ -908,7 +776,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Connect an error-proof action that will transform an incoming error signal into a complete signal.
-	 *
 	 * @return a new fail-proof {@link Stream}
 	 */
 	public Stream<O> ignoreError() {
@@ -922,7 +789,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Connect an error-proof action based on the given predicate matching the current error.
-	 *
 	 * @param ignorePredicate a predicate to test if an error should be transformed to a complete signal.
 	 * @return a new fail-proof {@link Stream}
 	 */
@@ -931,9 +797,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will observe terminal signal complete|error.
-	 * The consumer will listen for the signal and introspect its state.
-	 *
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe terminal signal complete|error. The consumer
+	 * will listen for the signal and introspect its state.
 	 * @param consumer the consumer to invoke on terminal signal
 	 * @return {@literal new Stream}
 	 * @since 2.0
@@ -944,7 +809,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create an operation that returns the passed value if the Stream has completed without any emitted signals.
-	 *
 	 * @param defaultValue the value to forward if the stream is empty
 	 * @return {@literal new Stream}
 	 * @since 2.0
@@ -956,8 +820,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	/**
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code V} and pass it into
 	 * another {@code Stream}.
-	 *
-	 * @param fn  the transformation function
+	 * @param fn the transformation function
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@link Stream} containing the transformed values
 	 */
@@ -968,21 +831,20 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	/**
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass
 	 * it into another {@code Stream}.
-	 *
-	 * @param fn  the transformation function
+	 * @param fn the transformation function
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@link Stream} containing the transformed values
 	 * @since 2.1
 	 */
 	public final <V> Stream<V> forkJoin(final int concurrency,
-	                                    @Nonnull final Function<GroupedStream<Integer, O>, Publisher<V>> fn) {
-		Assert.isTrue(concurrency > 0, "Must subscribe once at least, concurrency set to "+concurrency);
+			@Nonnull final Function<GroupedStream<Integer, O>, Publisher<V>> fn) {
+		Assert.isTrue(concurrency > 0, "Must subscribe once at least, concurrency set to " + concurrency);
 
 		Publisher<V> pub;
 		final List<Publisher<? extends V>> publisherList = new ArrayList<>(concurrency);
 
-		for(int i = 0; i < concurrency; i++){
-			pub = fn.apply(new GroupedStream<Integer, O>(i){
+		for (int i = 0; i < concurrency; i++) {
+			pub = fn.apply(new GroupedStream<Integer, O>(i) {
 				@Override
 				public void subscribe(Subscriber<? super O> s) {
 					Stream.this.subscribe(s);
@@ -999,9 +861,10 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 				}
 			});
 
-			if(concurrency == 1){
+			if (concurrency == 1) {
 				return Streams.wrap(pub);
-			}else{
+			}
+			else {
 				publisherList.add(pub);
 			}
 		}
@@ -1029,19 +892,18 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	/**
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass
 	 * it into another {@code Stream}.
-	 *
-	 * @param fn  the transformation function
+	 * @param fn the transformation function
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@link Stream} containing the transformed values
 	 * @since 1.1, 2.0
 	 */
-	public final <V> Stream<V> flatMap(@Nonnull
-	                                   final Function<? super O, ? extends Publisher<? extends V>> fn) {
+	public final <V> Stream<V> flatMap(@Nonnull final Function<? super O, ? extends Publisher<? extends V>> fn) {
 
 		return new Stream<V>() {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				Publishers.flatMap(Stream.this, fn).subscribe(s);
+				Publishers.flatMap(Stream.this, fn)
+				          .subscribe(s);
 			}
 
 			@Override
@@ -1059,37 +921,30 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	/**
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass
 	 * it into another {@code Stream}. The produced stream will emit the data from the most recent transformed stream.
-	 *
-	 * @param fn  the transformation function
+	 * @param fn the transformation function
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@link Stream} containing the transformed values
 	 * @since 1.1, 2.0
 	 */
-	public final <V> Stream<V> switchMap(@Nonnull final Function<? super O,
-	  Publisher<? extends V>> fn) {
-		return map(fn).liftAction(new Supplier<Action<Publisher<? extends V>, V>>() {
-			@Override
-			public Action<Publisher<? extends V>, V> get() {
-				return new SwitchAction<V>();
-			}
-		});
+	@SuppressWarnings("unchecked")
+	public final <V> Stream<V> switchMap(@Nonnull final Function<? super O, Publisher<? extends V>> fn) {
+		return map(fn).lift(SwitchOperator.INSTANCE);
 	}
 
 	/**
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass
 	 * it into another {@code Stream}. The produced stream will emit the data from all transformed streams in order.
-	 *
-	 * @param fn  the transformation function
+	 * @param fn the transformation function
 	 * @param <V> the type of the return value of the transformation function
 	 * @return a new {@link Stream} containing the transformed values
 	 * @since 1.1, 2.0
 	 */
-	public final <V> Stream<V> concatMap(@Nonnull final Function<? super O,
-	  Publisher<? extends V>> fn) {
+	public final <V> Stream<V> concatMap(@Nonnull final Function<? super O, Publisher<? extends V>> fn) {
 		return new Stream<V>() {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				Publishers.concatMap(Stream.this, fn).subscribe(s);
+				Publishers.concatMap(Stream.this, fn)
+				          .subscribe(s);
 			}
 
 			@Override
@@ -1105,24 +960,22 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * {@link #liftAction(Supplier)} all the nested {@link Publisher} values to a new {@link Stream}.
-	 * Dynamic merge requires use of reactive-pull
-	 * offered by default StreamSubscription. If merge hasn't getCapacity() to take new elements because its {@link
-	 * #getCapacity()(long)} instructed so, the subscription will buffer
-	 * them.
-	 *
+	 * Pass all the nested {@link Publisher} values to a new {@link Stream}. Dynamic merge requires use of
+	 * reactive-pull offered by default StreamSubscription. If merge hasn't getCapacity() to take new elements because
+	 * its {@link #getCapacity()(long)} instructed so, the subscription will buffer them.
 	 * @param <V> the inner stream flowing data type that will be the produced signal.
 	 * @return the merged stream
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
 	public final <V> Stream<V> merge() {
-		final Stream<? extends Publisher<? extends V>> thiz = (Stream<? extends Publisher<? extends V>>)this;
+		final Stream<? extends Publisher<? extends V>> thiz = (Stream<? extends Publisher<? extends V>>) this;
 
 		return new Stream<V>() {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				Publishers.merge(thiz).subscribe(s);
+				Publishers.merge(thiz)
+				          .subscribe(s);
 			}
 
 			@Override
@@ -1138,9 +991,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * {@link #liftAction(Supplier)} all the nested {@link Publisher} values from this current upstream and from the
-	 * passed publisher.
-	 *
+	 * Pass all the nested {@link Publisher} values from this current upstream and from the passed publisher.
 	 * @return the merged stream
 	 * @since 2.0
 	 */
@@ -1148,7 +999,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Publishers.merge(Publishers.from(Arrays.asList(Stream.this, publisher))).subscribe(s);
+				Publishers.merge(Publishers.from(Arrays.asList(Stream.this, publisher)))
+				          .subscribe(s);
 			}
 
 			@Override
@@ -1164,10 +1016,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * {@link #liftAction(Supplier)} all the nested {@link Publisher} values from this current upstream and then on
-	 * complete consume from the
-	 * passed publisher.
-	 *
+	 * Pass all the nested {@link Publisher} values from this current upstream and then on complete consume from
+	 * the passed publisher.
 	 * @return the merged stream
 	 * @since 2.0
 	 */
@@ -1176,7 +1026,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
 				Publishers.concat(Publishers.from(Arrays.asList(Stream.this, publisher)))
-				.subscribe(s);
+				          .subscribe(s);
 			}
 
 			@Override
@@ -1193,7 +1043,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Start emitting all items from the passed publisher then emits from the current stream.
-	 *
 	 * @return the merged stream
 	 * @since 2.0
 	 */
@@ -1203,7 +1052,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Start emitting all items from the passed publisher then emits from the current stream.
-	 *
 	 * @return the merged stream
 	 * @since 2.0
 	 */
@@ -1213,20 +1061,19 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Start emitting all items from the passed publisher then emits from the current stream.
-	 *
 	 * @return the merged stream
 	 * @since 2.0
 	 */
 	public final Stream<O> startWith(final Publisher<? extends O> publisher) {
-		if (publisher == null) return this;
+		if (publisher == null) {
+			return this;
+		}
 		return Streams.concat(publisher, this);
 	}
 
 	/**
-	 * {@link #liftAction(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
-	 * complete.
-	 * The result will be produced with a list of each upstream most recent emitted data.
-	 *
+	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The
+	 * result will be produced with a list of each upstream most recent emitted data.
 	 * @return the zipped and joined stream
 	 * @since 2.0
 	 */
@@ -1235,10 +1082,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * {@link #liftAction(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
-	 * complete.
-	 * The result will be produced with a list of each upstream most recent emitted data.
-	 *
+	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The
+	 * result will be produced with a list of each upstream most recent emitted data.
 	 * @return the zipped and joined stream
 	 * @since 2.0
 	 */
@@ -1246,12 +1091,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return zipWith(publisher, ZipAction.<Tuple2<O, V>, V>joinZipper());
 	}
 
-
 	/**
-	 * {@link #liftAction(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
-	 * complete.
-	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
-	 *
+	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The
+	 * result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
 	 * @return the merged stream
 	 * @since 2.0
 	 */
@@ -1262,42 +1104,37 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return thiz.liftAction(new Supplier<Action<Publisher<?>, V>>() {
 			@Override
 			public Action<Publisher<?>, V> get() {
-				return new DynamicMergeAction<Object, V>(
-						new ZipAction<Object, V, TupleN>(zipper, null)).
-						capacity(getCapacity());
+				return new DynamicMergeAction<Object, V>(new ZipAction<Object, V, TupleN>(zipper, null)).
+						                                                                                        capacity(
+								                                                                                        getCapacity());
 			}
 		});
 	}
 
 	/**
-	 * {@link #liftAction(Supplier)} all the nested {@link Publisher} values to a new {@link Stream} until one of them
-	 * complete.
-	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
-	 *
+	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The
+	 * result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
 	 * @return the zipped stream
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
 	public final <T2, V> Stream<V> zipWith(Iterable<? extends T2> iterable,
-	                                       @Nonnull Function<Tuple2<O, T2>, V> zipper) {
+			@Nonnull Function<Tuple2<O, T2>, V> zipper) {
 		return zipWith(Streams.from(iterable), zipper);
 	}
 
 	/**
-	 * {@link #liftAction(Supplier)} with the passed {@link Publisher} values to a new {@link Stream} until one of them
-	 * complete.
-	 * The result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
-	 *
+	 * Pass with the passed {@link Publisher} values to a new {@link Stream} until one of them complete. The
+	 * result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
 	 * @return the zipped stream
 	 * @since 2.0
 	 */
 	public final <T2, V> Stream<V> zipWith(final Publisher<? extends T2> publisher,
-	                                       final @Nonnull Function<Tuple2<O, T2>, V> zipper) {
+			final @Nonnull Function<Tuple2<O, T2>, V> zipper) {
 		return new Stream<V>() {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				new ZipAction<>(zipper, Arrays.asList(Stream.this, publisher))
-				  .subscribe(s);
+				new ZipAction<>(zipper, Arrays.asList(Stream.this, publisher)).subscribe(s);
 			}
 
 			@Override
@@ -1313,37 +1150,27 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Bind the stream to a given {@param elements} volume of in-flight data:
-	 * - An {@link Action} will request up to the defined volume upstream.
-	 * - An {@link Action} will track the pending requests and fire up to {@param elements} when the previous volume
-	 * has
-	 * been processed.
-	 * - A {@link reactor.rx.action.aggregation.BatchAction} and any other size-bound action will be limited to the
-	 * defined volume.
-	 * <p>
-	 * <p>
-	 * A stream capacity can't be superior to the underlying dispatcher capacity: if the {@param elements} overflow the
-	 * dispatcher backlog size, the capacity will be aligned automatically to fit it.
-	 * RingBufferDispatcher will for instance take to a power of 2 size up to {@literal Integer.MAX_VALUE},
-	 * where a Stream can be sized up to {@literal Long.MAX_VALUE} in flight data.
-	 * <p>
-	 * <p>
-	 * When the stream receives more elements than requested, incoming data is eventually staged in a {@link
-	 * org.reactivestreams.Subscription}.
-	 * The subscription can react differently according to the implementation in-use,
-	 * the default strategy is as following:
-	 * - The first-level of pair compositions Stream->Action will overflow data in a {@link java.util.Queue},
-	 * ready to be polled when the action fire the pending requests.
-	 * - The following pairs of Action->Action will synchronously pass data
-	 * - Any pair of Stream->Subscriber or Action->Subscriber will behave as with the root Stream->Action pair rule.
-	 * - {@link #onOverflowBuffer()} force this staging behavior, with a possibilty to pass a {@link reactor.core.queue
-	 * .PersistentQueue}
-	 *
+	 * Bind the stream to a given {@param elements} volume of in-flight data: - An {@link Action} will request up to the
+	 * defined volume upstream. - An {@link Action} will track the pending requests and fire up to {@param elements}
+	 * when the previous volume has been processed. - A {@link BatchOperator} and any other size-bound action will be
+	 * limited to the defined volume. <p> <p> A stream capacity can't be superior to the underlying dispatcher capacity:
+	 * if the {@param elements} overflow the dispatcher backlog size, the capacity will be aligned automatically to fit
+	 * it. RingBufferDispatcher will for instance take to a power of 2 size up to {@literal Integer.MAX_VALUE}, where a
+	 * Stream can be sized up to {@literal Long.MAX_VALUE} in flight data. <p> <p> When the stream receives more
+	 * elements than requested, incoming data is eventually staged in a {@link org.reactivestreams.Subscription}. The
+	 * subscription can react differently according to the implementation in-use, the default strategy is as following:
+	 * - The first-level of pair compositions Stream->Action will overflow data in a {@link java.util.Queue}, ready to
+	 * be polled when the action fire the pending requests. - The following pairs of Action->Action will synchronously
+	 * pass data - Any pair of Stream->Subscriber or Action->Subscriber will behave as with the root Stream->Action pair
+	 * rule. - {@link #onOverflowBuffer()} force this staging behavior, with a possibilty to pass a {@link
+	 * reactor.core.queue .PersistentQueue}
 	 * @param elements maximum number of in-flight data
 	 * @return a backpressure capable stream
 	 */
 	public Stream<O> capacity(final long elements) {
-		if (elements == getCapacity()) return this;
+		if (elements == getCapacity()) {
+			return this;
+		}
 
 		return new Stream<O>() {
 			@Override
@@ -1365,7 +1192,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Make this Stream subscribers unbounded
-	 *
 	 * @return Stream with capacity set to max
 	 * @see #capacity(long)
 	 */
@@ -1377,53 +1203,46 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if not enough demand is signaled
 	 * downstream. A buffering capable stream will prevent underlying dispatcher to be saturated (and sometimes
 	 * blocking).
-	 *
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
 	public final Stream<O> onOverflowBuffer() {
-		return onOverflowBuffer(new Supplier<Queue<O>>() {
-			@Override
-			public Queue<O> get() {
-				return new ConcurrentLinkedQueue<O>();
-			}
-		});
+	    return onOverflowBuffer(BaseProcessor.SMALL_BUFFER_SIZE);
 	}
 
 	/**
 	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if not enough demand is signaled
 	 * downstream. A buffering capable stream will prevent underlying dispatcher to be saturated (and sometimes
 	 * blocking).
-	 *
-	 * @param queueSupplier A completable queue {@link reactor.fn.Supplier} to provide support for overflow
+	 * @param size max buffer size
 	 * @return a buffered stream
 	 * @since 2.0
 	 */
-	public Stream<O> onOverflowBuffer(final Supplier<? extends Queue<O>> queueSupplier) {
-		return liftAction(new Supplier<Action<O, O>>() {
+	public final Stream<O> onOverflowBuffer(final int size) {
+		return new Stream<O>() {
 			@Override
-			public Action<O, O> get() {
-				return new FlowControlAction<O>(queueSupplier);
+			public void subscribe(Subscriber<? super O> s) {
+				Processor<O, O> emitter = Processors.emitter(size);
+				emitter.subscribe(s);
+				Stream.this.subscribe(emitter);
 			}
-		});
+		};
 	}
 
 	/**
 	 * Attach a No-Op Action that only serves the purpose of dropping incoming values if not enough demand is signaled
-	 * downstream. A dropping stream will prevent underlying dispatcher to be saturated (and sometimes
-	 * blocking).
-	 *
+	 * downstream. A dropping stream will prevent underlying dispatcher to be saturated (and sometimes blocking).
 	 * @return a dropping stream
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<O> onOverflowDrop() {
-		return onOverflowBuffer(null);
+		return lift(DropOperator.INSTANCE);
 	}
 
 	/**
 	 * Evaluate each accepted value against the given {@link Predicate}. If the predicate test succeeds, the value is
 	 * passed into the new {@code Stream}. If the predicate test fails, the value is ignored.
-	 *
 	 * @param p the {@link Predicate} to test values against
 	 * @return a new {@link Stream} containing only values that pass the predicate test
 	 */
@@ -1432,9 +1251,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Evaluate each accepted boolean value. If the predicate test succeeds, the value is
-	 * passed into the new {@code Stream}. If the predicate test fails, the value is ignored.
-	 *
+	 * Evaluate each accepted boolean value. If the predicate test succeeds, the value is passed into the new {@code
+	 * Stream}. If the predicate test fails, the value is ignored.
 	 * @return a new {@link Stream} containing only values that pass the predicate test
 	 * @since 1.1, 2.0
 	 */
@@ -1443,10 +1261,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return ((Stream<Boolean>) this).filter(FilterOperator.simplePredicate);
 	}
 
-
 	/**
 	 * Create a new {@code Stream} whose only value will be the current instance of the {@link Stream}.
-	 *
 	 * @return a new {@link Stream} whose only value will be the materialized current {@link Stream}
 	 * @since 2.0
 	 */
@@ -1454,11 +1270,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return Streams.just(this);
 	}
 
-
 	/**
 	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair. The action will start
 	 * propagating errors after {@literal Integer.MAX_VALUE}.
-	 *
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
@@ -1468,9 +1282,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair. The action will start
-	 * propagating errors after {@param numRetries}.
-	 * This is generally useful for retry strategies and fault-tolerant streams.
-	 *
+	 * propagating errors after {@param numRetries}. This is generally useful for retry strategies and fault-tolerant
+	 * streams.
 	 * @param numRetries the number of times to tolerate an error
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
@@ -1480,10 +1293,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair.
-	 * {@param retryMatcher} will test an incoming {@link Throwable}, if positive the retry will occur.
-	 * This is generally useful for retry strategies and fault-tolerant streams.
-	 *
+	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair. {@param retryMatcher}
+	 * will test an incoming {@link Throwable}, if positive the retry will occur. This is generally useful for retry
+	 * strategies and fault-tolerant streams.
 	 * @param retryMatcher the predicate to evaluate if retry should occur based on a given error signal
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
@@ -1494,38 +1306,29 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair. The action will start
-	 * propagating errors after {@param numRetries}. {@param retryMatcher} will test an incoming {@Throwable},
-	 * if positive
-	 * the retry will occur (in conjonction with the {@param numRetries} condition).
-	 * This is generally useful for retry strategies and fault-tolerant streams.
-	 *
-	 * @param numRetries   the number of times to tolerate an error
+	 * propagating errors after {@param numRetries}. {@param retryMatcher} will test an incoming {@Throwable}, if
+	 * positive the retry will occur (in conjonction with the {@param numRetries} condition). This is generally useful
+	 * for retry strategies and fault-tolerant streams.
+	 * @param numRetries the number of times to tolerate an error
 	 * @param retryMatcher the predicate to evaluate if retry should occur based on a given error signal
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> retry(final int numRetries, final Predicate<Throwable> retryMatcher) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new RetryAction<O>(numRetries, retryMatcher, Stream.this);
-			}
-		});
+		return lift(new RetryOperator<O>(numRetries, retryMatcher, this));
 	}
 
 	/**
-	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair if the error is of
-	 * the given type.
-	 * The recoveredValues subscriber will be emitted the associated value if any. If it doesn't match the given
-	 * error type, the error signal will be propagated downstream but not to the recovered values sink.
-	 *
+	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair if the error is of the
+	 * given type. The recoveredValues subscriber will be emitted the associated value if any. If it doesn't match the
+	 * given error type, the error signal will be propagated downstream but not to the recovered values sink.
 	 * @param recoveredValuesSink the subscriber to listen for recovered values
-	 * @param exceptionType       the type of exceptions to handle
+	 * @param exceptionType the type of exceptions to handle
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> recover(@Nonnull final Class<? extends Throwable> exceptionType,
-	                               final Subscriber<Object> recoveredValuesSink) {
+			final Subscriber<Object> recoveredValuesSink) {
 		return retryWhen(new Function<Stream<? extends Throwable>, Publisher<?>>() {
 
 			@Override
@@ -1541,7 +1344,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 							return null;
 						}
 					}
-				}).subscribe(recoveredValuesSink);
+				})
+				      .subscribe(recoveredValuesSink);
 
 				return stream.map(new Function<Throwable, Signal<Throwable>>() {
 
@@ -1560,30 +1364,21 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	}
 
-
 	/**
 	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair if the backOff stream
 	 * produced by the passed mapper emits any next data or complete signal. It will propagate the error if the backOff
 	 * stream emits an error signal.
-	 *
-	 * @param backOffStream the function taking the error stream as an downstream and returning a new stream that applies
-	 *                      some backoff policy e.g. Streams.timer
+	 * @param backOffStream the function taking the error stream as an downstream and returning a new stream that
+	 * applies some backoff policy e.g. Streams.timer
 	 * @return a new fault-tolerant {@code Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> retryWhen(final Function<? super Stream<? extends Throwable>, ? extends Publisher<?>>
-	                                   backOffStream) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new RetryWhenAction<O>(getTimer(), backOffStream, Stream.this);
-			}
-		});
+	public final Stream<O> retryWhen(final Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> backOffStream) {
+		return lift(new RetryWhenOperator<O>(getTimer(), backOffStream, this));
 	}
 
 	/**
 	 * Create a new {@code Stream} which will keep re-subscribing its oldest parent-child stream pair on complete.
-	 *
 	 * @return a new infinitely repeated {@code Stream}
 	 * @since 2.0
 	 */
@@ -1592,79 +1387,51 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a new {@code Stream} which will keep re-subscribing its oldest parent-child stream pair on complete.
-	 * The action will be propagating complete after {@param numRepeat}.
-	 * if positive
-	 *
+	 * Create a new {@code Stream} which will keep re-subscribing its oldest parent-child stream pair on complete. The
+	 * action will be propagating complete after {@param numRepeat}. if positive
 	 * @param numRepeat the number of times to re-subscribe on complete
 	 * @return a new repeated {@code Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> repeat(final int numRepeat) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new RepeatAction<O>(numRepeat, Stream.this);
-			}
-		});
+		return lift(new RepeatOperator<O>(numRepeat, this));
 	}
-
 
 	/**
 	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair if the backOff stream
 	 * produced by the passed mapper emits any next signal. It will propagate the complete and error if the backoff
 	 * stream emits the relative signals.
-	 *
-	 * @param backOffStream the function taking a stream of complete timestamp in millis as an downstream and returning a
-	 *                         new
-	 *                      stream that applies some backoff policy, e.g. @{link Streams#timer(long)}
+	 * @param backOffStream the function taking a stream of complete timestamp in millis as an downstream and returning
+	 * a new stream that applies some backoff policy, e.g. @{link Streams#timer(long)}
 	 * @return a new repeated {@code Stream}
 	 * @since 2.0
 	 */
-	public final Stream<O> repeatWhen(final Function<? super Stream<? extends Long>, ? extends Publisher<?>>
-	                                    backOffStream) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new RepeatWhenAction<O>(getTimer(), backOffStream, Stream.this);
-			}
-		});
+	public final Stream<O> repeatWhen(final Function<? super Stream<? extends Long>, ? extends Publisher<?>> backOffStream) {
+		return lift(new RepeatWhenOperator<O>(getTimer(), backOffStream, this));
 	}
 
 	/**
 	 * Create a new {@code Stream} that will signal the last element observed before complete signal.
-	 *
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<O> last() {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new LastAction<O>();
-			}
-		});
+		return lift(LastOperator.INSTANCE);
 	}
 
 	/**
 	 * Create a new {@code Stream} that will signal next elements up to {@param max} times.
-	 *
 	 * @param max the number of times to broadcast next signals before completing
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> take(final long max) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new TakeAction<O>(max);
-			}
-		});
+		return lift(new TakeOperator<O>(max));
 	}
 
 	/**
 	 * Create a new {@code Stream} that will signal next elements up to the specified {@param time}.
-	 *
 	 * @param time the time window to broadcast next signals before completing
 	 * @param unit the time unit to use
 	 * @return a new limited {@code Stream}
@@ -1676,9 +1443,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} that will signal next elements up to the specified {@param time}.
-	 *
-	 * @param time  the time window to broadcast next signals before completing
-	 * @param unit  the time unit to use
+	 * @param time the time window to broadcast next signals before completing
+	 * @param unit the time unit to use
 	 * @param timer the Timer to use
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
@@ -1687,14 +1453,14 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		if (time > 0) {
 			Assert.isTrue(timer != null, "Timer can't be found, try assigning an environment to the stream");
 			return lift(new TakeUntilTimeoutOperator<O>(time, unit, timer));
-		} else {
+		}
+		else {
 			return Streams.empty();
 		}
 	}
 
 	/**
 	 * Create a new {@code Stream} that will signal next elements while {@param limitMatcher} is true.
-	 *
 	 * @param limitMatcher the predicate to evaluate for starting dropping events and completing
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
@@ -1705,7 +1471,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} that will NOT signal next elements up to {@param max} times.
-	 *
 	 * @param max the number of times to drop next signals before starting
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
@@ -1716,7 +1481,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} that will NOT signal next elements up to the specified {@param time}.
-	 *
 	 * @param time the time window to drop next signals before starting
 	 * @param unit the time unit to use
 	 * @return a new limited {@code Stream}
@@ -1728,9 +1492,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} that will NOT signal next elements up to the specified {@param time}.
-	 *
-	 * @param time  the time window to drop next signals before starting
-	 * @param unit  the time unit to use
+	 * @param time the time window to drop next signals before starting
+	 * @param unit the time unit to use
 	 * @param timer the Timer to use
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
@@ -1739,14 +1502,14 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		if (time > 0) {
 			Assert.isTrue(timer != null, "Timer can't be found, try assigning an environment to the stream");
 			return lift(new SkipUntilTimeoutOperator<O>(time, unit, timer));
-		} else {
+		}
+		else {
 			return this;
 		}
 	}
 
 	/**
 	 * Create a new {@code Stream} that will NOT signal next elements while {@param limitMatcher} is true.
-	 *
 	 * @param limitMatcher the predicate to evaluate to start broadcasting events
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
@@ -1756,10 +1519,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a new {@code Stream} that will NOT signal next elements while {@param limitMatcher} is true or
-	 * up to {@param max} times.
-	 *
-	 * @param max          the number of times to drop next signals before starting
+	 * Create a new {@code Stream} that will NOT signal next elements while {@param limitMatcher} is true or up to
+	 * {@param max} times.
+	 * @param max the number of times to drop next signals before starting
 	 * @param limitMatcher the predicate to evaluate for starting dropping events and completing
 	 * @return a new limited {@code Stream}
 	 * @since 2.0
@@ -1767,7 +1529,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	public final Stream<O> skipWhile(final long max, final Predicate<O> limitMatcher) {
 		if (max > 0) {
 			return lift(new SkipOperator<O>(limitMatcher, max));
-		} else {
+		}
+		else {
 			return this;
 		}
 	}
@@ -1775,7 +1538,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	/**
 	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} system time in
 	 * millis and T2 {@link <T>} associated data
-	 *
 	 * @return a new {@link Stream} that emits tuples of millis time and matching data
 	 * @since 2.0
 	 */
@@ -1788,7 +1550,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Create a new {@code Stream} that accepts a {@link reactor.fn.tuple.Tuple2} of T1 {@link Long} timemillis and T2
 	 * {@link <T>} associated data. The timemillis corresponds to the elapsed time between the subscribe and the first
 	 * next signal OR between two next signals.
-	 *
 	 * @return a new {@link Stream} that emits tuples of time elapsed in milliseconds and matching data
 	 * @since 2.0
 	 */
@@ -1799,7 +1560,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} that emits an item at a specified index from a source {@code Stream}
-	 *
 	 * @param index index of an item
 	 * @return a source item at a specified index
 	 */
@@ -1808,9 +1568,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a new {@code Stream} that emits an item at a specified index from a source {@code Stream}
-	 * or default value when index is out of bounds
-	 *
+	 * Create a new {@code Stream} that emits an item at a specified index from a source {@code Stream} or default value
+	 * when index is out of bounds
 	 * @param index index of an item
 	 * @return a source item at a specified index or a default value
 	 */
@@ -1820,10 +1579,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} whose values will be only the first value of each batch. Requires a {@code
-	 * getCapacity()} to have been set.
-	 * <p>
-	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
-	 *
+	 * getCapacity()} to have been set. <p> When a new batch is triggered, the first value of that next batch will be
+	 * pushed into this {@code Stream}.
 	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
 	public final Stream<O> sampleFirst() {
@@ -1831,140 +1588,102 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose values will be only the first value of each batch.
-	 * <p>
-	 * When a new batch is triggered, the first value of that next batch will be pushed into this {@code Stream}.
-	 *
+	 * Create a new {@code Stream} whose values will be only the first value of each batch. <p> When a new batch is
+	 * triggered, the first value of that next batch will be pushed into this {@code Stream}.
 	 * @param batchSize the batch size to use
 	 * @return a new {@link Stream} whose values are the first value of each batch)
 	 */
 	public final Stream<O> sampleFirst(final int batchSize) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new SampleAction<O>(batchSize, true);
-			}
-		});
+		return lift(new SampleOperator<O>(batchSize, true));
 	}
 
 	/**
 	 * Create a new {@code Stream} whose values will be only the first value of each batch.
-	 *
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
 	public final Stream<O> sampleFirst(long timespan, TimeUnit unit) {
 		return sampleFirst(Integer.MAX_VALUE, timespan, unit);
 	}
 
-
 	/**
 	 * Create a new {@code Stream} whose values will be only the first value of each batch.
-	 *
-	 * @param maxSize  the max counted size
+	 * @param maxSize the max counted size
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
 	public final Stream<O> sampleFirst(int maxSize, long timespan, TimeUnit unit) {
 		return sampleFirst(maxSize, timespan, unit, getTimer());
 	}
 
-
 	/**
 	 * Create a new {@code Stream} whose values will be only the first value of each batch.
-	 *
-	 * @param maxSize  the max counted size
+	 * @param maxSize the max counted size
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
-	 * @param timer    the Timer to run on
+	 * @param unit the time unit
+	 * @param timer the Timer to run on
 	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
-	public final Stream<O> sampleFirst(final int maxSize, final long timespan, final TimeUnit unit, final Timer
-	  timer) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new SampleAction<O>(true, maxSize, timespan, unit, timer);
-			}
-		});
+	public final Stream<O> sampleFirst(final int maxSize, final long timespan, final TimeUnit unit, final Timer timer) {
+		return lift(new SampleOperator<O>(true, maxSize, timespan, unit, timer));
 	}
 
 	/**
 	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code
 	 * getCapacity()}
-	 *
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
 	public final Stream<O> sample() {
 		return sample((int) Math.min(Integer.MAX_VALUE, getCapacity()));
 	}
 
-
 	/**
 	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code
 	 * getCapacity()}
-	 *
 	 * @param batchSize the batch size to use
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
 	public final Stream<O> sample(final int batchSize) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new SampleAction<O>(batchSize);
-			}
-		});
+		return lift(new SampleOperator<O>(batchSize));
 	}
-
 
 	/**
 	 * Create a new {@code Stream} whose values will be only the last value of each batch.
-	 *
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
 	public final Stream<O> sample(long timespan, TimeUnit unit) {
 		return sample(Integer.MAX_VALUE, timespan, unit, getTimer());
 	}
 
-
 	/**
 	 * Create a new {@code Stream} whose values will be only the last value of each batch.
-	 *
-	 * @param maxSize  the max counted size
+	 * @param maxSize the max counted size
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
 	public final Stream<O> sample(int maxSize, long timespan, TimeUnit unit) {
 		return sample(maxSize, timespan, unit, getTimer());
 	}
 
-
 	/**
 	 * Create a new {@code Stream} whose values will be only the last value of each batch.
-	 *
-	 * @param maxSize  the max counted size
+	 * @param maxSize the max counted size
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
-	 * @param timer    the Timer to run on
+	 * @param unit the time unit
+	 * @param timer the Timer to run on
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
 	public final Stream<O> sample(final int maxSize, final long timespan, final TimeUnit unit, final Timer timer) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new SampleAction<O>(false, maxSize, timespan, unit, timer);
-			}
-		});
+		return lift(new SampleOperator<O>(false, maxSize, timespan, unit, timer));
 	}
 
 	/**
 	 * Create a new {@code Stream} that filters out consecutive equals values.
-	 *
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 * @since 2.0
 	 */
@@ -1974,7 +1693,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} that filters out consecutive values having equal keys computed by function
-	 *
 	 * @param keySelector function to compute comparison key for each element
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 * @since 2.0
@@ -1985,7 +1703,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} that filters in only unique values.
-	 *
 	 * @return a new {@link Stream} with unique values
 	 */
 	public final Stream<O> distinct() {
@@ -1994,7 +1711,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Create a new {@code Stream} that filters in only values having distinct keys computed by function
-	 *
 	 * @param keySelector function to compute comparison key for each element
 	 * @return a new {@link Stream} with values having distinct keys
 	 */
@@ -2003,12 +1719,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a new {@code Stream} that emits <code>true</code> when any value satisfies a predicate
-	 * and <code>false</code> otherwise
-	 *
+	 * Create a new {@code Stream} that emits <code>true</code> when any value satisfies a predicate and
+	 * <code>false</code> otherwise
 	 * @param predicate predicate tested upon values
-	 * @return a new {@link Stream} with <code>true</code> if any value satisfies a predicate
-	 * and <code>false</code> otherwise
+	 * @return a new {@link Stream} with <code>true</code> if any value satisfies a predicate and <code>false</code>
+	 * otherwise
 	 * @since 2.0
 	 */
 	public final Stream<Boolean> exists(final Predicate<? super O> predicate) {
@@ -2016,28 +1731,25 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream
-	 * When a new batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
-	 *
+	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream When a new
+	 * batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
 	 * @return a new {@link Stream} whose values result from the iterable downstream
 	 * @since 1.1, 2.0
 	 */
 	@SuppressWarnings("unchecked")
 	public final <V> Stream<V> split() {
 		final Stream<Iterable<? extends V>> iterableStream = (Stream<Iterable<? extends V>>) this;
-		return iterableStream.flatMap(
-				new Function<Iterable<? extends V>, Publisher<? extends V>>() {
-					@Override
-					public Publisher<? extends V> apply(Iterable<? extends V> vs) {
-						return Streams.from(vs);
-					}
-				});
+		return iterableStream.flatMap(new Function<Iterable<? extends V>, Publisher<? extends V>>() {
+			@Override
+			public Publisher<? extends V> apply(Iterable<? extends V> vs) {
+				return Streams.from(vs);
+			}
+		});
 	}
 
 	/**
 	 * Collect incoming values into a {@link java.util.List} that will be pushed into the returned {@code Stream} every
 	 * time {@link #getCapacity()} has been reached, or flush is triggered.
-	 *
 	 * @return a new {@link Stream} whose values are a {@link java.util.List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer() {
@@ -2047,66 +1759,41 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	/**
 	 * Collect incoming values into multiple {@link List} buckets that will be pushed into the returned {@code Stream}
 	 * every time {@link #getCapacity()} has been reached.
-	 *
 	 * @param maxSize the collected size
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(final int maxSize) {
-		return liftAction(new Supplier<Action<O, List<O>>>() {
-			@Override
-			public Action<O, List<O>> get() {
-				return new BufferAction<O>(maxSize);
-			}
-		});
+		return lift(new BufferOperator<O>(maxSize));
 	}
 
 	/**
 	 * Collect incoming values into a {@link List} that will be moved into the returned {@code Stream} every time the
-	 * passed boundary publisher emits an item.
-	 * Complete will flush any remaining items.
-	 *
-	 * @param bucketOpening    the publisher to subscribe to on start for creating new buffer on next or complete
-	 *                         signals.
+	 * passed boundary publisher emits an item. Complete will flush any remaining items.
+	 * @param bucketOpening the publisher to subscribe to on start for creating new buffer on next or complete signals.
 	 * @param boundarySupplier the factory to provide a publisher to subscribe to when a buffer has been started
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public final Stream<List<O>> buffer(final Publisher<?> bucketOpening, final Supplier<? extends Publisher<?>>
-	  boundarySupplier) {
+	public final Stream<List<O>> buffer(final Publisher<?> bucketOpening,
+			final Supplier<? extends Publisher<?>> boundarySupplier) {
 
-		return liftAction(new Supplier<Action<O, List<O>>>() {
-			@Override
-			public Action<O, List<O>> get() {
-				return new BufferShiftWhenAction<O>(bucketOpening, boundarySupplier);
-			}
-		});
+		return lift(new BufferShiftWhenOperator<O>(bucketOpening, boundarySupplier));
 	}
-
 
 	/**
 	 * Collect incoming values into a {@link List} that will be moved into the returned {@code Stream} every time the
-	 * passed boundary publisher emits an item.
-	 * Complete will flush any remaining items.
-	 *
+	 * passed boundary publisher emits an item. Complete will flush any remaining items.
 	 * @param boundarySupplier the factory to provide a publisher to subscribe to on start for emiting and starting a
-	 *                         new buffer
+	 * new buffer
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(final Supplier<? extends Publisher<?>> boundarySupplier) {
-		return liftAction(new Supplier<Action<O, List<O>>>() {
-			@Override
-			public Action<O, List<O>> get() {
-				return new BufferWhenAction<O>(boundarySupplier);
-			}
-		});
+		return lift(new BufferWhenOperator<O>(boundarySupplier));
 	}
-
 
 	/**
 	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every time
-	 * {@code
-	 * maxSize} has been reached by any of them. Complete signal will flush any remaining buckets.
-	 *
-	 * @param skip    the number of items to skip before creating a new bucket
+	 * {@code maxSize} has been reached by any of them. Complete signal will flush any remaining buckets.
+	 * @param skip the number of items to skip before creating a new bucket
 	 * @param maxSize the collected size
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
@@ -2114,49 +1801,36 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		if (maxSize == skip) {
 			return buffer(maxSize);
 		}
-		return liftAction(new Supplier<Action<O, List<O>>>() {
-			@Override
-			public Action<O, List<O>> get() {
-				return new BufferShiftAction<O>(maxSize, skip);
-			}
-		});
+		return lift(new BufferShiftOperator<O>(maxSize, skip));
 	}
 
 	/**
-	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every
-	 * timespan.
-	 *
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every timespan.
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(long timespan, TimeUnit unit) {
 		return buffer(timespan, unit, getTimer());
 	}
 
-
 	/**
-	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every
-	 * timespan.
-	 *
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every timespan.
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
-	 * @param timer    the Timer to run on
+	 * @param unit the time unit
+	 * @param timer the Timer to run on
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(long timespan, TimeUnit unit, Timer timer) {
 		return buffer(Integer.MAX_VALUE, timespan, unit, timer);
 	}
 
-
 	/**
 	 * Collect incoming values into multiple {@link List} buckets created every {@code timeshift }that will be pushed
-	 * into the returned {@code Stream} every
-	 * timespan. Complete signal will flush any remaining buckets.
-	 *
-	 * @param timespan  the period in unit to use to release buffered lists
+	 * into the returned {@code Stream} every timespan. Complete signal will flush any remaining buckets.
+	 * @param timespan the period in unit to use to release buffered lists
 	 * @param timeshift the period in unit to use to create a new bucket
-	 * @param unit      the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(final long timespan, final long timeshift, final TimeUnit unit) {
@@ -2165,69 +1839,55 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Collect incoming values into multiple {@link List} buckets created every {@code timeshift }that will be pushed
-	 * into the returned {@code Stream} every
-	 * timespan. Complete signal will flush any remaining buckets.
-	 *
-	 * @param timespan  the period in unit to use to release buffered lists
+	 * into the returned {@code Stream} every timespan. Complete signal will flush any remaining buckets.
+	 * @param timespan the period in unit to use to release buffered lists
 	 * @param timeshift the period in unit to use to create a new bucket
-	 * @param unit      the time unit
-	 * @param timer     the Timer to run on
+	 * @param unit the time unit
+	 * @param timer the Timer to run on
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public final Stream<List<O>> buffer(final long timespan, final long timeshift, final TimeUnit unit, final Timer
-	  timer) {
+	public final Stream<List<O>> buffer(final long timespan,
+			final long timeshift,
+			final TimeUnit unit,
+			final Timer timer) {
 		if (timespan == timeshift) {
 			return buffer(timespan, unit, timer);
 		}
-		return liftAction(new Supplier<Action<O, List<O>>>() {
-			@Override
-			public Action<O, List<O>> get() {
-				return new BufferShiftAction<O>(Integer.MAX_VALUE, Integer.MAX_VALUE,
-						timeshift, timespan, unit, timer);
-			}
-		});
+		return lift(new BufferShiftOperator<O>(Integer.MAX_VALUE, Integer.MAX_VALUE, timeshift, timespan, unit, timer));
 	}
 
 	/**
-	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every
-	 * timespan OR maxSize items.
-	 *
-	 * @param maxSize  the max collected size
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every timespan
+	 * OR maxSize items.
+	 * @param maxSize the max collected size
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(int maxSize, long timespan, TimeUnit unit) {
 		return buffer(maxSize, timespan, unit, getTimer());
 	}
 
-
 	/**
-	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every
-	 * timespan OR maxSize items
-	 *
-	 * @param maxSize  the max collected size
+	 * Collect incoming values into a {@link List} that will be pushed into the returned {@code Stream} every timespan
+	 * OR maxSize items
+	 * @param maxSize the max collected size
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
-	 * @param timer    the Timer to run on
+	 * @param unit the time unit
+	 * @param timer the Timer to run on
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
-	public final Stream<List<O>> buffer(final int maxSize, final long timespan, final TimeUnit unit, final Timer
-	  timer) {
-		return liftAction(new Supplier<Action<O, List<O>>>() {
-			@Override
-			public Action<O, List<O>> get() {
-				return new BufferAction<O>(maxSize, timespan, unit, timer);
-			}
-		});
+	public final Stream<List<O>> buffer(final int maxSize,
+			final long timespan,
+			final TimeUnit unit,
+			final Timer timer) {
+		return lift(new BufferOperator<O>(maxSize, timespan, unit, timer));
 	}
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()},
-	 * complete signal or request signal.
-	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
-	 *
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()}, complete signal or request
+	 * signal. PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 * @return a new {@link Stream} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
 	 */
@@ -2237,10 +1897,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()},
-	 * complete signal or request signal.
-	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
-	 *
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()}, complete signal or request
+	 * signal. PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
 	 * @return a new {@link Stream} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
@@ -2251,10 +1909,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()},
-	 * complete signal or request signal.
-	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
-	 *
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()}, complete signal or request
+	 * signal. PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 * @param comparator A {@link Comparator<O>} to evaluate incoming data
 	 * @return a new {@link Stream} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
@@ -2265,28 +1921,20 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Stage incoming values into a {@link java.util.PriorityQueue<O>} that will be re-ordered and signaled to the
-	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()},
-	 * complete signal or request signal.
-	 * PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
-	 *
+	 * returned fresh {@link Stream}. Possible flush triggers are: {@link #getCapacity()}, complete signal or request
+	 * signal. PriorityQueue will use the {@link Comparable<O>} interface from an incoming data signal.
 	 * @param maxCapacity a fixed maximum number or elements to re-order at once.
-	 * @param comparator  A {@link Comparator<O>} to evaluate incoming data
+	 * @param comparator A {@link Comparator<O>} to evaluate incoming data
 	 * @return a new {@link Stream} whose values re-ordered using a PriorityQueue.
 	 * @since 2.0
 	 */
 	public final Stream<O> sort(final int maxCapacity, final Comparator<? super O> comparator) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new SortAction<O>(maxCapacity, comparator);
-			}
-		});
+		return lift(new SortOperator<O>(maxCapacity, comparator));
 	}
 
 	/**
 	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@link #getCapacity()}
 	 * times. The nested streams will be pushed into the returned {@code Stream}.
-	 *
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
@@ -2295,28 +1943,21 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@param backlog} times.
-	 * The nested streams will be pushed into the returned {@code Stream}.
-	 *
+	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@param backlog} times. The
+	 * nested streams will be pushed into the returned {@code Stream}.
 	 * @param backlog the time period when each window close and flush the attached consumer
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
 	public final Stream<Stream<O>> window(final int backlog) {
-		return liftAction(new Supplier<Action<O, Stream<O>>>() {
-			@Override
-			public Action<O, Stream<O>> get() {
-				return new WindowAction<O>(getTimer(), backlog);
-			}
-		});
+		return lift(new WindowOperator<O>(getTimer(), backlog));
 	}
 
 	/**
 	 * Re-route incoming values into bucket streams that will be pushed into the returned {@code Stream} every {@code
-	 * skip} and complete every time {@code
-	 * maxSize} has been reached by any of them. Complete signal will flush any remaining buckets.
-	 *
-	 * @param skip    the number of items to skip before creating a new bucket
+	 * skip} and complete every time {@code maxSize} has been reached by any of them. Complete signal will flush any
+	 * remaining buckets.
+	 * @param skip the number of items to skip before creating a new bucket
 	 * @param maxSize the collected size
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 */
@@ -2324,56 +1965,37 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		if (maxSize == skip) {
 			return window(maxSize);
 		}
-		return liftAction(new Supplier<Action<O, Stream<O>>>() {
-			@Override
-			public Action<O, Stream<O>> get() {
-				return new WindowShiftAction<O>(getTimer(), maxSize, skip);
-			}
-		});
+		return lift(new WindowShiftOperator<O>(getTimer(), maxSize, skip));
 	}
 
 	/**
 	 * Re-route incoming values into bucket streams that will be pushed into the returned {@code Stream} every  and
 	 * complete every time {@code boundarySupplier} stream emits an item.
-	 *
 	 * @param boundarySupplier the factory to create the stream to listen to for separating each window
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 */
 	public final Stream<Stream<O>> window(final Supplier<? extends Publisher<?>> boundarySupplier) {
-		return liftAction(new Supplier<Action<O, Stream<O>>>() {
-			@Override
-			public Action<O, Stream<O>> get() {
-				return new WindowWhenAction<O>(getTimer(), boundarySupplier);
-			}
-		});
+		return lift(new WindowWhenOperator<O>(getTimer(), boundarySupplier));
 	}
 
 	/**
 	 * Re-route incoming values into bucket streams that will be pushed into the returned {@code Stream} every and
 	 * complete every time {@code boundarySupplier} stream emits an item. Window starts forwarding when the
 	 * bucketOpening stream emits an item, then subscribe to the boundary supplied to complete.
-	 *
-	 * @param bucketOpening    the publisher to listen for signals to create a new window
+	 * @param bucketOpening the publisher to listen for signals to create a new window
 	 * @param boundarySupplier the factory to create the stream to listen to for closing an open window
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 */
-	public final Stream<Stream<O>> window(final Publisher<?> bucketOpening, final Supplier<? extends Publisher<?>>
-	  boundarySupplier) {
-		return liftAction(new Supplier<Action<O, Stream<O>>>() {
-			@Override
-			public Action<O, Stream<O>> get() {
-				return new WindowShiftWhenAction<O>(getTimer(), bucketOpening, boundarySupplier);
-			}
-		});
+	public final Stream<Stream<O>> window(final Publisher<?> bucketOpening,
+			final Supplier<? extends Publisher<?>> boundarySupplier) {
+		return lift(new WindowShiftWhenOperator<O>(getTimer(), bucketOpening, boundarySupplier));
 	}
 
-
 	/**
-	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined timespan.
-	 * The nested streams will be pushed into the returned {@code Stream}.
-	 *
+	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined timespan. The nested streams
+	 * will be pushed into the returned {@code Stream}.
 	 * @param timespan the period in unit to use to release a new window as a Stream
-	 * @param unit     the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
@@ -2381,76 +2003,57 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return window(Integer.MAX_VALUE, timespan, unit);
 	}
 
-
 	/**
 	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined timespan OR maxSize items.
 	 * The nested streams will be pushed into the returned {@code Stream}.
-	 *
-	 * @param maxSize  the max collected size
+	 * @param maxSize the max collected size
 	 * @param timespan the period in unit to use to release a buffered list
-	 * @param unit     the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
 	public final Stream<Stream<O>> window(final int maxSize, final long timespan, final TimeUnit unit) {
-		return liftAction(new Supplier<Action<O, Stream<O>>>() {
-			@Override
-			public Action<O, Stream<O>> get() {
-				return new WindowAction<O>(maxSize, timespan, unit, getTimer());
-			}
-		});
+		return lift(new WindowOperator<O>(maxSize, timespan, unit, getTimer()));
 	}
 
 	/**
 	 * Re-route incoming values into bucket streams that will be pushed into the returned {@code Stream} every {@code
-	 * timeshift} period. These streams will complete every {@code
-	 * timespan} period has cycled. Complete signal will flush any remaining buckets.
-	 *
-	 * @param timespan  the period in unit to use to complete a window
+	 * timeshift} period. These streams will complete every {@code timespan} period has cycled. Complete signal will
+	 * flush any remaining buckets.
+	 * @param timespan the period in unit to use to complete a window
 	 * @param timeshift the period in unit to use to create a new window
-	 * @param unit      the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 */
 	public final Stream<Stream<O>> window(final long timespan, final long timeshift, final TimeUnit unit) {
 		if (timeshift == timespan) {
 			return window(timespan, unit);
 		}
-		return liftAction(new Supplier<Action<O, Stream<O>>>() {
-			@Override
-			public Action<O, Stream<O>> get() {
-				return new WindowShiftAction<O>(Integer.MAX_VALUE, Integer.MAX_VALUE,
-						timespan, timeshift, unit, getTimer());
-			}
-		});
+		return lift(new WindowShiftOperator<O>(Integer.MAX_VALUE,
+				Integer.MAX_VALUE,
+				timespan,
+				timeshift,
+				unit,
+				getTimer()));
 	}
 
-
 	/**
-	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the
-	 * {param keyMapper}.
-	 *
+	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the {param
+	 * keyMapper}.
 	 * @param keyMapper the key mapping function that evaluates an incoming data and returns a key.
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 * @since 2.0
 	 */
 	public final <K> Stream<GroupedStream<K, O>> groupBy(final Function<? super O, ? extends K> keyMapper) {
-		return liftAction(new Supplier<Action<O, GroupedStream<K, O>>>() {
-			@Override
-			public Action<O, GroupedStream<K, O>> get() {
-				return new GroupByAction<>(getTimer(), keyMapper);
-			}
-		});
+		return lift(new GroupByOperator<>(keyMapper, getTimer()));
 	}
 
 	/**
-	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the
-	 * {param keyMapper}. The hashcode of the incoming data will be used for partitioning over {@link
-	 * Processors#DEFAULT_POOL_SIZE} buckets.
-	 * That means that at any point of time at most {@link Processors#DEFAULT_POOL_SIZE} number of streams will be created
-	 * and
-	 * used accordingly
-	 * to the current hashcode % n result.
-	 *
+	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the {param
+	 * keyMapper}. The hashcode of the incoming data will be used for partitioning over {@link
+	 * Processors#DEFAULT_POOL_SIZE} buckets. That means that at any point of time at most {@link
+	 * Processors#DEFAULT_POOL_SIZE} number of streams will be created and used accordingly to the current hashcode % n
+	 * result.
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values routed to this partition
 	 * @since 2.0
 	 */
@@ -2459,12 +2062,10 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the
-	 * {param keyMapper}. The hashcode of the incoming data will be used for partitioning over the buckets number
-	 * passed.
-	 * That means that at any point of time at most {@code buckets} number of streams will be created and used
-	 * accordingly to the positive modulo of the current hashcode with respect to the number of buckets specified.
-	 *
+	 * Re-route incoming values into a dynamically created {@link Stream} for each unique key evaluated by the {param
+	 * keyMapper}. The hashcode of the incoming data will be used for partitioning over the buckets number passed. That
+	 * means that at any point of time at most {@code buckets} number of streams will be created and used accordingly to
+	 * the positive modulo of the current hashcode with respect to the number of buckets specified.
 	 * @param buckets the maximum number of buckets to partition the values across
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values routed to this partition
 	 * @since 2.0
@@ -2480,10 +2081,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Reduce the values passing through this {@code Stream} into an object {@code T}.
-	 * This is a simple functional way for accumulating values.
-	 * The arguments are the N-1 and N next signal in this order.
-	 *
+	 * Reduce the values passing through this {@code Stream} into an object {@code T}. This is a simple functional way
+	 * for accumulating values. The arguments are the N-1 and N next signal in this order.
 	 * @param fn the reduce function
 	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 */
@@ -2492,12 +2091,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Reduce the values passing through this {@code Stream} into an object {@code A}.
-	 * The arguments are the N-1 and N next signal in this order.
-	 *
-	 * @param fn      the reduce function
+	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The arguments are the N-1 and N
+	 * next signal in this order.
+	 * @param fn the reduce function
 	 * @param initial the initial argument to pass to the reduce function
-	 * @param <A>     the type of the reduced object
+	 * @param <A> the type of the reduced object
 	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 */
 	public final <A> Stream<A> reduce(final A initial, @Nonnull BiFunction<A, ? super O, A> fn) {
@@ -2506,9 +2104,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Scan the values passing through this {@code Stream} into an object {@code A}.
-	 * The arguments are the N-1 and N next signal in this order.
-	 *
+	 * Scan the values passing through this {@code Stream} into an object {@code A}. The arguments are the N-1 and N
+	 * next signal in this order.
 	 * @param fn the reduce function
 	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 * @since 1.1, 2.0
@@ -2521,10 +2118,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Scan the values passing through this {@code Stream} into an object {@code A}. The given initial object will be
 	 * passed to the function's {@link Tuple2} argument. Behave like Reduce but triggers downstream Stream for every
 	 * transformation.
-	 *
 	 * @param initial the initial argument to pass to the reduce function
-	 * @param fn      the scan function
-	 * @param <A>     the type of the reduced object
+	 * @param fn the scan function
+	 * @param <A> the type of the reduced object
 	 * @return a new {@link Stream} whose values contain only the reduced objects
 	 * @since 1.1, 2.0
 	 */
@@ -2541,65 +2137,46 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Count accepted events for each batch {@param i} and pass each accumulated long to the {@param stream}.
-	 *
 	 * @return a new {@link Stream}
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<Long> count(final long i) {
 		Stream<O> thiz = i != Long.MAX_VALUE ? take(i) : this;
 
-		return thiz.liftAction(new Supplier<Action<O, Long>>() {
-			@Override
-			public Action<O, Long> get() {
-				return new CountAction<O>();
-			}
-		}).last();
+		return thiz.lift(CountOperator.INSTANCE)
+		           .last();
 	}
 
 	/**
 	 * Request once the parent stream every {@param period} milliseconds. Timeout is run on the environment root timer.
-	 *
 	 * @param period the period in milliseconds between two notifications on this stream
 	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> throttle(final long period) {
 		final Timer timer = getTimer();
-		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " +
-		  "Stream");
+		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " + "Stream");
 
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new ThrottleRequestAction<O>(timer, period);
-			}
-		});
+		return lift(new ThrottleRequestOperator<O>(timer, period));
 	}
 
 	/**
 	 * Request the parent stream every time the passed throttleStream signals a Long request volume. Complete and Error
 	 * signals will be propagated.
-	 *
 	 * @param throttleStream a function that takes a broadcasted stream of request signals and must return a stream of
-	 *                       valid request signal (long).
+	 * valid request signal (long).
 	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> requestWhen(final Function<? super Stream<? extends Long>, ? extends Publisher<? extends
-	  Long>> throttleStream) {
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new ThrottleRequestWhenAction<O>(getTimer(), throttleStream);
-			}
-		});
+			Long>> throttleStream) {
+		return lift(new ThrottleRequestWhenOperator<O>(getTimer(), throttleStream));
 	}
 
 	/**
-	 * Signal an error if no data has been emitted for {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
-	 * <p>
-	 * A Timeout Exception will be signaled if no data or complete signal have been sent within the given period.
-	 *
+	 * Signal an error if no data has been emitted for {@param timeout} milliseconds. Timeout is run on the environment
+	 * root timer. <p> A Timeout Exception will be signaled if no data or complete signal have been sent within the
+	 * given period.
 	 * @param timeout the timeout in milliseconds between two notifications on this composable
 	 * @return a new {@link Stream}
 	 * @since 1.1, 2.0
@@ -2609,13 +2186,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Signal an error if no data has been emitted for {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
-	 * <p>
-	 * A Timeout Exception will be signaled if no data or complete signal have been sent within the given period.
-	 *
+	 * Signal an error if no data has been emitted for {@param timeout} milliseconds. Timeout is run on the environment
+	 * root timer. <p> A Timeout Exception will be signaled if no data or complete signal have been sent within the
+	 * given period.
 	 * @param timeout the timeout in unit between two notifications on this composable
-	 * @param unit    the time unit
+	 * @param unit the time unit
 	 * @return a new {@link Stream}
 	 * @since 1.1, 2.0
 	 */
@@ -2624,45 +2199,46 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Switch to the fallback Publisher if no data has been emitted for {@param
-	 * timeout} milliseconds. Timeout is run on the environment root timer.
-	 * <p>
-	 * The current subscription will be cancelled and the fallback publisher subscribed.
-	 * <p>
-	 * A Timeout Exception will be signaled if no data or complete signal have been sent within the given period.
-	 *
-	 * @param timeout  the timeout in unit between two notifications on this composable
-	 * @param unit     the time unit
+	 * Switch to the fallback Publisher if no data has been emitted for {@param timeout} milliseconds. Timeout is run on
+	 * the environment root timer. <p> The current subscription will be cancelled and the fallback publisher subscribed.
+	 * <p> A Timeout Exception will be signaled if no data or complete signal have been sent within the given period.
+	 * @param timeout the timeout in unit between two notifications on this composable
+	 * @param unit the time unit
 	 * @param fallback the fallback {@link Publisher} to subscribe to once the timeout has occured
 	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
 	public final Stream<O> timeout(final long timeout, final TimeUnit unit, final Publisher<? extends O> fallback) {
 		final Timer timer = getTimer();
-		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " +
-		  "Stream");
+		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " + "Stream");
 
-		return liftAction(new Supplier<Action<O, O>>() {
-			@Override
-			public Action<O, O> get() {
-				return new TimeoutAction<O>(fallback, timer,
-						unit != null ? TimeUnit.MILLISECONDS.convert(timeout, unit) :
-								timeout);
-			}
-		});
+		return lift(new TimeoutOperator<O>(fallback,
+				timer,
+				unit != null ? TimeUnit.MILLISECONDS.convert(timeout, unit) : timeout));
 	}
 
 	/**
-	 * Combine the most ancient upstream action to act as the {@link org.reactivestreams.Subscriber} downstream component
-	 * and
-	 * the current stream to act as the {@link org.reactivestreams.Publisher}.
-	 * <p>
-	 * Useful to share and ship a full stream whilst hiding the staging actions in the middle.
-	 * <p>
-	 * Default behavior, e.g. a single stream, will raise an {@link java.lang.IllegalStateException} as there would not
-	 * be any Subscriber (Input) side to combine. {@link reactor.rx.action.Action#combine()} is the usual reference
-	 * implementation used.
+	 * Print a debugged form of the root action relative to this one. The output will be an acyclic directed graph of
+	 * composed actions.
 	 *
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public StreamUtils.StreamVisitor debug() {
+		if(Publishable.class.isAssignableFrom(getClass())){
+			return StreamUtils.browse(Action.findOldestUpstream((Publishable)this, Action.class));
+		}
+		else{
+			return null;
+		}
+	}
+
+	/**
+	 * Combine the most ancient upstream action to act as the {@link org.reactivestreams.Subscriber} downstream
+	 * component and the current stream to act as the {@link org.reactivestreams.Publisher}. <p> Useful to share and
+	 * ship a full stream whilst hiding the staging actions in the middle. <p> Default behavior, e.g. a single stream,
+	 * will raise an {@link java.lang.IllegalStateException} as there would not be any Subscriber (Input) side to
+	 * combine. {@link reactor.rx.action.Action#combine()} is the usual reference implementation used.
 	 * @param <E> the type of the most ancien action downstream.
 	 * @return new Combined Action
 	 */
@@ -2671,10 +2247,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Return the promise of the next triggered signal.
-	 * A promise is a container that will capture only once the first arriving error|next|complete signal
-	 * to this {@link Stream}. It is useful to coordinate on single data streams or await for any signal.
-	 *
+	 * Return the promise of the next triggered signal. A promise is a container that will capture only once the first
+	 * arriving error|next|complete signal to this {@link Stream}. It is useful to coordinate on single data streams or
+	 * await for any signal.
 	 * @return a new {@link Promise}
 	 * @since 2.0
 	 */
@@ -2685,12 +2260,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Return the promise of the next triggered signal. Unlike next, no extra action is required to
-	 *  request 1 onSubscribe allowing for the promise request to run on the onSubscribe signal thread.
+	 * Return the promise of the next triggered signal. Unlike next, no extra action is required to request 1
+	 * onSubscribe allowing for the promise request to run on the onSubscribe signal thread.
 	 *
-	 * A promise is a container that will capture only once the first arriving error|next|complete signal
-	 * to this {@link Stream}. It is useful to coordinate on single data streams or await for any signal.
-	 *
+	 * A promise is a container that will capture only once the first arriving error|next|complete signal to this {@link
+	 * Stream}. It is useful to coordinate on single data streams or await for any signal.
 	 * @return a new {@link Promise}
 	 * @since 2.1
 	 */
@@ -2701,10 +2275,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return d;
 	}
 
-
 	/**
 	 * Fetch all values in a List to the returned Promise
-	 *
 	 * @return the promise of all data from this Stream
 	 * @since 2.1
 	 */
@@ -2714,23 +2286,22 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Return the promise of N signals collected into an array list.
-	 *
 	 * @param maximum list size and therefore events signal to listen for
 	 * @return the promise of all data from this Stream
 	 * @since 2.1
 	 */
 	public final Promise<List<O>> consumeAsList(long maximum) {
-		if (maximum > 0)
-			return take(maximum).buffer().consumeNext();
+		if (maximum > 0) {
+			return take(maximum).buffer()
+			                    .consumeNext();
+		}
 		else {
 			return buffer(Integer.MAX_VALUE).consumeNext();
 		}
 	}
 
-
 	/**
 	 * Fetch all values in a List to the returned Promise
-	 *
 	 * @return the promise of all data from this Stream
 	 * @since 2.0
 	 */
@@ -2740,14 +2311,15 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Return the promise of N signals collected into an array list.
-	 *
 	 * @param maximum list size and therefore events signal to listen for
 	 * @return the promise of all data from this Stream
 	 * @since 2.0
 	 */
 	public final Promise<List<O>> toList(long maximum) {
-		if (maximum > 0)
-			return take(maximum).buffer().next();
+		if (maximum > 0) {
+			return take(maximum).buffer()
+			                    .next();
+		}
 		else {
 			return buffer(Integer.MAX_VALUE).next();
 		}
@@ -2755,7 +2327,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Assign a Timer to be provided to this Stream Subscribers
-	 *
 	 * @param timer the timer
 	 * @return a configured stream
 	 */
@@ -2780,7 +2351,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Blocking call to pass values from this stream to the queue that can be polled from a consumer.
-	 *
 	 * @return the buffered queue
 	 * @since 2.0
 	 */
@@ -2788,10 +2358,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return toBlockingQueue(BaseProcessor.SMALL_BUFFER_SIZE);
 	}
 
-
 	/**
 	 * Blocking call to eagerly fetch values from this stream
-	 *
 	 * @param maximum queue getCapacity(), a full queue might block the stream producer.
 	 * @return the buffered queue
 	 * @since 2.0
@@ -2803,22 +2371,16 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Prevent a {@link Stream} to be cancelled. Cancel propagation occurs when last subscriber is cancelled.
-	 *
 	 * @return a new {@literal Stream} that is never cancelled.
 	 */
 	public Stream<O> keepAlive() {
-		return liftAction(new Supplier<Action<O, O>>() {
+		return lift(new Function<Subscriber<? super O>, Subscriber<? super O>>() {
 			@Override
-			public Action<O, O> get() {
-				return new Action<O, O>() {
+			public Subscriber<? super O> apply(Subscriber<? super O> subscriber) {
+				return new SubscriberBarrier<O, O>(subscriber) {
 					@Override
-					protected void doNext(O ev) {
-						broadcastNext(ev);
-					}
-
-					@Override
-					public void cancel() {
-						//ignore
+					protected void doCancel() {
+						//IGNORE
 					}
 				};
 			}
@@ -2826,10 +2388,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Subscribe the {@link ProcessorAction#downstream()} to this Stream. Combining action
-	 * through {@link
+	 * Subscribe the {@link ProcessorAction#downstream()} to this Stream. Combining action through {@link
 	 * reactor.rx.action.Action#combine()} allows for easy distribution of a full flow.
-	 *
 	 * @param subscriber the combined actions to subscribe
 	 * @since 2.0
 	 */
@@ -2847,11 +2407,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return getCapacity() < upstream.getCapacity();
 	}
 
-
 	/**
-	 * Get the current timer available if any or try returning the shared Environment one (which may cause an error
-	 * if no Environment has been globally initialized)
-	 *
+	 * Get the current timer available if any or try returning the shared Environment one (which may cause an error if
+	 * no Environment has been globally initialized)
 	 * @return any available timer
 	 */
 	public Timer getTimer() {
@@ -2860,7 +2418,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Get the current action child subscription
-	 *
 	 * @return current child {@link reactor.rx.subscription.PushSubscription}
 	 */
 	public PushSubscription<O> downstreamSubscription() {
@@ -2870,10 +2427,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	/**
 	 * Try cleaning a given subscription from the stream references. Unicast implementation such as IterableStream
 	 * (Streams.from(1,2,3)) or SupplierStream (Streams.generate(-> 1)) won't need to perform any job and as such will
-	 * return @{code false} upon this call.
-	 * Alternatively, Action and HotStream (Streams.from()) will clean any reference to that subscription from their
-	 * internal registry and might return {@code true} if successful.
-	 *
+	 * return @{code false} upon this call. Alternatively, Action and HotStream (Streams.from()) will clean any
+	 * reference to that subscription from their internal registry and might return {@code true} if successful.
 	 * @return current child {@link reactor.rx.subscription.PushSubscription}
 	 */
 	public boolean cancelSubscription(PushSubscription<O> oPushSubscription) {

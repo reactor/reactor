@@ -89,7 +89,7 @@ public class SerializedSubscriber<T> implements Subscriber<T>, Subscription, Bou
 		}
 	}
 
-	public static <T> SerializedSubscriber<T> create(Subscriber<T> s) {
+	public static <T> SerializedSubscriber<T> create(Subscriber<? super T> s) {
 		return new SerializedSubscriber<>(s);
 	}
 

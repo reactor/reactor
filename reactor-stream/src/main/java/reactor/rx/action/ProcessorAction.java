@@ -22,8 +22,8 @@ import org.reactivestreams.Subscription;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
+import reactor.fn.Consumer;
 import reactor.rx.Stream;
-import reactor.rx.StreamUtils;
 
 /**
  * Create a Processor decorated with Stream API
@@ -31,10 +31,21 @@ import reactor.rx.StreamUtils;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-final public class ProcessorAction<E, O> extends Stream<O> implements Processor<E, O>, Publishable<O>, Subscribable<E> {
+public class ProcessorAction<E, O> extends Stream<O> implements Processor<E, O>, Publishable<O>, Subscribable<E> {
 
-	private final Subscriber<E> receiver;
-	private final Publisher<O> publisher;
+	protected final Subscriber<E> receiver;
+	protected final Publisher<O> publisher;
+
+	/**
+	 *
+	 * @param processor
+	 * @param <E>
+	 * @param <O>
+	 * @return
+	 */
+	public static <E, O> ProcessorAction<E, O> create(Processor<E, O> processor){
+		return create(processor, processor);
+	}
 
 	/**
 	 *
@@ -48,9 +59,56 @@ final public class ProcessorAction<E, O> extends Stream<O> implements Processor<
 		return new ProcessorAction<>(receiver, publisher);
 	}
 
-	ProcessorAction(Subscriber<E> receiver, Publisher<O> publisher) {
+	protected ProcessorAction(Subscriber<E> receiver, Publisher<O> publisher) {
 		this.receiver = receiver;
 		this.publisher = publisher;
+	}
+
+
+	/**
+	 * Create a consumer that broadcast complete signal from any accepted value.
+	 *
+	 * @return a new {@link Consumer} ready to forward complete signal to this stream
+	 * @since 2.0
+	 */
+	public final Consumer<?> toCompleteConsumer() {
+		return new Consumer<Object>() {
+			@Override
+			public void accept(Object o) {
+				onComplete();
+			}
+		};
+	}
+
+
+	/**
+	 * Create a consumer that broadcast next signal from accepted values.
+	 *
+	 * @return a new {@link Consumer} ready to forward values to this stream
+	 * @since 2.0
+	 */
+	public final Consumer<E> toNextConsumer() {
+		return new Consumer<E>() {
+			@Override
+			public void accept(E o) {
+				onNext(o);
+			}
+		};
+	}
+
+	/**
+	 * Create a consumer that broadcast error signal from any accepted value.
+	 *
+	 * @return a new {@link Consumer} ready to forward error to this stream
+	 * @since 2.0
+	 */
+	public final Consumer<Throwable> toErrorConsumer() {
+		return new Consumer<Throwable>() {
+			@Override
+			public void accept(Throwable o) {
+				onError(o);
+			}
+		};
 	}
 
 	@Override

@@ -13,166 +13,134 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 package reactor.rx.broadcast;
 
-import java.util.Queue;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-
+import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Processors;
 import reactor.Timers;
 import reactor.core.error.CancelException;
-import reactor.core.error.Exceptions;
-import reactor.core.support.BackpressureUtils;
-import reactor.core.support.SignalType;
+import reactor.core.error.InsufficientCapacityException;
 import reactor.fn.timer.Timer;
-import reactor.rx.action.Action;
-import reactor.rx.subscription.PushSubscription;
-import reactor.rx.subscription.ReactiveSubscription;
+import reactor.rx.action.ProcessorAction;
+import reactor.rx.subscription.SwapSubscription;
 
 /**
  * A {@code Broadcaster} is a subclass of {@code Stream} which exposes methods for publishing values into the pipeline.
  * It is possible to publish discreet values typed to the generic type of the {@code Stream} as well as error conditions
  * and the Reactive Streams "complete" signal via the {@link #onComplete()} method.
- *
  * @author Stephane Maldini
  */
-public class Broadcaster<O> extends Action<O, O> {
+public class Broadcaster<O> extends ProcessorAction<O, O> {
 
 	/**
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
-	 * .Broadcaster#onNext(Object)},
-	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
+	 * .Broadcaster#onNext(Object)}, {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values
+	 * broadcasted are directly consumable by subscribing to the returned instance.
 	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
 	 */
 	public static <T> Broadcaster<T> create() {
-		return new Broadcaster<T>(null, false);
+		return new Broadcaster<T>(Processors.<T>emitter(), null, false);
 	}
 
-
 	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link
-	 * Broadcaster#onNext(Object)},
-	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 *
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
+	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
+	 * subscribing to the returned instance.
 	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
-	 * @param <T>   the type of values passing through the {@literal Broadcaster}
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> create(Timer timer) {
-		return new Broadcaster<T>(timer, false);
+		return new Broadcaster<T>(Processors.<T>emitter(), timer, false);
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link
-	 * Broadcaster#onNext(Object)},
-	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 * <p>
-	 * Will not bubble up  any {@link CancelException}
-	 *
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
+	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
+	 * subscribing to the returned instance. <p> Will not bubble up  any {@link CancelException}
 	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> passthrough() {
-		return new Broadcaster<T>(null, true);
+		return new Broadcaster<T>(Processors.<T>emitter(), null, true);
 	}
 
 	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link
-	 * Broadcaster#onNext(Object)},
-	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
-	 * Values broadcasted are directly consumable by subscribing to the returned instance.
-	 * <p>
-	 * Will not bubble up  any {@link CancelException}
-	 *
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
+	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
+	 * subscribing to the returned instance. <p> Will not bubble up  any {@link CancelException}
 	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
-	 * @param <T>   the type of values passing through the {@literal Broadcaster}
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> passthrough(Timer timer) {
-		return new Broadcaster<T>(timer, true);
+		return new Broadcaster<T>(Processors.<T>emitter(), timer, true);
 	}
 
 	/**
 	 * INTERNAL
 	 */
 
-	private final Timer   timer;
-	private final boolean ignoreDropped;
+	private final Timer               timer;
+	private final boolean             ignoreDropped;
+	private final SwapSubscription<O> subscription;
 
-	@SuppressWarnings("unused")
-	private volatile long requested;
-	protected static final AtomicLongFieldUpdater<Broadcaster> REQUESTED =
-			AtomicLongFieldUpdater.newUpdater(Broadcaster.class, "requested");
-
-
-	@SuppressWarnings("unchecked")
-	protected Broadcaster(Timer timer, boolean ignoreDropped) {
-		super();
+	protected Broadcaster(
+			Subscriber<O> receiver,
+			Publisher<O> publisher,
+			Timer timer,
+			boolean ignoreDropped) {
+		super(receiver, publisher);
 		this.timer = timer;
 		this.ignoreDropped = ignoreDropped;
+		this.subscription = SwapSubscription.create();
 
-		//start broadcaster
-		SUBSCRIPTION.lazySet(this, SignalType.NOOP_SUBSCRIPTION);
+		receiver.onSubscribe(subscription);
 	}
 
-
-	@Override
-	protected void doNext(O ev) {
-		broadcastNext(ev);
+	protected Broadcaster(Processor<O, O> processor, Timer timer, boolean ignoreDropped) {
+		this(processor, processor, timer, ignoreDropped);
 	}
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		if (SUBSCRIPTION.compareAndSet(this, SignalType.NOOP_SUBSCRIPTION, subscription)) {
-			upstreamSubscription = createTrackingSubscription(subscription);
-				//upstreamSubscription.maxCapacity(getCapacity());
-
-			try {
-					doOnSubscribe(subscription);
-					doStart();
-			}
-			catch (Throwable t) {
-					Exceptions.throwIfFatal(t);
-					doError(t);
-			}
-
-			drainSubscription(subscription);
-
-		} else {
-			super.onSubscribe(subscription);
-		}
-	}
-
-	@Override
-	protected PushSubscription<O> createSubscription(Subscriber<? super O> subscriber, Queue<O> queue) {
-		if (queue != null) {
-			return new ReactiveSubscription<O>(this, subscriber, queue) {
-
-				@Override
-				protected void onRequest(long elements) {
-					if (upstreamSubscription != null) {
-						requestUpstream(capacity, terminalSignalled, elements);
-					}
-				}
-			};
-		}
-		else {
-			return super.createSubscription(subscriber, null);
-		}
+		this.subscription.swapTo(subscription);
 	}
 
 	@Override
 	public void onNext(O ev) {
 		try {
-			super.onNext(ev);
-		} catch (CancelException c) {
-			if (!ignoreDropped) throw c;
+			receiver.onNext(ev);
+		}
+		catch (InsufficientCapacityException | CancelException c) {
+			if (!ignoreDropped) {
+				throw c;
+			}
+		}
+	}
+
+	@Override
+	public void onError(Throwable t) {
+		try {
+			receiver.onError(t);
+		}
+		catch (InsufficientCapacityException | CancelException c) {
+			//IGNORE
+		}
+	}
+
+	@Override
+	public void onComplete() {
+		try {
+			receiver.onComplete();
+		}
+		catch (InsufficientCapacityException | CancelException c) {
+			//IGNORE
 		}
 	}
 
@@ -180,52 +148,4 @@ public class Broadcaster<O> extends Action<O, O> {
 	public Timer getTimer() {
 		return timer != null ? timer : Timers.globalOrNull();
 	}
-
-	@Override
-	public Broadcaster<O> capacity(long elements) {
-		super.capacity(elements);
-		return this;
-	}
-
-	@Override
-
-	public void cancel() {
-		Subscription parentSub = SUBSCRIPTION.getAndSet(this, SignalType.NOOP_SUBSCRIPTION);
-		if (parentSub != null) {
-			parentSub.cancel();
-		}
-	}
-
-	protected void drainSubscription(Subscription subscription){
-		long toRequest = 0L;
-		for(;;){
-			long n = REQUESTED.getAndSet(this, 0L);
-			if(n == 0){
-				break;
-			}
-			toRequest = BackpressureUtils.addOrLongMax(toRequest, n);
-			if(toRequest == Long.MAX_VALUE){
-				break;
-			}
-		}
-		if(toRequest > 0L){
-			subscription.request(toRequest);
-		}
-	}
-
-	@Override
-	protected void requestUpstream(long capacity, boolean terminated, long elements) {
-		if(terminated){
-			return;
-		}
-
-		if(BackpressureUtils.getAndAdd(REQUESTED, this, elements) == 0) {
-			Subscription upstreamSubscription = this.upstreamSubscription;
-			if (upstreamSubscription != null && upstreamSubscription != SignalType.NOOP_SUBSCRIPTION) {
-				drainSubscription(upstreamSubscription);
-			}
-		}
-	}
-
-
 }

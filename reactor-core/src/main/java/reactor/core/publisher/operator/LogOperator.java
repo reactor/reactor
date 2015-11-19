@@ -140,7 +140,7 @@ public final class LogOperator<IN>
 
 		@Override
 		public String toString() {
-			return "{subId="+uniqueId+", logger=" + log.getName() + "}";
+			return getClass().getSimpleName()+"{subId="+uniqueId+", logger=" + log.getName() + "}";
 		}
 	}
 

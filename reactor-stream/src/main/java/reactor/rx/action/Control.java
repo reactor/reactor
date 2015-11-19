@@ -47,7 +47,7 @@ public interface Control {
 	/**
 	 * Check if the current stream is emitting any signal.
 	 */
-	boolean isPublishing();
+	boolean isTerminated();
 
 
 	/**

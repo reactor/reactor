@@ -49,14 +49,14 @@ public final  class FinallyOperator<T> implements Publishers.Operator<T, T> {
 
 		@Override
 		protected void doError(Throwable ev) {
-			consumer.accept(Signal.<T>error(ev));
 			subscriber.onError(ev);
+			consumer.accept(Signal.<T>error(ev));
 		}
 
 		@Override
 		protected void doComplete() {
-			consumer.accept(Signal.<T>complete());
 			subscriber.onComplete();
+			consumer.accept(Signal.<T>complete());
 		}
 
 	}

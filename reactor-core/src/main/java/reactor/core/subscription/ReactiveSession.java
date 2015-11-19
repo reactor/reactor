@@ -16,6 +16,8 @@
 
 package reactor.core.subscription;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.locks.LockSupport;
@@ -38,8 +40,11 @@ import reactor.fn.timer.TimeUtils;
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ReactiveSession<E> implements Subscribable<E>, Subscription, Bounded, Consumer<E> {
+public class ReactiveSession<E> implements Subscribable<E>, Subscription, Bounded, Consumer<E>, Closeable {
 
+	/**
+	 *
+	 */
 	public enum Emission {
 		FAILED, BACKPRESSURED, OK, CANCELLED;
 
@@ -343,6 +348,10 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscription, Bounde
 		return actual;
 	}
 
+	@Override
+	public void close() throws IOException {
+		finish();
+	}
 
 	@Override
 	public String toString() {

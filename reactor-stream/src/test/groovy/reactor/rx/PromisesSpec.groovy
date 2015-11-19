@@ -709,7 +709,7 @@ class PromisesSpec extends Specification {
 		given:
 			"a promise with a filter that only accepts even values"
 			def promise = Promises.ready()
-			promise.stream().filter { it % 2 == 0 }.next()
+			promise.stream().filter { it % 2 == 0 }.consumeNext()
 
 		when:
 			"the promise is fulfilled with an even value"

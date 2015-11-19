@@ -19,8 +19,10 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.SignalType;
+import reactor.fn.Supplier;
 
 /**
  * Convenience subscriber base class that checks for input errors and provide a self-subscription operation.
@@ -42,6 +44,22 @@ public class BaseSubscriber<T> implements Subscriber<T> {
 	public BaseSubscriber<T> start() {
 		onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 		return this;
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public ReactiveSession<T> startSession() {
+		return bindSession(true);
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public ReactiveSession<T> bindSession(boolean autostart) {
+		return ReactiveSession.create(this, autostart);
 	}
 
 	@Override

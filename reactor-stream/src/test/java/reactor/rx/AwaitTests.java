@@ -68,7 +68,7 @@ public class AwaitTests extends AbstractReactorTest {
 
 		Broadcaster<Event<Throwable>> stream = Broadcaster.<Event<Throwable>>create();
 		Promise<List<Long>> promise = stream.take(16).count().toList();
-		r.on(Selectors.T(Throwable.class), stream.toBroadcastNextConsumer());
+		r.on(Selectors.T(Throwable.class), stream.toNextConsumer());
 		r.on(Selectors.$("test"), (Event<?> ev) -> {
 			try {
 				Thread.sleep(100);

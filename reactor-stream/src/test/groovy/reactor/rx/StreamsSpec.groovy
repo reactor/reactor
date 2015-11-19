@@ -572,16 +572,6 @@ class StreamsSpec extends Specification {
 			'it is called since publisher is in error state'
 			thrown RuntimeException
 			errors == 2
-
-		when:
-			'A RuntimeException is accepted'
-			composable = Broadcaster.<Integer> create()
-			composable.onError(new IllegalArgumentException())
-
-		then:
-			'it is not passed to the consumer'
-			thrown Exception
-			errors == 2
 	}
 
 	def 'Accepted errors and values are passed to a registered Consumer'() {
@@ -650,8 +640,8 @@ class StreamsSpec extends Specification {
 	def 'Last value of a batch is accessible'() {
 		given:
 			'a composable that will accept an unknown number of values'
-			def d = Broadcaster.<Integer> create().capacity(3)
-			def composable = d
+			def d = Broadcaster.<Integer> create()
+			def composable = d.capacity(3)
 
 		when:
 			'the expected accept count is set and that number of values is accepted'
@@ -1161,8 +1151,8 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the error is passed on'
-			thrown Exception //because consume doesn't have error handler
-			errors == 1
+		errors == 1
+		thrown Exception //because consume doesn't have error handler
 	}
 
 	def "When a processor is streamed"() {
@@ -1372,8 +1362,8 @@ class StreamsSpec extends Specification {
 	def 'Reduce will accumulate a list of accepted values'() {
 		given:
 			'a composable'
-			def source = Broadcaster.<Integer> create().capacity(1)
-			Stream reduced = source.buffer()
+			def source = Broadcaster.<Integer> create()
+			Stream reduced = source.capacity(1).buffer()
 			def value = reduced.tap()
 
 		when:
@@ -1390,8 +1380,8 @@ class StreamsSpec extends Specification {
 	def 'Collect will accumulate a list of accepted values and pass it to a consumer'() {
 		given:
 			'a source and a collected stream'
-			def source = Broadcaster.<Integer> create().capacity(2)
-			Stream reduced = source.buffer()
+			def source = Broadcaster.<Integer> create()
+			Stream reduced = source.capacity(2).buffer()
 			def value = reduced.tap()
 
 		when:
@@ -1419,7 +1409,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			def res = numbers.buffer(2, 3).toList()
+			def res = numbers.buffer(2, 3).log('skip1').toList()
 
 		then:
 			'the collected lists are available'
@@ -1427,7 +1417,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'overlapping buffers'
-			res = numbers.buffer(3, 2).toList()
+			res = numbers.buffer(3, 2).log('skip2').toList()
 
 		then:
 			'the collected overlapping lists are available'
@@ -1452,7 +1442,7 @@ class StreamsSpec extends Specification {
 		when:
 			'non overlapping buffers'
 			def boundaryStream = Broadcaster.<Integer> create()
-			def res = numbers.buffer { boundaryStream }.toList()
+			def res = numbers.log('numb').buffer { boundaryStream.log('boundary') }.log('promise').consumeAsList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1469,7 +1459,7 @@ class StreamsSpec extends Specification {
 		when:
 			'overlapping buffers'
 			def bucketOpening = Broadcaster.<Integer> create()
-			res = numbers.buffer(bucketOpening) { boundaryStream }.toList()
+			res = numbers.buffer(bucketOpening) { boundaryStream }.consumeAsList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1477,10 +1467,10 @@ class StreamsSpec extends Specification {
 			numbers.onNext(3)
 			bucketOpening.onNext(1)
 			numbers.onNext(5)
-			boundaryStream.onComplete()
+			boundaryStream.onNext(1)
 			bucketOpening.onNext(1)
 			numbers.onNext(6)
-			bucketOpening.onComplete()
+			numbers.onComplete()
 
 
 		then:
@@ -1546,7 +1536,9 @@ class StreamsSpec extends Specification {
 		when:
 			'overlapping buffers'
 			def bucketOpening = Broadcaster.<Integer> create()
-			res = numbers.window(bucketOpening) { boundaryStream }.flatMap { it.buffer() }.toList()
+			res = numbers.log("w").window(bucketOpening.log("bucket")) { boundaryStream.log('boundary') }.flatMap { it
+					.log('fm').buffer() }
+					.toList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1557,7 +1549,7 @@ class StreamsSpec extends Specification {
 			boundaryStream.onComplete()
 			bucketOpening.onNext(1)
 			numbers.onNext(6)
-			bucketOpening.onComplete()
+			numbers.onComplete()
 
 
 		then:
@@ -1568,10 +1560,10 @@ class StreamsSpec extends Specification {
 	def 'Window will re-route N elements to a fresh nested stream'() {
 		given:
 			'a source and a collected window stream'
-			def source = Broadcaster.<Integer> create().capacity(2)
+			def source = Broadcaster.<Integer> create()
 			def value = null
 
-			source.log('w').window().consume {
+			source.capacity(2).log('w').window().consume {
 				value = it.log().buffer(2).tap()
 			}
 
@@ -1873,6 +1865,28 @@ class StreamsSpec extends Specification {
 			res == [1, 2, 3]
 	}
 
+	def 'Wrap Stream from processor'() {
+		given:
+			'a source stream with a given publisher factory'
+			def emitter = Processors.emitter()
+			emitter.start()
+			def s = Streams.wrap(emitter)
+
+		when:
+			'accept a value'
+			def res = s.log().toList()
+			s.onNext 1
+			s.onNext 2
+			s.onNext 3
+			s.onComplete()
+			res.await(5, TimeUnit.SECONDS)
+			//println s.debug()
+
+		then:
+			'dispatching works'
+			res.get() == [1, 2, 3]
+	}
+
 	def 'Creating Stream from Timer'() {
 		given:
 			'a source stream with a given globalTimer'
@@ -2062,7 +2076,7 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			def source = Broadcaster.<Integer> create()
-			def reduced = source.buffer(2).throttle(300)
+			def reduced = source.buffer(2).log().throttle(300)
 			def value = reduced.tap()
 
 		when:
@@ -2436,7 +2450,7 @@ class StreamsSpec extends Specification {
 				acc > 0l ? ((next.t1 + acc) / 2) : next.t1
 			}
 
-			def value = reduced.log().next()
+			def value = reduced.log().consumeNext()
 			println value.debug()
 
 		when:
@@ -2474,7 +2488,7 @@ class StreamsSpec extends Specification {
 				acc > 0l ? ((next.t1 + acc) / 2) : next.t1
 			}
 
-			def value = reduced.log('promise').next()
+			def value = reduced.log('promise').consumeNext()
 			println value.debug()
 
 		when:
@@ -2510,7 +2524,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the first values are accepted on the source'
-			for (int i = 0; i < 100000; i++) {
+			for (int i = 0; i < 10000; i++) {
 				source.onNext(1)
 			}
 			source.onComplete()
@@ -2583,8 +2597,8 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable and its signal comsumers'
 			def stream = Broadcaster.<String> create()
-			def completeConsumer = stream.toBroadcastCompleteConsumer()
-			def nextConsumer = stream.toBroadcastNextConsumer()
+			def completeConsumer = stream.toCompleteConsumer()
+			def nextConsumer = stream.toNextConsumer()
 
 		when:
 			'the stream is retrieved and consumer are triggered'
@@ -2603,8 +2617,8 @@ class StreamsSpec extends Specification {
 		given:
 			'a composable and its signal comsumers'
 			def stream = Broadcaster.<String> create()
-			def errorConsumer = stream.toBroadcastErrorConsumer()
-			def nextConsumer = stream.toBroadcastNextConsumer()
+			def errorConsumer = stream.toErrorConsumer()
+			def nextConsumer = stream.toNextConsumer()
 
 		when:
 			'the stream is retrieved and consumer are triggered'
@@ -2618,24 +2632,6 @@ class StreamsSpec extends Specification {
 			'toList promise is under error'
 			thrown(Exception)
 	}
-
-	def 'A Stream can be controlled to update its properties reactively'() {
-		given:
-			'a composable and its signal comsumers'
-			def stream = Broadcaster.<String> create()
-			def controlStream = Broadcaster.<Integer> create()
-
-			stream.control(controlStream) { it.t1.capacity(it.t2) }
-
-		when:
-			'the control stream receives a new capacity size'
-			controlStream.onNext(100)
-
-		then:
-			'Stream has been updated'
-			stream.capacity == 100
-	}
-
 
 	def 'A Stream can re-subscribe its oldest parent on error signals'() {
 		given:
@@ -2902,14 +2898,14 @@ class StreamsSpec extends Specification {
 
 		when:
 			'take until test2 is seen'
-			stream = Broadcaster.create()
-			def value2 = stream.takeWhile {
+			def stream2 = Broadcaster.create()
+			def value2 = stream2.takeWhile {
 				'test2' != it
 			}.tap()
 
-			stream.onNext('test1')
-			stream.onNext('test2')
-			stream.onNext('test3')
+		stream2.onNext('test1')
+		stream2.onNext('test2')
+		stream2.onNext('test3')
 
 		then:
 			'the second is the last available'

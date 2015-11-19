@@ -61,7 +61,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 		if (BackpressureUtils.checkSubscription(subscription, s)) {
 			try {
 				subscription = s;
-				doOnSubscribe(this);
+				doOnSubscribe(s);
 			}
 			catch (Throwable throwable) {
 				Exceptions.throwIfFatal(throwable);
@@ -72,7 +72,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 	}
 
 	protected void doOnSubscribe(Subscription subscription) {
-		subscriber.onSubscribe(subscription);
+		subscriber.onSubscribe(this);
 	}
 
 	@Override

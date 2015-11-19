@@ -60,35 +60,6 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	}
 
 	/**
-	 *
-	 * @return
-	 */
-	public ReactiveSession<IN> emitSession() {
-		return emitSession(true);
-	}
-
-	/**
-	 *
-	 * @return
-	 */
-	public ReactiveSession<IN> emitSession(boolean autostart) {
-		return ReactiveSession.create(this, autostart);
-	}
-	/**
-	 *
-	 * @return
-	 */
-	public Supplier<ReactiveSession<IN>> multiSessions() {
-		return new Supplier<ReactiveSession<IN>>() {
-			@Override
-			public ReactiveSession<IN> get() {
-				//TODO
-				return null;
-			}
-		};
-	}
-
-	/**
 	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
 	 *
 	 * {@code

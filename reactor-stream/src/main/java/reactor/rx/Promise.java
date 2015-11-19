@@ -42,6 +42,7 @@ import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.Action;
 import reactor.rx.broadcast.BehaviorBroadcaster;
+import reactor.rx.broadcast.Broadcaster;
 
 /**
  * A {@code Promise} is a stateful event container that accepts a single value or error.
@@ -78,7 +79,7 @@ public class Promise<O>
 
 	private final Timer timer;
 
-	Action<O, O> outboundStream;
+	Broadcaster<O> outboundStream;
 
 	public enum FinalState {
 		ERROR,
@@ -601,7 +602,7 @@ public class Promise<O>
 	}
 
 	public Stream<O> stream() {
-		Action<O, O> out = outboundStream;
+		Broadcaster<O> out = outboundStream;
 		if (out == null) {
 			lock.lock();
 			out = outboundStream;
@@ -619,7 +620,7 @@ public class Promise<O>
 					return Streams.fail(error);
 				}
 				else if (out == null){
-					out = BehaviorBroadcaster.first(value, timer).capacity(1);
+					out = BehaviorBroadcaster.first(value, timer);
 				}
 				else {
 					return out;
@@ -681,7 +682,6 @@ public class Promise<O>
 		if (subscription == null || debugged == null) {
 			return outboundStream != null ? outboundStream.debug() : null;
 		}
-
 		return debugged.debug();
 	}
 
@@ -779,7 +779,7 @@ public class Promise<O>
 			return;
 		}
 		if (REQUESTED.compareAndSet(this, 0, 1)) {
-			Action<O, ?> outbound = outboundStream;
+			Broadcaster<O> outbound = outboundStream;
 			if (outbound != null) {
 				if (finalState == FinalState.ERROR) {
 					outbound.onError(error);

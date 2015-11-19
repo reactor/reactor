@@ -60,7 +60,7 @@ public class StreamStateCallbackOperator<T> implements Publishers.Operator<T, T>
 			if (onSubscribeConsumer != null) {
 				onSubscribeConsumer.accept(subscription);
 			}
-			subscriber.onSubscribe(subscription);
+			subscriber.onSubscribe(this);
 		}
 
 		@Override

@@ -22,13 +22,10 @@ import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
 import reactor.fn.Consumer;
 import reactor.rx.action.ProcessorAction;
-import reactor.rx.action.aggregation.WindowAction;
 import reactor.rx.action.combination.DynamicMergeAction;
 import reactor.rx.action.combination.FanInAction;
 import reactor.rx.action.combination.FanInSubscription;
-import reactor.rx.action.combination.SwitchAction;
-import reactor.rx.action.error.RetryWhenAction;
-import reactor.rx.action.transformation.GroupByAction;
+import reactor.rx.action.error.RetryWhenOperator;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
@@ -267,38 +264,38 @@ public abstract class StreamUtils {
 
 
 		private <O> boolean renderSwitch(Stream<O> consumer, final List<Object> streamTree) {
-			if (SwitchAction.class.isAssignableFrom(consumer.getClass())) {
-				SwitchAction<O> operation = (SwitchAction<O>) consumer;
-				SwitchAction.SwitchSubscriber switchSubscriber = operation.getSwitchSubscriber();
+			/*if (SwitchOperator.class.isAssignableFrom(consumer.getClass())) {
+				SwitchOperator<O> operation = (SwitchOperator<O>) consumer;
+				SwitchOperator.SwitchSubscriber switchSubscriber = operation.getSwitchSubscriber();
 				if (switchSubscriber != null && switchSubscriber.getSubscription() != null) {
 					loopSubscriptions(switchSubscriber.getSubscription(), streamTree);
 				}
 				return true;
-			}
+			}*/
 			return false;
 		}
 
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderWindow(Stream<O> consumer, final List<Object> streamTree) {
-			if (WindowAction.class.isAssignableFrom(consumer.getClass())) {
-				WindowAction<O> operation = (WindowAction<O>) consumer;
+			/*if (WindowOperator.class.isAssignableFrom(consumer.getClass())) {
+				WindowOperator<O> operation = (WindowOperator<O>) consumer;
 
 				if (operation.currentWindow() != null) {
 					loopSubscriptions(operation.currentWindow(), streamTree);
 				}
 				return true;
-			}
+			}*/
 			return false;
 		}
 
 
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderCombine(Stream<O> consumer, final List<Object> streamTree) {
-			if (ProcessorAction.class.isAssignableFrom(consumer.getClass())) {
+			/*if (ProcessorAction.class.isAssignableFrom(consumer.getClass())) {
 				ProcessorAction<O, ?> operation = (ProcessorAction<O, ?>) consumer;
-				//parseComposable(operation.downstream(), streamTree);
+				parseComposable(operation.downstream(), streamTree);
 				return true;
-			}
+			}*/
 			return false;
 		}
 
@@ -314,17 +311,17 @@ public abstract class StreamUtils {
 
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderRetryWhen(Stream<O> consumer, final List<Object> streamTree) {
-			if (RetryWhenAction.class.isAssignableFrom(consumer.getClass())) {
-				RetryWhenAction<O> operation = (RetryWhenAction<O>) consumer;
+			/*if (RetryWhenOperator.class.isAssignableFrom(consumer.getClass())) {
+				RetryWhenOperator<O> operation = (RetryWhenOperator<O>) consumer;
 				parseComposable(operation.retryStream(), streamTree);
 				return true;
-			}
+			}*/
 			return false;
 		}
 
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderGroupBy(Stream<O> consumer, final List<Object> streamTree) {
-			if (GroupByAction.class.isAssignableFrom(consumer.getClass())) {
+			/*if (GroupByAction.class.isAssignableFrom(consumer.getClass())) {
 				GroupByAction<O, ?> operation = (GroupByAction<O, ?>) consumer;
 				for (PushSubscription<O> s : operation.groupByMap().values()) {
 					loopSubscriptions(s, streamTree);
@@ -333,7 +330,7 @@ public abstract class StreamUtils {
 					}
 				}
 				return true;
-			}
+			}*/
 			return false;
 		}
 

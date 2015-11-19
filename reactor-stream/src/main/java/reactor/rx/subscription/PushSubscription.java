@@ -15,6 +15,9 @@
  */
 package reactor.rx.subscription;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -22,10 +25,6 @@ import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Publishable;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
-import reactor.rx.subscription.support.WrappedSubscription;
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * Relationship between a Stream (Publisher) and a Subscriber. A PushSubscription offers common facilities to track

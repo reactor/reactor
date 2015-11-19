@@ -32,9 +32,9 @@ public final class IteratorSequencer<T>
 		implements Consumer<SubscriberWithContext<T, Iterator<? extends T>>>,
 		           Function<Subscriber<? super T>, Iterator<? extends T>> {
 
-	private final Iterable<T> defaultValues;
+	private final Iterable<? extends T> defaultValues;
 
-	public IteratorSequencer(Iterable<T> defaultValues) {
+	public IteratorSequencer(Iterable<? extends T> defaultValues) {
 		this.defaultValues = defaultValues;
 	}
 

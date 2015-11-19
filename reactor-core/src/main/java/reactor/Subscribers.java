@@ -32,17 +32,6 @@ import java.util.concurrent.BlockingQueue;
 public final class Subscribers extends SubscriberFactory {
 
 	/**
-	 *
-	 * @param source
-	 * @param <T>
-	 * @return
-	 */
-	public static <T> Subscriber<T> flowControl(Subscriber<T> source) {
-		return source;
-	}
-
-
-	/**
 	 * @param <IN>
 	 * @return
 	 */

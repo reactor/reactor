@@ -74,7 +74,7 @@ public class FizzBuzzTests extends AbstractReactorTest {
 //                .observe(System.out::print)
 		  .consume(numOfItems);
 
-		while (c.isPublishing()) ;
+		while (!c.isTerminated()) ;
 	}
 
 

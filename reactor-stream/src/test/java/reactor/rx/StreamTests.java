@@ -16,6 +16,31 @@
 
 package reactor.rx;
 
+import java.awt.event.KeyEvent;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Timer;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import org.hamcrest.Matcher;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -42,25 +67,14 @@ import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.IO;
-import reactor.io.buffer.Buffer;
 import reactor.io.codec.StandardCodecs;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
+import reactor.rx.action.ProcessorAction;
 import reactor.rx.action.support.TapAndControls;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.BarrierStream;
-
-import java.awt.event.KeyEvent;
-import java.io.IOException;
-import java.time.Instant;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -171,7 +185,7 @@ public class StreamTests extends AbstractReactorTest {
 				if (i == 3) throw new IllegalArgumentException();
 			})
 			.ignoreError()
-			.log()
+			.log("errorHandling")
 			.map(new Function<Integer, Integer>() {
 				int sum = 0;
 
@@ -205,7 +219,7 @@ public class StreamTests extends AbstractReactorTest {
 		  Streams.merge(stream1, stream2)
 			//.dispatchOn(env)
 			.capacity(5)
-			.log()
+			.log("merge")
 			.map(STRING_2_INTEGER)
 			.reduce(1, (acc, next) -> acc * next);
 		await(1, s, is(120));
@@ -568,7 +582,7 @@ public class StreamTests extends AbstractReactorTest {
 		final Broadcaster<String> closeCircuit = Broadcaster.create();
 		final Stream<String> openCircuit = Streams.just("Alternative Message");
 
-		final Action<Publisher<? extends String>, String> circuitSwitcher = Streams.switchOnNext();
+		final ProcessorAction<Publisher<? extends String>, String> circuitSwitcher = Streams.switchOnNext();
 
 		final AtomicInteger successes = new AtomicInteger();
 		final AtomicInteger failures = new AtomicInteger();
@@ -588,7 +602,7 @@ public class StreamTests extends AbstractReactorTest {
 					  .consume(ignore -> circuitSwitcher.onNext(closeCircuit));
 				}
 			})
-		    .log()
+		    .log("faultTolerant")
 		    .retry()
 			.consumeAsList();
 
@@ -678,7 +692,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		int[] data;
 		CountDownLatch latch = new CountDownLatch(iterations);
-		Action<Integer, Integer> deferred;
+		Broadcaster<Integer> deferred;
 		switch (dispatcher) {
 			case "partitioned":
 				deferred = Broadcaster.create();
@@ -732,7 +746,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		int[] data;
 		CountDownLatch latch = new CountDownLatch(iterations);
-		Action<Integer, Integer> mapManydeferred;
+		Broadcaster<Integer> mapManydeferred;
 		switch (dispatcher) {
 			case "partitioned":
 				mapManydeferred = Broadcaster.<Integer>create();
@@ -898,33 +912,11 @@ public class StreamTests extends AbstractReactorTest {
 
 		  );
 
-		Action<Integer, Void> action = s.broadcastTo(new Action<Integer, Void>() {
-			Subscription s;
-
-			@Override
-			public void doOnSubscribe(Subscription s) {
-				this.s = s;
-				s.request(1);
-			}
-
-			@Override
-			public void doNext(Integer integer) {
-				System.out.println(Thread.currentThread().getName() + " " + debug());
+		Control action = s.capacity(1L).consume( integer -> {
 				latch.countDown();
 				System.out.println(integer);
-				s.request(1);
 			}
-
-			@Override
-			public void doError(Throwable t) {
-				t.printStackTrace();
-			}
-
-			@Override
-			public void doComplete() {
-				System.out.println(Thread.currentThread().getName() + " complete " + debug());
-			}
-		});
+		);
 
 		System.out.println(action.debug());
 
@@ -967,7 +959,7 @@ public class StreamTests extends AbstractReactorTest {
 			Streams.just(source)
 			  .broadcastTo(operationStream.combine())
 			  .take(2, TimeUnit.SECONDS)
-			  .log()
+			  .log("parallelStream")
 			  .consume(System.out::println);
 		}
 

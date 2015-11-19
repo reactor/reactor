@@ -49,8 +49,8 @@ public class TapAndControls<O> implements Control, Supplier<O>{
 	}
 
 	@Override
-	public boolean isPublishing() {
-		return controls.isPublishing();
+	public boolean isTerminated() {
+		return controls.isTerminated();
 	}
 
 	@Override

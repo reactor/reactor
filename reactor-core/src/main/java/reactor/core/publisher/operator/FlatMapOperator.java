@@ -16,20 +16,17 @@
 package reactor.core.publisher.operator;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.CancelException;
-import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.subscriber.BaseSubscriber;
-import reactor.core.subscriber.SubscriberBarrier;
+import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.SignalType;
@@ -69,7 +66,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		return new MergeBarrier<>(t, mapper, maxConcurrency, bufferSize);
 	}
 
-	static final class MergeBarrier<T, V> extends SubscriberBarrier<T, V> {
+	static final class MergeBarrier<T, V> extends SubscriberWithDemand<T, V> {
 
 		final Function<? super T, ? extends Publisher<? extends V>> mapper;
 		final int                                                   maxConcurrency;
@@ -78,8 +75,6 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		private Sequence pollCursor;
 		private volatile RingBuffer<RingBuffer.Slot<V>> emitBuffer;
-
-		private volatile boolean done;
 
 		private volatile Throwable error;
 
@@ -103,12 +98,6 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		static final InnerSubscriber<?, ?>[] EMPTY = new InnerSubscriber<?, ?>[0];
 
 		static final InnerSubscriber<?, ?>[] CANCELLED = new InnerSubscriber<?, ?>[0];
-
-		@SuppressWarnings("unused")
-		private volatile long requested;
-		@SuppressWarnings("rawtypes")
-		static final AtomicLongFieldUpdater<MergeBarrier> REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(MergeBarrier.class, "requested");
 
 
 		long lastRequest;
@@ -220,7 +209,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		void tryEmit(V value) {
 			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
-				long r = requested;
+				long r = getRequested();
 				if (r != 0L) {
 					if (null != value) {
 						subscriber.onNext(value);
@@ -267,7 +256,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		void tryEmit(V value, InnerSubscriber<T, V> inner) {
 			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
-				long r = requested;
+				long r = getRequested();
 				if (r != 0L) {
 					subscriber.onNext(value);
 					if (r != Long.MAX_VALUE) {
@@ -296,27 +285,18 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		@Override
-		protected void doError(Throwable t) {
-			if (done) {
-				throw CancelException.get();
-			}
+		protected void checkedError(Throwable t) {
 			reportError(t);
-			done = true;
 			drain();
 		}
 
 		@Override
-		protected void doComplete() {
-			if (done) {
-				throw CancelException.get();
-			}
-			done = true;
+		protected void checkedComplete() {
 			drain();
 		}
 
 		@Override
-		protected void doRequest(long n) {
-			BackpressureUtils.getAndAdd(REQUESTED, this, n);
+		protected void doRequested(long b, long n) {
 			drain();
 		}
 
@@ -352,7 +332,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 				}
 				RingBuffer<RingBuffer.Slot<V>> svq = emitBuffer;
 
-				long r = requested;
+				long r = getRequested();
 				boolean unbounded = r == Long.MAX_VALUE;
 
 				long replenishMain = 0;
@@ -401,7 +381,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					}
 				}
 
-				boolean d = done;
+				boolean d = isTerminated();
 				svq = emitBuffer;
 				InnerSubscriber<?, ?>[] inner = subscribers;
 				int n = inner.length;
