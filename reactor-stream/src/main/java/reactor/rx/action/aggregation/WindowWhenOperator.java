@@ -53,7 +53,7 @@ public final class WindowWhenOperator<T> implements Publishers.Operator<T, Strea
 		final private Supplier<? extends Publisher<?>> boundarySupplier;
 		final private Timer                            timer;
 
-		private Broadcaster<T> windowBroadcaster;
+		private WindowOperator.Window<T> windowBroadcaster;
 
 		public WindowWhenAction(Subscriber<? super Stream<T>> actual,
 				Timer timer,
@@ -94,14 +94,13 @@ public final class WindowWhenOperator<T> implements Publishers.Operator<T, Strea
 
 				                @Override
 				                public void onComplete() {
-					                cancel();
-					                subscriber.onComplete();
+					                s = null;
 				                }
 			                });
 		}
 
 		private void flush() {
-			Broadcaster<T> _currentWindow = windowBroadcaster;
+			WindowOperator.Window<T> _currentWindow = windowBroadcaster;
 			if (_currentWindow != null) {
 				windowBroadcaster = null;
 				_currentWindow.onComplete();
@@ -119,12 +118,13 @@ public final class WindowWhenOperator<T> implements Publishers.Operator<T, Strea
 			}
 		}
 
-		public Broadcaster<T> currentWindow() {
+		public WindowOperator.Window<T> currentWindow() {
 			return windowBroadcaster;
 		}
 
 		protected Stream<T> createWindowStream(T first) {
-			Broadcaster<T> action = BehaviorBroadcaster.first(first, timer);
+			WindowOperator.Window<T> action = new WindowOperator.Window<T>(timer);
+			action.onNext(first);
 			windowBroadcaster = action;
 			return action;
 		}
@@ -140,10 +140,7 @@ public final class WindowWhenOperator<T> implements Publishers.Operator<T, Strea
 
 		@Override
 		protected void checkedComplete() {
-			if (windowBroadcaster != null) {
-				windowBroadcaster.onComplete();
-				windowBroadcaster = null;
-			}
+			flush();
 			subscriber.onComplete();
 		}
 

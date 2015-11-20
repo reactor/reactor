@@ -73,6 +73,7 @@ import reactor.rx.action.combination.SwitchOperator;
 import reactor.rx.action.combination.ZipAction;
 import reactor.rx.action.conditional.ExistsOperator;
 import reactor.rx.action.control.DropOperator;
+import reactor.rx.action.control.KeepAliveOperator;
 import reactor.rx.action.control.RepeatOperator;
 import reactor.rx.action.control.RepeatWhenOperator;
 import reactor.rx.action.control.ThrottleRequestOperator;
@@ -487,10 +488,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
 	public Control consume(final long n) {
-		Control controls = consume(null);
+		ConsumerAction<O> controls = new ConsumerAction<O>(Long.MAX_VALUE, null, null, null);
 		if (n > 0) {
 			controls.requestMore(n);
 		}
+		subscribe(controls);
 		return controls;
 	}
 
@@ -2374,17 +2376,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return a new {@literal Stream} that is never cancelled.
 	 */
 	public Stream<O> keepAlive() {
-		return lift(new Function<Subscriber<? super O>, Subscriber<? super O>>() {
-			@Override
-			public Subscriber<? super O> apply(Subscriber<? super O> subscriber) {
-				return new SubscriberBarrier<O, O>(subscriber) {
-					@Override
-					protected void doCancel() {
-						//IGNORE
-					}
-				};
-			}
-		});
+		return lift(KeepAliveOperator.INSTANCE);
 	}
 
 	/**

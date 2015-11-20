@@ -97,7 +97,6 @@ public final class BufferShiftWhenOperator<T> implements Publishers.Operator<T, 
 				@Override
 				public void onComplete() {
 					s = null;
-					cancel();
 				}
 			});
 

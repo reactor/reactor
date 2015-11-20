@@ -79,7 +79,17 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> BaseProcessor<E, E> emitter() {
-		return emitter(BaseProcessor.SMALL_BUFFER_SIZE);
+		return emitter(true);
+	}
+
+	/**
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p>
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> BaseProcessor<E, E> emitter(boolean autoCancel) {
+		return emitter(BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
 	}
 
 	/**
@@ -99,8 +109,29 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> BaseProcessor<E, E> emitter(int bufferSize, int concurrency) {
-		return new EmitterProcessor<>(true, concurrency, bufferSize, -1);
+		return emitter(bufferSize, concurrency, true);
 	}
+
+	/**
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p>
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> BaseProcessor<E, E> emitter(int bufferSize, boolean autoCancel) {
+		return emitter(bufferSize, Integer.MAX_VALUE, autoCancel);
+	}
+
+	/**
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p>
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> BaseProcessor<E, E> emitter(int bufferSize, int concurrency, boolean autoCancel) {
+		return new EmitterProcessor<>(autoCancel, concurrency, bufferSize, -1);
+	}
+
 	/**
 	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
@@ -128,7 +159,17 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> BaseProcessor<E, E> replay(int historySize, int concurrency) {
-		return new EmitterProcessor<>(false, concurrency, historySize, historySize);
+		return replay(historySize, concurrency, false);
+	}
+
+	/**
+	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Strategy and auto-cancel. <p>
+	 * @param <E> Type of processed signals
+	 * @return a fresh processor
+	 */
+	public static <E> BaseProcessor<E, E> replay(int historySize, int concurrency, boolean autoCancel) {
+		return new EmitterProcessor<>(autoCancel, concurrency, historySize, historySize);
 	}
 
 	/**

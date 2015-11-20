@@ -166,7 +166,9 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 					//no tracking and remaining demand positive
 					if (r > 0L && poll == null) {
-						is.requested--;
+						if(r != Long.MAX_VALUE){
+							is.requested--;
+						}
 						is.actual.onNext(t);
 					}
 					//if failed, we buffer if not previously buffered and we assign a tracking cursor to that slot

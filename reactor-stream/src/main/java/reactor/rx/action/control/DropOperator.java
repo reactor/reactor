@@ -18,17 +18,8 @@ package reactor.rx.action.control;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
-import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.fn.Supplier;
-import reactor.rx.action.Action;
-import reactor.rx.subscription.DropSubscription;
-import reactor.rx.subscription.PushSubscription;
-import reactor.rx.subscription.ReactiveSubscription;
-
-import java.util.Queue;
 
 /**
  * @author Stephane Maldini
@@ -47,6 +38,16 @@ public final class DropOperator<O> implements Publishers.Operator<O, O> {
 
 		public DropAction(Subscriber<? super O> actual) {
 			super(actual);
+		}
+
+		@Override
+		protected void doOnSubscribe(Subscription subscription) {
+			subscriber.onSubscribe(this);
+			requestMore(Long.MAX_VALUE);
+		}
+
+		@Override
+		protected void doRequested(long before, long n) {
 		}
 
 		@Override

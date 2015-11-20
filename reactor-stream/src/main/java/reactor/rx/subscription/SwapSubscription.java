@@ -63,6 +63,18 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 		}
 	};
 
+	static private final Subscription CANCELLED = new Subscription() {
+		@Override
+		public void request(long n) {
+			//IGNORE;
+		}
+
+		@Override
+		public void cancel() {
+			//IGNORE;
+		}
+	};
+
 	/**
 	 *
 	 * @param subscription
@@ -76,6 +88,22 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 		}
 	}
 
+	/**
+	 *
+	 * @return
+	 */
+	public boolean isUnsubscribed(){
+		return subscription == UNSUBSCRIBED;
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public boolean isCancelled(){
+		return subscription == CANCELLED;
+	}
+
 	@Override
 	public void request(long n) {
 		BackpressureUtils.getAndAdd(REQUESTED, this, n);
@@ -85,8 +113,18 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 
 	@Override
 	public void cancel() {
-		SUBSCRIPTION.getAndSet(this, UNSUBSCRIBED)
-		            .cancel();
+		Subscription s;
+		for(;;) {
+			s = subscription;
+			if(s == CANCELLED || s == UNSUBSCRIBED){
+				return;
+			}
+
+			if(SUBSCRIPTION.compareAndSet(this, s, CANCELLED)){
+				s.cancel();
+				break;
+			}
+		}
 	}
 
 	@Override

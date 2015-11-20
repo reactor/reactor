@@ -42,7 +42,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 	 *
 	 * @param value the value to start with the sequence
 	 * @param <T> the type of values passing through the {@literal action}
-	 * @return a new {@link reactor.rx.action.Action}
+	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> first(T value) {
 		return first(value, null);
@@ -50,8 +50,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	/**
 	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then ready to broadcast values with
-	 * {@link
-	 * reactor.rx.action.Action#onNext(Object)},
+	 * {@link #onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *
@@ -65,8 +64,7 @@ public final class BehaviorBroadcaster<O> extends Broadcaster<O> {
 
 	/**
 	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value,
-	 * then  ready to broadcast values with {@link
-	 * reactor.rx.action.Action#onNext(Object)},
+	 * then  ready to broadcast values with {@link #onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
 	 * Values broadcasted are directly consumable by subscribing to the returned instance.
 	 *

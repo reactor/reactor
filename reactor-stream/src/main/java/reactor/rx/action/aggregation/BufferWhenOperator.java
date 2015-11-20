@@ -82,7 +82,7 @@ public final class BufferWhenOperator<T> implements Publishers.Operator<T, List<
 
 				@Override
 				public void onComplete() {
-					cancel();
+					s = null;
 				}
 			});
 		}

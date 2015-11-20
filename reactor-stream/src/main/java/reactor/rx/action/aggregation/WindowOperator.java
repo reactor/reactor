@@ -19,6 +19,9 @@ package reactor.rx.action.aggregation;
 import java.util.concurrent.TimeUnit;
 
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.Processors;
+import reactor.core.processor.BaseProcessor;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.broadcast.Broadcaster;
@@ -31,9 +34,9 @@ import reactor.rx.subscription.ReactiveSubscription;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class WindowOperator<T> extends BatchOperator<T, Stream<T>> {
+public class WindowOperator<T> extends BatchOperator<T, Stream<T>> {
 
-	private final Timer timer;
+	protected final Timer timer;
 
 	public WindowOperator(Timer timer, int backlog) {
 		super(backlog, true, true, true);
@@ -48,6 +51,75 @@ public final class WindowOperator<T> extends BatchOperator<T, Stream<T>> {
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super Stream<T>> subscriber) {
 		return new WindowAction<>(prepareSub(subscriber), batchSize, timespan, unit, timer);
+	}
+
+	final static class Window<T> extends Stream<T> implements Subscriber<T>, Subscription{
+
+		final protected BaseProcessor<T, T> processor;
+		final protected Timer timer;
+
+		protected int count = 0;
+
+		public Window(Timer timer) {
+			this(timer, BaseProcessor.SMALL_BUFFER_SIZE);
+		}
+
+		public Window(Timer timer, int size) {
+			this.processor = Processors.emitter(size);
+			this.processor.onSubscribe(this);
+			this.timer = timer;
+		}
+
+		@Override
+		public Timer getTimer() {
+			return timer;
+		}
+
+		@Override
+		public long getCapacity() {
+			return processor.getCapacity();
+		}
+
+		@Override
+		public void onSubscribe(Subscription s) {
+			s.cancel();
+		}
+
+		@Override
+		public void onNext(T t) {
+			count++;
+			processor.onNext(t);
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			processor.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			processor.onComplete();
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super T> s) {
+			processor.subscribe(s);
+		}
+
+		@Override
+		public void request(long n) {
+
+		}
+
+		@Override
+		public void cancel() {
+
+		}
+
+		@Override
+		public String toString() {
+			return super.toString();
+		}
 	}
 
 	final static class WindowAction<T> extends BatchOperator.BatchAction<T, Stream<T>> {

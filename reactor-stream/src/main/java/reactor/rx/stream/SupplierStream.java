@@ -19,13 +19,14 @@ import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
+import reactor.rx.action.Action;
 import reactor.rx.subscription.PushSubscription;
 
 /**
  * A Stream that returns the result from {@link reactor.fn.Supplier#get()} everytime it is requested via
  * {@link org.reactivestreams.Subscription#request(long)}.
  * <p>
- * The Stream will end when the result is null or {@link reactor.rx.action.Action#broadcastComplete()} is called.
+ * The Stream will end when the result is null or {@link Subscriber#onComplete()} ()} is called.
  * <p>
  * Create such stream with the provided factory, E.g.:
  * <pre>

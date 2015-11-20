@@ -40,7 +40,7 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
 	 *
 	 * @param <T> the type of values passing through the {@literal action}
-	 * @return a new {@link reactor.rx.action.Action}
+	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> create() {
 		return new SerializedBroadcaster<>(Processors.<T>emitter(),  null);

@@ -28,8 +28,6 @@ import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
-import reactor.rx.broadcast.BehaviorBroadcaster;
-import reactor.rx.broadcast.Broadcaster;
 
 /**
  * WindowAction is forwarding events on a steam until {@param backlog} is reached, after that streams collected events
@@ -58,7 +56,7 @@ public final class WindowShiftWhenOperator<T> implements Publishers.Operator<T, 
 
 	static final class WindowShiftWhenAction<T> extends SubscriberWithDemand<T, Stream<T>> {
 
-		private final List<Broadcaster<T>> currentWindows = new LinkedList<>();
+		private final List<WindowOperator.Window<T>> currentWindows = new LinkedList<>();
 		private final Supplier<? extends Publisher<?>> bucketClosing;
 		private final Publisher<?>                     bucketOpening;
 		private final Timer                            timer;
@@ -90,7 +88,7 @@ public final class WindowShiftWhenOperator<T> implements Publishers.Operator<T, 
 				@Override
 				public void onNext(Object o) {
 
-					Broadcaster<T> newBucket = createWindowStream(null);
+					WindowOperator.Window<T> newBucket = createWindowStream();
 					bucketClosing.get()
 					             .subscribe(new BucketConsumer(newBucket));
 
@@ -107,7 +105,10 @@ public final class WindowShiftWhenOperator<T> implements Publishers.Operator<T, 
 
 				@Override
 				public void onComplete() {
-					cancel();
+					s = null;
+					if(!isTerminated()){
+						createWindowStream();
+					}
 				}
 			});
 
@@ -115,7 +116,7 @@ public final class WindowShiftWhenOperator<T> implements Publishers.Operator<T, 
 
 		@Override
 		protected void checkedError(Throwable ev) {
-			for (Broadcaster<T> bucket : currentWindows) {
+			for (WindowOperator.Window<T> bucket : currentWindows) {
 				bucket.onError(ev);
 			}
 			currentWindows.clear();
@@ -124,7 +125,7 @@ public final class WindowShiftWhenOperator<T> implements Publishers.Operator<T, 
 
 		@Override
 		protected void checkedComplete() {
-			for (Broadcaster<T> bucket : currentWindows) {
+			for (WindowOperator.Window<T> bucket : currentWindows) {
 				bucket.onComplete();
 			}
 			currentWindows.clear();
@@ -134,7 +135,7 @@ public final class WindowShiftWhenOperator<T> implements Publishers.Operator<T, 
 		@Override
 		protected void doNext(T value) {
 			if (!currentWindows.isEmpty()) {
-				for (Broadcaster<T> bucket : currentWindows) {
+				for (WindowOperator.Window<T> bucket : currentWindows) {
 					bucket.onNext(value);
 				}
 			}
@@ -142,9 +143,9 @@ public final class WindowShiftWhenOperator<T> implements Publishers.Operator<T, 
 
 		private class BucketConsumer implements Subscriber<Object> {
 
-			final Broadcaster<T> bucket;
+			final WindowOperator.Window<T> bucket;
 
-			public BucketConsumer(Broadcaster<T> bucket) {
+			public BucketConsumer(WindowOperator.Window<T> bucket) {
 				this.bucket = bucket;
 			}
 
@@ -165,12 +166,12 @@ public final class WindowShiftWhenOperator<T> implements Publishers.Operator<T, 
 
 			@Override
 			public void onComplete() {
-				Broadcaster<T> toComplete = null;
+				WindowOperator.Window<T> toComplete = null;
 
 				synchronized (currentWindows) {
-					Iterator<Broadcaster<T>> iterator = currentWindows.iterator();
+					Iterator<WindowOperator.Window<T>> iterator = currentWindows.iterator();
 					while (iterator.hasNext()) {
-						Broadcaster<T> itBucket = iterator.next();
+						WindowOperator.Window<T> itBucket = iterator.next();
 						if (itBucket == bucket) {
 							iterator.remove();
 							toComplete = bucket;
@@ -185,11 +186,12 @@ public final class WindowShiftWhenOperator<T> implements Publishers.Operator<T, 
 			}
 		}
 
-		protected Broadcaster<T> createWindowStream(T first) {
-			Broadcaster<T> action = BehaviorBroadcaster.first(first, timer);
+		protected WindowOperator.Window<T> createWindowStream() {
+			WindowOperator.Window<T> action = new WindowOperator.Window<T>(timer);
 			synchronized (currentWindows) {
 				currentWindows.add(action);
 			}
+
 			subscriber.onNext(action);
 			return action;
 		}

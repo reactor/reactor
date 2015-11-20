@@ -591,7 +591,7 @@ class StreamsSpec extends Specification {
 			stream.onNext(2)
 			stream.onNext(3)
 			stream.onNext(4)
-			stream.onComplete()
+			//stream.onComplete()
 
 		then:
 			'it is called since publisher is in error state'
@@ -1442,7 +1442,7 @@ class StreamsSpec extends Specification {
 		when:
 			'non overlapping buffers'
 			def boundaryStream = Broadcaster.<Integer> create()
-			def res = numbers.log('numb').buffer { boundaryStream.log('boundary') }.log('promise').consumeAsList()
+			def res = numbers.buffer { boundaryStream }.consumeAsList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1459,7 +1459,8 @@ class StreamsSpec extends Specification {
 		when:
 			'overlapping buffers'
 			def bucketOpening = Broadcaster.<Integer> create()
-			res = numbers.buffer(bucketOpening) { boundaryStream }.consumeAsList()
+			numbers = Broadcaster.<Integer> create()
+			res = numbers.log('numb').buffer(bucketOpening) { boundaryStream.log('boundary') }.log('promise').consumeAsList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1470,6 +1471,7 @@ class StreamsSpec extends Specification {
 			boundaryStream.onNext(1)
 			bucketOpening.onNext(1)
 			numbers.onNext(6)
+			boundaryStream.onComplete()
 			numbers.onComplete()
 
 
@@ -1485,7 +1487,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			def res = numbers.window(2, 3).flatMap { it.buffer() }.toList()
+			def res = numbers.log('n').window(2, 3).log('test').flatMap { it.log('fm').buffer() }.toList()
 
 		then:
 			'the collected lists are available'
@@ -1519,7 +1521,7 @@ class StreamsSpec extends Specification {
 		when:
 			'non overlapping buffers'
 			def boundaryStream = Broadcaster.<Integer> create()
-			def res = numbers.window { boundaryStream }.flatMap { it.buffer() }.toList()
+			def res = numbers.window { boundaryStream }.flatMap { it.buffer().log() }.consumeAsList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1535,10 +1537,11 @@ class StreamsSpec extends Specification {
 
 		when:
 			'overlapping buffers'
+			numbers = Broadcaster.<Integer> create()
 			def bucketOpening = Broadcaster.<Integer> create()
 			res = numbers.log("w").window(bucketOpening.log("bucket")) { boundaryStream.log('boundary') }.flatMap { it
 					.log('fm').buffer() }
-					.toList()
+					.consumeAsList()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1546,7 +1549,7 @@ class StreamsSpec extends Specification {
 			numbers.onNext(3)
 			bucketOpening.onNext(1)
 			numbers.onNext(5)
-			boundaryStream.onComplete()
+			boundaryStream.onNext(1)
 			bucketOpening.onNext(1)
 			numbers.onNext(6)
 			numbers.onComplete()
@@ -2219,8 +2222,8 @@ class StreamsSpec extends Specification {
 		then:
 			'last value known is 10 as the stream has used its fallback'
 			!error
-			thrown CancelException
 			value.get() == 10
+			thrown CancelException
 	}
 
 	def 'Errors can have a fallback'() {
@@ -2412,7 +2415,7 @@ class StreamsSpec extends Specification {
 			def source = Broadcaster.<Integer> create()
 
 			def value = null
-			def tail = source.onOverflowDrop().observe { value = it }.log('overflow-drop-test').consume(5)
+			def tail = source.log("drop").onOverflowDrop().observe { value = it }.log('overflow-drop-test').consume(5)
 			println tail.debug()
 
 		when:
@@ -2899,7 +2902,7 @@ class StreamsSpec extends Specification {
 		when:
 			'take until test2 is seen'
 			def stream2 = Broadcaster.create()
-			def value2 = stream2.takeWhile {
+			def value2 = stream2.log().takeWhile {
 				'test2' != it
 			}.tap()
 

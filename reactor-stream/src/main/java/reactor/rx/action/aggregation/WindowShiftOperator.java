@@ -29,9 +29,6 @@ import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
-import reactor.rx.action.Action;
-import reactor.rx.broadcast.Broadcaster;
-import reactor.rx.subscription.ReactiveSubscription;
 
 /**
  * WindowAction is forwarding events on a steam until {@param backlog} is reached, after that streams collected events
@@ -83,7 +80,7 @@ public final class WindowShiftOperator<T> implements Publishers.Operator<T, Stre
 	static final class WindowShiftAction<T> extends SubscriberWithDemand<T, Stream<T>> {
 
 		private final Consumer<Long> timeshiftTask;
-		private final List<ReactiveSubscription<T>> currentWindows = new LinkedList<>();
+		private final List<WindowOperator.Window<T>> currentWindows = new LinkedList<>();
 		private final int      skip;
 		private final int      batchSize;
 		private final long     timeshift;
@@ -106,12 +103,12 @@ public final class WindowShiftOperator<T> implements Publishers.Operator<T, Stre
 			this.batchSize = size;
 			if (timespan > 0 && timeshift > 0) {
 				final TimeUnit targetUnit = unit != null ? unit : TimeUnit.SECONDS;
-				final Consumer<ReactiveSubscription<T>> flushTimerTask = new Consumer<ReactiveSubscription<T>>() {
+				final Consumer<WindowOperator.Window<T>> flushTimerTask = new Consumer<WindowOperator.Window<T>>() {
 					@Override
-					public void accept(ReactiveSubscription<T> bucket) {
-						Iterator<ReactiveSubscription<T>> it = currentWindows.iterator();
+					public void accept(WindowOperator.Window<T> bucket) {
+						Iterator<WindowOperator.Window<T>> it = currentWindows.iterator();
 						while (it.hasNext()) {
-							ReactiveSubscription<T> itBucket = it.next();
+							WindowOperator.Window<T> itBucket = it.next();
 							if (bucket == itBucket) {
 								it.remove();
 								bucket.onComplete();
@@ -128,7 +125,7 @@ public final class WindowShiftOperator<T> implements Publishers.Operator<T, Stre
 							return;
 						}
 
-						final ReactiveSubscription<T> bucket = createWindowStream();
+						final WindowOperator.Window<T> bucket = createWindowStream();
 
 						timer.submit(new Consumer<Long>() {
 							@Override
@@ -169,40 +166,38 @@ public final class WindowShiftOperator<T> implements Publishers.Operator<T, Stre
 
 		@Override
 		protected void checkedComplete() {
-			for (ReactiveSubscription<T> bucket : currentWindows) {
+			for (WindowOperator.Window<T> bucket : currentWindows) {
 				bucket.onComplete();
 			}
 			subscriber.onComplete();
 		}
 
 		private void flushCallback(T event) {
-			Iterator<ReactiveSubscription<T>> it = currentWindows.iterator();
+			Iterator<WindowOperator.Window<T>> it = currentWindows.iterator();
 			while (it.hasNext()) {
-				ReactiveSubscription<T> bucket = it.next();
+				WindowOperator.Window<T> bucket = it.next();
 				bucket.onNext(event);
-				if (bucket.currentNextSignals() == batchSize) {
+				if (bucket.count == batchSize) {
 					it.remove();
 					bucket.onComplete();
 				}
 			}
 		}
 
-		protected ReactiveSubscription<T> createWindowStream() {
-			Broadcaster<T> action = Broadcaster.<T>create(timer);
-			ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action);
+		protected WindowOperator.Window<T> createWindowStream() {
+			WindowOperator.Window<T> action = new WindowOperator.Window<T>(timer);
 			synchronized (currentWindows) {
-				currentWindows.add(_currentWindow);
+				currentWindows.add(action);
 			}
 
-			action.onSubscribe(_currentWindow);
 			subscriber.onNext(action);
 
-			return _currentWindow;
+			return action;
 		}
 
 		@Override
 		protected void checkedError(Throwable ev) {
-			for (ReactiveSubscription<T> bucket : currentWindows) {
+			for (WindowOperator.Window<T> bucket : currentWindows) {
 				bucket.onError(ev);
 			}
 			subscriber.onError(ev);
@@ -211,7 +206,7 @@ public final class WindowShiftOperator<T> implements Publishers.Operator<T, Stre
 		@Override
 		protected void doTerminate() {
 			currentWindows.clear();
-			if(timeshiftRegistration != null){
+			if (timeshiftRegistration != null) {
 				timeshiftRegistration.cancel();
 			}
 		}

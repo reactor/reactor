@@ -115,6 +115,9 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 	@Override
 	public void onNext(O ev) {
 		try {
+			if(subscription.isCancelled()){
+				throw CancelException.INSTANCE;
+			}
 			receiver.onNext(ev);
 		}
 		catch (InsufficientCapacityException | CancelException c) {
