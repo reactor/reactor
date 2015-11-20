@@ -20,9 +20,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 
@@ -38,7 +36,6 @@ import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
-import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
@@ -713,7 +710,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	public final Stream<O> cache(int last) {
 		Processor<O, O> emitter = Processors.replay(last);
 		subscribe(emitter);
-		return ProcessorAction.create(emitter);
+		return ProcessorAction.wrap(emitter);
 	}
 
 	/**
@@ -2375,18 +2372,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Prevent a {@link Stream} to be cancelled. Cancel propagation occurs when last subscriber is cancelled.
 	 * @return a new {@literal Stream} that is never cancelled.
 	 */
+	@SuppressWarnings("unchecked")
 	public Stream<O> keepAlive() {
 		return lift(KeepAliveOperator.INSTANCE);
-	}
-
-	/**
-	 * Subscribe the {@link ProcessorAction#downstream()} to this Stream. Combining action through {@link
-	 * reactor.rx.action.Action#combine()} allows for easy distribution of a full flow.
-	 * @param subscriber the combined actions to subscribe
-	 * @since 2.0
-	 */
-	public final <A> void subscribe(final ProcessorAction<O, A> subscriber) {
-		subscribe(subscriber.downstream());
 	}
 
 	@Override

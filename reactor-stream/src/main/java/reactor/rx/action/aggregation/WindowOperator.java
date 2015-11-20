@@ -24,9 +24,6 @@ import reactor.Processors;
 import reactor.core.processor.BaseProcessor;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
-import reactor.rx.broadcast.Broadcaster;
-import reactor.rx.broadcast.SerializedBroadcaster;
-import reactor.rx.subscription.ReactiveSubscription;
 
 /**
  * WindowAction is forwarding events on a steam until {@param backlog} is reached, after that streams collected events
@@ -126,7 +123,7 @@ public class WindowOperator<T> extends BatchOperator<T, Stream<T>> {
 
 		private final Timer timer;
 
-		private ReactiveSubscription<T> currentWindow;
+		private Window<T> currentWindow;
 
 		public WindowAction(Subscriber<? super Stream<T>> actual,
 				int backlog,
@@ -138,33 +135,26 @@ public class WindowOperator<T> extends BatchOperator<T, Stream<T>> {
 			this.timer = timer;
 		}
 
-		public ReactiveSubscription<T> currentWindow() {
+		public Window<T> currentWindow() {
 			return currentWindow;
 		}
 
 		protected Stream<T> createWindowStream() {
-			Broadcaster<T> action = SerializedBroadcaster.create(timer);
-			ReactiveSubscription<T> _currentWindow = new ReactiveSubscription<T>(null, action) {
+			Window<T> _currentWindow = new Window<T>(timer);
+			_currentWindow.onSubscribe(new Subscription(){
 
 				@Override
 				public void cancel() {
-					super.cancel();
 					currentWindow = null;
 				}
 
 				@Override
-				public void onComplete() {
-					super.onComplete();
-					currentWindow = null;
-				}
+				public void request(long n) {
 
-				@Override
-				protected void onRequest(long n) {
 				}
-			};
+			});
 			currentWindow = _currentWindow;
-			action.onSubscribe(_currentWindow);
-			return action;
+			return _currentWindow;
 		}
 
 		@Override

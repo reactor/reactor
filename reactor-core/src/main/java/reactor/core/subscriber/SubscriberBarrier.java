@@ -126,6 +126,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 			BackpressureUtils.checkRequest(n);
 			doRequest(n);
 		} catch (Throwable throwable) {
+			doCancel();
 			doOnSubscriberError(throwable);
 		}
 	}

@@ -38,7 +38,7 @@ import reactor.core.support.internal.PlatformDependent;
  * @author Stephane Maldini
  * @since 2.1
  */
-public class EmitterProcessor<T> extends BaseProcessor<T, T> {
+public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 	final int maxConcurrency;
 	final int bufferSize;
@@ -212,7 +212,7 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 	@Override
 	public void onError(Throwable t) {
 		super.onError(t);
-		if (done) {
+		if (autoCancel && done) {
 			throw ReactorFatalException.create(t);
 		}
 		reportError(t);
@@ -222,7 +222,7 @@ public class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 	@Override
 	public void onComplete() {
-		if (done) {
+		if (autoCancel && done) {
 			throw CancelException.get();
 		}
 		done = true;

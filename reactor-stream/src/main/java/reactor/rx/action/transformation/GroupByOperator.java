@@ -17,12 +17,13 @@
 package reactor.rx.action.transformation;
 
 import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.subscriber.SubscriberWithDemand;
@@ -30,7 +31,6 @@ import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.rx.stream.GroupedStream;
-import reactor.rx.subscription.ReactiveSubscription;
 
 /**
  * Manage a dynamic registry of substreams for a given key extracted from the incoming data. Each non-existing key will
@@ -62,7 +62,7 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		private static final AtomicIntegerFieldUpdater<GroupByAction> RUNNING =
 				AtomicIntegerFieldUpdater.newUpdater(GroupByAction.class, "running");
 
-		private final Map<K, ReactiveSubscription<T>> groupByMap = new ConcurrentHashMap<>();
+		private final Map<K, Processor<T, T>> groupByMap = new ConcurrentHashMap<>();
 
 		public GroupByAction(Subscriber<? super GroupedStream<K, T>> actual,
 				Timer timer,
@@ -74,26 +74,37 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 			REQUESTED.lazySet(this, BaseProcessor.SMALL_BUFFER_SIZE);
 		}
 
-		public Map<K, ReactiveSubscription<T>> groupByMap() {
+		public Map<K, Processor<T, T>> groupByMap() {
 			return groupByMap;
 		}
 
 		@Override
 		protected void doNext(final T value) {
 			final K key = fn.apply(value);
-			ReactiveSubscription<T> child = groupByMap.get(key);
+			Processor<T, T> child = groupByMap.get(key);
 			if (child == null) {
-				child = new ReactiveSubscription<T>(null, null);
-				child.getBuffer()
-				     .add(value);
-				groupByMap.put(key, child);
+				final BaseProcessor<T, T> fresh = Processors.emitter();
+				child = fresh;
 
-				final Queue<T> queue = child.getBuffer();
+				child.onNext(value);
+
+				child.onSubscribe(new Subscription() {
+					@Override
+					public void cancel() {
+						groupByMap.remove(key);
+					}
+
+					@Override
+					public void request(long n) {
+						doRequest(n);
+					}
+				});
+
 				GroupedStream<K, T> action = new GroupedStream<K, T>(key) {
 
 					@Override
 					public long getCapacity() {
-						return GroupByAction.this.getCapacity();
+						return fresh.getCapacity();
 					}
 
 					@Override
@@ -103,35 +114,12 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 
 					@Override
 					public void subscribe(Subscriber<? super T> s) {
-						final AtomicBoolean last = new AtomicBoolean();
-						ReactiveSubscription<T> finalSub = new ReactiveSubscription<T>(this, s, queue) {
-
-							@Override
-							public void cancel() {
-								super.cancel();
-								if (last.compareAndSet(false, true)) {
-									removeGroupedStream(key);
-								}
-							}
-
-							@Override
-							public void onComplete() {
-								super.onComplete();
-								if (last.compareAndSet(false, true)) {
-									removeGroupedStream(key);
-								}
-							}
-
-							@Override
-							protected void onRequest(long n) {
-								doRequest(n);
-							}
-						};
-						//finalSub.maxCapacity(capacity);
-						groupByMap.put(key, finalSub);
-						s.onSubscribe(finalSub);
+						fresh.subscribe(s);
 					}
 				};
+
+				groupByMap.put(key, child);
+
 				subscriber.onNext(action);
 			}
 			else {
@@ -167,18 +155,9 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 			}
 		}
 
-		private void removeGroupedStream(K key) {
-			ReactiveSubscription<T> innerSub = groupByMap.remove(key);
-			if (innerSub != null && groupByMap.isEmpty() && isTerminated()) {
-				if (innerSub.isComplete()) {
-					subscriber.onComplete();
-				}
-			}
-		}
-
 		@Override
 		protected void checkedCancel() {
-			for (ReactiveSubscription<T> stream : groupByMap.values()) {
+			for (Processor<T, T> stream : groupByMap.values()) {
 				stream.onComplete();
 			}
 			super.checkedCancel();
@@ -187,17 +166,22 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		@Override
 		protected void checkedError(Throwable ev) {
 			subscriber.onError(ev);
-			for (ReactiveSubscription<T> stream : groupByMap.values()) {
+			for (Processor<T, T> stream : groupByMap.values()) {
 				stream.onComplete();
 			}
 		}
 
 		@Override
 		protected void checkedComplete() {
-			for (ReactiveSubscription<T> stream : groupByMap.values()) {
+			for (Processor<T, T> stream : groupByMap.values()) {
 				stream.onComplete();
 			}
 			subscriber.onComplete();
+		}
+
+		@Override
+		protected void doTerminate() {
+			groupByMap.clear();
 		}
 	}
 }

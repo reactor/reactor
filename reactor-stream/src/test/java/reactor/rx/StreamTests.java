@@ -453,8 +453,8 @@ public class StreamTests extends AbstractReactorTest {
 		Broadcaster<Integer> d = Broadcaster.create();
 
 		Control c = d.
-		  dispatchOn(asyncGroup).partition().consume(stream ->
-			stream.dispatchOn(asyncGroup)
+		  dispatchOn(asyncGroup).log("test").partition().consume(stream ->
+			stream.dispatchOn(asyncGroup).log("test2")
 			  .map(o -> {
 				  synchronized (internalLock) {
 
@@ -1566,7 +1566,7 @@ public class StreamTests extends AbstractReactorTest {
 			  return list;
 		  })
 		  .observe(ls -> println("Computed: ", ls))
-		  .log("computed");
+		  .log("computation");
 		;
 
 		final Broadcaster<Integer> persistenceBroadcaster = Broadcaster.create();
@@ -1576,30 +1576,31 @@ public class StreamTests extends AbstractReactorTest {
 		  .map(i -> Collections.singletonList("done" + i))
 		  .log("persistence");
 
-		Stream<Integer> forkStream = forkBroadcaster.dispatchOn(Processors.singleGroup("fork", BACKLOG));
+		Stream<Integer> forkStream = forkBroadcaster
+				.dispatchOn(Processors.singleGroup("fork", BACKLOG))
+				.log("fork");
+
 		forkStream.subscribe(computationBroadcaster);
 		forkStream.subscribe(persistenceBroadcaster);
 
 		final Stream<List<String>> joinStream = Streams
 		  .join(computationStream, persistenceStream)
-			// MPSC seems perfect for joining threads.
 		  .dispatchOn(Processors.singleGroup("join", BACKLOG))
-//        .dispatchOn( Environment.newDispatcher( "join", BACKLOG ) )
 		  .map(listOfLists -> {
 			  listOfLists.get(0).addAll(listOfLists.get(1));
 			  return listOfLists.get(0);
-		  });
-
-		// Chained call doesn't compile.
-		final Stream<String> splitStream = joinStream.log("join").flatMap(Streams::from);
+		  })
+		  .log("join");
 
 		final Semaphore doneSemaphore = new Semaphore(0);
 
-		// Chained calls don't work.
-		final Stream<String> observedSplitStream = splitStream
-		  .log("splitStream");
 
-		final Promise<List<String>> listPromise = observedSplitStream.toList().onComplete( v -> doneSemaphore.release() );
+		final Promise<List<String>> listPromise = joinStream
+				.flatMap(Streams::from)
+				.log("resultStream")
+				.toList()
+				.onComplete( v -> doneSemaphore.release() );
+
 		System.out.println(forkBroadcaster.debug());
 
 

@@ -22,11 +22,9 @@ import org.reactivestreams.Subscriber;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.processor.EmitterProcessor;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
-import reactor.core.support.Subscribable;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
@@ -95,13 +93,13 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 
 		if (oldestReceiver == null){
 			Processor<E, E> root = Processors.emitter();
-			return ProcessorAction.create(
+			return ProcessorAction.wrap(
 					root,
 					Publishers.lift(root, oldestOperator)
 			);
 		}
 		else{
-			return ProcessorAction.create(
+			return ProcessorAction.wrap(
 					(Subscriber<E>)oldestReceiver,
 					this
 			);

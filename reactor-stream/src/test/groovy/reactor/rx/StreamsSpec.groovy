@@ -2223,7 +2223,6 @@ class StreamsSpec extends Specification {
 			'last value known is 10 as the stream has used its fallback'
 			!error
 			value.get() == 10
-			thrown CancelException
 	}
 
 	def 'Errors can have a fallback'() {
@@ -2913,7 +2912,6 @@ class StreamsSpec extends Specification {
 		then:
 			'the second is the last available'
 			value2.get() == 'test1'
-			thrown CancelException
 	}
 
 

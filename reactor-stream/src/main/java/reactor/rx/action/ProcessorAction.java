@@ -43,8 +43,8 @@ public class ProcessorAction<E, O> extends Stream<O> implements Processor<E, O>,
 	 * @param <O>
 	 * @return
 	 */
-	public static <E, O> ProcessorAction<E, O> create(Processor<E, O> processor){
-		return create(processor, processor);
+	public static <E, O> ProcessorAction<E, O> wrap(Processor<E, O> processor){
+		return wrap(processor, processor);
 	}
 
 	/**
@@ -55,7 +55,7 @@ public class ProcessorAction<E, O> extends Stream<O> implements Processor<E, O>,
 	 * @param <O>
 	 * @return
 	 */
-	public static <E, O> ProcessorAction<E, O> create(Subscriber<E> receiver, Publisher<O> publisher){
+	public static <E, O> ProcessorAction<E, O> wrap(Subscriber<E> receiver, Publisher<O> publisher){
 		return new ProcessorAction<>(receiver, publisher);
 	}
 

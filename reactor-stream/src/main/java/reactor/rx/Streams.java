@@ -33,7 +33,6 @@ import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
-import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
@@ -259,7 +258,7 @@ public class Streams {
 		if (ProcessorAction.class.isAssignableFrom(processor.getClass())) {
 			return ( ProcessorAction<I, O>) processor;
 		}
-		return ProcessorAction.create(processor);
+		return ProcessorAction.wrap(processor);
 	}
 
 	/**
@@ -734,7 +733,7 @@ public class Streams {
 	public static <T> ProcessorAction<Publisher<? extends T>, T> switchOnNext() {
 		Processor<Publisher<? extends T>, Publisher<? extends T>> emitter = Processors.replay();
 		return Subscribers.start(
-				ProcessorAction.create(emitter, lift(emitter, SwitchOperator.INSTANCE))
+				ProcessorAction.wrap(emitter, lift(emitter, SwitchOperator.INSTANCE))
 		);
 	}
 

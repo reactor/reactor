@@ -54,11 +54,6 @@ abstract public class FanInAction<I, E, O, SUBSCRIBER extends FanInAction.InnerS
 
 	DynamicMergeAction<?, ?> dynamicMergeAction = null;
 
-	@SuppressWarnings("unchecked")
-	public FanInAction() {
-		this(null);
-	}
-
 	public FanInAction(
 	  List<? extends Publisher<? extends I>> publishers) {
 		super();

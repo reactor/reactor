@@ -44,7 +44,7 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
 	 */
 	public static <T> Broadcaster<T> create() {
-		return new Broadcaster<T>(Processors.<T>emitter(), null, false);
+		return create(null, false);
 	}
 
 	/**
@@ -56,7 +56,20 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> create(Timer timer) {
-		return new Broadcaster<T>(Processors.<T>emitter(), timer, false);
+		return create(timer, false);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
+	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
+	 * subscribing to the returned instance.
+	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
+	 * @param autoCancel Propagate cancel upstream
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> create(Timer timer, boolean autoCancel) {
+		return from(Processors.<T>emitter(autoCancel), timer, autoCancel);
 	}
 
 	/**
@@ -67,7 +80,7 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> passthrough() {
-		return new Broadcaster<T>(Processors.<T>emitter(), null, true);
+		return create(null, true);
 	}
 
 	/**
@@ -79,7 +92,46 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> passthrough(Timer timer) {
-		return new Broadcaster<T>(Processors.<T>emitter(), timer, true);
+		return create(timer, true);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
+	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
+	 * subscribing to the returned instance.
+	 * @param emitter Identity processor to support broadcasting
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> from(Processor<T, T> emitter) {
+		return from(emitter, false);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
+	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
+	 * subscribing to the returned instance.
+	 * @param emitter Identity processor to support broadcasting
+	 * @param autoCancel Propagate cancel upstream
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> from(Processor<T, T> emitter, boolean autoCancel) {
+		return from(emitter, null, autoCancel);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
+	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
+	 * subscribing to the returned instance.
+	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
+	 * @param autoCancel Propagate cancel upstream
+	 * @param emitter Identity processor to support broadcasting
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> from(Processor<T, T> emitter, Timer timer, boolean autoCancel) {
+		return new Broadcaster<T>(emitter, timer, autoCancel);
 	}
 
 	/**
@@ -89,6 +141,10 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 	private final Timer               timer;
 	private final boolean             ignoreDropped;
 	private final SwapSubscription<O> subscription;
+
+	protected Broadcaster(Processor<O, O> processor, Timer timer, boolean ignoreDropped) {
+		this(processor, processor, timer, ignoreDropped);
+	}
 
 	protected Broadcaster(
 			Subscriber<O> receiver,
@@ -101,10 +157,6 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 		this.subscription = SwapSubscription.create();
 
 		receiver.onSubscribe(subscription);
-	}
-
-	protected Broadcaster(Processor<O, O> processor, Timer timer, boolean ignoreDropped) {
-		this(processor, processor, timer, ignoreDropped);
 	}
 
 	@Override
