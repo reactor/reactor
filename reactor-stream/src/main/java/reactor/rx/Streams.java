@@ -16,14 +16,6 @@
 
 package reactor.rx;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -65,6 +57,15 @@ import reactor.rx.stream.SingleTimerStream;
 import reactor.rx.stream.SingleValueStream;
 import reactor.rx.stream.StreamOperator;
 import reactor.rx.stream.SupplierStream;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A public factory to build {@link Stream}, Streams provide for common transformations from a few structures such as
@@ -331,6 +332,19 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> from(Iterable<? extends T> values) {
+		return Streams.wrap(Publishers.from(values));
+	}
+
+	/**
+	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterator on subscription request.
+	 * <p>
+	 * It will use the passed dispatcher to emit signals.
+	 *
+	 * @param values The values to {@code onNext()}
+	 * @param <T>    type of the values
+	 * @return a {@link Stream} based on the given values
+	 */
+	public static <T> Stream<T> from(Iterator<? extends T> values) {
 		return Streams.wrap(Publishers.from(values));
 	}
 

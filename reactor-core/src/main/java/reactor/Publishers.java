@@ -16,31 +16,32 @@
 
 package reactor;
 
-import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.publisher.operator.FlatMapOperator;
-import reactor.core.publisher.operator.IgnoreOnNextOperator;
+import reactor.core.publisher.IterableSequencer;
 import reactor.core.publisher.IteratorSequencer;
-import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.TrampolineOperator;
 import reactor.core.publisher.ValuePublisher;
 import reactor.core.publisher.convert.DependencyUtils;
+import reactor.core.publisher.operator.FlatMapOperator;
+import reactor.core.publisher.operator.IgnoreOnNextOperator;
+import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.SignalType;
-import reactor.fn.BiConsumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple2;
+
+import java.util.Iterator;
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * @author Stephane Maldini
@@ -64,6 +65,17 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <T> Publisher<T> from(final Iterable<? extends T> defaultValues) {
+		IterableSequencer<T> iterablePublisher = new IterableSequencer<>(defaultValues);
+		return create(iterablePublisher, iterablePublisher);
+	}
+
+	/**
+	 *
+	 * @param defaultValues
+	 * @param <T>
+	 * @return
+	 */
+	public static <T> Publisher<T> from(final Iterator<? extends T> defaultValues) {
 		IteratorSequencer<T> iteratorPublisher = new IteratorSequencer<>(defaultValues);
 		return create(iteratorPublisher, iteratorPublisher);
 	}
@@ -100,6 +112,9 @@ public final class Publishers extends PublisherFactory {
 		}
 		else if(Iterable.class.isAssignableFrom(source.getClass())){
 			return from((Iterable<IN>)source);
+		}
+		else if(Iterator.class.isAssignableFrom(source.getClass())){
+			return from((Iterator<IN>)source);
 		}
 		else {
 			return (Publisher<IN>) DependencyUtils.convertToPublisher(source);
