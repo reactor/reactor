@@ -60,6 +60,7 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 
 		private final GroupByAction<T, K> parent;
 		private final BaseProcessor<T, T> processor;
+		//private  Subscriber<? super T> processor;
 
 		@SuppressWarnings("unused")
 		private volatile       int                                       terminated = 0;
@@ -88,11 +89,12 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		public GroupedEmitter(K key, GroupByAction<T, K> parent) {
 			super(key);
 			this.parent = parent;
-			this.processor = Processors.replay();
+			this.processor = Processors.emitter();
 		}
 
+
 		Queue<T> getBuffer() {
-			Queue<T> q = buffer;
+		Queue<T> q = buffer;
 			if (q == null) {
 				q = RingBuffer.<T>newSequencedQueue(RingBuffer.createSingleProducer(BaseProcessor.SMALL_BUFFER_SIZE));
 				buffer = q;
@@ -161,11 +163,11 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 
 		@Override
 		public long getCapacity() {
-			return processor.getCapacity();
+			return BaseProcessor.SMALL_BUFFER_SIZE;
 		}
 
 		public long getAvailableCapacity() {
-			return processor.getAvailableCapacity();
+			return requested;
 		}
 
 		@Override

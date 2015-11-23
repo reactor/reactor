@@ -848,7 +848,7 @@ public class StreamTests extends AbstractReactorTest {
 	 */
 	@Test
 	public void shouldNotFlushStreamOnTimeoutPrematurely() throws Exception {
-		final int NUM_MESSAGES = 1000000;
+		final int NUM_MESSAGES = 100000;
 		final int BATCH_SIZE = 1000;
 		final int TIMEOUT = 100;
 		final int PARALLEL_STREAMS = 2;
@@ -870,9 +870,7 @@ public class StreamTests extends AbstractReactorTest {
 		                 .consume(substream -> substream
 				                 .dispatchOn(asyncGroup)
 		                                                .buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
-				                                        .log("timeoutparallel-"+substream.key(), LogOperator.REQUEST)
 		                                                .consume(items -> {
-			                                                System.out.println(items.size()+batchesDistribution.toString());
 			                                                batchesDistribution.compute(items.size(),
 					                                                (key, value) -> value == null ? 1 : value + 1);
 			                                                items.forEach(item -> latch.countDown());
@@ -1382,7 +1380,7 @@ public class StreamTests extends AbstractReactorTest {
 
 			Assert.assertTrue(prev > 0);
 			Assert.assertTrue(time > 0);
-			Assert.assertTrue("was " + (time - prev), time - prev <= delayMS*1.1);
+			Assert.assertTrue("was " + (time - prev), time - prev <= delayMS*1.2);
 		}
 	}
 

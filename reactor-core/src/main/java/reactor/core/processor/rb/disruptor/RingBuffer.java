@@ -601,7 +601,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 
 		@Override
 		public boolean isEmpty() {
-			return buffer.getCursor() != pollCursor.get();
+			return buffer.getCursor() == pollCursor.get();
 		}
 
 		@Override

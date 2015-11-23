@@ -1725,7 +1725,7 @@ class StreamsSpec extends Specification {
 					2: ['Acme'],
 					3: ['Acme2', 'Acme3']
 			]
-	}
+	}/*
 
 	def 'StreamUtils will parse a Stream to a Map'() {
 		given:
@@ -1768,7 +1768,7 @@ class StreamsSpec extends Specification {
 		then:
 			'the result should contain zero stream'
 			!result.to
-	}
+	}*/
 
 	def 'Creating Stream from publisher'() {
 		given:
