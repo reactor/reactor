@@ -26,12 +26,12 @@ import java.util.Iterator;
 
 //
 
-public final class IteratorSequencer<T> extends AbstractIteratorSequencer<T>
+public final class IterableSequencer<T> extends AbstractIteratorSequencer<T>
         implements Function<Subscriber<? super T>, Iterator<? extends T>> {
 
-    private final Iterator<? extends T> defaultValues;
+    private final Iterable<? extends T> defaultValues;
 
-    public IteratorSequencer(Iterator<? extends T> defaultValues) {
+    public IterableSequencer(Iterable<? extends T> defaultValues) {
         this.defaultValues = defaultValues;
     }
 
@@ -40,7 +40,7 @@ public final class IteratorSequencer<T> extends AbstractIteratorSequencer<T>
         if (defaultValues == null) {
             throw PublisherFactory.PrematureCompleteException.INSTANCE;
         }
-        Iterator<? extends T> it = defaultValues;
+        Iterator<? extends T> it = defaultValues.iterator();
         if (!it.hasNext()) {
             throw PublisherFactory.PrematureCompleteException.INSTANCE;
         }
@@ -49,6 +49,6 @@ public final class IteratorSequencer<T> extends AbstractIteratorSequencer<T>
 
     @Override
     public String toString() {
-        return "iterator=" + defaultValues;
+        return "iterable=" + defaultValues;
     }
 }
