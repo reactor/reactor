@@ -50,7 +50,6 @@ import reactor.fn.tuple.Tuple6;
 import reactor.fn.tuple.Tuple7;
 import reactor.fn.tuple.Tuple8;
 import reactor.fn.tuple.TupleN;
-import reactor.rx.action.Action;
 import reactor.rx.action.ProcessorAction;
 import reactor.rx.action.combination.CombineLatestAction;
 import reactor.rx.action.combination.DynamicMergeAction;
@@ -721,12 +720,12 @@ public class Streams {
 	}
 
 	/**
-	 * Build a Synchronous {@literal Action} whose data are emitted by the most recent {@link Action#onNext(Object)}
+	 * Build a Synchronous {@literal Action} whose data are emitted by the most recent {@link Subscriber#onNext(Object)}
 	 * signaled publisher.
 	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
 	 *
 	 * @param <T> type of the value
-	 * @return a {@link Action} accepting publishers and producing inner data T
+	 * @return a {@link ProcessorAction} accepting publishers and producing inner data T
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
@@ -1429,7 +1428,7 @@ public class Streams {
 	public static <E, TUPLE extends Tuple, V> Stream<V> combineLatest(
 	  Publisher<? extends Publisher<E>> sources,
 	  Function<TUPLE, ? extends V> combinator) {
-		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(
+		final DynamicMergeAction<E, V> mergeAction = new DynamicMergeAction<E, V>(
 		  new CombineLatestAction<E, V, TUPLE>(combinator, null)
 		);
 
@@ -1688,7 +1687,7 @@ public class Streams {
 	public static <E, TUPLE extends Tuple, V> Stream<V> zip(
 	  Publisher<? extends Publisher<E>> sources,
 	  Function<TUPLE, ? extends V> combinator) {
-		final Action<Publisher<? extends E>, V> mergeAction = new DynamicMergeAction<E, V>(
+		final DynamicMergeAction<E, V> mergeAction = new DynamicMergeAction<E, V>(
 		  new ZipAction<E, V, TUPLE>(combinator, null)
 		);
 
@@ -1872,7 +1871,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<List<T>> join(List<? extends Publisher<? extends T>> sources) {
-		return (Action<T, List<T>>) zip(sources, ZipAction.<TupleN, T>joinZipper());
+		return zip(sources, ZipAction.<TupleN, T>joinZipper());
 	}
 
 	/**

@@ -15,6 +15,19 @@
  */
 package reactor.reactivestreams.tck;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,14 +42,9 @@ import reactor.Processors;
 import reactor.Timers;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
-import reactor.rx.StreamUtils;
+import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.Action;
 import reactor.rx.broadcast.Broadcaster;
-
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -148,8 +156,8 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 
 		createHelperPublisher(10).subscribe(processor);
 
-		if(Action.class.isAssignableFrom(processor.getClass())) {
-			System.out.println(((Action)processor).debug());
+		if(Stream.class.isAssignableFrom(processor.getClass())) {
+			System.out.println(((Stream)processor).debug());
 		}
 		List<Integer> list = new ArrayList<>();
 
@@ -188,8 +196,8 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 		//stream.broadcastComplete();
 
 		latch.await(8, TimeUnit.SECONDS);
-		if(Action.class.isAssignableFrom(processor.getClass())) {
-			System.out.println(((Action)processor).debug());
+		if(Stream.class.isAssignableFrom(processor.getClass())) {
+			System.out.println(((Stream)processor).debug());
 		}
 
 		long count = latch.getCount();
@@ -216,8 +224,8 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 		Broadcaster<Integer> stream = Broadcaster.create();
 		ReactiveSession<Integer> session = ReactiveSession.create(stream);
 		stream.subscribe(processor);
-		if(Action.class.isAssignableFrom(processor.getClass())) {
-			System.out.println(((Action)processor).debug());
+		if(Stream.class.isAssignableFrom(processor.getClass())) {
+			System.out.println(((Stream)processor).debug());
 		}
 
 		processor.subscribe(new Subscriber<Integer>() {

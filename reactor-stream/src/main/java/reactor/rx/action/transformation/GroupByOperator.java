@@ -96,7 +96,8 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		Queue<T> getBuffer() {
 		Queue<T> q = buffer;
 			if (q == null) {
-				q = RingBuffer.<T>newSequencedQueue(RingBuffer.createSingleProducer(BaseProcessor.SMALL_BUFFER_SIZE));
+				q = RingBuffer.<T>newSequencedQueue(RingBuffer.<T>createSingleProducer(BaseProcessor
+						.SMALL_BUFFER_SIZE));
 				buffer = q;
 			}
 			return q;

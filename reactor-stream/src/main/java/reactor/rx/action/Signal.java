@@ -42,9 +42,9 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 
 		/**
 		 * Can happen N times where N is a possibly unbounded number. The signal will trigger core logic on all
-		 * {@link reactor.rx.action.Action} attached to a {@link reactor.rx.Stream}.
+		 * {@link org.reactivestreams.Subscriber} attached to a {@link reactor.rx.Stream}.
 		 * <p>
-		 * see {@link reactor.rx.action.Action#onNext(Object)}
+		 * see {@link org.reactivestreams.Subscriber#onNext(Object)}
 		 */
 		NEXT,
 
@@ -54,7 +54,7 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 		 * ()},
 		 * {@link reactor.rx.Stream#window()} or {@link reactor.rx.Stream#reduce(reactor.fn.BiFunction)}
 		 * <p>
-		 * see {@link reactor.rx.action.Action#onComplete()}
+		 * see {@link org.reactivestreams.Subscriber#onComplete()}
 		 */
 		COMPLETE,
 
@@ -65,7 +65,7 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 		 * .rx.Stream#recover
 		 * (Class)} or {@link reactor.rx.Stream#retry()}
 		 * <p>
-		 * see {@link reactor.rx.action.Action#onError(Throwable cause)}
+		 * see {@link org.reactivestreams.Subscriber#onError(Throwable cause)}
 		 */
 		ERROR
 	}

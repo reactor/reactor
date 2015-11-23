@@ -127,7 +127,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 
 	/**
 	 * Cast the current Stream flowing data type into a target class type.
-	 * @param <E> the {@link Action} output type
+	 * @param <E> the {@link Stream} output type
 	 * @return the current {link Stream} instance casted
 	 * @since 2.0
 	 */
@@ -141,7 +141,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * #consume(reactor.fn.Consumer)} will start the subscription chain. It will listen for current Stream signals and
 	 * will be eventually producing signals as well (subscribe,error, complete,next). <p> The action is returned for
 	 * functional-style chaining.
-	 * @param <V> the {@link reactor.rx.action.Action} output type
+	 * @param <V> the {@link Stream} output type
 	 * @param action the function to map a provided dispatcher to a fresh Action to subscribe.
 	 * @return the passed action
 	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
@@ -1149,8 +1149,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Bind the stream to a given {@param elements} volume of in-flight data: - An {@link Action} will request up to the
-	 * defined volume upstream. - An {@link Action} will track the pending requests and fire up to {@param elements}
+	 * Bind the stream to a given {@param elements} volume of in-flight data: - A {@link Subscriber} will request up to the
+	 * defined volume upstream. - a
+	 * {@link Subscriber} will track the pending requests and fire up to {@param elements}
 	 * when the previous volume has been processed. - A {@link BatchOperator} and any other size-bound action will be
 	 * limited to the defined volume. <p> <p> A stream capacity can't be superior to the underlying dispatcher capacity:
 	 * if the {@param elements} overflow the dispatcher backlog size, the capacity will be aligned automatically to fit
@@ -1158,9 +1159,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * Stream can be sized up to {@literal Long.MAX_VALUE} in flight data. <p> <p> When the stream receives more
 	 * elements than requested, incoming data is eventually staged in a {@link org.reactivestreams.Subscription}. The
 	 * subscription can react differently according to the implementation in-use, the default strategy is as following:
-	 * - The first-level of pair compositions Stream->Action will overflow data in a {@link java.util.Queue}, ready to
-	 * be polled when the action fire the pending requests. - The following pairs of Action->Action will synchronously
-	 * pass data - Any pair of Stream->Subscriber or Action->Subscriber will behave as with the root Stream->Action pair
+	 * - The first-level of pair compositions Stream->Subscriber will overflow data in a {@link java.util.Queue}, ready to
+	 * be polled when the action fire the pending requests. - The following pairs of Subscriber->Subscriber will synchronously
+	 * pass data - Any pair of Stream->Subscriber or Subscriber->Subscriber will behave as with the root Stream->Action pair
 	 * rule. - {@link #onOverflowBuffer()} force this staging behavior, with a possibilty to pass a {@link
 	 * reactor.core.queue .PersistentQueue}
 	 * @param elements maximum number of in-flight data
@@ -1199,7 +1200,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if not enough demand is signaled
+	 * Attach a No-Op Stream that only serves the purpose of buffering incoming values if not enough demand is signaled
 	 * downstream. A buffering capable stream will prevent underlying dispatcher to be saturated (and sometimes
 	 * blocking).
 	 * @return a buffered stream
@@ -1210,7 +1211,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Attach a No-Op Action that only serves the purpose of buffering incoming values if not enough demand is signaled
+	 * Attach a No-Op Stream that only serves the purpose of buffering incoming values if not enough demand is signaled
 	 * downstream. A buffering capable stream will prevent underlying dispatcher to be saturated (and sometimes
 	 * blocking).
 	 * @param size max buffer size
@@ -1229,7 +1230,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Attach a No-Op Action that only serves the purpose of dropping incoming values if not enough demand is signaled
+	 * Attach a No-Op Stream that only serves the purpose of dropping incoming values if not enough demand is signaled
 	 * downstream. A dropping stream will prevent underlying dispatcher to be saturated (and sometimes blocking).
 	 * @return a dropping stream
 	 * @since 2.0
@@ -2237,7 +2238,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * component and the current stream to act as the {@link org.reactivestreams.Publisher}. <p> Useful to share and
 	 * ship a full stream whilst hiding the staging actions in the middle. <p> Default behavior, e.g. a single stream,
 	 * will raise an {@link java.lang.IllegalStateException} as there would not be any Subscriber (Input) side to
-	 * combine. {@link reactor.rx.action.Action#combine()} is the usual reference implementation used.
+	 * combine. {@link reactor.rx.stream.StreamOperator#combine()} is the usual reference implementation used.
 	 * @param <E> the type of the most ancien action downstream.
 	 * @return new Combined Action
 	 */

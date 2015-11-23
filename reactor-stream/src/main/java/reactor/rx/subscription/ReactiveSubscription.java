@@ -15,13 +15,12 @@
  */
 package reactor.rx.subscription;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import org.reactivestreams.Subscriber;
 import reactor.core.support.BackpressureUtils;
 import reactor.rx.Stream;
-import reactor.rx.action.Action;
-
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Relationship between a Stream (Publisher) and a Subscriber.

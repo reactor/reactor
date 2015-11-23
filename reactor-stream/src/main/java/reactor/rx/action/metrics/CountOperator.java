@@ -22,7 +22,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
-import reactor.rx.action.Action;
 
 /**
  * @author Stephane Maldini

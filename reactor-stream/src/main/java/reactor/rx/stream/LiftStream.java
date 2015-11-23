@@ -15,17 +15,15 @@
  */
 package reactor.rx.stream;
 
-import org.reactivestreams.Publisher;
+import java.util.concurrent.locks.LockSupport;
+
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
-import reactor.core.support.Publishable;
 import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
 import reactor.rx.action.ProcessorAction;
-
-import java.util.concurrent.locks.LockSupport;
 
 /**
  * A Stream wrapper that defers a parent stream subscription to the child action subscribe() call.

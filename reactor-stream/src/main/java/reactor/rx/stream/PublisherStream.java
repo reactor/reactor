@@ -18,9 +18,11 @@ package reactor.rx.stream;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Processors;
 import reactor.core.error.Exceptions;
+import reactor.core.processor.BaseProcessor;
 import reactor.rx.Stream;
-import reactor.rx.subscription.ReactiveSubscription;
+import reactor.rx.subscription.SwapSubscription;
 
 /**
  * A {@link org.reactivestreams.Publisher} wrapper that takes care of lazy subscribing.
@@ -36,7 +38,7 @@ import reactor.rx.subscription.ReactiveSubscription;
  *
  * @author Stephane Maldini
  */
-public class PublisherStream<T> extends Stream<T> {
+public final class PublisherStream<T> extends Stream<T> {
 
 	private final Publisher<T> source;
 
@@ -47,50 +49,33 @@ public class PublisherStream<T> extends Stream<T> {
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
 		try {
-			subscriber.onSubscribe(new ReactiveSubscription<T>(PublisherStream.this, subscriber) {
+			final BaseProcessor<T, T> emitter = Processors.emitter();
 
-				private boolean started = false;
-				private ReactiveSubscription<T> thiz = this;
-				private Subscription subscription;
+			emitter.subscribe(subscriber);
 
+			final SwapSubscription sub = SwapSubscription.create();
+			emitter.onSubscribe(sub);
+
+
+			source.subscribe(new Subscriber<T>() {
 				@Override
-				protected void onRequest(long elements) {
-					super.onRequest(elements);
-
-					if (!started) {
-						started = true;
-						source.subscribe(new Subscriber<T>() {
-							@Override
-							public void onSubscribe(Subscription s) {
-								subscription = s;
-							}
-
-							@Override
-							public void onNext(T t) {
-								thiz.onNext(t);
-							}
-
-							@Override
-							public void onError(Throwable t) {
-								thiz.onError(t);
-							}
-
-							@Override
-							public void onComplete() {
-								thiz.onComplete();
-							}
-						});
-					} else if (subscription != null) {
-						subscription.request(elements);
-					}
+				public void onSubscribe(Subscription s) {
+					sub.swapTo(s);
 				}
 
 				@Override
-				public void cancel() {
-					super.cancel();
-					if (subscription != null) {
-						subscription.cancel();
-					}
+				public void onNext(T t) {
+					emitter.onNext(t);
+				}
+
+				@Override
+				public void onError(Throwable t) {
+					emitter.onError(t);
+				}
+
+				@Override
+				public void onComplete() {
+					emitter.onComplete();
 				}
 			});
 		} catch (Throwable throwable) {

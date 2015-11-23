@@ -15,15 +15,14 @@
  */
 package reactor.rx.stream;
 
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.support.BackpressureUtils;
 import reactor.rx.Stream;
-import reactor.rx.action.Action;
-import reactor.rx.subscription.ReactiveSubscription;
-
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import reactor.rx.subscription.PushSubscription;
 
 /**
  * A Stream that emits a result of a {@link java.util.concurrent.Future} and then complete.
@@ -76,7 +75,7 @@ public final class FutureStream<T> extends Stream<T> {
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
 		try {
-			subscriber.onSubscribe(new ReactiveSubscription<T>(this, subscriber) {
+			subscriber.onSubscribe(new PushSubscription(this, subscriber) {
 
 				@Override
 				public void request(long elements) {
