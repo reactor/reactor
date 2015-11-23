@@ -1221,7 +1221,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return new Stream<O>() {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Processor<O, O> emitter = Processors.emitter(size);
+				Processor<O, O> emitter = Processors.replay(size);
 				emitter.subscribe(s);
 				Stream.this.subscribe(emitter);
 			}

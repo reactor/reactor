@@ -34,7 +34,7 @@ public abstract class GroupedStream<K, T> extends Stream<T> {
 		this.key = key;
 	}
 
-	public K key() {
+	public final K key() {
 		return key;
 	}
 

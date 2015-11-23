@@ -29,8 +29,13 @@ import reactor.core.support.BackpressureUtils;
  */
 public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 
+	protected final static int NOT_TERMINATED = 0;
+	protected final static int TERMINATED_WITH_SUCCESS = 1;
+	protected final static int TERMINATED_WITH_ERROR = 2;
+	protected final static int TERMINATED_WITH_CANCEL = 3;
+
 	@SuppressWarnings("unused")
-	private volatile       int                                             terminated = 0;
+	private volatile       int                                             terminated = NOT_TERMINATED;
 	@SuppressWarnings("rawtypes")
 	protected static final AtomicIntegerFieldUpdater<SubscriberWithDemand> TERMINATED =
 			AtomicIntegerFieldUpdater.newUpdater(SubscriberWithDemand.class, "terminated");
@@ -50,7 +55,31 @@ public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 	 * @return
 	 */
 	public final boolean isTerminated() {
-		return terminated == 1;
+		return terminated != NOT_TERMINATED;
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public final boolean isCompleted() {
+		return terminated == TERMINATED_WITH_SUCCESS;
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public final boolean isFailed() {
+		return terminated == TERMINATED_WITH_ERROR;
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public final boolean isCancelled() {
+		return terminated == TERMINATED_WITH_CANCEL;
 	}
 
 	/**
@@ -79,7 +108,7 @@ public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 
 	@Override
 	protected void doComplete() {
-		if (TERMINATED.compareAndSet(this, 0, 1)) {
+		if (TERMINATED.compareAndSet(this, NOT_TERMINATED, TERMINATED_WITH_SUCCESS)) {
 			checkedComplete();
 			doTerminate();
 		}
@@ -91,7 +120,7 @@ public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 
 	@Override
 	protected void doError(Throwable throwable) {
-		if (TERMINATED.compareAndSet(this, 0, 1)) {
+		if (TERMINATED.compareAndSet(this, NOT_TERMINATED, TERMINATED_WITH_ERROR)) {
 			checkedError(throwable);
 			doTerminate();
 		}
@@ -103,7 +132,7 @@ public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 
 	@Override
 	protected void doCancel() {
-		if (TERMINATED.compareAndSet(this, 0, 1)) {
+		if (TERMINATED.compareAndSet(this, NOT_TERMINATED, TERMINATED_WITH_CANCEL)) {
 			checkedCancel();
 			doTerminate();
 		}

@@ -24,6 +24,7 @@ import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Publishable;
+import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 
 /**
@@ -48,20 +49,8 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 	}
 
 	public SwapSubscription() {
-		SUBSCRIPTION.lazySet(this, UNSUBSCRIBED);
+		SUBSCRIPTION.lazySet(this, SignalType.NOOP_SUBSCRIPTION);
 	}
-
-	static private final Subscription UNSUBSCRIBED = new Subscription() {
-		@Override
-		public void request(long n) {
-			//IGNORE;
-		}
-
-		@Override
-		public void cancel() {
-			//IGNORE;
-		}
-	};
 
 	static private final Subscription CANCELLED = new Subscription() {
 		@Override
@@ -93,7 +82,7 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 	 * @return
 	 */
 	public boolean isUnsubscribed(){
-		return subscription == UNSUBSCRIBED;
+		return subscription == SignalType.NOOP_SUBSCRIPTION;
 	}
 
 	/**
@@ -116,7 +105,7 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 		Subscription s;
 		for(;;) {
 			s = subscription;
-			if(s == CANCELLED || s == UNSUBSCRIBED){
+			if(s == CANCELLED || s == SignalType.NOOP_SUBSCRIPTION){
 				return;
 			}
 

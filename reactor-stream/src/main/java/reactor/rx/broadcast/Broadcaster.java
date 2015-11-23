@@ -24,6 +24,7 @@ import reactor.Processors;
 import reactor.Timers;
 import reactor.core.error.CancelException;
 import reactor.core.error.InsufficientCapacityException;
+import reactor.core.processor.ProcessorGroup;
 import reactor.fn.timer.Timer;
 import reactor.rx.action.ProcessorAction;
 import reactor.rx.subscription.SwapSubscription;
@@ -80,7 +81,7 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> passthrough() {
-		return create(null, true);
+		return passthrough(null);
 	}
 
 	/**
@@ -92,7 +93,7 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 	 * @return a new {@link Broadcaster}
 	 */
 	public static <T> Broadcaster<T> passthrough(Timer timer) {
-		return create(timer, true);
+		return from(ProcessorGroup.sync(), timer, true);
 	}
 
 	/**
@@ -132,6 +133,47 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 	 */
 	public static <T> Broadcaster<T> from(Processor<T, T> emitter, Timer timer, boolean autoCancel) {
 		return new Broadcaster<T>(emitter, timer, autoCancel);
+	}
+
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
+	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
+	 * subscribing to the returned instance.
+	 * @param emitter Identity processor to support broadcasting
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> from(ProcessorGroup emitter) {
+		return from(emitter, false);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
+	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
+	 * subscribing to the returned instance.
+	 * @param emitter Identity processor to support broadcasting
+	 * @param autoCancel Propagate cancel upstream
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> from(ProcessorGroup emitter, boolean autoCancel) {
+		return from(emitter, null, autoCancel);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
+	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
+	 * subscribing to the returned instance.
+	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
+	 * @param autoCancel Propagate cancel upstream
+	 * @param emitter Identity processor to support broadcasting
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Broadcaster<T> from(ProcessorGroup emitter, Timer timer, boolean autoCancel) {
+		return from(emitter.dispatchOn(), timer, autoCancel);
 	}
 
 	/**

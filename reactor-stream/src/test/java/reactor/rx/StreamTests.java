@@ -62,13 +62,13 @@ import reactor.core.error.CancelException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.publisher.PublisherFactory;
+import reactor.core.publisher.operator.LogOperator;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.IO;
 import reactor.io.codec.StandardCodecs;
-import reactor.rx.action.Action;
 import reactor.rx.action.Control;
 import reactor.rx.action.ProcessorAction;
 import reactor.rx.action.support.TapAndControls;
@@ -94,9 +94,7 @@ public class StreamTests extends AbstractReactorTest {
 	@Test
 	public void testComposeFromSingleValue() throws InterruptedException {
 		Stream<String> stream = Streams.just("Hello World!");
-		Stream<String> s =
-		  stream
-			.map(s1 -> "Goodbye then!");
+		Stream<String> s = stream.map(s1 -> "Goodbye then!");
 
 		await(s, is("Goodbye then!"));
 	}
@@ -104,18 +102,16 @@ public class StreamTests extends AbstractReactorTest {
 	@Test
 	public void testComposeFromMultipleValues() throws InterruptedException {
 		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
-		Stream<Integer> s =
-		  stream
-			.map(STRING_2_INTEGER)
-			.map(new Function<Integer, Integer>() {
-				int sum = 0;
+		Stream<Integer> s = stream.map(STRING_2_INTEGER)
+		                          .map(new Function<Integer, Integer>() {
+			                          int sum = 0;
 
-				@Override
-				public Integer apply(Integer i) {
-					sum += i;
-					return sum;
-				}
-			});
+			                          @Override
+			                          public Integer apply(Integer i) {
+				                          sum += i;
+				                          return sum;
+			                          }
+		                          });
 		await(5, s, is(15));
 	}
 
@@ -123,10 +119,10 @@ public class StreamTests extends AbstractReactorTest {
 	public void simpleReactiveSubscriber() throws InterruptedException {
 		Broadcaster<String> str = Broadcaster.create();
 
-		str.dispatchOn(asyncGroup).subscribe(new TestSubscriber());
+		str.dispatchOn(asyncGroup)
+		   .subscribe(new TestSubscriber());
 
 		System.out.println(str.debug());
-
 
 		str.onNext("Goodbye World!");
 		str.onNext("Goodbye World!");
@@ -138,10 +134,8 @@ public class StreamTests extends AbstractReactorTest {
 	@Test
 	public void testComposeFromMultipleFilteredValues() throws InterruptedException {
 		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
-		Stream<Integer> s =
-		  stream
-			.map(STRING_2_INTEGER)
-			.filter(i -> i % 2 == 0);
+		Stream<Integer> s = stream.map(STRING_2_INTEGER)
+		                          .filter(i -> i % 2 == 0);
 
 		await(2, s, is(4));
 	}
@@ -151,51 +145,48 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
 
 		final AtomicBoolean exception = new AtomicBoolean(false);
-		Stream<Integer> s =
-		  stream
-			.map(STRING_2_INTEGER)
-			.map(new Function<Integer, Integer>() {
-				int sum = 0;
+		Stream<Integer> s = stream.map(STRING_2_INTEGER)
+		                          .map(new Function<Integer, Integer>() {
+			                          int sum = 0;
 
-				@Override
-				public Integer apply(Integer i) {
-					if (i >= 5) {
-						throw new IllegalArgumentException();
-					}
-					sum += i;
-					return sum;
-				}
-			})
-			.when(IllegalArgumentException.class, e -> exception.set(true));
+			                          @Override
+			                          public Integer apply(Integer i) {
+				                          if (i >= 5) {
+					                          throw new IllegalArgumentException();
+				                          }
+				                          sum += i;
+				                          return sum;
+			                          }
+		                          })
+		                          .when(IllegalArgumentException.class, e -> exception.set(true));
 
 		await(5, s, is(10));
 		assertThat("error triggered", exception.get(), is(true));
 	}
-
 
 	@Test
 	public void testComposedErrorHandlingWitIgnoreErrors() throws InterruptedException {
 		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
 
 		final AtomicBoolean exception = new AtomicBoolean(false);
-		Stream<Integer> s =
-		  stream
-			.map(STRING_2_INTEGER)
-			.observe(i -> {
-				if (i == 3) throw new IllegalArgumentException();
-			})
-			.ignoreError()
-			.log("errorHandling")
-			.map(new Function<Integer, Integer>() {
-				int sum = 0;
+		Stream<Integer> s = stream.map(STRING_2_INTEGER)
+		                          .observe(i -> {
+			                          if (i == 3) {
+				                          throw new IllegalArgumentException();
+			                          }
+		                          })
+		                          .ignoreError()
+		                          .log("errorHandling")
+		                          .map(new Function<Integer, Integer>() {
+			                          int sum = 0;
 
-				@Override
-				public Integer apply(Integer i) {
-					sum += i;
-					return sum;
-				}
-			})
-			.when(IllegalArgumentException.class, e -> exception.set(true));
+			                          @Override
+			                          public Integer apply(Integer i) {
+				                          sum += i;
+				                          return sum;
+			                          }
+		                          })
+		                          .when(IllegalArgumentException.class, e -> exception.set(true));
 
 		await(2, s, is(3));
 		assertThat("error triggered", exception.get(), is(false));
@@ -204,10 +195,8 @@ public class StreamTests extends AbstractReactorTest {
 	@Test
 	public void testReduce() throws InterruptedException {
 		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
-		Stream<Integer> s =
-		  stream
-			.map(STRING_2_INTEGER)
-			.reduce(1, (acc, next) -> acc * next);
+		Stream<Integer> s = stream.map(STRING_2_INTEGER)
+		                          .reduce(1, (acc, next) -> acc * next);
 		await(1, s, is(120));
 	}
 
@@ -215,13 +204,12 @@ public class StreamTests extends AbstractReactorTest {
 	public void testMerge() throws InterruptedException {
 		Stream<String> stream1 = Streams.just("1", "2");
 		Stream<String> stream2 = Streams.just("3", "4", "5");
-		Stream<Integer> s =
-		  Streams.merge(stream1, stream2)
-			//.dispatchOn(env)
-			.capacity(5)
-			.log("merge")
-			.map(STRING_2_INTEGER)
-			.reduce(1, (acc, next) -> acc * next);
+		Stream<Integer> s = Streams.merge(stream1, stream2)
+		                           //.dispatchOn(env)
+		                           .capacity(5)
+		                           .log("merge")
+		                           .map(STRING_2_INTEGER)
+		                           .reduce(1, (acc, next) -> acc * next);
 		await(1, s, is(120));
 	}
 
@@ -232,34 +220,46 @@ public class StreamTests extends AbstractReactorTest {
 		Stream<Integer> first = s.sampleFirst();
 		Stream<Integer> last = s.sample();
 
-		assertThat("First is 1", first.tap().get(), is(1));
-		assertThat("Last is 5", last.tap().get(), is(5));
+		assertThat("First is 1",
+				first.tap()
+				     .get(),
+				is(1));
+		assertThat("Last is 5",
+				last.tap()
+				    .get(),
+				is(5));
 	}
 
 	@Test
 	public void testRelaysEventsToReactor() throws InterruptedException {
-		EventBus r = EventBus.config().get();
+		EventBus r = EventBus.config()
+		                     .get();
 		Selector key = Selectors.$();
 
 		final CountDownLatch latch = new CountDownLatch(5);
 		final Tap<Event<Integer>> tap = Tap.create();
 
-		r.on(key, (Event<Integer> d) -> {tap.accept(d); latch.countDown();});
+		r.on(key, (Event<Integer> d) -> {
+			tap.accept(d);
+			latch.countDown();
+		});
 
-		r.notify(Streams.just("1", "2", "3", "4", "5").map(STRING_2_INTEGER), key.getObject());
+		r.notify(Streams.just("1", "2", "3", "4", "5")
+		                .map(STRING_2_INTEGER), key.getObject());
 
 		//await(s, is(5));
 		assertThat("latch was counted down", latch.getCount(), is(0l));
-		assertThat("value is 5", tap.get().getData(), is(5));
+		assertThat("value is 5",
+				tap.get()
+				   .getData(),
+				is(5));
 	}
 
 	@Test
 	public void testStreamBatchesResults() {
 		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
-		Stream<List<Integer>> s =
-		  stream
-			.map(STRING_2_INTEGER)
-			.buffer();
+		Stream<List<Integer>> s = stream.map(STRING_2_INTEGER)
+		                                .buffer();
 
 		final AtomicInteger batchCount = new AtomicInteger();
 		final AtomicInteger count = new AtomicInteger();
@@ -278,27 +278,25 @@ public class StreamTests extends AbstractReactorTest {
 	public void testHandlersErrorsDownstream() throws InterruptedException {
 		Stream<String> stream = Streams.just("1", "2", "a", "4", "5");
 		final CountDownLatch latch = new CountDownLatch(1);
-		Stream<Integer> s =
-		  stream
-			.map(STRING_2_INTEGER)
-			.map(new Function<Integer, Integer>() {
-				int sum = 0;
+		Stream<Integer> s = stream.map(STRING_2_INTEGER)
+		                          .map(new Function<Integer, Integer>() {
+			                          int sum = 0;
 
-				@Override
-				public Integer apply(Integer i) {
-					if (i >= 5) {
-						throw new IllegalArgumentException();
-					}
-					sum += i;
-					return sum;
-				}
-			})
-			.when(NumberFormatException.class, new Consumer<NumberFormatException>() {
-				@Override
-				public void accept(NumberFormatException e) {
-					latch.countDown();
-				}
-			});
+			                          @Override
+			                          public Integer apply(Integer i) {
+				                          if (i >= 5) {
+					                          throw new IllegalArgumentException();
+				                          }
+				                          sum += i;
+				                          return sum;
+			                          }
+		                          })
+		                          .when(NumberFormatException.class, new Consumer<NumberFormatException>() {
+			                          @Override
+			                          public void accept(NumberFormatException e) {
+				                          latch.countDown();
+			                          }
+		                          });
 
 		await(2, s, is(3));
 		assertThat("error handler was invoked", latch.getCount(), is(0L));
@@ -310,7 +308,8 @@ public class StreamTests extends AbstractReactorTest {
 		deferred.onNext("alpha");
 		try {
 			deferred.onNext("bravo");
-		} catch (CancelException ise) {
+		}
+		catch (CancelException ise) {
 			// Swallow
 		}
 		assertEquals(deferred.get(), "alpha");
@@ -323,7 +322,8 @@ public class StreamTests extends AbstractReactorTest {
 		deferred.onError(error);
 		try {
 			deferred.onNext(error);
-		} catch (CancelException ise) {
+		}
+		catch (CancelException ise) {
 			// Swallow
 		}
 		assertTrue(deferred.reason() instanceof Exception);
@@ -337,7 +337,8 @@ public class StreamTests extends AbstractReactorTest {
 		try {
 			deferred.onNext("alpha");
 			fail();
-		} catch (CancelException ise) {
+		}
+		catch (CancelException ise) {
 		}
 		assertTrue(deferred.reason() instanceof Exception);
 	}
@@ -349,15 +350,19 @@ public class StreamTests extends AbstractReactorTest {
 		Random random = ThreadLocalRandom.current();
 
 		Broadcaster<String> d = Broadcaster.<String>create();
-		Stream<Integer> tasks = d.dispatchOn(asyncGroup).partition().flatMap(stream ->
-		  stream.dispatchOn(asyncGroup).map((String str) -> {
-			  try {
-				  Thread.sleep(random.nextInt(10));
-			  } catch (InterruptedException e) {
-				  Thread.currentThread().interrupt();
-			  }
-			  return Integer.parseInt(str);
-		  }));
+		Stream<Integer> tasks = d.dispatchOn(asyncGroup)
+		                         .partition()
+		                         .flatMap(stream -> stream.dispatchOn(asyncGroup)
+		                                                  .map((String str) -> {
+			                                                  try {
+				                                                  Thread.sleep(random.nextInt(10));
+			                                                  }
+			                                                  catch (InterruptedException e) {
+				                                                  Thread.currentThread()
+				                                                        .interrupt();
+			                                                  }
+			                                                  return Integer.parseInt(str);
+		                                                  }));
 
 		Control tail = tasks.consume(i -> {
 			latch.countDown();
@@ -388,14 +393,13 @@ public class StreamTests extends AbstractReactorTest {
 	<T> void await(int count, final Stream<T> s, Matcher<T> expected) throws InterruptedException {
 		final CountDownLatch latch = new CountDownLatch(count);
 		final AtomicReference<T> ref = new AtomicReference<T>();
-		Control control = s
-		  .consume(t -> {
-			  ref.set(t);
-			  latch.countDown();
-		  }, t -> {
-			  t.printStackTrace();
-			  latch.countDown();
-		  });
+		Control control = s.consume(t -> {
+			ref.set(t);
+			latch.countDown();
+		}, t -> {
+			t.printStackTrace();
+			latch.countDown();
+		});
 
 		long startTime = System.currentTimeMillis();
 		T result = null;
@@ -403,7 +407,8 @@ public class StreamTests extends AbstractReactorTest {
 			latch.await(10, TimeUnit.SECONDS);
 
 			result = ref.get();
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			e.printStackTrace();
 		}
 		long duration = System.currentTimeMillis() - startTime;
@@ -413,6 +418,7 @@ public class StreamTests extends AbstractReactorTest {
 	}
 
 	static class String2Integer implements Function<String, Integer> {
+
 		@Override
 		public Integer apply(String s) {
 			return Integer.parseInt(s);
@@ -428,11 +434,8 @@ public class StreamTests extends AbstractReactorTest {
 	}
 
 	/**
-	 * See #294 the consumer received more or less calls than expected Better reproducible with big thread pools,
-	 * e.g. 128
-	 * threads
-	 *
-	 * @throws InterruptedException
+	 * See #294 the consumer received more or less calls than expected Better reproducible with big thread pools, e.g.
+	 * 128 threads
 	 */
 	@Test
 	public void mapNotifiesOnce() throws InterruptedException {
@@ -452,43 +455,51 @@ public class StreamTests extends AbstractReactorTest {
 
 		Broadcaster<Integer> d = Broadcaster.create();
 
-		Control c = d.
-		  dispatchOn(asyncGroup).log("test").partition().consume(stream ->
-			stream.dispatchOn(asyncGroup).log("test2")
-			  .map(o -> {
-				  synchronized (internalLock) {
+		Control c = d.dispatchOn(asyncGroup)
+		             .log("main", LogOperator.REQUEST | LogOperator.NUMBER_ON_NEXT)
+		             .partition()
+		             .consume(stream -> stream.dispatchOn(asyncGroup)
+		                                      .log("partitioned-" + stream.key(), LogOperator.REQUEST | LogOperator
+				                                      .ON_SUBSCRIBE | LogOperator.NUMBER_ON_NEXT)
+		                                      .map(o -> {
+			                                      synchronized (internalLock) {
 
-					  internalCounter.incrementAndGet();
+				                                      internalCounter.incrementAndGet();
 
-					  long curThreadId = Thread.currentThread().getId();
-					  Long prevThreadId = seenInternal.put(o, curThreadId);
-					  if (prevThreadId != null) {
-						  fail(String.format(
-						    "The object %d has already been seen internally on the thread %d, current thread %d",
-						    o, prevThreadId, curThreadId));
-					  }
+				                                      long curThreadId = Thread.currentThread()
+				                                                               .getId();
+				                                      Long prevThreadId = seenInternal.put(o, curThreadId);
+				                                      if (prevThreadId != null) {
+					                                      fail(String.format(
+							                                      "The object %d has already been seen internally on the thread %d, current thread %d",
+							                                      o,
+							                                      prevThreadId,
+							                                      curThreadId));
+				                                      }
 
-					  internalLatch.countDown();
-				  }
-				  return -o;
-			  })
-			  .consume(o -> {
-				  synchronized (consumerLock) {
-					  consumerCounter.incrementAndGet();
+				                                      internalLatch.countDown();
+			                                      }
+			                                      return -o;
+		                                      })
+		                                      .consume(o -> {
+			                                      synchronized (consumerLock) {
+				                                      consumerCounter.incrementAndGet();
 
-					  long curThreadId = Thread.currentThread().getId();
-					  Long prevThreadId = seenConsumer.put(o, curThreadId);
-					  if (prevThreadId != null) {
-						  System.out.println(String.format(
-						    "The object %d has already been seen by the consumer on the thread %d, current thread %d",
-						    o, prevThreadId, curThreadId));
-						  fail();
-					  }
+				                                      long curThreadId = Thread.currentThread()
+				                                                               .getId();
+				                                      Long prevThreadId = seenConsumer.put(o, curThreadId);
+				                                      if (prevThreadId != null) {
+					                                      System.out.println(String.format(
+							                                      "The object %d has already been seen by the consumer on the thread %d, current thread %d",
+							                                      o,
+							                                      prevThreadId,
+							                                      curThreadId));
+					                                      fail();
+				                                      }
 
-					  counsumerLatch.countDown();
-				  }
-			  }));
-
+				                                      counsumerLatch.countDown();
+			                                      }
+		                                      }));
 
 		for (int i = 0; i < COUNT; i++) {
 			d.onNext(i);
@@ -503,49 +514,47 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void analyticsTest() throws Exception {
-			Broadcaster<Integer> source = Broadcaster.<Integer>create();
-			long avgTime = 50l;
+		Broadcaster<Integer> source = Broadcaster.<Integer>create();
+		long avgTime = 50l;
 
-			Promise<Long> result = source.onOverflowBuffer()
-			                             .dispatchOn(asyncGroup)
-			                             .throttle(avgTime)
-			                             .elapsed()
-			                             .nest()
-			                             .flatMap(self -> BiStreams.reduceByKey(self, (acc, next) -> acc + next))
-			                             .sort((a, b) -> a.t1.compareTo(b.t1))
-			                             .log("elapsed")
-			                             .reduce(-1L, (acc, next) -> acc > 0l ? ((next.t1 + acc) / 2) : next.t1)
-			                             .consumeNext();
+		Promise<Long> result = source.onOverflowBuffer()
+		                             .dispatchOn(asyncGroup)
+		                             .throttle(avgTime)
+		                             .elapsed()
+		                             .nest()
+		                             .flatMap(self -> BiStreams.reduceByKey(self, (acc, next) -> acc + next))
+		                             .sort((a, b) -> a.t1.compareTo(b.t1))
+		                             .reduce(-1L, (acc, next) -> acc > 0l ? ((next.t1 + acc) / 2) : next.t1)
+		                             .log("elapsed")
+		                             .consumeNext();
 
-			for (int j = 0; j < 10; j++) {
-				source.onNext(1);
-			}
-			source.onComplete();
+		for (int j = 0; j < 10; j++) {
+			source.onNext(1);
+		}
+		source.onComplete();
 
-			Assert.assertTrue(result.await(5, TimeUnit.SECONDS) >= avgTime * 0.6);
+		Assert.assertTrue(result.await(5, TimeUnit.SECONDS) >= avgTime * 0.6);
 	}
 
 	@Test
 	public void konamiCode() throws InterruptedException {
 		final RingBufferProcessor<Integer> keyboardStream = RingBufferProcessor.create();
 
-		Promise<List<Boolean>> konamis = Streams
-		  .wrap(keyboardStream.start())
-		  .skipWhile(key -> KeyEvent.VK_UP != key)
-		  .buffer(10, 1)
-		  .map(keys -> keys.size() == 10 &&
-			  keys.get(0) == KeyEvent.VK_UP &&
-			  keys.get(1) == KeyEvent.VK_UP &&
-			  keys.get(2) == KeyEvent.VK_DOWN &&
-			  keys.get(3) == KeyEvent.VK_DOWN &&
-			  keys.get(4) == KeyEvent.VK_LEFT &&
-			  keys.get(5) == KeyEvent.VK_RIGHT &&
-			  keys.get(6) == KeyEvent.VK_LEFT &&
-			  keys.get(7) == KeyEvent.VK_RIGHT &&
-			  keys.get(8) == KeyEvent.VK_B &&
-			  keys.get(9) == KeyEvent.VK_A
-		  )
-		  .toList();
+		Promise<List<Boolean>> konamis = Streams.wrap(keyboardStream.start())
+		                                        .skipWhile(key -> KeyEvent.VK_UP != key)
+		                                        .buffer(10, 1)
+		                                        .map(keys -> keys.size() == 10 &&
+				                                        keys.get(0) == KeyEvent.VK_UP &&
+				                                        keys.get(1) == KeyEvent.VK_UP &&
+				                                        keys.get(2) == KeyEvent.VK_DOWN &&
+				                                        keys.get(3) == KeyEvent.VK_DOWN &&
+				                                        keys.get(4) == KeyEvent.VK_LEFT &&
+				                                        keys.get(5) == KeyEvent.VK_RIGHT &&
+				                                        keys.get(6) == KeyEvent.VK_LEFT &&
+				                                        keys.get(7) == KeyEvent.VK_RIGHT &&
+				                                        keys.get(8) == KeyEvent.VK_B &&
+				                                        keys.get(9) == KeyEvent.VK_A)
+		                                        .toList();
 
 		keyboardStream.onNext(KeyEvent.VK_UP);
 		keyboardStream.onNext(KeyEvent.VK_UP);
@@ -562,19 +571,32 @@ public class StreamTests extends AbstractReactorTest {
 		keyboardStream.onComplete();
 
 		System.out.println(konamis.await());
-		Assert.assertTrue(konamis.get().size() == 12);
-		Assert.assertFalse(konamis.get().get(0));
-		Assert.assertTrue(konamis.get().get(1));
-		Assert.assertFalse(konamis.get().get(2));
-		Assert.assertFalse(konamis.get().get(3));
-		Assert.assertFalse(konamis.get().get(4));
-		Assert.assertFalse(konamis.get().get(5));
-		Assert.assertFalse(konamis.get().get(6));
-		Assert.assertFalse(konamis.get().get(7));
-		Assert.assertFalse(konamis.get().get(8));
-		Assert.assertFalse(konamis.get().get(9));
-		Assert.assertFalse(konamis.get().get(10));
-		Assert.assertFalse(konamis.get().get(11));
+		Assert.assertTrue(konamis.get()
+		                         .size() == 12);
+		Assert.assertFalse(konamis.get()
+		                          .get(0));
+		Assert.assertTrue(konamis.get()
+		                         .get(1));
+		Assert.assertFalse(konamis.get()
+		                          .get(2));
+		Assert.assertFalse(konamis.get()
+		                          .get(3));
+		Assert.assertFalse(konamis.get()
+		                          .get(4));
+		Assert.assertFalse(konamis.get()
+		                          .get(5));
+		Assert.assertFalse(konamis.get()
+		                          .get(6));
+		Assert.assertFalse(konamis.get()
+		                          .get(7));
+		Assert.assertFalse(konamis.get()
+		                          .get(8));
+		Assert.assertFalse(konamis.get()
+		                          .get(9));
+		Assert.assertFalse(konamis.get()
+		                          .get(10));
+		Assert.assertFalse(konamis.get()
+		                          .get(11));
 	}
 
 	@Test
@@ -589,22 +611,21 @@ public class StreamTests extends AbstractReactorTest {
 
 		final int maxErrors = 3;
 
-		Promise<List<String>> promise =
-		  circuitSwitcher
-		    .observe(d -> successes.incrementAndGet())
-			.when(Throwable.class, error -> failures.incrementAndGet())
-			.observeStart(s -> {
-				if (failures.compareAndSet(maxErrors, 0)) {
-					System.out.println("failures: " + failures + " successes:" + successes);
-					circuitSwitcher.onNext(openCircuit);
-					successes.set(0);
-					Streams.timer(1)
-					  .consume(ignore -> circuitSwitcher.onNext(closeCircuit));
-				}
-			})
-		    .log("faultTolerant")
-		    .retry()
-			.consumeAsList();
+		Promise<List<String>> promise = circuitSwitcher.observe(d -> successes.incrementAndGet())
+		                                               .when(Throwable.class, error -> failures.incrementAndGet())
+		                                               .observeStart(s -> {
+			                                               if (failures.compareAndSet(maxErrors, 0)) {
+				                                               System.out.println("failures: " + failures + " successes:" + successes);
+				                                               circuitSwitcher.onNext(openCircuit);
+				                                               successes.set(0);
+				                                               Streams.timer(1)
+				                                                      .consume(ignore -> circuitSwitcher.onNext(
+						                                                      closeCircuit));
+			                                               }
+		                                               })
+		                                               .log("faultTolerant")
+		                                               .retry()
+		                                               .consumeAsList();
 
 		circuitSwitcher.onNext(closeCircuit);
 
@@ -621,12 +642,18 @@ public class StreamTests extends AbstractReactorTest {
 		circuitSwitcher.onComplete();
 
 		System.out.println(promise.await());
-		Assert.assertEquals(promise.get().get(0), "test1");
-		Assert.assertEquals(promise.get().get(1), "test2");
-		Assert.assertEquals(promise.get().get(2), "test3");
-		Assert.assertEquals(promise.get().get(3), "Alternative Message");
-		Assert.assertEquals(promise.get().get(4), "test7");
-		Assert.assertEquals(promise.get().get(5), "test8");
+		Assert.assertEquals(promise.get()
+		                           .get(0), "test1");
+		Assert.assertEquals(promise.get()
+		                           .get(1), "test2");
+		Assert.assertEquals(promise.get()
+		                           .get(2), "test3");
+		Assert.assertEquals(promise.get()
+		                           .get(3), "Alternative Message");
+		Assert.assertEquals(promise.get()
+		                           .get(4), "test7");
+		Assert.assertEquals(promise.get()
+		                           .get(5), "test8");
 	}
 
 	@Test
@@ -642,22 +669,20 @@ public class StreamTests extends AbstractReactorTest {
 
 	private void parallelBufferedTimeoutTest(int iterations) throws InterruptedException {
 
-
 		System.out.println("Buffered Stream: " + iterations);
 
 		final CountDownLatch latch = new CountDownLatch(iterations);
 
 		Broadcaster<String> deferred = Broadcaster.<String>create();
-		deferred
-		  .dispatchOn(asyncGroup)
-		  .partition()
-		  .consume(stream ->
-		    stream
-			  .dispatchOn(asyncGroup)
-			  .buffer(1000 / 8, 1l, TimeUnit.SECONDS)
-			  .consume(batch -> {
-				  for (String i : batch) latch.countDown();
-			  }));
+		deferred.dispatchOn(asyncGroup)
+		        .partition()
+		        .consume(stream -> stream.dispatchOn(asyncGroup)
+		                                 .buffer(1000 / 8, 1l, TimeUnit.SECONDS)
+		                                 .consume(batch -> {
+			                                 for (String i : batch) {
+				                                 latch.countDown();
+			                                 }
+		                                 }));
 
 		String[] data = new String[iterations];
 		for (int i = 0; i < iterations; i++) {
@@ -669,9 +694,10 @@ public class StreamTests extends AbstractReactorTest {
 		for (String i : data) {
 			deferred.onNext(i);
 		}
-		if (!latch.await(30, TimeUnit.SECONDS))
-			throw new RuntimeException(deferred.debug().toString());
-
+		if (!latch.await(30, TimeUnit.SECONDS)) {
+			throw new RuntimeException(deferred.debug()
+			                                   .toString());
+		}
 
 		long stop = System.currentTimeMillis() - start;
 		stop = stop > 0 ? stop : 1;
@@ -686,7 +712,6 @@ public class StreamTests extends AbstractReactorTest {
 
 	private void parallelTest(String dispatcher, int iterations) throws InterruptedException {
 
-
 		System.out.println("Dispatcher: " + dispatcher);
 		System.out.println("..........:  " + iterations);
 
@@ -696,21 +721,22 @@ public class StreamTests extends AbstractReactorTest {
 		switch (dispatcher) {
 			case "partitioned":
 				deferred = Broadcaster.create();
-				System.out.println(deferred.dispatchOn(asyncGroup).partition(2).consume(stream -> stream
-				  .dispatchOn(asyncGroup)
-				  .map(i -> i)
-				  .scan(1, (acc, next) -> acc + next)
-				  .consume(i -> latch.countDown()).debug()));
+				System.out.println(deferred.dispatchOn(asyncGroup)
+				                           .partition(2)
+				                           .consume(stream -> stream.dispatchOn(asyncGroup)
+				                                                    .map(i -> i)
+				                                                    .scan(1, (acc, next) -> acc + next)
+				                                                    .consume(i -> latch.countDown())
+				                                                    .debug()));
 
 				break;
 
 			default:
 				deferred = Broadcaster.<Integer>create();
-				deferred
-				  .dispatchOn(asyncGroup)
-				  .map(i -> i)
-				  .scan(1, (acc, next) -> acc + next)
-				  .consume(i -> latch.countDown());
+				deferred.dispatchOn(asyncGroup)
+				        .map(i -> i)
+				        .scan(1, (acc, next) -> acc + next)
+				        .consume(i -> latch.countDown());
 		}
 
 		data = new int[iterations];
@@ -724,7 +750,8 @@ public class StreamTests extends AbstractReactorTest {
 		}
 
 		if (!latch.await(15, TimeUnit.SECONDS)) {
-			throw new RuntimeException("Count:" + (iterations - latch.getCount()) + " " + deferred.debug().toString());
+			throw new RuntimeException("Count:" + (iterations - latch.getCount()) + " " + deferred.debug()
+			                                                                                      .toString());
 		}
 
 		long stop = System.currentTimeMillis() - start;
@@ -750,16 +777,15 @@ public class StreamTests extends AbstractReactorTest {
 		switch (dispatcher) {
 			case "partitioned":
 				mapManydeferred = Broadcaster.<Integer>create();
-				mapManydeferred
-				  .partition(4).consume(substream ->
-				  substream.dispatchOn(asyncGroup).consume(i -> latch.countDown()));
+				mapManydeferred.partition(4)
+				               .consume(substream -> substream.dispatchOn(asyncGroup)
+				                                              .consume(i -> latch.countDown()));
 				break;
 			default:
 				mapManydeferred = Broadcaster.<Integer>create();
-				mapManydeferred
-				  .dispatchOn("sync".equals(dispatcher) ? ProcessorGroup.sync() : asyncGroup)
-				  .flatMap(Streams::just)
-				  .consume(i -> latch.countDown());
+				mapManydeferred.dispatchOn("sync".equals(dispatcher) ? ProcessorGroup.sync() : asyncGroup)
+				               .flatMap(Streams::just)
+				               .consume(i -> latch.countDown());
 		}
 
 		data = new int[iterations];
@@ -774,12 +800,14 @@ public class StreamTests extends AbstractReactorTest {
 		}
 
 		if (!latch.await(20, TimeUnit.SECONDS)) {
-			throw new RuntimeException(mapManydeferred.debug().toString());
-		} else {
-			System.out.println(mapManydeferred.debug().toString());
+			throw new RuntimeException(mapManydeferred.debug()
+			                                          .toString());
+		}
+		else {
+			System.out.println(mapManydeferred.debug()
+			                                  .toString());
 		}
 		assertEquals(0, latch.getCount());
-
 
 		long stop = System.currentTimeMillis() - start;
 		stop = stop > 0 ? stop : 1;
@@ -796,17 +824,17 @@ public class StreamTests extends AbstractReactorTest {
 	 */
 	@Test
 	public void partitionByHashCodeShouldNeverCreateMoreStreamsThanSpecified() throws Exception {
-		Stream<Integer> stream = Streams.range(-10, 20).map(Integer::intValue);
+		Stream<Integer> stream = Streams.range(-10, 20)
+		                                .map(Integer::intValue);
 
-		assertThat(stream.partition(2).count().tap().get(), is(equalTo(2L)));
+		assertThat(stream.partition(2)
+		                 .count()
+		                 .tap()
+		                 .get(), is(equalTo(2L)));
 	}
 
-
 	/**
-	 * original from @oiavorskyl
-	 * https://github.com/eventBus/eventBus/issues/358
-	 *
-	 * @throws Exception
+	 * original from @oiavorskyl https://github.com/eventBus/eventBus/issues/358
 	 */
 	//@Test
 	public void shouldNotFlushStreamOnTimeoutPrematurelyAndShouldDoItConsistently() throws Exception {
@@ -816,10 +844,7 @@ public class StreamTests extends AbstractReactorTest {
 	}
 
 	/**
-	 * original from @oiavorskyl
-	 * https://github.com/eventBus/eventBus/issues/358
-	 *
-	 * @throws Exception
+	 * original from @oiavorskyl https://github.com/eventBus/eventBus/issues/358
 	 */
 	@Test
 	public void shouldNotFlushStreamOnTimeoutPrematurely() throws Exception {
@@ -834,59 +859,60 @@ public class StreamTests extends AbstractReactorTest {
 		 */
 		final double TOLERANCE = 0.9;
 
-
-		Broadcaster<Integer> batchingStreamDef = Broadcaster.create();
+		Broadcaster<Integer> batchingStreamDef = Broadcaster.from(asyncGroup);
 
 		List<Integer> testDataset = createTestDataset(NUM_MESSAGES);
 
 		final CountDownLatch latch = new CountDownLatch(NUM_MESSAGES);
 		Map<Integer, Integer> batchesDistribution = new ConcurrentHashMap<>();
-		batchingStreamDef.dispatchOn(asyncGroup).partition(PARALLEL_STREAMS).consume(substream ->
-		  substream
-			.dispatchOn(asyncGroup)
-			.buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
-			.consume(items -> {
-				batchesDistribution.compute(items.size(),
-				  (key, value) -> value == null ? 1 : value + 1);
-				items.forEach(item -> latch.countDown());
-			}));
+		batchingStreamDef
+		                 .partition(PARALLEL_STREAMS)
+		                 .consume(substream -> substream
+				                 .dispatchOn(asyncGroup)
+		                                                .buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
+				                                        .log("timeoutparallel-"+substream.key(), LogOperator.REQUEST)
+		                                                .consume(items -> {
+			                                                System.out.println(items.size()+batchesDistribution.toString());
+			                                                batchesDistribution.compute(items.size(),
+					                                                (key, value) -> value == null ? 1 : value + 1);
+			                                                items.forEach(item -> latch.countDown());
+		                                                }));
 
 		testDataset.forEach(batchingStreamDef::onNext);
-
 
 		System.out.println(batchingStreamDef.debug());
 
 		System.out.println(batchesDistribution);
 
 		if (!latch.await(10, TimeUnit.SECONDS)) {
-			throw new RuntimeException(latch.getCount() + " " + batchingStreamDef.debug().toString());
+			throw new RuntimeException(latch.getCount() + " " + batchingStreamDef.debug()
+			                                                                     .toString());
 
 		}
 
 		int messagesProcessed = batchesDistribution.entrySet()
-		  .stream()
-		  .mapToInt(entry -> entry.getKey() * entry
-		    .getValue())
-		  .reduce(Integer::sum).getAsInt();
+		                                           .stream()
+		                                           .mapToInt(entry -> entry.getKey() * entry.getValue())
+		                                           .reduce(Integer::sum)
+		                                           .getAsInt();
 
 		assertEquals(NUM_MESSAGES, messagesProcessed);
 		assertTrue("Less than 90% (" + NUM_MESSAGES / BATCH_SIZE * TOLERANCE +
-			") of the batches are matching the buffer() size: " + batchesDistribution.get(BATCH_SIZE),
-		  NUM_MESSAGES / BATCH_SIZE * TOLERANCE >= batchesDistribution.get(BATCH_SIZE) * TOLERANCE);
+						") of the batches are matching the buffer() size: " + batchesDistribution.get(BATCH_SIZE),
+				NUM_MESSAGES / BATCH_SIZE * TOLERANCE >= batchesDistribution.get(BATCH_SIZE) * TOLERANCE);
 	}
 
-
 	@Test
-	public void prematureFlatMapCompletion() throws Exception{
+	public void prematureFlatMapCompletion() throws Exception {
 
 		CountDownLatch latch = new CountDownLatch(1);
 		Streams.range(0, 1_000_000)
-		  .flatMap(v -> Streams.range(v, 2))
-		  .count()
-		  .consume(d -> latch.countDown());
+		       .flatMap(v -> Streams.range(v, 2))
+		       .count()
+		       .consume(d -> latch.countDown());
 
 		latch.await(5, TimeUnit.SECONDS);
-		assertTrue("Latch is "+latch.getCount(), latch.getCount() == 0);
+		assertTrue("Latch is " + latch.getCount(), latch.getCount() == 0);
 	}
 
 	@Test
@@ -897,26 +923,22 @@ public class StreamTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(4);
 
 		Stream<Integer> s = Streams.just("2222")
-		  .map(Integer::parseInt)
-		  .flatMap(l ->
-			  Streams.<Integer>merge(
-			    globalFeed.dispatchOn(asyncGroup),
-			    Streams.just(1111, l, 3333, 4444, 5555, 6666)
-			  )
-			    .log("merged")
-			    .dispatchOn(asyncGroup)
-			    .log("dispatched")
-			    .observeStart(x -> afterSubscribe.countDown())
-			    .filter(nearbyLoc -> 3333 >= nearbyLoc)
-			    .filter(nearbyLoc -> 2222 <= nearbyLoc)
+		                           .map(Integer::parseInt)
+		                           .flatMap(l -> Streams.<Integer>merge(globalFeed.dispatchOn(asyncGroup),
+				                           Streams.just(1111, l, 3333, 4444, 5555, 6666)).log("merged")
+		                                                                                 .dispatchOn(asyncGroup)
+		                                                                                 .log("dispatched")
+		                                                                                 .observeStart(x -> afterSubscribe.countDown())
+		                                                                                 .filter(nearbyLoc -> 3333 >= nearbyLoc)
+		                                                                                 .filter(nearbyLoc -> 2222 <= nearbyLoc)
 
-		  );
+		                           );
 
-		Control action = s.capacity(1L).consume( integer -> {
-				latch.countDown();
-				System.out.println(integer);
-			}
-		);
+		Control action = s.capacity(1L)
+		                  .consume(integer -> {
+			                  latch.countDown();
+			                  System.out.println(integer);
+		                  });
 
 		System.out.println(action.debug());
 
@@ -940,52 +962,48 @@ public class StreamTests extends AbstractReactorTest {
 
 		CountDownLatch latch = new CountDownLatch(numOps);
 
-		Stream<String> operationStream =
-		  Streams.defer(Broadcaster::<String>create)
-		    .dispatchOn(asyncGroup)
-			.throttle(100)
-			.map(s -> s + " MODIFIED")
-			.map(s -> {
-				latch.countDown();
-				return s;
-			})
-		  //.log();
-		  ;
-
+		Stream<String> operationStream = Streams.defer(Broadcaster::<String>create)
+		                                        .dispatchOn(asyncGroup)
+		                                        .throttle(100)
+		                                        .map(s -> s + " MODIFIED")
+		                                        .map(s -> {
+			                                        latch.countDown();
+			                                        return s;
+		                                        })
+				//.log();
+				;
 
 		for (int i = 0; i < numOps; i++) {
 			final String source = "ASYNC_TEST " + i;
 
 			Streams.just(source)
-			  .broadcastTo(operationStream.combine())
-			  .take(2, TimeUnit.SECONDS)
-			  .log("parallelStream")
-			  .consume(System.out::println);
+			       .broadcastTo(operationStream.combine())
+			       .take(2, TimeUnit.SECONDS)
+			       .log("parallelStream")
+			       .consume(System.out::println);
 		}
 
 		latch.await(15, TimeUnit.SECONDS);
 		assertEquals(0, latch.getCount());
 	}
 
-
 	/**
-	 * https://gist.github.com/nithril/444d8373ce67f0a8b853
-	 * Contribution by Nicolas Labrot
+	 * https://gist.github.com/nithril/444d8373ce67f0a8b853 Contribution by Nicolas Labrot
 	 */
 	@Test
 	public void testParallelWithJava8StreamsInput() throws InterruptedException {
 		ProcessorGroup<Long> supplier = Processors.asyncGroup("test-p", 2048, 2);
 
-		int max = ThreadLocalRandom.current().nextInt(100, 300);
+		int max = ThreadLocalRandom.current()
+		                           .nextInt(100, 300);
 		CountDownLatch countDownLatch = new CountDownLatch(max);
 
-		Stream<Integer> worker = Streams.range(0, max).dispatchOn(asyncGroup);
-		worker.partition(2).consume(s ->
-			s
-			  .dispatchOn(supplier)
-			  .map(v -> v)
-			  .consume(v -> countDownLatch.countDown())
-		);
+		Stream<Integer> worker = Streams.range(0, max)
+		                                .dispatchOn(asyncGroup);
+		worker.partition(2)
+		      .consume(s -> s.dispatchOn(supplier)
+		                     .map(v -> v)
+		                     .consume(v -> countDownLatch.countDown()));
 
 		countDownLatch.await(10, TimeUnit.SECONDS);
 		Assert.assertEquals(0, countDownLatch.getCount());
@@ -993,18 +1011,18 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void testBeyondLongMaxMicroBatching() throws InterruptedException {
-		List<Integer> tasks = IntStream.range(0, 1500).boxed().collect(Collectors.toList());
+		List<Integer> tasks = IntStream.range(0, 1500)
+		                               .boxed()
+		                               .collect(Collectors.toList());
 
 		CountDownLatch countDownLatch = new CountDownLatch(tasks.size());
-		Stream<Integer> worker = Streams.from(tasks).dispatchOn(asyncGroup);
+		Stream<Integer> worker = Streams.from(tasks)
+		                                .dispatchOn(asyncGroup);
 
-		Control tail = worker.partition(2).consume(s ->
-			s
-			  .dispatchOn(asyncGroup)
-			  .map(v -> v)
-			  .consume(v -> countDownLatch.countDown(),
-			    Throwable::printStackTrace)
-		);
+		Control tail = worker.partition(2)
+		                     .consume(s -> s.dispatchOn(asyncGroup)
+		                                    .map(v -> v)
+		                                    .consume(v -> countDownLatch.countDown(), Throwable::printStackTrace));
 
 		countDownLatch.await(5, TimeUnit.SECONDS);
 		if (countDownLatch.getCount() > 0) {
@@ -1018,43 +1036,39 @@ public class StreamTests extends AbstractReactorTest {
 	public void testDiamond() throws InterruptedException, IOException {
 		ExecutorService pool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("tee", null, null, true));
 
-		Stream<Point> points = Streams
-		  .wrap(PublisherFactory.<Double, Random>create(
-		    sub -> sub.onNext(sub.context().nextDouble()),
-		    sub -> new Random()
-		  ))
-		  .log("points")
-			//.requestWhen(requests -> requests.dispatchOn(Environment.cachedDispatcher()))
-		  .buffer(2)
-		  .map(pairs -> new Point(pairs.get(0), pairs.get(1)))
-		  .process(RingBufferProcessor.create(pool, 32)); //.broadcast(); works because no async boundary
+		Stream<Point> points = Streams.wrap(PublisherFactory.<Double, Random>create(sub -> sub.onNext(sub.context()
+		                                                                                                 .nextDouble()),
+				sub -> new Random()))
+		                              .log("points")
+		                              //.requestWhen(requests -> requests.dispatchOn(Environment.cachedDispatcher()))
+		                              .buffer(2)
+		                              .map(pairs -> new Point(pairs.get(0), pairs.get(1)))
+		                              .process(RingBufferProcessor.create(pool,
+				                              32)); //.broadcast(); works because no async boundary
 
-		Stream<InnerSample> innerSamples =
-		  points
-			.log("inner-1")
-			.filter(Point::isInner)
-			.map(InnerSample::new)
-			.log("inner-2");
+		Stream<InnerSample> innerSamples = points.log("inner-1")
+		                                         .filter(Point::isInner)
+		                                         .map(InnerSample::new)
+		                                         .log("inner-2");
 
-		Stream<OuterSample> outerSamples =
-		  points
-			.log("outer-1")
-			.filter(p -> !p.isInner())
-			.map(OuterSample::new)
-			.log("outer-2");
+		Stream<OuterSample> outerSamples = points.log("outer-1")
+		                                         .filter(p -> !p.isInner())
+		                                         .map(OuterSample::new)
+		                                         .log("outer-2");
 
 		Streams.merge(innerSamples, outerSamples)
-		  .dispatchOn(asyncGroup)
-		  .scan(new SimulationState(0l, 0l), SimulationState::withNextSample)
-		  .log("result")
-		  .map(s -> System.out.printf("After %8d samples π is approximated as %.5f", s.totalSamples, s.pi()))
-		  .take(10000)
-		  .consume();
+		       .dispatchOn(asyncGroup)
+		       .scan(new SimulationState(0l, 0l), SimulationState::withNextSample)
+		       .log("result")
+		       .map(s -> System.out.printf("After %8d samples π is approximated as %.5f", s.totalSamples, s.pi()))
+		       .take(10000)
+		       .consume();
 
 		System.in.read();
 	}
 
 	private static final class Point {
+
 		final Double x, y;
 
 		public Point(Double x, Double y) {
@@ -1069,13 +1083,14 @@ public class StreamTests extends AbstractReactorTest {
 		@Override
 		public String toString() {
 			return "Point{" +
-			  "x=" + x +
-			  ", y=" + y +
-			  '}';
+					"x=" + x +
+					", y=" + y +
+					'}';
 		}
 	}
 
 	private static class Sample {
+
 		final Point point;
 
 		public Sample(Point point) {
@@ -1085,25 +1100,27 @@ public class StreamTests extends AbstractReactorTest {
 		@Override
 		public String toString() {
 			return "Sample{" +
-			  "point=" + point +
-			  '}';
+					"point=" + point +
+					'}';
 		}
 	}
 
 	private static final class InnerSample extends Sample {
+
 		public InnerSample(Point point) {
 			super(point);
 		}
 	}
 
 	private static final class OuterSample extends Sample {
+
 		public OuterSample(Point point) {
 			super(point);
 		}
 	}
 
-
 	private static final class SimulationState {
+
 		final Long totalSamples;
 		final Long inCircle;
 
@@ -1123,30 +1140,26 @@ public class StreamTests extends AbstractReactorTest {
 		@Override
 		public String toString() {
 			return "SimulationState{" +
-			  "totalSamples=" + totalSamples +
-			  ", inCircle=" + inCircle +
-			  '}';
+					"totalSamples=" + totalSamples +
+					", inCircle=" + inCircle +
+					'}';
 		}
 	}
-
 
 	@Test
 	@Ignore
 	public void testCustomFileStream() throws InterruptedException {
 
-		Stream<?> fileStream = Streams.wrap(StandardCodecs.LINE_FEED_CODEC.decode(IO.readFile("settings.gradle", 1))
-		);
+		Stream<?> fileStream = Streams.wrap(StandardCodecs.LINE_FEED_CODEC.decode(IO.readFile("settings.gradle", 1)));
 
 		Timers.global();
-		Stream<?> processor = fileStream
-		  .log()
-		  .throttle(50)
-		  .flatMap(Streams::just);
+		Stream<?> processor = fileStream.log()
+		                                .throttle(50)
+		                                .flatMap(Streams::just);
 
-		TapAndControls<Long> counter = processor
-		  .capacity(5L)
-		  .count()
-		  .tap();
+		TapAndControls<Long> counter = processor.capacity(5L)
+		                                        .count()
+		                                        .tap();
 
 		Thread.sleep(3000);
 		Assert.assertTrue(counter.get() == 10);
@@ -1162,21 +1175,23 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void shouldWindowCorrectly() throws InterruptedException {
-		Stream<Integer> sensorDataStream =
-		  Streams.from(createTestDataset(1000));
+		Stream<Integer> sensorDataStream = Streams.from(createTestDataset(1000));
 
 		CountDownLatch endLatch = new CountDownLatch(1000 / 100);
 
 		Control controls = sensorDataStream
 				/*     step 2  */.window(100)
-		  ///*     step 3  */.timeout(1000)
-				/*     step 4  */.consume(batchedStream -> {
-			System.out.println("New window starting");
-			batchedStream
+				///*     step 3  */.timeout(1000)
+				/*     step 4  */
+				.consume(batchedStream -> {
+					System.out.println("New window starting");
+					batchedStream
 						/*   step 4.1  */.reduce(Integer.MAX_VALUE, (acc, next) -> Math.min(acc, next))
-						/* ad-hoc step */.finallyDo(o -> endLatch.countDown())
-						/* final step  */.consume(i -> System.out.println("Minimum " + i));
-		});
+						/* ad-hoc step */
+						.finallyDo(o -> endLatch.countDown())
+						/* final step  */
+						.consume(i -> System.out.println("Minimum " + i));
+				});
 
 		endLatch.await(10, TimeUnit.SECONDS);
 		System.out.println(controls.debug());
@@ -1187,25 +1202,26 @@ public class StreamTests extends AbstractReactorTest {
 	@Test
 	public void shouldThrottleCorrectly() throws InterruptedException {
 		Streams.range(1, 10000000)
-		  .dispatchOn(asyncGroup)
-		  .requestWhen(reqs -> reqs.flatMap(req -> {
-			  // set the batch size
-			  long batchSize = 10;
+		       .dispatchOn(asyncGroup)
+		       .requestWhen(reqs -> reqs.flatMap(req -> {
+			       // set the batch size
+			       long batchSize = 10;
 
-			  // Value below in reality should be req / batchSize;
-			  // Now test for 30, 60, 500, 1000, 1000000 etc and see what happens
-			  // small nubmers should work, but I think there is bug
-			  long numBatches = 1000;
+			       // Value below in reality should be req / batchSize;
+			       // Now test for 30, 60, 500, 1000, 1000000 etc and see what happens
+			       // small nubmers should work, but I think there is bug
+			       long numBatches = 1000;
 
-			  System.out.println("Original request = " + req);
-			  System.out.println("Batch size = " + batchSize);
-			  System.out.println("Number of batches should be = " + numBatches);
+			       System.out.println("Original request = " + req);
+			       System.out.println("Batch size = " + batchSize);
+			       System.out.println("Number of batches should be = " + numBatches);
 
-			  // LongRangeStream for correct handling of values > 4 byte int
-			  // return new LongRangeStream(1, numBatches).map(x->batchSize);
-			  return Streams.range(1, (int) numBatches).map(x -> batchSize);
-		  }))
-		  .consume();
+			       // LongRangeStream for correct handling of values > 4 byte int
+			       // return new LongRangeStream(1, numBatches).map(x->batchSize);
+			       return Streams.range(1, (int) numBatches)
+			                     .map(x -> batchSize);
+		       }))
+		       .consume();
 	}
 
 	@Test
@@ -1217,16 +1233,14 @@ public class StreamTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(1);
 
 		final Broadcaster<Integer> streamBatcher = Broadcaster.<Integer>create();
-		streamBatcher
-		  .dispatchOn(asyncGroup)
-		  .buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
-		  .partition(parallelStreams)
-		  .consume(innerStream ->
-		    innerStream
-			  .dispatchOn(asyncGroup)
-			  .when(Exception.class, Throwable::printStackTrace)
-			  .consume(i -> latch.countDown()));
-
+		streamBatcher.dispatchOn(asyncGroup)
+		             .buffer(batchsize, timeout, TimeUnit.MILLISECONDS)
+		             .log("batched")
+		             .partition(parallelStreams)
+		             .log("batched-inner")
+		             .consume(innerStream -> innerStream.dispatchOn(asyncGroup)
+		                                                .when(Exception.class, Throwable::printStackTrace)
+		                                                .consume(i -> latch.countDown()));
 
 		streamBatcher.onNext(12);
 		streamBatcher.onNext(123);
@@ -1234,22 +1248,27 @@ public class StreamTests extends AbstractReactorTest {
 		streamBatcher.onNext(666);
 
 		boolean finished = latch.await(2, TimeUnit.SECONDS);
-		if (!finished)
-			throw new RuntimeException(streamBatcher.debug().toString());
+		if (!finished) {
+			throw new RuntimeException(streamBatcher.debug()
+			                                        .toString());
+		}
 		else {
-			System.out.println(streamBatcher.debug().toString());
+			System.out.println(streamBatcher.debug()
+			                                .toString());
 			assertEquals("Must have correct latch number : " + latch.getCount(), latch.getCount(), 0);
 		}
 	}
 
 	@Test
 	public void mapLotsOfSubAndCancel() throws InterruptedException {
-		for (long i = 0; i < 199; i++)
+		for (long i = 0; i < 199; i++) {
 			mapPassThru();
+		}
 	}
 
 	public void mapPassThru() throws InterruptedException {
-		Streams.just(1).map(IDENTITY_FUNCTION);
+		Streams.just(1)
+		       .map(IDENTITY_FUNCTION);
 	}
 
 	@Test
@@ -1259,28 +1278,23 @@ public class StreamTests extends AbstractReactorTest {
 
 		CountDownLatch latch = new CountDownLatch(10);
 
-		  Control c = Streams
-			.range(1, 10)
-			.groupBy(n -> n % 2 == 0)
-			.flatMap(stream -> stream
-				.dispatchOn(supplier1)
-				.log("groupBy-" + stream.key())
-			)
-			.partition(5)
-			.flatMap(stream -> stream
-				.dispatchOn(supplier2)
-				.log("partition-"+stream.key())
-			)
-			.dispatchOn(asyncGroup)
-			.log("join")
-			.consume(t -> {
-				latch.countDown();
-			});
+		Control c = Streams.range(1, 10)
+		                   .groupBy(n -> n % 2 == 0)
+		                   .flatMap(stream -> stream.dispatchOn(supplier1)
+		                                            .log("groupBy-" + stream.key()))
+		                   .partition(5)
+		                   .flatMap(stream -> stream.dispatchOn(supplier2)
+		                                            .log("partition-" + stream.key()))
+		                   .dispatchOn(asyncGroup)
+		                   .log("join")
+		                   .consume(t -> {
+			                   latch.countDown();
+		                   });
 
 		System.out.println(c.debug());
 
 		latch.await(30, TimeUnit.SECONDS);
-		assertThat("Not totally dispatched: "+latch.getCount(), latch.getCount() == 0);
+		assertThat("Not totally dispatched: " + latch.getCount(), latch.getCount() == 0);
 		supplier1.shutdown();
 		supplier2.shutdown();
 	}
@@ -1289,80 +1303,75 @@ public class StreamTests extends AbstractReactorTest {
 	public void subscribeOnDispatchOn() throws InterruptedException {
 		CountDownLatch latch = new CountDownLatch(100);
 
-		Streams
-		  .range(1, 100)
-		  .log("testOn")
-		  .publishOn(ioGroup)
-		  .dispatchOn(asyncGroup)
-		  .capacity(1)
-		  .consume(t -> latch.countDown());
-
+		Streams.range(1, 100)
+		       .log("testOn")
+		       .publishOn(ioGroup)
+		       .dispatchOn(asyncGroup)
+		       .capacity(1)
+		       .consume(t -> latch.countDown());
 
 		assertThat("Not totally dispatched", latch.await(30, TimeUnit.SECONDS));
 	}
 
-
 	// Test issue https://github.com/reactor/reactor/issues/474
 // code by @masterav10
 	@Test
-	public void combineWithOneElement() throws InterruptedException,
-	  TimeoutException {
+	public void combineWithOneElement() throws InterruptedException, TimeoutException {
 		AtomicReference<Object> ref = new AtomicReference<>(null);
 
 		Phaser phaser = new Phaser(2);
 
-		Stream<Object> s1 = BehaviorBroadcaster.first(new Object()).dispatchOn(asyncGroup);
-		Stream<Object> s2 = BehaviorBroadcaster.first(new Object()).dispatchOn(asyncGroup);
+		Stream<Object> s1 = BehaviorBroadcaster.first(new Object())
+		                                       .dispatchOn(asyncGroup);
+		Stream<Object> s2 = BehaviorBroadcaster.first(new Object())
+		                                       .dispatchOn(asyncGroup);
 
 		// The following works:
 		List<Stream<Object>> list = Arrays.asList(s1);
 		// The following fails:
 		// List<Stream<Object>> list = Arrays.asList(s1, s2);
 
-		Streams.combineLatest(list, t -> t).observe(obj -> {
-			ref.set(obj);
-			phaser.arrive();
-		}).consume();
+		Streams.combineLatest(list, t -> t)
+		       .observe(obj -> {
+			       ref.set(obj);
+			       phaser.arrive();
+		       })
+		       .consume();
 
 		phaser.awaitAdvanceInterruptibly(phaser.arrive(), 1, TimeUnit.SECONDS);
 		Assert.assertNotNull(ref.get());
 	}
 
 	/**
-	 * This test case demonstrates a silent failure of
-	 * {@link Streams#period(long)} when a resolution is specified that is less
-	 * than the backing {@link Timer} class.
-	 *
+	 * This test case demonstrates a silent failure of {@link Streams#period(long)} when a resolution is specified that
+	 * is less than the backing {@link Timer} class.
 	 * @throws InterruptedException - on failure.
-	 * @throws TimeoutException     - on failure.
-	 *                              <p>
-	 *                              by @masterav10 : https://github.com/reactor/reactor/issues/469
+	 * @throws TimeoutException     - on failure. <p> by @masterav10 : https://github.com/reactor/reactor/issues/469
 	 */
 	@Test
-	@Ignore
 	public void endLessTimer() throws InterruptedException, TimeoutException {
 		int tasks = 50;
-		long delayMS = 20; // XXX: Fails when less than 100
+		long delayMS = 50; // XXX: Fails when less than 100
 		Phaser barrier = new Phaser(tasks + 1);
 
 		List<Long> times = new ArrayList<>();
 
 		// long localTime = System.currentTimeMillis(); for java 7
-		long localTime = Instant.now().toEpochMilli();
+		long localTime = Instant.now()
+		                        .toEpochMilli();
 		long elapsed = System.nanoTime();
 
-		Control ctrl = Streams
-		  .period(delayMS, TimeUnit.MILLISECONDS)
-		  .map((signal) -> {
-			  return TimeUnit.NANOSECONDS.toMillis(System.nanoTime()
-				- elapsed);
-		  }).observe((elapsedMillis) -> {
-			  times.add(localTime + elapsedMillis);
-			  barrier.arrive();
-		  }).consume();
+		Control ctrl = Streams.period(delayMS, TimeUnit.MILLISECONDS)
+		                      .map((signal) -> {
+			                      return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - elapsed);
+		                      })
+		                      .observe((elapsedMillis) -> {
+			                      times.add(localTime + elapsedMillis);
+			                      barrier.arrive();
+		                      })
+		                      .consume();
 
-		barrier.awaitAdvanceInterruptibly(barrier.arrive(), tasks * delayMS
-		  + 1000, TimeUnit.MILLISECONDS);
+		barrier.awaitAdvanceInterruptibly(barrier.arrive(), tasks * delayMS + 1000, TimeUnit.MILLISECONDS);
 		ctrl.cancel();
 
 		Assert.assertEquals(tasks, times.size());
@@ -1373,7 +1382,7 @@ public class StreamTests extends AbstractReactorTest {
 
 			Assert.assertTrue(prev > 0);
 			Assert.assertTrue(time > 0);
-			Assert.assertTrue("was " + (time - prev), time - prev <= delayMS);
+			Assert.assertTrue("was " + (time - prev), time - prev <= delayMS*1.1);
 		}
 	}
 
@@ -1389,27 +1398,30 @@ public class StreamTests extends AbstractReactorTest {
 		bus.on($("hello"), barrierStream.wrap((Event<String> ev) -> {
 			try {
 				Thread.sleep(500);
-			} catch (InterruptedException e) {
+			}
+			catch (InterruptedException e) {
 			}
 			latch1.countDown();
 		}));
 
 		Streams.just("Hello World!")
-		  .map(barrierStream.wrap((Function<String, String>) String::toUpperCase))
-		  .consume(s -> {
-			  latch2.countDown();
-		  });
+		       .map(barrierStream.wrap((Function<String, String>) String::toUpperCase))
+		       .consume(s -> {
+			       latch2.countDown();
+		       });
 
 		barrierStream.consume(vals -> {
 			try {
 				Thread.sleep(500);
-			} catch (InterruptedException e) {
+			}
+			catch (InterruptedException e) {
 			}
 			latch3.countDown();
 		});
 
 		bus.notify("hello", Event.wrap("Hello World!"));
-		bus.getProcessor().onComplete();
+		bus.getProcessor()
+		   .onComplete();
 
 		assertThat("EventBus Consumer has been invoked", latch1.await(1, TimeUnit.SECONDS), is(true));
 		assertThat("Stream map Function has been invoked", latch2.getCount(), is(0L));
@@ -1424,11 +1436,12 @@ public class StreamTests extends AbstractReactorTest {
 
 		Promises.task(() -> {
 			throw new RuntimeException("Some Exception");
-		}).stream()
-		  .dispatchOn(ioGroup)
-		  .next()
-		  .onError(t -> latch1.countDown())
-		  .onSuccess(s -> latch2.countDown());
+		})
+		        .stream()
+		        .dispatchOn(ioGroup)
+		        .next()
+		        .onError(t -> latch1.countDown())
+		        .onSuccess(s -> latch2.countDown());
 
 		assertThat("Error latch was counted down", latch1.await(1, TimeUnit.SECONDS), is(true));
 		assertThat("Complete latch was not counted down", latch2.getCount(), is(1L));
@@ -1485,53 +1498,48 @@ public class StreamTests extends AbstractReactorTest {
 
 	}
 
-
 	/**
 	 * Should work with {@link Processor} but it doesn't.
 	 */
 	//@Test
 	public void forkJoinUsingProcessors1000() throws Exception {
-		for(int i = 0; i < 1000; i++) {
+		for (int i = 0; i < 1000; i++) {
 			System.out.println("new test " + i);
 			forkJoinUsingProcessors();
 			System.out.println();
 		}
 	}
+
 	@Test(timeout = TIMEOUT)
 	public void forkJoinUsingProcessors() throws Exception {
 
-		final Stream<Integer> forkStream = Streams.just(1, 2, 3).log("begin-computation");
-		final Stream<Integer> forkStream2 = Streams.just(1, 2, 3).log("begin-persistence");
+		final Stream<Integer> forkStream = Streams.just(1, 2, 3)
+		                                          .log("begin-computation");
+		final Stream<Integer> forkStream2 = Streams.just(1, 2, 3)
+		                                           .log("begin-persistence");
 
 		final RingBufferProcessor<Integer> computationBroadcaster = RingBufferProcessor.create("computation", BACKLOG);
-		final Stream<String> computationStream = Streams
-		  .wrap(computationBroadcaster)
-		  .map(i -> Integer.toString(i));
+		final Stream<String> computationStream = Streams.wrap(computationBroadcaster)
+		                                                .map(i -> Integer.toString(i));
 
 		final RingBufferProcessor<Integer> persistenceBroadcaster = RingBufferProcessor.create("persistence", BACKLOG);
-		final Stream<String> persistenceStream = Streams
-		  .wrap(persistenceBroadcaster)
-		  .map(i -> "done " + i);
+		final Stream<String> persistenceStream = Streams.wrap(persistenceBroadcaster)
+		                                                .map(i -> "done " + i);
 
 		forkStream.subscribe(computationBroadcaster);
 		forkStream2.subscribe(persistenceBroadcaster);
 
 		final Semaphore doneSemaphore = new Semaphore(0);
 
-		final Stream<List<String>> joinStream = Streams.join(
-		  computationStream.log("log1"),
-		  persistenceStream.log("log2")
-		);
+		final Stream<List<String>> joinStream =
+				Streams.join(computationStream.log("log1"), persistenceStream.log("log2"));
 
 		// Method chaining doesn't compile.
-		joinStream.log("log-final").consume(
-		  list -> println("Joined: ", list),
-		  t -> println("Join failed: ", t.getMessage()),
-		  Ø -> {
-			  println("Join complete.");
-			  doneSemaphore.release();
-		  }
-		);
+		joinStream.log("log-final")
+		          .consume(list -> println("Joined: ", list), t -> println("Join failed: ", t.getMessage()), Ø -> {
+			          println("Join complete.");
+			          doneSemaphore.release();
+		          });
 
 		doneSemaphore.acquire();
 
@@ -1556,53 +1564,49 @@ public class StreamTests extends AbstractReactorTest {
 		final Broadcaster<Integer> forkBroadcaster = Broadcaster.create();
 
 		final Broadcaster<Integer> computationBroadcaster = Broadcaster.create();
-		final Stream<List<String>> computationStream = computationBroadcaster
-		  .dispatchOn(Processors.singleGroup("computation", BACKLOG))
-		  .map(i -> {
-			  final List<String> list = new ArrayList<>(i);
-			  for (int j = 0; j < i; j++) {
-				  list.add("i" + j);
-			  }
-			  return list;
-		  })
-		  .observe(ls -> println("Computed: ", ls))
-		  .log("computation");
+		final Stream<List<String>> computationStream =
+				computationBroadcaster.dispatchOn(Processors.singleGroup("computation", BACKLOG))
+				                      .map(i -> {
+					                      final List<String> list = new ArrayList<>(i);
+					                      for (int j = 0; j < i; j++) {
+						                      list.add("i" + j);
+					                      }
+					                      return list;
+				                      })
+				                      .observe(ls -> println("Computed: ", ls))
+				                      .log("computation");
 		;
 
 		final Broadcaster<Integer> persistenceBroadcaster = Broadcaster.create();
-		final Stream<List<String>> persistenceStream = persistenceBroadcaster
-		  .dispatchOn(Processors.singleGroup("persistence", BACKLOG))
-		  .observe(i -> println("Persisted: ", i))
-		  .map(i -> Collections.singletonList("done" + i))
-		  .log("persistence");
+		final Stream<List<String>> persistenceStream =
+				persistenceBroadcaster.dispatchOn(Processors.singleGroup("persistence", BACKLOG))
+				                      .observe(i -> println("Persisted: ", i))
+				                      .map(i -> Collections.singletonList("done" + i))
+				                      .log("persistence");
 
-		Stream<Integer> forkStream = forkBroadcaster
-				.dispatchOn(Processors.singleGroup("fork", BACKLOG))
-				.log("fork");
+		Stream<Integer> forkStream = forkBroadcaster.dispatchOn(Processors.singleGroup("fork", BACKLOG))
+		                                            .log("fork");
 
 		forkStream.subscribe(computationBroadcaster);
 		forkStream.subscribe(persistenceBroadcaster);
 
-		final Stream<List<String>> joinStream = Streams
-		  .join(computationStream, persistenceStream)
-		  .dispatchOn(Processors.singleGroup("join", BACKLOG))
-		  .map(listOfLists -> {
-			  listOfLists.get(0).addAll(listOfLists.get(1));
-			  return listOfLists.get(0);
-		  })
-		  .log("join");
+		final Stream<List<String>> joinStream = Streams.join(computationStream, persistenceStream)
+		                                               .dispatchOn(Processors.singleGroup("join", BACKLOG))
+		                                               .map(listOfLists -> {
+			                                               listOfLists.get(0)
+			                                                          .addAll(listOfLists.get(1));
+			                                               return listOfLists.get(0);
+		                                               })
+		                                               .log("join");
 
 		final Semaphore doneSemaphore = new Semaphore(0);
 
-
-		final Promise<List<String>> listPromise = joinStream
-				.flatMap(Streams::from)
-				.log("resultStream")
-				.toList()
-				.onComplete( v -> doneSemaphore.release() );
+		final Promise<List<String>> listPromise = joinStream.flatMap(Streams::from)
+		                                                    .log("resultStream")
+		                                                    .toList()
+		                                                    .onComplete(v -> doneSemaphore.release());
 
 		System.out.println(forkBroadcaster.debug());
-
 
 		forkBroadcaster.onNext(1);
 		forkBroadcaster.onNext(2);
@@ -1613,7 +1617,6 @@ public class StreamTests extends AbstractReactorTest {
 		System.out.println(forkBroadcaster.debug());
 		assertEquals(Arrays.asList("i0", "done1", "i0", "i1", "done2", "i0", "i1", "i2", "done3"), listPromise.get());
 	}
-
 
 	@Test
 	@Ignore
@@ -1626,12 +1629,12 @@ public class StreamTests extends AbstractReactorTest {
 				println("**** Success! ****");
 				successCount++;
 			}
-		} finally {
+		}
+		finally {
 			println("Succeeded " + successCount + " time" + (successCount <= 1 ? "." : "s."));
 		}
 
 	}
-
 
 	private static final long TIMEOUT = 10_000;
 

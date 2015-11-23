@@ -78,7 +78,7 @@ public final class RepeatWhenOperator<T> implements Publishers.Operator<T, T> {
 
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
-			if (TERMINATED.compareAndSet(this, 1, 0)) {
+			if (TERMINATED.compareAndSet(this, TERMINATED_WITH_SUCCESS, NOT_TERMINATED)) {
 				long r = getRequested();
 				if( r > 0L ){
 					requestMore(r);

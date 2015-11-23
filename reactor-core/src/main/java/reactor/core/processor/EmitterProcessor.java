@@ -83,7 +83,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		this.outstanding = 0;
 		this.replay = Math.min(replayLastN, bufferSize);
 		SUBSCRIBERS.lazySet(this, EMPTY);
-		if(replayLastN > 0){
+		if (replayLastN > 0) {
 			getMainQueue();
 		}
 	}
@@ -166,7 +166,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 					//no tracking and remaining demand positive
 					if (r > 0L && poll == null) {
-						if(r != Long.MAX_VALUE){
+						if (r != Long.MAX_VALUE) {
 							is.requested--;
 						}
 						is.actual.onNext(t);
@@ -273,6 +273,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				return;
 			}
 			boolean d = done;
+
 			if (d && inner == EMPTY) {
 				return;
 			}
@@ -305,19 +306,12 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 						q = emitBuffer;
 					}
 
-					if (innerSequence == null) {
-						if (!d) {
-							remaining += r;
-						}
-					}
-
 					if (r > 0) {
 						_r = innerDrain(is, innerSequence, r, q);
-
 						if (r > _r) {
 							BackpressureUtils.getAndSub(InnerSubscriber.REQUESTED, is, r - _r);
 						}
-						remaining += _r;
+						remaining += (r - _r);
 					}
 					else {
 						_r = 0L;
@@ -335,12 +329,16 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				lastIndex = j;
 				lastId = inner[j].id;
 
-				if (!d && remaining != 0L && subscribers != CANCELLED) {
-					if (q != null) {
-						requestMore(q.remainingCapacity());
-					}
-					else {
+				if (!d) {
+					if (remaining != 0L && subscribers != CANCELLED) {
 						requestMore(remaining);
+					}
+					else if (outstanding == 0) {
+						outstanding = bufferSize;
+						Subscription s = upstreamSubscription;
+						if(s != null){
+							s.request(bufferSize);
+						}
 					}
 				}
 			}
@@ -508,17 +506,12 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 		//System.out.println(Thread.currentThread() + " " + n + "/" + outstanding + " " + bufferSize);
 		int k;
-		if (outstanding != 0) {
-			int r = outstanding - (int) n;
-			if (r > limit) {
-				outstanding = r;
-				return;
-			}
-			k = bufferSize - r;
+		int r = outstanding - (int) n;
+		if (r > limit) {
+			outstanding = r;
+			return;
 		}
-		else {
-			k = bufferSize;
-		}
+		k = bufferSize - r;
 
 		outstanding = bufferSize;
 		if (subscription != null && k > 0) {
@@ -600,19 +593,17 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			if (REQUESTED.compareAndSet(this, -1L, 0)) {
 				RingBuffer<RingBuffer.Slot<T>> ringBuffer = parent.emitBuffer;
 				if (ringBuffer != null) {
-					if(parent.replay > 0) {
+					if (parent.replay > 0) {
 						long cursor = ringBuffer.getCursor();
-						if(cursor < ringBuffer.getBufferSize()){
+						if (cursor < ringBuffer.getBufferSize()) {
 							startTracking(0L);
 						}
 						else {
-							startTracking(Math.min(
-									0L,
-									cursor - Math.min(parent.replay, cursor % ringBuffer.getBufferSize()))
-							);
+							startTracking(Math.min(0L,
+									cursor - Math.min(parent.replay, cursor % ringBuffer.getBufferSize())));
 						}
 					}
-					else{
+					else {
 						startTracking(Math.min(0L, ringBuffer.getMinimumGatingSequence()));
 					}
 				}

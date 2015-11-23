@@ -66,12 +66,12 @@ public final class LastOperator<T> implements Publishers.Operator<T, T> {
 		}
 
 		@Override
-		protected void doComplete() {
+		protected void checkedComplete() {
 			if (last != null) {
 				subscriber.onNext(last);
 			}
 
-			super.doComplete();
+			subscriber.onComplete();
 		}
 	}
 }
