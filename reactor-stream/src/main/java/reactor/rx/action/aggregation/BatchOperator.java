@@ -143,6 +143,7 @@ public abstract class BatchOperator<T, V> implements Publishers.Operator<T, V> {
 
 		@Override
 		protected void doRequested(long before, long n) {
+			if(isTerminated()) return;
 			if(batchSize == Integer.MAX_VALUE || n == Long.MAX_VALUE){
 				requestMore(Long.MAX_VALUE);
 			}

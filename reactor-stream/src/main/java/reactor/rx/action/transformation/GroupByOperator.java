@@ -89,14 +89,14 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		public GroupedEmitter(K key, GroupByAction<T, K> parent) {
 			super(key);
 			this.parent = parent;
-			this.processor = Processors.emitter();
+			this.processor = Processors.replay();
 		}
 
 
 		Queue<T> getBuffer() {
 		Queue<T> q = buffer;
 			if (q == null) {
-				q = RingBuffer.<T>newSequencedQueue(RingBuffer.<T>createSingleProducer(BaseProcessor
+				q = RingBuffer.newSequencedQueue(RingBuffer.<T>createSingleProducer(BaseProcessor
 						.SMALL_BUFFER_SIZE));
 				buffer = q;
 			}
@@ -274,19 +274,19 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 
 		@SuppressWarnings("unused")
 		private volatile long                                  buffered         = 0L;
-		static final     AtomicLongFieldUpdater<GroupByAction> BUFFERED         =
+		static final     AtomicLongFieldUpdater<GroupByAction>    BUFFERED          =
 				AtomicLongFieldUpdater.newUpdater(GroupByAction.class, "buffered");
 		@SuppressWarnings("unused")
 
-		private volatile int                                   actualComplete   = 0;
-		static final     AtomicIntegerFieldUpdater<GroupByAction> ACTUAL_COMPLETED =
+		private volatile int                                      actualComplete    = 0;
+		static final     AtomicIntegerFieldUpdater<GroupByAction> ACTUAL_COMPLETED  =
 				AtomicIntegerFieldUpdater.newUpdater(GroupByAction.class, "actualComplete");
 		@SuppressWarnings("unused")
 
 		//include self in total ready cancelled groups
-		private volatile int                                   cancelledGroups   = 1;
-		static final     AtomicIntegerFieldUpdater<GroupByAction> CANCELLED_GROUPS =
-				AtomicIntegerFieldUpdater.newUpdater(GroupByAction.class, "cancelledGroups");
+		private volatile int                                      cancellableGroups = 1;
+		static final     AtomicIntegerFieldUpdater<GroupByAction> CANCELLED_GROUPS  =
+				AtomicIntegerFieldUpdater.newUpdater(GroupByAction.class, "cancellableGroups");
 
 		public GroupByAction(Subscriber<? super GroupedStream<K, T>> actual,
 				Timer timer,
@@ -313,7 +313,7 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 				GroupedEmitter<T, K> p;
 
 				for (;;) {
-					int cancelled = cancelledGroups;
+					int cancelled = cancellableGroups;
 					if (cancelled <= 0) {
 						throw CancelException.get();
 					}
@@ -327,8 +327,8 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 					child = p;
 				}
 				else {
-					subscriber.onNext(child);
 					child.start();
+					subscriber.onNext(child);
 					child.onNext(value);
 					return;
 				}
@@ -391,6 +391,19 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 					ACTUAL_COMPLETED.compareAndSet(this, 0, 1)) {
 				subscriber.onComplete();
 			}
+		}
+
+		@Override
+		public String toString() {
+			return "GroupByAction{" +
+					"limit=" + limit +
+					", groupByMap=" + groupByMap +
+					", buffered=" + buffered +
+					", actualComplete=" + actualComplete +
+					", cancellableGroups=" + cancellableGroups +
+					", requested=" + getRequested() +
+					", capacity=" + getCapacity() +
+					'}';
 		}
 	}
 

@@ -834,7 +834,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				}
 
 				if(produced > 0L) {
-					if (outstanding == LIMIT_BUFFER_SIZE) {
+					if (outstanding <= LIMIT_BUFFER_SIZE) {
 
 						Subscription subscription = upstreamSubscription;
 						if (subscription != null) {
