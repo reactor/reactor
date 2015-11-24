@@ -75,7 +75,7 @@ public final class FutureStream<T> extends Stream<T> {
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
 		try {
-			subscriber.onSubscribe(new PushSubscription(this, subscriber) {
+			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
 
 				@Override
 				public void request(long elements) {

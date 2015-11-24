@@ -28,7 +28,7 @@ import reactor.core.subscriber.SubscriberWithContext
 import reactor.fn.BiFunction
 import reactor.rx.action.Signal
 import reactor.rx.broadcast.Broadcaster
-import reactor.rx.broadcast.SerializedBroadcaster
+import spock.lang.Ignore
 import spock.lang.Shared
 import spock.lang.Specification
 
@@ -1727,6 +1727,7 @@ class StreamsSpec extends Specification {
 			]
 	}
 
+	@Ignore
 	def 'StreamUtils will parse a Stream to a Map'() {
 		given:
 			'a source and a grouped by ID stream'
@@ -1979,13 +1980,13 @@ class StreamsSpec extends Specification {
 	def 'Caching Stream from publisher'() {
 		given:
 			'a slow source stream'
-			def s = Streams.<Integer> withOverflowSupport {
-				it.onNext(1)
-				sleep(200)
-				it.onNext(2)
-				sleep(200)
-				it.onNext(3)
-				it.onComplete()
+			def s = Streams.<Integer> yield {
+				it.submit 1
+				sleep 200
+				it.submit 2
+				sleep 200
+				it.submit 3
+				it.finish()
 			}.log('beforeCache')
 					.cache()
 					.log('afterCache')
@@ -2229,7 +2230,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.withOverflowSupport { aSubscriber ->
+			def myStream = Streams.yield { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -2239,7 +2240,7 @@ class StreamsSpec extends Specification {
 
 		and:
 			'A fallback stream will emit values and complete'
-			def myFallback = Streams.withOverflowSupport { aSubscriber ->
+			def myFallback = Streams.yield { aSubscriber ->
 				aSubscriber.onNext('0')
 				aSubscriber.onNext('1')
 				aSubscriber.onNext('2')
@@ -2264,7 +2265,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.withOverflowSupport { aSubscriber ->
+			def myStream = Streams.yield { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -2287,7 +2288,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by complete'
 			List res = []
-			def myStream = Streams.withOverflowSupport { aSubscriber ->
+			def myStream = Streams.yield { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -2309,7 +2310,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by complete'
 			res = []
-			myStream = Streams.withOverflowSupport { aSubscriber ->
+			myStream = Streams.yield { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onError(new Exception())
 			}
@@ -2727,7 +2728,7 @@ class StreamsSpec extends Specification {
 		when:
 			'when composable with an initial value'
 			def counter = 0
-			def value = Streams.withOverflowSupport {
+			def value = Streams.yield {
 				counter++
 				it.onError(new RuntimeException("always fails $counter"))
 			}.retryWhen { attempts ->
@@ -2790,7 +2791,7 @@ class StreamsSpec extends Specification {
 		when:
 			'when composable with an initial value'
 			def counter = 0
-			def value = Streams.withOverflowSupport {
+			def value = Streams.yield {
 				counter++
 				it.onComplete()
 			}.log().repeatWhen { attempts ->
@@ -3017,7 +3018,6 @@ class StreamsSpec extends Specification {
 		when:
 			"multithreaded bus can be serialized"
 			r = EventBus.create(Processors.queue("bus", 8), 4)
-			s = SerializedBroadcaster.<Event<Integer>> create()
 			def tail = Streams.wrap(r.on(selector)).map { it.data }.observe { sleep(100) }.elapsed().log().take(10).toList()
 
 			10.times {

@@ -20,10 +20,9 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.publisher.IterableSequencer;
-import reactor.core.publisher.IteratorSequencer;
+import reactor.core.publisher.ForEachSequencer;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.TrampolineOperator;
+import reactor.core.publisher.operator.TrampolineOperator;
 import reactor.core.publisher.ValuePublisher;
 import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.publisher.operator.FlatMapOperator;
@@ -65,7 +64,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <T> Publisher<T> from(final Iterable<? extends T> defaultValues) {
-		IterableSequencer<T> iterablePublisher = new IterableSequencer<>(defaultValues);
+		ForEachSequencer.IterableSequencer<T> iterablePublisher = new ForEachSequencer.IterableSequencer<>(defaultValues);
 		return create(iterablePublisher, iterablePublisher);
 	}
 
@@ -76,7 +75,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <T> Publisher<T> from(final Iterator<? extends T> defaultValues) {
-		IteratorSequencer<T> iteratorPublisher = new IteratorSequencer<>(defaultValues);
+		ForEachSequencer.IteratorSequencer<T> iteratorPublisher = new ForEachSequencer.IteratorSequencer<>(defaultValues);
 		return create(iteratorPublisher, iteratorPublisher);
 	}
 

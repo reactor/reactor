@@ -28,6 +28,7 @@ import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Subscribable;
@@ -40,7 +41,8 @@ import reactor.fn.timer.TimeUtils;
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ReactiveSession<E> implements Subscribable<E>, Subscription, Bounded, Consumer<E>, Closeable {
+public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subscription, Bounded, Consumer<E>,
+                                           Closeable {
 
 	/**
 	 *
@@ -351,6 +353,42 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscription, Bounde
 	@Override
 	public void close() throws IOException {
 		finish();
+	}
+
+	@Override
+	public void onSubscribe(Subscription s) {
+		s.request(Long.MAX_VALUE);
+	}
+
+	@Override
+	public void onNext(E e) {
+		Emission emission = emit(e);
+		if(emission.isOk()){
+			return;
+		}
+		if(emission.isBackpressured()){
+			throw InsufficientCapacityException.get();
+		}
+		if(emission.isCancelled()){
+			throw CancelException.get();
+		}
+		if(emission.isFailed()){
+			if(uncaughtException != null) {
+				actual.onError(uncaughtException);
+				return;
+			}
+			throw ReactorFatalException.create(new IllegalStateException("Cached error cannot be null"));
+		}
+	}
+
+	@Override
+	public void onError(Throwable t) {
+		actual.onError(t);
+	}
+
+	@Override
+	public void onComplete() {
+		actual.onComplete();
 	}
 
 	@Override

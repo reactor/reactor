@@ -779,20 +779,6 @@ public class Promise<O>
 			return;
 		}
 		if (REQUESTED.compareAndSet(this, 0, 1)) {
-			Broadcaster<O> outbound = outboundStream;
-			if (outbound != null) {
-				if (finalState == FinalState.ERROR) {
-					outbound.onError(error);
-					return;
-				}
-				else if (finalState == FinalState.COMPLETE) {
-					if (value != null) {
-						outbound.onNext(value);
-					}
-					outbound.onComplete();
-					return;
-				}
-			}
 			Subscription subscription = this.subscription;
 			if (subscription != null) {
 				subscription.request(1);

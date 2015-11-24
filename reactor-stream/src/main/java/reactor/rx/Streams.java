@@ -28,6 +28,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.subscription.ReactiveSession;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -125,10 +126,16 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> withOverflowSupport(Publisher<T> publisher) {
-		if (Stream.class.isAssignableFrom(publisher.getClass())) {
-			return (Stream<T>) publisher;
-		}
 		return new PublisherStream<T>(publisher);
+	}
+
+
+	/**
+	 * @see PublisherFactory#yield(Consumer)
+	 * @return a new {@link reactor.rx.Stream}
+	 */
+	public static <T> Stream<T> yield(Consumer<? super ReactiveSession<T>> sessionConsumer) {
+		return wrap(Publishers.yield(sessionConsumer));
 	}
 
 

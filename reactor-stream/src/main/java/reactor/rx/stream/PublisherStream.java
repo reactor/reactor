@@ -15,12 +15,16 @@
  */
 package reactor.rx.stream;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.subscriber.SubscriberBarrier;
+import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.rx.Stream;
 import reactor.rx.subscription.SwapSubscription;
 
@@ -40,6 +44,12 @@ import reactor.rx.subscription.SwapSubscription;
  */
 public final class PublisherStream<T> extends Stream<T> {
 
+	@SuppressWarnings("unused")
+	private volatile int running = 0;
+
+	private final static AtomicIntegerFieldUpdater<PublisherStream> ONCE =
+			AtomicIntegerFieldUpdater.newUpdater(PublisherStream.class, "running");
+
 	private final Publisher<T> source;
 
 	public PublisherStream(Publisher<T> publisher) {
@@ -51,33 +61,25 @@ public final class PublisherStream<T> extends Stream<T> {
 		try {
 			final BaseProcessor<T, T> emitter = Processors.emitter();
 
-			emitter.subscribe(subscriber);
-
 			final SwapSubscription sub = SwapSubscription.create();
+
 			emitter.onSubscribe(sub);
-
-
-			source.subscribe(new Subscriber<T>() {
+			emitter.subscribe(new SubscriberBarrier<T, T>(subscriber) {
 				@Override
-				public void onSubscribe(Subscription s) {
-					sub.swapTo(s);
-				}
-
-				@Override
-				public void onNext(T t) {
-					emitter.onNext(t);
-				}
-
-				@Override
-				public void onError(Throwable t) {
-					emitter.onError(t);
-				}
-
-				@Override
-				public void onComplete() {
-					emitter.onComplete();
+				protected void doRequest(long n) {
+					if(ONCE.compareAndSet(PublisherStream.this, 0, 1)){
+						source.subscribe(new SubscriberBarrier<T, T>(emitter){
+							@Override
+							protected void doOnSubscribe(Subscription subscription) {
+								sub.swapTo(subscription);
+							}
+						});
+					}
+					super.doRequest(n);
 				}
 			});
+
+
 		} catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);

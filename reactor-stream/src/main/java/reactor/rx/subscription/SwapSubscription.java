@@ -48,7 +48,7 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 		return new SwapSubscription<>();
 	}
 
-	public SwapSubscription() {
+	SwapSubscription() {
 		SUBSCRIPTION.lazySet(this, SignalType.NOOP_SUBSCRIPTION);
 	}
 

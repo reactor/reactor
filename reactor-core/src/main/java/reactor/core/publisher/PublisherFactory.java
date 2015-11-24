@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.*;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
@@ -103,6 +104,20 @@ public abstract class PublisherFactory {
 	                                                   Consumer<C> shutdownConsumer) {
 
 		return new ReactorPublisher<T, C>(new RecursiveConsumer<>(requestConsumer), contextFactory, shutdownConsumer);
+	}
+
+	/**
+	 * Create a {@link Publisher} reacting on subscribe with the passed {@link Consumer}.
+	 * The argument {@code sessionConsumer} is executed once by new subscriber to generate a {@link ReactiveSession}
+	 * context ready to accept signals.
+	 *
+	 * @param sessionConsumer  A {@link Consumer} called once everytime a subscriber subscribes
+	 * @param <T>              The type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <T> Publisher<T> yield(Consumer<? super ReactiveSession<T>> sessionConsumer) {
+
+		return new SessionPublisher<>(sessionConsumer);
 	}
 
 
@@ -489,11 +504,13 @@ public abstract class PublisherFactory {
 
 		private final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
 
+		@SuppressWarnings("unused")
 		private volatile int running = 0;
 
 		private final static AtomicIntegerFieldUpdater<RecursiveConsumer> RUNNING =
 				AtomicIntegerFieldUpdater.newUpdater(RecursiveConsumer.class, "running");
 
+		@SuppressWarnings("unused")
 		private volatile long pending = 0L;
 
 		private final static AtomicLongFieldUpdater<RecursiveConsumer> PENDING_UPDATER =
@@ -627,6 +644,63 @@ public abstract class PublisherFactory {
 			  ", errorConsumer=" + errorConsumer +
 			  ", completeConsumer=" + completeConsumer +
 			  '}';
+		}
+	}
+
+	private static class SessionPublisher<T> implements Publisher<T> {
+
+		final Consumer<? super ReactiveSession<T>> onSubscribe;
+
+		public SessionPublisher(Consumer<? super ReactiveSession<T>> onSubscribe) {
+			this.onSubscribe = onSubscribe;
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super T> subscriber) {
+			try {
+				ReactiveSession<T> session = new YieldingReactiveSession<>(onSubscribe, subscriber);
+				session.start();
+
+			} catch (PrematureCompleteException pce) {
+				subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				subscriber.onComplete();
+			} catch (Throwable throwable) {
+				Exceptions.<T>publisher(throwable).subscribe(subscriber);
+			}
+		}
+	}
+
+	private static class YieldingReactiveSession<T> extends ReactiveSession<T>{
+
+		final Consumer<? super ReactiveSession<T>> onSubscribe;
+
+		@SuppressWarnings("unused")
+		private volatile int running = 0;
+
+		private final static AtomicIntegerFieldUpdater<YieldingReactiveSession> RUNNING =
+				AtomicIntegerFieldUpdater.newUpdater(YieldingReactiveSession.class, "running");
+
+		public YieldingReactiveSession(Consumer<? super ReactiveSession<T>> onSubscribe, Subscriber<? super T> actual) {
+			super(actual);
+			this.onSubscribe = onSubscribe;
+		}
+
+		@Override
+		public void request(long n) {
+			super.request(n);
+			if(RUNNING.getAndIncrement(this) == 0){
+				int missed = 1;
+
+				onSubscribe.accept(this);
+
+				for(;;){
+					missed = RUNNING.addAndGet(this, -missed);
+					if(missed == 0){
+						break;
+					}
+				}
+
+			}
 		}
 	}
 
