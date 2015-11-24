@@ -521,8 +521,7 @@ public abstract class Action<I, O> extends Stream<O>
 	 * Subscribe a given subscriber and pairs it with a given subscription instead of letting the Stream pick it
 	 * automatically.
 	 * <p>
-	 * This is mainly useful for libraries implementors, usually {@link this#liftAction(reactor.fn.Supplier)} and
-	 * {@link this#subscribe(org.reactivestreams.Subscriber)} are just fine.
+	 * This is mainly useful for libraries implementors.
 	 *
 	 * @param subscriber
 	 * @param subscription

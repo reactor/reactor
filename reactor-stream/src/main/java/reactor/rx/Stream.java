@@ -68,6 +68,7 @@ import reactor.rx.action.aggregation.WindowWhenOperator;
 import reactor.rx.action.combination.DynamicMergeAction;
 import reactor.rx.action.combination.SwitchOperator;
 import reactor.rx.action.combination.ZipAction;
+import reactor.rx.action.combination.ZipWithIterableOperator;
 import reactor.rx.action.conditional.ExistsOperator;
 import reactor.rx.action.control.DropOperator;
 import reactor.rx.action.control.KeepAliveOperator;
@@ -1118,8 +1119,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final <T2, V> Stream<V> zipWith(Iterable<? extends T2> iterable,
-			@Nonnull Function<Tuple2<O, T2>, V> zipper) {
-		return zipWith(Streams.from(iterable), zipper);
+			@Nonnull BiFunction<? super O, ? super T2, ? extends V>  zipper) {
+		return zipWithIterable(iterable, zipper);
 	}
 
 	/**
@@ -1146,6 +1147,17 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 				return Stream.this.getTimer();
 			}
 		};
+	}
+
+	/**
+	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The
+	 * result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
+	 * @return the zipped stream
+	 * @since 2.1
+	 */
+	public final <T2, V> Stream<V> zipWithIterable(Iterable<? extends T2> iterable,
+			@Nonnull BiFunction<? super O, ? super T2, ? extends V> zipper) {
+		return lift(new ZipWithIterableOperator<>(zipper, iterable));
 	}
 
 	/**

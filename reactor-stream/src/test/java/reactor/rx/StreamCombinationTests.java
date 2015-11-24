@@ -283,12 +283,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		                              .collect(Collectors.toList());
 
 		LOG.info("range from 0 to " + list.size());
-		Control tail = sensorOdd().zipWith(list,
-				(tuple) -> (tuple.getT1()
-				                 .toString() +
-						"" +
-						" " +
-						"-- " + tuple.getT2()))
+		Control tail = sensorOdd().zipWith(list, (t1, t2) -> (t1.toString() + " -- " + t2))
 		                          .log("zipWithIterableTest")
 		                          .consume(i -> latch.countDown());
 

@@ -15,21 +15,34 @@
  */
 package reactor;
 
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.SubscriberFactory;
 import reactor.core.support.SignalType;
-
-import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
 public final class Subscribers extends SubscriberFactory {
+
+
+	/**
+	 * @param <IN>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <IN> Subscriber<IN> empty() {
+		return (EmptySubscriber<IN>) EMPTY;
+	}
+
 
 	/**
 	 * @param <IN>
@@ -66,4 +79,30 @@ public final class Subscribers extends SubscriberFactory {
 		subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 		return subscriber;
 	}
+
+	private static final EmptySubscriber<?> EMPTY = new EmptySubscriber<>();
+
+	private static class EmptySubscriber<IN> implements Subscriber<IN> {
+
+		@Override
+		public void onSubscribe(Subscription s) {
+			//IGNORE
+		}
+
+		@Override
+		public void onNext(IN in) {
+			//IGNORE
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			throw ReactorFatalException.create(t);
+		}
+
+		@Override
+		public void onComplete() {
+			//IGNORE
+		}
+	}
+
 }
