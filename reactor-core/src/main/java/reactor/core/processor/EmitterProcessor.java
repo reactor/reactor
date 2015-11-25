@@ -193,7 +193,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			lastId = inner[j].id;
 
 			if (seq == -1L) {
-				requestMore(1L);
+				requestMore(1L, null);
 			}
 
 			if (!unbounded) {
@@ -285,7 +285,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				Sequence innerSequence;
 				RingBuffer<RingBuffer.Slot<T>> q = null;
 				long _r;
-				long remaining = 0L;
+				long drained = 0L;
 
 				for (int i = 0; i < n; i++) {
 					@SuppressWarnings("unchecked") InnerSubscriber<T> is = (InnerSubscriber<T>) inner[j];
@@ -311,7 +311,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 						if (r > _r) {
 							BackpressureUtils.getAndSub(InnerSubscriber.REQUESTED, is, r - _r);
 						}
-						remaining += (r - _r);
+						drained += (r - _r);
 					}
 					else {
 						_r = 0L;
@@ -329,16 +329,16 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				lastIndex = j;
 				lastId = inner[j].id;
 
-				if (!d) {
-					if (remaining != 0L && subscribers != CANCELLED) {
-						requestMore(remaining);
-					}
-					else if (outstanding == 0) {
+				if (!d && subscribers != CANCELLED) {
+					if(outstanding == 0){
 						outstanding = bufferSize;
 						Subscription s = upstreamSubscription;
 						if(s != null){
 							s.request(bufferSize);
 						}
+					}
+					else if (drained != 0L) {
+						requestMore(drained, q);
 					}
 				}
 			}
@@ -498,7 +498,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		}
 	}
 
-	final void requestMore(long n) {
+	final void requestMore(long n, RingBuffer<RingBuffer.Slot<T>> q) {
 		Subscription subscription = upstreamSubscription;
 		if (subscription == SignalType.NOOP_SUBSCRIPTION) {
 			return;
@@ -595,16 +595,11 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				if (ringBuffer != null) {
 					if (parent.replay > 0) {
 						long cursor = ringBuffer.getCursor();
-						if (cursor < ringBuffer.getBufferSize()) {
-							startTracking(0L);
-						}
-						else {
-							startTracking(Math.min(0L,
-									cursor - Math.min(parent.replay, cursor % ringBuffer.getBufferSize())));
-						}
+						startTracking(Math.max(0L, cursor - Math.min(parent.replay, cursor % ringBuffer
+								.getBufferSize())));
 					}
 					else {
-						startTracking(Math.min(0L, ringBuffer.getMinimumGatingSequence()));
+						startTracking(Math.max(0L, ringBuffer.getMinimumGatingSequence()));
 					}
 				}
 
