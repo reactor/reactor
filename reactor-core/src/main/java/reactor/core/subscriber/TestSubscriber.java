@@ -36,6 +36,8 @@ import reactor.io.buffer.Buffer;
  */
 public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 
+	private volatile Subscription subscription;
+
 	/**
 	 *
 	 * @param timeoutSecs
@@ -78,9 +80,14 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 	 * @param resultSupplier
 	 * @throws InterruptedException
 	 */
-	public static void waitFor(long timeoutSecs, String errorMessage, Supplier<Boolean> resultSupplier)
+	public static void waitFor(long timeoutSecs, final String errorMessage, Supplier<Boolean> resultSupplier)
 			throws InterruptedException {
-		waitFor(timeoutSecs, () -> errorMessage, resultSupplier);
+		waitFor(timeoutSecs, new Supplier<String>() {
+			@Override
+			public String get() {
+				return errorMessage;
+			}
+		}, resultSupplier);
 	}
 
 	//
@@ -120,7 +127,12 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 	public void requestWithTimeout(long n) throws InterruptedException {
 		waitFor(timeoutSecs,
 				String.format("onSubscribe wasn't called within %d secs", timeoutSecs),
-				() -> subscription != null);
+				new Supplier<Boolean>() {
+					@Override
+					public Boolean get() {
+						return subscription != null;
+					}
+				});
 
 		requestMore(n);
 	}
@@ -237,6 +249,7 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 
 	@Override
 	protected void doOnSubscribe(Subscription s) {
+		subscription = s;
 		long toRequest = getRequested();
 		if (toRequest > 0L) {
 			s.request(toRequest);
