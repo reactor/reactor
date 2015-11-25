@@ -193,7 +193,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			lastId = inner[j].id;
 
 			if (seq == -1L) {
-				requestMore(1L, null);
+				requestMore(1L);
 			}
 
 			if (!unbounded) {
@@ -285,7 +285,15 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				Sequence innerSequence;
 				RingBuffer<RingBuffer.Slot<T>> q = null;
 				long _r;
-				long drained = 0L;
+				long drained;
+
+				if (q == null) {
+					q = emitBuffer;
+					drained = -1L;
+				}
+				else {
+					drained = 0L;
+				}
 
 				for (int i = 0; i < n; i++) {
 					@SuppressWarnings("unchecked") InnerSubscriber<T> is = (InnerSubscriber<T>) inner[j];
@@ -302,16 +310,34 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 					}
 
 					innerSequence = is.pollCursor;
-					if (q == null) {
-						q = emitBuffer;
-					}
 
-					if (r > 0) {
-						_r = innerDrain(is, innerSequence, r, q);
+					if (innerSequence != null && r > 0 ) {
+						_r = r;
+
+						boolean unbounded = _r == Long.MAX_VALUE;
+						T oo;
+						long cursor;
+						while (_r != 0L) {
+							cursor = innerSequence.get() + 1;
+							if (q.getCursor() >= cursor) {
+								oo = q.get(cursor).value;
+							}
+							else {
+								break;
+							}
+
+							innerSequence.set(cursor);
+							is.actual.onNext(oo);
+							if(!unbounded) {
+								_r--;
+							}
+						}
+
 						if (r > _r) {
 							BackpressureUtils.getAndSub(InnerSubscriber.REQUESTED, is, r - _r);
 						}
-						drained += (r - _r);
+
+						drained = n == 1 || drained == -1L ? ( r - _r ) : Math.min(drained, r - _r);
 					}
 					else {
 						_r = 0L;
@@ -337,8 +363,8 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 							s.request(bufferSize);
 						}
 					}
-					else if (drained != 0L) {
-						requestMore(drained, q);
+					else if (drained > 0L) {
+						requestMore(n != 1 ? Math.min(q.remainingCapacity(), drained) : drained);
 					}
 				}
 			}
@@ -348,36 +374,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				break;
 			}
 		}
-	}
-
-	final long innerDrain(InnerSubscriber<T> is, Sequence innerSequence, long r, RingBuffer<RingBuffer.Slot<T>> q) {
-
-		if (innerSequence == null) {
-			return r;
-		}
-
-		boolean unbounded = r == Long.MAX_VALUE;
-
-		T oo;
-		long cursor;
-		while (r != 0L) {
-			cursor = innerSequence.get() + 1;
-			if (q.getCursor() >= cursor) {
-				oo = q.get(cursor).value;
-			}
-			else {
-				break;
-			}
-
-			innerSequence.setVolatile(cursor);
-			r--;
-			is.actual.onNext(oo);
-		}
-
-		if (unbounded) {
-			r = Long.MAX_VALUE;
-		}
-		return r;
 	}
 
 	final void checkTerminal(InnerSubscriber<T> is, Sequence innerSequence, long r) {
@@ -498,7 +494,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		}
 	}
 
-	final void requestMore(long n, RingBuffer<RingBuffer.Slot<T>> q) {
+	final void requestMore(long n) {
 		Subscription subscription = upstreamSubscription;
 		if (subscription == SignalType.NOOP_SUBSCRIPTION) {
 			return;

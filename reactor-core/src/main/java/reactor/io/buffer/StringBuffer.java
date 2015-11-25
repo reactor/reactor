@@ -38,4 +38,9 @@ public final class StringBuffer extends Buffer {
 	public Buffer newBuffer() {
 		return new StringBuffer();
 	}
+
+	@Override
+	public String toString() {
+		return asString();
+	}
 }
