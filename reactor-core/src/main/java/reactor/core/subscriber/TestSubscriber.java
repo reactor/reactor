@@ -186,13 +186,23 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 	 * @param n
 	 * @throws InterruptedException
 	 */
-	public void assertNumNextSignalsReceived(int n) throws InterruptedException {
-		Supplier<String> errorSupplier = () -> String.format("%d out of %d Next signals received within %d secs",
-				numNextSignalsReceived.get(),
-				n,
-				timeoutSecs);
+	public void assertNumNextSignalsReceived(final int n) throws InterruptedException {
+		Supplier<String> errorSupplier = new Supplier<String>() {
+			@Override
+			public String get() {
+				return String.format("%d out of %d Next signals received within %d secs",
+						numNextSignalsReceived.get(),
+						n,
+						timeoutSecs);
+			}
+		};
 
-		waitFor(timeoutSecs, errorSupplier, () -> numNextSignalsReceived.get() == n);
+		waitFor(timeoutSecs, errorSupplier, new Supplier<Boolean>() {
+			@Override
+			public Boolean get() {
+				return numNextSignalsReceived.get() == n;
+			}
+		});
 	}
 
 	/**
