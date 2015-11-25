@@ -285,14 +285,10 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				Sequence innerSequence;
 				RingBuffer<RingBuffer.Slot<T>> q = null;
 				long _r;
-				long drained;
+				long drained = -1L;;
 
 				if (q == null) {
 					q = emitBuffer;
-					drained = -1L;
-				}
-				else {
-					drained = 0L;
 				}
 
 				for (int i = 0; i < n; i++) {
