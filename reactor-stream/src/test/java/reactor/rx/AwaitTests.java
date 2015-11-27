@@ -67,7 +67,7 @@ public class AwaitTests extends AbstractReactorTest {
 		EventBus r = EventBus.create(RingBufferProcessor.create("rb", 8));
 
 		Broadcaster<Event<Throwable>> stream = Broadcaster.<Event<Throwable>>create();
-		Promise<List<Long>> promise = stream.take(16).count().toList();
+		Promise<Long> promise = stream.log().take(16).count().consumeNext();
 		r.on(Selectors.T(Throwable.class), stream.toNextConsumer());
 		r.on(Selectors.$("test"), (Event<?> ev) -> {
 			try {
@@ -83,7 +83,7 @@ public class AwaitTests extends AbstractReactorTest {
 		}
 		promise.await(5, TimeUnit.SECONDS);
 
-		assert promise.get().get(0) == 16;
+		assert promise.get() == 16;
 		try{
 			r.getProcessor().onComplete();
 		}catch(Throwable c){

@@ -456,7 +456,7 @@ public class StreamTests extends AbstractReactorTest {
 		Broadcaster<Integer> d = Broadcaster.create();
 
 		Control c = d.dispatchOn(asyncGroup)
-		             //.log("main", LogOperator.REQUEST | LogOperator.NUMBER_ON_NEXT)
+//		             .log("main", LogOperator.REQUEST | LogOperator.NUMBER_ON_NEXT)
 		             .partition()
 		             .consume(stream -> stream.dispatchOn(asyncGroup)
 //		                                      .log("partitioned-" + stream.key(), LogOperator.REQUEST | LogOperator
@@ -814,7 +814,7 @@ public class StreamTests extends AbstractReactorTest {
 		long stop = System.currentTimeMillis() - start;
 		stop = stop > 0 ? stop : 1;
 
-		System.out.println("Dispatcher: " + dispatcher);
+		System.out.println("MM Dispatcher: " + dispatcher);
 		System.out.println("Time spent: " + stop + "ms");
 		System.out.println("ev/ms: " + iterations / stop);
 		System.out.println("ev/s: " + iterations / stop * 1000);

@@ -127,7 +127,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	}
 
 	@Test
-	public void testEmitter() throws Exception {
+	public void testEmitter() throws Throwable {
 		BaseProcessor<Integer, Integer> processor = Processors.emitter();
 
 		int n = 1_000_000;
@@ -156,10 +156,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 				if (session.hasFailed()) {
 					session.getError()
 					       .printStackTrace();
-					return;
-				}
-				if (session.hasEnded()) {
-					return;
+					throw session.getError();
 				}
 			}
 		}

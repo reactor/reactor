@@ -2441,13 +2441,13 @@ class StreamsSpec extends Specification {
 	def 'A Stream can be throttled'() {
 		given:
 			'a source and a throttled stream'
-			def source = Broadcaster.<Integer> create()
+			def source = Broadcaster.<Integer> create(true)
 			long avgTime = 150l
 
 			def reduced = source
 					.throttle(avgTime)
 					.elapsed()
-					.log()
+					.log('el')
 					.take(10)
 					.reduce(0l) { acc, next ->
 				acc > 0l ? ((next.t1 + acc) / 2) : next.t1
@@ -2474,7 +2474,7 @@ class StreamsSpec extends Specification {
 	def 'A Stream can be throttled with a backoff policy as a stream'() {
 		given:
 			'a source and a throttled stream'
-			def source = Broadcaster.<Integer> create()
+			def source = Broadcaster.<Integer> create(true)
 			long avgTime = 150l
 
 			def reduced = source
@@ -2512,7 +2512,7 @@ class StreamsSpec extends Specification {
 	def 'time-slices of average'() {
 		given:
 			'a source and a throttled stream'
-			def source = Broadcaster.<Integer> create()
+			def source = Broadcaster.<Integer> create(true)
 			def latch = new CountDownLatch(1)
 			long avgTime = 150l
 
@@ -2970,7 +2970,7 @@ class StreamsSpec extends Specification {
 					.dispatchOn(asyncGroup)
 
 		when:
-			def promise = stream.skip(2, TimeUnit.SECONDS).toList()
+			def promise = stream.log("skipTime").skip(2, TimeUnit.SECONDS).toList()
 
 		then:
 			!promise.await()

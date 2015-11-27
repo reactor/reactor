@@ -48,6 +48,19 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 		return create(null, false);
 	}
 
+
+	/**
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
+	 * .Broadcaster#onNext(Object)}, {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values
+	 * broadcasted are directly consumable by subscribing to the returned instance.
+	 * @param autoCancel Propagate cancel upstream
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link reactor.rx.broadcast.Broadcaster}
+	 */
+	public static <T> Broadcaster<T> create(boolean autoCancel) {
+		return create(null, autoCancel);
+	}
+
 	/**
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
 	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
@@ -210,8 +223,9 @@ public class Broadcaster<O> extends ProcessorAction<O, O> {
 	public void onNext(O ev) {
 		try {
 			if(subscription.isCancelled()){
-				throw CancelException.INSTANCE;
+				throw CancelException.get();
 			}
+			subscription.ack();
 			receiver.onNext(ev);
 		}
 		catch (InsufficientCapacityException | CancelException c) {

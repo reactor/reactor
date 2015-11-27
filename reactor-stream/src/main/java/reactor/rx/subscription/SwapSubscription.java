@@ -87,6 +87,23 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 
 	/**
 	 *
+	 * @param l
+	 * @return
+	 */
+	public boolean ack(long l) {
+		return BackpressureUtils.getAndSub(REQUESTED, this, l) >= l;
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public boolean ack(){
+		return BackpressureUtils.getAndSub(REQUESTED, this, 1L) != 0;
+	}
+
+	/**
+	 *
 	 * @return
 	 */
 	public boolean isCancelled(){
@@ -119,5 +136,13 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 	@Override
 	public Publisher<T> upstream() {
 		return Publishers.fromSubscription(subscription);
+	}
+
+	@Override
+	public String toString() {
+		return "SwapSubscription{" +
+				"subscription=" + subscription +
+				", requested=" + requested +
+				'}';
 	}
 }

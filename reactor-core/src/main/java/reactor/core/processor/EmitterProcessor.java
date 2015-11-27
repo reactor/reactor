@@ -19,7 +19,9 @@ package reactor.core.processor;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.concurrent.locks.LockSupport;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
@@ -31,6 +33,7 @@ import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
+import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 
@@ -49,6 +52,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 	private volatile boolean done;
 
+	@SuppressWarnings("unused")
 	private volatile Throwable error;
 
 	static final InnerSubscriber<?>[] EMPTY = new InnerSubscriber<?>[0];
@@ -70,18 +74,24 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 	static final AtomicIntegerFieldUpdater<EmitterProcessor> RUNNING =
 			AtomicIntegerFieldUpdater.newUpdater(EmitterProcessor.class, "running");
 
+	@SuppressWarnings("unused")
+	private volatile int outstanding;
+	@SuppressWarnings("rawtypes")
+	static final AtomicIntegerFieldUpdater<EmitterProcessor> OUTSTANDING =
+			AtomicIntegerFieldUpdater.newUpdater(EmitterProcessor.class, "outstanding");
+
 	long uniqueId;
 	long lastId;
 	int  lastIndex;
-	int  outstanding;
+	boolean firstDrain = true;
 
 	public EmitterProcessor(boolean autoCancel, int maxConcurrency, int bufferSize, int replayLastN) {
 		super(autoCancel);
 		this.maxConcurrency = maxConcurrency;
 		this.bufferSize = bufferSize;
 		this.limit = Math.max(1, bufferSize / 2);
-		this.outstanding = 0;
 		this.replay = Math.min(replayLastN, bufferSize);
+		OUTSTANDING.lazySet(this, bufferSize);
 		SUBSCRIBERS.lazySet(this, EMPTY);
 		if (replayLastN > 0) {
 			getMainQueue();
@@ -110,7 +120,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 	@Override
 	protected void doOnSubscribe(Subscription s) {
 		InnerSubscriber<?>[] innerSubscribers = subscribers;
-		if (innerSubscribers != CANCELLED) {
+		if (innerSubscribers != CANCELLED && innerSubscribers.length != 0) {
 			for (int i = 0; i < innerSubscribers.length; i++) {
 				innerSubscribers[i].start();
 			}
@@ -123,7 +133,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		super.onNext(t);
 
 		InnerSubscriber<?>[] inner = subscribers;
-		if (inner == CANCELLED) {
+		if (autoCancel && inner == CANCELLED) {
 			//FIXME should entorse to the spec and throw CancelException
 			return;
 		}
@@ -132,6 +142,24 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		if (n != 0) {
 
 			long seq = -1L;
+
+			int outstanding;
+			for(;;) {
+				if(upstreamSubscription == SignalType.NOOP_SUBSCRIPTION){
+					break;
+				}
+				outstanding = this.outstanding;
+				if (outstanding != 0) {
+					OUTSTANDING.decrementAndGet(this);
+					break;
+				}
+//			System.out.println(upstreamSubscription+" "+subscribers[0].actual+ " "+subscribers[0].requested);
+				if (inner == CANCELLED) {
+					//FIXME should entorse to the spec and throw CancelException
+					return;
+				}
+			}
+
 			int j = n == 1 ? 0 : getLastIndex(n, inner);
 			boolean unbounded = true;
 
@@ -167,7 +195,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 					//no tracking and remaining demand positive
 					if (r > 0L && poll == null) {
 						if (r != Long.MAX_VALUE) {
-							is.requested--;
+							InnerSubscriber.REQUESTED.decrementAndGet(is);
 						}
 						is.actual.onNext(t);
 					}
@@ -191,10 +219,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			}
 			lastIndex = j;
 			lastId = inner[j].id;
-
-			if (seq == -1L) {
-				requestMore(1L);
-			}
 
 			if (!unbounded) {
 				if (RUNNING.getAndIncrement(this) != 0) {
@@ -285,8 +309,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				Sequence innerSequence;
 				RingBuffer<RingBuffer.Slot<T>> q = null;
 				long _r;
-				long drained = -1L;;
-
 				if (q == null) {
 					q = emitBuffer;
 				}
@@ -307,14 +329,15 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 					innerSequence = is.pollCursor;
 
-					if (innerSequence != null && r > 0 ) {
+					if (innerSequence != null && r > 0) {
 						_r = r;
 
 						boolean unbounded = _r == Long.MAX_VALUE;
 						T oo;
-						long cursor;
+
+						long cursor = innerSequence.get();
 						while (_r != 0L) {
-							cursor = innerSequence.get() + 1;
+							cursor++;
 							if (q.getCursor() >= cursor) {
 								oo = q.get(cursor).value;
 							}
@@ -324,16 +347,16 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 							innerSequence.set(cursor);
 							is.actual.onNext(oo);
-							if(!unbounded) {
+
+							if (!unbounded) {
 								_r--;
 							}
 						}
 
 						if (r > _r) {
-							BackpressureUtils.getAndSub(InnerSubscriber.REQUESTED, is, r - _r);
+							InnerSubscriber.REQUESTED.addAndGet(is, _r - r);
 						}
 
-						drained = n == 1 || drained == -1L ? ( r - _r ) : Math.min(drained, r - _r);
 					}
 					else {
 						_r = 0L;
@@ -351,16 +374,19 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				lastIndex = j;
 				lastId = inner[j].id;
 
-				if (!d && subscribers != CANCELLED) {
-					if(outstanding == 0){
-						outstanding = bufferSize;
-						Subscription s = upstreamSubscription;
-						if(s != null){
-							s.request(bufferSize);
-						}
+				if (firstDrain) {
+					Subscription s = upstreamSubscription;
+					if (s != null) {
+						firstDrain = false;
+						s.request(bufferSize);
 					}
-					else if (drained > 0L) {
-						requestMore(n != 1 ? Math.min(q.remainingCapacity(), drained) : drained);
+				}
+				else {
+					if(q != null) {
+						requestMore((int) q.pending());
+					}
+					else{
+						requestMore(0);
 					}
 				}
 			}
@@ -490,24 +516,28 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		}
 	}
 
-	final void requestMore(long n) {
+	final void requestMore(int buffered) {
 		Subscription subscription = upstreamSubscription;
 		if (subscription == SignalType.NOOP_SUBSCRIPTION) {
 			return;
 		}
 
-		//System.out.println(Thread.currentThread() + " " + n + "/" + outstanding + " " + bufferSize);
-		int k;
-		int r = outstanding - (int) n;
-		if (r > limit) {
-			outstanding = r;
-			return;
+		if(buffered < bufferSize) {
+			int r = outstanding;
+			if (r > limit) {
+				return;
+			}
+			int toRequest = (bufferSize - r) - buffered;
+//			System.out.println(subscription + " WRONG torequest:" + toRequest + " b:" + buffered + " r " + r + "  q " +
+//					emitBuffer + " " +
+//					"o:" + outstanding + " sr:" + subscribers[0].requested);
+			if (toRequest > 0 && subscription != null) {
+				OUTSTANDING.addAndGet(this, toRequest);
+				subscription.request(toRequest);
+			}
 		}
-		k = bufferSize - r;
-
-		outstanding = bufferSize;
-		if (subscription != null && k > 0) {
-			subscription.request(k);
+		else {
+//			System.out.println(subscription + " b:" + buffered + " NOOOO ");
 		}
 	}
 
@@ -521,7 +551,17 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		}
 	}
 
-	static final class InnerSubscriber<T> implements Subscription, Bounded {
+	@Override
+	public String toString() {
+		return "EmitterProcessor{" +
+				"done=" + done +
+				", error=" + error +
+				", outstanding=" + outstanding +
+				", emitBuffer=" + emitBuffer +
+				'}';
+	}
+
+	static final class InnerSubscriber<T> implements Subscription, Bounded, Publishable<T> {
 
 		final long                  id;
 		final EmitterProcessor<T>   parent;
@@ -597,6 +637,11 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 				actual.onSubscribe(this);
 			}
+		}
+
+		@Override
+		public Publisher<T> upstream() {
+			return parent;
 		}
 	}
 

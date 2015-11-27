@@ -659,4 +659,10 @@ public abstract class RingBuffer<E> implements LongSupplier {
 			pollCursor.set(buffer.getCursor());
 		}
 	}
+
+	@Override
+	public String toString() {
+		return "RingBuffer{pending:"+pending()+", size:"+getBufferSize()+", cursor:"+get()+", " +
+				"min:"+getMinimumGatingSequence()+", subscribers:"+getSequencer().gatingSequences.length+"}";
+	}
 }

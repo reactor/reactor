@@ -358,7 +358,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	}
 
 	/* INTERNAL */
-	
+
 
 	@SuppressWarnings("unchecked")
 	private static final ProcessorGroup SYNC_SERVICE = new ProcessorGroup(null, -1, null, null, false);
@@ -394,7 +394,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	};
 
-	private final static int LIMIT_BUFFER_SIZE = 2 << 4;
+	private final static int LIMIT_BUFFER_SIZE = BaseProcessor.SMALL_BUFFER_SIZE / 2;
 
 	@SuppressWarnings("unchecked")
 	protected ProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
@@ -781,6 +781,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			}
 		}
 
+		volatile int nextN = 0;
 		@Override
 		public void run() {
 			int missed = 1;
@@ -799,8 +800,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 					}
 
 					if (r != 0L
-							&& outstanding > LIMIT_BUFFER_SIZE
 							&& cursor + 1L <= emitBuffer.getCursor()) {
+						nextN++;
 						route(emitBuffer.get(++cursor).value, subscriber, SignalType.NEXT);
 
 						if(r != Long.MAX_VALUE){
@@ -814,7 +815,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 					}
 				}
 
-				if (produced > 0L) {
+				if (produced != 0L) {
+					this.outstanding = outstanding;
 					pollCursor.set(cursor);
 					if (r != Long.MAX_VALUE) {
 						REQUESTED.addAndGet(this, -produced);
@@ -833,22 +835,18 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 					}
 				}
 
-				if(produced > 0L) {
-					if (outstanding <= LIMIT_BUFFER_SIZE) {
+				Subscription subscription = upstreamSubscription;
+				if (outstanding < LIMIT_BUFFER_SIZE
+							&& subscription != null) {
+						int k = SMALL_BUFFER_SIZE - outstanding;
 
-						Subscription subscription = upstreamSubscription;
-						if (subscription != null) {
-							subscription.request(SMALL_BUFFER_SIZE - outstanding);
-						}
+						nextN = 0;
 						this.outstanding = SMALL_BUFFER_SIZE;
-						if (r != 0L && (emitBuffer.pending() != 0)) {
-							continue;
-						}
-					}
-					else {
-						this.outstanding = outstanding;
-					}
+						subscription.request(k);
 				}
+//				else{
+//					System.out.println(this+ " "+PublisherFactory.fromSubscription(upstreamSubscription));
+//				}
 
 				missed = RUNNING.addAndGet(this, -missed);
 				if (missed == 0) {
@@ -856,14 +854,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				}
 			}
 
-			Subscription subscription = upstreamSubscription;
-			if (r != 0L // previously requested
-					&& outstanding < SMALL_BUFFER_SIZE - Math.min(r, LIMIT_BUFFER_SIZE) //produced at least a data for
-					// the last batch
-					&& subscription != null) {
-				this.outstanding = SMALL_BUFFER_SIZE;
-				subscription.request(SMALL_BUFFER_SIZE - outstanding);
-			}
+
 		}
 
 		@SuppressWarnings("unchecked")
@@ -931,8 +922,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		public String toString() {
 			return getClass().getSimpleName() + "{" +
 					"subscription=" + upstreamSubscription +
-					(emitBuffer != null ? ", outstanding="+outstanding+", waiting="+emitBuffer.pending() : "") +
-					(requested != 0 ? ", pending="+requested: "") +
+					",next=" + nextN +
+					(emitBuffer != null ? ", pendingReceive="+outstanding+", buffered="+emitBuffer.pending() : "") +
+					(requested != 0 ? ", pendingSend="+requested: "") +
 					'}';
 		}
 	}

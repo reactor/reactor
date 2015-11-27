@@ -21,6 +21,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.disruptor.Sequence;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
@@ -137,6 +138,22 @@ public abstract class BackpressureUtils {
 
 
 	/**
+	 * Cap a substraction to 0
+	 *
+	 * @param a left operand
+	 * @param b right operand
+	 * @return Subscription result or 0 if overflow
+	 */
+	public static int subOrZero(int a, int b) {
+		int res = a - b;
+		if (res < 0) {
+			return 0;
+		}
+		return res;
+	}
+
+
+	/**
 	 * Concurrent addition bound to Long.MAX_VALUE.
 	 * Any concurrent write will "happen" before this operation.
 	 *
@@ -213,6 +230,27 @@ public abstract class BackpressureUtils {
 		do {
 			r = updater.get(instance);
 			if (r == 0 || r == Long.MAX_VALUE) {
+				return r;
+			}
+			u = subOrZero(r, toSub);
+		} while (!updater.compareAndSet(instance, r, u));
+
+		return r;
+	}
+	/**
+	 * Concurrent substraction bound to 0.
+	 * Any concurrent write will "happen" before this operation.
+	 *
+	 * @param updater  current field updater
+	 * @param instance current instance to update
+	 * @param toSub    delta to sub
+	 * @return Substraction result or zero
+	 */
+	public static <T> long getAndSub(AtomicIntegerFieldUpdater<T> updater, T instance, int toSub) {
+		int r, u;
+		do {
+			r = updater.get(instance);
+			if (r == 0) {
 				return r;
 			}
 			u = subOrZero(r, toSub);

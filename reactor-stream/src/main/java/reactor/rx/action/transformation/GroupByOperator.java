@@ -262,6 +262,15 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 				}
 			}
 		}
+
+		@Override
+		public String toString() {
+			return "GroupedEmitter{" +
+					"key=" + key() +
+					", buffered=" + parent.buffered +
+					", requested=" + requested +
+					'}';
+		}
 	}
 
 	static final class GroupByAction<T, K> extends SubscriberWithDemand<T, GroupedStream<K, T>> {
