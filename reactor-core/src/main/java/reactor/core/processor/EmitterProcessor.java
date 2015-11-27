@@ -374,7 +374,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				lastIndex = j;
 				lastId = inner[j].id;
 
-				if (firstDrain) {
+				if (!done && firstDrain) {
 					Subscription s = upstreamSubscription;
 					if (s != null) {
 						firstDrain = false;
