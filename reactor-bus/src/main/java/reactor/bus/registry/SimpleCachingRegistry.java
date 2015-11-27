@@ -16,6 +16,7 @@
 
 package reactor.bus.registry;
 
+import reactor.bus.selector.ObjectSelector;
 import reactor.bus.selector.Selector;
 import reactor.fn.Consumer;
 import reactor.jarjar.jsr166e.ConcurrentHashMapV8;
@@ -70,6 +71,11 @@ public class SimpleCachingRegistry<K, V> implements Registry<K, V> {
 		regs.add(reg);
 
 		return reg;
+	}
+
+	@Override
+	public Registration<K, V> register(K sel, V obj) {
+		return register(new ObjectSelector<K, K>(sel), obj);
 	}
 
 	@Override

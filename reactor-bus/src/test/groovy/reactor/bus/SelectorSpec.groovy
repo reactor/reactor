@@ -19,12 +19,14 @@ package reactor.bus
 import reactor.bus.selector.MatchAllSelector
 import reactor.bus.selector.SetMembershipSelector
 import reactor.bus.selector.UriSelector
+import reactor.fn.Consumer
 import spock.lang.Ignore
 import spock.lang.Specification
 
 import static GroovyTestUtils.$
 import static org.hamcrest.CoreMatchers.*
 import static org.hamcrest.MatcherAssert.assertThat
+import static reactor.bus.GroovyTestUtils.consumer
 import static reactor.bus.selector.Selectors.*
 
 /**
@@ -98,9 +100,9 @@ class SelectorSpec extends Specification {
 			def key = "/path/to/some/resourceId"
 			def r = EventBus.config().sync().get()
 			def resourceId = ""
-			r.on(sel1) { Event<String> ev ->
+			r.on(sel1, { Event<String> ev ->
 				resourceId = ev.headers["resource"]
-			}
+			} as Consumer)
 
 		when:
 			"The selector is matched"
@@ -121,16 +123,16 @@ class SelectorSpec extends Specification {
 			def sel3 = new UriSelector("http://user:ENCODEDPWD@*:3000/path/segment#fragment")
 			def r = EventBus.config().sync().get()
 			def vals = [:]
-			r.on(sel1) { Event<String> ev ->
+			r.on(sel1, { Event<String> ev ->
 				vals = ev.headers
-			}
-			r.on(sel2) { Event<String> ev ->
+			} as Consumer)
+			r.on(sel2, { Event<String> ev ->
 				vals["wildcard"] = true
-			}
-			r.on(sel3) { Event<String> ev ->
+			} as Consumer)
+			r.on(sel3, { Event<String> ev ->
 				// shouldn't be matched
 				vals = [:]
-			}
+			} as Consumer)
 
 		when:
 			"The Selector is matched"
@@ -195,16 +197,16 @@ class SelectorSpec extends Specification {
 			"A Reactor using round-robin routing and a set of consumers assigned to the same selector"
 			def r = EventBus.config().sync().roundRobinEventRouting().get()
 			def called = []
-			def a1 = {
+			def Consumer a1 = {
 				called << 1
 			}
-			def a2 = {
+			def Consumer a2 = {
 				called << 2
 			}
-			def a3 = {
+			def Consumer a3 = {
 				called << 3
 			}
-			def a4 = {
+			def Consumer a4 = {
 				called << 4
 			}
 			r.on($('key'), a1)
@@ -231,16 +233,16 @@ class SelectorSpec extends Specification {
 
 			def r = EventBus.config().sync().randomEventRouting().get()
 			def called = []
-			def a1 = {
+			def Consumer a1 = {
 				called << 1
 			}
-			def a2 = {
+			def Consumer a2 = {
 				called << 2
 			}
-			def a3 = {
+			def Consumer a3 = {
 				called << 3
 			}
-			def a4 = {
+			def Consumer a4 = {
 				called << 4
 			}
 			r.on($('test'), a1)

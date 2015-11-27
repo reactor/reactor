@@ -24,6 +24,7 @@ import reactor.bus.registry.Registration;
 import reactor.core.error.CancelException;
 import reactor.core.support.Assert;
 import reactor.core.error.Exceptions;
+import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 
 import java.util.List;
@@ -35,7 +36,7 @@ import java.util.List;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public class ConsumerFilteringRouter implements Router {
+public class ConsumerFilteringRouter implements Router<Object, Event<?>> {
 
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	private final Filter filter;
@@ -55,22 +56,22 @@ public class ConsumerFilteringRouter implements Router {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <E extends Event<?>> void route(Object key, E event,
-	                                       List<Registration<Object, ? extends Consumer<? extends Event<?>>>>
+	                                       List<Registration<Object, ? extends BiConsumer<Object, ? extends Event<?>>>>
 	                                         consumers,
 	                                       Consumer<E> completionConsumer,
 	                                       Consumer<Throwable> errorConsumer) {
 		if (null != consumers && !consumers.isEmpty()) {
-			List<Registration<Object, ? extends Consumer<? extends Event<?>>>> regs = filter.filter(consumers, key);
+			List<Registration<Object, ? extends BiConsumer<Object, ? extends Event<?>>>> regs = filter.filter(consumers, key);
 			int size = regs.size();
 			// old-school for loop is much more efficient than using an iterator
 			for (int i = 0; i < size; i++) {
-				Registration<Object, ? extends Consumer<? extends Event<?>>> reg = regs.get(i);
+				Registration<Object, ? extends BiConsumer<Object, ? extends Event<?>>> reg = regs.get(i);
 
 				if (null == reg || reg.isCancelled() || reg.isPaused()) {
 					continue;
 				}
 				try {
-					((Consumer<E>) reg.getObject()).accept(event);
+					((BiConsumer<Object, E>) reg.getObject()).accept(key, event);
 				} catch (CancelException cancel) {
 					reg.cancel();
 				} catch (Throwable t) {

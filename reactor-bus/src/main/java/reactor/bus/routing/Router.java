@@ -16,8 +16,8 @@
 
 package reactor.bus.routing;
 
-import reactor.bus.Event;
 import reactor.bus.registry.Registration;
+import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 
 import java.util.List;
@@ -28,7 +28,7 @@ import java.util.List;
  * @author Andy Wilkinson
  * @author Stephane Maldini
  */
-public interface Router {
+public interface Router<K, V> {
 
 	/**
 	 * Routes the {@code event}, triggered by a notification with the given {@code key} to the
@@ -44,8 +44,9 @@ public interface Router {
 	 * @param completionConsumer The {@code Consumer} to invoke upon successful completion of event routing
 	 * @param errorConsumer      The {@code Consumer} to invoke when an error occurs during event routing
 	 */
-	<E extends Event<?>> void route(Object key, E data, List<Registration<Object, ? extends Consumer<? extends
-	  Event<?>>>> consumers,
-	                                Consumer<E> completionConsumer, Consumer<Throwable> errorConsumer);
+	<E extends V> void route(K key, E data,
+													 List<Registration<K, ? extends BiConsumer<K, ? extends V>>> consumers,
+													 Consumer<E> completionConsumer,
+													 Consumer<Throwable> errorConsumer);
 
 }
