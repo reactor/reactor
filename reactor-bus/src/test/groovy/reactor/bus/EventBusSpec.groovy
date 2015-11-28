@@ -301,8 +301,8 @@ class EventBusSpec extends Specification {
 
 		when:
 			"registering few handlers"
-			reactor.on R('t[a-z]st'), { println 'test1' }
-			reactor.on R('t[a-z]st'), { println 'test2' }
+			reactor.on R('t[a-z]st'), { println 'test1' } as Consumer
+			reactor.on R('t[a-z]st'), { println 'test2' } as Consumer
 
 			reactor.notify "test", Event.wrap("test")
 

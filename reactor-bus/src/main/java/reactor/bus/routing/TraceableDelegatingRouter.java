@@ -18,9 +18,9 @@ package reactor.bus.routing;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.bus.Event;
 import reactor.bus.registry.Registration;
 import reactor.core.support.Assert;
+import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 
 import java.util.List;
@@ -28,28 +28,24 @@ import java.util.List;
 /**
  * @author Jon Brisbin
  */
-public class TraceableDelegatingRouter implements Router {
+public class TraceableDelegatingRouter<K, V> implements Router<K, V> {
 
-	private final Router delegate;
-	private final Logger log;
+	private final Router<K, V> delegate;
+	private final Logger    log;
 
-	public TraceableDelegatingRouter(Router delegate) {
+	public TraceableDelegatingRouter(Router<K, V> delegate) {
 		Assert.notNull(delegate, "Delegate EventRouter cannot be null.");
 		this.delegate = delegate;
 		this.log = LoggerFactory.getLogger(delegate.getClass());
 	}
 
 	@Override
-	public <E extends Event<?>> void route(Object key,
-	                                       E event,
-	                                       List<Registration<Object, ? extends Consumer<? extends Event<?>>>>
-	                                             consumers,
-	                                       Consumer<E> completionConsumer,
-	                                       Consumer<Throwable> errorConsumer) {
+	public <E extends V> void route(K key, E data,
+			List<Registration<K, ? extends BiConsumer<K, ? extends V>>> consumers, Consumer<E> completionConsumer,
+			Consumer<Throwable> errorConsumer) {
 		if (log.isTraceEnabled()) {
-			log.trace("route({}, {}, {}, {}, {})", key, event, consumers, completionConsumer, errorConsumer);
+			log.trace("route({}, {}, {}, {}, {})", key, data, consumers, completionConsumer, errorConsumer);
 		}
-		delegate.route(key, event, consumers, completionConsumer, errorConsumer);
+		delegate.route(key, data, consumers, completionConsumer, errorConsumer);
 	}
-
 }

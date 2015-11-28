@@ -43,7 +43,7 @@ public class NotifyConsumer<T> implements Consumer<T> {
 	 * @param notifyKey  The notification key, may be {@code null}
 	 * @param observable The observable to notify. May not be {@code null}
 	 */
-	public NotifyConsumer(Object notifyKey, Bus<?> observable) {
+	public NotifyConsumer(Object notifyKey, Bus<?, ?> observable) {
 		Assert.notNull(observable, "Observable cannot be null.");
 		this.notifyKey = notifyKey;
 		this.observable = observable;

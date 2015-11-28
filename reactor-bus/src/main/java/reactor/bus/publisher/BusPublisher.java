@@ -23,6 +23,7 @@ import reactor.bus.EventBus;
 import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
 import reactor.core.subscriber.SerializedSubscriber;
+import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 
 import javax.annotation.Nonnull;
@@ -43,12 +44,12 @@ import javax.annotation.Nonnull;
  */
 public final class BusPublisher<T> implements Publisher<T> {
 
-	private final Selector selector;
-	private final Bus<T>   observable;
-	private final boolean  ordering;
+	private final Selector  selector;
+	private final Bus<?, T> observable;
+	private final boolean   ordering;
 
 
-	public BusPublisher(final @Nonnull Bus<T> observable,
+	public BusPublisher(final @Nonnull Bus<?, T> observable,
 	                    final @Nonnull Selector selector) {
 
 		this.selector = selector;
@@ -70,15 +71,18 @@ public final class BusPublisher<T> implements Publisher<T> {
 			subscriber = s;
 		}
 
+
+
 		subscriber.onSubscribe(new Subscription() {
 
-			final Registration<Object, Consumer<? extends T>> registration = observable.on(selector, new Consumer<T>
-			  () {
-				@Override
-				public void accept(T event) {
-					subscriber.onNext(event);
-				}
-			});
+			final Registration<?, ? extends BiConsumer<?, ? extends T>> registration =
+					observable.on(selector,
+												new Consumer<T>() {
+													@Override
+													public void accept(T event) {
+														subscriber.onNext(event);
+													}
+												});
 
 			@Override
 			public void request(long n) {

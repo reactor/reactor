@@ -42,6 +42,15 @@ public interface Registry<K, V> extends Iterable<Registration<K, ? extends V>> {
 	Registration<K, V> register(Selector<K> sel, V obj);
 
 	/**
+	 * Assign the given {@link reactor.bus.selector.ObjectSelector} with the given object.
+	 *
+	 * @param sel The left-hand side of the {@literal Selector} comparison check.
+	 * @param obj The object to assign.
+	 * @return {@literal this}
+	 */
+	Registration<K, V> register(K sel, V obj);
+
+	/**
 	 * Remove any objects matching this {@code key}. This will unregister <b>all</b> objects matching the given
 	 * {@literal key}. There's no provision for removing only a specific object.
 	 *

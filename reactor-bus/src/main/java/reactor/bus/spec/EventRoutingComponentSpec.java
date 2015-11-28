@@ -26,6 +26,7 @@ import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
 import reactor.bus.routing.TraceableDelegatingRouter;
 import reactor.core.support.Assert;
+import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 
 
@@ -42,12 +43,12 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
   ProcessorComponentSpec<SPEC, TARGET, Event<?>> {
 
 
-	private EventRoutingStrategy                           eventRoutingStrategy;
-	private Router                                         router;
-	private Filter                                         eventFilter;
-	private Consumer<Throwable>                            dispatchErrorHandler;
-	private Consumer<Throwable>                            uncaughtErrorHandler;
-	private Registry<Object, Consumer<? extends Event<?>>> consumerRegistry;
+	private EventRoutingStrategy                                     eventRoutingStrategy;
+	private Router                                                   router;
+	private Filter                                                   eventFilter;
+	private Consumer<Throwable>                                      dispatchErrorHandler;
+	private Consumer<Throwable>                                      uncaughtErrorHandler;
+	private Registry<Object, BiConsumer<Object, ? extends Event<?>>> consumerRegistry;
 	private boolean traceEventPath = false;
 
 
@@ -170,7 +171,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	 * @param consumerRegistry the consumer registry to use
 	 * @return {@code this}
 	 */
-	public SPEC consumerRegistry(Registry<Object, Consumer<? extends Event<?>>> consumerRegistry) {
+	public SPEC consumerRegistry(Registry<Object, BiConsumer<Object, ? extends Event<?>>> consumerRegistry) {
 		this.consumerRegistry = consumerRegistry;
 		return (SPEC) this;
 	}
