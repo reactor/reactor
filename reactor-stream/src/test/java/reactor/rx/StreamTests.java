@@ -351,7 +351,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Broadcaster<String> d = Broadcaster.<String>create();
 		Stream<Integer> tasks = d.dispatchOn(asyncGroup)
-		                         .partition()
+		                         .partition(8)
 		                         .flatMap(stream -> stream.dispatchOn(asyncGroup)
 		                                                  .map((String str) -> {
 			                                                  try {
@@ -457,7 +457,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Control c = d.dispatchOn(asyncGroup)
 //		             .log("main", LogOperator.REQUEST | LogOperator.NUMBER_ON_NEXT)
-		             .partition()
+		             .partition(8)
 		             .consume(stream -> stream.dispatchOn(asyncGroup)
 //		                                      .log("partitioned-" + stream.key(), LogOperator.REQUEST | LogOperator
 //				                                      .ON_SUBSCRIBE | LogOperator.NUMBER_ON_NEXT)
@@ -677,7 +677,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Broadcaster<String> deferred = Broadcaster.<String>create();
 		deferred.dispatchOn(asyncGroup)
-		        .partition()
+		        .partition(8)
 		        .consume(stream -> stream.dispatchOn(asyncGroup)
 		                                 .buffer(1000 / 8, 1l, TimeUnit.SECONDS)
 		                                 .consume(batch -> {
