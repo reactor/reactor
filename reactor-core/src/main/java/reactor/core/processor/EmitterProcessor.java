@@ -161,7 +161,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			}
 
 			int j = n == 1 ? 0 : getLastIndex(n, inner);
-			boolean unbounded = true;
 
 			for (int i = 0; i < n; i++) {
 
@@ -183,7 +182,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 					continue;
 				}
 
-				unbounded = unbounded && is.unbounded;
 				if (is.unbounded && replay == -1) {
 					is.actual.onNext(t);
 				}
@@ -220,13 +218,13 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			lastIndex = j;
 			lastId = inner[j].id;
 
-			if (!unbounded) {
-				if (RUNNING.getAndIncrement(this) != 0) {
-					return;
-				}
 
-				drainLoop();
+			if (RUNNING.getAndIncrement(this) != 0) {
+				return;
 			}
+
+			drainLoop();
+
 		}
 		else {
 			buffer(t);
