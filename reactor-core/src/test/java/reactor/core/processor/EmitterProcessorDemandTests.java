@@ -29,6 +29,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
 import reactor.Publishers;
+import reactor.core.subscriber.DataTestSubscriber;
 import reactor.core.subscriber.TestSubscriber;
 import reactor.core.support.BackpressureUtils;
 import reactor.io.buffer.Buffer;
@@ -143,8 +144,7 @@ public class EmitterProcessorDemandTests {
 
 		TestSubscriber subscriber = TestSubscriber.createWithTimeoutSecs(1);
 		emitter.subscribe(subscriber);
-
-		subscriber.request(Long.MAX_VALUE);
+		subscriber.requestUnboundedWithTimeout();
 
 		if (!requestReceived.await(1, TimeUnit.SECONDS)) {
 			throw new RuntimeException();
@@ -166,7 +166,7 @@ public class EmitterProcessorDemandTests {
 	@Test
 	public void testRed() throws InterruptedException {
 		BaseProcessor<Buffer, Buffer> processor = Processors.emitter();
-		TestSubscriber subscriber = TestSubscriber.createWithTimeoutSecs(1);
+		DataTestSubscriber subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
 
@@ -179,7 +179,7 @@ public class EmitterProcessorDemandTests {
 	@Test
 	public void testGreen() throws InterruptedException {
 		BaseProcessor<Buffer, Buffer> processor = Processors.emitter();
-		TestSubscriber subscriber = TestSubscriber.createWithTimeoutSecs(1);
+		DataTestSubscriber subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
 		Publishers.log(Publishers.map(Publishers.from(DATA), i -> Buffer.wrap("" + i))).subscribe(processor);
@@ -194,10 +194,10 @@ public class EmitterProcessorDemandTests {
 		BaseProcessor<Buffer, Buffer> processor = Processors.emitter(2);
 		Publishers.log(Publishers.map(Publishers.from(DATA), i -> Buffer.wrap("" + i))).subscribe(processor);
 
-		TestSubscriber first = TestSubscriber.createWithTimeoutSecs(1);
+		DataTestSubscriber first = DataTestSubscriber.createWithTimeoutSecs(1);
 		Publishers.log(processor, "after-1").subscribe(first);
 
-		TestSubscriber second = TestSubscriber.createWithTimeoutSecs(1);
+		DataTestSubscriber second = DataTestSubscriber.createWithTimeoutSecs(1);
 		Publishers.log(processor, "after-2").subscribe(second);
 
 		second.request(1);
@@ -212,13 +212,13 @@ public class EmitterProcessorDemandTests {
 		BaseProcessor<Buffer, Buffer> processor = Processors.emitter(8);
 		Publishers.log(Publishers.map(Publishers.from(DATA), i -> Buffer.wrap("" + i))).subscribe(processor);
 
-		TestSubscriber first = TestSubscriber.createWithTimeoutSecs(1);
+		DataTestSubscriber first = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(first);
 
 		first.request(1);
 		first.assertNextSignals("1");
 
-		TestSubscriber second = TestSubscriber.createWithTimeoutSecs(1);
+		DataTestSubscriber second = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(second);
 
 		second.request(3);

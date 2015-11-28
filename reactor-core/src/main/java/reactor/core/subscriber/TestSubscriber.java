@@ -16,27 +16,20 @@
 
 package reactor.core.subscriber;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.reactivestreams.Subscription;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
 import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 /**
  * @author Anatoly Kadyshev
  * @since 2.1
  */
 public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
-
-	private volatile Subscription subscription;
 
 	/**
 	 *
@@ -94,19 +87,23 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 	// Instance
 	//
 
-	private final AtomicInteger numNextSignalsReceived = new AtomicInteger(0);
-
-	private final List<String> receivedSignals = new ArrayList<>();
+	/**
+	 * Total number of received Next signals
+	 */
+	protected volatile long numNextSignalsReceived = 0L;
 
 	private final CountDownLatch completeLatch = new CountDownLatch(1);
 
 	private final CountDownLatch errorLatch = new CountDownLatch(1);
 
-	private final int timeoutSecs;
+	protected final int timeoutSecs;
 
-	private Throwable lastError;
+	/**
+	 * Last Error signal
+	 */
+	private volatile Throwable lastErrorSignal;
 
-	private TestSubscriber(int timeoutSecs) {
+	protected TestSubscriber(int timeoutSecs) {
 		super(null);
 		this.timeoutSecs = timeoutSecs;
 	}
@@ -155,34 +152,6 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 
 	/**
 	 *
-	 * @param expectedSignals
-	 * @throws InterruptedException
-	 */
-	public void assertNextSignals(String... expectedSignals) throws InterruptedException {
-		assertNumNextSignalsReceived(expectedSignals.length);
-
-		Set<String> signalsSnapshot;
-		synchronized (receivedSignals) {
-			signalsSnapshot = new HashSet<>(receivedSignals);
-		}
-
-		if (signalsSnapshot.size() != expectedSignals.length) {
-			throw new AssertionError(String.format("Expected %d number of signals but received %d",
-					expectedSignals.length,
-					signalsSnapshot.size()));
-		}
-
-		for (String signal : expectedSignals) {
-			signalsSnapshot.remove(signal);
-		}
-
-		if (signalsSnapshot.size() != 0) {
-			throw new AssertionError("Unexpected signals received: " + signalsSnapshot);
-		}
-	}
-
-	/**
-	 *
 	 * @param n
 	 * @throws InterruptedException
 	 */
@@ -191,7 +160,7 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 			@Override
 			public String get() {
 				return String.format("%d out of %d Next signals received within %d secs",
-						numNextSignalsReceived.get(),
+						numNextSignalsReceived,
 						n,
 						timeoutSecs);
 			}
@@ -200,7 +169,7 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 		waitFor(timeoutSecs, errorSupplier, new Supplier<Boolean>() {
 			@Override
 			public Boolean get() {
-				return numNextSignalsReceived.get() == n;
+				return numNextSignalsReceived == n;
 			}
 		});
 	}
@@ -243,11 +212,10 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 	}
 
 	/**
-	 *
-	 * @return
+	 * @return last Error signal
 	 */
-	public Throwable getLastError() {
-		return lastError;
+	public Throwable getLastErrorSignal() {
+		return lastErrorSignal;
 	}
 
 	/**
@@ -269,11 +237,7 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 	@Override
 	protected void doNext(Buffer buffer) {
 		BackpressureUtils.getAndSub(REQUESTED, this, 1L);
-		numNextSignalsReceived.incrementAndGet();
-
-		synchronized (receivedSignals) {
-			receivedSignals.add(buffer.asString());
-		}
+		numNextSignalsReceived++;
 	}
 
 	@Override
@@ -283,8 +247,7 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 
 	@Override
 	protected void doError(Throwable t) {
-		super.onError(t);
-		this.lastError = t;
+		this.lastErrorSignal = t;
 		errorLatch.countDown();
 	}
 
