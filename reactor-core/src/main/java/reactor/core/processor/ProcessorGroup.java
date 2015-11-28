@@ -781,7 +781,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			}
 		}
 
-		volatile int nextN = 0;
 		@Override
 		public void run() {
 			int missed = 1;
@@ -801,7 +800,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 					if (r != 0L
 							&& cursor + 1L <= emitBuffer.getCursor()) {
-						nextN++;
 						route(emitBuffer.get(++cursor).value, subscriber, SignalType.NEXT);
 
 						if(r != Long.MAX_VALUE){
@@ -840,7 +838,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 							&& subscription != null) {
 						int k = SMALL_BUFFER_SIZE - outstanding;
 
-						nextN = 0;
 						this.outstanding = SMALL_BUFFER_SIZE;
 						subscription.request(k);
 				}
@@ -922,7 +919,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		public String toString() {
 			return getClass().getSimpleName() + "{" +
 					"subscription=" + upstreamSubscription +
-					",next=" + nextN +
 					(emitBuffer != null ? ", pendingReceive="+outstanding+", buffered="+emitBuffer.pending() : "") +
 					(requested != 0 ? ", pendingSend="+requested: "") +
 					'}';

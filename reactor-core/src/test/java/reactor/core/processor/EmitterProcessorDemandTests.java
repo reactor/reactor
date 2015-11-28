@@ -17,12 +17,20 @@ package reactor.core.processor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.Ignore;
 import org.junit.Test;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.subscriber.TestSubscriber;
+import reactor.core.support.BackpressureUtils;
 import reactor.io.buffer.Buffer;
 
 /**?
@@ -36,6 +44,59 @@ public class EmitterProcessorDemandTests {
 	static {
 		for(int i = 1; i < MAX_SIZE; i++){
 			DATA.add(i);
+		}
+	}
+
+	@Test
+	@Ignore
+	public void test() throws InterruptedException {
+		ProcessorGroup<Buffer> asyncGroup = Processors.asyncGroup("async", 128, 1);
+		BaseProcessor<Buffer, Buffer> publishOn = asyncGroup.publishOn();
+		BaseProcessor<Buffer, Buffer> emitter = Processors.emitter();
+
+		publishOn.subscribe(emitter);
+
+		CountDownLatch requestReceived = new CountDownLatch(1);
+		AtomicLong demand = new AtomicLong(0);
+		Publisher<Buffer> publisher = new Publisher<Buffer>() {
+
+			@Override
+			public void subscribe(Subscriber<? super Buffer> s) {
+				s.onSubscribe(new Subscription() {
+					@Override
+					public void request(long n) {
+						System.out.println("request: " + n+" "+ s);
+						demand.addAndGet(n);
+						requestReceived.countDown();
+					}
+
+					@Override
+					public void cancel() {
+						System.out.println("cancel");
+					}
+				});
+			}
+		};
+
+		publisher.subscribe(publishOn);
+
+		TestSubscriber subscriber = TestSubscriber.createWithTimeoutSecs(1);
+		emitter.subscribe(subscriber);
+
+		subscriber.request(Long.MAX_VALUE);
+
+		if (!requestReceived.await(1, TimeUnit.SECONDS)) {
+			throw new RuntimeException();
+		}
+
+		int i = 0;
+		for ( ; ; ) {
+			if (BackpressureUtils.getAndSub(demand, 1) != 1) {
+				publishOn.onNext(Buffer.wrap("" + i++));
+			} else {
+				System.out.println("NO REQUESTED: "+ publishOn+ " "+ emitter);
+				LockSupport.parkNanos(100_000_000);
+			}
 		}
 	}
 
