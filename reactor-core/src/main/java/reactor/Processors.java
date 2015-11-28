@@ -52,11 +52,11 @@ import reactor.fn.Supplier;
 public final class Processors {
 
 	/**
-	 * Default number of processors available to the runtime on init (min 2)
+	 * Default number of processors available to the runtime on init (min 4)
 	 * @see Runtime#availableProcessors()
 	 */
 	public static final int DEFAULT_POOL_SIZE = Math.max(Runtime.getRuntime()
-	                                                            .availableProcessors(), 2);
+	                                                            .availableProcessors(), 4);
 
 	private static final Supplier<? extends WaitStrategy> DEFAULT_WAIT_STRATEGY = new Supplier<WaitStrategy>() {
 		@Override
