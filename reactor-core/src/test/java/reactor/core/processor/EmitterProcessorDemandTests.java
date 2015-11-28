@@ -101,6 +101,69 @@ public class EmitterProcessorDemandTests {
 	}
 
 	@Test
+	@Ignore
+	public void testPerformance() throws InterruptedException {
+		BaseProcessor<Buffer, Buffer> emitter = Processors.emitter();
+
+		CountDownLatch requestReceived = new CountDownLatch(1);
+
+		AtomicLong maxDelay = new AtomicLong(0);
+		AtomicLong demand = new AtomicLong(0);
+		Publisher<Buffer> publisher = new Publisher<Buffer>() {
+
+			long lastTimeRequestReceivedNs = -1;
+
+			@Override
+			public void subscribe(Subscriber<? super Buffer> s) {
+				s.onSubscribe(new Subscription() {
+					@Override
+					public void request(long n) {
+						requestReceived.countDown();
+
+						long now = System.nanoTime();
+
+						if (lastTimeRequestReceivedNs > 0) {
+							maxDelay.set(Math.max(maxDelay.get(), now - lastTimeRequestReceivedNs));
+						}
+
+						lastTimeRequestReceivedNs = now;
+
+						demand.addAndGet(n);
+					}
+
+					@Override
+					public void cancel() {
+						System.out.println("cancel");
+					}
+				});
+			}
+		};
+
+		publisher.subscribe(emitter);
+
+		TestSubscriber subscriber = TestSubscriber.createWithTimeoutSecs(1);
+		emitter.subscribe(subscriber);
+
+		subscriber.request(Long.MAX_VALUE);
+
+		if (!requestReceived.await(1, TimeUnit.SECONDS)) {
+			throw new RuntimeException();
+		}
+
+		Buffer buffer = Buffer.wrap("Hello");
+		int i = 0;
+		for ( ; ; ) {
+			if (BackpressureUtils.getAndSub(demand, 1) > 0) {
+				emitter.onNext(buffer);
+			}
+
+			if (i++ % 1000000 == 0) {
+				System.out.println("maxDelay: " + TimeUnit.NANOSECONDS.toMillis(maxDelay.get()));
+			}
+		}
+	}
+
+	@Test
 	public void testRed() throws InterruptedException {
 		BaseProcessor<Buffer, Buffer> processor = Processors.emitter();
 		TestSubscriber subscriber = TestSubscriber.createWithTimeoutSecs(1);
