@@ -62,7 +62,6 @@ import reactor.core.error.CancelException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.operator.LogOperator;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
@@ -70,7 +69,7 @@ import reactor.fn.Function;
 import reactor.io.IO;
 import reactor.io.codec.StandardCodecs;
 import reactor.rx.action.Control;
-import reactor.rx.action.ProcessorAction;
+import reactor.rx.action.StreamProcessor;
 import reactor.rx.action.support.TapAndControls;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
@@ -606,7 +605,7 @@ public class StreamTests extends AbstractReactorTest {
 		final Broadcaster<String> closeCircuit = Broadcaster.create();
 		final Stream<String> openCircuit = Streams.just("Alternative Message");
 
-		final ProcessorAction<Publisher<? extends String>, String> circuitSwitcher = Streams.switchOnNext();
+		final StreamProcessor<Publisher<? extends String>, String> circuitSwitcher = Streams.switchOnNext();
 
 		final AtomicInteger successes = new AtomicInteger();
 		final AtomicInteger failures = new AtomicInteger();

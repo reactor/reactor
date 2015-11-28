@@ -91,7 +91,7 @@ public class EmitterProcessorDemandTests {
 
 		int i = 0;
 		for ( ; ; ) {
-			if (BackpressureUtils.getAndSub(demand, 1) != 1) {
+			if (BackpressureUtils.getAndSub(demand, 1) != 0) {
 				publishOn.onNext(Buffer.wrap("" + i++));
 			} else {
 				System.out.println("NO REQUESTED: "+ publishOn+ " "+ emitter);
@@ -123,7 +123,7 @@ public class EmitterProcessorDemandTests {
 						long now = System.nanoTime();
 
 						if (lastTimeRequestReceivedNs > 0) {
-							maxDelay.set(Math.max(maxDelay.get(), now - lastTimeRequestReceivedNs));
+							maxDelay.set(now - lastTimeRequestReceivedNs);
 						}
 
 						lastTimeRequestReceivedNs = now;
@@ -158,7 +158,7 @@ public class EmitterProcessorDemandTests {
 			}
 
 			if (i++ % 1000000 == 0) {
-				System.out.println("maxDelay: " + TimeUnit.NANOSECONDS.toMillis(maxDelay.get()));
+				System.out.println("maxDelay: " + TimeUnit.MICROSECONDS.toMillis(maxDelay.get())+ " µs");
 			}
 		}
 	}

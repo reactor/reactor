@@ -26,7 +26,7 @@ import reactor.core.error.CancelException;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.fn.timer.Timer;
-import reactor.rx.action.ProcessorAction;
+import reactor.rx.action.StreamProcessor;
 import reactor.rx.subscription.SwapSubscription;
 
 /**
@@ -35,7 +35,7 @@ import reactor.rx.subscription.SwapSubscription;
  * and the Reactive Streams "complete" signal via the {@link #onComplete()} method.
  * @author Stephane Maldini
  */
-public class Broadcaster<O> extends ProcessorAction<O, O> {
+public class Broadcaster<O> extends StreamProcessor<O, O> {
 
 	/**
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action

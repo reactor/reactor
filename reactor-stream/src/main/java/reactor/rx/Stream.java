@@ -51,7 +51,7 @@ import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
-import reactor.rx.action.ProcessorAction;
+import reactor.rx.action.StreamProcessor;
 import reactor.rx.action.Signal;
 import reactor.rx.action.aggregation.BatchOperator;
 import reactor.rx.action.aggregation.BufferOperator;
@@ -711,7 +711,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	public final Stream<O> cache(int last) {
 		Processor<O, O> emitter = Processors.replay(last);
 		subscribe(emitter);
-		return ProcessorAction.wrap(emitter);
+		return StreamProcessor.wrap(emitter);
 	}
 
 	/**
@@ -2254,7 +2254,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @param <E> the type of the most ancien action downstream.
 	 * @return new Combined Action
 	 */
-	public <E> ProcessorAction<E, O> combine() {
+	public <E> StreamProcessor<E, O> combine() {
 		throw new IllegalStateException("Cannot combine a single Stream");
 	}
 

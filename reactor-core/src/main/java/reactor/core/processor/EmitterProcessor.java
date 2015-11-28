@@ -288,6 +288,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 
 	final void drainLoop() {
 		int missed = 1;
+		RingBuffer<RingBuffer.Slot<T>> q = null;
 		for (; ; ) {
 			InnerSubscriber<?>[] inner = subscribers;
 			if (inner == CANCELLED) {
@@ -305,7 +306,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			if (n != 0) {
 				int j = getLastIndex(n, inner);
 				Sequence innerSequence;
-				RingBuffer<RingBuffer.Slot<T>> q = null;
 				long _r;
 				if (q == null) {
 					q = emitBuffer;

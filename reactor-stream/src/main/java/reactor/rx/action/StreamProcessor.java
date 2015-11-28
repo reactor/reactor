@@ -31,7 +31,7 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public class ProcessorAction<E, O> extends Stream<O> implements Processor<E, O>, Publishable<O>, Subscribable<E> {
+public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>, Publishable<O>, Subscribable<E> {
 
 	protected final Subscriber<E> receiver;
 	protected final Publisher<O> publisher;
@@ -43,7 +43,7 @@ public class ProcessorAction<E, O> extends Stream<O> implements Processor<E, O>,
 	 * @param <O>
 	 * @return
 	 */
-	public static <E, O> ProcessorAction<E, O> wrap(Processor<E, O> processor){
+	public static <E, O> StreamProcessor<E, O> wrap(Processor<E, O> processor){
 		return wrap(processor, processor);
 	}
 
@@ -55,11 +55,11 @@ public class ProcessorAction<E, O> extends Stream<O> implements Processor<E, O>,
 	 * @param <O>
 	 * @return
 	 */
-	public static <E, O> ProcessorAction<E, O> wrap(Subscriber<E> receiver, Publisher<O> publisher){
-		return new ProcessorAction<>(receiver, publisher);
+	public static <E, O> StreamProcessor<E, O> wrap(Subscriber<E> receiver, Publisher<O> publisher){
+		return new StreamProcessor<>(receiver, publisher);
 	}
 
-	protected ProcessorAction(Subscriber<E> receiver, Publisher<O> publisher) {
+	protected StreamProcessor(Subscriber<E> receiver, Publisher<O> publisher) {
 		this.receiver = receiver;
 		this.publisher = publisher;
 	}

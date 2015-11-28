@@ -23,7 +23,7 @@ import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.Action;
-import reactor.rx.action.ProcessorAction;
+import reactor.rx.action.StreamProcessor;
 
 /**
  * A Stream wrapper that defers a parent stream subscription to the child action subscribe() call.
@@ -46,7 +46,7 @@ public class LiftStream<O, V> extends Stream<V> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final <E> ProcessorAction<E, V> combine() {
+	public final <E> StreamProcessor<E, V> combine() {
 		Action<O, V> action = onLift();
 
 		if (action == null) {

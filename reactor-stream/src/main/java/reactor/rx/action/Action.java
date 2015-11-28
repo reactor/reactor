@@ -346,10 +346,10 @@ public abstract class Action<I, O> extends Stream<O>
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final <E> ProcessorAction<E, O> combine() {
+	public final <E> StreamProcessor<E, O> combine() {
 		final Action<E, ?> subscriber = (Action<E, ?>) findOldestUpstream(this, Action.class);
 		subscriber.cancel();
-		return new ProcessorAction<E, O>(subscriber, this);
+		return new StreamProcessor<E, O>(subscriber, this);
 	}
 
 

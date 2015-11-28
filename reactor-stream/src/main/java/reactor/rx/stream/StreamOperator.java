@@ -28,7 +28,7 @@ import reactor.core.support.Publishable;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
-import reactor.rx.action.ProcessorAction;
+import reactor.rx.action.StreamProcessor;
 
 /**
  * @author Stephane Maldini
@@ -70,7 +70,7 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <E> ProcessorAction<E, O> combine() {
+	public <E> StreamProcessor<E, O> combine() {
 		Subscriber<?> oldestReceiver = null;
 		Function oldestOperator = barrierProvider;
 
@@ -93,13 +93,13 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 
 		if (oldestReceiver == null){
 			Processor<E, E> root = Processors.emitter();
-			return ProcessorAction.wrap(
+			return StreamProcessor.wrap(
 					root,
 					Publishers.lift(root, oldestOperator)
 			);
 		}
 		else{
-			return ProcessorAction.wrap(
+			return StreamProcessor.wrap(
 					(Subscriber<E>)oldestReceiver,
 					this
 			);

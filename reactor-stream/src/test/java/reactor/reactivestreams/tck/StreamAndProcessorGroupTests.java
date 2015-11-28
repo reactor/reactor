@@ -25,7 +25,7 @@ import reactor.core.processor.ProcessorGroup;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.ProcessorAction;
+import reactor.rx.action.StreamProcessor;
 import reactor.rx.broadcast.Broadcaster;
 
 /**
@@ -39,7 +39,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 					Throwable::printStackTrace, null, false);
 
 	@Override
-	public ProcessorAction<Integer, Integer> createProcessor(int bufferSize) {
+	public StreamProcessor<Integer, Integer> createProcessor(int bufferSize) {
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		System.out.println("Providing new downstream");

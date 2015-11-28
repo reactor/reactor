@@ -43,7 +43,7 @@ import reactor.fn.tuple.Tuple6;
 import reactor.fn.tuple.Tuple7;
 import reactor.fn.tuple.Tuple8;
 import reactor.fn.tuple.TupleN;
-import reactor.rx.action.ProcessorAction;
+import reactor.rx.action.StreamProcessor;
 import reactor.rx.action.combination.CombineLatestAction;
 import reactor.rx.action.combination.DynamicMergeAction;
 import reactor.rx.action.combination.SwitchOperator;
@@ -261,11 +261,11 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I, O> ProcessorAction<I, O> wrap(final Processor<I, O> processor) {
-		if (ProcessorAction.class.isAssignableFrom(processor.getClass())) {
-			return ( ProcessorAction<I, O>) processor;
+	public static <I, O> StreamProcessor<I, O> wrap(final Processor<I, O> processor) {
+		if (StreamProcessor.class.isAssignableFrom(processor.getClass())) {
+			return (StreamProcessor<I, O>) processor;
 		}
-		return ProcessorAction.wrap(processor);
+		return StreamProcessor.wrap(processor);
 	}
 
 	/**
@@ -746,14 +746,14 @@ public class Streams {
 	 * The stream will complete once both the publishers source and the last switched to publisher have completed.
 	 *
 	 * @param <T> type of the value
-	 * @return a {@link ProcessorAction} accepting publishers and producing inner data T
+	 * @return a {@link StreamProcessor} accepting publishers and producing inner data T
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> ProcessorAction<Publisher<? extends T>, T> switchOnNext() {
+	public static <T> StreamProcessor<Publisher<? extends T>, T> switchOnNext() {
 		Processor<Publisher<? extends T>, Publisher<? extends T>> emitter = Processors.replay();
 		return Subscribers.start(
-				ProcessorAction.wrap(emitter, lift(emitter, SwitchOperator.INSTANCE))
+				StreamProcessor.wrap(emitter, lift(emitter, SwitchOperator.INSTANCE))
 		);
 	}
 
