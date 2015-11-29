@@ -194,7 +194,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	                @Nullable Processor<Event<?>, Event<?>> processor,
 	                int concurrency,
 	                @Nullable final Router router,
-	                @Nullable Consumer<Throwable> processorErrorHandler,
+					@Nullable Consumer<Throwable> processorErrorHandler,
 	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
 		super(consumerRegistry,
 					concurrency,
@@ -203,11 +203,11 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 						@Override
 						public void accept(Throwable t) {
 							Class<? extends Throwable> type = t.getClass();
-							router.route(type,
-													 Event.wrap(t),
-													 consumerRegistry.select(type),
-													 null,
-													 null);
+							DEFAULT_EVENT_ROUTER.route(type,
+													   Event.wrap(t),
+													   consumerRegistry.select(type),
+													   null,
+													   null);
 						}
 					},
 					uncaughtErrorHandler);

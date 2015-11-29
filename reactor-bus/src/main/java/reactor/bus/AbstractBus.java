@@ -56,7 +56,7 @@ import java.util.UUID;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public abstract class AbstractBus<K, V> implements Bus<K, V> {
 
-  private static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
+  protected static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
     new PassThroughFilter()
   );
 
