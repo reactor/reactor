@@ -38,6 +38,10 @@ public abstract class ForEachSequencer<T>
 		final Iterator<? extends T> iterator = subscriber.context();
 		if (iterator.hasNext()) {
 			subscriber.onNext(iterator.next());
+			//peek next
+			if(!iterator.hasNext()){
+				subscriber.onComplete();
+			}
 		}
 		else {
 			subscriber.onComplete();
