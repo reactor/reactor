@@ -71,23 +71,22 @@ public abstract class AbstractBus<K, V> implements Bus<K, V> {
   /**
    * Create a new {@literal Reactor} that uses the given {@code processor} and {@code eventRouter}.
    *
-   * @param consumerRegistry     The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
-   *                             Consumer}
-   * @param concurrency          The allowed number of concurrent routing. This is highly dependent on the
-   *                             processor used. Only "Work" processors like {@link reactor.core.processor
-   *                             .RingBufferWorkProcessor}
-   *                             will be meaningful as they distribute their messages, default RS behavior is to
-   *                             broadcast resulting
-   *                             in a matching number of duplicate routing.
-   * @param router               The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code
-   *                             null} in which case the
-   *                             default event router that broadcasts events to all of the registered consumers that
-   *                             {@link
-   *                             Selector#matches(Object) match} the notification key and does not perform any type
-   *                             conversion will be used.
-   * @param consumerRegistry     The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
-   * @param uncaughtErrorHandler The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
-   *                             Consumer}.
+   * @param consumerRegistry      The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
+   *                              Consumer}
+   * @param concurrency           The allowed number of concurrent routing. This is highly dependent on the
+   *                              processor used. Only "Work" processors like {@link reactor.core.processor
+   *                              .RingBufferWorkProcessor} will be meaningful as they distribute their messages,
+   *                              default RS behavior is to broadcast resulting in a matching number of duplicate
+   *                              routing.
+   * @param router                The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code
+   *                              null} in which case the default event router that broadcasts events to all of the
+   *                              registered consumers that {@link
+   *                              Selector#matches(Object) match} the notification key and does not perform any type
+   *                              conversion will be used.
+   * @param processorErrorHandler The {@link Consumer} to be used on {@link Processor} exceptions. May be {@code null}
+   *                              in which case exceptions will be delegated to {@code uncaughtErrorHandler}.
+   * @param uncaughtErrorHandler  Default {@link Consumer} to be used on all uncaught exceptions. May be {@code null}
+   *                              in which case exceptions will be logged.
    */
   @SuppressWarnings("unchecked")
   public AbstractBus(@Nonnull Registry<K, BiConsumer<K, ? extends V>> consumerRegistry,
