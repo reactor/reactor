@@ -45,6 +45,7 @@ ext {
 
 	// Libraries
 	gsCollectionsVersion = '5.1.0'
+  pcollectionsVersion = "2.1.2"
 	nettyVersion = '4.0.31.Final'
 	jacksonDatabindVersion = '2.5.1'
 	jsonPathVersion = '2.0.0'
@@ -304,6 +305,24 @@ project('reactor-bus') {
 			include "reactor/jarjar/jsr166e/**"
 		}
 	}
+}
+
+project("reactor-pipe") {
+  description = "Reactor Pipe components"
+
+  apply plugin: 'osgi'
+  apply plugin: 'maven'
+
+  compileJava {
+		sourceCompatibility = 1.8
+		targetCompatibility = 1.8
+	}
+  dependencies {
+    compile project(':reactor-core')
+    compile project(':reactor-bus')
+    compile "org.pcollections:pcollections:$pcollectionsVersion"
+  }
+
 }
 
 project('reactor-alloc') {
