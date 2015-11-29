@@ -169,32 +169,31 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	/**
 	 * Create a new {@literal Reactor} that uses the given {@code processor} and {@code eventRouter}.
 	 *
-	 * @param consumerRegistry     The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
-	 *                             Consumer}
-	 * @param processor            The {@link Processor} to use. May be {@code null} in which case a new synchronous
-	 *                             processor is used.
-	 * @param concurrency          The allowed number of concurrent routing. This is highly dependent on the
-	 *                             processor used. Only "Work" processors like {@link reactor.core.processor
-	 *                             .RingBufferWorkProcessor}
-	 *                             will be meaningful as they distribute their messages, default RS behavior is to
-	 *                             broadcast resulting
-	 *                             in a matching number of duplicate routing.
-	 * @param router               The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code
-	 *                             null} in which case the
-	 *                             default event router that broadcasts events to all of the registered consumers that
-	 *                             {@link
-	 *                             Selector#matches(Object) match} the notification key and does not perform any type
-	 *                             conversion will be used.
-	 * @param consumerRegistry     The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
-	 * @param uncaughtErrorHandler The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
-	 *                             Consumer}.
+	 * @param consumerRegistry      The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
+	 *                              Consumer}
+	 * @param processor             The {@link Processor} to use. May be {@code null} in which case a new synchronous
+	 *                              processor is used.
+	 * @param concurrency           The allowed number of concurrent routing. This is highly dependent on the
+	 *                              processor used. Only "Work" processors like {@link reactor.core.processor
+	 *                              .RingBufferWorkProcessor} will be meaningful as they distribute their messages,
+	 *                              default RS behavior is to broadcast resulting in a matching number of duplicate
+	 *                              routing.
+	 * @param router                The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code
+	 *                              null} in which case the default event router that broadcasts events to all of the
+	 *                              registered consumers that {@link
+	 *                              Selector#matches(Object) match} the notification key and does not perform any type
+	 *                              conversion will be used.
+	 * @param processorErrorHandler The {@link Consumer} to be used on {@link Processor} exceptions. May be {@code null}
+	 *                              in which case exceptions will be routed to this {@link EventBus} by it's class.
+	 * @param uncaughtErrorHandler  Default {@link Consumer} to be used on all uncaught exceptions. May be {@code null}
+	 *                              in which case exceptions will be logged.
 	 */
 	@SuppressWarnings("unchecked")
 	public EventBus(@Nonnull final Registry<Object, BiConsumer<Object, ? extends Event<?>>> consumerRegistry,
 	                @Nullable Processor<Event<?>, Event<?>> processor,
 	                int concurrency,
 	                @Nullable final Router router,
-	                @Nullable Consumer<Throwable> processorErrorHandler,
+					@Nullable Consumer<Throwable> processorErrorHandler,
 	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
 		super(consumerRegistry,
 					concurrency,
@@ -203,11 +202,11 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 						@Override
 						public void accept(Throwable t) {
 							Class<? extends Throwable> type = t.getClass();
-							router.route(type,
-													 Event.wrap(t),
-													 consumerRegistry.select(type),
-													 null,
-													 null);
+							DEFAULT_EVENT_ROUTER.route(type,
+													   Event.wrap(t),
+													   consumerRegistry.select(type),
+													   null,
+													   null);
 						}
 					},
 					uncaughtErrorHandler);
@@ -253,7 +252,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 
 	@Override
 	public <T extends Event<?>> Registration<Object, BiConsumer<Object, ? extends Event<?>>> on(final Selector selector,
-																																															final Consumer<T> consumer) {
+																								final Consumer<T> consumer) {
 		Assert.notNull(consumer, "Consumer cannot be null.");
 
 		final Class<?> tClass = extractGeneric(consumer);
