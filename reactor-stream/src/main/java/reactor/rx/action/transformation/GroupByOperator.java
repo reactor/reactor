@@ -106,7 +106,9 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		@Override
 		public void request(long n) {
 			BackpressureUtils.getAndAdd(REQUESTED, this, n);
-			drain();
+			if (RUNNING.getAndIncrement(this) == 0) {
+				drainRequests();
+			}
 		}
 
 		@Override
@@ -141,7 +143,9 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 			else {
 				GroupByAction.BUFFERED.incrementAndGet(parent);
 				getBuffer().add(t);
-				drain();
+				if (RUNNING.getAndIncrement(this) == 0) {
+					drainRequests();
+				}
 			}
 		}
 
@@ -174,12 +178,6 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		@Override
 		public Timer getTimer() {
 			return parent.timer;
-		}
-
-		void drain() {
-			if (RUNNING.getAndIncrement(this) == 0) {
-				drainRequests();
-			}
 		}
 
 		void removeGroup() {

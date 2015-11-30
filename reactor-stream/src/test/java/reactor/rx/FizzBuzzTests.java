@@ -94,9 +94,11 @@ public class FizzBuzzTests extends AbstractReactorTest {
 		Stream<String> stream2 = stream
 		  .zipWith(Streams.createWith((d, s) -> {
 			  for (int i = 0; i < d; i++) {
-				  s.onNext(System.currentTimeMillis());
+				  if(!s.isCancelled()) {
+					  s.onNext(System.currentTimeMillis());
+				  }
 			  }
-		  }), t -> String.format("%s : %s", t.getT2(), t.getT1()))
+		  }), (t1, t2) -> String.format("%s : %s", t1, t2))
 		  .observeError(Throwable.class, (o, t) -> {
 			  System.err.println(t.toString());
 			  t.printStackTrace();

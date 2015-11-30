@@ -29,14 +29,20 @@ import reactor.core.publisher.operator.FlatMapOperator;
 import reactor.core.publisher.operator.IgnoreOnNextOperator;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
+import reactor.core.publisher.operator.ZipOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.SignalType;
+import reactor.fn.BiFunction;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
+import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -183,6 +189,36 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> merge(
+			Publisher<? extends I> source1, Publisher<? extends I> source2) {
+		return flatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> concat(
+			Publisher<? extends Publisher<? extends I>> source) {
+		return concatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> concat(
+			Publisher<? extends I> source1, Publisher<? extends I> source2) {
+		return concatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
 	 * @param transformer A {@link Function} that transforms each emitting sequence item
 	 * @param <I> The source type of the data sequence
 	 * @param <O> The target type of the data sequence
@@ -207,16 +243,6 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
-	 * @param <I> The source type of the data sequence
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
-	 */
-	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> concat(
-			Publisher<? extends Publisher<? extends I>> source) {
-		return concatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
-	}
-
-	/**
 	 * @param transformer A {@link Function} that transforms each emitting sequence item
 	 * @param <I> The source type of the data sequence
 	 * @param <O> The target type of the data sequence
@@ -237,6 +263,111 @@ public final class Publishers extends PublisherFactory {
 			}
 		}
 		return lift(source, new FlatMapOperator(transformer, 1, 32));
+	}
+
+	/**
+	 *
+	 * @param source1
+	 * @param source2
+	 * @param <T1>
+	 * @param <T2>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T1, T2> Publisher<Tuple2<T1, T2>> zip(
+			Publisher<? extends T1> source1, Publisher<? extends T2> source2) {
+
+		return zip(new Publisher[]{source1, source2}, (Function<Tuple2<T1, T2>, Tuple2<T1, T2>>)IDENTITY_FUNCTION);
+	}
+
+	/**
+	 *
+	 * @param source1
+	 * @param source2
+	 * @param combinator
+	 * @param <O>
+	 * @param <T1>
+	 * @param <T2>
+	 * @return
+	 */
+	public static <T1, T2, O> Publisher<O> zip(
+			Publisher<? extends T1> source1, Publisher<? extends T2> source2,
+			final BiFunction<? super T1, ? super T2, ? extends O> combinator) {
+
+		return zip(new Publisher[]{source1, source2}, new Function<Tuple2<T1, T2>, O>() {
+			@Override
+			public O apply(Tuple2<T1, T2> tuple) {
+				return combinator.apply(tuple.getT1(), tuple.getT2());
+			}
+		});
+	}
+
+	/**
+	 *
+	 * @param sources
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static Publisher<Tuple> zip(Iterable<? extends Publisher<?>> sources) {
+
+		List<Publisher<?>> publishers = new ArrayList<>();
+		for(Publisher<?> p : sources){
+			publishers.add(p);
+		}
+
+		return zip(publishers.toArray(new Publisher[publishers.size()]), IDENTITY_FUNCTION);
+	}
+
+	/**
+	 *
+	 * @param sources
+	 * @param combinator
+	 * @param <TUPLE>
+	 * @param <O>
+	 * @return
+	 */
+	public static <TUPLE extends Tuple, O> Publisher<O> zip(
+			Iterable<? extends Publisher<?>> sources, final Function<? super TUPLE, ? extends O> combinator) {
+
+		List<Publisher<?>> publishers = new ArrayList<>();
+		for(Publisher<?> p : sources){
+			publishers.add(p);
+		}
+
+		return zip(publishers.toArray(new Publisher[publishers.size()]), combinator);
+	}
+
+	/**
+	 *
+	 * @param sources
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static Publisher<Tuple> zip(Publisher[] sources) {
+		return zip(sources, IDENTITY_FUNCTION);
+	}
+
+	/**
+	 *
+	 * @param sources
+	 * @param combinator
+	 * @param <TUPLE>
+	 * @param <O>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <TUPLE extends Tuple, O> Publisher<O> zip(
+			Publisher[] sources, final Function<? super TUPLE, ? extends O> combinator) {
+
+		if(sources == null || sources.length == 0){
+			return empty();
+		}
+
+		if(sources.length == 1){
+			return map(sources[0], combinator);
+		}
+
+		return lift(just(sources), new ZipOperator<>(combinator, BaseProcessor.SMALL_BUFFER_SIZE / 2));
 	}
 
 	/**
@@ -319,7 +450,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, int options) {
-		return Publishers.lift(publisher, new LogOperator<IN>(category, options));
+		return lift(publisher, new LogOperator<IN>(category, options));
 	}
 
 	/**
@@ -375,8 +506,7 @@ public final class Publishers extends PublisherFactory {
 		}
 	}
 
-	private static final PublisherToPublisherFunction<?> P2P_FUNCTION =
-			new PublisherToPublisherFunction<>();
+	private static final PublisherToPublisherFunction<?> P2P_FUNCTION = new PublisherToPublisherFunction<>();
 
 	private static class PublisherToPublisherFunction<I>
 			implements Function<Publisher<? extends I>, Publisher<? extends I>> {
@@ -384,6 +514,16 @@ public final class Publishers extends PublisherFactory {
 		@Override
 		public Publisher<? extends I> apply(Publisher<? extends I> publisher) {
 			return publisher;
+		}
+	}
+
+	private static final IdentityFunction IDENTITY_FUNCTION = new IdentityFunction();
+
+	private static class IdentityFunction implements Function {
+
+		@Override
+		public Object apply(Object o) {
+			return o;
 		}
 	}
 }

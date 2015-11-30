@@ -811,7 +811,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source1 = Broadcaster.<Integer> create()
 			def source2 = Broadcaster.<Integer> create()
-			def zippedStream = Streams.zip(source1, source2) { println it; it.t1 + it.t2 }.log()
+			def zippedStream = Streams.zip(source1, source2) { t1, t2 -> println t1; t1 + t2 }.log()
 			def tap = zippedStream.tap()
 
 		when:
@@ -847,7 +847,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources are zipped'
-			def zippedStream = Streams.zip(odds.log('left'), even.log('right')) { [it.t1, it.t2] }
+			def zippedStream = Streams.zip(odds.log('left'), even.log('right')) { t1, t2 -> [t1, t2] }
 			def tap = zippedStream.log().toList()
 			tap.await(3, TimeUnit.SECONDS)
 			println tap.debug()
@@ -859,7 +859,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the sources are zipped in a flat map'
 			zippedStream = odds.log('before-flatmap').flatMap {
-				Streams.zip(Streams.just(it), even) { [it.t1, it.t2] }
+				Streams.zip(Streams.just(it), even) { t1, t2 -> [t1, t2] }
 						.log('second-fm')
 			}
 			tap = zippedStream.log('after-zip').toList()
@@ -2732,7 +2732,7 @@ class StreamsSpec extends Specification {
 				counter++
 				it.onError(new RuntimeException("always fails $counter"))
 			}.retryWhen { attempts ->
-				attempts.zipWith(Streams.range(1, 3)) { it.t2 }.log().flatMap { i ->
+				attempts.zipWith(Streams.range(1, 3)) { t1, t2 -> t2 }.log().flatMap { i ->
 					println "delay retry by " + i + " second(s)"
 					Streams.timer(i)
 				}
@@ -2795,7 +2795,7 @@ class StreamsSpec extends Specification {
 				counter++
 				it.onComplete()
 			}.log().repeatWhen { attempts ->
-				attempts.zipWith(Streams.range(1, 3)) { it.t2 }.flatMap { i ->
+				attempts.zipWith(Streams.range(1, 3)) { t1, t2 -> t2 }.flatMap { i ->
 					println "delay repeat by " + i + " second(s)"
 					Streams.timer(i)
 				}

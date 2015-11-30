@@ -77,7 +77,7 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 		Publisher<?> oldestSender = this;
 
 		while( oldestSender != null && Publishable.class.isAssignableFrom(oldestSender.getClass())){
-			oldestSender = ((Publishable<?>)oldestSender).upstream();
+			oldestSender = ((Publishable)oldestSender).upstream();
 			if (oldestSender != null){
 				if(Subscriber.class.isAssignableFrom(oldestSender.getClass())){
 					oldestReceiver = (Subscriber)oldestSender;

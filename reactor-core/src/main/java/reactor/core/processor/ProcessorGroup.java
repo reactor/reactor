@@ -800,12 +800,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 					if (r != 0L
 							&& cursor + 1L <= emitBuffer.getCursor()) {
-						route(emitBuffer.get(++cursor).value, subscriber, SignalType.NEXT);
-
 						if(r != Long.MAX_VALUE){
 							r--;
 						}
 						outstanding--;
+						route(emitBuffer.get(++cursor).value, subscriber, SignalType.NEXT);
 						produced++;
 					}
 					else {

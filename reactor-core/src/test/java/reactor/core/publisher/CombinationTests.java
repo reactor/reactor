@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2016 Pivotal Software Inc., Inc. All Rights Reserved.
+ * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,42 +14,35 @@
  * limitations under the License.
  */
 
-package reactor.rx;
+package reactor.core.publisher;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.AbstractReactorTest;
 import reactor.Processors;
+import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
-import reactor.fn.tuple.Tuple2;
-import reactor.rx.action.Control;
 
 /**
  * @author Stephane Maldini
  */
-public class StreamCombinationTests extends AbstractReactorTest {
+public class CombinationTests {
 
-	private static final Logger LOG = LoggerFactory.getLogger(StreamCombinationTests.class);
-
-	private ArrayList<Stream<SensorData>> allSensors;
+	private static final Logger LOG = LoggerFactory.getLogger(CombinationTests.class);
 
 	private Processor<SensorData, SensorData> sensorEven;
 	private Processor<SensorData, SensorData> sensorOdd;
@@ -75,26 +68,89 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public Consumer<Object> loggingConsumer() {
 		return m -> LOG.info("(int) msg={}", m);
 	}
-
-	public List<Stream<SensorData>> allSensors() {
-		if (allSensors == null) {
-			this.allSensors = new ArrayList<>();
-		}
-		return allSensors;
-	}
-
+/*
 	@Test
 	public void testMerge1ToN() throws Exception {
 		final int n = 1000;
 
-		Stream<Integer> stream = Streams.merge(Streams.just(1)
-		                                              .map(i -> Streams.range(0, n)));
+		Stream<Integer> stream = Publishers.merge(Publishers.map(Publishers.just(1), i -> Streams.range(0, n)));
 
 		final CountDownLatch latch = new CountDownLatch(n);
 		awaitLatch(stream.consume(integer -> latch.countDown()), latch);
+	}*/
+
+	@Test
+	public void tesSubmitSession() throws Exception {
+		BaseProcessor<Integer, Integer> processor = Processors.emitter();
+		AtomicInteger count = new AtomicInteger();
+		processor.process(Processors.ioGroup().get())
+		         .subscribe(Subscribers.create(s -> {
+			         try {
+				         Thread.sleep(1000);
+			         }
+			         catch (InterruptedException ie) {
+				         //IGNORE
+			         }
+			         s.request(1L);
+			         return null;
+		         }, (d, s) -> count.incrementAndGet()));
+
+		ReactiveSession<Integer> session = processor.startSession();
+		long emission = session.submit(1);
+		if (emission == -1L) {
+			throw new IllegalStateException("Negatime " + emission);
+		}
+		//System.out.println(emission);
+		if (session.hasFailed()) {
+			session.getError()
+			       .printStackTrace();
+		}
+		session.finish();
+
+		Assert.isTrue(count.get() == 1, "latch : " + count);
+		Assert.isTrue(emission >= 1, "time : " + emission);
 	}
 
-	public Stream<SensorData> sensorOdd() {
+	@Test
+	public void testEmitter() throws Throwable {
+		BaseProcessor<Integer, Integer> processor = Processors.emitter();
+
+		int n = 1_000_000;
+		int subs = 4;
+		final CountDownLatch latch = new CountDownLatch((n + 1) * subs);
+
+		for (int i = 0; i < subs; i++) {
+			processor.process(Processors.singleGroup()
+			                            .get())
+			         .subscribe(Subscribers.create(s -> {
+				         s.request(1L);
+				         return null;
+			         }, (d, s) -> {
+//				         System.out.println(d);
+				         s.request(1L);
+				         latch.countDown();
+			         }, null, d -> latch.countDown()));
+		}
+
+		ReactiveSession<Integer> session = processor.startSession();
+
+		for (int i = 0; i < n; i++) {
+			while (!session.emit(i).isOk()) {
+				//System.out.println(emission);
+				if (session.hasFailed()) {
+					session.getError()
+					       .printStackTrace();
+					throw session.getError();
+				}
+			}
+		}
+		session.finish();
+
+		boolean waited = latch.await(5, TimeUnit.SECONDS);
+		Assert.isTrue(waited, "latch : " + latch.getCount());
+	}
+
+	public Publisher<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
 			this.sensorOdd = Processors.log(Processors.topic("odd"), "odd");
@@ -103,10 +159,10 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
 		}
 
-		return Streams.wrap(sensorOdd);
+		return sensorOdd;
 	}
 
-	public Stream<SensorData> sensorEven() {
+	public Publisher<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
 			this.sensorEven = Processors.log(Processors.topic("even"), "even");
@@ -114,21 +170,22 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			// add substream to "master" list
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
 		}
-		return Streams.wrap(sensorEven);
+		return sensorEven;
 	}
 
 	@Test
-	public void sampleMergeWithTest() throws Exception {
+	public void sampleMergeTest() throws Exception {
 		int elements = 40;
-		CountDownLatch latch = new CountDownLatch(elements);
+		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Control tail = sensorOdd().mergeWith(sensorEven())
-		                          .observe(loggingConsumer())
-		                          .consume(i -> latch.countDown());
+		Publisher<SensorData> p = Publishers.log(
+				Publishers.merge(sensorOdd(), sensorEven()),
+				"merge"
+		);
 
 		generateData(elements);
 
-		awaitLatch(tail, latch);
+		awaitLatch(p, latch);
 	}
 
 	/*@Test
@@ -145,17 +202,18 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Control tail = Streams.concat(sensorEven(), sensorOdd())
-		                      .log("concat")
-		                      .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
+		Publisher<SensorData> p = Publishers.log(
+				Publishers.concat(sensorEven(), sensorOdd()),
+				"concat"
+		);
 
-		System.out.println(tail.debug());
+		//System.out.println(tail.debug());
 		generateData(elements);
 
-		awaitLatch(tail, latch);
+		awaitLatch(p, latch);
 	}
-/*
-	@Test
+
+	/*@Test
 	public void sampleCombineLatestTest() throws Exception {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements / 2 + 1);
@@ -170,85 +228,38 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	}*/
 
 	@Test
-	public void concatWithTest() throws Exception {
-		int elements = 40;
-		CountDownLatch latch = new CountDownLatch(elements + 1);
-
-		Control tail = sensorEven().concatWith(sensorOdd())
-		                           .log("concat")
-		                           .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
-
-		generateData(elements);
-
-		awaitLatch(tail, latch);
-	}
-
-	@Test
-	public void zipWithTest() throws Exception {
-		int elements = 40;
-		CountDownLatch latch = new CountDownLatch(elements / 2);
-
-		Control tail = sensorOdd().zipWith(sensorEven(), this::computeMin)
-		                          .log("zipWithTest")
-		                          .consume(i -> latch.countDown());
-
-		generateData(elements);
-
-		awaitLatch(tail, latch);
-	}
-
-	@Test
-	public void zipWithIterableTest() throws Exception {
-		int elements = 31;
-		CountDownLatch latch = new CountDownLatch((elements / 2) - 1);
-
-		List<Integer> list = IntStream.range(0, elements / 2)
-		                              .boxed()
-		                              .collect(Collectors.toList());
-
-		LOG.info("range from 0 to " + list.size());
-		Control tail = sensorOdd().zipWith(list, (t1, t2) -> (t1.toString() + " -- " + t2))
-		                          .log("zipWithIterableTest")
-		                          .consume(i -> latch.countDown());
-
-		System.out.println(tail.debug());
-		generateData(elements);
-
-		awaitLatch(tail, latch);
-	}
-
-	@Test
-	public void joinWithTest() throws Exception {
-		int elements = 40;
-		CountDownLatch latch = new CountDownLatch(elements / 2);
-
-		Control tail = sensorOdd().joinWith(sensorEven())
-		                          .log("joinWithTest")
-		                          .consume(i -> latch.countDown());
-
-		generateData(elements);
-
-		awaitLatch(tail, latch);
-	}
-
-	@Test
 	public void sampleZipTest() throws Exception {
 		int elements = 69;
-		CountDownLatch latch = new CountDownLatch(elements / 2);
+		CountDownLatch latch = new CountDownLatch((elements / 2) + 1);
 
-		Control tail = Streams.zip(sensorEven(), sensorOdd(), this::computeMin)
-		                      .log("sampleZipTest")
-		                      .consume(x -> latch.countDown());
+		Publisher<SensorData> p = Publishers.log(
+				Publishers.zip(sensorEven(), sensorOdd(), this::computeMin)
+		                      , "zip");
 
 		generateData(elements);
 
-		awaitLatch(tail, latch);
+		awaitLatch(p, latch);
+	}
+
+	@Test
+	public void sampleZipTest2() throws Exception {
+		int elements = 1;
+		CountDownLatch latch = new CountDownLatch(elements + 1);
+
+		Publisher<SensorData> p = Publishers.log(
+				Publishers.zip(sensorEven(), Publishers.just(new SensorData(1L, 14.0f)), this::computeMin)
+		                      , "zip");
+
+		generateData(elements);
+
+		awaitLatch(p, latch);
 	}
 
 	@SuppressWarnings("unchecked")
-	private void awaitLatch(Control tail, CountDownLatch latch) throws Exception {
+	private void awaitLatch(Publisher<SensorData> tail, CountDownLatch latch) throws Exception {
+		tail.subscribe(Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch.countDown()));
 		if (!latch.await(10, TimeUnit.SECONDS)) {
-			throw new Exception("Never completed: (" + latch.getCount() + ") " + tail.debug());
+			throw new Exception("Never completed: (" + latch.getCount() + ") ");
 		}
 	}
 

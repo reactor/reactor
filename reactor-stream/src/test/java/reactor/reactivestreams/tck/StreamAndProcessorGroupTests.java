@@ -60,7 +60,8 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		                                           .map(integer -> -integer)
 		                                           .buffer(batch, 50, TimeUnit.MILLISECONDS)
 		                                           .<Integer>split()
-		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
+		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, (t1, t2) ->
+				                                           t1))
 		                  )
 				.dispatchOn(sharedGroup)
 				.when(Throwable.class, Throwable::printStackTrace)

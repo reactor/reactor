@@ -16,6 +16,15 @@
 
 package reactor.rx;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -25,11 +34,14 @@ import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
+import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.PublisherFactory;
+import reactor.core.publisher.operator.ZipOperator;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
 import reactor.fn.BiConsumer;
+import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -42,12 +54,10 @@ import reactor.fn.tuple.Tuple5;
 import reactor.fn.tuple.Tuple6;
 import reactor.fn.tuple.Tuple7;
 import reactor.fn.tuple.Tuple8;
-import reactor.fn.tuple.TupleN;
 import reactor.rx.action.StreamProcessor;
 import reactor.rx.action.combination.CombineLatestAction;
 import reactor.rx.action.combination.DynamicMergeAction;
 import reactor.rx.action.combination.SwitchOperator;
-import reactor.rx.action.combination.ZipAction;
 import reactor.rx.stream.DeferredStream;
 import reactor.rx.stream.ErrorStream;
 import reactor.rx.stream.FutureStream;
@@ -58,15 +68,6 @@ import reactor.rx.stream.SingleTimerStream;
 import reactor.rx.stream.SingleValueStream;
 import reactor.rx.stream.StreamOperator;
 import reactor.rx.stream.SupplierStream;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A public factory to build {@link Stream}, Streams provide for common transformations from a few structures such as
@@ -1475,8 +1476,8 @@ public class Streams {
 	 */
 	public static <T1, T2, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                        Publisher<? extends T2> source2,
-	                                        Function<Tuple2<T1, T2>, ? extends V> combinator) {
-		return zip(Arrays.asList(source1, source2), combinator);
+	                                        BiFunction<? super T1, ? super T2, ? extends V> combinator) {
+		return wrap(Publishers.zip(source1, source2, combinator));
 	}
 
 	/**
@@ -1688,8 +1689,8 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <TUPLE extends Tuple, V> Stream<V> zip(List<? extends Publisher<?>> sources,
-	                                                     Function<TUPLE, ? extends V> combinator) {
-		return new ZipAction<>(combinator, sources);
+	                                                     Function<? super TUPLE, ? extends V> combinator) {
+		return wrap(Publishers.zip(sources, combinator));
 	}
 
 	/**
@@ -1701,20 +1702,19 @@ public class Streams {
 	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
 	 *                   value to signal downstream
 	 * @param <V>        The produced output after transformation by {@param combinator}
-	 * @param <E>        The inner type of {@param source}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <E, TUPLE extends Tuple, V> Stream<V> zip(
-	  Publisher<? extends Publisher<E>> sources,
-	  Function<TUPLE, ? extends V> combinator) {
-		final DynamicMergeAction<E, V> mergeAction = new DynamicMergeAction<E, V>(
-		  new ZipAction<E, V, TUPLE>(combinator, null)
-		);
+	public static <TUPLE extends Tuple, V> Stream<V> zip(
+	  Publisher<? extends Publisher<?>> sources,
+	  Function<? super TUPLE, ? extends V> combinator) {
 
-		sources.subscribe(mergeAction);
-
-		return mergeAction;
+		return wrap(sources).buffer().map(new Function<List<? extends Publisher<?>>, Publisher[]>() {
+			@Override
+			public Publisher[] apply(List<? extends Publisher<?>> publishers) {
+				return publishers.toArray(new Publisher[publishers.size()]);
+			}
+		}).lift(new ZipOperator<>(combinator, BaseProcessor.SMALL_BUFFER_SIZE / 2));
 	}
 
 	/**
@@ -1891,8 +1891,8 @@ public class Streams {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stream<List<T>> join(List<? extends Publisher<? extends T>> sources) {
-		return zip(sources, ZipAction.<TupleN, T>joinZipper());
+	public static <T> Stream<List<T>> join(List<? extends Publisher<?>> sources) {
+		return zip(sources, (Function<Tuple, List<T>>) ZipOperator.JOIN_FUNCTION);
 	}
 
 	/**
@@ -1902,12 +1902,12 @@ public class Streams {
 	 * eventual {@link Stream} publisher type.
 	 *
 	 * @param source The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>    type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends Publisher<T>> source) {
-		return zip(source, ZipAction.<TupleN, T>joinZipper());
+	@SuppressWarnings("unchecked")
+	public static <T> Stream<List<T>> join(Publisher<? extends Publisher<?>> source) {
+		return zip(source, (Function<Tuple, List<T>>) ZipOperator.JOIN_FUNCTION);
 	}
 
 

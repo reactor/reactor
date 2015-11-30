@@ -36,6 +36,7 @@ import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
+import reactor.core.publisher.operator.ZipOperator;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.Assert;
 import reactor.core.support.Bounded;
@@ -47,12 +48,13 @@ import reactor.fn.Function;
 import reactor.fn.Predicate;
 import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
+import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
 import reactor.rx.action.Action;
 import reactor.rx.action.Control;
-import reactor.rx.action.StreamProcessor;
 import reactor.rx.action.Signal;
+import reactor.rx.action.StreamProcessor;
 import reactor.rx.action.aggregation.BatchOperator;
 import reactor.rx.action.aggregation.BufferOperator;
 import reactor.rx.action.aggregation.BufferShiftOperator;
@@ -65,9 +67,7 @@ import reactor.rx.action.aggregation.WindowOperator;
 import reactor.rx.action.aggregation.WindowShiftOperator;
 import reactor.rx.action.aggregation.WindowShiftWhenOperator;
 import reactor.rx.action.aggregation.WindowWhenOperator;
-import reactor.rx.action.combination.DynamicMergeAction;
 import reactor.rx.action.combination.SwitchOperator;
-import reactor.rx.action.combination.ZipAction;
 import reactor.rx.action.combination.ZipWithIterableOperator;
 import reactor.rx.action.conditional.ExistsOperator;
 import reactor.rx.action.control.DropOperator;
@@ -1077,8 +1077,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return the zipped and joined stream
 	 * @since 2.0
 	 */
-	public final <V> Stream<List<V>> join() {
-		return zip(ZipAction.<TupleN, V>joinZipper());
+	@SuppressWarnings("unchecked")
+	public final <T> Stream<List<T>> join() {
+		return zip((Function<Tuple, List<T>>)ZipOperator.JOIN_FUNCTION);
 	}
 
 	/**
@@ -1087,8 +1088,9 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @return the zipped and joined stream
 	 * @since 2.0
 	 */
-	public final <V> Stream<List<V>> joinWith(Publisher<? extends V> publisher) {
-		return zipWith(publisher, ZipAction.<Tuple2<O, V>, V>joinZipper());
+	@SuppressWarnings("unchecked")
+	public final <T> Stream<List<T>> joinWith(Publisher<T> publisher) {
+		return zipWith(publisher, (BiFunction<Object, Object, List<T>>)ZipOperator.JOIN_BIFUNCTION);
 	}
 
 	/**
@@ -1098,17 +1100,15 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final <V> Stream<V> zip(final @Nonnull Function<TupleN, ? extends V> zipper) {
+	public final <V> Stream<V> zip(final @Nonnull Function<? super TupleN, ? extends V> zipper) {
 		final Stream<Publisher<?>> thiz = (Stream<Publisher<?>>) this;
 
-		return thiz.liftAction(new Supplier<Action<Publisher<?>, V>>() {
+		return thiz.buffer().map(new Function<List<Publisher<?>>, Publisher[]>() {
 			@Override
-			public Action<Publisher<?>, V> get() {
-				return new DynamicMergeAction<Object, V>(new ZipAction<Object, V, TupleN>(zipper, null)).
-						                                                                                        capacity(
-								                                                                                        getCapacity());
+			public Publisher[] apply(List<Publisher<?>> publishers) {
+				return publishers.toArray(new Publisher[publishers.size()]);
 			}
-		});
+		}).lift(new ZipOperator<>(zipper, BaseProcessor.SMALL_BUFFER_SIZE));
 	}
 
 	/**
@@ -1130,11 +1130,11 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 * @since 2.0
 	 */
 	public final <T2, V> Stream<V> zipWith(final Publisher<? extends T2> publisher,
-			final @Nonnull Function<Tuple2<O, T2>, V> zipper) {
+			final @Nonnull BiFunction<? super O, ? super T2, ? extends V> zipper) {
 		return new Stream<V>() {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				new ZipAction<>(zipper, Arrays.asList(Stream.this, publisher)).subscribe(s);
+				Publishers.<O, T2, V>zip(Stream.this, publisher, zipper).subscribe(s);
 			}
 
 			@Override
