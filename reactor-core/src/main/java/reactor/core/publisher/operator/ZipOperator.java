@@ -157,6 +157,8 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 				for (i = 0; i < sources.length; i++) {
 					subscribers[i].subscribeTo(sources[i]);
 				}
+
+				drain();
 			}
 		}
 
