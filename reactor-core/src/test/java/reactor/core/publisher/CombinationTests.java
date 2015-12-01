@@ -228,8 +228,24 @@ public class CombinationTests {
 
 		Publisher<SensorData> p = Publishers.log(Publishers.zip(sensorEven(),
 				Publishers.just(new SensorData(1L, 14.0f)),
-				this::computeMin), "zip");
+				this::computeMin), "zip2");
 
+		generateData(elements);
+
+		awaitLatch(p, latch);
+	}
+
+
+	@Test
+	public void sampleZipTest3() throws Exception {
+		int elements = 1;
+		CountDownLatch latch = new CountDownLatch(elements + 1);
+		Processor<SensorData, SensorData> sensorDataProcessor = Processors.<SensorData>singleGroup().get();
+
+		Publisher<SensorData> p = Publishers.log(sensorDataProcessor, "zip3" );
+
+		Publishers.zip(Publishers.just(new SensorData(2L, 12.0f)), Publishers.just(new SensorData(1L, 14.0f)),
+				this::computeMin).subscribe(sensorDataProcessor);
 		generateData(elements);
 
 		awaitLatch(p, latch);

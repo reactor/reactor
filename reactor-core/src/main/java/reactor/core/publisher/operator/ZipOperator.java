@@ -134,7 +134,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 					return;
 				}
 
-				subscribers = new ZipState[sources.length];
+				ZipState[] subscribers = new ZipState[sources.length];
 				valueCache = new Object[sources.length];
 
 				int i;
@@ -151,8 +151,9 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 						inner = new BufferSubscriber(this);
 						subscribers[i] = inner;
 					}
-
 				}
+				this.subscribers = subscribers;
+
 				for (i = 0; i < sources.length; i++) {
 					pub = sources[i];
 					if (pub != null) {
