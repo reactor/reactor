@@ -59,12 +59,13 @@ public class HashWheelTimer implements Timer {
 	private final Thread                         loop;
 	private final Executor                       executor;
 	private final WaitStrategy                   waitStrategy;
+	private final LongSupplier                   timeMillisResolver;
 	private final AtomicBoolean started = new AtomicBoolean();
 
 	/**
 	 * Create a new {@code HashWheelTimer} using the given timer resolution. All times will rounded up to the closest
 	 * multiple of this resolution.
-	 * @param resolution the resolution of this timer, in milliseconds
+	 * @param resolution         the resolution of this timer, in milliseconds
 	 */
 	public HashWheelTimer(int resolution) {
 		this(resolution, DEFAULT_WHEEL_SIZE, new SleepingWaitStrategy());
@@ -73,26 +74,48 @@ public class HashWheelTimer implements Timer {
 	/**
 	 * Create a new {@code HashWheelTimer} using the given timer {@code res} and {@code wheelSize}. All times will
 	 * rounded up to the closest multiple of this resolution.
-	 * @param res resolution of this timer in milliseconds
-	 * @param wheelSize size of the Ring Buffer supporting the Timer, the larger the wheel, the less the lookup time is
-	 * for sparse timeouts. Sane default is 512.
-	 * @param waitStrategy strategy for waiting for the next tick
+	 * @param res                resolution of this timer in milliseconds
+	 * @param wheelSize          size of the Ring Buffer supporting the Timer, the larger the wheel, the less the
+	 *                           lookup time is for sparse timeouts. Sane default is 512.
+	 * @param waitStrategy       strategy for waiting for the next tick
 	 */
 	public HashWheelTimer(int res, int wheelSize, WaitStrategy waitStrategy) {
-		this(DEFAULT_TIMER_NAME, res, wheelSize, waitStrategy, null);
+		this(DEFAULT_TIMER_NAME, res, wheelSize, waitStrategy, null, TimeUtils.currentTimeMillisResolver());
 	}
 
 	/**
 	 * Create a new {@code HashWheelTimer} using the given timer {@code resolution} and {@code wheelSize}. All times
 	 * will rounded up to the closest multiple of this resolution.
-	 * @param name name for daemon thread factory to be displayed
-	 * @param res resolution of this timer in milliseconds
-	 * @param wheelSize size of the Ring Buffer supporting the Timer, the larger the wheel, the less the lookup time is
-	 * for sparse timeouts. Sane default is 512.
-	 * @param strategy strategy for waiting for the next tick
-	 * @param exec Executor instance to submit tasks to
+	 * @param name               name for daemon thread factory to be displayed
+	 * @param res                resolution of this timer in milliseconds
+	 * @param wheelSize          size of the Ring Buffer supporting the Timer, the larger the wheel, the less the
+	 *                           lookup time is for sparse timeouts. Sane default is 512.
+	 * @param strategy           strategy for waiting for the next tick
+	 * @param exec               {@code Executor} instance to submit tasks to
 	 */
 	public HashWheelTimer(String name, int res, int wheelSize, WaitStrategy strategy, Executor exec) {
+		this(name, res,wheelSize, strategy, exec, TimeUtils.currentTimeMillisResolver());
+	}
+
+	/**
+	 * Create a new {@code HashWheelTimer} using the given timer {@code resolution} and {@code wheelSize}. All times
+	 * will rounded up to the closest multiple of this resolution.
+	 * @param name               name for daemon thread factory to be displayed
+	 * @param res                resolution of this timer in milliseconds
+	 * @param wheelSize          size of the Ring Buffer supporting the Timer, the larger the wheel, the less the
+	 *                           lookup time is for sparse timeouts. Sane default is 512.
+	 * @param strategy           strategy for waiting for the next tick
+	 * @param exec               {@code Executor} instance to submit tasks to
+	 * @param timeResolver       {@code LongSupplier} supplier returning current time in milliseconds every time it's
+	 *                           called
+	 */
+	public HashWheelTimer(String name,
+						  int res,
+						  int wheelSize,
+						  WaitStrategy strategy,
+						  Executor exec,
+						  LongSupplier timeResolver) {
+		this.timeMillisResolver = timeResolver;
 		this.waitStrategy = strategy;
 
 		this.wheel = RingBuffer.createSingleProducer(new Supplier<Set<TimerPausable>>() {
@@ -117,8 +140,7 @@ public class HashWheelTimer implements Timer {
 		this.loop = new NamedDaemonThreadFactory(name).newThread(new Runnable() {
 			@Override
 			public void run() {
-				LongSupplier now = TimeUtils.currentTimeMillisResolver();
-				long deadline = now.get();
+				long deadline = timeMillisResolver.get();
 
 				Consumer<Void> noop = new Consumer<Void>() {
 					@Override
@@ -163,7 +185,7 @@ public class HashWheelTimer implements Timer {
 					deadline += resolution;
 
 					try {
-						waitStrategy.waitFor(deadline, now, noop);
+						waitStrategy.waitFor(deadline, timeMillisResolver, noop);
 					}
 					catch (AlertException | InterruptedException e) {
 						break;
@@ -226,7 +248,7 @@ public class HashWheelTimer implements Timer {
 		long firstFireOffset = firstDelay / resolution;
 		long firstFireRounds = firstFireOffset / wheel.getBufferSize();
 
-		TimerPausable r = new TimerPausable(firstFireRounds, offset, consumer, rounds);
+		TimerPausable r = new TimerPausable(firstFireRounds, offset, consumer, rounds, timeMillisResolver);
 		wheel.get(wheel.getCursor() + firstFireOffset + (recurringTimeout != 0 ? 1 : 0))
 		     .add(r);
 		return r;
@@ -289,7 +311,7 @@ public class HashWheelTimer implements Timer {
 		private final AtomicInteger status;
 		private final AtomicBoolean cancelAfterUse;
 		private final boolean       lifecycle;
-		private final LongSupplier now;
+		private final LongSupplier  now;
 
 		/**
 		 * Creates a new Timer Registration with given {@code rounds}, {@code offset} and {@code delegate}.
@@ -297,9 +319,9 @@ public class HashWheelTimer implements Timer {
 		 * @param offset offset of in the Ring Buffer for rescheduling
 		 * @param delegate delegate that will be ran whenever the timer is elapsed
 		 */
-		public TimerPausable(long rounds, long offset, T delegate, long rescheduleRounds) {
+		public TimerPausable(long rounds, long offset, T delegate, long rescheduleRounds, LongSupplier timeResolver) {
 			Assert.notNull(delegate, "Delegate cannot be null");
-			this.now = TimeUtils.currentTimeMillisResolver();
+			this.now = timeResolver;
 			this.rescheduleRounds = rescheduleRounds;
 			this.scheduleOffset = offset;
 			this.delegate = delegate;
