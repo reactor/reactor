@@ -1706,7 +1706,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <TUPLE extends Tuple, V> Stream<V> zip(List<? extends Publisher<?>> sources,
-	                                                     Function<? super TUPLE, ? extends V> combinator) {
+	                                                    final Function<? super TUPLE, ? extends V> combinator) {
 		return wrap(Publishers.zip(sources, new Function<Tuple, V>() {
 			@Override
 			@SuppressWarnings("unchecked")
