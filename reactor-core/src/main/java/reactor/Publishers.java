@@ -321,14 +321,12 @@ public final class Publishers extends PublisherFactory {
 	 *
 	 * @param sources
 	 * @param combinator
-	 * @param <TUPLE>
 	 * @param <O>
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public static <TUPLE extends Tuple, O> Publisher<O> zip(
+	public static <O> Publisher<O> zip(
 			Iterable<? extends Publisher<?>> sources,
-			final Function<? super TUPLE, ? extends O> combinator) {
+			final Function<? super Tuple, ? extends O> combinator) {
 
 		if (sources == null) {
 			return empty();
@@ -351,7 +349,7 @@ public final class Publishers extends PublisherFactory {
 					return map(p, new Function<Object, O>() {
 						@Override
 						public O apply(Object o) {
-							return combinator.apply((TUPLE) Tuple.of(o));
+							return combinator.apply(Tuple.of(o));
 						}
 					});
 				}
