@@ -58,6 +58,7 @@ import reactor.rx.action.StreamProcessor;
 import reactor.rx.action.combination.CombineLatestOperator;
 import reactor.rx.action.combination.SwitchOperator;
 import reactor.rx.action.control.TrampolineOperator;
+import reactor.rx.stream.DecoratingStream;
 import reactor.rx.stream.DeferredStream;
 import reactor.rx.stream.ErrorStream;
 import reactor.rx.stream.FutureStream;
@@ -241,12 +242,7 @@ public class Streams {
 				return just(t);
 			}
 		}
-		return new Stream<T>() {
-			@Override
-			public void subscribe(Subscriber<? super T> s) {
-				publisher.subscribe(s);
-			}
-		};
+		return new DecoratingStream<>(publisher);
 	}
 
 	/**
@@ -1735,7 +1731,7 @@ public class Streams {
 			public Publisher[] apply(List<? extends Publisher<?>> publishers) {
 				return publishers.toArray(new Publisher[publishers.size()]);
 			}
-		}).lift(new ZipOperator<>(combinator, BaseProcessor.SMALL_BUFFER_SIZE / 2));
+		}).lift(new ZipOperator<>(combinator, BaseProcessor.XS_BUFFER_SIZE));
 	}
 
 	/**
@@ -2049,4 +2045,5 @@ public class Streams {
 	public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher) {
 		return lift(publisher, TrampolineOperator.INSTANCE);
 	}
+
 }

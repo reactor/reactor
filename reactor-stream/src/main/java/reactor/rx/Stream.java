@@ -1091,7 +1091,7 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			public Publisher[] apply(List<Publisher<?>> publishers) {
 				return publishers.toArray(new Publisher[publishers.size()]);
 			}
-		}).lift(new ZipOperator<>(zipper, BaseProcessor.SMALL_BUFFER_SIZE));
+		}).lift(new ZipOperator<>(zipper, BaseProcessor.XS_BUFFER_SIZE));
 	}
 
 	/**

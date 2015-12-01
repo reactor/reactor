@@ -537,6 +537,13 @@ public abstract class RingBuffer<E> implements LongSupplier {
 		public void clear() {
 			throw new UnsupportedOperationException();
 		}
+
+		@Override
+		public String toString() {
+			return "WriteQueue{" +
+					"buffer=" + buffer +
+					'}';
+		}
 	}
 
 	static final class SPSCQueue<T>  extends WriteQueue<T> {
@@ -657,6 +664,14 @@ public abstract class RingBuffer<E> implements LongSupplier {
 		@Override
 		public void clear() {
 			pollCursor.set(buffer.getCursor());
+		}
+
+		@Override
+		public String toString() {
+			return "SPSCQueue{" +
+					"pollCursor=" + pollCursor +
+					", parent=" + buffer.toString() +
+					'}';
 		}
 	}
 

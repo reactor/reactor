@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -34,12 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
-import reactor.Subscribers;
-import reactor.core.processor.BaseProcessor;
-import reactor.core.subscription.ReactiveSession;
-import reactor.core.support.Assert;
 import reactor.fn.Consumer;
-import reactor.fn.tuple.Tuple2;
 import reactor.rx.action.Control;
 
 /**

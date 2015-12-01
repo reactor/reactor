@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.processor;
 
 import org.reactivestreams.Processor;
@@ -23,29 +24,26 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
-import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
-import reactor.core.support.Subscribable;
-import reactor.fn.Supplier;
 
 /**
- * A base processor with an async boundary trait to manage active subscribers (Threads), upstream subscription
- * and shutdown options.
- *
+ * A base processor with an async boundary trait to manage active subscribers (Threads), upstream subscription and
+ * shutdown options.
  * @author Stephane Maldini
  */
-public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implements
-                                                                        Processor<IN, OUT>, Bounded, Publishable<IN> {
+public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
+		implements Processor<IN, OUT>, Bounded, Publishable<IN> {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
+	public static final int XS_BUFFER_SIZE     = 32;
 	public static final int SMALL_BUFFER_SIZE  = 256;
 	public static final int MEDIUM_BUFFER_SIZE = 8192;
 
-	protected final boolean     autoCancel;
+	protected final boolean autoCancel;
 
 	protected Subscription upstreamSubscription;
 
@@ -62,14 +60,7 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	/**
 	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
 	 *
-	 * {@code
-	 *  Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded())
-	 * }
-	 *
-	 *
-	 * @param s
-	 * @param <E>
-	 * @return
+	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
 	 */
 	public <E extends Subscriber<? super OUT>> E process(E s) {
 		subscribe(s);
@@ -78,12 +69,12 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 
 	@Override
 	public void onSubscribe(final Subscription s) {
-		if(BackpressureUtils.checkSubscription(upstreamSubscription, s)) {
+		if (BackpressureUtils.checkSubscription(upstreamSubscription, s)) {
 			this.upstreamSubscription = s;
 			try {
 				doOnSubscribe(s);
 			}
-			catch (Throwable t){
+			catch (Throwable t) {
 				Exceptions.throwIfFatal(t);
 				s.cancel();
 				onError(t);
@@ -91,7 +82,7 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 		}
 	}
 
-	protected void doOnSubscribe(Subscription s){
+	protected void doOnSubscribe(Subscription s) {
 		//IGNORE
 	}
 
@@ -115,16 +106,15 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN> implemen
 	/**
 	 * @return a snapshot number of available onNext before starving the resource
 	 */
-	public long getAvailableCapacity(){
+	public long getAvailableCapacity() {
 		return getCapacity();
 	}
 
-	protected void cancel(Subscription subscription){
-		if(subscription != SignalType.NOOP_SUBSCRIPTION){
+	protected void cancel(Subscription subscription) {
+		if (subscription != SignalType.NOOP_SUBSCRIPTION) {
 			subscription.cancel();
 		}
 	}
-
 
 	@Override
 	public Publisher<IN> upstream() {

@@ -145,20 +145,17 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 					if (pub instanceof Supplier) {
 						inner = new ScalarState(((Supplier<?>) pub).get());
 						subscribers[i] = inner;
-						sources[i] = null;
 					}
 					else {
 						inner = new BufferSubscriber(this);
 						subscribers[i] = inner;
 					}
 				}
+
 				this.subscribers = subscribers;
 
 				for (i = 0; i < sources.length; i++) {
-					pub = sources[i];
-					if (pub != null) {
-						pub.subscribe(subscribers[i]);
-					}
+					subscribers[i].subscribeTo(sources[i]);
 				}
 			}
 		}
@@ -342,6 +339,8 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		void requestMore();
 
 		void cancel();
+
+		void subscribeTo(Publisher<?> o);
 	}
 
 	static final class ScalarState implements ZipState<Object> {
@@ -381,6 +380,11 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 		@Override
 		public void onComplete() {
+			//IGNORE
+		}
+
+		@Override
+		public void subscribeTo(Publisher<?> o) {
 			//IGNORE
 		}
 
@@ -435,6 +439,11 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		@Override
 		public Subscriber<? super Publisher[]> downstream() {
 			return parent;
+		}
+
+		@Override
+		public void subscribeTo(Publisher<?> o) {
+			o.subscribe(this);
 		}
 
 		@Override
@@ -518,6 +527,17 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		@Override
 		public long getCapacity() {
 			return bufferSize;
+		}
+
+		@Override
+		public String toString() {
+			return "BufferSubscriber{" +
+					"queue=" + queue +
+					", bufferSize=" + bufferSize +
+					", done=" + done +
+					", outstanding=" + outstanding +
+					", subscription=" + subscription +
+					'}';
 		}
 	}
 

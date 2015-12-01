@@ -69,7 +69,8 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <T> Publisher<T> from(final Iterable<? extends T> defaultValues) {
-		ForEachSequencer.IterableSequencer<T> iterablePublisher = new ForEachSequencer.IterableSequencer<>(defaultValues);
+		ForEachSequencer.IterableSequencer<T> iterablePublisher =
+				new ForEachSequencer.IterableSequencer<>(defaultValues);
 		return create(iterablePublisher, iterablePublisher);
 	}
 
@@ -80,7 +81,11 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <T> Publisher<T> from(final Iterator<? extends T> defaultValues) {
-		ForEachSequencer.IteratorSequencer<T> iteratorPublisher = new ForEachSequencer.IteratorSequencer<>(defaultValues);
+		if(defaultValues == null || !defaultValues.hasNext()){
+			return empty();
+		}
+		ForEachSequencer.IteratorSequencer<T> iteratorPublisher =
+				new ForEachSequencer.IteratorSequencer<>(defaultValues);
 		return create(iteratorPublisher, iteratorPublisher);
 	}
 
@@ -111,14 +116,14 @@ public final class Publishers extends PublisherFactory {
 	@SuppressWarnings("unchecked")
 	public static <IN> Publisher<IN> convert(Object source) {
 
-		if(Publisher.class.isAssignableFrom(source.getClass())){
-			return (Publisher<IN>)source;
+		if (Publisher.class.isAssignableFrom(source.getClass())) {
+			return (Publisher<IN>) source;
 		}
-		else if(Iterable.class.isAssignableFrom(source.getClass())){
-			return from((Iterable<IN>)source);
+		else if (Iterable.class.isAssignableFrom(source.getClass())) {
+			return from((Iterable<IN>) source);
 		}
-		else if(Iterator.class.isAssignableFrom(source.getClass())){
-			return from((Iterator<IN>)source);
+		else if (Iterator.class.isAssignableFrom(source.getClass())) {
+			return from((Iterator<IN>) source);
 		}
 		else {
 			return (Publisher<IN>) DependencyUtils.convertToPublisher(source);
@@ -134,15 +139,13 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> T convert(Publisher<?> source, Class<T> to) {
-		if(Publisher.class.isAssignableFrom(to.getClass())){
-			return (T)source;
+		if (Publisher.class.isAssignableFrom(to.getClass())) {
+			return (T) source;
 		}
 		else {
 			return DependencyUtils.convertFromPublisher(source, to);
 		}
 	}
-
-
 
 	/**
 	 * @param <IN>
@@ -154,21 +157,20 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
-	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward
-	 * or filter the data by calling or not the right operand {@link Subscriber}.
+	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
+	 * or not the right operand {@link Subscriber}.
 	 * @param transformer A {@link Function} that transforms each emitting sequence item
 	 * @param <I> The source type of the data sequence
 	 * @param <O> The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> map(Publisher<I> source,
-			final Function<? super I, ? extends O> transformer) {
+	public static <I, O> Publisher<O> map(Publisher<I> source, final Function<? super I, ? extends O> transformer) {
 		return lift(source, new MapOperator<>(transformer));
 	}
 
 	/**
-	 * Intercept a source
-	 * {@link Publisher} onNext signal to eventually timestamp to the right operand {@link Subscriber}.
+	 * Intercept a source {@link Publisher} onNext signal to eventually timestamp to the right operand {@link
+	 * Subscriber}.
 	 * @param <I> The source type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
@@ -182,8 +184,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> merge(
-			Publisher<? extends Publisher<? extends I>> source) {
+	public static <I> Publisher<I> merge(Publisher<? extends Publisher<? extends I>> source) {
 		return flatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
 	}
 
@@ -192,8 +193,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> merge(
-			Publisher<? extends I> source1, Publisher<? extends I> source2) {
+	public static <I> Publisher<I> merge(Publisher<? extends I> source1, Publisher<? extends I> source2) {
 		return flatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
 	}
 
@@ -202,8 +202,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> concat(
-			Publisher<? extends Publisher<? extends I>> source) {
+	public static <I> Publisher<I> concat(Publisher<? extends Publisher<? extends I>> source) {
 		return concatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
 	}
 
@@ -212,8 +211,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> concat(
-			Publisher<? extends I> source1, Publisher<? extends I> source2) {
+	public static <I> Publisher<I> concat(Publisher<? extends I> source1, Publisher<? extends I> source2) {
 		return concatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
 	}
 
@@ -237,8 +235,7 @@ public final class Publishers extends PublisherFactory {
 				return error(e);
 			}
 		}
-		return lift(source,
-				new FlatMapOperator(transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32));
+		return lift(source, new FlatMapOperator(transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32));
 	}
 
 	/**
@@ -274,9 +271,12 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T1, T2> Publisher<Tuple2<T1, T2>> zip(
-			Publisher<? extends T1> source1, Publisher<? extends T2> source2) {
+			Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2) {
 
-		return zip(new Publisher[]{source1, source2}, (Function<Tuple2<T1, T2>, Tuple2<T1, T2>>)IDENTITY_FUNCTION);
+		return lift(just(new Publisher[]{source1, source2}),
+				new ZipOperator<>((Function<Tuple2<T1, T2>, Tuple2<T1, T2>>) IDENTITY_FUNCTION,
+						BaseProcessor.XS_BUFFER_SIZE));
 	}
 
 	/**
@@ -290,15 +290,15 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <T1, T2, O> Publisher<O> zip(
-			Publisher<? extends T1> source1, Publisher<? extends T2> source2,
+			Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
 			final BiFunction<? super T1, ? super T2, ? extends O> combinator) {
-
-		return zip(new Publisher[]{source1, source2}, new Function<Tuple2<T1, T2>, O>() {
+		return lift(just(new Publisher[]{source1, source2}), new ZipOperator<>(new Function<Tuple2<T1, T2>, O>() {
 			@Override
 			public O apply(Tuple2<T1, T2> tuple) {
 				return combinator.apply(tuple.getT1(), tuple.getT2());
 			}
-		});
+		}, BaseProcessor.XS_BUFFER_SIZE));
 	}
 
 	/**
@@ -310,39 +310,10 @@ public final class Publishers extends PublisherFactory {
 	public static Publisher<Tuple> zip(Iterable<? extends Publisher<?>> sources) {
 
 		List<Publisher<?>> publishers = new ArrayList<>();
-		for(Publisher<?> p : sources){
+		for (Publisher<?> p : sources) {
 			publishers.add(p);
 		}
 
-		return zip(publishers.toArray(new Publisher[publishers.size()]), IDENTITY_FUNCTION);
-	}
-
-	/**
-	 *
-	 * @param sources
-	 * @param combinator
-	 * @param <TUPLE>
-	 * @param <O>
-	 * @return
-	 */
-	public static <TUPLE extends Tuple, O> Publisher<O> zip(
-			Iterable<? extends Publisher<?>> sources, final Function<? super TUPLE, ? extends O> combinator) {
-
-		List<Publisher<?>> publishers = new ArrayList<>();
-		for(Publisher<?> p : sources){
-			publishers.add(p);
-		}
-
-		return zip(publishers.toArray(new Publisher[publishers.size()]), combinator);
-	}
-
-	/**
-	 *
-	 * @param sources
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	public static Publisher<Tuple> zip(Publisher[] sources) {
 		return zip(sources, IDENTITY_FUNCTION);
 	}
 
@@ -356,34 +327,50 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <TUPLE extends Tuple, O> Publisher<O> zip(
-			Publisher[] sources, final Function<? super TUPLE, ? extends O> combinator) {
+			Iterable<? extends Publisher<?>> sources,
+			final Function<? super TUPLE, ? extends O> combinator) {
 
-		if(sources == null || sources.length == 0){
+		if (sources == null) {
 			return empty();
 		}
 
-		if(sources.length == 1){
-			return map(sources[0], new Function<Object, O>() {
-				@Override
-				public O apply(Object o) {
-					return combinator.apply((TUPLE)Tuple.of(o));
-				}
-			});
+		Iterator<? extends Publisher<?>> it = sources.iterator();
+		if (!it.hasNext()) {
+			return empty();
 		}
 
-		return lift(just(sources), new ZipOperator<>(combinator, BaseProcessor.SMALL_BUFFER_SIZE / 2));
+		List<Publisher<?>> list = null;
+		Publisher<?> p;
+		do {
+			p = it.next();
+			if (list == null) {
+				if (it.hasNext()) {
+					list = new ArrayList<>();
+				}
+				else {
+					return map(p, new Function<Object, O>() {
+						@Override
+						public O apply(Object o) {
+							return combinator.apply((TUPLE) Tuple.of(o));
+						}
+					});
+				}
+			}
+			list.add(p);
+		}
+		while (it.hasNext());
+
+		return lift(just(list.toArray(new Publisher[list.size()])),
+				new ZipOperator<>(combinator, BaseProcessor.XS_BUFFER_SIZE));
 	}
 
 	/**
-	 * Ignore sequence data (onNext) but bridge all other events:
-	 * - downstream: onSubscribe, onComplete, onError
-	 * - upstream: request, cancel
+	 * Ignore sequence data (onNext) but bridge all other events: - downstream: onSubscribe, onComplete, onError -
+	 * upstream: request, cancel
 	 *
-	 * This useful to acknowledge the completion of a data sequence and trigger further
-	 *  processing using for instance {@link #concat(Publisher)}.
-	 *
+	 * This useful to acknowledge the completion of a data sequence and trigger further processing using for instance
+	 * {@link #concat(Publisher)}.
 	 * @param source the emitted sequence to filter
-	 *
 	 * @return a new filtered {@link Publisher<Void>}
 	 */
 	@SuppressWarnings("unchecked")
@@ -411,21 +398,24 @@ public final class Publishers extends PublisherFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> BlockingQueue<IN> toReadQueue(Publisher<IN> source, int size,
+	public static <IN> BlockingQueue<IN> toReadQueue(Publisher<IN> source,
+			int size,
 			boolean cancelAfterFirstRequestComplete) {
-		return toReadQueue(source, size, cancelAfterFirstRequestComplete,
-				size == Integer.MAX_VALUE ? new ConcurrentLinkedQueue<IN>() :
-						new ArrayBlockingQueue<IN>(size));
+		return toReadQueue(source,
+				size,
+				cancelAfterFirstRequestComplete,
+				size == Integer.MAX_VALUE ? new ConcurrentLinkedQueue<IN>() : new ArrayBlockingQueue<IN>(size));
 	}
 
 	/**
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> BlockingQueue<IN> toReadQueue(Publisher<IN> source, int size,
-			boolean cancelAfterFirstRequestComplete, Queue<IN> store) {
-		return new BlockingQueueSubscriber<>(source, null, store,
-				cancelAfterFirstRequestComplete, size);
+	public static <IN> BlockingQueue<IN> toReadQueue(Publisher<IN> source,
+			int size,
+			boolean cancelAfterFirstRequestComplete,
+			Queue<IN> store) {
+		return new BlockingQueueSubscriber<>(source, null, store, cancelAfterFirstRequestComplete, size);
 	}
 
 	/**
@@ -446,6 +436,7 @@ public final class Publishers extends PublisherFactory {
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
 		return log(publisher, category, LogOperator.ALL);
 	}
+
 	/**
 	 * @param publisher
 	 * @param category
@@ -458,12 +449,10 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
-	 * Monitor the most recent value of this publisher sequence to be returned by {@link
-	 * Supplier#get}
+	 * Monitor the most recent value of this publisher sequence to be returned by {@link Supplier#get}
 	 * @param publisher the sequence to monitor
 	 * @param <IN> the sequence type
-	 * @return a new {@link Supplier} tapping into publisher (requesting an unbounded
-	 * demand of Long.MAX_VALUE)
+	 * @return a new {@link Supplier} tapping into publisher (requesting an unbounded demand of Long.MAX_VALUE)
 	 */
 	public static <IN> Supplier<IN> tap(Publisher<IN> publisher) {
 		Tap<IN> tap = Tap.create();
@@ -472,12 +461,12 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
-	 * A marker interface for components responsible for augmenting subscribers with features
-	 * {@link #lift(Publisher, Function)}
-	 * @param <I>
-	 * @param <O>
+	 * A marker interface for components responsible for augmenting subscribers with features {@link #lift(Publisher,
+	 * Function)}
 	 */
-	public interface Operator<I, O> extends Function<Subscriber<? super O>, Subscriber<? super I>>{}
+	public interface Operator<I, O> extends Function<Subscriber<? super O>, Subscriber<? super I>> {
+
+	}
 
 	private static final NeverPublisher<?> NEVER = new NeverPublisher<>();
 

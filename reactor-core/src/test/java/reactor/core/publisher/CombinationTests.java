@@ -33,6 +33,7 @@ import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.publisher.operator.LogOperator;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
@@ -235,25 +236,27 @@ public class CombinationTests {
 		awaitLatch(p, latch);
 	}
 
-
 	@Test
 	public void sampleZipTest3() throws Exception {
 		int elements = 1;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 		Processor<SensorData, SensorData> sensorDataProcessor = Processors.<SensorData>singleGroup().get();
 
-		Publisher<SensorData> p = Publishers.log(sensorDataProcessor, "zip3" );
+		sensorDataProcessor.subscribe(Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch.countDown()));
 
-		Publishers.zip(Publishers.just(new SensorData(2L, 12.0f)), Publishers.just(new SensorData(1L, 14.0f)),
-				this::computeMin).subscribe(sensorDataProcessor);
-		generateData(elements);
+		Publishers.log(Publishers.zip(Publishers.just(new SensorData(2L, 12.0f)),
+				Publishers.just(new SensorData(1L, 14.0f)),
+				this::computeMin), "zip3", LogOperator.ON_COMPLETE)
+		          .subscribe(sensorDataProcessor);
 
-		awaitLatch(p, latch);
+		awaitLatch(null, latch);
 	}
 
 	@SuppressWarnings("unchecked")
 	private void awaitLatch(Publisher<SensorData> tail, CountDownLatch latch) throws Exception {
-		tail.subscribe(Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch.countDown()));
+		if (tail != null) {
+			tail.subscribe(Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch.countDown()));
+		}
 		if (!latch.await(10, TimeUnit.SECONDS)) {
 			throw new Exception("Never completed: (" + latch.getCount() + ") ");
 		}
