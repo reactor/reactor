@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.core.subscriber;
+package reactor.core.subscriber.test;
 
 import reactor.io.buffer.Buffer;
 

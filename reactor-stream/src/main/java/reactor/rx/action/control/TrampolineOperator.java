@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.publisher.operator;
+package reactor.rx.action.control;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Function;
 
@@ -33,6 +35,11 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 public final class TrampolineOperator<IN> implements Function<Subscriber<? super IN>, Subscriber<? super IN>> {
 
 	public static final TrampolineOperator INSTANCE = new TrampolineOperator();
+
+	@SuppressWarnings("unchecked")
+	public static <IN> Publisher<IN> create(Publisher<IN> p){
+		return Publishers.lift(p, INSTANCE);
+	}
 
 	@Override
 	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {

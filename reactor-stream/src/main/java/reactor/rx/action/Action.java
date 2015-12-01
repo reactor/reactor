@@ -38,7 +38,6 @@ import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.Stream;
-import reactor.rx.action.combination.FanInAction;
 import reactor.rx.subscription.FanOutSubscription;
 import reactor.rx.subscription.PushSubscription;
 import reactor.rx.subscription.ReactiveSubscription;
@@ -370,10 +369,7 @@ public abstract class Action<I, O> extends Stream<O>
 
 		while ((next = findNextAction(traversed, clazz)) != null && next != last) {
 			last = next;
-			if (FanInAction.class.isAssignableFrom(next.getClass()) && ((FanInAction) next).dynamicMergeAction() !=
-			  null) {
-				traversed = ((FanInAction) next).dynamicMergeAction();
-			} else if (Publishable.class.isAssignableFrom(next.getClass())) {
+			if (Publishable.class.isAssignableFrom(next.getClass())) {
 				traversed = (Publishable) next;
 			} else {
 				break;
@@ -409,7 +405,8 @@ public abstract class Action<I, O> extends Stream<O>
 	 * @return current child {@link reactor.rx.subscription.PushSubscription}
 	 */
 	public final PushSubscription<O> downstreamSubscription() {
-		return downstreamSubscription;
+		//return downstreamSubscription;
+		return null;
 	}
 
 	/**
@@ -417,32 +414,6 @@ public abstract class Action<I, O> extends Stream<O>
 	 * INTERNALS
 	 * --------------------------------------------------------------------------------------------------------
 	 */
-
-	@Override
-	public boolean cancelSubscription(final PushSubscription<O> subscription) {
-		if (this.downstreamSubscription == null){
-			cancel();
-			return false;
-		}
-
-		if (subscription == this.downstreamSubscription) {
-			this.downstreamSubscription = null;
-			cancel();
-			return true;
-		} else {
-			PushSubscription<O> dsub = this.downstreamSubscription;
-			if (FanOutSubscription.class.isAssignableFrom(dsub.getClass())) {
-				FanOutSubscription<O> fsub =
-				  ((FanOutSubscription<O>) this.downstreamSubscription);
-
-				if (fsub.remove(subscription) && fsub.isEmpty()) {
-					cancel();
-					return true;
-				}
-			}
-			return false;
-		}
-	}
 
 	protected PushSubscription<O> createSubscription(final Subscriber<? super O> subscriber, boolean reactivePull) {
 		return createSubscription(subscriber, reactivePull ? new ConcurrentLinkedQueue<O>() : null);

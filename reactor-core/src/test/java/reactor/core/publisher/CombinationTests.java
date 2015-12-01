@@ -83,7 +83,8 @@ public class CombinationTests {
 	public void tesSubmitSession() throws Exception {
 		BaseProcessor<Integer, Integer> processor = Processors.emitter();
 		AtomicInteger count = new AtomicInteger();
-		processor.process(Processors.ioGroup().get())
+		processor.process(Processors.ioGroup()
+		                            .get())
 		         .subscribe(Subscribers.create(s -> {
 			         try {
 				         Thread.sleep(1000);
@@ -135,7 +136,8 @@ public class CombinationTests {
 		ReactiveSession<Integer> session = processor.startSession();
 
 		for (int i = 0; i < n; i++) {
-			while (!session.emit(i).isOk()) {
+			while (!session.emit(i)
+			               .isOk()) {
 				//System.out.println(emission);
 				if (session.hasFailed()) {
 					session.getError()
@@ -178,10 +180,7 @@ public class CombinationTests {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Publisher<SensorData> p = Publishers.log(
-				Publishers.merge(sensorOdd(), sensorEven()),
-				"merge"
-		);
+		Publisher<SensorData> p = Publishers.log(Publishers.merge(sensorOdd(), sensorEven()), "merge");
 
 		generateData(elements);
 
@@ -202,10 +201,7 @@ public class CombinationTests {
 
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Publisher<SensorData> p = Publishers.log(
-				Publishers.concat(sensorEven(), sensorOdd()),
-				"concat"
-		);
+		Publisher<SensorData> p = Publishers.log(Publishers.concat(sensorEven(), sensorOdd()), "concat");
 
 		//System.out.println(tail.debug());
 		generateData(elements);
@@ -213,28 +209,12 @@ public class CombinationTests {
 		awaitLatch(p, latch);
 	}
 
-	/*@Test
-	public void sampleCombineLatestTest() throws Exception {
-		int elements = 40;
-		CountDownLatch latch = new CountDownLatch(elements / 2 + 1);
-
-		Control tail = Streams.combineLatest(sensorOdd(), sensorEven(), this::computeMin)
-		                      .log("combineLatest")
-		                      .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
-
-		generateData(elements);
-
-		awaitLatch(tail, latch);
-	}*/
-
 	@Test
 	public void sampleZipTest() throws Exception {
 		int elements = 69;
 		CountDownLatch latch = new CountDownLatch((elements / 2) + 1);
 
-		Publisher<SensorData> p = Publishers.log(
-				Publishers.zip(sensorEven(), sensorOdd(), this::computeMin)
-		                      , "zip");
+		Publisher<SensorData> p = Publishers.log(Publishers.zip(sensorEven(), sensorOdd(), this::computeMin), "zip");
 
 		generateData(elements);
 
@@ -246,9 +226,9 @@ public class CombinationTests {
 		int elements = 1;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Publisher<SensorData> p = Publishers.log(
-				Publishers.zip(sensorEven(), Publishers.just(new SensorData(1L, 14.0f)), this::computeMin)
-		                      , "zip");
+		Publisher<SensorData> p = Publishers.log(Publishers.zip(sensorEven(),
+				Publishers.just(new SensorData(1L, 14.0f)),
+				this::computeMin), "zip");
 
 		generateData(elements);
 

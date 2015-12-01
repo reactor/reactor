@@ -15,21 +15,21 @@
  */
 package reactor.rx;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.support.Publishable;
 import reactor.core.support.Subscribable;
 import reactor.fn.Consumer;
-import reactor.rx.action.combination.DynamicMergeAction;
-import reactor.rx.action.combination.FanInAction;
-import reactor.rx.action.combination.FanInSubscription;
 import reactor.rx.stream.GroupedStream;
-import reactor.rx.subscription.FanOutSubscription;
-import reactor.rx.subscription.PushSubscription;
-
-import java.io.Serializable;
-import java.util.*;
 
 /**
  * A simple collection of utils to assist in various tasks such as Debugging
@@ -175,11 +175,11 @@ public abstract class StreamUtils {
 				debugVisitor.d -= 2;
 			}
 
-			nextLevelNestedStreams = new ArrayList<Object>();
+			/*nextLevelNestedStreams = new ArrayList<Object>();
 			loopSubscriptions(
 			  composable.downstreamSubscription(),
 			  nextLevelNestedStreams
-			);
+			);*/
 
 			if (!nextLevelNestedStreams.isEmpty()) {
 				freshNestedStreams.put("to", nextLevelNestedStreams);
@@ -195,15 +195,15 @@ public abstract class StreamUtils {
 		private <E extends Subscription> void loopSubscriptions(E operation, final List<Object> streamTree) {
 			if (operation == null) return;
 
-			final boolean multicast = FanOutSubscription.class.isAssignableFrom(operation.getClass());
+			final boolean multicast = false; //FanOutSubscription.class.isAssignableFrom(operation.getClass());
 
 			Consumer<E> procedure = new Consumer<E>() {
 				@Override
 				public void accept(E registration) {
 					Subscriber<?> subscriber = null;
-					if (PushSubscription.class.isAssignableFrom(registration.getClass())) {
+					/*if (PushSubscription.class.isAssignableFrom(registration.getClass())) {
 						subscriber = ((PushSubscription<?>) registration).getSubscriber();
-					}
+					}*/
 					Subscriber<?> unproxy = subscriber;
 					while (unproxy != null && Subscribable.class.isAssignableFrom(unproxy.getClass())) {
 						subscriber = unproxy;
@@ -254,7 +254,7 @@ public abstract class StreamUtils {
 			};
 
 			if (multicast) {
-				((FanOutSubscription) operation).forEach(procedure);
+				//((FanOutSubscription) operation).forEach(procedure);
 			} else {
 				procedure.accept(operation);
 			}
@@ -299,11 +299,11 @@ public abstract class StreamUtils {
 
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderDynamicMerge(Stream<O> consumer, final List<Object> streamTree) {
-			if (DynamicMergeAction.class.isAssignableFrom(consumer.getClass())) {
+			/*if (DynamicMergeAction.class.isAssignableFrom(consumer.getClass())) {
 				DynamicMergeAction<?, O> operation = (DynamicMergeAction<?, O>) consumer;
 				parseComposable(operation.mergedStream(), streamTree);
 				return true;
-			}
+			}*/
 			return false;
 		}
 
@@ -334,7 +334,7 @@ public abstract class StreamUtils {
 
 		@SuppressWarnings("unchecked")
 		private <O> boolean renderMerge(Stream<O> consumer, final List<Object> streamTree) {
-			if (FanInAction.class.isAssignableFrom(consumer.getClass())) {
+			/*if (FanInAction.class.isAssignableFrom(consumer.getClass())) {
 				FanInAction operation = (FanInAction) consumer;
 				operation.getSubscription().forEach(
 				  new Consumer<FanInSubscription.InnerSubscription>() {
@@ -355,7 +355,7 @@ public abstract class StreamUtils {
 					  }
 				  });
 				return true;
-			}
+			}*/
 			return false;
 		}
 

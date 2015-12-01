@@ -55,9 +55,9 @@ import reactor.fn.tuple.Tuple6;
 import reactor.fn.tuple.Tuple7;
 import reactor.fn.tuple.Tuple8;
 import reactor.rx.action.StreamProcessor;
-import reactor.rx.action.combination.CombineLatestAction;
-import reactor.rx.action.combination.DynamicMergeAction;
+import reactor.rx.action.combination.CombineLatestOperator;
 import reactor.rx.action.combination.SwitchOperator;
+import reactor.rx.action.control.TrampolineOperator;
 import reactor.rx.stream.DeferredStream;
 import reactor.rx.stream.ErrorStream;
 import reactor.rx.stream.FutureStream;
@@ -1207,8 +1207,14 @@ public class Streams {
 	 */
 	public static <T1, T2, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
 	                                                  Publisher<? extends T2> source2,
-	                                                  Function<Tuple2<T1, T2>, ? extends V> combinator) {
-		return combineLatest(Arrays.asList(source1, source2), combinator);
+	                                                  final BiFunction<? super T1, ? super T2, ? extends V>
+			                                                  combinator) {
+		return combineLatest(Arrays.asList(source1, source2), new Function<Tuple2<T1, T2>, V>() {
+			@Override
+			public V apply(Tuple2<T1, T2> tuple) {
+				return combinator.apply(tuple.getT1(), tuple.getT2());
+			}
+		});
 	}
 
 	/**
@@ -1428,9 +1434,25 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static <TUPLE extends Tuple, V> Stream<V> combineLatest(List<? extends Publisher<?>> sources,
-	                                                               Function<TUPLE, ? extends V> combinator) {
-		return new CombineLatestAction<>(combinator, sources);
+	                                                               final Function<? super TUPLE, ? extends V>
+			                                                               combinator) {
+		int n = sources != null ? sources.size() : 0;
+		if(n == 0){
+			return empty();
+		}
+		if(n == 1){
+			return wrap(sources.get(0)).map(new Function<Object, V>() {
+				@Override
+				public V apply(Object o) {
+					return combinator.apply((TUPLE)Tuple.of(o));
+				}
+			});
+		}
+		return lift(just(sources.toArray(new Publisher[sources.size()])), new CombineLatestOperator<>(combinator,
+				BaseProcessor
+				.SMALL_BUFFER_SIZE	/ 2));
 	}
 
 	/**
@@ -1443,20 +1465,19 @@ public class Streams {
 	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
 	 *                   value to signal downstream
 	 * @param <V>        The produced output after transformation by {@param combinator}
-	 * @param <E>        The inner type of {@param source}
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <E, TUPLE extends Tuple, V> Stream<V> combineLatest(
-	  Publisher<? extends Publisher<E>> sources,
-	  Function<TUPLE, ? extends V> combinator) {
-		final DynamicMergeAction<E, V> mergeAction = new DynamicMergeAction<E, V>(
-		  new CombineLatestAction<E, V, TUPLE>(combinator, null)
-		);
-
-		sources.subscribe(mergeAction);
-
-		return mergeAction;
+	@SuppressWarnings("unchecked")
+	public static <TUPLE extends Tuple, V> Stream<V> combineLatest(
+	  Publisher<? extends Publisher<?>> sources,
+	  Function<? super TUPLE, ? extends V> combinator) {
+		return wrap(sources).buffer().map(new Function<List<? extends Publisher<?>>, Publisher[]>() {
+			@Override
+			public Publisher[] apply(List<? extends Publisher<?>> publishers) {
+				return publishers.toArray(new Publisher[publishers.size()]);
+			}
+		}).lift(new CombineLatestOperator<>(combinator, BaseProcessor.SMALL_BUFFER_SIZE / 2));
 	}
 
 	/**
@@ -2018,4 +2039,14 @@ public class Streams {
 			}
 		}
 	};
+
+	/**
+	 * @param publisher
+	 * @param <IN>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher) {
+		return lift(publisher, TrampolineOperator.INSTANCE);
+	}
 }

@@ -16,13 +16,21 @@
 
 package reactor;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.ForEachSequencer;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.operator.TrampolineOperator;
 import reactor.core.publisher.ValuePublisher;
 import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.publisher.operator.FlatMapOperator;
@@ -38,15 +46,6 @@ import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * @author Stephane Maldini
@@ -451,16 +450,6 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, int options) {
 		return lift(publisher, new LogOperator<IN>(category, options));
-	}
-
-	/**
-	 * @param publisher
-	 * @param <IN>
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher) {
-		return lift(publisher, TrampolineOperator.INSTANCE);
 	}
 
 	/**

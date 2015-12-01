@@ -42,7 +42,7 @@ public final class RepeatWhenOperator<T> implements Publishers.Operator<T, T> {
 			Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
 			Publisher<? extends T> rootPublisher) {
 
-		this.rootPublisher = rootPublisher != null ? Publishers.trampoline(rootPublisher) : null;
+		this.rootPublisher = rootPublisher != null ? TrampolineOperator.create(rootPublisher) : null;
 		this.predicate = predicate;
 		this.timer = timer;
 	}

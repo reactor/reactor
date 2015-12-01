@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package reactor.core.publisher.operator;
+package reactor.rx.action.combination;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -28,16 +26,13 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.rb.disruptor.RingBuffer;
-import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
-import reactor.core.support.Subscribable;
 import reactor.core.support.internal.PlatformDependent;
-import reactor.fn.BiFunction;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
@@ -47,43 +42,23 @@ import reactor.fn.tuple.Tuple;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class ZipOperator<TUPLE extends Tuple, V>
+public final class CombineLatestOperator<TUPLE extends Tuple, V>
 		implements Function<Subscriber<? super V>, Subscriber<? super Publisher[]>> {
-
-	/**
-	 *
-	 */
-	public static final Function JOIN_FUNCTION = new Function<Tuple, List>() {
-		@Override
-		public List<?> apply(Tuple ts) {
-			return Arrays.asList(ts.toArray());
-		}
-	};
-
-	/**
-	 *
-	 */
-	public static final BiFunction JOIN_BIFUNCTION = new BiFunction<Object, Object, List>() {
-		@Override
-		public List<?> apply(Object t1, Object t2) {
-			return Arrays.asList(t1, t2);
-		}
-	};
 
 	final Function<? super TUPLE, ? extends V> combinator;
 	final int                                  bufferSize;
 
-	public ZipOperator(final Function<? super TUPLE, ? extends V> combinator, int bufferSize) {
+	public CombineLatestOperator(final Function<? super TUPLE, ? extends V> combinator, int bufferSize) {
 		this.combinator = combinator;
 		this.bufferSize = bufferSize;
 	}
 
 	@Override
 	public Subscriber<? super Publisher[]> apply(Subscriber<? super V> t) {
-		return new ZipBarrier<>(t, combinator, bufferSize);
+		return new CombineLatestAction<>(t, combinator, bufferSize);
 	}
 
-	static final class ZipBarrier<TUPLE extends Tuple, V> extends SubscriberWithDemand<Publisher[], V> {
+	static final class CombineLatestAction<TUPLE extends Tuple, V> extends SubscriberWithDemand<Publisher[], V> {
 
 		final Function<? super TUPLE, ? extends V> combinator;
 		final int                                  bufferSize;
@@ -95,20 +70,32 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		private volatile boolean cancelled;
 
 		@SuppressWarnings("rawtypes")
-		static final AtomicReferenceFieldUpdater<ZipBarrier, Throwable> ERROR =
-				PlatformDependent.newAtomicReferenceFieldUpdater(ZipBarrier.class, "error");
+		static final AtomicReferenceFieldUpdater<CombineLatestAction, Throwable> ERROR =
+				PlatformDependent.newAtomicReferenceFieldUpdater(CombineLatestAction.class, "error");
 
-		private ZipState<?>[] subscribers;
+		private InnerSubscriber<?>[] subscribers;
 
 		@SuppressWarnings("unused")
 		private volatile int running;
 		@SuppressWarnings("rawtypes")
-		static final AtomicIntegerFieldUpdater<ZipBarrier> RUNNING =
-				AtomicIntegerFieldUpdater.newUpdater(ZipBarrier.class, "running");
+		static final AtomicIntegerFieldUpdater<CombineLatestAction> RUNNING =
+				AtomicIntegerFieldUpdater.newUpdater(CombineLatestAction.class, "running");
+
+		@SuppressWarnings("unused")
+		private volatile int started;
+		@SuppressWarnings("rawtypes")
+		static final AtomicIntegerFieldUpdater<CombineLatestAction> STARTED =
+				AtomicIntegerFieldUpdater.newUpdater(CombineLatestAction.class, "started");
+
+		@SuppressWarnings("unused")
+		volatile int completed;
+		final static AtomicIntegerFieldUpdater<CombineLatestAction> WIP_COMPLETED =
+				AtomicIntegerFieldUpdater.newUpdater(CombineLatestAction.class, "completed");
 
 		Object[] valueCache;
+		boolean completeTuple = false;
 
-		public ZipBarrier(Subscriber<? super V> actual,
+		public CombineLatestAction(Subscriber<? super V> actual,
 				Function<? super TUPLE, ? extends V> combinator,
 				int bufferSize) {
 			super(actual);
@@ -129,43 +116,55 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 			if (TERMINATED.compareAndSet(this, NOT_TERMINATED, TERMINATED_WITH_SUCCESS)) {
 				checkedCancel();
 
-				if (sources.length == 0) {
+				int n = sources.length;
+				if (n == 0) {
 					subscriber.onComplete();
 					return;
 				}
 
-				subscribers = new ZipState[sources.length];
-				valueCache = new Object[sources.length];
+				subscribers = new InnerSubscriber[n];
+				completed = n;
+				valueCache = new Object[n];
 
 				int i;
-				ZipState<?> inner;
-				Publisher pub;
-				for (i = 0; i < sources.length; i++) {
-					pub = sources[i];
-					if (pub instanceof Supplier) {
-						inner = new ScalarState(((Supplier<?>) pub).get());
-						subscribers[i] = inner;
-						sources[i] = null;
-					}
-					else {
-						inner = new BufferSubscriber(this);
-						subscribers[i] = inner;
+				InnerSubscriber<?> inner;
+				for (i = 0; i < n; i++) {
+					inner = new InnerSubscriber<>(sources[i], this);
+
+					if (sources[i] instanceof Supplier) {
+						inner.latestValue = ((Supplier<?>) sources[i]).get();
+						inner.done = true;
+						WIP_COMPLETED.decrementAndGet(this);
 					}
 
+					subscribers[i] = inner;
 				}
-				for (i = 0; i < sources.length; i++) {
-					pub = sources[i];
-					if (pub != null) {
-						pub.subscribe(subscribers[i]);
+
+				if (STARTED.get(this) == 1) {
+					for (i = 0; i < n; i++) {
+						if (!(sources[i] instanceof Supplier)) {
+							sources[i].subscribe(subscribers[i]);
+						}
 					}
 				}
 			}
 		}
 
 		@Override
+		@SuppressWarnings("unchecked")
 		protected void doRequest(long n) {
 			BackpressureUtils.getAndAdd(REQUESTED, this, n);
-			drain();
+			InnerSubscriber[] subscribers = this.subscribers;
+			if (STARTED.compareAndSet(this, 0, 1)) {
+				if (subscribers != null) {
+					for (int i = 0; i < subscribers.length; i++) {
+						if (!(subscribers[i].upstream instanceof Supplier)) {
+							subscribers[i].upstream.subscribe(subscribers[i]);
+						}
+					}
+				}
+				drain();
+			}
 		}
 
 		@Override
@@ -181,7 +180,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 		@Override
 		protected void checkedComplete() {
-			ZipState[] s = subscribers;
+			InnerSubscriber[] s = subscribers;
 			if (s == null || s.length == 0) {
 				if (RUNNING.getAndIncrement(this) == 0) {
 					subscriber.onComplete();
@@ -203,7 +202,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		void drain() {
-			ZipState[] subscribers = this.subscribers;
+			InnerSubscriber[] subscribers = this.subscribers;
 			if (subscribers == null) {
 				return;
 			}
@@ -213,7 +212,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		@SuppressWarnings("unchecked")
-		void drainLoop(ZipState[] inner) {
+		void drainLoop(InnerSubscriber[] inner) {
 
 			final Subscriber<? super V> actual = this.subscriber;
 			int missed = 1;
@@ -226,12 +225,13 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 				int replenishMain = 0;
 				long r = getRequested();
 
-				ZipState<?> state;
+				InnerSubscriber<?> state;
 
 				for (; ; ) {
 
 					final Object[] tuple = valueCache;
 					boolean completeTuple = true;
+					boolean updated = false;
 					int i;
 					for (i = 0; i < n; i++) {
 						state = inner[i];
@@ -239,9 +239,8 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 						Object next = state.readNext();
 
 						if (next == null) {
-							if (state.isTerminated()) {
+							if (state.isTerminated() && WIP_COMPLETED.get(this) == 0) {
 								actual.onComplete();
-								cancelStates();
 								return;
 							}
 
@@ -249,9 +248,15 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 							continue;
 						}
 
-						if(r != 0) {
-							tuple[i] = next;
-						}
+						tuple[i] = next;
+						updated = true;
+					}
+
+					if (completeTuple) {
+						this.completeTuple = true;
+					}
+					else if (this.completeTuple) {
+						completeTuple = updated;
 					}
 
 					if (r != 0 && completeTuple) {
@@ -263,7 +268,6 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 							replenishMain++;
 						}
 						catch (Throwable e) {
-							Exceptions.throwIfFatal(e);
 							actual.onError(Exceptions.addValueAsLastCause(e, tuple));
 							return;
 						}
@@ -279,14 +283,11 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 							state = inner[i];
 							state.requestMore();
 
-							if (state.readNext() == null && state.isTerminated()) {
+							if (state.readNext() == null && state.isTerminated() && WIP_COMPLETED.get(this) == 0) {
 								actual.onComplete();
-								cancelStates();
 								return;
 							}
 						}
-
-						valueCache = new Object[n];
 					}
 					else {
 						break;
@@ -305,7 +306,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		void cancelStates() {
-			ZipState[] inner = subscribers;
+			InnerSubscriber[] inner = subscribers;
 			for (int i = 0; i < inner.length; i++) {
 				inner[i].cancel();
 			}
@@ -332,108 +333,29 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 	}
 
-	interface ZipState<V> extends Subscriber<Object> {
+	static final class InnerSubscriber<V> extends BaseSubscriber<Object> implements Bounded, Publishable<Object> {
 
-		V readNext();
+		final CombineLatestAction<?, V> parent;
+		final int                       limit;
+		final int                       bufferSize;
+		final Publisher<Object>         upstream;
 
-		boolean isTerminated();
-
-		void requestMore();
-
-		void cancel();
-	}
-
-	static final class ScalarState implements ZipState<Object> {
-
-		final Object val;
-
-		boolean read = false;
-
-		ScalarState(Object val) {
-			this.val = val;
-		}
-
-		@Override
-		public Object readNext() {
-			return read ? null : val;
-		}
-
-		@Override
-		public boolean isTerminated() {
-			return read;
-		}
-
-		@Override
-		public void onSubscribe(Subscription s) {
-			//IGNORE
-		}
-
-		@Override
-		public void onNext(Object o) {
-			//IGNORE
-		}
-
-		@Override
-		public void onError(Throwable t) {
-			//IGNORE
-		}
-
-		@Override
-		public void onComplete() {
-			//IGNORE
-		}
-
-		@Override
-		public void requestMore() {
-			read = true;
-		}
-
-		@Override
-		public void cancel() {
-			read = true;
-		}
-
-		@Override
-		public String toString() {
-			return "ScalarState{" +
-					"read=" + read +
-					", val=" + val +
-					'}';
-		}
-	}
-
-	static final class BufferSubscriber<V> extends BaseSubscriber<Object> implements Bounded, ZipState<Object>,
-	                                                                                 Publishable<Object>,
-	                                                                                 Subscribable<Publisher[]> {
-
-		final ZipBarrier<?, V> parent;
-		final Queue<Object>    queue;
-		final int              limit;
-		final int              bufferSize;
+		volatile Queue<Object> buffer;
 
 		@SuppressWarnings("unused")
 		volatile Subscription subscription;
-		final static AtomicReferenceFieldUpdater<BufferSubscriber, Subscription> SUBSCRIPTION =
-				PlatformDependent.newAtomicReferenceFieldUpdater(BufferSubscriber.class, "subscription");
+		final static AtomicReferenceFieldUpdater<InnerSubscriber, Subscription> SUBSCRIPTION =
+				PlatformDependent.newAtomicReferenceFieldUpdater(InnerSubscriber.class, "subscription");
 
-		volatile boolean done;
-		int outstanding;
+		boolean done;
+		int     outstanding;
+		Object  latestValue;
 
-		public BufferSubscriber(ZipBarrier<?, V> parent) {
+		public InnerSubscriber(Publisher<Object> root, CombineLatestAction<?, V> parent) {
 			this.parent = parent;
+			this.upstream = root;
+			this.limit = parent.bufferSize >> 2;
 			this.bufferSize = parent.bufferSize;
-			this.limit = bufferSize >> 2;
-			this.queue = RingBuffer.newSequencedQueue(RingBuffer.createSingleProducer(bufferSize));
-		}
-
-		@Override
-		public Publisher<Object> upstream() {
-			return PublisherFactory.fromSubscription(subscription);
-		}
-
-		@Override
-		public Subscriber<? super Publisher[]> downstream() {
-			return parent;
 		}
 
 		@Override
@@ -448,58 +370,80 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		@Override
-		public void onNext(Object x) {
-			super.onNext(x);
-			queue.add(x);
-			try {
-				parent.drain();
+		public void onNext(Object t) {
+			super.onNext(t);
+			if (CombineLatestAction.RUNNING.get(parent) == 0 && CombineLatestAction.RUNNING.compareAndSet(parent,
+					0,
+					1)) {
+				latestValue = t;
+				parent.drainLoop(parent.subscribers);
 			}
-			catch (Throwable t) {
-				Exceptions.throwIfFatal(t);
-				parent.doOnSubscriberError(t);
+			else {
+				Queue<Object> q = buffer;
+				if (q == null) {
+					q = RingBuffer.newSequencedQueue(RingBuffer.createSingleProducer(bufferSize));
+					buffer = q;
+				}
+				q.add(t);
+				parent.drain();
 			}
 		}
 
 		@Override
 		public void onError(Throwable t) {
 			super.onError(t);
-			parent.doOnSubscriberError(t);
+			if (!done) {
+				done = true;
+				parent.onError(t);
+			}
 		}
 
 		@Override
 		public void onComplete() {
-			done = true;
-			parent.drain();
+			if (!done) {
+				done = true;
+				Queue<?> queue = buffer;
+				if ((queue == null || queue.isEmpty()) && CombineLatestAction.WIP_COMPLETED.decrementAndGet(parent) == 0) {
+					parent.drain();
+				}
+			}
 		}
 
-		@Override
-		public Object readNext() {
-			return queue.peek();
+		Object readNext() {
+			if (latestValue == null) {
+				Queue<?> q = buffer;
+				if (q != null) {
+					latestValue = q.poll();
+				}
+			}
+			return latestValue;
 		}
 
-		@Override
-		public boolean isTerminated() {
-			return done && queue.isEmpty();
+		boolean isTerminated() {
+			return done;
 		}
 
-		@Override
-		public void requestMore() {
-			queue.poll();
+		void requestMore() {
+			Queue<?> q = buffer;
+			latestValue = null;
+			if (done) {
+				return;
+			}
+
 			int r = outstanding - 1;
 			if (r > limit) {
 				outstanding = r;
 				return;
 			}
-			outstanding = bufferSize;
-			int k = bufferSize - r;
+			int k = (bufferSize - r) - (q != null ? q.size() : 0);
 			if (k > 0) {
+				outstanding = bufferSize;
 				SUBSCRIPTION.get(this)
 				            .request(k);
 			}
 		}
 
-		@Override
-		public void cancel() {
+		void cancel() {
 			Subscription s = SUBSCRIPTION.get(this);
 			if (s != SignalType.NOOP_SUBSCRIPTION) {
 				s = SUBSCRIPTION.getAndSet(this, SignalType.NOOP_SUBSCRIPTION);
@@ -510,14 +454,21 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		@Override
+		public Publisher<Object> upstream() {
+			return upstream;
+		}
+
+		@Override
 		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return parentPublisher.getCapacity() > bufferSize;
+			return false;
 		}
 
 		@Override
 		public long getCapacity() {
-			return bufferSize;
+			return parent.getCapacity();
 		}
+
+
 	}
 
 }

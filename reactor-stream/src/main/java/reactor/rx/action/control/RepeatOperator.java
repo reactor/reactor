@@ -34,7 +34,7 @@ public final class RepeatOperator<T> implements Publishers.Operator<T, T> {
 
 	public RepeatOperator(int numRetries, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
-		this.rootPublisher = parentStream != null ? Publishers.trampoline(parentStream) : null;
+		this.rootPublisher = parentStream != null ? TrampolineOperator.create(parentStream) : null;
 	}
 
 	@Override

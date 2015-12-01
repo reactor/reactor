@@ -23,6 +23,7 @@ import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.fn.Predicate;
+import reactor.rx.action.control.TrampolineOperator;
 
 /**
  * @author Stephane Maldini
@@ -37,7 +38,7 @@ public final class RetryOperator<T> implements Publishers.Operator<T, T> {
 	public RetryOperator(int numRetries, Predicate<Throwable> predicate, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
 		this.retryMatcher = predicate;
-		this.rootPublisher = parentStream != null ? Publishers.trampoline(parentStream) : null;
+		this.rootPublisher = parentStream != null ? TrampolineOperator.create(parentStream) : null;
 	}
 
 	@Override

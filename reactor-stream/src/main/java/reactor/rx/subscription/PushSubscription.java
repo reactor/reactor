@@ -88,7 +88,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Publis
 	public void cancel() {
 		TERMINAL_UPDATER.set(this, 1);
 		if (publisher != null) {
-			publisher.cancelSubscription(this);
+			//publisher.cancelSubscription(this);
 		}
 	}
 

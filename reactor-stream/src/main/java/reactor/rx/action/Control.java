@@ -39,8 +39,7 @@ public interface Control {
 	void requestAll();
 
 	/**
-	 * Stop consuming signals from upstream. Cancel should not be considered blocking, but usually it happens to be
-	 * rather immediate as it will be updating {@link reactor.rx.subscription.PushSubscription#terminated} flag.
+	 * Stop consuming signals from upstream. Cancel should not be considered blocking.
 	 */
 	void cancel();
 

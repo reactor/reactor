@@ -1326,11 +1326,12 @@ public class StreamTests extends AbstractReactorTest {
 		                                       .dispatchOn(asyncGroup);
 
 		// The following works:
-		List<Stream<Object>> list = Arrays.asList(s1);
+		//List<Stream<Object>> list = Arrays.asList(s1);
 		// The following fails:
-		// List<Stream<Object>> list = Arrays.asList(s1, s2);
+		 List<Stream<Object>> list = Arrays.asList(s1, s2);
 
 		Streams.combineLatest(list, t -> t)
+		       .log()
 		       .observe(obj -> {
 			       ref.set(obj);
 			       phaser.arrive();

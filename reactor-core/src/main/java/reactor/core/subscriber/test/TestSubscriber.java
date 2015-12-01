@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package reactor.core.subscriber;
+package reactor.core.subscriber.test;
 
 import org.reactivestreams.Subscription;
+import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
 import reactor.fn.Supplier;

@@ -26,6 +26,7 @@ import reactor.core.support.Bounded;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
+import reactor.rx.action.control.TrampolineOperator;
 import reactor.rx.broadcast.Broadcaster;
 
 /**
@@ -42,7 +43,7 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 			Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate,
 			Publisher<? extends T> rootPublisher) {
 
-		this.rootPublisher = Publishers.trampoline(rootPublisher);
+		this.rootPublisher = TrampolineOperator.create(rootPublisher);
 		this.predicate = predicate;
 		this.timer = timer;
 	}

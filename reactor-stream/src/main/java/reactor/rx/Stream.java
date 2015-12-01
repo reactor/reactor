@@ -107,8 +107,6 @@ import reactor.rx.action.transformation.MaterializeOperator;
 import reactor.rx.action.transformation.ScanOperator;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.GroupedStream;
-import reactor.rx.stream.LiftStream;
-import reactor.rx.subscription.PushSubscription;
 
 /**
  * Base class for components designed to provide a succinct API for working with future values. Provides base
@@ -138,26 +136,51 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	}
 
 	/**
-	 * Defer the subscription of an {@link Action} to the actual pipeline. Terminal operations such as {@link
-	 * #consume(reactor.fn.Consumer)} will start the subscription chain. It will listen for current Stream signals and
-	 * will be eventually producing signals as well (subscribe,error, complete,next). <p> The action is returned for
-	 * functional-style chaining.
-	 * @param <V> the {@link Stream} output type
-	 * @param action the function to map a provided dispatcher to a fresh Action to subscribe.
-	 * @return the passed action
-	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
-	 * @since 2.0
-	 */
-	public <V> Stream<V> liftAction(@Nonnull final Supplier<? extends Action<O, V>> action) {
-		return new LiftStream<>(this, action);
-	}
-
-	/**
 	 * @see {@link Publishers#lift(Publisher, Function)}
 	 * @since 2.1
 	 */
 	public <V> Stream<V> lift(@Nonnull final Function<Subscriber<? super V>, Subscriber<? super O>> operator) {
 		return Streams.lift(this, operator);
+	}
+
+	/**
+	 * Defer the subscription of an {@link Action} to the actual pipeline. Terminal operations such as {@link
+	 * #consume(reactor.fn.Consumer)} will start the subscription chain. It will listen for current Stream signals and
+	 * will be eventually producing signals as well (subscribe,error, complete,next). <p> The action is returned for
+	 * functional-style chaining.
+	 * @param <V> the {@link reactor.rx.Stream} output type
+	 * @param processorSupplier the function to map a provided dispatcher to a fresh Action to subscribe.
+	 * @return the passed action
+	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
+	 * @since 2.0
+	 */
+	public <V> Stream<V> liftProcess(@Nonnull final Supplier<? extends Processor<O, V>> processorSupplier) {
+		final long capacity = getCapacity();
+
+		return new Stream<V>() {
+
+			@Override
+			public long getCapacity() {
+				return capacity;
+			}
+
+			@Override
+			public Timer getTimer() {
+				return Stream.this.getTimer();
+			}
+
+			@Override
+			public void subscribe(Subscriber<? super V> s) {
+				try {
+					Processor<O, V> processor = processorSupplier.get();
+					processor.subscribe(s);
+					Stream.this.subscribe(processor);
+				}
+				catch (Throwable t) {
+					s.onError(t);
+				}
+			}
+		};
 	}
 
 	/**
@@ -342,46 +365,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 			public void subscribe(Subscriber<? super E> s) {
 				try {
 					processor.subscribe(s);
-				}
-				catch (Throwable t) {
-					s.onError(t);
-				}
-			}
-		};
-	}
-
-	/**
-	 * Defer the subscription of an {@link Action} to the actual pipeline. Terminal operations such as {@link
-	 * #consume(reactor.fn.Consumer)} will start the subscription chain. It will listen for current Stream signals and
-	 * will be eventually producing signals as well (subscribe,error, complete,next). <p> The action is returned for
-	 * functional-style chaining.
-	 * @param <V> the {@link reactor.rx.Stream} output type
-	 * @param processorSupplier the function to map a provided dispatcher to a fresh Action to subscribe.
-	 * @return the passed action
-	 * @see {@link org.reactivestreams.Publisher#subscribe(org.reactivestreams.Subscriber)}
-	 * @since 2.0
-	 */
-	public <V> Stream<V> liftProcess(@Nonnull final Supplier<? extends Processor<O, V>> processorSupplier) {
-		final long capacity = getCapacity();
-
-		return new Stream<V>() {
-
-			@Override
-			public long getCapacity() {
-				return capacity;
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			public void subscribe(Subscriber<? super V> s) {
-				try {
-					Processor<O, V> processor = processorSupplier.get();
-					processor.subscribe(s);
-					Stream.this.subscribe(processor);
 				}
 				catch (Throwable t) {
 					s.onError(t);
@@ -2409,24 +2392,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 		return Timers.globalOrNull();
 	}
 
-	/**
-	 * Get the current action child subscription
-	 * @return current child {@link reactor.rx.subscription.PushSubscription}
-	 */
-	public PushSubscription<O> downstreamSubscription() {
-		return null;
-	}
-
-	/**
-	 * Try cleaning a given subscription from the stream references. Unicast implementation such as IterableStream
-	 * (Streams.from(1,2,3)) or SupplierStream (Streams.generate(-> 1)) won't need to perform any job and as such will
-	 * return @{code false} upon this call. Alternatively, Action and HotStream (Streams.from()) will clean any
-	 * reference to that subscription from their internal registry and might return {@code true} if successful.
-	 * @return current child {@link reactor.rx.subscription.PushSubscription}
-	 */
-	public boolean cancelSubscription(PushSubscription<O> oPushSubscription) {
-		return false;
-	}
 
 	@Override
 	public String toString() {

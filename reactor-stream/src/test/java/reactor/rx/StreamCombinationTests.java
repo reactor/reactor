@@ -154,7 +154,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		awaitLatch(tail, latch);
 	}
-/*
+
 	@Test
 	public void sampleCombineLatestTest() throws Exception {
 		int elements = 40;
@@ -167,7 +167,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		generateData(elements);
 
 		awaitLatch(tail, latch);
-	}*/
+	}
 
 	@Test
 	public void concatWithTest() throws Exception {
