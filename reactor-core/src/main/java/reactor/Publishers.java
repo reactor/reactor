@@ -363,7 +363,12 @@ public final class Publishers extends PublisherFactory {
 		}
 
 		if(sources.length == 1){
-			return map(sources[0], combinator);
+			return map(sources[0], new Function<Object, O>() {
+				@Override
+				public O apply(Object o) {
+					return combinator.apply((TUPLE)Tuple.of(o));
+				}
+			});
 		}
 
 		return lift(just(sources), new ZipOperator<>(combinator, BaseProcessor.SMALL_BUFFER_SIZE / 2));
