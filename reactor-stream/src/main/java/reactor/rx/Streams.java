@@ -1705,9 +1705,15 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <V> Stream<V> zip(List<? extends Publisher<?>> sources,
-	                                                     Function<? super Tuple, ? extends V> combinator) {
-		return wrap(Publishers.zip(sources, combinator));
+	public static <TUPLE extends Tuple, V> Stream<V> zip(List<? extends Publisher<?>> sources,
+	                                                     Function<? super TUPLE, ? extends V> combinator) {
+		return wrap(Publishers.zip(sources, new Function<Tuple, V>() {
+			@Override
+			@SuppressWarnings("unchecked")
+			public V apply(Tuple tuple) {
+				return combinator.apply((TUPLE)tuple);
+			}
+		}));
 	}
 
 	/**
