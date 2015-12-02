@@ -17,9 +17,8 @@ package reactor.core.subscriber;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
-import reactor.core.support.Subscribable;
+import reactor.core.support.ReactiveState;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
@@ -30,7 +29,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Stephane Maldini
  * @since 2.0.2
  */
-public class SubscriberWithContext<T, C> implements Subscriber<T>, Subscribable<T> {
+public class SubscriberWithContext<T, C> implements Subscriber<T>, ReactiveState.Downstream<T> {
 
 	private volatile       int                                              terminated       = 0;
 	protected static final AtomicIntegerFieldUpdater<SubscriberWithContext> TERMINAL_UPDATER =

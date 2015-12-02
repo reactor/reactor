@@ -25,8 +25,7 @@ import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscription.SubscriptionWithContext;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -285,7 +284,7 @@ public abstract class SubscriberFactory {
 	};
 
 	private static final class SubscriberWithSubscriptionContext<T, C> extends BaseSubscriber<T>
-			implements Bounded, Publishable<T> {
+			implements ReactiveState.Bounded, ReactiveState.Upstream<T> {
 
 		protected final Function<Subscription, C>                 subscriptionHandler;
 		protected final BiConsumer<T, SubscriptionWithContext<C>> dataConsumer;
@@ -388,11 +387,6 @@ public abstract class SubscriberFactory {
 					onError(t);
 				}
 			}
-		}
-
-		@Override
-		public boolean isExposedToOverflow(Bounded parent) {
-			return false;
 		}
 
 		@Override

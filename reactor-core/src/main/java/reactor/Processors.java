@@ -34,8 +34,7 @@ import reactor.core.processor.RingBufferWorkProcessor;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.Assert;
-import reactor.core.support.Bounded;
-import reactor.core.support.Subscribable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.wait.PhasedBackoffWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
@@ -713,7 +712,7 @@ public final class Processors {
 
 	}
 	private static class DelegateProcessor<IN, OUT>
-			extends BaseProcessor<IN, OUT> implements Subscribable<IN>, Bounded {
+			extends BaseProcessor<IN, OUT> implements ReactiveState.Downstream<IN>, ReactiveState.Bounded {
 
 		private final Publisher<OUT> downstream;
 		private final Subscriber<IN> upstream;
@@ -755,13 +754,8 @@ public final class Processors {
 		}
 
 		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return Bounded.class.isAssignableFrom(upstream.getClass()) && ((Bounded) upstream).isExposedToOverflow(parentPublisher);
-		}
-
-		@Override
 		public long getCapacity() {
-			return Bounded.class.isAssignableFrom(upstream.getClass()) ? ((Bounded) upstream).getCapacity() :
+			return ReactiveState.Bounded.class.isAssignableFrom(upstream.getClass()) ? ((ReactiveState.Bounded) upstream).getCapacity() :
 					Long.MAX_VALUE;
 		}
 	}

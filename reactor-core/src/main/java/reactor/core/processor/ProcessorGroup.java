@@ -36,10 +36,8 @@ import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
-import reactor.core.support.Subscribable;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -530,8 +528,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	}
 
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
-			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription, Bounded,
-			           Publishable<V>, Subscribable<V>, Runnable {
+			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
+			           ReactiveState.Bounded, ReactiveState.Upstream<V>, ReactiveState.Downstream<V>, Runnable {
 
 		protected final ProcessorGroup service;
 
@@ -895,13 +893,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			Subscriber sub = subscriber;
-			return sub != null && Bounded.class.isAssignableFrom(sub.getClass()) &&
-					((Bounded) sub).isExposedToOverflow(parentPublisher);
-		}
-
-		@Override
 		public long getAvailableCapacity() {
 			return emitBuffer != null ? emitBuffer.pending() : getCapacity();
 		}
@@ -990,11 +981,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return false;
-		}
-
-		@Override
 		public long getCapacity() {
 			return Long.MAX_VALUE;
 		}
@@ -1029,11 +1015,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		@Override
 		protected void doError(Throwable t) {
 			route(t, subscriber, SignalType.ERROR);
-		}
-
-		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return false;
 		}
 
 		@Override

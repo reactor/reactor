@@ -40,7 +40,6 @@ import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.core.support.wait.LiteBlockingWaitStrategy;
 import reactor.core.support.wait.PhasedBackoffWaitStrategy;
@@ -744,7 +743,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 		return ringBuffer.remainingCapacity();
 	}
 
-	private final class RingBufferSubscription implements Subscription, Publishable<E> {
+	private final class RingBufferSubscription implements Subscription, Upstream<E> {
 
 		private final Sequence pendingRequest;
 

@@ -31,8 +31,7 @@ import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 
@@ -554,7 +553,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				'}';
 	}
 
-	static final class InnerSubscriber<T> implements Subscription, Bounded, Publishable<T> {
+	static final class InnerSubscriber<T> implements Subscription, ReactiveState.Bounded, Upstream<T> {
 
 		final long                  id;
 		final EmitterProcessor<T>   parent;
@@ -595,11 +594,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		public void cancel() {
 			done = true;
 			parent.drain();
-		}
-
-		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return false;
 		}
 
 		@Override

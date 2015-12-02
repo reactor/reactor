@@ -19,7 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * @author Stephane Maldini
  * @since 2.0.2
  */
-public class SubscriptionWithContext<C> implements Subscription, Publishable {
+public class SubscriptionWithContext<C> implements Subscription, ReactiveState.Upstream {
 
 	private volatile       long                                            pending         = 0;
 	protected static final AtomicLongFieldUpdater<SubscriptionWithContext> PENDING_UPDATER = AtomicLongFieldUpdater

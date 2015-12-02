@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.reactivestreams.Subscription;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.rx.action.DemandControl;
 
@@ -29,7 +29,7 @@ import reactor.rx.action.DemandControl;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class ManualSubscriber<T> extends InterruptableSubscriber<T> implements Bounded, DemandControl {
+public final class ManualSubscriber<T> extends InterruptableSubscriber<T> implements ReactiveState.Bounded, DemandControl {
 
 	@SuppressWarnings("unused")
 	private volatile long requested;
@@ -98,11 +98,6 @@ public final class ManualSubscriber<T> extends InterruptableSubscriber<T> implem
 				}
 			}
 		}
-	}
-
-	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return false;
 	}
 
 	@Override

@@ -30,8 +30,7 @@ import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -237,8 +236,8 @@ public abstract class PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Publisher<T> fromSubscription(Subscription subscription) {
-		return subscription != null && Publishable.class.isAssignableFrom(subscription.getClass()) ?
-				((Publishable<T>) subscription).upstream() : null;
+		return subscription != null && ReactiveState.Upstream.class.isAssignableFrom(subscription.getClass()) ?
+				((ReactiveState.Upstream<T>) subscription).upstream() : null;
 	}
 
 	/**
@@ -328,7 +327,7 @@ public abstract class PublisherFactory {
 		}
 	}
 
-	private final static class PublisherOperator<I, O> implements Bounded, LiftOperator<I, O> {
+	private final static class PublisherOperator<I, O> implements ReactiveState.Bounded, LiftOperator<I, O> {
 
 		final private Publisher<I>                                           source;
 		final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
@@ -360,20 +359,14 @@ public abstract class PublisherFactory {
 		}
 
 		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return Bounded.class.isAssignableFrom(source.getClass()) && ((Bounded) source).isExposedToOverflow(
-					parentPublisher);
-		}
-
-		@Override
 		public long getCapacity() {
-			return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() :
+			return ReactiveState.Bounded.class.isAssignableFrom(source.getClass()) ? ((ReactiveState.Bounded) source).getCapacity() :
 					Long.MAX_VALUE;
 		}
 	}
 
 	private final static class SubscriberProxy<T, C> extends SubscriberWithContext<T, C>
-			implements Subscription, Publishable<T> {
+			implements Subscription, ReactiveState.Upstream<T> {
 
 		private final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
 

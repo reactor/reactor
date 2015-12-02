@@ -23,7 +23,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
@@ -34,7 +34,7 @@ import reactor.rx.broadcast.Broadcaster;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class AdaptiveSubscriber<T> extends InterruptableSubscriber<T> implements Bounded {
+public final class AdaptiveSubscriber<T> extends InterruptableSubscriber<T> implements ReactiveState.Bounded {
 
 	private final Broadcaster<Long>                                           requestMapperStream;
 	private final Function<Stream<Long>, ? extends Publisher<? extends Long>> requestMapper;
@@ -102,11 +102,6 @@ public final class AdaptiveSubscriber<T> extends InterruptableSubscriber<T> impl
 		else{
 			cancel();
 		}
-	}
-
-	@Override
-	public boolean isExposedToOverflow(Bounded upstream) {
-		return false;
 	}
 
 	@Override

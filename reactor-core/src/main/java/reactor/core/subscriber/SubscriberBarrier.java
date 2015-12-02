@@ -22,10 +22,7 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.error.SpecificationExceptions;
-import reactor.core.support.Publishable;
-import reactor.core.support.Subscribable;
+import reactor.core.support.ReactiveState;
 
 /**
  * A {@link Subscriber} with an asymetric typed wrapped subscriber. Yet it represents a unique relationship between
@@ -35,8 +32,9 @@ import reactor.core.support.Subscribable;
  * @author Stephane Maldini
  * @since 2.0.4
  */
-public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription, Bounded, Subscribable<O>,
-  Publishable<I> {
+public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription, ReactiveState.Bounded,
+                                                                          ReactiveState.Downstream<O>,
+                                                                          ReactiveState.Upstream<I> {
 
 	protected final Subscriber<? super O> subscriber;
 
@@ -159,17 +157,10 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 		}
 	}
 
-
-	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return Bounded.class.isAssignableFrom(subscriber.getClass())
-		  && ((Bounded) subscriber).isExposedToOverflow(parentPublisher);
-	}
-
 	@Override
 	public long getCapacity() {
-		return Bounded.class.isAssignableFrom(subscriber.getClass()) ?
-		  ((Bounded) subscriber).getCapacity() :
+		return ReactiveState.Bounded.class.isAssignableFrom(subscriber.getClass()) ?
+		  ((ReactiveState.Bounded) subscriber).getCapacity() :
 		  Long.MAX_VALUE;
 	}
 

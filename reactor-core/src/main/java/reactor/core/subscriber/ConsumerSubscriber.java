@@ -22,14 +22,14 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ConsumerSubscriber<T> extends BaseSubscriber<T> implements Publishable<T> {
+public class ConsumerSubscriber<T> extends BaseSubscriber<T> implements ReactiveState.Upstream<T> {
 
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;

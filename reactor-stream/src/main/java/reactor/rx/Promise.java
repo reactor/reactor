@@ -34,8 +34,7 @@ import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -59,8 +58,8 @@ import reactor.rx.broadcast.Broadcaster;
  * specification</a>
  */
 public class Promise<O>
-		implements Supplier<O>, Processor<O, O>, Consumer<O>, Bounded, Subscription,
-		Publishable<O> {
+		implements Supplier<O>, Processor<O, O>, Consumer<O>, ReactiveState.Bounded, Subscription,
+		           ReactiveState.Upstream<O> {
 
 	public static final long DEFAULT_TIMEOUT =
 			Long.parseLong(System.getProperty("reactor.await.defaultTimeout", "30000"));
@@ -788,11 +787,6 @@ public class Promise<O>
 			this.subscription = null;
 			subscription.cancel();
 		}
-	}
-
-	@Override
-	public boolean isExposedToOverflow(Bounded upstream) {
-		return true;
 	}
 
 	@Override

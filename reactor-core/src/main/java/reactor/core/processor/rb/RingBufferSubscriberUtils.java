@@ -13,7 +13,7 @@ import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.SequenceBarrier;
 import reactor.core.processor.rb.disruptor.Sequencer;
-import reactor.core.support.Bounded;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
@@ -194,8 +194,8 @@ public final class RingBufferSubscriberUtils {
 
 	public static <E> Publisher<Void> writeWith(final Publisher<? extends E> source,
 			final RingBuffer<MutableSignal<E>> ringBuffer) {
-		final Bounded nonBlockingSource =
-				Bounded.class.isAssignableFrom(source.getClass()) ? (Bounded) source :
+		final ReactiveState.Bounded nonBlockingSource =
+				ReactiveState.Bounded.class.isAssignableFrom(source.getClass()) ? (ReactiveState.Bounded) source :
 						null;
 
 		final int capacity = nonBlockingSource != null ?
@@ -225,7 +225,7 @@ public final class RingBufferSubscriberUtils {
 			source.subscribe(new WriteWithSubscriber(s));
 		}
 
-		private class WriteWithSubscriber implements Subscriber<E>, Bounded {
+		private class WriteWithSubscriber implements Subscriber<E>, ReactiveState.Bounded {
 
 			private final Sequence pendingRequest = Sequencer.newSequence(0);
 
@@ -284,11 +284,6 @@ public final class RingBufferSubscriberUtils {
 				ringBuffer.publish(index - ((index + (capacity)) - 1),
 						(index - (capacity - previous)));
 				s.onComplete();
-			}
-
-			@Override
-			public boolean isExposedToOverflow(Bounded upstream) {
-				return false;
 			}
 
 			@Override

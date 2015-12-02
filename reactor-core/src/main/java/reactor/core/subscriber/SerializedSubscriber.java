@@ -19,9 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
-import reactor.core.support.Subscribable;
+import reactor.core.support.ReactiveState;
 
 /**
  * Enforces single-threaded, serialized, ordered execution of {@link #onNext}, {@link #onComplete},
@@ -38,7 +36,8 @@ import reactor.core.support.Subscribable;
  *            <p>
  *            Port from RxJava's SerializedObserver applied to Reactive Stream
  */
-public class SerializedSubscriber<T> implements Subscriber<T>, Subscription, Bounded, Publishable<T>, Subscribable<T> {
+public class SerializedSubscriber<T> implements Subscriber<T>, Subscription, ReactiveState.Bounded,
+                                                ReactiveState.Upstream<T>, ReactiveState.Downstream<T> {
 	private final Subscriber<? super T> delegate;
 
 	private boolean emitting   = false;
@@ -269,11 +268,6 @@ public class SerializedSubscriber<T> implements Subscriber<T>, Subscription, Bou
 		}
 
 		return res + "}";
-	}
-
-	@Override
-	public boolean isExposedToOverflow(Bounded parent) {
-		return false;
 	}
 
 	@Override

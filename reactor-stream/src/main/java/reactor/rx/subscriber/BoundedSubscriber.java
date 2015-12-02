@@ -17,14 +17,14 @@
 package reactor.rx.subscriber;
 
 import org.reactivestreams.Subscription;
-import reactor.core.support.Bounded;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class BoundedSubscriber<T> extends InterruptableSubscriber<T> implements Bounded {
+public final class BoundedSubscriber<T> extends InterruptableSubscriber<T> implements ReactiveState.Bounded {
 
 	final int capacity;
 	final int limit;
@@ -65,11 +65,6 @@ public final class BoundedSubscriber<T> extends InterruptableSubscriber<T> imple
 	@Override
 	protected void doSafeSubscribe(Subscription subscription) {
 		subscription.request(capacity);
-	}
-
-	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return parentPublisher.getCapacity() > getCapacity();
 	}
 
 	@Override

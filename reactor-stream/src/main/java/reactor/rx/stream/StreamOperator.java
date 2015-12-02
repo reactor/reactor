@@ -23,8 +23,7 @@ import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
@@ -53,14 +52,8 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 	}
 
 	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return Bounded.class.isAssignableFrom(source.getClass()) && ((Bounded) source).isExposedToOverflow(
-				parentPublisher);
-	}
-
-	@Override
 	public long getCapacity() {
-		return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() : Long.MAX_VALUE;
+		return ReactiveState.Bounded.class.isAssignableFrom(source.getClass()) ? ((ReactiveState.Bounded) source).getCapacity() : Long.MAX_VALUE;
 	}
 
 	@Override
@@ -76,8 +69,8 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 
 		Publisher<?> oldestSender = this;
 
-		while( oldestSender != null && Publishable.class.isAssignableFrom(oldestSender.getClass())){
-			oldestSender = ((Publishable)oldestSender).upstream();
+		while( oldestSender != null && Upstream.class.isAssignableFrom(oldestSender.getClass())){
+			oldestSender = ((Upstream)oldestSender).upstream();
 			if (oldestSender != null){
 				if(Subscriber.class.isAssignableFrom(oldestSender.getClass())){
 					oldestReceiver = (Subscriber)oldestSender;

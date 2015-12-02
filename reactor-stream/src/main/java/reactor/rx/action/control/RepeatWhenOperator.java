@@ -22,7 +22,7 @@ import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
@@ -99,14 +99,9 @@ public final class RepeatWhenOperator<T> implements Publishers.Operator<T, T> {
 			retryStream.onNext(System.currentTimeMillis());
 		}
 
-		private class RestartSubscriber implements Subscriber<Object>, Bounded {
+		private class RestartSubscriber implements Subscriber<Object>, ReactiveState.Bounded {
 
 			Subscription s;
-
-			@Override
-			public boolean isExposedToOverflow(Bounded upstream) {
-				return RepeatWhenAction.this.isExposedToOverflow(upstream);
-			}
 
 			@Override
 			public long getCapacity() {

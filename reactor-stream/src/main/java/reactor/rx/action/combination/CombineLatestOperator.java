@@ -29,8 +29,7 @@ import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Function;
@@ -333,7 +332,8 @@ public final class CombineLatestOperator<TUPLE extends Tuple, V>
 
 	}
 
-	static final class InnerSubscriber<V> extends BaseSubscriber<Object> implements Bounded, Publishable<Object> {
+	static final class InnerSubscriber<V> extends BaseSubscriber<Object> implements ReactiveState.Bounded,
+	                                                                                ReactiveState.Upstream<Object> {
 
 		final CombineLatestAction<?, V> parent;
 		final int                       limit;
@@ -456,11 +456,6 @@ public final class CombineLatestOperator<TUPLE extends Tuple, V>
 		@Override
 		public Publisher<Object> upstream() {
 			return upstream;
-		}
-
-		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return false;
 		}
 
 		@Override

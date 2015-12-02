@@ -23,7 +23,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 
@@ -31,7 +31,7 @@ import reactor.core.support.internal.PlatformDependent;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class SwapSubscription<T> implements Subscription, Publishable<T> {
+public final class SwapSubscription<T> implements Subscription, ReactiveState.Upstream<T> {
 
 	@SuppressWarnings("unused")
 	private volatile Subscription subscription;

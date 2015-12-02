@@ -32,10 +32,8 @@ import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
-import reactor.core.support.Subscribable;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.BiFunction;
 import reactor.fn.Function;
@@ -409,9 +407,9 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 	}
 
-	static final class BufferSubscriber<V> extends BaseSubscriber<Object> implements Bounded, ZipState<Object>,
-	                                                                                 Publishable<Object>,
-	                                                                                 Subscribable<Publisher[]> {
+	static final class BufferSubscriber<V> extends BaseSubscriber<Object> implements ReactiveState.Bounded, ZipState<Object>,
+	                                                                                 ReactiveState.Upstream<Object>,
+	                                                                                 ReactiveState.Downstream<Publisher[]> {
 
 		final ZipBarrier<?, V> parent;
 		final Queue<Object>    queue;
@@ -519,11 +517,6 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 					s.cancel();
 				}
 			}
-		}
-
-		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return parentPublisher.getCapacity() > bufferSize;
 		}
 
 		@Override

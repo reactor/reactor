@@ -39,8 +39,7 @@ import reactor.core.publisher.operator.MapOperator;
 import reactor.core.publisher.operator.ZipOperator;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.Assert;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.BiConsumer;
 import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
@@ -121,7 +120,7 @@ import reactor.rx.stream.GroupedStream;
  * @author Jon Brisbin
  * @since 1.1, 2.0
  */
-public abstract class Stream<O> implements Publisher<O>, Bounded {
+public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 	protected Stream() {
 	}
@@ -2328,8 +2327,8 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public StreamUtils.StreamVisitor debug() {
-		if(Publishable.class.isAssignableFrom(getClass())){
-			return StreamUtils.browse((Publishable)this);
+		if(Upstream.class.isAssignableFrom(getClass())){
+			return StreamUtils.browse((Upstream)this);
 		}
 		else{
 			return null;
@@ -2484,11 +2483,6 @@ public abstract class Stream<O> implements Publisher<O>, Bounded {
 	@Override
 	public long getCapacity() {
 		return Long.MAX_VALUE;
-	}
-
-	@Override
-	public boolean isExposedToOverflow(Bounded upstream) {
-		return getCapacity() < upstream.getCapacity();
 	}
 
 	/**

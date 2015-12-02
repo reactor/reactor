@@ -22,7 +22,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
 
@@ -34,7 +34,7 @@ import reactor.rx.Stream;
  *
  * @author Stephane Maldini
  */
-public class PushSubscription<O> implements Subscription, Consumer<Long>, Publishable {
+public class PushSubscription<O> implements Subscription, Consumer<Long>, ReactiveState.Upstream {
 	protected final Subscriber<? super O> subscriber;
 	protected final Stream<O>             publisher;
 

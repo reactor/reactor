@@ -25,8 +25,7 @@ import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 
 /**
@@ -35,7 +34,7 @@ import reactor.core.support.SignalType;
  * @author Stephane Maldini
  */
 public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
-		implements Processor<IN, OUT>, Bounded, Publishable<IN> {
+		implements Processor<IN, OUT>, ReactiveState.Bounded, ReactiveState.Upstream<IN> {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -84,11 +83,6 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
 
 	protected void doOnSubscribe(Subscription s) {
 		//IGNORE
-	}
-
-	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return false;
 	}
 
 	@Override

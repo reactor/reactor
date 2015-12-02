@@ -26,8 +26,7 @@ import java.util.Set;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.support.Publishable;
-import reactor.core.support.Subscribable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.rx.stream.GroupedStream;
 
@@ -39,24 +38,24 @@ import reactor.rx.stream.GroupedStream;
  */
 public abstract class StreamUtils {
 
-	public static <O> StreamVisitor browse(Publishable<O> composable) {
+	public static <O> StreamVisitor browse(ReactiveState.Upstream<O> composable) {
 		return browse(composable, new DebugVisitor());
 	}
 
-	public static <O> StreamVisitor browse(Publishable<O> composable, DebugVisitor visitor) {
+	public static <O> StreamVisitor browse(ReactiveState.Upstream<O> composable, DebugVisitor visitor) {
 		StreamVisitor explorer = new StreamVisitor(visitor);
 		explorer.accept(composable);
 		return explorer;
 	}
 
-	static class DebugVisitor implements Consumer<Publishable<?>> {
+	static class DebugVisitor implements Consumer<ReactiveState.Upstream<?>> {
 
 		final private StringBuilder   appender = new StringBuilder();
 		final private List<Throwable> errors   = new ArrayList<Throwable>();
 		int d = 0;
 
 		@Override
-		public void accept(Publishable<?> composable) {
+		public void accept(ReactiveState.Upstream<?> composable) {
 			newLine(d);
 
 			appender.append(composable.getClass().getSimpleName().isEmpty() ? composable.getClass().getName() + "" +
@@ -89,7 +88,7 @@ public abstract class StreamUtils {
 		}
 	}
 
-	public static class StreamVisitor implements Consumer<Publishable<?>> {
+	public static class StreamVisitor implements Consumer<ReactiveState.Upstream<?>> {
 
 		final private Set<Object>         references = new HashSet<Object>();
 		final private Map<Object, Object> streamTree = new HashMap<Object, Object>();
@@ -101,16 +100,16 @@ public abstract class StreamUtils {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public void accept(Publishable<?> composable) {
+		public void accept(ReactiveState.Upstream<?> composable) {
 			if (composable == null) return;
 
 			Publisher upstream = null;
-			Publishable<?> next = composable;
+			ReactiveState.Upstream<?> next = composable;
 			while (next != null) {
 				upstream = next.upstream();
 				if (upstream != null) {
-					if (Publishable.class.isAssignableFrom(upstream.getClass())) {
-						next = (Publishable) upstream;
+					if (ReactiveState.Upstream.class.isAssignableFrom(upstream.getClass())) {
+						next = (ReactiveState.Upstream) upstream;
 						continue;
 					}
 				}
@@ -146,8 +145,8 @@ public abstract class StreamUtils {
 			references.add(composable);
 
 			if (debugVisitor != null) {
-				if(Publishable.class.isAssignableFrom(composable.getClass())) {
-					debugVisitor.accept((Publishable) composable);
+				if(ReactiveState.Upstream.class.isAssignableFrom(composable.getClass())) {
+					debugVisitor.accept((ReactiveState.Upstream) composable);
 				}else{
 					debugVisitor.newLine(debugVisitor.d);
 					debugVisitor.appender.append(composable);
@@ -205,13 +204,13 @@ public abstract class StreamUtils {
 						subscriber = ((PushSubscription<?>) registration).getSubscriber();
 					}*/
 					Subscriber<?> unproxy = subscriber;
-					while (unproxy != null && Subscribable.class.isAssignableFrom(unproxy.getClass())) {
+					while (unproxy != null && ReactiveState.Downstream.class.isAssignableFrom(unproxy.getClass())) {
 						subscriber = unproxy;
 						if (debugVisitor != null) {
 							debugVisitor.newLine(debugVisitor.d);
 							debugVisitor.appender.append(subscriber).append(registration);
 						}
-						unproxy = ((Subscribable<?>) unproxy).downstream();
+						unproxy = ((ReactiveState.Downstream<?>) unproxy).downstream();
 					}
 
 					if (unproxy != null) {

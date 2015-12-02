@@ -18,7 +18,6 @@ package reactor.core.processor;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -31,7 +30,6 @@ import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.MutableSignal;
 import reactor.core.processor.rb.RequestTask;
 import reactor.core.processor.rb.RingBufferSequencer;
@@ -43,7 +41,6 @@ import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.Publishable;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.LiteBlockingWaitStrategy;
@@ -704,7 +701,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 
 	;
 
-	private final class RingBufferSubscription implements Subscription, Publishable<E> {
+	private final class RingBufferSubscription implements Subscription, Upstream<E> {
 
 		private final Subscriber<? super E> subscriber;
 

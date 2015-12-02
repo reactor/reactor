@@ -30,8 +30,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Subscribable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Predicate;
@@ -41,7 +40,8 @@ import reactor.fn.timer.TimeUtils;
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subscription, Bounded, Consumer<E>,
+public class ReactiveSession<E> implements ReactiveState.Downstream<E>, Subscriber<E>, Subscription,
+                                           ReactiveState.Bounded, Consumer<E>,
                                            Closeable {
 
 	/**
@@ -343,14 +343,8 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	}
 
 	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return Bounded.class.isAssignableFrom(actual.getClass()) && ((Bounded) actual).isExposedToOverflow(
-				parentPublisher);
-	}
-
-	@Override
 	public long getCapacity() {
-		return Bounded.class.isAssignableFrom(actual.getClass()) ? ((Bounded) actual).getCapacity() : Long.MAX_VALUE;
+		return ReactiveState.Bounded.class.isAssignableFrom(actual.getClass()) ? ((ReactiveState.Bounded) actual).getCapacity() : Long.MAX_VALUE;
 	}
 
 	@Override

@@ -17,8 +17,7 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
 
@@ -26,7 +25,7 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class DecoratingStream<T> extends Stream<T> implements Publishable<T> {
+public final class DecoratingStream<T> extends Stream<T> implements ReactiveState.Upstream<T> {
 
 	private final Publisher<T> publisher;
 
@@ -45,14 +44,8 @@ public final class DecoratingStream<T> extends Stream<T> implements Publishable<
 	}
 
 	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return Bounded.class.isAssignableFrom(publisher.getClass()) && ((Bounded) publisher).isExposedToOverflow(
-				parentPublisher);
-	}
-
-	@Override
 	public long getCapacity() {
-		return Bounded.class.isAssignableFrom(publisher.getClass()) ? ((Bounded) publisher).getCapacity() : Long.MAX_VALUE;
+		return ReactiveState.Bounded.class.isAssignableFrom(publisher.getClass()) ? ((ReactiveState.Bounded) publisher).getCapacity() : Long.MAX_VALUE;
 	}
 
 	@Override
