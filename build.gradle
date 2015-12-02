@@ -305,7 +305,7 @@ project('reactor-bus') {
 		}
 	}
 }
-
+/*
 project('reactor-pylon') {
   description = 'Reactor Monitoring Client'
 
@@ -317,7 +317,7 @@ project('reactor-pylon') {
 	compile "org.slf4j:slf4j-api:$slf4jVersion"
 	compile "ch.qos.logback:logback-classic:$logbackVersion"
   }
-}
+}*/
 
 project('reactor-alloc') {
   description = 'Pooling utilities'
