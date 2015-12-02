@@ -1,0 +1,558 @@
+/*
+ * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// General styles
+
+a {
+  color: $reactorPrimary;
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+h1, h2, h3, h4 { font-family: $reactorFontSpecial }
+
+::-moz-selection {
+  background: $reactorPrimary;
+  color: white;
+  text-shadow: 0 0 0 white;
+}
+::selection {
+  background: $reactorPrimary;
+  color: white;
+  text-shadow: 0 0 0 white;
+}
+
+span.version {
+  display: inline;
+  background: $reactorTextColor;
+  color: white;
+  border-radius: 3px;
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: bold;
+  padding: 1Px 4px 2px;
+  line-height: 14px;
+}
+
+// Application
+
+body {
+  font: normal 15px/1.5em $reactorFontMain;
+  background-color: #f1f1f1;
+  color: $reactorTextColor;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased
+}
+
+// Size Application
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+// Header
+
+#header {
+  border-top: 4px solid $reactorPrimary;
+  background: $reactorBackgroundLight;
+  .heading {
+    @extend .container;
+    @include clearfix();
+    position: relative;
+    max-width: 1100px;
+    // padding: 0 20px;
+  }
+  h1#logo {
+    margin: 7px 0 0 10px;
+    padding: 0;
+    float: left;
+    a {
+      display: block;
+      background: url(../img/logo-2x.png) no-repeat 0 0;
+      height: 40px;
+      width: 253px;
+      background-size: 253px 80px;
+      text-indent: -6000em;
+      margin: 8px 0;
+      &:hover {
+        strong{
+          @include opacity(1);
+        }
+      }
+      strong {
+        display: block;
+        background: url(../img/logo-2x.png) no-repeat 0 -40px;
+        background-size: 253px 80px;
+        height: 40px;
+        width: 253px;
+        text-indent: -6000em;
+        margin: 8px 0;
+        @include transition-property(opacity);
+        @include transition-duration($reactorDurationTransition);
+        @include opacity(0);
+      }
+    }
+  }
+  #nav, #nav ul {
+    display: block;
+    font-family: $reactorFontSpecial;
+    margin: 0;
+    padding: 0;
+  }
+  #nav {
+    @include clearfix();
+    float: right;
+    margin-right: 10px;
+  }
+  #nav ul {
+    li {
+      display: block;
+      float: left;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      &.hide {
+        display: none;
+      }
+      a {
+        color: white;
+        text-decoration: none;
+        font-weight: 500;
+        display: block;
+        text-transform: uppercase;
+        font-size: 0.9em;
+        line-height: 71px;
+        margin: 0;
+        padding: 0 12px;
+        @include transition-property(background-color);
+        @include transition-duration($reactorDurationTransition);
+        &:hover {
+          background: $reactorPrimary;
+        }
+      }
+      &:last-child {
+        border: 0 none;
+      }
+      &.active {
+        background: $reactorPrimary;
+      }
+    }
+  }
+}
+
+// Footer
+
+#footer {
+  padding: 2em 0 2.5em;
+  text-align: left;
+  background-color: $reactorBackgroundLight;
+  color: white;
+  .footer-content {
+    @include clearfix();
+    @extend .container;
+    max-width: 1100px;
+    padding: 0 1.5em;
+
+  }
+  nav, nav ul {
+    margin: 0;
+    padding: 0;
+    a {
+      color: white;
+      text-transform: uppercase;
+      font-size: 0.8em;
+    }
+  }
+  nav {
+    padding-bottom: 15px;
+  }
+  ul {
+    li {
+      display: inline;
+      list-style: none;
+      margin-right: 1em;
+      &:last-child {
+        margin-right: 0;
+      }
+    }
+  }
+}
+
+// Welcome
+
+section#welcome {
+  padding: 2.2em 0 3em;
+  //margin: 2em 0 2em;
+  text-align: left;
+  font-size: 1.2em;
+  height: 360px;
+  font-family: $reactorFontSpecial;
+  background: #e5e2b6 url('../img/homepage-bg.jpg') no-repeat center 0;
+  article {
+    color: white;
+    text-align: center;
+    span.logo-reactor {
+      display: block;
+      margin-top: 80px;
+      margin-bottom: 60px;
+    }
+    h1 {
+      color: white;
+      font: normal 1.8em/0.7em $reactorFontSpecial;
+      strong {
+        display: inline;
+        font-weight: normal;
+        text-align: left;
+        background: rgba(52,48,45,.7);
+        font-size: 1.3em;
+        padding: 2px 10px;
+      }
+    }
+    a {
+      color: white;
+    }
+    p {
+      font-weight: lighter;
+      line-height: 40px;
+      font-size: 20px;
+      max-width: 1000px;
+      margin: 0 auto;
+      text-align: center;
+      span {
+        background: rgba(52,48,45,.7);
+        padding: 8px 10px;
+      }
+    }
+  }
+}
+
+// Applications (documentations)
+
+section#applications {
+  //@extend .container;
+  padding: 1.5em 0 0.2em;
+  //margin: 0 -1.5em;
+  .row {
+    @include clearfix();
+    padding: 10px 0 0px;
+    article {
+      width: 25%;
+      float: left;
+      text-align: center;
+      div {
+        border: 1px solid #CCC;
+        margin: 10px;
+        padding: 40px 0 30px;
+        position: relative;
+        overflow: hidden;
+        height: 260px;
+        background-color: #F1F1F1;
+        &:after {
+          //content: "\f1e0";
+          font-family: FontAwesome;
+          font-weight: normal;
+          text-decoration: inherit;
+          position: absolute;
+          font-size: 200px;
+          color: #e8e8e8;
+          bottom: 40px;
+          right: -40px;
+          z-index: 1;
+          @include transition-property(color);
+          @include transition-duration($reactorDurationTransition);
+        }
+        @include transition-property(background-color);
+        @include transition-duration($reactorDurationTransition);
+        &:hover {
+          background: white;
+          &:after { color: #F1F1F1; }
+        }
+        &.share-alt {
+          &:after { content: "\f1e0"; }
+        }
+        &.puzzle-piece {
+          &:after { content: "\f12e"; }
+        }
+        &.reactor {
+          background-image: url('../img/reactor-bg.png');
+          background-repeat: no-repeat;
+          background-position: right bottom;
+          background-size: 146px 139px;
+          .logo-reactor {
+            background: url('../img/logo-dark.png') no-repeat center 0;
+            width: 28px;
+            height: 26px;
+            background-size: 28px 26px;
+
+          }
+        }
+        &.plus {
+          &:after { content: "\f067"; }
+        }
+      }
+      &:first-child {
+        div { margin-left: 0;}
+      }
+      &:last-child {
+        div { margin-right: 0;}
+      }
+
+      span.version {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        height: auto;
+      }
+      span.icon {
+        font-size: 2em;
+        margin-bottom: 8px;
+        display: block;
+        height: 35px;
+      }
+      h1 {
+        position: relative;
+        font-size: 1.2em;
+        margin: 0;
+        padding: 0 0 0.4em;
+        font-family: $reactorFontSpecial;
+        z-index: 2;
+      }
+      p {
+        margin: 0;
+        padding: 0 1em 0.7em 1em;
+        z-index: 2;
+        font-size: 1em;
+        position: relative;
+        &.github {
+          padding: 0.7em 1em 0.2em 1em;
+          a {
+            cursor: pointer;
+            font-family: $reactorFontSpecial;
+          }
+        }
+      }
+      a {
+        z-index: 2;
+        position: relative;
+      }
+    }
+  }
+}
+
+span.logo-reactor {
+  display: block;
+  margin: 0 auto;
+  width: 100px;
+  height: 100px;
+  background: url('../img/reactor.png') no-repeat 0 0;
+  background-size: 100px 100px;
+}
+
+span.logo-io {
+  display: block;
+  margin: 0 auto;
+  width: 132px;
+  height: 100px;
+  background: url('../img/io.png') no-repeat 0 0;
+  background-size: 132px 100px;
+}
+
+
+span.logo-stream {
+  display: block;
+  margin: 0 auto;
+  width: 100px;
+  height: 100px;
+  background: url('../img/stream.png') no-repeat 0 0;
+  background-size: 100px 100px;
+}
+
+span.logo-reactor {
+  display: block;
+  margin: 0 auto;
+  width: 100px;
+  height: 100px;
+  background: url('../img/reactor.png') no-repeat 0 0;
+  background-size: 100px 100px;
+}
+
+section#key-features {
+  article {
+    border-top: 1px solid #CCC;
+    font-family: $reactorFontSpecial;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 28px;
+    &:first-child {
+      border-top: 0 none;
+    }
+    div {
+      max-width: 650px;
+      margin: 0 auto;
+      padding: 3.5em 0 4em;
+      padding-right: 350px;
+      padding-left: 20px;
+      position: relative;
+    }
+    h1 {
+      font-family: $reactorFontSpecial;
+      font-size: 30px;
+      line-height: 30px;
+      font-weight: 400;
+    }
+    span.icon {
+      position: absolute;
+      top: 70px;
+      right: 10px;
+
+    }
+    &.turbo-message-passing {
+      div {
+        background: url('../img/turbomessage-bg.jpg') no-repeat right 20px;
+        background-size: 446px 353px;
+      }
+      span.icon {
+        display: block;
+        width: 166px;
+        height: 166px;
+        right: 100px;
+        background: url('../img/clock.png') no-repeat right center;
+        background-size: 166px 166px;
+      }
+
+    }
+    &.friendly-adoption {
+      background: white;
+      div {
+        padding-right: 20px;
+        padding-left: 350px;
+        text-align: right;
+        background: white url('../img/friendlyadoption-bg.jpg') no-repeat left center;
+        background-size: 360px 385px;
+      }
+      //background: #ebf1e7;
+    }
+    &.use-reactor {
+      background-color: white;
+      //border-top: 0 none;
+      padding: 1em 0;
+      div {
+        padding: 0;
+        text-align: center;
+        width: auto;
+        max-width: 1000px;
+        margin: 0 auto;
+        h1 {
+          margin: 0;
+          padding: 0;
+          font-size: 14px;
+          font-weight: bold;
+          padding-bottom: 0.5em;
+        }
+        p {
+          padding: 0;
+          margin: 0;
+        }
+        a {
+          padding: 0 10px;
+        }
+      }
+    }
+    &.guardian-of-the-latency {
+      div {
+        background: url('../img/guardian-bg.jpg') no-repeat right center;
+        background-size: 520px 309px;
+      }
+
+      span.icon {
+        display: block;
+        width: 216px;
+        height: 140px;
+        right: 40px;
+        background: url('../img/cloudfoundry.png') no-repeat right center;
+        background-size: 216px 140px;
+      }
+
+    }
+  }
+}
+
+section#brands {
+  background: $reactorPrimary;
+  color: white;
+  font-family: $reactorFontSpecial;
+  padding: 3.5em 0 5em;
+  div.row {
+    @extend .container;
+    @include clearfix();
+  }
+  article {
+    float: left;
+    width: 33%;
+    text-align: center;
+    span.version {
+      display: none;
+    }
+    a {
+      color: white;
+    }
+    p {
+      margin: 0;
+      padding: 0 1em;
+      font-size: 1.1em;
+    }
+    h1 {
+      text-transform: uppercase;
+      font-family: $reactorFontSpecial;
+      font-weight: 400;
+      line-height: 20px;
+      font-size: 25px;
+
+    }
+    span.icon {
+      display: block;
+      height: 100px;
+      text-align: center;
+      margin-bottom: 30px;
+      position: relative;
+    }
+  }
+}
+
+section.page404 {
+  @extend .container;
+  @include clearfix();
+  text-align: center;
+  padding: 5em 0;
+  h1 {
+    font-size: 20px;
+    font-weight: normal;
+    text-align: center;
+    font-family: $reactorFontSpecial;
+  }
+  ul {
+    margin: 0;
+    padding: 0;
+    li {
+      margin: 0;
+      padding: 0.2em 0;
+      list-style: none;
+      list-style-type: none;
+    }
+  }
+}
