@@ -16,7 +16,6 @@
 
 package reactor.rx.subscriber;
 
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.reactivestreams.Publisher;
@@ -50,11 +49,6 @@ public final class AdaptiveSubscriber<T> extends InterruptableSubscriber<T> impl
 	private volatile long outstanding;
 	private final AtomicLongFieldUpdater<AdaptiveSubscriber> OUTSTANDING =
 			AtomicLongFieldUpdater.newUpdater(AdaptiveSubscriber.class, "outstanding");
-
-	@SuppressWarnings("unused")
-	private volatile int running;
-	private final AtomicIntegerFieldUpdater<AdaptiveSubscriber> RUNNING =
-			AtomicIntegerFieldUpdater.newUpdater(AdaptiveSubscriber.class, "running");
 
 	public AdaptiveSubscriber(Timer timer,
 			Consumer<? super T> consumer,
@@ -105,33 +99,8 @@ public final class AdaptiveSubscriber<T> extends InterruptableSubscriber<T> impl
 		if(!inner.done) {
 			requestMapperStream.onComplete();
 		}
-	}
-
-	protected void drain() {
-		if (RUNNING.getAndIncrement(this) == 0) {
-			int missed = 1;
-			long r;
-			for (; ; ) {
-				if (isTerminated()) {
-					return;
-				}
-
-				if(inner.done){
-					cancel();
-					return;
-				}
-
-				r = REQUESTED.getAndSet(this, 0L);
-				if (r > 0L) {
-					BackpressureUtils.getAndAdd(REQUESTED, this, r);
-					requestMore(r);
-				}
-
-				missed = RUNNING.addAndGet(this, -missed);
-				if (missed == 0) {
-					break;
-				}
-			}
+		else{
+			cancel();
 		}
 	}
 
@@ -167,23 +136,30 @@ public final class AdaptiveSubscriber<T> extends InterruptableSubscriber<T> impl
 				return;
 			}
 			BackpressureUtils.checkRequest(n);
-			BackpressureUtils.getAndAdd(REQUESTED, AdaptiveSubscriber.this, n);
-			drain();
+			if(BackpressureUtils.getAndAdd(REQUESTED, AdaptiveSubscriber.this, n) == 0){
+				requestMore(n);
+			}
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			s = null;
-			done = true;
-			Exceptions.throwIfFatal(t);
-			AdaptiveSubscriber.this.onError(t);
+			if(!done) {
+				done = true;
+				s = null;
+				Exceptions.throwIfFatal(t);
+				cancel();
+				doSafeError(t);
+			}
 		}
 
 		@Override
 		public void onComplete() {
-			s = null;
-			done = true;
-			AdaptiveSubscriber.this.onComplete();
+			if(!done) {
+				done = true;
+				s = null;
+				cancel();
+				doSafeComplete();
+			}
 		}
 
 	}
