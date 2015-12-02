@@ -92,10 +92,6 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Publis
 		}
 	}
 
-	public boolean terminate() {
-		return TERMINAL_UPDATER.compareAndSet(this, 0, 1);
-	}
-
 	public void onComplete() {
 		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
 			subscriber.onComplete();
@@ -112,22 +108,6 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Publis
 		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
 			subscriber.onError(throwable);
 		}
-	}
-
-	public boolean hasPublisher() {
-		return publisher != null;
-	}
-
-	public void updatePendingRequests(long n) {
-		long oldPending;
-		long newPending;
-		do {
-			oldPending = pendingRequestSignals;
-			newPending = n == 0l ? 0l : oldPending + n;
-			if (newPending < 0) {
-				newPending = n > 0 ? Long.MAX_VALUE : 0;
-			}
-		} while (!PENDING_UPDATER.compareAndSet(this, oldPending, newPending));
 	}
 
 	public void start() {
@@ -147,10 +127,6 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Publis
 		return TERMINAL_UPDATER.compareAndSet(this, -1, 0);
 	}
 
-	public final boolean markAsDeferredStart() {
-		return TERMINAL_UPDATER.compareAndSet(this, 0, -1);
-	}
-
 	protected void onRequest(long n) {
 		//IGNORE, full push
 	}
@@ -161,24 +137,6 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Publis
 
 	public boolean isComplete() {
 		return terminated == 1;
-	}
-
-	public final long pendingRequestSignals() {
-		return pendingRequestSignals;
-	}
-
-	public void maxCapacity(long n) {
-		/*
-		Adjust capacity (usually the number of elements to be requested at most)
-		 */
-	}
-
-	public boolean shouldRequestPendingSignals() {
-		/*
-		Should request the next batch of pending signals. Usually when current next signals reaches some limit like the
-		maxCapacity.
-		 */
-		return false;
 	}
 
 	@Override
