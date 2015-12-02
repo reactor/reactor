@@ -28,7 +28,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
-import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.disruptor.RingBuffer;
@@ -358,7 +357,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	}
 
 	/* INTERNAL */
-
 
 	@SuppressWarnings("unchecked")
 	private static final ProcessorGroup SYNC_SERVICE = new ProcessorGroup(null, -1, null, null, false);
@@ -692,6 +690,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				doComplete();
 			}
 		}
+
 		@SuppressWarnings("unchecked")
 		protected void doStart(final Subscriber<? super V> subscriber) {
 			RUNNING.incrementAndGet(this);
@@ -701,7 +700,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				@Override
 				public void run() {
 					doRequest(SMALL_BUFFER_SIZE);
-					if(RUNNING.decrementAndGet(ProcessorBarrier.this) != 0){
+					if (RUNNING.decrementAndGet(ProcessorBarrier.this) != 0) {
 						ProcessorBarrier.this.run();
 					}
 				}
@@ -798,9 +797,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 						return;
 					}
 
-					if (r != 0L
-							&& cursor + 1L <= emitBuffer.getCursor()) {
-						if(r != Long.MAX_VALUE){
+					if (r != 0L && cursor + 1L <= emitBuffer.getCursor()) {
+						if (r != Long.MAX_VALUE) {
 							r--;
 						}
 						outstanding--;
@@ -833,12 +831,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				}
 
 				Subscription subscription = upstreamSubscription;
-				if (outstanding < LIMIT_BUFFER_SIZE
-							&& subscription != null) {
-						int k = SMALL_BUFFER_SIZE - outstanding;
+				if (outstanding < LIMIT_BUFFER_SIZE && subscription != null) {
+					int k = SMALL_BUFFER_SIZE - outstanding;
 
-						this.outstanding = SMALL_BUFFER_SIZE;
-						subscription.request(k);
+					this.outstanding = SMALL_BUFFER_SIZE;
+					subscription.request(k);
 				}
 //				else{
 //					System.out.println(this+ " "+PublisherFactory.fromSubscription(upstreamSubscription));
@@ -918,8 +915,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		public String toString() {
 			return getClass().getSimpleName() + "{" +
 					"subscription=" + upstreamSubscription +
-					(emitBuffer != null ? ", pendingReceive="+outstanding+", buffered="+emitBuffer.pending() : "") +
-					(requested != 0 ? ", pendingSend="+requested: "") +
+					(emitBuffer != null ? ", pendingReceive=" + outstanding + ", buffered=" + emitBuffer.pending() :
+							"") +
+					(requested != 0 ? ", pendingSend=" + requested : "") +
 					'}';
 		}
 	}
@@ -959,19 +957,19 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		public void run() {
 			int missed = 1;
 			long r;
-			for(;;){
+			for (; ; ) {
 				r = REQUESTED.getAndSet(this, 0);
-				if(r == Long.MAX_VALUE){
+				if (r == Long.MAX_VALUE) {
 					doRequest(Long.MAX_VALUE);
 					return;
 				}
 
-				if(r != 0L) {
+				if (r != 0L) {
 					doRequest(r);
 				}
 
 				missed = RUNNING.addAndGet(this, -missed);
-				if(missed == 0){
+				if (missed == 0) {
 					break;
 				}
 			}
@@ -981,7 +979,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		@SuppressWarnings("unchecked")
 		public void request(final long n) {
 			BackpressureUtils.getAndAdd(REQUESTED, this, n);
-			if(RUNNING.getAndIncrement(this) == 0) {
+			if (RUNNING.getAndIncrement(this) == 0) {
 				if (service.executorProcessor != null && !service.executorProcessor.isInContext()) {
 					service.processor.onNext(this);
 				}
@@ -1072,10 +1070,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		private final Consumer<Throwable> uncaughtExceptionHandler;
 		private final Consumer<Void>      shutdownHandler;
-		private final TailRecurser tailRecurser;
+		private final TailRecurser        tailRecurser;
 
-		public TaskSubscriber(TailRecurser tailRecurser, Consumer<Throwable> uncaughtExceptionHandler, Consumer<Void>
-				shutdownHandler) {
+		public TaskSubscriber(TailRecurser tailRecurser,
+				Consumer<Throwable> uncaughtExceptionHandler,
+				Consumer<Void> shutdownHandler) {
 			this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 			this.shutdownHandler = shutdownHandler;
 			this.tailRecurser = tailRecurser;
@@ -1091,9 +1090,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			try {
 				task.run();
 
-			if (tailRecurser != null) {
-				tailRecurser.consumeTasks();
-			}
+				if (tailRecurser != null) {
+					tailRecurser.consumeTasks();
+				}
 
 			}
 			catch (CancelException ce) {

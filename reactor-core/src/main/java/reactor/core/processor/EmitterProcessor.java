@@ -19,7 +19,6 @@ package reactor.core.processor;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.concurrent.locks.LockSupport;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -144,18 +143,15 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			long seq = -1L;
 
 			int outstanding;
-			for(;;) {
-				if(upstreamSubscription == SignalType.NOOP_SUBSCRIPTION){
-					break;
-				}
+			if (upstreamSubscription != SignalType.NOOP_SUBSCRIPTION) {
+
 				outstanding = this.outstanding;
 				if (outstanding != 0) {
 					OUTSTANDING.decrementAndGet(this);
-					break;
 				}
-//			System.out.println(upstreamSubscription+" "+subscribers[0].actual+ " "+subscribers[0].requested);
-				if (inner == CANCELLED) {
-					//FIXME should entorse to the spec and throw CancelException
+				else {
+					buffer(t);
+					drain();
 					return;
 				}
 			}
@@ -217,7 +213,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			}
 			lastIndex = j;
 			lastId = inner[j].id;
-
 
 			if (RUNNING.getAndIncrement(this) != 0) {
 				return;
@@ -380,10 +375,10 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 					}
 				}
 				else {
-					if(q != null) {
+					if (q != null) {
 						requestMore((int) q.pending());
 					}
-					else{
+					else {
 						requestMore(0);
 					}
 				}
@@ -520,7 +515,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 			return;
 		}
 
-		if(buffered < bufferSize) {
+		if (buffered < bufferSize) {
 			int r = outstanding;
 			if (r > limit) {
 				return;
@@ -625,8 +620,8 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				if (ringBuffer != null) {
 					if (parent.replay > 0) {
 						long cursor = ringBuffer.getCursor();
-						startTracking(Math.max(0L, cursor - Math.min(parent.replay, cursor % ringBuffer
-								.getBufferSize())));
+						startTracking(Math.max(0L,
+								cursor - Math.min(parent.replay, cursor % ringBuffer.getBufferSize())));
 					}
 					else {
 						startTracking(Math.max(0L, ringBuffer.getMinimumGatingSequence()));
