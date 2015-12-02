@@ -1,3 +1,5 @@
+node_modules
+reactor-pylon/src/main/resources/public
 .DS_Store
 bin
 build

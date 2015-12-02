@@ -45,8 +45,8 @@ ext {
 
 	// Libraries
 	gsCollectionsVersion = '5.1.0'
-	nettyVersion = '4.0.31.Final'
-	jacksonDatabindVersion = '2.5.1'
+  	nettyVersion = '4.0.31.Final'
+  	jacksonDatabindVersion = '2.5.1'
 	jsonPathVersion = '2.0.0'
 	openHftChronicleVersion = '3.4.2'
   	rxJavaVersion = '1.0.14'
@@ -306,15 +306,29 @@ project('reactor-bus') {
 	}
 }
 
+project('reactor-pylon') {
+  description = 'Reactor Monitoring Client'
+
+  dependencies {
+	compile "io.projectreactor:reactor-net:$version"
+	compile "io.projectreactor:reactor-codec:$version"
+	compile "io.netty:netty-all:$nettyVersion"
+	compile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+	compile "org.slf4j:slf4j-api:$slf4jVersion"
+	compile "ch.qos.logback:logback-classic:$logbackVersion"
+  }
+}
+
 project('reactor-alloc') {
-	description = 'Pooling utilities'
+  description = 'Pooling utilities'
 
-	dependencies {
-		compile project(':reactor-core')
+  dependencies {
+	  compile project(':reactor-core')
 
-		optional project(':reactor-bus')
+	  optional project(':reactor-bus')
 	}
 }
+
 
 project('reactor-logback') {
 	description = 'Async Logback appender implementation'

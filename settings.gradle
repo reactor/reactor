@@ -4,5 +4,6 @@ include 'reactor-core',
 		'reactor-bus',
 		'reactor-alloc',
 		'reactor-stream',
+		'reactor-pylon',
 		'reactor-logback',
 		'docs'
