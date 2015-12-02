@@ -134,9 +134,9 @@ class StreamsSpec extends Specification {
 			'cumulated request of Long MAX'
 			long test = Long.MAX_VALUE / 2l
 			def controls = stream.consumeLater()
-			controls.requestMore(test)
-			controls.requestMore(test)
-			controls.requestMore(1)
+			controls.request(test)
+			controls.request(test)
+			controls.request(1)
 
 			//sleep(2000)
 
@@ -903,9 +903,9 @@ class StreamsSpec extends Specification {
 		when:
 			'the source is consumed every in 3 times'
 			def res = []
-			s.capacity(1).batchConsume(
+			s.log().consumeWithRequest(
 					{ res << it },
-					{ res << "r:${it * 2}"; it * 2 }
+					{ def i = it == 0L ? 2L : (it * 2L); res << "r:$i"; i }
 			)
 
 		then:
@@ -2231,21 +2231,21 @@ class StreamsSpec extends Specification {
 			'A source stream emits next signals followed by an error'
 			def res = []
 			def myStream = Streams.yield { aSubscriber ->
-				aSubscriber.onNext('Three')
-				aSubscriber.onNext('Two')
-				aSubscriber.onNext('One')
-				aSubscriber.onError(new Exception())
-				aSubscriber.onNext('Zero')
+				aSubscriber.emit('Three')
+				aSubscriber.emit('Two')
+				aSubscriber.emit('One')
+				aSubscriber.failWith(new Exception())
+				aSubscriber.emit('Zero')
 			}
 
 		and:
 			'A fallback stream will emit values and complete'
 			def myFallback = Streams.yield { aSubscriber ->
-				aSubscriber.onNext('0')
-				aSubscriber.onNext('1')
-				aSubscriber.onNext('2')
-				aSubscriber.onComplete()
-				aSubscriber.onNext('3')
+				aSubscriber.emit('0')
+				aSubscriber.emit('1')
+				aSubscriber.emit('2')
+				aSubscriber.finish()
+				aSubscriber.emit('3')
 			}
 
 		and:
@@ -2289,11 +2289,10 @@ class StreamsSpec extends Specification {
 			'A source stream emits next signals followed by complete'
 			List res = []
 			def myStream = Streams.yield { aSubscriber ->
-				aSubscriber.onNext('Three')
-				aSubscriber.onNext('Two')
-				aSubscriber.onNext('One')
-				aSubscriber.onComplete()
-				aSubscriber.onError(new Exception())
+				aSubscriber.emit('Three')
+				aSubscriber.emit('Two')
+				aSubscriber.emit('One')
+				aSubscriber.finish()
 			}
 
 		and:
@@ -2311,8 +2310,8 @@ class StreamsSpec extends Specification {
 			'A source stream emits next signals followed by complete'
 			res = []
 			myStream = Streams.yield { aSubscriber ->
-				aSubscriber.onNext('Three')
-				aSubscriber.onError(new Exception())
+				aSubscriber.emit('Three')
+				aSubscriber.failWith(new Exception())
 			}
 
 		and:
@@ -2415,7 +2414,10 @@ class StreamsSpec extends Specification {
 			def source = Broadcaster.<Integer> create()
 
 			def value = null
-			def tail = source.log("drop").onOverflowDrop().observe { value = it }.log('overflow-drop-test').consume(5)
+			def tail = source.log("drop").onOverflowDrop().observe { value = it }.log('overflow-drop-test')
+					.consumeLater()
+
+			tail.request(5)
 			println tail.debug()
 
 		when:
@@ -2431,7 +2433,7 @@ class StreamsSpec extends Specification {
 
 		and:
 			'we try to consume the tail to check if 6 has been buffered'
-			tail.requestMore(1)
+			tail.request(1)
 
 		then:
 			'last value known is 5'

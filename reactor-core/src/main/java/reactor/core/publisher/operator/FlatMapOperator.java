@@ -27,7 +27,6 @@ import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Bounded;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;

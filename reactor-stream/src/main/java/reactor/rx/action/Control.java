@@ -27,18 +27,6 @@ import reactor.rx.StreamUtils;
 public interface Control {
 
 	/**
-	 * Request the next n elements from the source
-	 *
-	 * @param n the number of elements to request
-	 */
-	void requestMore(long n);
-
-	/**
-	 * Usually requests Long.MAX_VALUE, which instructs a stream to never end until completed or cancelled.
-	 */
-	void requestAll();
-
-	/**
 	 * Stop consuming signals from upstream. Cancel should not be considered blocking.
 	 */
 	void cancel();

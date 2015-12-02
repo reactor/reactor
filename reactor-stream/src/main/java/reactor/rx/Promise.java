@@ -40,7 +40,6 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
-import reactor.rx.action.Action;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -678,11 +677,7 @@ public class Promise<O>
 	}
 
 	public StreamUtils.StreamVisitor debug() {
-		Action<?, ?> debugged = Action.findOldestUpstream(this, Action.class);
-		if (subscription == null || debugged == null) {
-			return outboundStream != null ? outboundStream.debug() : null;
-		}
-		return debugged.debug();
+		return StreamUtils.browse(this);
 	}
 
 	protected void errorAccepted(Throwable error) {

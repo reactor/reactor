@@ -34,11 +34,6 @@ public class TapAndControls<O> implements Control, Supplier<O>{
 	}
 
 	@Override
-	public void requestAll() {
-		controls.requestAll();
-	}
-
-	@Override
 	public void cancel() {
 		controls.cancel();
 	}
@@ -51,11 +46,6 @@ public class TapAndControls<O> implements Control, Supplier<O>{
 	@Override
 	public boolean isTerminated() {
 		return controls.isTerminated();
-	}
-
-	@Override
-	public void requestMore(long n) {
-		controls.requestMore(n);
 	}
 
 	@Override

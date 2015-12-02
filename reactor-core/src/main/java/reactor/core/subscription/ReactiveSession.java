@@ -133,11 +133,11 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	 * @return
 	 */
 	public Emission emit(E data) {
-		if (cancelled) {
-			return Emission.CANCELLED;
-		}
 		if (uncaughtException != null) {
 			return Emission.FAILED;
+		}
+		if (cancelled) {
+			return Emission.CANCELLED;
 		}
 		try {
 			if (BackpressureUtils.getAndSub(REQUESTED, this, 1L) == 0L) {
@@ -166,7 +166,15 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	public void failWith(Throwable error) {
 		if (uncaughtException == null) {
 			uncaughtException = error;
-			actual.onError(error);
+			if(!cancelled) {
+				cancelled = true;
+				actual.onError(error);
+			}
+			else{
+				IllegalStateException ise = new IllegalStateException("Session has been cancelled previously");
+				Exceptions.addCause(ise, error);
+				throw ise;
+			}
 		}
 		else {
 			IllegalStateException ise = new IllegalStateException("Session already failed");
@@ -180,11 +188,11 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	 * @return
 	 */
 	public Emission finish() {
-		if (cancelled) {
-			return Emission.CANCELLED;
-		}
 		if (uncaughtException != null) {
 			return Emission.FAILED;
+		}
+		if (cancelled) {
+			return Emission.CANCELLED;
 		}
 		try {
 			cancelled = true;

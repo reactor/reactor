@@ -186,6 +186,68 @@ public abstract class SubscriberFactory {
 	}
 
 	/**
+	 * Create a {@link Subscriber} that will will automatically request Long.MAX_VALUE onSubscribe.
+	 *
+	 * @param <T> The type of the data sequence
+	 * @return a fresh Reactive Streams subscriber ready to be subscribed
+	 */
+	public static <T> Subscriber<T> consumer() {
+		return consumer(null, null, null);
+	}
+
+	/**
+	 * Create a {@link Subscriber} reacting onNext. The subscriber will automatically
+	 * request Long.MAX_VALUE onSubscribe.
+	 *
+	 * @param dataConsumer A {@link Consumer} with argument onNext data
+	 * @param <T>          The type of the data sequence
+	 * @return a fresh Reactive Streams subscriber ready to be subscribed
+	 */
+	public static <T> Subscriber<T> consumer(Consumer<T> dataConsumer) {
+		return consumer(dataConsumer, null, null);
+	}
+
+
+	/**
+	 * Create a {@link Subscriber} reacting onNext and onError. The subscriber will automatically
+	 * request Long.MAX_VALUE onSubscribe.
+	 *
+	 * @param dataConsumer  A {@link Consumer} with argument onNext data
+	 * @param errorConsumer A {@link Consumer} called onError
+	 * @param <T>           The type of the data sequence
+	 * @return a fresh Reactive Streams subscriber ready to be subscribed
+	 */
+	public static <T> Subscriber<T> consumer(Consumer<T> dataConsumer,
+			Consumer<Throwable> errorConsumer) {
+		return consumer(dataConsumer, errorConsumer, null);
+	}
+
+
+	/**
+	 * Create a {@link Subscriber} reacting onNext, onError and onComplete. The subscriber will automatically
+	 * request Long.MAX_VALUE onSubscribe.
+	 * <p>
+	 * The argument {@code subscriptionHandler} is executed once by new subscriber to generate a context shared by
+	 * every
+	 * request calls.
+	 *
+	 * @param dataConsumer     A {@link Consumer} with argument onNext data
+	 * @param errorConsumer    A {@link Consumer} called onError
+	 * @param completeConsumer A {@link Consumer} called onComplete with the actual context if any
+	 * @param <T>              The type of the data sequence
+	 * @return a fresh Reactive Streams subscriber ready to be subscribed
+	 */
+	public static <T> Subscriber<T> consumer(Consumer<T> dataConsumer,
+			final Consumer<Throwable> errorConsumer,
+			Consumer<Void> completeConsumer) {
+		return new ConsumerSubscriber<>(
+				dataConsumer,
+				errorConsumer,
+				completeConsumer
+		);
+	}
+
+	/**
 	 * Create a {@link Subscriber} reacting onNext, onSubscribe, onError, onComplete with the passed {@link
 	 * BiConsumer}.
 	 * The argument {@code subscriptionHandler} is executed once by new subscriber to generate a context shared by
@@ -211,7 +273,7 @@ public abstract class SubscriberFactory {
 	                                          BiConsumer<Throwable, C> errorConsumer,
 	                                          Consumer<C> completeConsumer) {
 
-		return new ReactorSubscriber<T, C>(dataConsumer, subscriptionHandler, errorConsumer, completeConsumer);
+		return new SubscriberWithSubscriptionContext<T, C>(dataConsumer, subscriptionHandler, errorConsumer, completeConsumer);
 	}
 
 	private static final Function<Subscription, Void> UNBOUNDED_REQUEST_FUNCTION = new Function<Subscription, Void>() {
@@ -222,7 +284,8 @@ public abstract class SubscriberFactory {
 		}
 	};
 
-	private static final class ReactorSubscriber<T, C> extends BaseSubscriber<T> implements Bounded, Publishable<T> {
+	private static final class SubscriberWithSubscriptionContext<T, C> extends BaseSubscriber<T>
+			implements Bounded, Publishable<T> {
 
 		protected final Function<Subscription, C>                 subscriptionHandler;
 		protected final BiConsumer<T, SubscriptionWithContext<C>> dataConsumer;
@@ -231,7 +294,7 @@ public abstract class SubscriberFactory {
 
 		private SubscriptionWithContext<C> subscriptionWithContext;
 
-		protected ReactorSubscriber(BiConsumer<T, SubscriptionWithContext<C>> dataConsumer,
+		protected SubscriberWithSubscriptionContext(BiConsumer<T, SubscriptionWithContext<C>> dataConsumer,
 		                            Function<Subscription, C> subscriptionHandler,
 		                            BiConsumer<Throwable, C> errorConsumer,
 		                            Consumer<C> completeConsumer) {
