@@ -34,6 +34,11 @@ public class DataTestSubscriber extends TestSubscriber {
 	private volatile List<String> nextSignals = new ArrayList<>();
 
 	/**
+	 * Total number of asserted Next signals
+	 */
+	private volatile int numAssertedNextSignals = 0;
+
+	/**
 	 * Creates a new test subscriber
 	 *
 	 * @param timeoutSecs timeout interval in seconds
@@ -57,7 +62,7 @@ public class DataTestSubscriber extends TestSubscriber {
 	 */
 	public void assertNextSignals(String... expectedNextSignals) throws InterruptedException {
 		int expectedNum = expectedNextSignals.length;
-		assertNumNextSignalsReceived(expectedNum);
+		assertNumNextSignalsReceived(numAssertedNextSignals + expectedNum);
 
 		List<String> nextSignalsSnapshot;
 		synchronized (nextSignals) {
@@ -79,6 +84,8 @@ public class DataTestSubscriber extends TestSubscriber {
 						String.format("Expected Next signal: %s, but got: %s", expectedSignal, actualSignal));
 			}
 		}
+
+		numAssertedNextSignals += expectedNum;
 	}
 
 	@Override
