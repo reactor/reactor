@@ -370,7 +370,7 @@ public abstract class PublisherFactory {
 	}
 
 	private final static class SubscriberProxy<T, C> extends SubscriberWithContext<T, C>
-			implements Subscription, ReactiveState.Upstream {
+			implements Subscription, ReactiveState.Upstream, ReactiveState.Trace {
 
 		private final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
 

@@ -53,7 +53,7 @@ function draw() {
     var options = {
         layout: {
             hierarchical: {
-                direction: "LR",
+                direction: "UD",
                 sortMethod: "directed"
             },
             randomSeed:2

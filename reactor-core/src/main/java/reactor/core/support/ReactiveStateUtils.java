@@ -26,20 +26,31 @@ import java.util.Set;
  */
 public final class ReactiveStateUtils {
 
+
 	/**
 	 * Create a "Nodes" and "Links" complete representation of a given component if available
 	 * @param o
 	 * @return a Graph
 	 */
 	public static Graph scan(Object o){
+		return scan(o, false);
+	}
+
+	/**
+	 * Create a "Nodes" and "Links" complete representation of a given component if available
+	 * @param o
+	 * @param trace
+	 * @return a Graph
+	 */
+	public static Graph scan(Object o, boolean trace){
 		if(o == null){
 			return null;
 		}
 
-		Graph graph = new Graph();
+		Graph graph = new Graph(false, trace);
 		Node origin = new Node(o);
-		graph.addUpstream(origin);
-		graph.addDownstream(origin);
+		graph.addUpstream(origin, null);
+		graph.addDownstream(origin, null);
 
 		return graph;
 	}
@@ -50,13 +61,23 @@ public final class ReactiveStateUtils {
 	 * @return a Graph
 	 */
 	public static Graph subscan(Object o){
+		return subscan(o, false);
+	}
+
+	/**
+	 * Create a "Nodes" and "Links" downstream representation of a given component if available
+	 * @param o
+	 * @param trace
+	 * @return a Graph
+	 */
+	public static Graph subscan(Object o, boolean trace){
 		if(o == null){
 			return null;
 		}
 
-		Graph graph = new Graph(true);
+		Graph graph = new Graph(true, trace);
 		Node root = new Node(o);
-		graph.addDownstream(root);
+		graph.addDownstream(root, null);
 
 		return graph;
 	}
@@ -99,6 +120,15 @@ public final class ReactiveStateUtils {
 
 	/**
 	 *
+	 * @param o
+	 * @return
+	 */
+	public static boolean isTraceOnly(Object o){
+		return o != null && ReactiveState.Trace.class.isAssignableFrom(o.getClass());
+	}
+
+	/**
+	 *
 	 */
 	public static final class Graph {
 
@@ -106,13 +136,15 @@ public final class ReactiveStateUtils {
 		private final Set<Edge> edges = new HashSet<>();
 
 		private final boolean subscan;
+		private final boolean trace;
 
 		Graph(){
-			this(false);
+			this(false, false);
 		}
 
-		Graph(boolean subscan){
+		Graph(boolean subscan, boolean trace){
 			this.subscan = subscan;
+			this.trace = trace;
 		}
 
 		public Set<Node> getNodes() {
@@ -123,15 +155,24 @@ public final class ReactiveStateUtils {
 			return edges;
 		}
 
-		private void addUpstream(Node target){
-			nodes.add(target);
+		private void addUpstream(Node target, Node grandchild){
+			Node child;
+			if(trace || !isTraceOnly(target.object)) {
+				child = target;
+				nodes.add(child);
+			}
+			else{
+				child = grandchild;
+			}
 			if(hasUpstream(target.object)){
 				Node upstream =  new Node(((ReactiveState.Upstream)target.object).upstream());
-				edges.add(new Edge(upstream.id, target.id));
-				addUpstream(upstream);
+				if(child != null && (trace || !isTraceOnly(upstream.object))) {
+					edges.add(new Edge(upstream.id, child.id));
+				}
+				addUpstream(upstream, child);
 			}
 			if(hasUpstreams(target.object)){
-				addUpstreams(target, ((ReactiveState.LinkedUpstreams)target.object).upstreams());
+				addUpstreams(child, ((ReactiveState.LinkedUpstreams)target.object).upstreams());
 			}
 		}
 
@@ -139,29 +180,42 @@ public final class ReactiveStateUtils {
 			Node source;
 			while(o.hasNext()){
 				source = new Node(o.next());
-				edges.add(new Edge(source.id, target.id));
-				addUpstream(source);
+				if(target != null) {
+					edges.add(new Edge(source.id, target.id));
+				}
+				addUpstream(source, target);
 			}
 		}
 
-		private void addDownstream(Node root){
-			nodes.add(root);
-			if(hasDownstream(root.object)){
-				Node downstream = new Node(((ReactiveState.Downstream)root.object).downstream());
-				edges.add(new Edge(root.id, downstream.id));
-				addDownstream(downstream);
+		private void addDownstream(Node origin, Node ancestor){
+			Node root;
+			if(trace || !isTraceOnly(origin.object)) {
+				root = origin;
+				nodes.add(root);
 			}
-			if(hasDownstreams(root.object)){
-				addDownstreams(root, ((ReactiveState.LinkedDownstreams)root.object).downstreams());
+			else{
+				root = ancestor;
+			}
+			if(hasDownstream(origin.object)){
+				Node downstream = new Node(((ReactiveState.Downstream)origin.object).downstream());
+				if(root != null && (trace || !isTraceOnly(downstream.object))) {
+					edges.add(new Edge(root.id, downstream.id));
+				}
+				addDownstream(downstream, root);
+			}
+			if(hasDownstreams(origin.object)){
+				addDownstreams(root, ((ReactiveState.LinkedDownstreams)origin.object).downstreams());
 			}
 		}
 
 		private void addDownstreams(Node source, Iterator o){
-			Node target;
+			Node downstream;
 			while(o.hasNext()){
-				target = new Node(o.next());
-				edges.add(new Edge(source.id, target.id));
-				addDownstream(target);
+				downstream = new Node(o.next());
+				if(source != null) {
+					edges.add(new Edge(source.id, downstream.id));
+				}
+				addDownstream(downstream, source);
 			}
 		}
 
@@ -169,6 +223,7 @@ public final class ReactiveStateUtils {
 		public String toString() {
 			return "{" +
 					" full : " + !subscan +
+					", trace : " + trace +
 					", edges : " + edges +
 					", nodes : " + nodes +
 					'}';

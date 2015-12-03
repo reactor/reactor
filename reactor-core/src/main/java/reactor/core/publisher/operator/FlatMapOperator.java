@@ -15,6 +15,8 @@
  */
 package reactor.core.publisher.operator;
 
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
@@ -65,7 +67,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		return new MergeBarrier<>(t, mapper, maxConcurrency, bufferSize);
 	}
 
-	static final class MergeBarrier<T, V> extends SubscriberWithDemand<T, V> {
+	static final class MergeBarrier<T, V> extends SubscriberWithDemand<T, V> implements ReactiveState.LinkedUpstreams {
 
 		final Function<? super T, ? extends Publisher<? extends V>> mapper;
 		final int                                                   maxConcurrency;
@@ -308,6 +310,16 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					unsubscribe();
 				}
 			}
+		}
+
+		@Override
+		public Iterator<?> upstreams() {
+			return Arrays.asList(subscribers).iterator();
+		}
+
+		@Override
+		public long upstreamsCount() {
+			return subscribers.length;
 		}
 
 		void reportError(Throwable t) {

@@ -87,7 +87,7 @@ public interface ReactiveState {
 		/**
 		 * Return the connected sources of data
 		 */
-		Iterator<Publisher> upstreams();
+		Iterator<?> upstreams();
 
 		/**
 		 * @return the number of upstreams
@@ -196,6 +196,12 @@ public interface ReactiveState {
 		 * Return defined identifier
 		 */
 		String getKey();
+	}
+
+	/**
+	 * A request aware component
+	 */
+	interface Trace extends ReactiveState {
 	}
 
 	/*
