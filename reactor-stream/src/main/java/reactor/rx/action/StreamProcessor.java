@@ -29,7 +29,7 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>, ReactiveState.Upstream<O>,
+public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>, ReactiveState.Upstream,
                                                                 ReactiveState.Downstream<E> {
 
 	protected final Subscriber<E> receiver;
@@ -116,7 +116,7 @@ public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>,
 	}
 
 	@Override
-	public Publisher<O> upstream() {
+	public Object upstream() {
 		return publisher;
 	}
 

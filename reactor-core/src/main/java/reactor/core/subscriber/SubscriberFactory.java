@@ -284,7 +284,7 @@ public abstract class SubscriberFactory {
 	};
 
 	private static final class SubscriberWithSubscriptionContext<T, C> extends BaseSubscriber<T>
-			implements ReactiveState.Bounded, ReactiveState.Upstream<T> {
+			implements ReactiveState.Bounded, ReactiveState.Upstream {
 
 		protected final Function<Subscription, C>                 subscriptionHandler;
 		protected final BiConsumer<T, SubscriptionWithContext<C>> dataConsumer;
@@ -306,8 +306,8 @@ public abstract class SubscriberFactory {
 
 
 		@Override
-		public Publisher<T> upstream() {
-			return PublisherFactory.fromSubscription(subscriptionWithContext);
+		public Object upstream() {
+			return subscriptionWithContext;
 		}
 
 		@Override

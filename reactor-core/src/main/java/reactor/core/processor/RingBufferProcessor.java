@@ -743,7 +743,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 		return ringBuffer.remainingCapacity();
 	}
 
-	private final class RingBufferSubscription implements Subscription, Upstream<E> {
+	private final class RingBufferSubscription implements Subscription, Upstream {
 
 		private final Sequence pendingRequest;
 
@@ -760,7 +760,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 		}
 
 		@Override
-		public Publisher<E> upstream() {
+		public Object upstream() {
 			return RingBufferProcessor.this;
 		}
 

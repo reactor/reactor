@@ -40,6 +40,7 @@ import reactor.core.publisher.operator.ZipOperator;
 import reactor.core.subscriber.Tap;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.BiConsumer;
 import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
@@ -97,10 +98,6 @@ import reactor.rx.action.passive.CallbackOperator;
 import reactor.rx.action.passive.FinallyOperator;
 import reactor.rx.action.passive.StreamStateCallbackOperator;
 import reactor.rx.action.support.TapAndControls;
-import reactor.rx.subscriber.AdaptiveSubscriber;
-import reactor.rx.subscriber.BoundedSubscriber;
-import reactor.rx.subscriber.InterruptableSubscriber;
-import reactor.rx.subscriber.ManualSubscriber;
 import reactor.rx.action.transformation.DefaultIfEmptyOperator;
 import reactor.rx.action.transformation.DematerializeOperator;
 import reactor.rx.action.transformation.GroupByOperator;
@@ -108,6 +105,10 @@ import reactor.rx.action.transformation.MaterializeOperator;
 import reactor.rx.action.transformation.ScanOperator;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.GroupedStream;
+import reactor.rx.subscriber.AdaptiveSubscriber;
+import reactor.rx.subscriber.BoundedSubscriber;
+import reactor.rx.subscriber.InterruptableSubscriber;
+import reactor.rx.subscriber.ManualSubscriber;
 
 /**
  * Base class for components designed to provide a succinct API for working with future values. Provides base
@@ -2326,13 +2327,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public StreamUtils.StreamVisitor debug() {
-		if(Upstream.class.isAssignableFrom(getClass())){
-			return StreamUtils.browse((Upstream)this);
-		}
-		else{
-			return null;
-		}
+	public ReactiveStateUtils.Graph debug() {
+		return ReactiveStateUtils.scan(this);
 	}
 
 	/**

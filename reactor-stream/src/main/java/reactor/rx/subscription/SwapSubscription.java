@@ -31,7 +31,7 @@ import reactor.core.support.internal.PlatformDependent;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class SwapSubscription<T> implements Subscription, ReactiveState.Upstream<T> {
+public final class SwapSubscription<T> implements Subscription, ReactiveState.Upstream {
 
 	@SuppressWarnings("unused")
 	private volatile Subscription subscription;
@@ -134,8 +134,8 @@ public final class SwapSubscription<T> implements Subscription, ReactiveState.Up
 	}
 
 	@Override
-	public Publisher<T> upstream() {
-		return Publishers.fromSubscription(subscription);
+	public Object upstream() {
+		return subscription;
 	}
 
 	@Override

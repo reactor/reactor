@@ -553,7 +553,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 				'}';
 	}
 
-	static final class InnerSubscriber<T> implements Subscription, ReactiveState.Bounded, Upstream<T> {
+	static final class InnerSubscriber<T> implements Subscription, Bounded, Upstream {
 
 		final long                  id;
 		final EmitterProcessor<T>   parent;
@@ -627,7 +627,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> {
 		}
 
 		@Override
-		public Publisher<T> upstream() {
+		public Object upstream() {
 			return parent;
 		}
 	}

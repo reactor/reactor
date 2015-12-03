@@ -34,8 +34,9 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * @author Stephane Maldini
+ * @since 2.1
  */
-public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements ReactiveState.Upstream<IN>,
+public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements ReactiveState.Upstream,
                                                                                ReactiveState.Downstream<IN>,
                                                                                Subscription,
                                                                                BlockingQueue<IN> {
@@ -158,8 +159,8 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements R
 	}
 
 	@Override
-	public Publisher<IN> upstream() {
-		return PublisherFactory.fromSubscription(subscription);
+	public Object upstream() {
+		return subscription;
 	}
 
 	@Override

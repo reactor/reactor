@@ -1661,8 +1661,7 @@ class StreamsSpec extends Specification {
 				}
 			}
 
-			def objetMapper = new ObjectMapper()
-			println objetMapper.writeValueAsString(source.debug().toMap())
+			println source.debug()
 
 		when:
 			'some values are accepted'
@@ -1703,8 +1702,7 @@ class StreamsSpec extends Specification {
 				}
 			}
 
-			def objetMapper = new ObjectMapper()
-			println objetMapper.writeValueAsString(source.debug().toMap())
+			println source.debug()
 
 		when:
 			'some values are accepted'
@@ -1750,12 +1748,12 @@ class StreamsSpec extends Specification {
 			source.onNext(new SimplePojo(id: 3, title: 'Acme2'))
 			source.onNext(new SimplePojo(id: 3, title: 'Acme3'))
 			println source.debug()
-			def result = source.debug().toMap()
+			def result = source.debug()
 
 
 		then:
 			'the result should contain all stream titles by id'
-			result.to[0].id == "GroupBy"
+			result.nodes.to[0].id == "GroupBy"
 			result.to[0].to[0].id == "Consumer"
 			result.to[0].boundTo[0].id == "Consumer"
 			result.to[0].boundTo[1].id == "Consumer"

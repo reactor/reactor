@@ -15,9 +15,9 @@
  */
 package reactor.rx.action.support;
 
-import reactor.fn.Supplier;
 import reactor.core.subscriber.Tap;
-import reactor.rx.StreamUtils;
+import reactor.core.support.ReactiveStateUtils;
+import reactor.fn.Supplier;
 import reactor.rx.action.Control;
 
 /**
@@ -49,7 +49,7 @@ public class TapAndControls<O> implements Control, Supplier<O>{
 	}
 
 	@Override
-	public StreamUtils.StreamVisitor debug() {
+	public ReactiveStateUtils.Graph debug() {
 		return controls.debug();
 	}
 }

@@ -33,22 +33,33 @@ module.exports = function(config){
             .on('error', function(err){
                 gutil.log('Error in SASS build:');
                 gutil.log(err);
-            })
-            .pipe(gulp.dest(config.classpathTarget+'assets/css'));
+            });
+
 
         if(config.vendor.css.length !== 0) {
-            pipe = gulp.src(config.vendor.css)
-                .pipe(concat('vendor.css'))
-                .pipe(gulp.dest(config.classpathTarget+'assets/css'));
+            var p = gulp.src(config.vendor.css)
+                .pipe(concat('vendor.css'));
+
+            if(config.cssmin) {
+                p = p.pipe(cssmin());
+            }
+
+            p = p.pipe(gulp.dest(config.classpathTarget+'assets/css'));
+
+            if(config.classpathDevTarget !== 'undefined'){
+                p.pipe(gulp.dest(config.classpathDevTarget+'assets/css'));
+            }
         }
 
         if(config.cssmin) {
-            pipe.pipe(cssmin());
+            pipe = pipe.pipe(cssmin());
         }
 
         if(config.classpathDevTarget !== 'undefined'){
-            pipe = pipe.pipe(gulp.dest(config.classpathDevTarget));
+            pipe.pipe(gulp.dest(config.classpathDevTarget+'assets/css'));
         }
+
+        pipe =  pipe.pipe(gulp.dest(config.classpathTarget+'assets/css'));
 
         return pipe;
     };

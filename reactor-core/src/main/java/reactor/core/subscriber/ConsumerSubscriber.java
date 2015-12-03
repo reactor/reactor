@@ -29,7 +29,7 @@ import reactor.fn.Consumer;
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ConsumerSubscriber<T> extends BaseSubscriber<T> implements ReactiveState.Upstream<T> {
+public class ConsumerSubscriber<T> extends BaseSubscriber<T> implements ReactiveState.Upstream {
 
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;
@@ -81,8 +81,8 @@ public class ConsumerSubscriber<T> extends BaseSubscriber<T> implements Reactive
 	}
 
 	@Override
-	public Publisher<T> upstream() {
-		return PublisherFactory.fromSubscription(subscription);
+	public Object upstream() {
+		return subscription;
 	}
 
 	@Override

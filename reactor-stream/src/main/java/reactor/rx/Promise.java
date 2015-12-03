@@ -35,6 +35,7 @@ import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -59,7 +60,7 @@ import reactor.rx.broadcast.Broadcaster;
  */
 public class Promise<O>
 		implements Supplier<O>, Processor<O, O>, Consumer<O>, ReactiveState.Bounded, Subscription,
-		           ReactiveState.Upstream<O> {
+		           ReactiveState.Upstream {
 
 	public static final long DEFAULT_TIMEOUT =
 			Long.parseLong(System.getProperty("reactor.await.defaultTimeout", "30000"));
@@ -371,8 +372,8 @@ public class Promise<O>
 	}
 
 	@Override
-	public final Publisher<O> upstream() {
-		return PublisherFactory.fromSubscription(subscription);
+	public final Object upstream() {
+		return subscription;
 	}
 
 	/**
@@ -675,8 +676,8 @@ public class Promise<O>
 		valueAccepted(o);
 	}
 
-	public StreamUtils.StreamVisitor debug() {
-		return StreamUtils.browse(this);
+	public ReactiveStateUtils.Graph debug() {
+		return ReactiveStateUtils.scan(this);
 	}
 
 	protected void errorAccepted(Throwable error) {

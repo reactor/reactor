@@ -44,10 +44,11 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 	private static final Logger log = LoggerFactory.getLogger(Pylon.class);
 
-	private static final String CONSOLE_STATIC_PATH     = "/public/";
+	private static final String CONSOLE_STATIC_PATH     = "/public";
 	private static final String EXIT_URL                = "/exit";
 	private static final String CONSOLE_URL             = "/pylon";
-	private static final String HTML_DEPENDENCY_CONSOLE = "pylon.html";
+	private static final String CONSOLE_FAVICON         = "/favicon.ico";
+	private static final String HTML_DEPENDENCY_CONSOLE = "/pylon.html";
 
 	private final HttpServer<Buffer, Buffer> server;
 
@@ -71,18 +72,16 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		final JsonCodec<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> codec =
 				new JsonCodec<>(ReactiveStateUtils.Graph.class);
 
-		pylon.server
-				.get("/nexus/stream", new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
+		pylon.server.get("/nexus/stream", new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
 
-					@Override
-					public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
-						Processor p = Processors.emitter();
-						Publishers.merge(
-								Processors.emitter(),
-								Publishers.just("b")).subscribe(p);
-						return channel.writeBufferWith(codec.encode(Publishers.just(ReactiveStateUtils.scan(p))));
-					}
-				});
+			@Override
+			public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
+				Processor p = Processors.emitter();
+				Publishers.merge(Processors.emitter(), Publishers.just("b"))
+				          .subscribe(p);
+				return channel.writeBufferWith(codec.encode(Publishers.just(ReactiveStateUtils.scan(p))));
+			}
+		});
 		//EXAMPLE END
 
 		pylon.startAndAwait();
@@ -107,6 +106,9 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 		server.file(CONSOLE_URL,
 				Pylon.class.getResource(CONSOLE_STATIC_PATH + HTML_DEPENDENCY_CONSOLE)
+				           .getPath())
+		      .file(CONSOLE_FAVICON,
+				Pylon.class.getResource(CONSOLE_STATIC_PATH + CONSOLE_FAVICON)
 				           .getPath())
 		      .directory(CONSOLE_URL,
 				      Pylon.class.getResource(CONSOLE_STATIC_PATH)

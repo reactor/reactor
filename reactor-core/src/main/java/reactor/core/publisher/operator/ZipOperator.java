@@ -408,7 +408,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 	}
 
 	static final class BufferSubscriber<V> extends BaseSubscriber<Object> implements ReactiveState.Bounded, ZipState<Object>,
-	                                                                                 ReactiveState.Upstream<Object>,
+	                                                                                 ReactiveState.Upstream,
 	                                                                                 ReactiveState.Downstream<Publisher[]> {
 
 		final ZipBarrier<?, V> parent;
@@ -432,8 +432,8 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		@Override
-		public Publisher<Object> upstream() {
-			return PublisherFactory.fromSubscription(subscription);
+		public Object upstream() {
+			return subscription;
 		}
 
 		@Override

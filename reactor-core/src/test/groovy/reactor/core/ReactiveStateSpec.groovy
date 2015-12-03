@@ -68,10 +68,10 @@ class ReactiveStateSpec extends Specification {
 	def sub2 = unbounded()
 	def sub3 = unbounded()
 	def group = singleGroup().get()
-	proc1.subscribe(sub1)
+	log(proc1," test").subscribe(sub1)
 	group.subscribe(sub2)
-	proc1.subscribe(sub3)
-	proc1.subscribe(group)
+	log(proc1," test").subscribe(sub3)
+	log(proc1," test").subscribe(group)
 	def zip = zip(pub3, proc2)
 
 	t = ReactiveStateUtils.scan(zip)
@@ -79,7 +79,7 @@ class ReactiveStateSpec extends Specification {
 	println t.nodes
 	println t.edges
 
-	zip.subscribe(group)
+	zip.subscribe(proc1)
 
 	println "after zip/subscribe"
 	t = ReactiveStateUtils.scan(sub1)

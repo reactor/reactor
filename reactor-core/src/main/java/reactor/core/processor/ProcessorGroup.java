@@ -529,7 +529,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
 			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
-			           ReactiveState.Bounded, ReactiveState.Upstream<V>, ReactiveState.Downstream<V>, Runnable {
+			           ReactiveState.Bounded, ReactiveState.Upstream, ReactiveState.Downstream<V>, Runnable {
 
 		protected final ProcessorGroup service;
 
@@ -575,8 +575,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		public Publisher<V> upstream() {
-			return PublisherFactory.fromSubscription(upstreamSubscription);
+		public Object upstream() {
+			return upstreamSubscription;
 		}
 
 		@Override

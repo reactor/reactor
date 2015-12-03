@@ -25,7 +25,7 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class DecoratingStream<T> extends Stream<T> implements ReactiveState.Upstream<T> {
+public final class DecoratingStream<T> extends Stream<T> implements ReactiveState.Upstream {
 
 	private final Publisher<T> publisher;
 
@@ -39,7 +39,7 @@ public final class DecoratingStream<T> extends Stream<T> implements ReactiveStat
 	}
 
 	@Override
-	public Publisher<T> upstream() {
+	public Object upstream() {
 		return publisher;
 	}
 

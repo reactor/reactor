@@ -56,7 +56,7 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Reacti
 	}
 
 	@Override
-	public Publisher upstream() {
+	public Object upstream() {
 		return publisher;
 	}
 

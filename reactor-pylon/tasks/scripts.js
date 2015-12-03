@@ -19,31 +19,33 @@ var gulp = require('gulp'),
 module.exports = function(config){
   return function(){
 
-    var p = gulp.src(config.classpathSource+'assets/js/pylon.js')
+    var op = gulp.src(config.classpathSource+'assets/js/pylon.js')
       .pipe(gulp.dest(config.classpathTarget+'assets/js'));
 
     if(config.classpathDevTarget !== 'undefined'){
-      p.pipe(gulp.dest(config.classpathDevTarget));
+      op.pipe(gulp.dest(config.classpathDevTarget+'assets/js'));
     }
 
     if(config.vendor.js.length === 0) return;
 
-    p = gulp.src(config.vendor.js)
-      .pipe(concat('vendor.js'))
-      .pipe(gulp.dest(config.classpathTarget+'assets/js'));
+    var p = gulp.src(config.vendor.js)
+      .pipe(concat('vendor.js'));
+
+    p.pipe(gulp.dest(config.classpathTarget+'assets/js'));
 
     if(config.classpathDevTarget !== 'undefined'){
-      p.pipe(gulp.dest(config.classpathDevTarget));
+      p.pipe(gulp.dest(config.classpathDevTarget+'assets/js'));
     }
 
-    p = gulp.src(config.vendor.map)
-      .pipe(gulp.dest(config.classpathTarget+'assets/js'));
+    var p2 = gulp.src(config.vendor.map);
+
+    p2.pipe(gulp.dest(config.classpathTarget+'assets/js'));
 
     if(config.classpathDevTarget !== 'undefined'){
-      p = p.pipe(gulp.dest(config.classpathDevTarget));
+      p2.pipe(gulp.dest(config.classpathDevTarget+'assets/js'));
     }
 
-    return p;
+    return op;
 
   };
 };

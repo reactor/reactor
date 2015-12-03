@@ -20,9 +20,9 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.subscriber.ConsumerSubscriber;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
-import reactor.rx.StreamUtils;
 import reactor.rx.action.Control;
 
 /**
@@ -134,8 +134,8 @@ public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements
 	}
 
 	@Override
-	public StreamUtils.StreamVisitor debug() {
-		return StreamUtils.browse(this);
+	public ReactiveStateUtils.Graph debug() {
+		return ReactiveStateUtils.scan(this);
 	}
 
 	protected boolean isUnsubscribed() {

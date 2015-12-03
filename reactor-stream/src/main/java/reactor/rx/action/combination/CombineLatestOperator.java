@@ -333,7 +333,7 @@ public final class CombineLatestOperator<TUPLE extends Tuple, V>
 	}
 
 	static final class InnerSubscriber<V> extends BaseSubscriber<Object> implements ReactiveState.Bounded,
-	                                                                                ReactiveState.Upstream<Object> {
+	                                                                                ReactiveState.Upstream {
 
 		final CombineLatestAction<?, V> parent;
 		final int                       limit;
@@ -454,8 +454,8 @@ public final class CombineLatestOperator<TUPLE extends Tuple, V>
 		}
 
 		@Override
-		public Publisher<Object> upstream() {
-			return upstream;
+		public Object upstream() {
+			return subscription;
 		}
 
 		@Override

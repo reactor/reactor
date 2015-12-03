@@ -34,7 +34,7 @@ import reactor.core.support.ReactiveState;
  */
 public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription, ReactiveState.Bounded,
                                                                           ReactiveState.Downstream<O>,
-                                                                          ReactiveState.Upstream<I> {
+                                                                          ReactiveState.Upstream {
 
 	protected final Subscriber<? super O> subscriber;
 
@@ -45,8 +45,8 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 	}
 
 	@Override
-	public Publisher<I> upstream() {
-		return PublisherFactory.fromSubscription(subscription);
+	public Object upstream() {
+		return subscription;
 	}
 
 	@Override

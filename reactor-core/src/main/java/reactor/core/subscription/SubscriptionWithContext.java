@@ -66,8 +66,8 @@ public class SubscriptionWithContext<C> implements Subscription, ReactiveState.U
 
 
 	@Override
-	public Publisher upstream() {
-		return PublisherFactory.fromSubscription(subscription);
+	public Object upstream() {
+		return subscription;
 	}
 
 	/**

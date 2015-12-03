@@ -31,7 +31,7 @@ public interface ReactiveState {
 
 	/*
 
-	Capacity State : Buffer size (capacity), Threshold, buffered,...
+	Capacity State : Buffer size (capacity), buffered,...
 
 	 */
 
@@ -48,6 +48,18 @@ public interface ReactiveState {
 		long getCapacity();
 	}
 
+	/**
+	 * A capacity aware component
+	 */
+	interface Buffering extends Bounded {
+
+		/**
+		 * Return current used space in buffer
+		 * @return long capacity
+		 */
+		long pending();
+	}
+
 	/*
 
 	Upstream State : Publisher(S), outstanding request, ...
@@ -58,12 +70,12 @@ public interface ReactiveState {
 	 * A component that is linked to a source {@link Publisher}. Useful to traverse from left to right a pipeline of
 	 * reactive actions implementing this interface.
 	 */
-	interface Upstream<T> extends ReactiveState {
+	interface Upstream extends ReactiveState {
 
 		/**
 		 * Return the direct source of data
 		 */
-		Publisher<T> upstream();
+		Object upstream();
 	}
 
 	/**
@@ -94,6 +106,18 @@ public interface ReactiveState {
 		 * @return long capacity
 		 */
 		long expectedFromUpstream();
+	}
+
+	/**
+	 * A request aware component
+	 */
+	interface UpstreamPrefetch extends UpstreamDemand {
+
+		/**
+		 *
+		 * @return
+		 */
+		long limit();
 	}
 
 	/*
@@ -166,7 +190,7 @@ public interface ReactiveState {
 	/**
 	 * A request aware component
 	 */
-	interface Key extends ReactiveState {
+	interface Grouped extends ReactiveState {
 
 		/**
 		 * Return defined identifier

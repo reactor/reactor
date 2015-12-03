@@ -701,7 +701,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 
 	;
 
-	private final class RingBufferSubscription implements Subscription, Upstream<E> {
+	private final class RingBufferSubscription implements Subscription, Upstream {
 
 		private final Subscriber<? super E> subscriber;
 
@@ -714,7 +714,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 		}
 
 		@Override
-		public Publisher<E> upstream() {
+		public Object upstream() {
 			return RingBufferWorkProcessor.this;
 		}
 

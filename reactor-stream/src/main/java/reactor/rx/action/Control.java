@@ -15,7 +15,7 @@
  */
 package reactor.rx.action;
 
-import reactor.rx.StreamUtils;
+import reactor.core.support.ReactiveStateUtils;
 
 /**
  * An interface generally associated with a {@link reactor.rx.Stream} terminal action such as
@@ -40,7 +40,7 @@ public interface Control {
 	/**
 	 * Parse the materialized upstream source to fetch a materialized map form which allows for graph-style printing.
 	 *
-	 * @return {@link reactor.rx.StreamUtils.StreamVisitor} a Debug container for the current source
+	 * @return {@link ReactiveStateUtils.Graph} a Debug container for the current source
 	 */
-	StreamUtils.StreamVisitor debug();
+	ReactiveStateUtils.Graph debug();
 }

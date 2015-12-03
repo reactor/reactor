@@ -231,16 +231,6 @@ public abstract class PublisherFactory {
 	}
 
 	/**
-	 * Check if the subscription is bound to a Publisher.
-	 * @param subscription the sub to check
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Publisher<T> fromSubscription(Subscription subscription) {
-		return subscription != null && ReactiveState.Upstream.class.isAssignableFrom(subscription.getClass()) ?
-				((ReactiveState.Upstream<T>) subscription).upstream() : null;
-	}
-
-	/**
 	 *
 	 * @param left
 	 * @param right
@@ -330,7 +320,7 @@ public abstract class PublisherFactory {
 	private final static class PublisherOperator<I, O>
 			implements ReactiveState.Bounded,
 			           ReactiveState.Named,
-			           ReactiveState.Upstream<I>,
+			           ReactiveState.Upstream,
 			           LiftOperator<I, O> {
 
 		final private Publisher<I>                                           source;
@@ -351,7 +341,7 @@ public abstract class PublisherFactory {
 		}
 
 		@Override
-		public Publisher<I> upstream() {
+		public Object upstream() {
 			return source;
 		}
 
@@ -380,7 +370,7 @@ public abstract class PublisherFactory {
 	}
 
 	private final static class SubscriberProxy<T, C> extends SubscriberWithContext<T, C>
-			implements Subscription, ReactiveState.Upstream<T> {
+			implements Subscription, ReactiveState.Upstream {
 
 		private final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
 

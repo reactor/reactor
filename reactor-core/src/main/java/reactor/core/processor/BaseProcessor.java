@@ -34,7 +34,7 @@ import reactor.core.support.SignalType;
  * @author Stephane Maldini
  */
 public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
-		implements Processor<IN, OUT>, ReactiveState.Bounded, ReactiveState.Upstream<IN> {
+		implements Processor<IN, OUT>, ReactiveState.Bounded, ReactiveState.Upstream {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
@@ -111,8 +111,8 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
 	}
 
 	@Override
-	public Publisher<IN> upstream() {
-		return PublisherFactory.fromSubscription(upstreamSubscription);
+	public Object upstream() {
+		return upstreamSubscription;
 	}
 
 }
