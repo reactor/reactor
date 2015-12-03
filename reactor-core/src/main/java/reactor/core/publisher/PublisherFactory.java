@@ -327,7 +327,11 @@ public abstract class PublisherFactory {
 		}
 	}
 
-	private final static class PublisherOperator<I, O> implements ReactiveState.Bounded, LiftOperator<I, O> {
+	private final static class PublisherOperator<I, O>
+			implements ReactiveState.Bounded,
+			           ReactiveState.Named,
+			           ReactiveState.Upstream<I>,
+			           LiftOperator<I, O> {
 
 		final private Publisher<I>                                           source;
 		final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
@@ -347,14 +351,24 @@ public abstract class PublisherFactory {
 		}
 
 		@Override
+		public Publisher<I> upstream() {
+			return source;
+		}
+
+		@Override
+		public String getName() {
+			return barrierProvider.getClass().getSimpleName().replaceAll("Operator", "");
+		}
+
+		@Override
 		public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
 			return barrierProvider;
 		}
 
 		@Override
 		public String toString() {
-			return "OpPub{" +
-					"source=" + source +
+			return "{" +
+					" operator : \"" +getName() + "\" " +
 					'}';
 		}
 

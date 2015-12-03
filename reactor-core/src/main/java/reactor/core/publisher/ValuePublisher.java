@@ -73,6 +73,6 @@ public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN> {
 
 	@Override
 	public String toString() {
-		return "single-value=" + data;
+		return "{ singleValue: \"" + data +"\" }";
 	}
 }

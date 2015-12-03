@@ -25,6 +25,9 @@ module.exports = {
             ],
             css: [
                 './node_modules/vis/dist/vis.min.css'
+            ],
+            map: [
+                './node_modules/vis/dist/vis.map'
             ]
         },
         classpathSource: './src/main/static/',

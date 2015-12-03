@@ -61,13 +61,16 @@ function draw() {
         interaction: {
             dragNodes: false
         },
-        clickToUse : true
+        clickToUse : true,
+        edges: {
+            arrows : { to : true }
+        }
     };
     network = new vis.Network(container, {}, options);
 
-    var task =  function(){ test();setTimeout(task, 200); };
-
-    setTimeout(task, 200);
+    //var task =  function(){ test();setTimeout(task, 200); };
+    //
+    //setTimeout(task, 200);
 
     // add event listeners
     network.on('select', function (params) {
@@ -77,8 +80,11 @@ function draw() {
     // randomly create some nodes and edges
     loadJSON("http://localhost:12012/nexus/stream", function(json){
         //var data = getScaleFreeNetwork(nodeCount)
-        nodes.add(json.streams);
-        edges.add(json.stream_edges);
+        nodes.add(json.nodes);
+        for(var edge in json.edges){
+            json.edges[edge].arrows = {to:true};
+        }
+        edges.add(json.edges);
         network.setData({nodes: nodes, edges: edges});
 
         //font: {size:15, color:'red', face:'courier', strokeWidth:3, strokeColor:'#ffffff'}

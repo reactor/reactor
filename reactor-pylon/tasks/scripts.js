@@ -33,6 +33,13 @@ module.exports = function(config){
       .pipe(gulp.dest(config.classpathTarget+'assets/js'));
 
     if(config.classpathDevTarget !== 'undefined'){
+      p.pipe(gulp.dest(config.classpathDevTarget));
+    }
+
+    p = gulp.src(config.vendor.map)
+      .pipe(gulp.dest(config.classpathTarget+'assets/js'));
+
+    if(config.classpathDevTarget !== 'undefined'){
       p = p.pipe(gulp.dest(config.classpathDevTarget));
     }
 

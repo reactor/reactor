@@ -17,7 +17,6 @@
 package reactor.core
 
 import reactor.core.support.ReactiveStateUtils
-import spock.lang.Ignore
 import spock.lang.Specification
 
 import static reactor.Processors.emitter
@@ -28,15 +27,41 @@ import static reactor.core.subscriber.SubscriberFactory.unbounded
 /**
  * @author Stephane Maldini
  */
-@Ignore
 class ReactiveStateSpec extends Specification {
 
   def "Scan reactive streams"() {
 
-	given: "Iterable publisher of 1000 to read queue"
+	when: "Iterable publisher of 1000 to read queue"
+
 	def pub1 = map(from(1..1000), { d -> d })
 	def pub2 = map(from(1..123), { d -> d })
+
+	def t = ReactiveStateUtils.scan(pub1)
+	println t
+	println t.nodes
+	println t.edges
+
+
+	then: "scan values correct"
+	t.nodes
+	t.edges
+
+	when: "merged"
+
 	def pub3 = merge(pub1, pub2)
+
+	println "after merge"
+	t = ReactiveStateUtils.scan(pub3)
+	println t
+	println t.nodes
+	println t.edges
+
+	then: "scan values correct"
+	t.nodes
+	t.edges
+
+	when: "processors"
+
 	def proc1 = emitter()
 	def proc2 = emitter()
 	def sub1 = unbounded()
@@ -47,14 +72,22 @@ class ReactiveStateSpec extends Specification {
 	group.subscribe(sub2)
 	proc1.subscribe(sub3)
 	proc1.subscribe(group)
-	zip(pub3, proc2).subscribe(proc1)
+	def zip = zip(pub3, proc2)
 
-	when: "read the queue"
-	def t = ReactiveStateUtils.scan(sub1)
+	t = ReactiveStateUtils.scan(zip)
+	println t
 	println t.nodes
 	println t.edges
 
-	then: "queues values correct"
+	zip.subscribe(group)
+
+	println "after zip/subscribe"
+	t = ReactiveStateUtils.scan(sub1)
+	println t
+	println t.nodes
+	println t.edges
+
+	then: "scan values correct"
 	t.nodes
 	t.edges
   }
