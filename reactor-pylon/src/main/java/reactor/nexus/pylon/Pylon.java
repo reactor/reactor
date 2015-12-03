@@ -25,6 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Processors;
 import reactor.Publishers;
+import reactor.Subscribers;
+import reactor.core.processor.BaseProcessor;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
@@ -77,7 +79,14 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 			@Override
 			public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
 				Processor p = Processors.emitter();
-				Publishers.merge(Processors.emitter(), Publishers.just("b"))
+				Processor p3 = Processors.emitter();
+				p.subscribe(p3);
+				Publishers.log(p).subscribe(Subscribers.consumer());
+				p3.subscribe(Subscribers.consumer());
+				p3.subscribe(Subscribers.unbounded());
+				BaseProcessor p4 = Processors.emitter();
+				p4.startSession();
+				Publishers.merge(p4, Publishers.just("b"))
 				          .subscribe(p);
 				return channel.writeBufferWith(codec.encode(Publishers.just(ReactiveStateUtils.scan(p))));
 			}

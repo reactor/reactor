@@ -148,7 +148,7 @@ public interface ReactiveState {
 		/**
 		 * @return the connected data receivers
 		 */
-		Iterator<Subscriber> downstreams();
+		Iterator<?> downstreams();
 
 		/**
 		 * @return

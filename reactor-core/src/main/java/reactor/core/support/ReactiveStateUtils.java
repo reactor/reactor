@@ -48,7 +48,7 @@ public final class ReactiveStateUtils {
 		}
 
 		Graph graph = new Graph(false, trace);
-		Node origin = new Node(o);
+		Node origin = new Node(o, true);
 		graph.addUpstream(origin, null);
 		graph.addDownstream(origin, null);
 
@@ -289,8 +289,14 @@ public final class ReactiveStateUtils {
 		private final Object object;
 		private final String id;
 		private final String name;
+		private final boolean highlight;
 
 		Node(Object o){
+			this(o, false);
+		}
+
+		Node(Object o, boolean highlight){
+			this.highlight = highlight;
 			this.object = o;
 			this.name = ReactiveState.Named.class.isAssignableFrom(o.getClass()) ?
 					(((ReactiveState.Named)o).getName()) :
@@ -308,6 +314,10 @@ public final class ReactiveStateUtils {
 
 		public String getLabel() {
 			return name;
+		}
+
+		public boolean isHighlight(){
+			return highlight;
 		}
 
 		@Override

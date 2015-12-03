@@ -53,7 +53,7 @@ function draw() {
     var options = {
         layout: {
             hierarchical: {
-                direction: "UD",
+                direction: "LR",
                 sortMethod: "directed"
             },
             randomSeed:2
@@ -62,9 +62,6 @@ function draw() {
             dragNodes: false
         },
         clickToUse : true,
-        edges: {
-            arrows : { to : true }
-        }
     };
     network = new vis.Network(container, {}, options);
 
@@ -81,11 +78,18 @@ function draw() {
     loadJSON("http://localhost:12012/nexus/stream", function(json){
         //var data = getScaleFreeNetwork(nodeCount)
         nodes.add(json.nodes);
+        var highlights = [];
+        for(var node in json.nodes){
+            if(json.nodes[node].highlight){
+                highlights.push(json.nodes[node].id);
+            }
+        }
         for(var edge in json.edges){
             json.edges[edge].arrows = {to:true};
         }
         edges.add(json.edges);
         network.setData({nodes: nodes, edges: edges});
+        network.selectNodes(highlights);
 
         //font: {size:15, color:'red', face:'courier', strokeWidth:3, strokeColor:'#ffffff'}
         // create a network

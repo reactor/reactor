@@ -85,9 +85,9 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		private volatile boolean cancelled;
 
-		volatile InnerSubscriber<?, ?>[] subscribers;
+		volatile MergeSubscriber<?, ?>[] subscribers;
 		@SuppressWarnings("rawtypes")
-		static final AtomicReferenceFieldUpdater<MergeBarrier, InnerSubscriber[]> SUBSCRIBERS =
+		static final AtomicReferenceFieldUpdater<MergeBarrier, MergeSubscriber[]> SUBSCRIBERS =
 				PlatformDependent.newAtomicReferenceFieldUpdater(MergeBarrier.class, "subscribers");
 
 		@SuppressWarnings("unused")
@@ -96,9 +96,9 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		static final AtomicIntegerFieldUpdater<MergeBarrier> RUNNING =
 				AtomicIntegerFieldUpdater.newUpdater(MergeBarrier.class, "running");
 
-		static final InnerSubscriber<?, ?>[] EMPTY = new InnerSubscriber<?, ?>[0];
+		static final MergeSubscriber<?, ?>[] EMPTY = new MergeSubscriber<?, ?>[0];
 
-		static final InnerSubscriber<?, ?>[] CANCELLED = new InnerSubscriber<?, ?>[0];
+		static final MergeSubscriber<?, ?>[] CANCELLED = new MergeSubscriber<?, ?>[0];
 
 
 		long lastRequest;
@@ -143,20 +143,20 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			}
 
 
-			InnerSubscriber<T, V> inner = new InnerSubscriber<>(this, uniqueId++);
+			MergeSubscriber<T, V> inner = new MergeSubscriber<>(this, uniqueId++);
 			addInner(inner);
 			p.subscribe(inner);
 		}
 
-		void addInner(InnerSubscriber<T, V> inner) {
+		void addInner(MergeSubscriber<T, V> inner) {
 			for (; ; ) {
-				InnerSubscriber<?, ?>[] a = subscribers;
+				MergeSubscriber<?, ?>[] a = subscribers;
 				if (a == CANCELLED) {
 					inner.cancel();
 					return;
 				}
 				int n = a.length;
-				InnerSubscriber<?, ?>[] b = new InnerSubscriber[n + 1];
+				MergeSubscriber<?, ?>[] b = new MergeSubscriber[n + 1];
 				System.arraycopy(a, 0, b, 0, n);
 				b[n] = inner;
 				if (SUBSCRIBERS.compareAndSet(this, a, b)) {
@@ -165,9 +165,9 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			}
 		}
 
-		void removeInner(InnerSubscriber<T, V> inner) {
+		void removeInner(MergeSubscriber<T, V> inner) {
 			for (; ; ) {
-				InnerSubscriber<?, ?>[] a = subscribers;
+				MergeSubscriber<?, ?>[] a = subscribers;
 				if (a == CANCELLED || a == EMPTY) {
 					return;
 				}
@@ -182,11 +182,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 				if (j < 0) {
 					return;
 				}
-				InnerSubscriber<?, ?>[] b;
+				MergeSubscriber<?, ?>[] b;
 				if (n == 1) {
 					b = EMPTY;
 				} else {
-					b = new InnerSubscriber<?, ?>[n - 1];
+					b = new MergeSubscriber<?, ?>[n - 1];
 					System.arraycopy(a, 0, b, 0, j);
 					System.arraycopy(a, j + 1, b, j, n - j - 1);
 				}
@@ -245,7 +245,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			drainLoop();
 		}
 
-		RingBuffer<RingBuffer.Slot<V>> getInnerQueue(InnerSubscriber<T, V> inner) {
+		RingBuffer<RingBuffer.Slot<V>> getInnerQueue(MergeSubscriber<T, V> inner) {
 			RingBuffer<RingBuffer.Slot<V>> q = inner.queue;
 			if (q == null) {
 				q = RingBuffer.createSingleProducer(bufferSize);
@@ -255,7 +255,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			return q;
 		}
 
-		void tryEmit(V value, InnerSubscriber<T, V> inner) {
+		void tryEmit(V value, MergeSubscriber<T, V> inner) {
 			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
 				long r = getRequested();
 				if (r != 0L) {
@@ -394,7 +394,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 				boolean d = isTerminated();
 				svq = emitBuffer;
-				InnerSubscriber<?, ?>[] inner = subscribers;
+				MergeSubscriber<?, ?>[] inner = subscribers;
 				int n = inner.length;
 
 				if (d && (svq == null || svq.pending() == 0) && n == 0) {
@@ -436,8 +436,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 						if (checkTerminate()) {
 							return;
 						}
-						@SuppressWarnings("unchecked")
-						InnerSubscriber<T, V> is = (InnerSubscriber<T, V>) inner[j];
+						@SuppressWarnings("unchecked") MergeSubscriber<T, V> is = (MergeSubscriber<T, V>) inner[j];
 
 						RingBuffer.Slot<V> o;
 						V oo = null;
@@ -539,11 +538,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		void unsubscribe() {
-			InnerSubscriber<?, ?>[] a = subscribers;
+			MergeSubscriber<?, ?>[] a = subscribers;
 			if (a != CANCELLED) {
 				a = SUBSCRIBERS.getAndSet(this, CANCELLED);
 				if (a != CANCELLED) {
-					for (InnerSubscriber<?, ?> inner : a) {
+					for (MergeSubscriber<?, ?> inner : a) {
 						inner.cancel();
 					}
 				}
@@ -552,8 +551,8 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 	}
 
-	static final class InnerSubscriber<T, V>
-			extends BaseSubscriber<V> implements ReactiveState.Bounded {
+	static final class MergeSubscriber<T, V>
+			extends BaseSubscriber<V> implements ReactiveState.Bounded, ReactiveState.Upstream {
 		final long               id;
 		final MergeBarrier<T, V> parent;
 		final int                limit;
@@ -561,8 +560,8 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		@SuppressWarnings("unused")
 		volatile Subscription subscription;
-		final static AtomicReferenceFieldUpdater<InnerSubscriber, Subscription> SUBSCRIPTION =
-				PlatformDependent.newAtomicReferenceFieldUpdater(InnerSubscriber.class, "subscription");
+		final static AtomicReferenceFieldUpdater<MergeSubscriber, Subscription> SUBSCRIPTION =
+				PlatformDependent.newAtomicReferenceFieldUpdater(MergeSubscriber.class, "subscription");
 
 		Sequence pollCursor;
 
@@ -570,7 +569,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		volatile RingBuffer<RingBuffer.Slot<V>> queue;
 		int outstanding;
 
-		public InnerSubscriber(MergeBarrier<T, V> parent, long id) {
+		public MergeSubscriber(MergeBarrier<T, V> parent, long id) {
 			this.id = id;
 			this.parent = parent;
 			this.bufferSize = parent.bufferSize;
@@ -629,6 +628,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					s.cancel();
 				}
 			}
+		}
+
+		@Override
+		public Object upstream() {
+			return subscription;
 		}
 
 		@Override
