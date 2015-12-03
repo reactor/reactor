@@ -1,57 +1,28 @@
-.application-container.open-sidebar {
-  #sidebar {
-    left: 0;
+
+// Sidebar
+#sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 200px;
+  bottom: 0;
+  background: $reactorBackgroundLight;
+
+  ul {
+    margin: 0;
+    padding: 0;
+    li {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      a {
+        text-transform: uppercase;
+        color: rgba(255,255,255,.2);
+        font-weight: bold;
+        font-size: 0.9em;
+        text-decoration: none;
+        cursor: pointer;
+      }
+    }
   }
 }
-#sidebar {
-  background: $reactorTextColor;
-  position: fixed;
-  width: 100%;
-  left: -100%;
-  z-index: 9999;
-  bottom: 0;
-  box-shadow: 0 -4px 5px rgba(0,0,0,.2);
-}
-#sidebar ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-#sidebar ul li {
-  margin: 0;
-}
-#sidebar ul li a {
-  padding: 15px 20px;
-  font-size: 16px;
-  font-weight: 100;
-  color: white;
-  text-decoration: none;
-  display: block;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  -webkit-transition:  background 0.3s ease-in-out;
-  -moz-transition:  background 0.3s ease-in-out;
-  -ms-transition:  background 0.3s ease-in-out;
-  -o-transition:  background 0.3s ease-in-out;
-  transition:  background 0.3s ease-in-out;
-}
-#sidebar ul li:hover a {
-  background: #494542;
-}
-.application-main-content #sidebar-toggle {
-  display: none;
-  background: $reactorTextColor;
-  color:white;
-  border-radius: 3px;
-  padding: 4px 10px;
-  font-size: 20px;
-  cursor: pointer;
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  float: left;
-  z-index: 1000;
-}
-.application-main-content #sidebar-toggle .bar:last-child{
-  margin-bottom: 0;
-}
-
