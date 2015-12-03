@@ -17,6 +17,7 @@
 package reactor.core.publisher.operator;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -81,7 +82,8 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		return new ZipBarrier<>(t, combinator, bufferSize);
 	}
 
-	static final class ZipBarrier<TUPLE extends Tuple, V> extends SubscriberWithDemand<Publisher[], V> {
+	static final class ZipBarrier<TUPLE extends Tuple, V> extends SubscriberWithDemand<Publisher[], V>
+			implements ReactiveState.LinkedUpstreams {
 
 		final Function<? super TUPLE, ? extends V> combinator;
 		final int                                  bufferSize;
@@ -198,6 +200,16 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 				throw ReactorFatalException.create(throwable);
 			}
 			subscriber.onError(throwable);
+		}
+
+		@Override
+		public Iterator<?> upstreams() {
+			return Arrays.asList(subscribers).iterator();
+		}
+
+		@Override
+		public long upstreamsCount() {
+			return subscribers.length;
 		}
 
 		void drain() {

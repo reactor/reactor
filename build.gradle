@@ -317,10 +317,11 @@ project('reactor-pylon') {
 	compile project(':reactor-core')
 	compile "io.projectreactor:reactor-net:$version"
 	compile "io.projectreactor:reactor-codec:$version"
-	compile "io.netty:netty-all:$nettyVersion"
 	compile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
+	compile "io.netty:netty-all:$nettyVersion"
 	compile "org.slf4j:slf4j-api:$slf4jVersion"
-	compile "ch.qos.logback:logback-classic:$logbackVersion"
+
+	testCompile project(':reactor-stream')
   }
 }
 

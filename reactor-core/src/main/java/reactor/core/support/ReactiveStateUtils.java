@@ -159,13 +159,15 @@ public final class ReactiveStateUtils {
 			Node child;
 			if(trace || !isTraceOnly(target.object)) {
 				child = target;
-				nodes.add(child);
+				if(!nodes.add(child)){
+					return;
+				}
 			}
 			else{
 				child = grandchild;
 			}
 			if(hasUpstream(target.object)){
-				Node upstream =  new Node(((ReactiveState.Upstream)target.object).upstream());
+				Node upstream =  new Node(((ReactiveState.Upstream)target.object).upstream(), child == null);
 				if(child != null && (trace || !isTraceOnly(upstream.object))) {
 					edges.add(new Edge(upstream.id, child.id));
 				}
@@ -173,6 +175,9 @@ public final class ReactiveStateUtils {
 			}
 			if(hasUpstreams(target.object)){
 				addUpstreams(child, ((ReactiveState.LinkedUpstreams)target.object).upstreams());
+			}
+			if(hasDownstreams(target.object)){
+				addDownstreams(child, ((ReactiveState.LinkedDownstreams)target.object).downstreams());
 			}
 		}
 
@@ -191,13 +196,15 @@ public final class ReactiveStateUtils {
 			Node root;
 			if(trace || !isTraceOnly(origin.object)) {
 				root = origin;
-				nodes.add(root);
+				if(!nodes.add(root)){
+					return;
+				}
 			}
 			else{
 				root = ancestor;
 			}
 			if(hasDownstream(origin.object)){
-				Node downstream = new Node(((ReactiveState.Downstream)origin.object).downstream());
+				Node downstream = new Node(((ReactiveState.Downstream)origin.object).downstream(), root == null);
 				if(root != null && (trace || !isTraceOnly(downstream.object))) {
 					edges.add(new Edge(root.id, downstream.id));
 				}
@@ -205,6 +212,10 @@ public final class ReactiveStateUtils {
 			}
 			if(hasDownstreams(origin.object)){
 				addDownstreams(root, ((ReactiveState.LinkedDownstreams)origin.object).downstreams());
+			}
+
+			if(hasUpstreams(origin.object)){
+				addUpstreams(root, ((ReactiveState.LinkedUpstreams)origin.object).upstreams());
 			}
 		}
 
@@ -298,10 +309,12 @@ public final class ReactiveStateUtils {
 		Node(Object o, boolean highlight){
 			this.highlight = highlight;
 			this.object = o;
-			this.name = ReactiveState.Named.class.isAssignableFrom(o.getClass()) ?
+			String name = ReactiveState.Named.class.isAssignableFrom(o.getClass()) ?
 					(((ReactiveState.Named)o).getName()) :
-					(o.getClass().getSimpleName());
+					(o.getClass().getSimpleName().isEmpty() ? o.toString() : o.getClass().getSimpleName());
+			name = name.isEmpty() ? "anonymous" : name;
 			this.id = name+":"+o.hashCode();
+			this.name = name;
 		}
 
 		public Object value() {

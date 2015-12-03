@@ -85,9 +85,9 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		private volatile boolean cancelled;
 
-		volatile MergeSubscriber<?, ?>[] subscribers;
+		volatile BufferSubscriber<?, ?>[] subscribers;
 		@SuppressWarnings("rawtypes")
-		static final AtomicReferenceFieldUpdater<MergeBarrier, MergeSubscriber[]> SUBSCRIBERS =
+		static final AtomicReferenceFieldUpdater<MergeBarrier, BufferSubscriber[]> SUBSCRIBERS =
 				PlatformDependent.newAtomicReferenceFieldUpdater(MergeBarrier.class, "subscribers");
 
 		@SuppressWarnings("unused")
@@ -96,9 +96,9 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		static final AtomicIntegerFieldUpdater<MergeBarrier> RUNNING =
 				AtomicIntegerFieldUpdater.newUpdater(MergeBarrier.class, "running");
 
-		static final MergeSubscriber<?, ?>[] EMPTY = new MergeSubscriber<?, ?>[0];
+		static final BufferSubscriber<?, ?>[] EMPTY = new BufferSubscriber<?, ?>[0];
 
-		static final MergeSubscriber<?, ?>[] CANCELLED = new MergeSubscriber<?, ?>[0];
+		static final BufferSubscriber<?, ?>[] CANCELLED = new BufferSubscriber<?, ?>[0];
 
 
 		long lastRequest;
@@ -143,20 +143,20 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			}
 
 
-			MergeSubscriber<T, V> inner = new MergeSubscriber<>(this, uniqueId++);
+			BufferSubscriber<T, V> inner = new BufferSubscriber<>(this, uniqueId++);
 			addInner(inner);
 			p.subscribe(inner);
 		}
 
-		void addInner(MergeSubscriber<T, V> inner) {
+		void addInner(BufferSubscriber<T, V> inner) {
 			for (; ; ) {
-				MergeSubscriber<?, ?>[] a = subscribers;
+				BufferSubscriber<?, ?>[] a = subscribers;
 				if (a == CANCELLED) {
 					inner.cancel();
 					return;
 				}
 				int n = a.length;
-				MergeSubscriber<?, ?>[] b = new MergeSubscriber[n + 1];
+				BufferSubscriber<?, ?>[] b = new BufferSubscriber[n + 1];
 				System.arraycopy(a, 0, b, 0, n);
 				b[n] = inner;
 				if (SUBSCRIBERS.compareAndSet(this, a, b)) {
@@ -165,9 +165,9 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			}
 		}
 
-		void removeInner(MergeSubscriber<T, V> inner) {
+		void removeInner(BufferSubscriber<T, V> inner) {
 			for (; ; ) {
-				MergeSubscriber<?, ?>[] a = subscribers;
+				BufferSubscriber<?, ?>[] a = subscribers;
 				if (a == CANCELLED || a == EMPTY) {
 					return;
 				}
@@ -182,11 +182,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 				if (j < 0) {
 					return;
 				}
-				MergeSubscriber<?, ?>[] b;
+				BufferSubscriber<?, ?>[] b;
 				if (n == 1) {
 					b = EMPTY;
 				} else {
-					b = new MergeSubscriber<?, ?>[n - 1];
+					b = new BufferSubscriber<?, ?>[n - 1];
 					System.arraycopy(a, 0, b, 0, j);
 					System.arraycopy(a, j + 1, b, j, n - j - 1);
 				}
@@ -245,7 +245,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			drainLoop();
 		}
 
-		RingBuffer<RingBuffer.Slot<V>> getInnerQueue(MergeSubscriber<T, V> inner) {
+		RingBuffer<RingBuffer.Slot<V>> getInnerQueue(BufferSubscriber<T, V> inner) {
 			RingBuffer<RingBuffer.Slot<V>> q = inner.queue;
 			if (q == null) {
 				q = RingBuffer.createSingleProducer(bufferSize);
@@ -255,7 +255,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			return q;
 		}
 
-		void tryEmit(V value, MergeSubscriber<T, V> inner) {
+		void tryEmit(V value, BufferSubscriber<T, V> inner) {
 			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
 				long r = getRequested();
 				if (r != 0L) {
@@ -394,7 +394,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 				boolean d = isTerminated();
 				svq = emitBuffer;
-				MergeSubscriber<?, ?>[] inner = subscribers;
+				BufferSubscriber<?, ?>[] inner = subscribers;
 				int n = inner.length;
 
 				if (d && (svq == null || svq.pending() == 0) && n == 0) {
@@ -436,7 +436,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 						if (checkTerminate()) {
 							return;
 						}
-						@SuppressWarnings("unchecked") MergeSubscriber<T, V> is = (MergeSubscriber<T, V>) inner[j];
+						@SuppressWarnings("unchecked") BufferSubscriber<T, V> is = (BufferSubscriber<T, V>) inner[j];
 
 						RingBuffer.Slot<V> o;
 						V oo = null;
@@ -538,11 +538,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		void unsubscribe() {
-			MergeSubscriber<?, ?>[] a = subscribers;
+			BufferSubscriber<?, ?>[] a = subscribers;
 			if (a != CANCELLED) {
 				a = SUBSCRIBERS.getAndSet(this, CANCELLED);
 				if (a != CANCELLED) {
-					for (MergeSubscriber<?, ?> inner : a) {
+					for (BufferSubscriber<?, ?> inner : a) {
 						inner.cancel();
 					}
 				}
@@ -551,7 +551,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 	}
 
-	static final class MergeSubscriber<T, V>
+	static final class BufferSubscriber<T, V>
 			extends BaseSubscriber<V> implements ReactiveState.Bounded, ReactiveState.Upstream {
 		final long               id;
 		final MergeBarrier<T, V> parent;
@@ -560,8 +560,8 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		@SuppressWarnings("unused")
 		volatile Subscription subscription;
-		final static AtomicReferenceFieldUpdater<MergeSubscriber, Subscription> SUBSCRIPTION =
-				PlatformDependent.newAtomicReferenceFieldUpdater(MergeSubscriber.class, "subscription");
+		final static AtomicReferenceFieldUpdater<BufferSubscriber, Subscription> SUBSCRIPTION =
+				PlatformDependent.newAtomicReferenceFieldUpdater(BufferSubscriber.class, "subscription");
 
 		Sequence pollCursor;
 
@@ -569,7 +569,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		volatile RingBuffer<RingBuffer.Slot<V>> queue;
 		int outstanding;
 
-		public MergeSubscriber(MergeBarrier<T, V> parent, long id) {
+		public BufferSubscriber(MergeBarrier<T, V> parent, long id) {
 			this.id = id;
 			this.parent = parent;
 			this.bufferSize = parent.bufferSize;

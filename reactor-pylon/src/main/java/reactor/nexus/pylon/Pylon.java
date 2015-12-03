@@ -21,12 +21,15 @@ import java.util.concurrent.CountDownLatch;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
+import reactor.core.error.CancelException;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
@@ -78,17 +81,25 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 			@Override
 			public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
-				Processor p = Processors.emitter();
+				BaseProcessor p = Processors.replay();
 				Processor p3 = Processors.emitter();
 				p.subscribe(p3);
-				Publishers.log(p).subscribe(Subscribers.consumer());
+				p.subscribe(Subscribers.consumer());
 				p3.subscribe(Subscribers.consumer());
 				p3.subscribe(Subscribers.unbounded());
 				BaseProcessor p4 = Processors.emitter();
+				Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1))).subscribe(Subscribers.consumer
+						());
 				p4.startSession();
-				Publishers.merge(p4, Publishers.just("b"))
-				          .subscribe(p);
-				return channel.writeBufferWith(codec.encode(Publishers.just(ReactiveStateUtils.scan(p))));
+				ReactiveSession s = p.startSession();
+
+				Publisher<Void> p5 = channel.writeBufferWith(codec.encode(p));
+				Subscriber x = Subscribers.consumer();
+				Publishers.concat(p4, p5).subscribe(x);
+				s.submit(ReactiveStateUtils.scan(x));
+				s.finish();
+
+				return p5;
 			}
 		});
 		//EXAMPLE END
