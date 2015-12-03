@@ -89,7 +89,9 @@ class ReactiveStateSpec extends Specification {
 
 	then: "scan values correct"
 	t.nodes
-	t.edges
+
+	cleanup:
+	group.onComplete()
   }
 
 }

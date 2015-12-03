@@ -19,9 +19,11 @@ package reactor.nexus.pylon;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.timer.Timer;
@@ -65,6 +67,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 			}
 		});
 
+		//EXAMPLE
 		final JsonCodec<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> codec =
 				new JsonCodec<>(ReactiveStateUtils.Graph.class);
 
@@ -73,11 +76,14 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 					@Override
 					public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
-						return channel.writeBufferWith(codec.encode(Publishers.just(ReactiveStateUtils.scan(Publishers.merge(
-								Publishers.just("a"),
-								Publishers.just("b"))))));
+						Processor p = Processors.emitter();
+						Publishers.merge(
+								Processors.emitter(),
+								Publishers.just("b")).subscribe(p);
+						return channel.writeBufferWith(codec.encode(Publishers.just(ReactiveStateUtils.scan(p))));
 					}
 				});
+		//EXAMPLE END
 
 		pylon.startAndAwait();
 
