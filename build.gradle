@@ -67,6 +67,11 @@ ext {
 apply from: "$gradleScriptDir/setup.gradle"
 apply from: "$gradleScriptDir/doc.gradle"
 
+configurations.all {
+  // check for updates every build
+  resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+
 configure(subprojects) { project ->
 	group = 'io.projectreactor'
 
