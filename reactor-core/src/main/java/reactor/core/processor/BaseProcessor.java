@@ -66,6 +66,30 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
 		return s;
 	}
 
+	/**
+	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
+	 *
+	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 */
+	@SuppressWarnings("unchecked")
+	public Publisher<OUT> dispatchOn(ProcessorGroup group) {
+		Processor<OUT, OUT> processor = ((ProcessorGroup<OUT>)group).dispatchOn();
+		subscribe(processor);
+		return processor;
+	}
+
+	/**
+	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
+	 *
+	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 */
+	@SuppressWarnings("unchecked")
+	public Publisher<OUT> publishOn(ProcessorGroup group) {
+		Processor<OUT, OUT> processor = ((ProcessorGroup<OUT>)group).publishOn();
+		subscribe(processor);
+		return processor;
+	}
+
 	@Override
 	public void onSubscribe(final Subscription s) {
 		if (BackpressureUtils.checkSubscription(upstreamSubscription, s)) {

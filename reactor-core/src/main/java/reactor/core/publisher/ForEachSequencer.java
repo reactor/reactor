@@ -19,6 +19,7 @@ import java.util.Iterator;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 
@@ -31,7 +32,7 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  */
 public abstract class ForEachSequencer<T>
-		implements Consumer<SubscriberWithContext<T, Iterator<? extends T>>> {
+		implements Consumer<SubscriberWithContext<T, Iterator<? extends T>>>, ReactiveState.Trace, ReactiveState.Upstream{
 
 	@Override
 	public final void accept(SubscriberWithContext<T, Iterator<? extends T>> subscriber) {
@@ -72,9 +73,15 @@ public abstract class ForEachSequencer<T>
 			return it;
 		}
 
+
+		@Override
+		public Object upstream() {
+			return defaultValues;
+		}
+
 		@Override
 		public String toString() {
-			return "iterable=" + defaultValues;
+			return "{iterable : " + defaultValues+" }";
 		}
 	}
 
@@ -100,6 +107,11 @@ public abstract class ForEachSequencer<T>
 				throw PublisherFactory.PrematureCompleteException.INSTANCE;
 			}
 			return it;
+		}
+
+		@Override
+		public Object upstream() {
+			return defaultValues;
 		}
 	}
 }

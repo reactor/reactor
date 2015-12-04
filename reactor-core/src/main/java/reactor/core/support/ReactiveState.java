@@ -177,7 +177,7 @@ public interface ReactiveState {
 	 */
 
 	/**
-	 * A request aware component
+	 * An identifiable component
 	 */
 	interface Named extends ReactiveState {
 
@@ -188,7 +188,7 @@ public interface ReactiveState {
 	}
 
 	/**
-	 * A request aware component
+	 * A criteria grouped component
 	 */
 	interface Grouped extends ReactiveState {
 
@@ -199,14 +199,24 @@ public interface ReactiveState {
 	}
 
 	/**
-	 * A request aware component
+	 * A component that is meant to be introspectable on finest logging level
 	 */
 	interface Trace extends ReactiveState {
 	}
 
+
+	/**
+	 * A component that is delegating to a sub-flow (processor, or publisher/subscriber chain)
+	 */
+	interface FeedbackLoop extends ReactiveState {
+
+		Object delegateInput();
+
+		Object delegateOutput();
+	}
+
+
 	/*
-
-
 
 	 */
 }

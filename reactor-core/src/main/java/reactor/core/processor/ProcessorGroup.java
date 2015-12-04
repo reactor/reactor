@@ -17,13 +17,14 @@
 package reactor.core.processor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
@@ -33,7 +34,6 @@ import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.Sequencer;
-import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
@@ -58,7 +58,7 @@ import reactor.fn.Supplier;
  * @author Anatoly Kadyshev
  * @author Stephane Maldini
  */
-public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
+public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveState.FeedbackLoop {
 
 	/**
 	 * @param <E>
@@ -444,6 +444,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	}
 
+	@Override
+	public Object delegateInput() {
+		return processor;
+	}
+
+	@Override
+	public Object delegateOutput() {
+		return processor;
+	}
+
 	protected void decrementReference() {
 		if ((processor != null || concurrency > 1) && REF_COUNT.decrementAndGet(this) <= 0 && autoShutdown) {
 			shutdown();
@@ -529,7 +539,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
 			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
-			           ReactiveState.Bounded, ReactiveState.Upstream, ReactiveState.Downstream<V>, Runnable {
+			           ReactiveState.Bounded, ReactiveState.Upstream, ReactiveState.FeedbackLoop, ReactiveState
+					           .Downstream<V>, Runnable {
 
 		protected final ProcessorGroup service;
 
@@ -846,6 +857,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			}
 
 
+		}
+
+		@Override
+		public Object delegateInput() {
+			return service.processor;
+		}
+
+		@Override
+		public Object delegateOutput() {
+			return service.processor;
 		}
 
 		@SuppressWarnings("unchecked")

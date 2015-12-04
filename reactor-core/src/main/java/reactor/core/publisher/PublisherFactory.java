@@ -292,7 +292,8 @@ public abstract class PublisherFactory {
 
 	}
 
-	private static final class ForEachPublisher<T, C> extends ReactorPublisher<T, C> {
+	private static final class ForEachPublisher<T, C> extends ReactorPublisher<T, C>
+			implements ReactiveState.Upstream{
 
 		final Consumer<SubscriberWithContext<T, C>> forEachConsumer;
 
@@ -309,6 +310,11 @@ public abstract class PublisherFactory {
 					context,
 					new ForEachBiConsumer<>(forEachConsumer),
 					shutdownConsumer);
+		}
+
+		@Override
+		public Object upstream() {
+			return forEachConsumer;
 		}
 
 		@Override

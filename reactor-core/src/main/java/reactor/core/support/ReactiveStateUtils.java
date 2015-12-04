@@ -48,7 +48,7 @@ public final class ReactiveStateUtils {
 		}
 
 		Graph graph = new Graph(false, trace);
-		Node origin = new Node(o, true);
+		Node origin = graph.expandReactiveSate(o, true);
 		graph.addUpstream(origin, null);
 		graph.addDownstream(origin, null);
 
@@ -76,7 +76,7 @@ public final class ReactiveStateUtils {
 		}
 
 		Graph graph = new Graph(true, trace);
-		Node root = new Node(o);
+		Node root = graph.expandReactiveSate(o);
 		graph.addDownstream(root, null);
 
 		return graph;
@@ -116,6 +116,16 @@ public final class ReactiveStateUtils {
 	 */
 	public static boolean hasDownstreams(Object o){
 		return o != null && ReactiveState.LinkedDownstreams.class.isAssignableFrom(o.getClass());
+	}
+
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
+	public static boolean hasFeedbackLoop(Object o){
+		return o != null && ReactiveState.FeedbackLoop.class.isAssignableFrom(o.getClass());
 	}
 
 	/**
@@ -167,9 +177,9 @@ public final class ReactiveStateUtils {
 				child = grandchild;
 			}
 			if(hasUpstream(target.object)){
-				Node upstream =  new Node(((ReactiveState.Upstream)target.object).upstream(), child == null);
+				Node upstream =  expandReactiveSate(((ReactiveState.Upstream)target.object).upstream(), child == null);
 				if(child != null && (trace || !isTraceOnly(upstream.object))) {
-					edges.add(new Edge(upstream.id, child.id));
+					edges.add(upstream.createEdgeTo(child));
 				}
 				addUpstream(upstream, child);
 			}
@@ -184,9 +194,9 @@ public final class ReactiveStateUtils {
 		private void addUpstreams(Node target, Iterator o){
 			Node source;
 			while(o.hasNext()){
-				source = new Node(o.next());
-				if(target != null) {
-					edges.add(new Edge(source.id, target.id));
+				source = expandReactiveSate(o.next());
+				if(target != null && source != null) {
+					edges.add(source.createEdgeTo(target));
 				}
 				addUpstream(source, target);
 			}
@@ -204,9 +214,9 @@ public final class ReactiveStateUtils {
 				root = ancestor;
 			}
 			if(hasDownstream(origin.object)){
-				Node downstream = new Node(((ReactiveState.Downstream)origin.object).downstream(), root == null);
+				Node downstream = expandReactiveSate(((ReactiveState.Downstream)origin.object).downstream(), root == null);
 				if(root != null && (trace || !isTraceOnly(downstream.object))) {
-					edges.add(new Edge(root.id, downstream.id));
+					edges.add(root.createEdgeTo(downstream));
 				}
 				addDownstream(downstream, root);
 			}
@@ -222,12 +232,39 @@ public final class ReactiveStateUtils {
 		private void addDownstreams(Node source, Iterator o){
 			Node downstream;
 			while(o.hasNext()){
-				downstream = new Node(o.next());
-				if(source != null) {
-					edges.add(new Edge(source.id, downstream.id));
+				downstream = expandReactiveSate(o.next());
+				if(source != null && downstream != null) {
+					edges.add(source.createEdgeTo(downstream));
 				}
 				addDownstream(downstream, source);
 			}
+		}
+
+		private Node expandReactiveSate(Object o){
+			return expandReactiveSate(o, false);
+		}
+
+		private Node expandReactiveSate(Object o, boolean highlight){
+			String name = ReactiveState.Named.class.isAssignableFrom(o.getClass()) ?
+					(((ReactiveState.Named)o).getName()) :
+					(o.getClass().getSimpleName().isEmpty() ? o.toString() : o.getClass().getSimpleName());
+			name = name.isEmpty() ? "anonymous" : name;
+
+			String id = name+":"+o.hashCode();
+
+			Node r = new Node(name, id, o, highlight);
+
+			if(trace && hasFeedbackLoop(o)){
+				ReactiveState.FeedbackLoop loop = (ReactiveState.FeedbackLoop)o;
+				Node input = expandReactiveSate(loop.delegateInput());
+				edges.add(r.createEdgeTo(input));
+				addDownstream(input, null);
+				Node output = expandReactiveSate(loop.delegateOutput());
+				addUpstream(output, null);
+				edges.add(output.createEdgeTo(r));
+			}
+
+			return r;
 		}
 
 		@Override
@@ -244,26 +281,85 @@ public final class ReactiveStateUtils {
 	/**
 	 *
 	 */
-	public static final class Edge {
+	public static class Node {
+		transient private final Object object;
+		private final String id;
+		private final String name;
+		private final boolean highlight;
 
+		protected Node(String name, String id, Object o, boolean highlight){
+			this.highlight = highlight;
+			this.object = o;
+			this.id = id;
+			this.name = name;
+		}
+
+		public final Object value() {
+			return object;
+		}
+
+		public final String getId() {
+			return id;
+		}
+
+		public final String getLabel() {
+			return name;
+		}
+
+		public final boolean isHighlight(){
+			return highlight;
+		}
+
+
+		protected Edge createEdgeTo(Node to){
+			return new Edge(id, to.id);
+		}
+
+		@Override
+		public final boolean equals(Object o) {
+			if (this == o) {
+				return true;
+			}
+
+			Node node = (Node) o;
+
+			return id.equals(node.id);
+		}
+
+		@Override
+		public final int hashCode() {
+			return id.hashCode();
+		}
+
+		@Override
+		public String toString() {
+			return "{ id : \"" + id +"\", label : \"" + name + "\" }";
+		}
+	}
+
+	/**
+	 *
+	 */
+	public static class Edge {
 		private final String from;
+
 		private final String to;
 
-		Edge(String from, String to){
+		protected Edge(String from, String to){
 			this.from = from;
 			this.to = to;
 		}
 
-		public String getFrom() {
+		public final String getFrom() {
 			return from;
 		}
 
-		public String getTo() {
+		public final String getTo() {
 			return to;
 		}
 
 		@Override
-		public boolean equals(Object o) {
+		public final boolean equals(Object o) {
 			if (this == o) {
 				return true;
 			}
@@ -281,77 +377,15 @@ public final class ReactiveStateUtils {
 		}
 
 		@Override
-		public int hashCode() {
+		public final int hashCode() {
 			int result = from.hashCode();
 			result = 31 * result + to.hashCode();
 			return result;
 		}
-
 		@Override
-		public String toString() {
+		public  String toString() {
 			return "{ from : \"" + from + "\", to : \""+to+"\" }";
 		}
 	}
 
-	/**
-	 *
-	 */
-	public static final class Node {
-		private final Object object;
-		private final String id;
-		private final String name;
-		private final boolean highlight;
-
-		Node(Object o){
-			this(o, false);
-		}
-
-		Node(Object o, boolean highlight){
-			this.highlight = highlight;
-			this.object = o;
-			String name = ReactiveState.Named.class.isAssignableFrom(o.getClass()) ?
-					(((ReactiveState.Named)o).getName()) :
-					(o.getClass().getSimpleName().isEmpty() ? o.toString() : o.getClass().getSimpleName());
-			name = name.isEmpty() ? "anonymous" : name;
-			this.id = name+":"+o.hashCode();
-			this.name = name;
-		}
-
-		public Object value() {
-			return object;
-		}
-
-		public String getId() {
-			return id;
-		}
-
-		public String getLabel() {
-			return name;
-		}
-
-		public boolean isHighlight(){
-			return highlight;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) {
-				return true;
-			}
-
-			Node node = (Node) o;
-
-			return object.equals(node.object);
-		}
-
-		@Override
-		public int hashCode() {
-			return object.hashCode();
-		}
-
-		@Override
-		public String toString() {
-			return "{ id : \"" + id +"\", label : \"" + name + "\" }";
-		}
-	}
 }

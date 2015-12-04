@@ -29,6 +29,7 @@ import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.core.error.CancelException;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.processor.ProcessorGroup;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.timer.Timer;
@@ -82,21 +83,22 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 			@Override
 			public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
 				BaseProcessor p = Processors.replay();
-				Processor p3 = Processors.emitter();
+				BaseProcessor p2 = Processors.emitter();
+				BaseProcessor p3 = Processors.emitter();
 				p.subscribe(p3);
-				p.subscribe(Subscribers.consumer());
+				ProcessorGroup group = Processors.singleGroup();
+				p3.dispatchOn(group).subscribe(Subscribers.consumer());
 				p3.subscribe(Subscribers.consumer());
 				p3.subscribe(Subscribers.unbounded());
 				BaseProcessor p4 = Processors.emitter();
-				Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1))).subscribe(Subscribers.consumer
-						());
+				Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1))).subscribe(p2);
+				p2.dispatchOn(group).subscribe(Subscribers.consumer());
 				p4.startSession();
 				ReactiveSession s = p.startSession();
 
 				Publisher<Void> p5 = channel.writeBufferWith(codec.encode(p));
 				Subscriber x = Subscribers.consumer();
-				Publishers.concat(p4, p5).subscribe(x);
-				s.submit(ReactiveStateUtils.scan(x));
+				s.submit(ReactiveStateUtils.scan(p5));
 				s.finish();
 
 				return p5;
