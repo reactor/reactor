@@ -2,6 +2,7 @@
 
 const config = {
   browserPort: 3000,
+  browser: false,
   UIPort: 3001,
   scripts: {
     src: './js/**/*.js',
