@@ -11,33 +11,58 @@
     {
       "name": "Damien vitrac",
       "email": "damien@vitrac.me"
-    }
-    ,{
+    },
+    {
       "name": "Stephane Maldini",
       "email": "smaldini@pivotal.io"
     }
   ],
+  "engines": {
+    "node": "^0.12.x",
+    "npm": "^2.1.x"
+  },
   "devDependencies": {
-    "browserify": "^11.1.0",
-    "del": "^2.0.2",
-    "es5-shim": "^4.1.13",
-    "font-awesome": "^4.4.0",
+    "babel-core": "^5.8.25",
+    "babelify": "^6.1.x",
+    "browser-sync": "^2.10.0",
+    "browserify": "^10.2.6",
+    "debowerify": "^1.3.1",
+    "del": "^1.2.0",
+    "eslint-plugin-react": "^3.6.3",
+    "font-awesome": "^4.5.0",
     "gulp": "^3.9.0",
+    "gulp-autoprefixer": "^2.3.1",
     "gulp-compass": "^2.1.0",
-    "gulp-concat": "^2.6.0",
-    "gulp-cssmin": "^0.1.7",
-    "gulp-jshint": "^1.11.2",
+    "gulp-if": "^1.2.5",
+    "gulp-imagemin": "^2.3.0",
+    "gulp-jsx-coverage": "^0.2.6",
+    "gulp-mocha": "^2.1.3",
+    "gulp-notify": "^2.2.0",
     "gulp-rename": "^1.2.2",
-    "gulp-sass": "^2.0.4",
-    "gulp-uglify": "^1.4.1",
+    "gulp-sass": "^2.0.x",
+    "gulp-sourcemaps": "^1.5.2",
+    "gulp-streamify": "0.0.5",
+    "gulp-uglify": "^1.2.0",
     "gulp-util": "^3.0.6",
-    "gulp-shell": "^0.5.1",
-    "gulp-run-sequence": "^0.3.2",
-    "gulp-clean": "^0.3.1",
-    "jquery": "^2.1.4",
-    "vis": "^4.10.0",
-    "merge": "^1.2.0",
-    "validator": "^4.0.6",
-    "watchify": "^3.4.0"
+    "history": "^1.12.5",
+    "humps": "^0.6.0",
+    "istanbul": "^0.4.0",
+    "jsdom": "^3.1.2",
+    "lodash": "^3.10.0",
+    "mocha": "^2.3.3",
+    "react": "^0.14.x",
+    "react-addons-test-utils": "^0.14.0",
+    "react-document-title": "^1.0.2",
+    "react-dom": "^0.14.0",
+    "react-router": "^1.0.0-rc1",
+    "reflux": "^0.2.9",
+    "run-sequence": "^1.1.1",
+    "should": "^7.1.0",
+    "sinon": "^1.17.1",
+    "superagent": "^1.2.0",
+    "vinyl-source-stream": "^1.1.0",
+    "watchify": "^3.2.x",
+    "when": "^3.7.4",
+    "yargs": "^3.27.0"
   }
 }
