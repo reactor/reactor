@@ -3,13 +3,15 @@
 import gulp        from 'gulp';
 import runSequence from 'run-sequence';
 
-gulp.task('dev', ['clean'], function(cb) {
+gulp.task('dev', ['clean'], function (cb) {
 
-  cb = cb || function() {};
+    cb = cb || function () {
+        };
 
-  global.isProd = false;
+    global.isProd = false;
 
-  // Run all tasks once
-  return runSequence(['sass', 'imagemin', 'browserify', 'copyFonts', 'copyFontAwesome', 'copyIndex', 'copyIcons'], 'watch', cb);
+    // Run all tasks once
+    return runSequence(['sass', 'imagemin', 'browserify', 'copyFonts', 'copyFontAwesome', 'copyIndex', 'copyIcons'],
+        'watch', cb);
 
 });

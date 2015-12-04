@@ -13,13 +13,13 @@ class Sidebar extends React.Component {
     render() {
         return (
             <div id="sidebar">
-                <h1 id="logo"><a href="/"><strong>Reactor Console</strong></a></h1>
+                <h1 id="logo"><a href="/pylon"><strong>Reactor Pylon</strong></a></h1>
                 <ul>
-                    <NavItem to="dashboard" name="dashboard" label="Dashboard" icon="tachometer" />
-                    <NavItem to="map" name="map" label="Map" icon="share-alt" />
-                    <NavItem to="streams" name="streams" label="Streams" icon="sliders" />
-                    <NavItem to="hosts" name="hosts" label="Hosts" icon="server" />
-                    <NavItem to="system" name="system" label="System" icon="cogs" />
+                    <NavItem to="/pylon/dashboard" name="dashboard" label="Dashboard" icon="tachometer" />
+                    <NavItem to="/pylon/map" name="map" label="Map" icon="share-alt" />
+                    <NavItem to="/pylon/streams" name="streams" label="Streams" icon="sliders" />
+                    <NavItem to="/pylon/hosts" name="hosts" label="Hosts" icon="server" />
+                    <NavItem to="/pylon/system" name="system" label="System" icon="cogs" />
                 </ul>
             </div>
         );

@@ -15,13 +15,14 @@ import NotFoundPage                from './pages/NotFoundPage';
 export default (
   <Router history={CreateBrowserHistory()}>
 
-    <Route path="/" component={App}>
-      <IndexRoute path="dashboard" component={Dashboard} />
-      <Route path="dashboard" component={Dashboard}  />
-      <Route path="map" component={Map} />
-      <Route path="streams" component={Streams} />
-      <Route path="hosts" component={Hosts} />
-      <Route path="system" component={System} />
+    <Route prefix="/pylon" component={App}>
+      <IndexRoute component={Dashboard} />
+      <Route path="/pylon/dashboard" component={Dashboard}  />
+      <Route path="/pylon/map" component={Map} />
+      <Route path="/pylon/streams" component={Streams} />
+      <Route path="/pylon/hosts" component={Hosts} />
+      <Route path="/pylon/system" component={System} />
+      <Route path="/pylon" component={Dashboard} />
       <Route path="*" component={NotFoundPage} />
     </Route>
 

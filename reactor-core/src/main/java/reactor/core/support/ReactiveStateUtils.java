@@ -166,6 +166,9 @@ public final class ReactiveStateUtils {
 		}
 
 		private void addUpstream(Node target, Node grandchild){
+			if(target == null){
+				return;
+			}
 			Node child;
 			if(trace || !isTraceOnly(target.object)) {
 				child = target;
@@ -203,6 +206,9 @@ public final class ReactiveStateUtils {
 		}
 
 		private void addDownstream(Node origin, Node ancestor){
+			if(origin == null){
+				return;
+			}
 			Node root;
 			if(trace || !isTraceOnly(origin.object)) {
 				root = origin;
@@ -245,6 +251,10 @@ public final class ReactiveStateUtils {
 		}
 
 		private Node expandReactiveSate(Object o, boolean highlight){
+			if(o == null){
+				return null;
+			}
+
 			String name = ReactiveState.Named.class.isAssignableFrom(o.getClass()) ?
 					(((ReactiveState.Named)o).getName()) :
 					(o.getClass().getSimpleName().isEmpty() ? o.toString() : o.getClass().getSimpleName());
@@ -254,14 +264,18 @@ public final class ReactiveStateUtils {
 
 			Node r = new Node(name, id, o, highlight);
 
-			if(trace && hasFeedbackLoop(o)){
+			if((trace || !isTraceOnly(o)) && hasFeedbackLoop(o)){
 				ReactiveState.FeedbackLoop loop = (ReactiveState.FeedbackLoop)o;
 				Node input = expandReactiveSate(loop.delegateInput());
-				edges.add(r.createEdgeTo(input));
-				addDownstream(input, null);
+				if(input != null) {
+					edges.add(r.createEdgeTo(input));
+					addDownstream(input, null);
+				}
 				Node output = expandReactiveSate(loop.delegateOutput());
-				addUpstream(output, null);
-				edges.add(output.createEdgeTo(r));
+				if(output != null) {
+					addUpstream(output, null);
+					edges.add(output.createEdgeTo(r));
+				}
 			}
 
 			return r;

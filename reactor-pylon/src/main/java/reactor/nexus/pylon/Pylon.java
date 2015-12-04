@@ -19,7 +19,6 @@ package reactor.nexus.pylon;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 
-import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
@@ -27,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
-import reactor.core.error.CancelException;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.subscription.ReactiveSession;
@@ -41,6 +39,7 @@ import reactor.io.net.ReactiveNet;
 import reactor.io.net.ReactivePeer;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpServer;
+import reactor.io.net.http.routing.ChannelMappings;
 
 /**
  * @author Stephane Maldini
@@ -50,11 +49,13 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 	private static final Logger log = LoggerFactory.getLogger(Pylon.class);
 
-	private static final String CONSOLE_STATIC_PATH     = "/public";
-	private static final String EXIT_URL                = "/exit";
-	private static final String CONSOLE_URL             = "/pylon";
-	private static final String CONSOLE_FAVICON         = "/favicon.ico";
-	private static final String HTML_DEPENDENCY_CONSOLE = "/pylon.html";
+	private static final String CONSOLE_STATIC_PATH        = "/public";
+	private static final String CONSOLE_STATIC_ASSETS_PATH = CONSOLE_STATIC_PATH + "/assets";
+	private static final String EXIT_URL                   = "/exit";
+	private static final String CONSOLE_URL                = "/pylon";
+	private static final String CONSOLE_ASSETS_PREFIX      = "/assets";
+	private static final String CONSOLE_FAVICON            = "/favicon.ico";
+	private static final String HTML_DEPENDENCY_CONSOLE    = "/index.html";
 
 	private final HttpServer<Buffer, Buffer> server;
 
@@ -87,12 +88,15 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 				BaseProcessor p3 = Processors.emitter();
 				p.subscribe(p3);
 				ProcessorGroup group = Processors.singleGroup();
-				p3.dispatchOn(group).subscribe(Subscribers.consumer());
+				p3.dispatchOn(group)
+				  .subscribe(Subscribers.consumer());
 				p3.subscribe(Subscribers.consumer());
 				p3.subscribe(Subscribers.unbounded());
 				BaseProcessor p4 = Processors.emitter();
-				Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1))).subscribe(p2);
-				p2.dispatchOn(group).subscribe(Subscribers.consumer());
+				Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1)))
+				          .subscribe(p2);
+				p2.dispatchOn(group)
+				  .subscribe(Subscribers.consumer());
 				p4.startSession();
 				ReactiveSession s = p.startSession();
 
@@ -101,6 +105,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 				s.submit(ReactiveStateUtils.scan(p5));
 				s.finish();
 
+				channel.responseHeader("Access-Control-Allow-Origin", "*");
 				return p5;
 			}
 		});
@@ -126,14 +131,14 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 		log.info("Warping Pylon...");
 
-		server.file(CONSOLE_URL,
+		server.file(ChannelMappings.prefix("/pylon"),
 				Pylon.class.getResource(CONSOLE_STATIC_PATH + HTML_DEPENDENCY_CONSOLE)
 				           .getPath())
 		      .file(CONSOLE_FAVICON,
-				Pylon.class.getResource(CONSOLE_STATIC_PATH + CONSOLE_FAVICON)
-				           .getPath())
-		      .directory(CONSOLE_URL,
-				      Pylon.class.getResource(CONSOLE_STATIC_PATH)
+				      Pylon.class.getResource(CONSOLE_STATIC_PATH + CONSOLE_FAVICON)
+				                 .getPath())
+		      .directory(CONSOLE_ASSETS_PREFIX,
+				      Pylon.class.getResource(CONSOLE_STATIC_ASSETS_PATH)
 				                 .getPath());
 
 		return pylon;

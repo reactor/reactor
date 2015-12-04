@@ -8,19 +8,18 @@ import autoprefixer from 'gulp-autoprefixer';
 import handleErrors from '../util/handle-errors';
 import config       from '../config';
 
-gulp.task('sass', function() {
-  return gulp.src(config.styles.src)
-    /*.pipe(sass({
-      sourceComments: global.isProd ? 'none' : 'map',
-      sourceMap: 'sass',
-      outputStyle: global.isProd ? 'compressed' : 'nested'
-    }))*/
-    .pipe(compass({
-      sass: config.sourceDir + 'styles',
-      image: config.sourceDir + 'images',
-      css: config.styles.dest
-    }))
-    .on('error', handleErrors)
-    .pipe(autoprefixer('last 2 versions', '> 1%', 'ie 8'))
-    .pipe(gulp.dest(config.styles.dest));
+gulp.task('sass', function () {
+    return gulp.src(config.styles.src)
+        /*.pipe(sass({
+         sourceComments: global.isProd ? 'none' : 'map',
+         sourceMap: 'sass',
+         outputStyle: global.isProd ? 'compressed' : 'nested'
+         }))*/
+        .pipe(compass({
+            sass: config.sourceDir + 'styles', image: config.sourceDir + 'images', css: config.styles.dest
+        }))
+        .on('error', handleErrors)
+        .pipe(autoprefixer('last 2 versions', '> 1%', 'ie 8'))
+        .pipe(gulpif(config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/css')))
+        .pipe(gulp.dest(config.styles.dest));
 });
