@@ -85,6 +85,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 			public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
 				BaseProcessor p = Processors.replay();
 				BaseProcessor p2 = Processors.emitter();
+				//channel.input().subscribe(p2);
 				BaseProcessor p3 = Processors.emitter();
 				p.subscribe(p3);
 				ProcessorGroup group = Processors.singleGroup();
@@ -97,7 +98,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 				          .subscribe(p2);
 				p2.dispatchOn(group)
 				  .subscribe(Subscribers.consumer());
-				p4.startSession();
+				channel.input().subscribe(p4);
 				ReactiveSession s = p.startSession();
 
 				Publisher<Void> p5 = channel.writeBufferWith(codec.encode(p));

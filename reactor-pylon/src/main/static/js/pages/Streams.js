@@ -87,6 +87,7 @@ class Streams extends React.Component {
                 borderWidth: 2
             },
             edges: {
+                smooth: true,
                 dashes: true,
                 width: 2
             }
