@@ -10,6 +10,7 @@ build
 .settings
 out
 *.log
+.sass-cache
 *.i*
 *.java.hsp
 deps.txt
