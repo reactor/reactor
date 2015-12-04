@@ -66,7 +66,9 @@ class Streams extends React.Component {
             },
             interaction: {
                 dragNodes: false,
-                zoomView: false
+                zoomView: false,
+                hover: true,
+                tooltipDelay: 0
             },
             clickToUse : true,
             nodes: {
@@ -109,16 +111,30 @@ class Streams extends React.Component {
         // randomly create some nodes and edges
         this.loadJSON("http://localhost:12012/nexus/stream", function(json){
             //var data = getScaleFreeNetwork(nodeCount)
-            nodes.add(json.nodes);
+
             var highlights = [];
+            var n, e;
             for(var node in json.nodes){
-                if(json.nodes[node].highlight){
-                    highlights.push(json.nodes[node].id);
+                n = json.nodes[node];
+                if(n.highlight){
+                    highlights.push(n.id);
                 }
+                if(n.capacity == 9223372036854775807){
+                    n.color = "#FFA500";
+                }
+                else if(n.capacity != -1){
+                   n.value = n.capacity % 30 + 30;
+                   n.title = "Capacity: "+n.capacity;
+                    console.log(n.title);
+                   n.color = "#AAA5F0"
+                }
+                n.label = n.name;
             }
             for(var edge in json.edges){
-                json.edges[edge].arrows = {to:true};
+                e = json.edges[edge];
+                e.arrows = {to:true};
             }
+            nodes.add(json.nodes);
             edges.add(json.edges);
             network.setData({nodes: nodes, edges: edges});
             network.selectNodes(highlights);

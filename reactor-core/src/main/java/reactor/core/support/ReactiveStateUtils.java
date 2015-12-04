@@ -139,6 +139,18 @@ public final class ReactiveStateUtils {
 
 	/**
 	 *
+	 * @param o
+	 * @return
+	 */
+	public static long getCapacity(Object o){
+		if(o != null && ReactiveState.Bounded.class.isAssignableFrom(o.getClass())){
+			return ((ReactiveState.Bounded)o).getCapacity();
+		}
+		return -1L;
+	}
+
+	/**
+	 *
 	 */
 	public static final class Graph {
 
@@ -316,8 +328,12 @@ public final class ReactiveStateUtils {
 			return id;
 		}
 
-		public final String getLabel() {
+		public final String getName() {
 			return name;
+		}
+
+		public final long getCapacity() {
+			return ReactiveStateUtils.getCapacity(object);
 		}
 
 		public final boolean isHighlight(){
