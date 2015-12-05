@@ -18,10 +18,12 @@ package reactor.fn.timer;
 import org.junit.Assert;
 import org.junit.Test;
 import reactor.Timers;
+import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.support.wait.*;
+import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 
-import java.util.concurrent.Phaser;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -60,4 +62,57 @@ public class TimerTests {
 		Assert.assertEquals(tasks, count.get());
 		timer.cancel();
 	}
+
+    @Test
+    public void timeTravelWithBusySpinStrategyTest() throws InterruptedException {
+        timeTravelTest(new BusySpinWaitStrategy(), 1);
+        timeTravelTest(new BusySpinWaitStrategy(), 5);
+        timeTravelTest(new BusySpinWaitStrategy(), 10);
+    }
+
+    @Test
+    public void timeTravelWithYieldingWaitStrategyTest() throws InterruptedException {
+        timeTravelTest(new YieldingWaitStrategy(), 1);
+        timeTravelTest(new YieldingWaitStrategy(), 5);
+        timeTravelTest(new YieldingWaitStrategy(), 10);
+    }
+
+    @Test
+    public void timeTravelWithSleepingWaitStrategyTest() throws InterruptedException {
+        timeTravelTest(new SleepingWaitStrategy(), 1);
+        timeTravelTest(new SleepingWaitStrategy(), 5);
+        timeTravelTest(new SleepingWaitStrategy(), 10);
+    }
+
+    private void timeTravelTest(WaitStrategy waitStrategy, int iterations) throws InterruptedException {
+        AtomicInteger timesCalled = new AtomicInteger(0);
+        CountDownLatch latch = new CountDownLatch(iterations);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        SettableTimeSupplier timeTravellingSupplier = new SettableTimeSupplier(0L);
+
+        Timer timer = new HashWheelTimer("time-travelling-timer" + waitStrategy,
+                                         500,
+                                         512,
+                                         waitStrategy,
+                                         executor,
+                                         timeTravellingSupplier
+                                         );
+        timer.start();
+
+        timer.schedule(new Consumer<Long>() {
+                           @Override
+                           public void accept(Long aLong) {
+                               timesCalled.incrementAndGet();
+                               latch.countDown();
+                           }
+                       }, 1, TimeUnit.SECONDS);
+
+        timeTravellingSupplier.set(iterations * 1000L);
+
+        latch.await(5, TimeUnit.SECONDS);
+        Assert.assertEquals(0, latch.getCount());
+        Assert.assertEquals(iterations, timesCalled.get());
+
+        timer.cancel();
+    }
 }
