@@ -307,7 +307,7 @@ public final class ReactiveStateUtils {
 	/**
 	 *
 	 */
-	public static class Node {
+	public static class Node implements Comparable<Node> {
 		transient private final Object object;
 		private final String id;
 		private final String name;
@@ -364,6 +364,11 @@ public final class ReactiveStateUtils {
 		@Override
 		public String toString() {
 			return "{ id : \"" + id +"\", label : \"" + name + "\" }";
+		}
+
+		@Override
+		public int compareTo(Node o) {
+			return name.compareTo(o.name);
 		}
 	}
 
