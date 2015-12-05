@@ -16,11 +16,9 @@
 
 package reactor.core.subscriber;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
@@ -29,7 +27,8 @@ import reactor.fn.Consumer;
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ConsumerSubscriber<T> extends BaseSubscriber<T> implements ReactiveState.Upstream {
+public class ConsumerSubscriber<T> extends BaseSubscriber<T>
+		implements ReactiveState.Upstream, ReactiveState.Bounded {
 
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;
@@ -182,5 +181,10 @@ public class ConsumerSubscriber<T> extends BaseSubscriber<T> implements Reactive
 			subscription = null;
 			s.cancel();
 		}
+	}
+
+	@Override
+	public long getCapacity() {
+		return Long.MAX_VALUE;
 	}
 }

@@ -90,19 +90,19 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 				p.subscribe(p3);
 				ProcessorGroup group = Processors.singleGroup();
 				p3.dispatchOn(group)
-				  .subscribe(Subscribers.consumer());
-				p3.subscribe(Subscribers.consumer());
+				  .subscribe(Subscribers.unbounded());
+				p3.subscribe(Subscribers.unbounded());
 				p3.subscribe(Subscribers.unbounded());
 				BaseProcessor p4 = Processors.emitter();
 				Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1)))
 				          .subscribe(p2);
 				p2.dispatchOn(group)
-				  .subscribe(Subscribers.consumer());
+				  .subscribe(Subscribers.unbounded());
 				channel.input().subscribe(p4);
 				ReactiveSession s = p.startSession();
 
 				Publisher<Void> p5 = channel.writeBufferWith(codec.encode(p));
-				Subscriber x = Subscribers.consumer();
+				Subscriber x = Subscribers.unbounded();
 				s.submit(ReactiveStateUtils.scan(p5));
 				s.finish();
 

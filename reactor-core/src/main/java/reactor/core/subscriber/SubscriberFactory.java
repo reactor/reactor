@@ -121,7 +121,11 @@ public abstract class SubscriberFactory {
 	 * @return a fresh Reactive Streams subscriber ready to be subscribed
 	 */
 	public static <T> Subscriber<T> unbounded() {
-		return unbounded(null, null, null);
+		return new ConsumerSubscriber<>(
+				null,
+				null,
+				null
+		);
 	}
 
 	/**
@@ -182,16 +186,6 @@ public abstract class SubscriberFactory {
 		  } : null,
 		  completeConsumer
 		);
-	}
-
-	/**
-	 * Create a {@link Subscriber} that will will automatically request Long.MAX_VALUE onSubscribe.
-	 *
-	 * @param <T> The type of the data sequence
-	 * @return a fresh Reactive Streams subscriber ready to be subscribed
-	 */
-	public static <T> Subscriber<T> consumer() {
-		return consumer(null, null, null);
 	}
 
 	/**
