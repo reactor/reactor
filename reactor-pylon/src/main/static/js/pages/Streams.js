@@ -61,9 +61,7 @@ class Streams extends React.Component {
         var container = document.getElementById('mynetwork');
         var options = {
             layout: {
-                hierarchical: {
-                    direction: "LR", sortMethod: "directed"
-                }, randomSeed: 100
+                randomSeed: 100
             }, interaction: {
                 dragNodes: false, zoomView: false, hover: true, tooltipDelay: 0
             }, clickToUse: true, nodes: {
@@ -75,7 +73,7 @@ class Streams extends React.Component {
                     size: 18, face: 'Montserrat', color: '#34302d'
                 }, borderWidth: 2, scaling: {
                     min: 20, label: {
-                        min: 10, max: 20
+                        min: 16, max: 24
                     }
                 }
             }, edges: {
@@ -133,6 +131,10 @@ class Streams extends React.Component {
                 else if (n.capacity != -1) {
                     n.value = n.capacity;
                     n.shape = "diamond"
+                    n.color = {
+                        border : "green",
+                        background : "#6db33f"
+                    };
                 }
                 else {
                     n.value = 0;
