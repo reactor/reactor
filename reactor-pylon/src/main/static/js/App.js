@@ -2,8 +2,6 @@
 
 import React              from 'react';
 
-import CurrentUserActions from './actions/CurrentUserActions';
-import CurrentUserStore   from './stores/CurrentUserStore';
 import Sidebar            from './components/Sidebar';
 
 const propTypes = {

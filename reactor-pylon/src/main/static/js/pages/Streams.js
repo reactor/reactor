@@ -4,6 +4,9 @@ import React         from 'react';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import vis           from 'vis';
+import ReactDOM        from 'react-dom';
+import Rx              from 'rx';
+import RxDOM           from 'rx-dom';
 
 const propTypes = {
     currentUser: React.PropTypes.object
@@ -59,39 +62,38 @@ class Streams extends React.Component {
         var options = {
             layout: {
                 hierarchical: {
-                    direction: "LR",
-                    sortMethod: "directed"
-                },
-                randomSeed:2
-            },
-            interaction: {
-                dragNodes: false,
-                zoomView: false,
-                hover: true,
-                tooltipDelay: 0
-            },
-            clickToUse : true,
-            nodes: {
+                    direction: "LR", sortMethod: "directed"
+                }, randomSeed: 100
+            }, interaction: {
+                dragNodes: false, zoomView: false, hover: true, tooltipDelay: 0
+            }, clickToUse: true, nodes: {
                 color: {
-                    highlight:{
-                        border:'#6db33f',
-                        background:'#34302d'
-                    },
-                    border:'#6db33f',
-                    background:'#6db33f'
-                },
-                shape: 'dot',
-                font: {
-                    size: 18,
-                    face: 'Montserrat',
-                    color: '#34302d',
-                },
-                borderWidth: 2
-            },
-            edges: {
-                smooth: true,
-                dashes: true,
+                    highlight: {
+                        border: '#6db33f', background: '#34302d'
+                    }, border: '#6db33f', background: '#6db33f'
+                }, shape: 'dot', font: {
+                    size: 18, face: 'Montserrat', color: '#34302d'
+                }, borderWidth: 2, scaling: {
+                    min: 20, label: {
+                        min: 10, max: 20
+                    }
+                }
+            }, edges: {
+                smooth: true, //smooth: {
+                //    type: 'dynamic'
+                //},
+                //dashes: true,
                 width: 2
+            }, "physics": {
+                //"hierarchicalRepulsion": {
+                //    "nodeDistance": 190
+                //},
+                //"minVelocity": 0.75,
+                //"barnesHut": {
+                //    "avoidOverlap": 2,
+                //    springLength: 300
+                //}
+                //"solver": "hierarchicalRepulsion"
             }
         };
         this.network = new vis.Network(container, {}, options);
@@ -101,38 +103,48 @@ class Streams extends React.Component {
         //setTimeout(task, 200);
 
         // add event listeners
-        this.network.on('select', function (params) {
+        this.network.on('selectNode', function (params) {
             document.getElementById('selection').innerHTML = 'Selection: ' + params.nodes;
+        });
+        this.network.on('hoverNode', function (params) {
+            ReactDOM.render(<ul>
+                <li>{nodes.get(params.node).name}</li>
+                <li>'Capacity : {nodes.get(params.node).capacity}</li>
+            </ul>, document.getElementById('selection'));
         });
 
         var nodes = this.nodes;
         var edges = this.edges;
         var network = this.network;
         // randomly create some nodes and edges
-        this.loadJSON("http://localhost:12012/nexus/stream", function(json){
+        this.loadJSON("http://localhost:12012/nexus/stream", function (json) {
             //var data = getScaleFreeNetwork(nodeCount)
 
             var highlights = [];
             var n, e;
-            for(var node in json.nodes){
+            for (var node in json.nodes) {
                 n = json.nodes[node];
-                if(n.highlight){
+                if (n.highlight) {
                     highlights.push(n.id);
                 }
-                if(n.capacity == 9223372036854775807){
-                    n.color = "#FFA500";
+                if (n.capacity == 9223372036854775807) {
+                    n.color = "#f1f1f1";
                 }
-                else if(n.capacity != -1){
-                   n.value = n.capacity % 30 + 30;
-                   n.title = "Capacity: "+n.capacity;
-                    console.log(n.title);
-                   n.color = "#AAA5F0"
+                else if (n.capacity != -1) {
+                    n.value = n.capacity;
+                    n.shape = "diamond"
+                }
+                else {
+                    n.value = 0;
                 }
                 n.label = n.name;
             }
-            for(var edge in json.edges){
+            for (var edge in json.edges) {
                 e = json.edges[edge];
-                e.arrows = {to:true};
+                e.arrows = {to: true};
+                if(e.discrete){
+                    e.dashes = true;
+                }
             }
             nodes.add(json.nodes);
             edges.add(json.edges);
@@ -142,17 +154,17 @@ class Streams extends React.Component {
             //font: {size:15, color:'red', face:'courier', strokeWidth:3, strokeColor:'#ffffff'}
             // create a network
 
-        }, function(error){
+        }, function (error) {
             console.log(error);
         });
         return false;
     }
 
-    componentDidMount(){
+    componentDidMount() {
         this.draw();
     }
 
-    componentDidUpdate(){
+    componentDidUpdate() {
         this.draw();
     }
 
@@ -164,7 +176,7 @@ class Streams extends React.Component {
 
                     <div id="mynetwork"></div>
 
-                    <p id="selection"></p>
+                    <h3 id="selection"></h3>
                 </section>
             </DocumentTitle>
         );

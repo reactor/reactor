@@ -280,13 +280,13 @@ public final class ReactiveStateUtils {
 				ReactiveState.FeedbackLoop loop = (ReactiveState.FeedbackLoop)o;
 				Node input = expandReactiveSate(loop.delegateInput());
 				if(input != null) {
-					edges.add(r.createEdgeTo(input));
+					edges.add(r.createEdgeTo(input, true));
 					addDownstream(input, null);
 				}
 				Node output = expandReactiveSate(loop.delegateOutput());
 				if(output != null) {
 					addUpstream(output, null);
-					edges.add(output.createEdgeTo(r));
+					edges.add(output.createEdgeTo(r, true));
 				}
 			}
 
@@ -342,7 +342,11 @@ public final class ReactiveStateUtils {
 
 
 		protected Edge createEdgeTo(Node to){
-			return new Edge(id, to.id);
+			return createEdgeTo(to, false);
+		}
+
+		protected Edge createEdgeTo(Node to, boolean discrete){
+			return new Edge(id, to.id, discrete);
 		}
 
 		@Override
@@ -377,12 +381,13 @@ public final class ReactiveStateUtils {
 	 */
 	public static class Edge {
 		private final String from;
-
 		private final String to;
+		private final boolean discrete;
 
-		protected Edge(String from, String to){
+		protected Edge(String from, String to, boolean discrete){
 			this.from = from;
 			this.to = to;
+			this.discrete = discrete;
 		}
 
 		public final String getFrom() {
@@ -391,6 +396,10 @@ public final class ReactiveStateUtils {
 
 		public final String getTo() {
 			return to;
+		}
+
+		public final boolean isDiscrete() {
+			return discrete;
 		}
 
 		@Override
