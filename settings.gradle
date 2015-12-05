@@ -4,6 +4,9 @@ include 'reactor-core',
 		'reactor-bus',
 		'reactor-alloc',
 		'reactor-stream',
-		'reactor-pylon',
 		'reactor-logback',
 		'docs'
+
+if(System.env['User'] != "Bamboo"){
+	include 'reactor-pylon'
+}

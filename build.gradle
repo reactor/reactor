@@ -310,6 +310,8 @@ project('reactor-bus') {
 		}
 	}
 }
+
+if(System.env['User'] != "Bamboo"){
 project('reactor-pylon') {
   description = 'Reactor Monitoring Client'
 
@@ -323,6 +325,7 @@ project('reactor-pylon') {
 
 	testCompile project(':reactor-stream')
   }
+}
 }
 
 project('reactor-alloc') {
