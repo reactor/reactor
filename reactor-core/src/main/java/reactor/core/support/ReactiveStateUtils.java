@@ -448,6 +448,10 @@ public final class ReactiveStateUtils {
 			return discrete;
 		}
 
+		public final String getId(){
+			return from+"_"+to;
+		}
+
 		@Override
 		public final boolean equals(Object o) {
 			if (this == o) {

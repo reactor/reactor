@@ -164,7 +164,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 
 	@Override
 	public boolean isTerminated() {
-		return subscription != null;
+		return false;
 	}
 
 	@Override

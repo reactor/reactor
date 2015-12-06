@@ -195,6 +195,6 @@ public class ConsumerSubscriber<T> extends BaseSubscriber<T>
 
 	@Override
 	public boolean isTerminated() {
-		return subscription == null;
+		return false;
 	}
 }

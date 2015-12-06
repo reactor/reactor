@@ -1,10 +1,12 @@
 'use strict';
 
 import React         from 'react';
+import ReactDOM         from 'react-dom';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import vis           from 'vis';
-import ReactDOM        from 'react-dom';
+import API           from '../utils/APIUtils'
+import JSON           from 'JSON2';
 import Rx              from 'rx';
 
 const propTypes = {
@@ -46,8 +48,9 @@ class Streams extends React.Component {
 
     constructor(props) {
         super(props);
-        this.network = null;
+        this.feed = null;
 
+        this.network = null;
         this.nodes = new vis.DataSet();
         this.edges = new vis.DataSet();
     }
@@ -66,28 +69,16 @@ class Streams extends React.Component {
     }
 
     resetAllNodesStabilize() {
-        this.resetAllNodes();
-        this.network.stabilize();
+        if(this.network != null) {
+            var nodes = this.nodes;
+            var edges = this.edges;
+            this.network.setData({nodes: nodes, edges: edges});
+        }
+
     }
 
-    loadJSON(path, success, error) {
-        var xhr = new XMLHttpRequest();
-        xhr.onreadystatechange = function () {
-            if (xhr.readyState === 4) {
-                if (xhr.status === 200) {
-                    success(JSON.parse(xhr.responseText));
-                }
-                else {
-                    error(xhr);
-                }
-            }
-        };
-        xhr.open('GET', path, true);
-        xhr.send();
-    }
-
-    draw() {
-        this.destroy();
+    draw(json) {
+        //this.destroy();
         var container = document.getElementById('mynetwork');
         var options = {
             layout: {
@@ -101,7 +92,7 @@ class Streams extends React.Component {
                 labelHighlightBold: false,
                 color: {
                     highlight: {
-                        border: '#6db33f', background: '#34302d'
+                       // border: '#6db33f', background: '#34302d'
                     }, border: '#6db33f', background: '#6db33f'
                 }, shape: 'diamond', font: {
                     size: 18, face: 'Montserrat', color: '#34302d'
@@ -128,17 +119,26 @@ class Streams extends React.Component {
                 //"solver": "hierarchicalRepulsion"
             }
         };
-        this.network = new vis.Network(container, {}, options);
+
+        var nodes = this.nodes;
+        var edges = this.edges;
+        var network = this.network;
+        var first = false;
+        if(network == null){
+            network = new vis.Network(container, {}, options);
+            this.network = network;
+            first = true;
+        }
 
         //var task =  function(){ test();setTimeout(task, 200); };
         //
         //setTimeout(task, 200);
 
         // add event listeners
-        this.network.on('selectNode', function (params) {
+        this.network.on('selectNode', (params) =>  {
             document.getElementById('selection').innerHTML = 'Selection: ' + params.nodes;
         });
-        this.network.on('hoverNode', function (params) {
+        this.network.on('hoverNode', (params) => {
             ReactDOM.render(<ul>
                 <li>{nodes.get(params.node).name}</li>
                 <li>Capacity : {nodes.get(params.node).capacity}</li>
@@ -149,90 +149,102 @@ class Streams extends React.Component {
             </ul>, document.getElementById('selection'));
         });
 
-        var nodes = this.nodes;
-        var edges = this.edges;
-        var network = this.network;
-        // randomly create some nodes and edges
-        this.loadJSON("http://localhost:12012/nexus/stream", function (json) {
-            //var data = getScaleFreeNetwork(nodeCount)
 
-            var highlights = [];
-            var n, e;
-            for (var node in json.nodes) {
-                n = json.nodes[node];
-                if (n.highlight) {
-                    highlights.push(n.id);
+        // randomly create some nodes and edges
+
+        var highlights = [];
+        var n, e;
+        for (var node in json.nodes) {
+            n = json.nodes[node];
+            if (n.highlight) {
+                highlights.push(n.id);
+            }
+            if(!n.active || n.cancelled || n.terminated){
+                n.shape = "dot"
+                n.color = {
+                    border: n.terminated ? "#6db33f" : "gray",
+                    background: "#f1f1f1"
+                };
+                if(!n.active && !n.cancelled && !n.terminated) {
+                    n.shapeProperties = {borderDashes: [10, 10]};
                 }
-                console.log(n);
-                if(!n.active || n.cancelled || n.terminated){
+                n.value = 0;
+            }
+            else {
+                if (n.capacity != -1) {
                     n.shape = "dot"
-                    n.color = {
-                        border: n.terminated ? "#6db33f" : "gray",
-                        background: "#f1f1f1"
-                    };
-                    if(!n.active && !n.cancelled && !n.terminated) {
+                    if (n.capacity == 9223372036854775807) {
+                        n.color = {
+                            border: "green", background: "#f1f1f1"
+                        };
                         n.shapeProperties = {borderDashes: [10, 10]};
                     }
-                    n.value = 0;
+                    else {
+                        n.value = n.capacity;
+                        var backgroundColor = n.buffered != -1 ?
+                            graphUtils.getColorForPercentage(1- (n.buffered / n.capacity)) : "#6db33f";
+                        n.color = {
+                            border: "green", background: backgroundColor
+                        };
+                    }
                 }
                 else {
-                  if (n.capacity != -1) {
-                      n.shape = "dot"
-                      if (n.capacity == 9223372036854775807) {
-                          n.color = {
-                              border: "green", background: "#f1f1f1"
-                          };
-                          n.shapeProperties = {borderDashes: [10, 10]};
-                      }
-                      else {
-                          n.value = n.capacity;
-                          var backgroundColor = n.buffered != -1 ?
-                              graphUtils.getColorForPercentage(1 - (n.buffered / n.capacity)) : "#6db33f";
-                          n.color = {
-                              border: "green", background: backgroundColor
-                          };
-                      }
-                    }
-                    else {
-                        n.value = 0;
-                    }
-                }
-                n.label = n.name;
-            }
-            for (var edge in json.edges) {
-                e = json.edges[edge];
-                e.arrows = {to: true};
-                if(e.discrete){
-                    e.dashes = true;
+                    n.value = 0;
                 }
             }
-            nodes.add(json.nodes);
-            edges.add(json.edges);
+            n.label = n.name;
+        }
+        for (var edge in json.edges) {
+            e = json.edges[edge];
+            e.arrows = {to: true};
+            if(e.discrete){
+                e.dashes = true;
+            }
+        }
+        nodes.update(json.nodes);
+        edges.update(json.edges);
+
+        if(first){
             network.setData({nodes: nodes, edges: edges});
             network.selectNodes(highlights);
+        }
 
-            //font: {size:15, color:'red', face:'courier', strokeWidth:3, strokeColor:'#ffffff'}
-            // create a network
+        //font: {size:15, color:'red', face:'courier', strokeWidth:3, strokeColor:'#ffffff'}
+        // create a network
 
-        }, function (error) {
-            console.log(error);
-        });
         return false;
     }
 
     componentDidMount() {
-        this.draw();
+        var thiz = this;
+        API.ws("stream", (e) => console.log(e)).then(res => {
+            thiz.feed = res.receiver;
+            res.receiver
+                .subscribe( json => {
+                    thiz.draw(json);
+                }, error =>{
+                    console.log("error:", error);
+                }, () => {
+                    console.log("terminated");
+                });
+        }, e => {
+            ReactDOM.render(<b style={{color:"red"}}>{e.message}</b>, document.getElementById("mynetwork"));
+        });
+    }
+
+    componentWillUnmount() {
+        this.destroy();
     }
 
     componentDidUpdate() {
-        this.draw();
+        //this.draw();
     }
 
     render() {
         return (
             <DocumentTitle title="Streams">
                 <section className="streams">
-                    <h2>Stream Monitor <a href="#" onClick={this.draw}>Reset</a></h2>
+                    <h2>Stream Monitor <a href="#" onClick={this.resetAllNodesStabilize.bind(this)}>Reset</a></h2>
 
                     <div id="mynetwork"></div>
 

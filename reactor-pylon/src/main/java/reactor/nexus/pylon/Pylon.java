@@ -25,6 +25,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -34,10 +35,12 @@ import org.slf4j.LoggerFactory;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
+import reactor.Timers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.ReactiveStateUtils;
+import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.json.JsonCodec;
@@ -48,6 +51,7 @@ import reactor.io.net.ReactivePeer;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpServer;
 import reactor.io.net.http.routing.ChannelMappings;
+import reactor.io.net.impl.netty.http.NettyHttpServer;
 
 /**
  * @author Stephane Maldini
@@ -59,14 +63,16 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 	private static final String CONSOLE_STATIC_PATH        = "/public";
 	private static final String CONSOLE_STATIC_ASSETS_PATH = "/assets";
-	private static final String EXIT_URL                   = "/exit";
 	private static final String CONSOLE_URL                = "/pylon";
 	private static final String CONSOLE_ASSETS_PREFIX      = "/assets";
 	private static final String CONSOLE_FAVICON            = "/favicon.ico";
 	private static final String HTML_DEPENDENCY_CONSOLE    = "/index.html";
 
 	private final HttpServer<Buffer, Buffer> server;
-	private final String staticPath;
+	private final String                     staticPath;
+
+	private final BaseProcessor<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> graphStream =
+			Processors.emitter(false);
 
 	public static void main(String... args) throws Exception {
 		log.info("Deploying Quick Expand with a Nexus and a Pylon... ");
@@ -77,51 +83,79 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 		//EXAMPLE
 		final CountDownLatch stopped = new CountDownLatch(1);
+		final BaseProcessor p4 = Processors.emitter();
 
-		pylon.server.get(EXIT_URL, new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
-			@Override
-			public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
-				stopped.countDown();
-				return Publishers.empty();
-			}
-		});
+		pylon.server.get("/exit", channel -> { stopped.countDown(); return Publishers.empty(); })
+		            .get("/nexus/stream", new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
+			            final JsonCodec<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> codec =
+					            new JsonCodec<>(ReactiveStateUtils.Graph.class);
 
+			            @Override
+			            public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
+				            Publisher<Void> postWrite = channel
+						            .responseHeader("Access-Control-Allow-Origin", "*")
+				                          .writeBufferWith(codec.encode(
+						                          Publishers.log(Publishers.capacity(pylon.graphStream, 1L), "graph"))
+				                          );
 
-		final JsonCodec<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> codec =
-				new JsonCodec<>(ReactiveStateUtils.Graph.class);
+				            NettyHttpServer.upgradeToWebsocket(channel);
+				            channel.input().subscribe(p4);
+				            return postWrite;
 
-		pylon.server.ws("/nexus/stream", new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
+//				            BaseProcessor p = Processors.replay();
+//				            BaseProcessor p2 = Processors.emitter();
+//				            //channel.input().subscribe(p2);
+//				            BaseProcessor p3 = Processors.emitter();
+//				            p.subscribe(p3);
+//				            ProcessorGroup group = Processors.singleGroup();
+//				            p3.dispatchOn(group)
+//				              .subscribe(Subscribers.unbounded());
+//				            p3.subscribe(Subscribers.unbounded());
+//				            p3.subscribe(Subscribers.unbounded());
+//				            BaseProcessor p4 = Processors.emitter();
+//				            Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1)))
+//				                      .subscribe(p2);
+//				            p2.dispatchOn(group)
+//				              .subscribe(Subscribers.unbounded());
+//				            channel.input()
+//				                   .subscribe(p4);
+//				            ReactiveSession s = p.startSession();
+//
+//				            Publisher<Void> p5 = channel.writeBufferWith(codec.encode(p));
+//				            s.submit(ReactiveStateUtils.scan(p5));
+//				            s.finish();
+//
+//				            return p5;
+			            }
+		            });
 
-			@Override
-			public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
-				channel.responseHeader("Access-Control-Allow-Origin", "*");
+		final ReactiveSession<ReactiveStateUtils.Graph> s = pylon.graphStream.startSession();
 
-				BaseProcessor p = Processors.replay();
-				BaseProcessor p2 = Processors.emitter();
-				//channel.input().subscribe(p2);
-				BaseProcessor p3 = Processors.emitter();
-				p.subscribe(p3);
-				ProcessorGroup group = Processors.singleGroup();
-				p3.dispatchOn(group)
-				  .subscribe(Subscribers.unbounded());
-				p3.subscribe(Subscribers.unbounded());
-				p3.subscribe(Subscribers.unbounded());
-				BaseProcessor p4 = Processors.emitter();
-				Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1)))
-				          .subscribe(p2);
-				p2.dispatchOn(group)
-				  .subscribe(Subscribers.unbounded());
-				channel.input()
-				       .subscribe(p4);
-				ReactiveSession s = p.startSession();
+		BaseProcessor p = Processors.replay();
+		BaseProcessor p2 = Processors.emitter();
+		//channel.input().subscribe(p2);
+		BaseProcessor p3 = Processors.emitter();
+		p.subscribe(p3);
+		ProcessorGroup group = Processors.singleGroup();
+		p3.dispatchOn(group)
+		  .subscribe(Subscribers.unbounded());
+		p3.subscribe(Subscribers.unbounded());
+		p3.subscribe(Subscribers.unbounded());
+		p.startSession();
+		p4.startSession();
+		Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1)))
+		          .subscribe(p2);
+		p2.dispatchOn(group)
+		  .subscribe(Subscribers.unbounded());
 
-				Publisher<Void> p5 = channel.writeBufferWith(codec.encode(p));
-				s.submit(ReactiveStateUtils.scan(p5));
-				s.finish();
+		Timers.create()
+		      .schedule(new Consumer<Long>() {
+			      @Override
+			      public void accept(Long aLong) {
+				      s.submit(ReactiveStateUtils.subscan(s));
+			      }
+		      }, 5, TimeUnit.SECONDS);
 
-				return p5;
-			}
-		});
 		//EXAMPLE END
 
 		pylon.startAndAwait();
@@ -153,7 +187,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		return pylon;
 	}
 
-	private static String findOrExtractAssets() throws Exception{
+	private static String findOrExtractAssets() throws Exception {
 		if (Pylon.class.getResource(CONSOLE_STATIC_PATH + HTML_DEPENDENCY_CONSOLE)
 		               .getPath()
 		               .contains("jar!/")) {
@@ -162,22 +196,24 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 			dest.deleteOnExit();
 
-			Runtime.getRuntime().addShutdownHook(new Thread() {
+			Runtime.getRuntime()
+			       .addShutdownHook(new Thread() {
 
-				@Override
-				public void run() {
-					if(dest.delete()){
-						log.info("Probes called back from temporary zone");
-					}
-				}
-			});
+				       @Override
+				       public void run() {
+					       if (dest.delete()) {
+						       log.info("Probes called back from temporary zone");
+					       }
+				       }
+			       });
 
 			log.info("Sending Assets probes to : " + dest);
 			deployStaticFiles(dest.toString());
 			return dest.toString() + CONSOLE_STATIC_PATH;
 		}
-		else{
-			return Pylon.class.getResource(CONSOLE_STATIC_PATH).getPath();
+		else {
+			return Pylon.class.getResource(CONSOLE_STATIC_PATH)
+			                  .getPath();
 		}
 	}
 
@@ -235,7 +271,8 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		final String prefix = CONSOLE_STATIC_PATH.substring(1);
 		while (enumEntries.hasMoreElements()) {
 			JarEntry file = (JarEntry) enumEntries.nextElement();
-			if(!file.getName().startsWith(prefix)){
+			if (!file.getName()
+			         .startsWith(prefix)) {
 				continue;
 			}
 			File f = new File(destDir + File.separator + file.getName());
