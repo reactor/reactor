@@ -188,6 +188,35 @@ public interface ReactiveState {
 	}
 
 	/**
+	 * A lifecycle backed upstream
+	 */
+	interface ActiveUpstream extends ReactiveState {
+
+		/**
+		 * @return
+		 */
+		boolean isStarted();
+
+		/**
+		 *
+		 * @return
+		 */
+		boolean isTerminated();
+	}
+
+	/**
+	 * A lifecycle backed upstream
+	 */
+	interface ActiveDownstream extends ReactiveState {
+
+		/**
+		 *
+		 * @return
+		 */
+		boolean isCancelled();
+	}
+
+	/**
 	 * A criteria grouped component
 	 */
 	interface Grouped extends ReactiveState {
@@ -202,6 +231,12 @@ public interface ReactiveState {
 	 * A component that is meant to be introspectable on finest logging level
 	 */
 	interface Trace extends ReactiveState {
+	}
+
+	/**
+	 * A sub-component
+	 */
+	interface Inner extends ReactiveState {
 	}
 
 

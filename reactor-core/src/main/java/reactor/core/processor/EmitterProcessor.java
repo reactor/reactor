@@ -40,7 +40,11 @@ import reactor.core.support.internal.PlatformDependent;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements ReactiveState.LinkedDownstreams{
+public final class EmitterProcessor<T> extends BaseProcessor<T, T>
+		implements ReactiveState.LinkedDownstreams,
+		           ReactiveState.ActiveUpstream,
+		           ReactiveState.ActiveDownstream,
+		           ReactiveState.Buffering {
 
 	final int maxConcurrency;
 	final int bufferSize;
@@ -114,6 +118,11 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 			removeInner(inner, EMPTY);
 			Publishers.<T>error(t).subscribe(s);
 		}
+	}
+
+	@Override
+	public long pending() {
+		return (emitBuffer == null ? 0L : emitBuffer.pending());
 	}
 
 	@Override
@@ -247,6 +256,11 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 	}
 
 	@Override
+	public boolean isCancelled() {
+		return autoCancel && subscribers == CANCELLED;
+	}
+
+	@Override
 	final public long getAvailableCapacity() {
 		return emitBuffer == null ? bufferSize : emitBuffer.remainingCapacity();
 	}
@@ -254,6 +268,16 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 	@Override
 	final public long getCapacity() {
 		return bufferSize;
+	}
+
+	@Override
+	public boolean isStarted() {
+		return upstreamSubscription != null;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return done && (emitBuffer == null || emitBuffer.pending() == 0L);
 	}
 
 	RingBuffer<RingBuffer.Slot<T>> getMainQueue() {
@@ -564,7 +588,8 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 				'}';
 	}
 
-	static final class EmitterSubscriber<T> implements Subscription, Bounded, Upstream, Downstream<T> {
+	static final class EmitterSubscriber<T>
+			implements Subscription, ActiveUpstream, ActiveDownstream, Bounded, Upstream, Downstream<T> {
 
 		final long                  id;
 		final EmitterProcessor<T>   parent;
@@ -635,6 +660,21 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 
 				actual.onSubscribe(this);
 			}
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return done;
+		}
+
+		@Override
+		public boolean isStarted() {
+			return parent.isStarted();
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return parent.isTerminated();
 		}
 
 		@Override

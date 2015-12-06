@@ -79,10 +79,12 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		final JsonCodec<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> codec =
 				new JsonCodec<>(ReactiveStateUtils.Graph.class);
 
-		pylon.server.get("/nexus/stream", new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
+		pylon.server.ws("/nexus/stream", new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
 
 			@Override
 			public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
+				channel.responseHeader("Access-Control-Allow-Origin", "*");
+
 				BaseProcessor p = Processors.replay();
 				BaseProcessor p2 = Processors.emitter();
 				//channel.input().subscribe(p2);
@@ -102,11 +104,9 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 				ReactiveSession s = p.startSession();
 
 				Publisher<Void> p5 = channel.writeBufferWith(codec.encode(p));
-				Subscriber x = Subscribers.unbounded();
 				s.submit(ReactiveStateUtils.scan(p5));
 				s.finish();
 
-				channel.responseHeader("Access-Control-Allow-Origin", "*");
 				return p5;
 			}
 		});

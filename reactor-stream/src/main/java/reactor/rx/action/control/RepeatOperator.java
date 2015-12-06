@@ -63,7 +63,7 @@ public final class RepeatOperator<T> implements Publishers.Operator<T, T> {
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
 			if (TERMINATED.compareAndSet(this, TERMINATED_WITH_SUCCESS, NOT_TERMINATED)) {
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				if( r > 0L ){
 					requestMore(r);
 				}

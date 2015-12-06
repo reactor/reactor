@@ -91,7 +91,7 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
 			if(TERMINATED.compareAndSet(this, TERMINATED_WITH_ERROR, NOT_TERMINATED)) {
-				requestMore(BackpressureUtils.addOrLongMax(getRequested(), 1L));
+				requestMore(BackpressureUtils.addOrLongMax(requestedFromDownstream(), 1L));
 			}
 			else {
 				subscriber.onSubscribe(this);

@@ -62,14 +62,17 @@ class Streams extends React.Component {
         var options = {
             layout: {
                 randomSeed: 100
-            }, interaction: {
+            },
+            interaction: {
                 dragNodes: false, zoomView: false, hover: true, tooltipDelay: 0
-            }, clickToUse: true, nodes: {
+            },
+            clickToUse: true,
+            nodes: {
                 color: {
                     highlight: {
                         border: '#6db33f', background: '#34302d'
                     }, border: '#6db33f', background: '#6db33f'
-                }, shape: 'dot', font: {
+                }, shape: 'diamond', font: {
                     size: 18, face: 'Montserrat', color: '#34302d'
                 }, borderWidth: 2, scaling: {
                     min: 20, label: {
@@ -107,7 +110,11 @@ class Streams extends React.Component {
         this.network.on('hoverNode', function (params) {
             ReactDOM.render(<ul>
                 <li>{nodes.get(params.node).name}</li>
-                <li>'Capacity : {nodes.get(params.node).capacity}</li>
+                <li>Capacity : {nodes.get(params.node).capacity}</li>
+                <li>Cancelled : {nodes.get(params.node).cancelled+""}</li>
+                <li>Started : {nodes.get(params.node).active+""}</li>
+                <li>Terminated : {nodes.get(params.node).terminated+''}</li>
+                <li>Buffered : {nodes.get(params.node).buffered+''}</li>
             </ul>, document.getElementById('selection'));
         });
 
@@ -125,19 +132,37 @@ class Streams extends React.Component {
                 if (n.highlight) {
                     highlights.push(n.id);
                 }
-                if (n.capacity == 9223372036854775807) {
-                    n.color = "#f1f1f1";
-                }
-                else if (n.capacity != -1) {
-                    n.value = n.capacity;
-                    n.shape = "diamond"
+                console.log(n);
+                if(!n.active || n.cancelled || n.terminated){
+                    n.shape = "dot"
                     n.color = {
-                        border : "green",
-                        background : "#6db33f"
+                        border: n.terminated ? "#6db33f" : "gray",
+                        background: "#f1f1f1"
                     };
+                    if(!n.active && !n.cancelled && !n.terminated) {
+                        n.shapeProperties = {borderDashes: [10, 10]};
+                    }
+                    n.value = 0;
                 }
                 else {
-                    n.value = 0;
+                  if (n.capacity != -1) {
+                      n.shape = "dot"
+                      if (n.capacity == 9223372036854775807) {
+                          n.color = {
+                              border: "green", background: "#f1f1f1"
+                          };
+                          n.shapeProperties = {borderDashes: [10, 10]};
+                      }
+                      else {
+                          n.value = n.capacity;
+                          n.color = {
+                              border: "green", background: "#6db33f"
+                          };
+                      }
+                    }
+                    else {
+                        n.value = 0;
+                    }
                 }
                 n.label = n.name;
             }

@@ -41,7 +41,9 @@ import reactor.fn.timer.TimeUtils;
  * @since 2.1
  */
 public class ReactiveSession<E> implements ReactiveState.Downstream<E>, Subscriber<E>, Subscription,
-                                           ReactiveState.Bounded, Consumer<E>,
+                                           ReactiveState.Bounded,
+                                           ReactiveState.ActiveDownstream,
+                                           Consumer<E>,
                                            Closeable {
 
 	/**
@@ -122,8 +124,8 @@ public class ReactiveSession<E> implements ReactiveState.Downstream<E>, Subscrib
 			actual.onSubscribe(this);
 		}
 		catch (Throwable t) {
-			Publishers.<E>error(t).subscribe(actual);
 			uncaughtException = t;
+			Publishers.<E>error(t).subscribe(actual);
 		}
 	}
 
@@ -391,6 +393,11 @@ public class ReactiveSession<E> implements ReactiveState.Downstream<E>, Subscrib
 	@Override
 	public void onComplete() {
 		actual.onComplete();
+	}
+
+	@Override
+	public boolean isCancelled() {
+		return cancelled;
 	}
 
 	@Override

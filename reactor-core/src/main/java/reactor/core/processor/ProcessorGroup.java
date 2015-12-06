@@ -540,7 +540,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
 			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
 			           ReactiveState.Bounded, ReactiveState.Upstream, ReactiveState.FeedbackLoop, ReactiveState
-					           .Downstream<V>, Runnable {
+					           .Downstream<V>, ReactiveState.ActiveDownstream, ReactiveState.ActiveUpstream, Runnable {
 
 		protected final ProcessorGroup service;
 
@@ -787,6 +787,21 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			else {
 				service.processor.onNext(runnable);
 			}
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return cancelled;
+		}
+
+		@Override
+		public boolean isStarted() {
+			return upstreamSubscription != null;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return terminated == 1;
 		}
 
 		@Override

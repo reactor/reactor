@@ -15,12 +15,10 @@
  */
 package reactor.core.subscriber;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
-import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 
@@ -32,7 +30,9 @@ import reactor.core.support.ReactiveState;
  * @author Stephane Maldini
  * @since 2.0.4
  */
-public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription, ReactiveState.Bounded,
+public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription,
+                                                                          ReactiveState.Bounded,
+                                                                          ReactiveState.ActiveUpstream,
                                                                           ReactiveState.Downstream<O>,
                                                                           ReactiveState.Upstream {
 
@@ -47,6 +47,11 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 	@Override
 	public Object upstream() {
 		return subscription;
+	}
+
+	@Override
+	public boolean isStarted() {
+		return subscription != null;
 	}
 
 	@Override
@@ -155,6 +160,11 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 			this.subscription = null;
 			s.cancel();
 		}
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return subscription != null;
 	}
 
 	@Override

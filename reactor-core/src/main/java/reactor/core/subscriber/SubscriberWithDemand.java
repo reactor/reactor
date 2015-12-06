@@ -22,12 +22,14 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.support.BackpressureUtils;
+import reactor.core.support.ReactiveState;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
-public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
+public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O>
+		implements ReactiveState.DownstreamDemand {
 
 	protected final static int NOT_TERMINATED = 0;
 	protected final static int TERMINATED_WITH_SUCCESS = 1;
@@ -54,7 +56,8 @@ public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 	 *
 	 * @return
 	 */
-	public final boolean isTerminated() {
+	@Override
+	public boolean isTerminated() {
 		return terminated != NOT_TERMINATED;
 	}
 
@@ -86,7 +89,8 @@ public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 	 *
 	 * @return
 	 */
-	public final long getRequested() {
+	@Override
+	public final long requestedFromDownstream() {
 		return requested;
 	}
 

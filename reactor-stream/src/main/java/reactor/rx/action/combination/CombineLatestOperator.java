@@ -222,7 +222,7 @@ public final class CombineLatestOperator<TUPLE extends Tuple, V>
 
 				int n = inner.length;
 				int replenishMain = 0;
-				long r = getRequested();
+				long r = requestedFromDownstream();
 
 				InnerSubscriber<?> state;
 

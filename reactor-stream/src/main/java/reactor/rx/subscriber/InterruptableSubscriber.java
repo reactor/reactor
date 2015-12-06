@@ -138,7 +138,8 @@ public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements
 		return ReactiveStateUtils.scan(this);
 	}
 
-	protected boolean isUnsubscribed() {
+	@Override
+	public boolean isStarted() {
 		return SUBSCRIPTION.get(this) == UNSUBSCRIBED ;
 	}
 }

@@ -111,7 +111,7 @@ public abstract class FallbackOperator<T> implements Publishers.Operator<T, T> {
 			public void onSubscribe(Subscription s) {
 				super.onSubscribe(s);
 				subscription = s;
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				if(r > 0){
 					subscription.request(r);
 				}

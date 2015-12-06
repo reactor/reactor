@@ -408,7 +408,7 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 					", buffered=" + buffered +
 					", actualComplete=" + actualComplete +
 					", cancellableGroups=" + cancellableGroups +
-					", requested=" + getRequested() +
+					", requested=" + requestedFromDownstream() +
 					", capacity=" + getCapacity() +
 					'}';
 		}

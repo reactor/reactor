@@ -137,6 +137,25 @@ public final class ReactiveStateUtils {
 		return o != null && ReactiveState.Trace.class.isAssignableFrom(o.getClass());
 	}
 
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
+	public static boolean hasSubscription(Object o){
+		return o != null && ReactiveState.ActiveUpstream.class.isAssignableFrom(o.getClass());
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
+	public static boolean isCancellable(Object o){
+		return o != null && ReactiveState.ActiveDownstream.class.isAssignableFrom(o.getClass());
+	}
+
 	/**
 	 *
 	 * @param o
@@ -145,6 +164,18 @@ public final class ReactiveStateUtils {
 	public static long getCapacity(Object o){
 		if(o != null && ReactiveState.Bounded.class.isAssignableFrom(o.getClass())){
 			return ((ReactiveState.Bounded)o).getCapacity();
+		}
+		return -1L;
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
+	public static long getBuffered(Object o){
+		if(o != null && ReactiveState.Buffering.class.isAssignableFrom(o.getClass())){
+			return ((ReactiveState.Buffering)o).pending();
 		}
 		return -1L;
 	}
@@ -272,7 +303,7 @@ public final class ReactiveStateUtils {
 					(o.getClass().getSimpleName().isEmpty() ? o.toString() : o.getClass().getSimpleName());
 			name = name.isEmpty() ? "anonymous" : name;
 
-			String id = name+":"+o.hashCode();
+			String id = name.hashCode()+":"+o.hashCode();
 
 			Node r = new Node(name, id, o, highlight);
 
@@ -285,8 +316,8 @@ public final class ReactiveStateUtils {
 				}
 				Node output = expandReactiveSate(loop.delegateOutput());
 				if(output != null) {
-					addUpstream(output, null);
 					edges.add(output.createEdgeTo(r, true));
+					addUpstream(output, null);
 				}
 			}
 
@@ -336,10 +367,25 @@ public final class ReactiveStateUtils {
 			return ReactiveStateUtils.getCapacity(object);
 		}
 
+		public final long getBuffered() {
+			return ReactiveStateUtils.getBuffered(object);
+		}
+
 		public final boolean isHighlight(){
 			return highlight;
 		}
 
+		public final boolean isActive(){
+			return !hasSubscription(object) || ((ReactiveState.ActiveUpstream)object).isStarted();
+		}
+
+		public final boolean isTerminated(){
+			return hasSubscription(object) && ((ReactiveState.ActiveUpstream)object).isTerminated();
+		}
+
+		public final boolean isCancelled(){
+			return isCancellable(object) && ((ReactiveState.ActiveDownstream)object).isCancelled();
+		}
 
 		protected Edge createEdgeTo(Node to){
 			return createEdgeTo(to, false);

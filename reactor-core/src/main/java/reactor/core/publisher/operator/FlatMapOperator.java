@@ -210,7 +210,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		void tryEmit(V value) {
 			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				if (r != 0L) {
 					if (null != value) {
 						subscriber.onNext(value);
@@ -257,7 +257,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		void tryEmit(V value, BufferSubscriber<T, V> inner) {
 			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				if (r != 0L) {
 					subscriber.onNext(value);
 					if (r != Long.MAX_VALUE) {
@@ -343,7 +343,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 				}
 				RingBuffer<RingBuffer.Slot<V>> svq = emitBuffer;
 
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				boolean unbounded = r == Long.MAX_VALUE;
 
 				long replenishMain = 0;
@@ -552,7 +552,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 	}
 
 	static final class BufferSubscriber<T, V>
-			extends BaseSubscriber<V> implements ReactiveState.Bounded, ReactiveState.Upstream {
+			extends BaseSubscriber<V>
+			implements ReactiveState.Bounded,
+			           ReactiveState.Upstream,
+			           ReactiveState.ActiveDownstream,
+			           ReactiveState.ActiveUpstream {
 		final long               id;
 		final MergeBarrier<T, V> parent;
 		final int                limit;
@@ -638,6 +642,21 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		@Override
 		public long getCapacity() {
 			return bufferSize;
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return parent.isCancelled();
+		}
+
+		@Override
+		public boolean isStarted() {
+			return parent.isStarted();
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return done && (queue == null || queue.pending() == 0L);
 		}
 	}
 

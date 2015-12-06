@@ -69,7 +69,7 @@ public final class RetryOperator<T> implements Publishers.Operator<T, T> {
 		protected void doOnSubscribe(Subscription subscription) {
 			if(TERMINATED.compareAndSet(this, TERMINATED_WITH_ERROR, NOT_TERMINATED)) {
 				currentNumRetries = 0;
-				requestMore(BackpressureUtils.addOrLongMax(getRequested(), 1L));
+				requestMore(BackpressureUtils.addOrLongMax(requestedFromDownstream(), 1L));
 			}
 			else {
 				subscriber.onSubscribe(this);

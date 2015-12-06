@@ -327,6 +327,7 @@ public abstract class PublisherFactory {
 			implements ReactiveState.Bounded,
 			           ReactiveState.Named,
 			           ReactiveState.Upstream,
+			           ReactiveState.ActiveUpstream,
 			           LiftOperator<I, O> {
 
 		final private Publisher<I>                                           source;
@@ -366,6 +367,16 @@ public abstract class PublisherFactory {
 			return "{" +
 					" operator : \"" +getName() + "\" " +
 					'}';
+		}
+
+		@Override
+		public boolean isStarted() {
+			return false;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return false;
 		}
 
 		@Override

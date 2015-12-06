@@ -229,7 +229,7 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 	@Override
 	protected void doOnSubscribe(Subscription s) {
 		subscription = s;
-		long toRequest = getRequested();
+		long toRequest = requestedFromDownstream();
 		if (toRequest > 0L) {
 			s.request(toRequest);
 		}
