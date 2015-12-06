@@ -6,10 +6,40 @@ import DocumentTitle from 'react-document-title';
 import vis           from 'vis';
 import ReactDOM        from 'react-dom';
 import Rx              from 'rx';
-import RxDOM           from 'rx-dom';
 
 const propTypes = {
-    currentUser: React.PropTypes.object
+    network: React.PropTypes.object,
+    nodes: React.PropTypes.object,
+    edges: React.PropTypes.object
+};
+
+
+var percentColors = [
+    { pct: 0.0, color: { r: 0xff, g: 0x00, b: 0 } },
+    { pct: 0.5, color: { r: 0xff, g: 0xff, b: 0 } },
+    { pct: 1.0, color: { r: 0x00, g: 0xff, b: 0 } }
+];
+
+const graphUtils = {
+    getColorForPercentage(pct) {
+        for (var i = 1; i < percentColors.length - 1; i++) {
+            if (pct < percentColors[i].pct) {
+                break;
+            }
+        }
+        var lower = percentColors[i - 1];
+        var upper = percentColors[i];
+        var range = upper.pct - lower.pct;
+        var rangePct = (pct - lower.pct) / range;
+        var pctLower = 1 - rangePct;
+        var pctUpper = rangePct;
+        var color = {
+            r: Math.floor(lower.color.r * pctLower + upper.color.r * pctUpper),
+            g: Math.floor(lower.color.g * pctLower + upper.color.g * pctUpper),
+            b: Math.floor(lower.color.b * pctLower + upper.color.b * pctUpper)
+        };
+        return 'rgb(' + [color.r, color.g, color.b].join(',') + ')';
+    }
 };
 
 class Streams extends React.Component {
@@ -68,6 +98,7 @@ class Streams extends React.Component {
             },
             clickToUse: true,
             nodes: {
+                labelHighlightBold: false,
                 color: {
                     highlight: {
                         border: '#6db33f', background: '#34302d'
@@ -155,8 +186,10 @@ class Streams extends React.Component {
                       }
                       else {
                           n.value = n.capacity;
+                          var backgroundColor = n.buffered != -1 ?
+                              graphUtils.getColorForPercentage(1 - (n.buffered / n.capacity)) : "#6db33f";
                           n.color = {
-                              border: "green", background: "#6db33f"
+                              border: "green", background: backgroundColor
                           };
                       }
                     }
@@ -212,5 +245,6 @@ class Streams extends React.Component {
 }
 
 Streams.propTypes = propTypes;
+Streams.graphUtils = graphUtils;
 
 export default Streams;

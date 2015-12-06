@@ -232,6 +232,30 @@ public abstract class PublisherFactory {
 
 	/**
 	 *
+	 * @param source
+	 * @param <I>
+	 * @return
+	 */
+	public static <I> Publisher<I> unbounded(Publisher<I> source) {
+		Assert.notNull(source, "A data source must be provided");
+		return capacity(source, Long.MAX_VALUE);
+	}
+
+	/**
+	 *
+	 * @param source
+	 * @param capacity
+	 * @param <I>
+	 * @return
+	 */
+	public static <I> Publisher<I> capacity(Publisher<I> source, long capacity) {
+		Assert.notNull(source, "A data source must be provided");
+		return new BoundedPublisher<>(source, capacity);
+	}
+
+
+	/**
+	 *
 	 * @param left
 	 * @param right
 	 * @param <I>
@@ -386,6 +410,48 @@ public abstract class PublisherFactory {
 		}
 	}
 
+	private final static class BoundedPublisher<I>
+			implements Publisher<I>, ReactiveState.Bounded, ReactiveState.Named,
+			           ReactiveState.Upstream, ReactiveState.ActiveUpstream{
+
+		final private Publisher<I>                                           source;
+		final private long capacity;
+
+		public BoundedPublisher(Publisher<I> source, long capacity) {
+			this.source = source;
+			this.capacity = capacity;
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super I> s) {
+			source.subscribe(s);
+		}
+
+		@Override
+		public boolean isStarted() {
+			return false;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return false;
+		}
+
+		@Override
+		public long getCapacity() {
+			return capacity;
+		}
+
+		@Override
+		public Object upstream() {
+			return source;
+		}
+
+		@Override
+		public String getName() {
+			return "Bounded";
+		}
+	}
 	private final static class SubscriberProxy<T, C> extends SubscriberWithContext<T, C>
 			implements Subscription, ReactiveState.Upstream, ReactiveState.Trace {
 

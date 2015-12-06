@@ -6,6 +6,7 @@ import Sidebar            from './components/Sidebar';
 
 const propTypes = {
   params: React.PropTypes.object,
+  nexusFeed: React.PropTypes.object,
   query: React.PropTypes.object,
   children: React.PropTypes.oneOfType([
     React.PropTypes.array,
@@ -18,6 +19,7 @@ class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
+      //nexusFeed: from,
     };
   }
 

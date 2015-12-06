@@ -122,7 +122,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 
 	@Override
 	public long pending() {
-		return (emitBuffer == null ? 0L : emitBuffer.pending());
+		return (emitBuffer == null ? -1L : emitBuffer.pending());
 	}
 
 	@Override
