@@ -311,23 +311,6 @@ project('reactor-bus') {
 	}
 }
 
-if(System.env['User'] != "Bamboo"){
-project('reactor-pylon') {
-  description = 'Reactor Monitoring Client'
-
-  dependencies {
-	compile project(':reactor-core')
-	compile "io.projectreactor:reactor-net:$version"
-	compile "io.projectreactor:reactor-codec:$version"
-	compile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
-	compile "io.netty:netty-all:$nettyVersion"
-	compile "org.slf4j:slf4j-api:$slf4jVersion"
-
-	testCompile project(':reactor-stream')
-  }
-}
-}
-
 project('reactor-alloc') {
   description = 'Pooling utilities'
 

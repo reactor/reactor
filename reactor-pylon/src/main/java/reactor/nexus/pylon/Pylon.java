@@ -16,11 +16,19 @@
 
 package reactor.nexus.pylon;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Processors;
@@ -50,7 +58,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	private static final Logger log = LoggerFactory.getLogger(Pylon.class);
 
 	private static final String CONSOLE_STATIC_PATH        = "/public";
-	private static final String CONSOLE_STATIC_ASSETS_PATH = CONSOLE_STATIC_PATH + "/assets";
+	private static final String CONSOLE_STATIC_ASSETS_PATH = "/assets";
 	private static final String EXIT_URL                   = "/exit";
 	private static final String CONSOLE_URL                = "/pylon";
 	private static final String CONSOLE_ASSETS_PREFIX      = "/assets";
@@ -58,13 +66,16 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	private static final String HTML_DEPENDENCY_CONSOLE    = "/index.html";
 
 	private final HttpServer<Buffer, Buffer> server;
+	private final String staticPath;
 
 	public static void main(String... args) throws Exception {
 		log.info("Deploying Quick Expand with a Nexus and a Pylon... ");
 
 		//Nexus nexus = ReactiveNet.nexus();
+
 		Pylon pylon = create(ReactiveNet.httpServer());
 
+		//EXAMPLE
 		final CountDownLatch stopped = new CountDownLatch(1);
 
 		pylon.server.get(EXIT_URL, new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
@@ -75,7 +86,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 			}
 		});
 
-		//EXAMPLE
+
 		final JsonCodec<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> codec =
 				new JsonCodec<>(ReactiveStateUtils.Graph.class);
 
@@ -100,7 +111,8 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 				          .subscribe(p2);
 				p2.dispatchOn(group)
 				  .subscribe(Subscribers.unbounded());
-				channel.input().subscribe(p4);
+				channel.input()
+				       .subscribe(p4);
 				ReactiveSession s = p.startSession();
 
 				Publisher<Void> p5 = channel.writeBufferWith(codec.encode(p));
@@ -126,27 +138,56 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	 * @param server
 	 * @return
 	 */
-	public static Pylon create(HttpServer<Buffer, Buffer> server) {
+	public static Pylon create(HttpServer<Buffer, Buffer> server) throws Exception {
 
-		Pylon pylon = new Pylon(server.getDefaultTimer(), server);
+		String staticPath = findOrExtractAssets();
+
+		Pylon pylon = new Pylon(server.getDefaultTimer(), server, staticPath);
 
 		log.info("Warping Pylon...");
 
-		server.file(ChannelMappings.prefix("/pylon"),
-				Pylon.class.getResource(CONSOLE_STATIC_PATH + HTML_DEPENDENCY_CONSOLE)
-				           .getPath())
-		      .file(CONSOLE_FAVICON,
-				      Pylon.class.getResource(CONSOLE_STATIC_PATH + CONSOLE_FAVICON)
-				                 .getPath())
-		      .directory(CONSOLE_ASSETS_PREFIX,
-				      Pylon.class.getResource(CONSOLE_STATIC_ASSETS_PATH)
-				                 .getPath());
+		server.file(ChannelMappings.prefix("/pylon"), pylon.pathToStatic(HTML_DEPENDENCY_CONSOLE))
+		      .file(CONSOLE_FAVICON, pylon.pathToStatic(CONSOLE_FAVICON))
+		      .directory(CONSOLE_ASSETS_PREFIX, pylon.pathToStatic(CONSOLE_STATIC_ASSETS_PATH));
 
 		return pylon;
 	}
 
-	private Pylon(Timer defaultTimer, HttpServer<Buffer, Buffer> server) {
+	private static String findOrExtractAssets() throws Exception{
+		if (Pylon.class.getResource(CONSOLE_STATIC_PATH + HTML_DEPENDENCY_CONSOLE)
+		               .getPath()
+		               .contains("jar!/")) {
+			final File dest = Files.createTempDirectory("reactor-pylon")
+			                       .toFile();
+
+			dest.deleteOnExit();
+
+			Runtime.getRuntime().addShutdownHook(new Thread() {
+
+				@Override
+				public void run() {
+					if(dest.delete()){
+						log.info("Probes called back from temporary zone");
+					}
+				}
+			});
+
+			log.info("Sending Assets probes to : " + dest);
+			deployStaticFiles(dest.toString());
+			return dest.toString() + CONSOLE_STATIC_PATH;
+		}
+		else{
+			return Pylon.class.getResource(CONSOLE_STATIC_PATH).getPath();
+		}
+	}
+
+	private String pathToStatic(String target) {
+		return staticPath + target;
+	}
+
+	private Pylon(Timer defaultTimer, HttpServer<Buffer, Buffer> server, String staticPath) {
 		super(defaultTimer);
+		this.staticPath = staticPath;
 		this.server = server;
 	}
 
@@ -177,5 +218,38 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 	public HttpServer<Buffer, Buffer> getServer() {
 		return server;
+	}
+
+	/**
+	 *
+	 * @param destDir
+	 */
+	public static void deployStaticFiles(String destDir) throws IOException, URISyntaxException {
+
+		JarFile jar = new JarFile(new File(Pylon.class.getProtectionDomain()
+		                                              .getCodeSource()
+		                                              .getLocation()
+		                                              .toURI()
+		                                              .getPath()));
+		Enumeration enumEntries = jar.entries();
+		final String prefix = CONSOLE_STATIC_PATH.substring(1);
+		while (enumEntries.hasMoreElements()) {
+			JarEntry file = (JarEntry) enumEntries.nextElement();
+			if(!file.getName().startsWith(prefix)){
+				continue;
+			}
+			File f = new File(destDir + File.separator + file.getName());
+			if (file.isDirectory()) {
+				f.mkdir();
+				continue;
+			}
+			InputStream is = jar.getInputStream(file); // get the input stream
+			FileOutputStream fos = new FileOutputStream(f);
+			while (is.available() > 0) {
+				fos.write(is.read());
+			}
+			fos.close();
+			is.close();
+		}
 	}
 }

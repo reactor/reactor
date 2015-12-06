@@ -6,7 +6,3 @@ include 'reactor-core',
 		'reactor-stream',
 		'reactor-logback',
 		'docs'
-
-if(System.env['User'] != "Bamboo"){
-	include 'reactor-pylon'
-}
