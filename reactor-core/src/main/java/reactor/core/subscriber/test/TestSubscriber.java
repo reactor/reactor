@@ -252,4 +252,8 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 		errorLatch.countDown();
 	}
 
+	public long getNumNextSignalsReceived() {
+		return numNextSignalsReceived;
+	}
+
 }
