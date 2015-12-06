@@ -15,9 +15,10 @@
  */
 package reactor.rx
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import org.reactivestreams.Publisher
 import org.reactivestreams.Subscription
 import reactor.Processors
+import reactor.Publishers
 import reactor.Timers
 import reactor.bus.Event
 import reactor.bus.EventBus
@@ -35,6 +36,7 @@ import spock.lang.Specification
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
+import static reactor.Publishers.error
 import static reactor.bus.selector.Selectors.anonymous
 
 class StreamsSpec extends Specification {
@@ -3032,6 +3034,17 @@ class StreamsSpec extends Specification {
 			r.processor.onComplete()
 	}
 
+
+
+  def "error publishers don't fast fail"(){
+	when: 'preparing error publisher'
+		Publisher<Object> publisher = error(new IllegalStateException("boo"));
+		Streams.wrap(publisher).onErrorReturn{ex -> "error"}
+	    def a = 1
+
+	then: 'no exceptions'
+		a == 1
+  }
 
 	static class SimplePojo {
 		int id

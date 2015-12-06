@@ -219,7 +219,7 @@ public final class Exceptions {
 		}
 	}
 
-	private static class ErrorPublisher<IN> implements Publisher<IN>, Supplier<Object> {
+	private static class ErrorPublisher<IN> implements Publisher<IN> {
 
 		private final Throwable error;
 
@@ -234,16 +234,6 @@ public final class Exceptions {
 			}
 			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 			s.onError(error);
-		}
-
-		@Override
-		public Object get() {
-			if(RuntimeException.class.isAssignableFrom(error.getClass())){
-				throw (RuntimeException)error;
-			}
-			else{
-				throw ReactorFatalException.create(error);
-			}
 		}
 	}
 }
