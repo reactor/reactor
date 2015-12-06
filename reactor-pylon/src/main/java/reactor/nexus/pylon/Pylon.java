@@ -36,6 +36,7 @@ import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.Timers;
+import reactor.core.error.CancelException;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.subscription.ReactiveSession;
@@ -85,22 +86,25 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		final CountDownLatch stopped = new CountDownLatch(1);
 		final BaseProcessor p4 = Processors.emitter();
 
-		pylon.server.get("/exit", channel -> { stopped.countDown(); return Publishers.empty(); })
+		pylon.server.get("/exit", channel -> {
+			stopped.countDown();
+			return Publishers.empty();
+		})
 		            .get("/nexus/stream", new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
 			            final JsonCodec<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> codec =
 					            new JsonCodec<>(ReactiveStateUtils.Graph.class);
 
 			            @Override
-			            public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
-				            Publisher<Void> postWrite = channel
-						            .responseHeader("Access-Control-Allow-Origin", "*")
-				                          .writeBufferWith(codec.encode(
-						                          Publishers.log(Publishers.capacity(pylon.graphStream, 1L), "graph"))
-				                          );
+			            public Publisher<Void> apply(final HttpChannel<Buffer, Buffer> channel) {
+				            channel.responseHeader("Access-Control-Allow-Origin", "*");
 
-				            NettyHttpServer.upgradeToWebsocket(channel);
-				            channel.input().subscribe(p4);
-				            return postWrite;
+				            channel.input()
+				                   .subscribe(p4);
+
+				            return Publishers.concat(
+						            NettyHttpServer.upgradeToWebsocket(channel),
+						            channel.writeBufferWith(codec.encode(Publishers.capacity(pylon.graphStream, 1L)))
+				            );
 
 //				            BaseProcessor p = Processors.replay();
 //				            BaseProcessor p2 = Processors.emitter();
@@ -152,9 +156,14 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		      .schedule(new Consumer<Long>() {
 			      @Override
 			      public void accept(Long aLong) {
-				      s.submit(ReactiveStateUtils.subscan(s));
+				      if (!s.isCancelled()) {
+					      s.submit(ReactiveStateUtils.scan(s));
+				      }
+				      else {
+					      throw CancelException.get();
+				      }
 			      }
-		      }, 5, TimeUnit.SECONDS);
+		      }, 200, TimeUnit.MILLISECONDS);
 
 		//EXAMPLE END
 

@@ -215,7 +215,7 @@ public final class ReactiveStateUtils {
 			Node child;
 			if(trace || !isTraceOnly(target.object)) {
 				child = target;
-				if(!nodes.add(child)){
+				if(!nodes.add(child) && grandchild != null){
 					return;
 				}
 			}
@@ -255,7 +255,7 @@ public final class ReactiveStateUtils {
 			Node root;
 			if(trace || !isTraceOnly(origin.object)) {
 				root = origin;
-				if(!nodes.add(root)){
+				if(!nodes.add(root) && ancestor != null){
 					return;
 				}
 			}
