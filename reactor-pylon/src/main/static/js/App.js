@@ -43,7 +43,6 @@ class App extends React.Component {
   render() {
     return (
       <div>
-
         <Sidebar />
         <div id='main'>
           {this.renderChildren()}

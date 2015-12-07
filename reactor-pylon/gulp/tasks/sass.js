@@ -2,6 +2,7 @@
 
 import gulp         from 'gulp';
 import compass      from 'gulp-compass';
+import concat      from 'gulp-concat';
 import gulpif       from 'gulp-if';
 import browserSync  from 'browser-sync';
 import autoprefixer from 'gulp-autoprefixer';

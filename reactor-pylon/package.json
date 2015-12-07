@@ -1,5 +1,5 @@
 {
-  "name": "projectreactor.io",
+  "name": "reactor-pylon",
   "version": "2.0.0",
   "description": "",
   "author": "Stephane Maldini",
@@ -33,6 +33,7 @@
     "gulp": "^3.9.0",
     "gulp-autoprefixer": "^2.3.1",
     "gulp-compass": "^2.1.0",
+    "gulp-concat": "^2.6.0",
     "gulp-if": "^1.2.5",
     "gulp-imagemin": "^2.3.0",
     "gulp-jsx-coverage": "^0.2.6",

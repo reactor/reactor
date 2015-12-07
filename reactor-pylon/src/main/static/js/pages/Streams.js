@@ -168,7 +168,7 @@ class Streams extends React.Component {
                 highlights.push(n.id);
             }
             if(!n.active || n.cancelled || n.terminated){
-                n.shape = "dot"
+                n.shape = "dot";
                 n.color = {
                     border: n.terminated ? "#6db33f" : "gray",
                     background: "#f1f1f1"
@@ -180,7 +180,7 @@ class Streams extends React.Component {
             }
             else {
                 if (n.capacity != -1) {
-                    n.shape = "dot"
+                    n.shape = "dot";
                     if (n.capacity == 9223372036854775807) {
                         n.color = {
                             border: "green", background: "#f1f1f1"
