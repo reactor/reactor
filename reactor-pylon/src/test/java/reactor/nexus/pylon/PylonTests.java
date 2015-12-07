@@ -15,7 +15,15 @@
  */
 package reactor.nexus.pylon;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.Test;
+import reactor.Timers;
+import reactor.core.error.CancelException;
+import reactor.core.subscription.ReactiveSession;
+import reactor.io.net.ReactiveNet;
+import reactor.io.net.nexus.Nexus;
 
 /**
  * @author Stephane Maldini
@@ -24,7 +32,25 @@ public class PylonTests {
 
 
 	public static void main(String... args) throws Exception {
-		Pylon.main(args);
+		Nexus nexus = ReactiveNet.nexus();
+		nexus.startAndAwait();
+
+		Pylon.create().startAndAwait();
+
+		final ReactiveSession<Object> s = nexus.streamCannon();
+		Timers.create()
+		      .schedule(aLong -> {
+			      if (!s.isCancelled()) {
+				      s.submit(s);
+			      }
+			      else {
+				      throw CancelException.get();
+			      }
+		      }, 200, TimeUnit.MILLISECONDS);
+
+		CountDownLatch latch = new CountDownLatch(1);
+
+		latch.await();
 	}
 
 	@Test

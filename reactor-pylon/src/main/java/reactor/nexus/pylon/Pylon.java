@@ -25,7 +25,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
@@ -33,10 +32,6 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Publishers;
-import reactor.Timers;
-import reactor.core.error.CancelException;
-import reactor.core.subscription.ReactiveSession;
-import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
 import reactor.io.IO;
 import reactor.io.buffer.Buffer;
@@ -47,7 +42,6 @@ import reactor.io.net.ReactivePeer;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpServer;
 import reactor.io.net.http.routing.ChannelMappings;
-import reactor.io.net.nexus.Nexus;
 
 /**
  * @author Stephane Maldini
@@ -69,39 +63,23 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	private final String                     staticPath;
 
 	public static void main(String... args) throws Exception {
-		log.info("Deploying Quick Expand with a Nexus and a Pylon... ");
+		Pylon pylon = create(ReactiveNet.httpServer(12013));
 
-		Nexus nexus = ReactiveNet.nexus();
-
-		Pylon pylon = create(nexus.getServer());
-
-		//EXAMPLE
 		final CountDownLatch stopped = new CountDownLatch(1);
-
-		final ReactiveSession<Object> s = nexus.streamCannon();
-		Timers.create()
-		      .schedule(new Consumer<Long>() {
-			      @Override
-			      public void accept(Long aLong) {
-				      if (!s.isCancelled()) {
-					      s.submit(s);
-				      }
-				      else {
-					      throw CancelException.get();
-				      }
-			      }
-		      }, 200, TimeUnit.MILLISECONDS);
-
-		//EXAMPLE END
 
 		pylon.startAndAwait();
 
-		InetSocketAddress addr = pylon.getServer()
-		                              .getListenAddress();
-		log.info("Quick Expand Deployed, browse http://" + addr.getHostName() + ":" + addr.getPort() + CONSOLE_URL);
-		log.info("CTRL-C to return");
+		log.info("CTRL-C to return...");
 
 		stopped.await();
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public static Pylon create() throws Exception {
+		return create(ReactiveNet.httpServer(12013));
 	}
 
 	/**
@@ -180,6 +158,8 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	public final void startAndAwait() throws InterruptedException {
 		Publishers.toReadQueue(start(null))
 		          .take();
+		InetSocketAddress addr = server.getListenAddress();
+		log.info("Pylon Deployed, browse http://" + addr.getHostName() + ":" + addr.getPort() + CONSOLE_URL);
 	}
 
 	/**
