@@ -5,7 +5,7 @@ import Box           from '../components/Box';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import vis           from 'vis';
-import Rx            from 'rx';
+import Rx            from 'rx-lite';
 
 const propTypes = {
     dataset: React.PropTypes.object, graph: React.PropTypes.object
