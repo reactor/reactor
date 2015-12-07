@@ -78,11 +78,6 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		//EXAMPLE
 		final CountDownLatch stopped = new CountDownLatch(1);
 
-		pylon.server.get("/exit", channel -> {
-			stopped.countDown();
-			return Publishers.empty();
-		});
-
 		final ReactiveSession<Object> s = nexus.streamCannon();
 		Timers.create()
 		      .schedule(new Consumer<Long>() {
@@ -104,6 +99,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		InetSocketAddress addr = pylon.getServer()
 		                              .getListenAddress();
 		log.info("Quick Expand Deployed, browse http://" + addr.getHostName() + ":" + addr.getPort() + CONSOLE_URL);
+		log.info("CTRL-C to return");
 
 		stopped.await();
 	}
