@@ -391,13 +391,19 @@ public final class ReactiveStateUtils {
 
 			if ((trace || !isTraceOnly(o)) && hasFeedbackLoop(o)) {
 				ReactiveState.FeedbackLoop loop = (ReactiveState.FeedbackLoop) o;
-				Node input = expandReactiveSate(loop.delegateInput());
-				if (input != null) {
+
+				Object target = loop.delegateInput();
+
+				if (target != null && target != loop) {
+					Node input = expandReactiveSate(loop.delegateInput());
 					addEdge(r.createEdgeTo(input, true));
 					addDownstream(input, null);
 				}
-				Node output = expandReactiveSate(loop.delegateOutput());
-				if (output != null) {
+
+				target = loop.delegateOutput();
+
+				if (target != null && target != loop) {
+					Node output = expandReactiveSate(loop.delegateOutput());
 					addEdge(output.createEdgeTo(r, true));
 					addUpstream(output, null);
 				}

@@ -48,7 +48,7 @@ class Streams extends React.Component {
 
     constructor(props) {
         super(props);
-        this.feed = null;
+        this.disposable = null;
 
         this.network = null;
         this.nodes = new vis.DataSet();
@@ -56,8 +56,12 @@ class Streams extends React.Component {
     }
 
     destroy() {
+        if(this.disposable != null){
+            this.disposable.dispose();
+        }
+
         this.resetAllNodes();
-        if (this.network !== null) {
+        if (this.network != null) {
             this.network.destroy();
             this.network = null;
         }
@@ -218,8 +222,7 @@ class Streams extends React.Component {
     componentDidMount() {
         var thiz = this;
         API.ws("stream", (e) => console.log(e)).then(res => {
-            thiz.feed = res.receiver;
-            res.receiver
+            thiz.disposable = res.receiver
                 .subscribe( json => {
                     thiz.draw(json);
                 }, error =>{
