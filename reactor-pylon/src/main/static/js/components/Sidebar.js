@@ -13,7 +13,9 @@ class Sidebar extends React.Component {
     render() {
         return (
             <div id="sidebar">
-                <h1 id="logo"><a href="/pylon"><strong>Reactor Pylon</strong></a></h1>
+                <h1 id="logo">
+                    <Link to="/pylon"><strong>Reactor Pylon</strong></Link>
+                </h1>
                 <ul>
                     <NavItem to="/pylon/dashboard" name="dashboard" label="Dashboard" icon="tachometer" />
                     <NavItem to="/pylon/map" name="map" label="Map" icon="share-alt" />

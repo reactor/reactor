@@ -16,10 +16,10 @@ class Map extends React.Component {
 
     render() {
         return (
-            <DocumentTitle title="Map">
+            <DocumentTitle title="Reactor Console • Map">
                 <section className="map">
-                    <div>
-                        Map !
+                    <div className="section-heading">
+                        Map
                     </div>
                 </section>
             </DocumentTitle>

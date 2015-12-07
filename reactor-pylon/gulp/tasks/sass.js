@@ -16,7 +16,10 @@ gulp.task('sass', function () {
          outputStyle: global.isProd ? 'compressed' : 'nested'
          }))*/
         .pipe(compass({
-            sass: config.sourceDir + 'styles', image: config.sourceDir + 'images', css: config.styles.dest
+            sass: config.sourceDir + 'styles',
+            image: config.sourceDir + 'images',
+            css: config.styles.dest,
+            sourceMap: 'sass'
         }))
         .on('error', handleErrors)
         .pipe(autoprefixer('last 2 versions', '> 1%', 'ie 8'))

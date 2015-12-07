@@ -50,7 +50,7 @@ span.version {
 // Application
 
 body {
-  font: normal 15px/1.5em $reactorFontMain;
+  font: normal 15px/1.5em $reactorFontSpecial;
   background-color: #f1f1f1;
   color: $reactorTextColor;
   margin: 0;
@@ -63,13 +63,12 @@ body {
   position: relative;
 }
 
-
 // Logo
 h1#logo {
   margin: 0 0 1px 0;
   a {
     display: block;
-    background: $reactorPrimary;
+    background: rgba(0,0,0,.2);
     padding: 0.4em;
     cursor: pointer;
     strong {
@@ -84,13 +83,43 @@ h1#logo {
   }
 }
 
+// Main
 #main {
   padding-left: 180px;
+  @include clearfix();
+  height: 100%;
+  .section-heading {
+    background: white;
+    padding: 1.5em 1.5em;
+    border-bottom: 1px solid #DDD;
+    font-size: 1.5em;
+    font-family: $reactorFontSpecial;
+  }
 }
 
+// Network
 #mynetwork {
-  border: 1px solid lightgray;
   height: 500px;
 }
 
+// Section box
+.section-content {
+  @include clearfix();
+  .box {
+    margin: 2% 0 0 2%;
+    width: 46%;
+    float: left;
+    background: white;
+    border: 1px solid #DDD;
+    .box-title {
+      padding: 0.6em;
+      margin: 0;
+      font-size: 1.1em;
+      border-bottom: 1px solid #DDD;
+    }
+  }
+}
 
+#graphProcessor {
+  height: 450px;
+}

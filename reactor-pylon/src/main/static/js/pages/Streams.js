@@ -1,13 +1,12 @@
 'use strict';
 
 import React         from 'react';
-import ReactDOM         from 'react-dom';
+import ReactDOM      from 'react-dom';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import vis           from 'vis';
+import Rx            from 'rx';
 import API           from '../utils/APIUtils'
-import JSON           from 'JSON2';
-import Rx              from 'rx';
 
 const propTypes = {
     network: React.PropTypes.object,
@@ -84,6 +83,11 @@ class Streams extends React.Component {
     draw(json) {
         //this.destroy();
         var container = document.getElementById('mynetwork');
+
+        // height
+        var h = this.calcHeight();
+        container.style.height = (h.y-110) + "px";
+
         var options = {
             layout: {
                 randomSeed: 100
@@ -243,11 +247,22 @@ class Streams extends React.Component {
         //this.draw();
     }
 
+    calcHeight() {
+        var w = window,
+            d = document,
+            e = d.documentElement,
+            g = d.getElementsByTagName('body')[0],
+            x = w.innerWidth || e.clientWidth || g.clientWidth,
+            y = w.innerHeight|| e.clientHeight|| g.clientHeight;
+
+        return {x: x, y: y};
+    }
+
     render() {
         return (
-            <DocumentTitle title="Streams">
+            <DocumentTitle title="Reactor Console • Streams">
                 <section className="streams">
-                    <h2>Stream Monitor <a href="#" onClick={this.resetAllNodesStabilize.bind(this)}>Reset</a></h2>
+                    <div className="section-heading">Stream Monitor <a className="btn btn-primary pull-right" onClick={this.resetAllNodesStabilize.bind(this)}>Reset</a></div>
 
                     <div id="mynetwork"></div>
 

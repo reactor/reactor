@@ -16,9 +16,9 @@ class Dashboard extends React.Component {
 
     render() {
         return (
-            <DocumentTitle title="Dashboard">
+            <DocumentTitle title="Reactor Console • Dashboard">
                 <section className="dashboard">
-                    <div>
+                    <div className="section-heading">
                         Dashboard
                     </div>
                 </section>
