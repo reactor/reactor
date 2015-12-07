@@ -61,6 +61,9 @@ public final class ReactiveStateUtils {
 		if (o == null) {
 			return null;
 		}
+		if(Graph.class.equals(o.getClass())){
+			return (Graph)o;
+		}
 
 		Graph graph = new Graph(false, trace);
 		Node origin = graph.expandReactiveSate(o, true);
@@ -85,6 +88,10 @@ public final class ReactiveStateUtils {
 	public static Graph subscan(Object o, boolean trace) {
 		if (o == null) {
 			return null;
+		}
+
+		if(Graph.class.equals(o.getClass())){
+			return (Graph)o;
 		}
 
 		Graph graph = new Graph(true, trace);

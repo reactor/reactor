@@ -32,19 +32,14 @@ import java.util.jar.JarFile;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Processors;
 import reactor.Publishers;
-import reactor.Subscribers;
 import reactor.Timers;
 import reactor.core.error.CancelException;
-import reactor.core.processor.BaseProcessor;
-import reactor.core.processor.ProcessorGroup;
 import reactor.core.subscription.ReactiveSession;
-import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Consumer;
 import reactor.fn.timer.Timer;
+import reactor.io.IO;
 import reactor.io.buffer.Buffer;
-import reactor.io.codec.json.JsonCodec;
 import reactor.io.net.ReactiveChannel;
 import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.ReactiveNet;
@@ -52,7 +47,7 @@ import reactor.io.net.ReactivePeer;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpServer;
 import reactor.io.net.http.routing.ChannelMappings;
-import reactor.io.net.impl.netty.http.NettyHttpServer;
+import reactor.io.net.nexus.Nexus;
 
 /**
  * @author Stephane Maldini
@@ -68,104 +63,33 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	private static final String CONSOLE_ASSETS_PREFIX      = "/assets";
 	private static final String CONSOLE_FAVICON            = "/favicon.ico";
 	private static final String HTML_DEPENDENCY_CONSOLE    = "/index.html";
+	private static final String CACHE_MANIFEST             = "/index.appcache";
 
 	private final HttpServer<Buffer, Buffer> server;
 	private final String                     staticPath;
 
-	private final BaseProcessor<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> graphStream =
-			Processors.emitter(false);
-
-	private final ReactiveStateUtils.Graph                                          lastState   =
-			ReactiveStateUtils.newGraph();
-
 	public static void main(String... args) throws Exception {
 		log.info("Deploying Quick Expand with a Nexus and a Pylon... ");
 
-		//Nexus nexus = ReactiveNet.nexus();
+		Nexus nexus = ReactiveNet.nexus();
 
-		Pylon pylon = create(ReactiveNet.httpServer());
+		Pylon pylon = create(nexus.getServer());
 
 		//EXAMPLE
 		final CountDownLatch stopped = new CountDownLatch(1);
-		final BaseProcessor p4 = Processors.emitter();
 
 		pylon.server.get("/exit", channel -> {
 			stopped.countDown();
 			return Publishers.empty();
-		})
-		            .get("/nexus/stream", new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
-			            final JsonCodec<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> codec =
-					            new JsonCodec<>(ReactiveStateUtils.Graph.class);
+		});
 
-			            @Override
-			            public Publisher<Void> apply(final HttpChannel<Buffer, Buffer> channel) {
-				            channel.responseHeader("Access-Control-Allow-Origin", "*");
-
-				            Publisher<Void> p;
-				            if (channel.isWebsocket()) {
-					            p = Publishers.concat(NettyHttpServer.upgradeToWebsocket(channel),
-							            channel.writeBufferWith(codec.encode(Publishers.capacity(pylon.graphStream,
-									            1L))));
-				            }
-				            else {
-					            p = channel.writeBufferWith(codec.encode(Publishers.capacity(pylon.graphStream, 1L)));
-				            }
-
-				            return p;
-
-//				            BaseProcessor p = Processors.replay();
-//				            BaseProcessor p2 = Processors.emitter();
-//				            //channel.input().subscribe(p2);
-//				            BaseProcessor p3 = Processors.emitter();
-//				            p.subscribe(p3);
-//				            ProcessorGroup group = Processors.singleGroup();
-//				            p3.dispatchOn(group)
-//				              .subscribe(Subscribers.unbounded());
-//				            p3.subscribe(Subscribers.unbounded());
-//				            p3.subscribe(Subscribers.unbounded());
-//				            BaseProcessor p4 = Processors.emitter();
-//				            Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1)))
-//				                      .subscribe(p2);
-//				            p2.dispatchOn(group)
-//				              .subscribe(Subscribers.unbounded());
-//				            channel.input()
-//				                   .subscribe(p4);
-//				            ReactiveSession s = p.startSession();
-//
-//				            Publisher<Void> p5 = channel.writeBufferWith(codec.encode(p));
-//				            s.submit(ReactiveStateUtils.scan(p5));
-//				            s.finish();
-//
-//				            return p5;
-			            }
-		            });
-
-		final ReactiveSession<ReactiveStateUtils.Graph> s = pylon.graphStream.startSession();
-
-		BaseProcessor p = Processors.replay();
-		BaseProcessor p2 = Processors.emitter();
-		//channel.input().subscribe(p2);
-		BaseProcessor p3 = Processors.emitter();
-		p.subscribe(p3);
-		ProcessorGroup group = Processors.singleGroup();
-		p3.dispatchOn(group)
-		  .subscribe(Subscribers.unbounded());
-		p3.subscribe(Subscribers.unbounded());
-		p3.subscribe(Subscribers.unbounded());
-		p.startSession();
-		Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1)))
-		          .subscribe(p2);
-
-		p2.dispatchOn(group)
-		  .subscribe(Subscribers.unbounded());
-
+		final ReactiveSession<Object> s = nexus.streamCannon();
 		Timers.create()
 		      .schedule(new Consumer<Long>() {
 			      @Override
 			      public void accept(Long aLong) {
 				      if (!s.isCancelled()) {
-					      pylon.lastState.mergeWith(ReactiveStateUtils.scan(s));
-					      s.submit(pylon.lastState);
+					      s.submit(s);
 				      }
 				      else {
 					      throw CancelException.get();
@@ -197,9 +121,19 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 		log.info("Warping Pylon...");
 
+		final Publisher<Buffer> cacheManifest = IO.readFile(pylon.pathToStatic(CACHE_MANIFEST));
+
 		server.file(ChannelMappings.prefix("/pylon"), pylon.pathToStatic(HTML_DEPENDENCY_CONSOLE))
 		      .file(CONSOLE_FAVICON, pylon.pathToStatic(CONSOLE_FAVICON))
-		      .directory(CONSOLE_ASSETS_PREFIX, pylon.pathToStatic(CONSOLE_STATIC_ASSETS_PATH));
+		      .directory(CONSOLE_ASSETS_PREFIX, pylon.pathToStatic(CONSOLE_STATIC_ASSETS_PATH))
+		      .get(CACHE_MANIFEST, new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
+			      @Override
+			      public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
+
+				      return channel.responseHeader("content-type", "text/cache-manifest")
+				                    .writeBufferWith(cacheManifest);
+			      }
+		      });
 
 		return pylon;
 	}

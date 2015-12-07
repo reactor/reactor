@@ -228,7 +228,7 @@ class Streams extends React.Component {
         API.ws("stream", (e) => console.log(e)).then(res => {
             thiz.disposable = res.receiver
                 .subscribe( json => {
-                    thiz.draw(json);
+                    thiz.draw(json.streams);
                 }, error =>{
                     console.log("error:", error);
                 }, () => {

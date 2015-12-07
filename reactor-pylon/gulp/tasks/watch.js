@@ -9,5 +9,6 @@ gulp.task('watch', config.browser ? ['browserSync'] : [], function () {
     gulp.watch(config.styles.watch, ['sass']);
     gulp.watch(config.images.src, ['imagemin']);
     gulp.watch(config.sourceDir + 'index.html', ['copyIndex']);
+    gulp.watch(config.sourceDir + 'index.appcache', ['copyIndex']);
 
 });
