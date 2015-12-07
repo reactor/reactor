@@ -75,6 +75,9 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	private final BaseProcessor<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> graphStream =
 			Processors.emitter(false);
 
+	private final ReactiveStateUtils.Graph                                          lastState   =
+			ReactiveStateUtils.newGraph();
+
 	public static void main(String... args) throws Exception {
 		log.info("Deploying Quick Expand with a Nexus and a Pylon... ");
 
@@ -98,13 +101,17 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 			            public Publisher<Void> apply(final HttpChannel<Buffer, Buffer> channel) {
 				            channel.responseHeader("Access-Control-Allow-Origin", "*");
 
-				            channel.input()
-				                   .subscribe(p4);
+				            Publisher<Void> p;
+				            if (channel.isWebsocket()) {
+					            p = Publishers.concat(NettyHttpServer.upgradeToWebsocket(channel),
+							            channel.writeBufferWith(codec.encode(Publishers.capacity(pylon.graphStream,
+									            1L))));
+				            }
+				            else {
+					            p = channel.writeBufferWith(codec.encode(Publishers.capacity(pylon.graphStream, 1L)));
+				            }
 
-				            return Publishers.concat(
-						            NettyHttpServer.upgradeToWebsocket(channel),
-						            channel.writeBufferWith(codec.encode(Publishers.capacity(pylon.graphStream, 1L)))
-				            );
+				            return p;
 
 //				            BaseProcessor p = Processors.replay();
 //				            BaseProcessor p2 = Processors.emitter();
@@ -146,9 +153,9 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		p3.subscribe(Subscribers.unbounded());
 		p3.subscribe(Subscribers.unbounded());
 		p.startSession();
-		p4.startSession();
 		Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1)))
 		          .subscribe(p2);
+
 		p2.dispatchOn(group)
 		  .subscribe(Subscribers.unbounded());
 
@@ -157,7 +164,8 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 			      @Override
 			      public void accept(Long aLong) {
 				      if (!s.isCancelled()) {
-					      s.submit(ReactiveStateUtils.scan(s));
+					      pylon.lastState.mergeWith(ReactiveStateUtils.scan(s));
+					      s.submit(pylon.lastState);
 				      }
 				      else {
 					      throw CancelException.get();
