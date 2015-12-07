@@ -38,13 +38,13 @@ function buildScript(file, watch) {
 
         return stream.on('error', handleErrors)
             .pipe(source(file))
-            .pipe(gulpif(global.isProd, streamify(uglify())))
+            //.pipe(gulpif(global.isProd, uglify()))
             .pipe(streamify(rename({
                 basename: 'main'
             })))
             .pipe(gulpif(!global.isProd, sourcemaps.write('./')))
             .pipe(gulp.dest(config.scripts.dest))
-            .pipe(gulpif(config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/js')))
+            .pipe(gulpif(!global.isProd && config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/js')))
             .pipe(gulpif(browserSync.active, browserSync.reload({stream: true, once: true})));
     }
 
