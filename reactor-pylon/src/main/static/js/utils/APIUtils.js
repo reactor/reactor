@@ -3,7 +3,7 @@
 import {camelizeKeys} from 'humps';
 import request        from 'superagent';
 import RxDOM           from 'rx-dom';
-import Rx           from 'rx';
+import Rx           from 'rx-lite';
 import JSON           from 'JSON2';
 
 const APIUtils = {
