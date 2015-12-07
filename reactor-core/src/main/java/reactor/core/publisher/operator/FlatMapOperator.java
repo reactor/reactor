@@ -555,6 +555,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			extends BaseSubscriber<V>
 			implements ReactiveState.Bounded,
 			           ReactiveState.Upstream,
+			           ReactiveState.Downstream,
 			           ReactiveState.ActiveDownstream,
 			           ReactiveState.ActiveUpstream {
 		final long               id;
@@ -622,6 +623,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			if (k > 0) {
 				SUBSCRIPTION.get(this).request(k);
 			}
+		}
+
+		@Override
+		public Subscriber downstream() {
+			return parent;
 		}
 
 		public void cancel() {

@@ -95,7 +95,7 @@ class Streams extends React.Component {
             interaction: {
                 dragNodes: false, zoomView: false, hover: true, tooltipDelay: 0
             },
-            clickToUse: true,
+            //clickToUse: true,
             nodes: {
                 labelHighlightBold: false,
                 color: {
@@ -265,8 +265,6 @@ class Streams extends React.Component {
                     <div className="section-heading">Stream Monitor <a className="btn btn-primary pull-right" onClick={this.resetAllNodesStabilize.bind(this)}>Reset</a></div>
 
                     <div id="mynetwork"></div>
-
-                    <h3 id="selection"></h3>
                 </section>
             </DocumentTitle>
         );

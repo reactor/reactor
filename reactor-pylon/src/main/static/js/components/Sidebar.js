@@ -23,6 +23,7 @@ class Sidebar extends React.Component {
                     <NavItem to="/pylon/hosts" name="hosts" label="Hosts" icon="server" />
                     <NavItem to="/pylon/system" name="system" label="System" icon="cogs" />
                 </ul>
+                <span id="selection"></span>
             </div>
         );
     }
