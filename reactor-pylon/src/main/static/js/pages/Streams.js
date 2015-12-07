@@ -5,7 +5,7 @@ import ReactDOM      from 'react-dom';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import vis           from 'vis';
-import Rx            from 'rx';
+import Rx            from 'rx-lite';
 import API           from '../utils/APIUtils'
 
 const propTypes = {
