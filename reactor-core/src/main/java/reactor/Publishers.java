@@ -372,7 +372,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a new filtered {@link Publisher<Void>}
 	 */
 	@SuppressWarnings("unchecked")
-	public static Publisher<Void> completable(Publisher<?> source) {
+	public static Publisher<Void> ignoreElements(Publisher<?> source) {
 		return lift(source, IgnoreOnNextOperator.INSTANCE);
 	}
 

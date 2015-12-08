@@ -265,7 +265,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		return new Stream<Void>() {
 			@Override
 			public void subscribe(Subscriber<? super Void> s) {
-				Publishers.completable(Stream.this)
+				Publishers.ignoreElements(Stream.this)
 				          .subscribe(s);
 			}
 
