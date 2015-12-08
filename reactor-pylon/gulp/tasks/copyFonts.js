@@ -8,5 +8,5 @@ gulp.task('copyFonts', function () {
 
     return gulp.src([config.sourceDir + 'fonts/**/*'])
         .pipe(gulp.dest(config.buildDir + 'assets/fonts/'))
-        .pipe(gulpif(config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/fonts')));
+        .pipe(gulpif(typeof config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/fonts')));
 });

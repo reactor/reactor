@@ -8,5 +8,5 @@ gulp.task('copyFontAwesome', function () {
 
     return gulp.src(['./node_modules/font-awesome/fonts/**.*'], {base: './node_modules/font-awesome/'})
         .pipe(gulp.dest(config.buildDir + 'assets'))
-        .pipe(gulpif(config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets')));
+        .pipe(gulpif(typeof config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets')));
 });

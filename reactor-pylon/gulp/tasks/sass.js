@@ -24,6 +24,6 @@ gulp.task('sass', function () {
         }))
         .on('error', handleErrors)
         .pipe(autoprefixer('last 2 versions', '> 1%', 'ie 8'))
-        .pipe(gulpif(config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/css')))
+        .pipe(gulpif(typeof config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/css')))
         .pipe(gulp.dest(config.styles.dest));
 });

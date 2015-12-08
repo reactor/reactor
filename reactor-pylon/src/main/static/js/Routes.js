@@ -16,10 +16,10 @@ export default (
   <Router history={CreateBrowserHistory()}>
 
     <Route prefix="/pylon" component={App}>
-      <IndexRoute component={Dashboard} />
+      <IndexRoute component={Dashboard}/>
       <Route path="/pylon/dashboard" component={Dashboard}  />
       <Route path="/pylon/map" component={Map} />
-      <Route path="/pylon/streams" component={Streams} />
+      <Route path="/pylon/streams" component={Streams}/>
       <Route path="/pylon/hosts" component={Hosts} />
       <Route path="/pylon/system" component={System} />
       <Route path="/pylon" component={Dashboard} />

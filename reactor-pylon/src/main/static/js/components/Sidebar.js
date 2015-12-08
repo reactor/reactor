@@ -14,7 +14,7 @@ class Sidebar extends React.Component {
     render() {
         return (
             <div id="sidebar">
-                <Status />
+                <Status {...this.props} />
                 <ul>
                     <NavItem to="/pylon/dashboard" name="dashboard" label="Dashboard" icon="tachometer" />
                     <NavItem to="/pylon/map" name="map" label="Map" icon="share-alt" />

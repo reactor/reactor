@@ -9,6 +9,6 @@ gulp.task('copyIcons', function () {
     // Copy icons from root directory to build/
     return gulp.src([config.sourceDir + 'favicon.ico'])
         .pipe(gulp.dest(config.buildDir))
-        .pipe(gulpif(config.devDir !== 'undefined', gulp.dest(config.devDir)))
+        .pipe(gulpif(typeof config.devDir !== 'undefined', gulp.dest(config.devDir)))
 
 });

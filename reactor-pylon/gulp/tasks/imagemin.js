@@ -12,6 +12,6 @@ gulp.task('imagemin', function () {
     return gulp.src(config.images.src)
         .pipe(gulpif(global.isProd, imagemin()))
         .pipe(gulp.dest(config.images.dest))
-        .pipe(gulpif(config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/images')))
+        .pipe(gulpif(typeof config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/images')))
         .pipe(gulpif(browserSync.active, browserSync.reload({stream: true, once: true})));
 });

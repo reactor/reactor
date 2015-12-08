@@ -6,7 +6,6 @@ import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import vis           from 'vis';
 import Rx            from 'rx-lite';
-import API           from '../utils/APIUtils'
 
 const propTypes = {
     network: React.PropTypes.object,
@@ -225,8 +224,7 @@ class Streams extends React.Component {
 
     componentDidMount() {
         var thiz = this;
-        API.ws("stream", (e) => console.log(e)).then(res => {
-            thiz.disposable = res.receiver
+        thiz.disposable = this.props.nexusStream
                 .subscribe( json => {
                     thiz.draw(json.streams);
                 }, error =>{
@@ -234,9 +232,6 @@ class Streams extends React.Component {
                 }, () => {
                     console.log("terminated");
                 });
-        }, e => {
-            ReactDOM.render(<b style={{color:"red"}}>{e.message}</b>, document.getElementById("mynetwork"));
-        });
     }
 
     componentWillUnmount() {

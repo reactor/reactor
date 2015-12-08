@@ -17,18 +17,46 @@
 
 import React         from 'react';
 import {Link}        from 'react-router';
-import Rx       from 'rx-lite';
+import API       from '../utils/APIUtils';
 
 class Status extends React.Component {
 
     constructor(props) {
         super(props);
+        this.state = {backgroundColor: ''};
+        this.type = 0;
+    }
+
+    stateUpdate(data){
+        if(data == this.type){
+            return;
+        }
+        if(data == API.offline){
+            this.setState({backgroundColor: "red"});
+        }
+        else if(data == API.ready){
+            this.setState({backgroundColor: "#6db33f"});
+        }
+        else if(data == API.working) {
+            this.setState({backgroundColor: "blue"});
+        }
+        else if(data == API.retry) {
+            this.setState({backgroundColor: ""});
+        }
+    }
+
+    componentWillMount() {
+        this.props.stateStream.subscribe(
+            this.stateUpdate.bind(this),
+            error => console.log(error),
+            () => console.log("State stream completed")
+        );
     }
 
     render() {
         return (
             <h1 id="logo">
-                <Link to="/pylon"><strong>Reactor Pylon</strong></Link>
+                <Link style={this.state}  to="/pylon"><strong>Reactor Pylon</strong></Link>
             </h1>
         );
     }
