@@ -225,7 +225,7 @@ class Streams extends React.Component {
 
     componentDidMount() {
         var thiz = this;
-        thiz.disposable = this.props.nexusStream
+        thiz.disposable = this.props.graphStream
                 .subscribe( json => {
                     thiz.draw(json.streams);
                 }, error =>{

@@ -25,12 +25,12 @@ class System extends React.Component {
     /**
      * Add a new datapoint to the graph
      */
-    addDataPoint() {
+    addDataPoint(json) {
         // add a new data point to the dataset
         var now = vis.moment();
         var thiz = this;
         this.dataset.add({
-            x: now, y: thiz.y(now / 1000)
+            x: now, y: json.freeMemory
         });
 
         // remove all data points which are no longer visible
@@ -42,12 +42,6 @@ class System extends React.Component {
             }
         });
         this.dataset.remove(oldIds);
-
-        setTimeout(this.addDataPoint.bind(this), DELAY);
-    }
-
-    y(x) {
-        return (Math.sin(x / 2) + Math.cos(x / 4)) * 5;
     }
 
     renderStep() {
@@ -89,8 +83,8 @@ class System extends React.Component {
                 start: vis.moment().add(-30, 'seconds'), // changed so its faster
                 end: vis.moment(), dataAxis: {
                     left: {
-                        range: {
-                            min: -10, max: 10
+                        range : {
+                            min: 0, max: 1024 * 10 * 10 * 10 * 10 * 32
                         }
                     }
                 }, drawPoints: {
@@ -101,15 +95,21 @@ class System extends React.Component {
             };
             this.graph = new vis.Graph2d(container, this.dataset, options);
 
-            // a function to generate data points
             this.renderStep();
-
-            this.addDataPoint();
         }
     }
 
     componentDidMount() {
+        var thiz = this;
         this.draw();
+        thiz.disposable = this.props.systemStream
+            .subscribe( json => {
+                thiz.addDataPoint(json);
+            }, error =>{
+                console.log("error:", error);
+            }, () => {
+                console.log("terminated");
+            });
     }
 
     render() {

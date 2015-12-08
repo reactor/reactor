@@ -25,13 +25,30 @@ class App extends React.Component {
   constructor(props) {
       super(props);
       API.defaultOrLastTarget();
+      var nexusStream = new Rx.Subject();
+      var graphStream = new Rx.ReplaySubject(100);
+      var systemStream = new Rx.ReplaySubject(200);
+      var logStream = new Rx.ReplaySubject(200);
+
+      nexusStream
+          .filter(json => json.type == "GraphEvent")
+          .subscribe(graphStream);
+
+      nexusStream
+          .filter(json => json.type == "SystemEvent")
+          .subscribe(systemStream);
+
+      nexusStream
+          .filter(json => json.type == "LogEvent")
+          .subscribe(logStream);
+
       this.state = {
-        nexusStream: new Rx.Subject(),
+        nexusStream: nexusStream,
         nexusObserver: new Rx.Subject(),
         stateStream: new Rx.BehaviorSubject(API.offline),
-        graphStream: new Rx.ReplaySubject(100),
-        logStream: new Rx.ReplaySubject(200),
-        systemStream: new Rx.ReplaySubject(200)
+        graphStream: graphStream,
+        logStream: logStream,
+        systemStream: systemStream
     };
   }
 
