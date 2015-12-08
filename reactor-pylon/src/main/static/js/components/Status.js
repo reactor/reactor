@@ -31,6 +31,7 @@ class Status extends React.Component {
         if(data == this.type){
             return;
         }
+        this.type = data;
         if(data == API.offline){
             this.setState({backgroundColor: "red"});
         }
