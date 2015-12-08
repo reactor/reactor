@@ -97,17 +97,10 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 		final Publisher<Buffer> cacheManifest = IO.readFile(pylon.pathToStatic(CACHE_MANIFEST));
 
-		server.file(ChannelMappings.prefix("/pylon"), pylon.pathToStatic(HTML_DEPENDENCY_CONSOLE))
-		      .file(CONSOLE_FAVICON, pylon.pathToStatic(CONSOLE_FAVICON))
-		      .directory(CONSOLE_ASSETS_PREFIX, pylon.pathToStatic(CONSOLE_STATIC_ASSETS_PATH))
-		      .get(CACHE_MANIFEST, new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
-			      @Override
-			      public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
-
-				      return channel.responseHeader("content-type", "text/cache-manifest")
-				                    .writeBufferWith(cacheManifest);
-			      }
-		      });
+		server.file(CONSOLE_FAVICON, pylon.pathToStatic(CONSOLE_FAVICON))
+		      .get(CACHE_MANIFEST, new CacheManifestHandler(cacheManifest))
+		      .file(ChannelMappings.prefix(CONSOLE_URL), pylon.pathToStatic(HTML_DEPENDENCY_CONSOLE))
+		      .directory(CONSOLE_ASSETS_PREFIX, pylon.pathToStatic(CONSOLE_STATIC_ASSETS_PATH));
 
 		return pylon;
 	}
@@ -132,7 +125,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 				       }
 			       });
 
-			log.info("Sending Assets probes to : " + dest);
+			log.info("Sending scouting probes to : " + dest);
 			deployStaticFiles(dest.toString());
 			return dest.toString() + CONSOLE_STATIC_PATH;
 		}
@@ -159,7 +152,8 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		Publishers.toReadQueue(start(null))
 		          .take();
 		InetSocketAddress addr = server.getListenAddress();
-		log.info("Pylon Deployed, browse http://" + addr.getHostName() + ":" + addr.getPort() + CONSOLE_URL);
+		log.info("Pylon Warped. Troops can receive signal under http://" + addr.getHostName() + ":" + addr.getPort() +
+				CONSOLE_URL);
 	}
 
 	/**
@@ -214,6 +208,23 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 			}
 			fos.close();
 			is.close();
+		}
+	}
+
+	private static class CacheManifestHandler
+			implements ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>> {
+
+		private final Publisher<Buffer> cacheManifest;
+
+		public CacheManifestHandler(Publisher<Buffer> cacheManifest) {
+			this.cacheManifest = cacheManifest;
+		}
+
+		@Override
+		public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
+
+			return channel.responseHeader("content-type", "text/cache-manifest")
+			              .writeBufferWith(cacheManifest);
 		}
 	}
 }
