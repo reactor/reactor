@@ -9,29 +9,25 @@ import cookie           from 'react-cookie';
 
 const APIUtils = {
 
-    defaultTarget: 'localhost:12012/nexus/',
-    target: '',
+    defaultTarget: 'localhost:12012/nexus/', target: '',
 
-    offline: 0,
-    ready:   1,
-    working: 2,
-    retry:   3,
+    offline: 0, ready: 1, working: 2, retry: 3,
 
     defaultOrLastTarget() {
         var target = cookie.load('targetAPI');
-        if(typeof target === 'undefined'){
+        if (typeof target === 'undefined') {
             this.target = this.defaultTarget;
-            console.log("updating targetAPI cookie with : "+this.target)
+            console.log("updating targetAPI cookie with : " + this.target)
             cookie.save('targetAPI', this.target);
         }
-        else{
+        else {
             this.target = target;
         }
         return this.target;
     },
 
     updateTargetAPI(target) {
-        if(typeof target !== 'undefined'){
+        if (typeof target !== 'undefined') {
             this.target = target;
             cookie.save('targetAPI', this.target);
         }
@@ -124,7 +120,7 @@ const APIUtils = {
             if (stateObserver !== undefined) {
                 stateObserver.onNext(this.working);
             }
-            var ws = new WebSocket("ws://"+ this.target + path);
+            var ws = new WebSocket("ws://" + this.target + path);
 
             var thiz = this;
             ws.onopen = (e) => {
@@ -135,8 +131,8 @@ const APIUtils = {
                 resolve({
                     receiver: Rx.Observable.create ((obs) => {
                         // Handle messages
-                        if(ws == null){
-                            ws = new WebSocket("ws://"+ thiz.target + path);
+                        if (ws == null) {
+                            ws = new WebSocket("ws://" + thiz.target + path);
                             ws.onopen = (e) => {
                                 if (stateObserver !== undefined) {
                                     stateObserver.onNext(thiz.ready);
@@ -162,18 +158,22 @@ const APIUtils = {
                         };
 
                         ws.onclose = (e) => {
-                            ws = null;
-                            if (stateObserver !== undefined) {
-                                stateObserver.onNext(thiz.offline);
+                            if (ws != null) {
+                                ws = null;
+                                if (stateObserver !== undefined) {
+                                    stateObserver.onNext(thiz.offline);
+                                }
+                                obs.onError({message: 'Server connection has been lost'});
                             }
-                            obs.onError({message:'Server connection has been lost'});
                         };
 
                         // Return way to unsubscribe
                         return () => {
-                            if(ws != null) {
+                            if (ws != null) {
                                 console.log("closing connection");
-                                ws.close();
+                                var _ws = ws;
+                                ws = null;
+                                _ws.close();
                             }
                         }
                     }).retryWhen(attempts => {
@@ -188,8 +188,7 @@ const APIUtils = {
                                 console.log("delay retry by " + i + " second(s)");
                                 return Rx.Observable.timer(i * 1000);
                             });
-                    })
-                    , sender: Rx.Observer.create((data) => {
+                    }), sender: Rx.Observer.create((data) => {
                         if (ws.readyState === WebSocket.OPEN) {
                             ws.send(data);
                         }
