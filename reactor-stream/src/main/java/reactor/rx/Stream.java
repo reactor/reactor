@@ -34,6 +34,7 @@ import reactor.Timers;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
+import reactor.core.publisher.operator.IgnoreOnNextOperator;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
 import reactor.core.publisher.operator.ZipOperator;
@@ -258,27 +259,21 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Only forward onError and onComplete signals into the returned stream.
+	 * @see reactor.Publishers#after(Publisher)
 	 * @return {@literal new Stream}
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<Void> after() {
-		return new Stream<Void>() {
-			@Override
-			public void subscribe(Subscriber<? super Void> s) {
-				Publishers.ignoreElements(Stream.this)
-				          .subscribe(s);
-			}
+		return lift(IgnoreOnNextOperator.INSTANCE);
+	}
 
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
-			}
-		};
+	/**
+	 * @see reactor.Publishers#ignoreElement(Publisher)
+	 * @return {@literal new Stream}
+	 */
+	@SuppressWarnings("unchecked")
+	public final Stream<O> ignoreElements() {
+		return lift(IgnoreOnNextOperator.INSTANCE);
 	}
 
 	/**

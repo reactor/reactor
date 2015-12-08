@@ -193,6 +193,15 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> merge(Iterable<? extends Publisher<? extends I>> source) {
+		return flatMap(from(source), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
 	public static <I> Publisher<I> merge(Publisher<? extends I> source1, Publisher<? extends I> source2) {
 		return flatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
 	}
@@ -204,6 +213,15 @@ public final class Publishers extends PublisherFactory {
 	@SuppressWarnings("unchecked")
 	public static <I> Publisher<I> concat(Publisher<? extends Publisher<? extends I>> source) {
 		return concatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> concat(Iterable<? extends Publisher<? extends I>> source) {
+		return concatMap(from(source), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
 	}
 
 	/**
@@ -364,7 +382,7 @@ public final class Publishers extends PublisherFactory {
 
 	/**
 	 * Ignore sequence data (onNext) but bridge all other events: - downstream: onSubscribe, onComplete, onError -
-	 * upstream: request, cancel
+	 * upstream: request, cancel. The difference with ignoreElements is the generic type becoming Void with after.
 	 *
 	 * This useful to acknowledge the completion of a data sequence and trigger further processing using for instance
 	 * {@link #concat(Publisher)}.
@@ -372,7 +390,21 @@ public final class Publishers extends PublisherFactory {
 	 * @return a new filtered {@link Publisher<Void>}
 	 */
 	@SuppressWarnings("unchecked")
-	public static Publisher<Void> ignoreElements(Publisher<?> source) {
+	public static Publisher<Void> after(Publisher<?> source) {
+		return lift(source, IgnoreOnNextOperator.INSTANCE);
+	}
+
+	/**
+	 * Ignore sequence data (onNext) but bridge all other events: - downstream: onSubscribe, onComplete, onError -
+	 * upstream: request, cancel.
+	 *
+	 * This useful to acknowledge the completion of a data sequence and trigger further processing using for instance
+	 * {@link #concat(Publisher)}.
+	 * @param source the emitted sequence to filter
+	 * @return a new filtered {@link Publisher<Void>}
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Publisher<T> ignoreElement(Publisher<T> source) {
 		return lift(source, IgnoreOnNextOperator.INSTANCE);
 	}
 
