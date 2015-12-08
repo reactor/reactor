@@ -30,7 +30,7 @@ import reactor.rx.Stream;
  * @since 2.0, 2.1
  */
 public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>, ReactiveState.Upstream,
-                                                                ReactiveState.Downstream<E> {
+                                                                ReactiveState.Downstream {
 
 	protected final Subscriber<E> receiver;
 	protected final Publisher<O> publisher;

@@ -459,7 +459,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 	static final class BufferSubscriber<V> extends BaseSubscriber<Object> implements ReactiveState.Bounded, ZipState<Object>,
 	                                                                                 ReactiveState.Upstream,
 	                                                                                 ReactiveState.ActiveUpstream,
-	                                                                                 ReactiveState.Downstream<Publisher[]> {
+	                                                                                 ReactiveState.Downstream {
 
 		final ZipBarrier<?, V> parent;
 		final Queue<Object>    queue;

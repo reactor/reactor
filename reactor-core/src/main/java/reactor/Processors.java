@@ -712,7 +712,7 @@ public final class Processors {
 
 	}
 	private static class DelegateProcessor<IN, OUT>
-			extends BaseProcessor<IN, OUT> implements ReactiveState.Downstream<IN>, ReactiveState.Bounded {
+			extends BaseProcessor<IN, OUT> implements ReactiveState.Downstream, ReactiveState.Bounded {
 
 		private final Publisher<OUT> downstream;
 		private final Subscriber<IN> upstream;

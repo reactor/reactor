@@ -33,7 +33,7 @@ import reactor.core.support.ReactiveState;
 public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription,
                                                                           ReactiveState.Bounded,
                                                                           ReactiveState.ActiveUpstream,
-                                                                          ReactiveState.Downstream<O>,
+                                                                          ReactiveState.Downstream,
                                                                           ReactiveState.Upstream {
 
 	protected final Subscriber<? super O> subscriber;

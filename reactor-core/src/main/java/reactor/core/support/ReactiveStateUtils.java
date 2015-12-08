@@ -26,7 +26,7 @@ import java.util.WeakHashMap;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class ReactiveStateUtils {
+public final class ReactiveStateUtils implements ReactiveState {
 
 	/**
 	 * Create an empty graph
@@ -107,7 +107,7 @@ public final class ReactiveStateUtils {
 	 * @return
 	 */
 	public static boolean hasUpstream(Object o) {
-		return o != null && ReactiveState.Upstream.class.isAssignableFrom(o.getClass()) && ((ReactiveState.Upstream) o).upstream() != null;
+		return o != null && Upstream.class.isAssignableFrom(o.getClass()) && ((Upstream) o).upstream() != null;
 	}
 
 	/**
@@ -116,7 +116,7 @@ public final class ReactiveStateUtils {
 	 * @return
 	 */
 	public static boolean hasUpstreams(Object o) {
-		return o != null && ReactiveState.LinkedUpstreams.class.isAssignableFrom(o.getClass());
+		return o != null && LinkedUpstreams.class.isAssignableFrom(o.getClass());
 	}
 
 	/**
@@ -125,7 +125,7 @@ public final class ReactiveStateUtils {
 	 * @return
 	 */
 	public static boolean hasDownstream(Object o) {
-		return o != null && ReactiveState.Downstream.class.isAssignableFrom(o.getClass()) && ((ReactiveState.Downstream) o).downstream() != null;
+		return o != null && Downstream.class.isAssignableFrom(o.getClass()) && ((Downstream) o).downstream() != null;
 	}
 
 	/**
@@ -134,7 +134,7 @@ public final class ReactiveStateUtils {
 	 * @return
 	 */
 	public static boolean hasDownstreams(Object o) {
-		return o != null && ReactiveState.LinkedDownstreams.class.isAssignableFrom(o.getClass());
+		return o != null && LinkedDownstreams.class.isAssignableFrom(o.getClass());
 	}
 
 	/**
@@ -143,7 +143,7 @@ public final class ReactiveStateUtils {
 	 * @return
 	 */
 	public static boolean hasFeedbackLoop(Object o) {
-		return o != null && ReactiveState.FeedbackLoop.class.isAssignableFrom(o.getClass());
+		return o != null && FeedbackLoop.class.isAssignableFrom(o.getClass());
 	}
 
 	/**
@@ -152,7 +152,7 @@ public final class ReactiveStateUtils {
 	 * @return
 	 */
 	public static boolean isTraceOnly(Object o) {
-		return o != null && ReactiveState.Trace.class.isAssignableFrom(o.getClass());
+		return o != null && Trace.class.isAssignableFrom(o.getClass());
 	}
 
 	/**
@@ -161,7 +161,7 @@ public final class ReactiveStateUtils {
 	 * @return
 	 */
 	public static boolean hasSubscription(Object o) {
-		return o != null && ReactiveState.ActiveUpstream.class.isAssignableFrom(o.getClass());
+		return o != null && ActiveUpstream.class.isAssignableFrom(o.getClass());
 	}
 
 	/**
@@ -170,7 +170,7 @@ public final class ReactiveStateUtils {
 	 * @return
 	 */
 	public static boolean isCancellable(Object o) {
-		return o != null && ReactiveState.ActiveDownstream.class.isAssignableFrom(o.getClass());
+		return o != null && ActiveDownstream.class.isAssignableFrom(o.getClass());
 	}
 
 	/**
@@ -179,8 +179,8 @@ public final class ReactiveStateUtils {
 	 * @return
 	 */
 	public static long getCapacity(Object o) {
-		if (o != null && ReactiveState.Bounded.class.isAssignableFrom(o.getClass())) {
-			return ((ReactiveState.Bounded) o).getCapacity();
+		if (o != null && Bounded.class.isAssignableFrom(o.getClass())) {
+			return ((Bounded) o).getCapacity();
 		}
 		return -1L;
 	}
@@ -195,7 +195,7 @@ public final class ReactiveStateUtils {
 			return null;
 		}
 
-		String name = ReactiveState.Named.class.isAssignableFrom(o.getClass()) ? (((ReactiveState.Named) o).getName()) :
+		String name = Named.class.isAssignableFrom(o.getClass()) ? (((Named) o).getName()) :
 				(o.getClass()
 				  .getSimpleName()
 				  .isEmpty() ? o.toString() : o.getClass()
@@ -204,14 +204,20 @@ public final class ReactiveStateUtils {
 		return name.isEmpty() ? "anonymous" : name;
 	}
 
+	public static String getIdOrDefault(Object o, String id) {
+		return Identified.class.isAssignableFrom(o.getClass()) ?
+				((Identified)o).getId() :
+				id;
+	}
+
 	/**
 	 *
 	 * @param o
 	 * @return
 	 */
 	public static long getBuffered(Object o) {
-		if (o != null && ReactiveState.Buffering.class.isAssignableFrom(o.getClass())) {
-			return ((ReactiveState.Buffering) o).pending();
+		if (o != null && Buffering.class.isAssignableFrom(o.getClass())) {
+			return ((Buffering) o).pending();
 		}
 		return -1L;
 	}
@@ -281,7 +287,7 @@ public final class ReactiveStateUtils {
 			if (o == null) {
 				return null;
 			}
-			return nodes.remove(getName(o) + ":" + o.hashCode());
+			return nodes.remove(getIdOrDefault(o, getName(o) + ":" + o.hashCode()));
 		}
 
 		public Collection<Node> getNodes() {
@@ -313,23 +319,34 @@ public final class ReactiveStateUtils {
 				child = grandchild;
 			}
 			if (hasUpstream(target.object)) {
-				Node upstream = expandReactiveSate(((ReactiveState.Upstream) target.object).upstream(), child == null);
-				if (child != null && (trace || !isTraceOnly(upstream.object))) {
-					addEdge(upstream.createEdgeTo(child));
+				Object in = ((Upstream) target.object).upstream();
+				if(!virtualRef(in, target)){
+					Node upstream = expandReactiveSate(in, child == null);
+					if (child != null && (trace || !isTraceOnly(upstream.object))) {
+						addEdge(upstream.createEdgeTo(child));
+					}
+					addUpstream(upstream, child);
 				}
-				addUpstream(upstream, child);
 			}
 			if (hasUpstreams(target.object)) {
-				addUpstreams(child, ((ReactiveState.LinkedUpstreams) target.object).upstreams());
+				addUpstreams(child, ((LinkedUpstreams) target.object).upstreams());
 			}
 			if (hasDownstreams(target.object)) {
-				addDownstreams(child, ((ReactiveState.LinkedDownstreams) target.object).downstreams());
+				addDownstreams(child, ((LinkedDownstreams) target.object).downstreams());
 			}
 		}
 
 		private void addUpstreams(Node target, Iterator o) {
+			if(o == null){
+				return;
+			}
 			Node source;
+			Object in;
 			while (o.hasNext()) {
+				in = o.next();
+				if(virtualRef(in, target)){
+					continue;
+				}
 				source = expandReactiveSate(o.next());
 				if (target != null && source != null) {
 					addEdge(source.createEdgeTo(target));
@@ -355,26 +372,36 @@ public final class ReactiveStateUtils {
 				root = ancestor;
 			}
 			if (hasDownstream(origin.object)) {
-				Node downstream =
-						expandReactiveSate(((ReactiveState.Downstream) origin.object).downstream(), root == null);
-				if (root != null && (trace || !isTraceOnly(downstream.object))) {
-					addEdge(root.createEdgeTo(downstream));
+				Object out = ((Downstream) origin.object).downstream();
+				if(!virtualRef(out, origin)) {
+					Node downstream = expandReactiveSate(out, root == null);
+					if (root != null && (trace || !isTraceOnly(downstream.object))) {
+						addEdge(root.createEdgeTo(downstream));
+					}
+					addDownstream(downstream, root);
 				}
-				addDownstream(downstream, root);
 			}
 			if (hasDownstreams(origin.object)) {
-				addDownstreams(root, ((ReactiveState.LinkedDownstreams) origin.object).downstreams());
+				addDownstreams(root, ((LinkedDownstreams) origin.object).downstreams());
 			}
 
 			if (hasUpstreams(origin.object)) {
-				addUpstreams(root, ((ReactiveState.LinkedUpstreams) origin.object).upstreams());
+				addUpstreams(root, ((LinkedUpstreams) origin.object).upstreams());
 			}
 		}
 
 		private void addDownstreams(Node source, Iterator o) {
+			if(o == null){
+				return;
+			}
 			Node downstream;
+			Object out;
 			while (o.hasNext()) {
-				downstream = expandReactiveSate(o.next());
+				out = o.next();
+				if(virtualRef(out, source)){
+					continue;
+				}
+				downstream = expandReactiveSate(out);
 				if (source != null && downstream != null) {
 					addEdge(source.createEdgeTo(downstream));
 				}
@@ -392,12 +419,12 @@ public final class ReactiveStateUtils {
 			}
 
 			String name = getName(o);
-			String id = name.hashCode() + ":" + o.hashCode();
+			String id = getIdOrDefault(o, name.hashCode() + ":" + o.hashCode());
 
 			Node r = new Node(name, id, o, highlight);
 
 			if ((trace || !isTraceOnly(o)) && hasFeedbackLoop(o)) {
-				ReactiveState.FeedbackLoop loop = (ReactiveState.FeedbackLoop) o;
+				FeedbackLoop loop = (FeedbackLoop) o;
 
 				Object target = loop.delegateInput();
 
@@ -421,6 +448,14 @@ public final class ReactiveStateUtils {
 
 		private void addEdge(Edge edge) {
 			edges.put(edge.getId(), edge);
+		}
+
+		private boolean virtualRef(Object o, Node ancestor){
+			if(o != null && ancestor != null && String.class.isAssignableFrom(o.getClass())){
+				ancestor.createEdgeTo(o.toString());
+				return true;
+			}
+			return false;
 		}
 
 		@Override
@@ -490,24 +525,36 @@ public final class ReactiveStateUtils {
 			return highlight;
 		}
 
+		public final boolean isReference() {
+			return object == null;
+		}
+
 		public final boolean isActive() {
-			return !hasSubscription(object) || ((ReactiveState.ActiveUpstream) object).isStarted();
+			return !hasSubscription(object) || ((ActiveUpstream) object).isStarted();
 		}
 
 		public final boolean isTerminated() {
-			return hasSubscription(object) && ((ReactiveState.ActiveUpstream) object).isTerminated();
+			return hasSubscription(object) && ((ActiveUpstream) object).isTerminated();
 		}
 
 		public final boolean isCancelled() {
-			return isCancellable(object) && ((ReactiveState.ActiveDownstream) object).isCancelled();
+			return isCancellable(object) && ((ActiveDownstream) object).isCancelled();
 		}
 
-		protected Edge createEdgeTo(Node to) {
+		protected final Edge createEdgeTo(Node to) {
+			return createEdgeTo(to.id, false);
+		}
+
+		protected final Edge createEdgeTo(String to) {
 			return createEdgeTo(to, false);
 		}
 
-		protected Edge createEdgeTo(Node to, boolean discrete) {
-			Edge edge = new Edge(id, to.id, discrete);
+		protected final Edge createEdgeTo(Node to, boolean discrete) {
+			return createEdgeTo(to.id, discrete);
+		}
+
+		protected final Edge createEdgeTo(String to, boolean discrete) {
+			Edge edge = new Edge(id, to, discrete);
 			addEdgeRef(edge);
 			return edge;
 		}

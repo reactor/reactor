@@ -17,6 +17,7 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
@@ -47,7 +48,7 @@ import reactor.rx.subscription.PushSubscription;
  *
  * @author Stephane Maldini
  */
-public final class SingleValueStream<T> extends Stream<T> implements Supplier<T> {
+public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>, ReactiveState.FeedbackLoop{
 
 	final public static SingleValueStream<?> EMPTY = new SingleValueStream<>(null);
 
@@ -84,6 +85,16 @@ public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>
 			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);
 		}
+	}
+
+	@Override
+	public Object delegateInput() {
+		return null;
+	}
+
+	@Override
+	public Object delegateOutput() {
+		return value;
 	}
 
 	@Override

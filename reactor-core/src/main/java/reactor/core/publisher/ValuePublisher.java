@@ -26,7 +26,7 @@ import reactor.fn.Supplier;
 /**
  * @author Stephane Maldini
  */
-public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN>, ReactiveState.Upstream {
+public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN>, ReactiveState.FeedbackLoop {
 
 	private final IN data;
 
@@ -50,7 +50,12 @@ public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN>, Reactive
 	}
 
 	@Override
-	public Object upstream() {
+	public Object delegateInput() {
+		return null;
+	}
+
+	@Override
+	public Object delegateOutput() {
 		return data;
 	}
 

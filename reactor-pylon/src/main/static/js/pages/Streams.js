@@ -105,7 +105,7 @@ class Streams extends React.Component {
                     size: 18, face: 'Montserrat', color: '#34302d'
                 }, borderWidth: 2, scaling: {
                     min: 20, label: {
-                        min: 16, max: 24
+                        min: 12, max: 18
                     }
                 }
             }, edges: {
@@ -147,7 +147,8 @@ class Streams extends React.Component {
         });
         this.network.on('hoverNode', (params) => {
             ReactDOM.render(<ul>
-                <li>{nodes.get(params.node).name}</li>
+                <li>{nodes.get(params.node).id}</li>
+                <li>Name : {nodes.get(params.node).name}</li>
                 <li>Capacity : {nodes.get(params.node).capacity}</li>
                 <li>Cancelled : {nodes.get(params.node).cancelled+""}</li>
                 <li>Started : {nodes.get(params.node).active+""}</li>

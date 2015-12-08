@@ -73,7 +73,7 @@ public interface ReactiveState {
 	interface Upstream extends ReactiveState {
 
 		/**
-		 * Return the direct source of data
+		 * Return the direct source of data, Supports reference
 		 */
 		Object upstream();
 	}
@@ -130,12 +130,12 @@ public interface ReactiveState {
 	 * A component that is linked to N target {@link Subscriber}. Useful to traverse from right to left a pipeline of
 	 * reactive actions implementing this interface.
 	 */
-	interface Downstream<T> extends ReactiveState {
+	interface Downstream extends ReactiveState {
 
 		/**
 		 * Return the direct data receiver
 		 */
-		Subscriber<? super T> downstream();
+		Object downstream();
 	}
 
 
@@ -177,14 +177,25 @@ public interface ReactiveState {
 	 */
 
 	/**
-	 * An identifiable component
+	 * An nameable component
 	 */
 	interface Named extends ReactiveState {
 
 		/**
-		 * Return defined identifier
+		 * Return defined name
 		 */
 		String getName();
+	}
+
+	/**
+	 * An identifiable component
+	 */
+	interface Identified extends ReactiveState {
+
+		/**
+		 * Return defined id
+		 */
+		String getId();
 	}
 
 	/**
