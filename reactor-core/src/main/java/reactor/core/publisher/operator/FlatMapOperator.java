@@ -308,7 +308,9 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		@Override
 		protected void doCancel() {
-			if (TERMINATED.compareAndSet(this, NOT_TERMINATED, TERMINATED_WITH_CANCEL)) {
+			int terminated = TERMINATED.get(this);
+			if (terminated != TERMINATED_WITH_CANCEL && TERMINATED.compareAndSet(this, terminated,
+					TERMINATED_WITH_CANCEL)) {
 				if (RUNNING.getAndIncrement(this) == 0) {
 					subscription.cancel();
 					unsubscribe();
