@@ -60,7 +60,7 @@ import reactor.rx.broadcast.Broadcaster;
  */
 public class Promise<O>
 		implements Supplier<O>, Processor<O, O>, Consumer<O>, ReactiveState.Bounded, Subscription,
-		           ReactiveState.Upstream {
+		           ReactiveState.Upstream, ReactiveState.Downstream, ReactiveState.ActiveUpstream {
 
 	public static final long DEFAULT_TIMEOUT =
 			Long.parseLong(System.getProperty("reactor.await.defaultTimeout", "30000"));
@@ -810,4 +810,18 @@ public class Promise<O>
 		}
 	}
 
+	@Override
+	public Subscriber downstream() {
+		return outboundStream;
+	}
+
+	@Override
+	public boolean isStarted() {
+		return requested > 0;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return finalState == FinalState.COMPLETE;
+	}
 }

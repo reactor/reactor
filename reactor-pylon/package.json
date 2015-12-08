@@ -57,6 +57,8 @@
     "react-document-title": "^1.0.2",
     "react-dom": "^0.14.0",
     "react-router": "^1.0.0-rc1",
+    "react-modal": "^0.6.1",
+    "react-cookie": "^0.4.2",
     "rx-lite": "^4.0.7",
     "rx-dom": "^7.0.3",
     "run-sequence": "^1.1.1",

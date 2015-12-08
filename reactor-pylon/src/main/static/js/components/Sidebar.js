@@ -3,6 +3,7 @@
 import React         from 'react';
 import {Link}        from 'react-router';
 import NavItem       from './NavItem';
+import Status       from './Status';
 
 class Sidebar extends React.Component {
 
@@ -13,9 +14,7 @@ class Sidebar extends React.Component {
     render() {
         return (
             <div id="sidebar">
-                <h1 id="logo">
-                    <Link to="/pylon"><strong>Reactor Pylon</strong></Link>
-                </h1>
+                <Status />
                 <ul>
                     <NavItem to="/pylon/dashboard" name="dashboard" label="Dashboard" icon="tachometer" />
                     <NavItem to="/pylon/map" name="map" label="Map" icon="share-alt" />
