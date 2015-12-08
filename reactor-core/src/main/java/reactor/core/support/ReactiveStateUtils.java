@@ -347,7 +347,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 				if(virtualRef(in, target)){
 					continue;
 				}
-				source = expandReactiveSate(o.next());
+				source = expandReactiveSate(in);
 				if (target != null && source != null) {
 					addEdge(source.createEdgeTo(target));
 				}
