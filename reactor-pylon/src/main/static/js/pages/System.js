@@ -2,6 +2,7 @@
 
 import React         from 'react';
 import Box           from '../components/Box';
+import ThreadTimeline from '../components/ThreadTimeline';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import vis           from 'vis';
@@ -28,7 +29,6 @@ class System extends React.Component {
     addDataPoint(json) {
         // add a new data point to the dataset
         var now = vis.moment();
-        var thiz = this;
         this.dataset.add({
             x: now, y: json.freeMemory
         });
@@ -103,6 +103,7 @@ class System extends React.Component {
         var thiz = this;
         this.draw();
         thiz.disposable = this.props.systemStream
+            .map(json => json.jvmStats)
             .subscribe( json => {
                 thiz.addDataPoint(json);
             }, error =>{
@@ -117,14 +118,19 @@ class System extends React.Component {
             <DocumentTitle title="Reactor Console • System">
                 <section className="system">
                     <div className="section-heading">
-                        System
+                        JVM Systems
                     </div>
                     <div className="section-content">
-                        <Box heading="Processor">
+
+                        <Box heading="Threads">
+                            <ThreadTimeline threadStream={this.props.systemStream.flatMap(json => Rx.Observable.from(json.threads))} />
+                        </Box>
+
+                        <Box heading="Free Memory">
                             <div id="graphProcessor"></div>
                         </Box>
-                        <Box heading="Memory">
-                            Un autre exemple
+                        <Box heading="Total Memory">
+                            Un autre exemple au fromage.
                         </Box>
                     </div>
                 </section>
