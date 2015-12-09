@@ -45,7 +45,7 @@ ext {
 
 	// Libraries
 	gsCollectionsVersion = '5.1.0'
-  	nettyVersion = '4.0.31.Final'
+  	nettyVersion = '4.0.33.Final'
   	jacksonDatabindVersion = '2.5.1'
 	jsonPathVersion = '2.0.0'
 	openHftChronicleVersion = '3.4.2'
@@ -239,6 +239,7 @@ project('reactor-stream') {
 		optional "io.projectreactor:reactor-codec:$version"
 
 		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
+	  	testCompile "io.netty:netty-all:$nettyVersion"
 		testCompile project(':reactor-bus')
 		testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 	}
