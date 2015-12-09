@@ -1098,7 +1098,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 	}
 
-	private static class TaskSubscriber implements Subscriber<Runnable> {
+	private static class TaskSubscriber implements Subscriber<Runnable>, Trace {
 
 		private final Consumer<Throwable> uncaughtExceptionHandler;
 		private final Consumer<Void>      shutdownHandler;

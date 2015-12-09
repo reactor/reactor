@@ -17,6 +17,7 @@ package reactor.core.processor.rb.disruptor;
 
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.rb.disruptor.util.Util;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
@@ -41,12 +42,39 @@ public abstract class Sequencer
     protected final    Sequence   cursor          = Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
     protected volatile Sequence[] gatingSequences = new Sequence[0];
 
+	/**
+     *
+     * @param init
+     * @return
+     */
     public static Sequence newSequence(long init) {
         if (PlatformDependent.hasUnsafe()) {
             return new UnsafeSequence(init);
         } else {
             return new AtomicSequence(init);
         }
+    }
+
+	/**
+	 *
+     * @param init
+     * @param delegate
+     * @param <E>
+     * @return
+     */
+    public static <E> Wrapped<E> wrap(long init, E delegate){
+        return wrap(newSequence(init), delegate);
+    }
+
+	/**
+	 *
+     * @param init
+     * @param delegate
+     * @param <E>
+     * @return
+     */
+    public static <E> Wrapped<E> wrap(Sequence init, E delegate){
+        return new Wrapped<>(delegate, init);
     }
 
     /**
@@ -266,7 +294,84 @@ public abstract class Sequencer
      */
     public abstract void publish(long lo, long hi);
 
+	/**
+     *
+     * @return
+     */
     public WaitStrategy getWaitStrategy() {
         return waitStrategy;
+    }
+
+	/**
+     *
+     * @return
+     */
+    public Sequence[] getGatingSequences() {
+        return gatingSequences;
+    }
+
+    /**
+	 *
+     * @param <E>
+     */
+    public final static class Wrapped<E> implements Sequence, ReactiveState.Trace, ReactiveState.Downstream {
+        public final E delegate;
+        public final Sequence sequence;
+
+        public Wrapped(E delegate, Sequence sequence) {
+            this.delegate = delegate;
+            this.sequence = sequence;
+        }
+
+        @Override
+        public long get() {
+            return sequence.get();
+        }
+
+        @Override
+        public Object downstream() {
+            return delegate;
+        }
+
+        @Override
+        public void set(long value) {
+            sequence.set(value);
+        }
+
+        @Override
+        public void setVolatile(long value) {
+            sequence.setVolatile(value);
+        }
+
+        @Override
+        public boolean compareAndSet(long expectedValue, long newValue) {
+            return sequence.compareAndSet(expectedValue, newValue);
+        }
+
+        @Override
+        public long incrementAndGet() {
+            return sequence.incrementAndGet();
+        }
+
+        @Override
+        public long addAndGet(long increment) {
+            return sequence.addAndGet(increment);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            Wrapped<?> wrapped = (Wrapped<?>) o;
+
+            return sequence.equals(wrapped.sequence);
+
+        }
+
+        @Override
+        public int hashCode() {
+            return sequence.hashCode();
+        }
     }
 }

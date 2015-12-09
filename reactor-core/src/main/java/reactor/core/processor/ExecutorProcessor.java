@@ -57,7 +57,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 		contextClassLoader = new ClassLoader(Thread.currentThread()
 		                                           .getContextClassLoader()) {
 		};
-		this.name = name;
+		this.name = null != name ? name : getClass().getSimpleName();
 		if (executor == null) {
 			this.executor = SingleUseExecutor.create(name, contextClassLoader);
 		}

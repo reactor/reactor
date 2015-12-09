@@ -16,6 +16,8 @@
 
 package reactor.core.processor;
 
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -64,7 +66,7 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  */
 public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
-		implements ReactiveState.Buffering{
+		implements ReactiveState.Buffering, ReactiveState.LinkedDownstreams {
 
 	/**
 	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
@@ -554,8 +556,8 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 			return;
 		}
 
-		final WorkSignalProcessor<E> signalProcessor =
-				new WorkSignalProcessor<E>(subscriber, this);
+		final QueueSubscriber<E> signalProcessor =
+				new QueueSubscriber<E>(subscriber, this);
 		try {
 
 			incrementSubscribers();
@@ -632,7 +634,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 
 	@Override
 	protected void requestTask(Subscription s) {
-		new NamedDaemonThreadFactory("ringbufferwork-request-task", null, null, false).newThread(new RequestTask(s, new Consumer<Void>() {
+		new NamedDaemonThreadFactory(name+"[request-task]", null, null, false).newThread(new RequestTask(s, new Consumer<Void>() {
 			@Override
 			public void accept(Void aVoid) {
 				if (!alive()) {
@@ -706,14 +708,25 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 		return retry;
 	}
 
+
+	@Override
+	public Iterator<?> downstreams() {
+		return Arrays.asList(ringBuffer.getSequencer().getGatingSequences()).iterator();
+	}
+
+	@Override
+	public long downstreamsCount() {
+		return ringBuffer.getSequencer().getGatingSequences().length - 1;
+	}
+
 	private final class RingBufferSubscription implements Subscription, Upstream {
 
 		private final Subscriber<? super E> subscriber;
 
-		private final WorkSignalProcessor eventProcessor;
+		private final QueueSubscriber eventProcessor;
 
 		public RingBufferSubscription(Subscriber<? super E> subscriber,
-				WorkSignalProcessor eventProcessor) {
+				QueueSubscriber eventProcessor) {
 			this.subscriber = subscriber;
 			this.eventProcessor = eventProcessor;
 		}
@@ -747,13 +760,14 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 * @param <T> event implementation storing the data for sharing during exchange or
 	 * parallel coordination of an event.
 	 */
-	private final static class WorkSignalProcessor<T>
-			implements Runnable, Consumer<Void> {
+	private final static class QueueSubscriber<T>
+			implements Runnable, Consumer<Void>, Downstream, Buffering, ActiveUpstream,
+			ActiveDownstream {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
 
 		private final Sequence sequence =
-				Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
+				Sequencer.wrap(Sequencer.INITIAL_CURSOR_VALUE, this);
 
 		private final Sequence pendingRequest = Sequencer.newSequence(0);
 
@@ -769,7 +783,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 		 * Construct a ringbuffer consumer that will automatically track the progress by
 		 * updating its sequence
 		 */
-		public WorkSignalProcessor(Subscriber<? super T> subscriber,
+		public QueueSubscriber(Subscriber<? super T> subscriber,
 				RingBufferWorkProcessor<T> processor) {
 			this.processor = processor;
 			this.subscriber = subscriber;
@@ -1034,6 +1048,38 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 				RingBufferSubscriberUtils.route(event, subscriber);
 				throw AlertException.INSTANCE;
 			}
+		}
+
+
+
+		@Override
+		public boolean isCancelled() {
+			return !running.get();
+		}
+
+		@Override
+		public boolean isStarted() {
+			return sequence.get() != -1L;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return !running.get();
+		}
+
+		@Override
+		public long pending() {
+			return processor.ringBuffer.getCursor() - sequence.get();
+		}
+
+		@Override
+		public long getCapacity() {
+			return processor.getCapacity();
+		}
+
+		@Override
+		public Object downstream() {
+			return subscriber;
 		}
 
 	}

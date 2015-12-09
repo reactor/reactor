@@ -16,6 +16,8 @@
 
 package reactor.core.processor;
 
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -73,7 +75,7 @@ import reactor.fn.Supplier;
  * @author Anatoly Kadyshev
  */
 public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
-		implements ReactiveState.Buffering{
+		implements ReactiveState.Buffering, ReactiveState.LinkedDownstreams{
 
 	/**
 	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
@@ -603,8 +605,8 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 
 		//create a unique eventProcessor for this subscriber
 		final Sequence pendingRequest = Sequencer.newSequence(0);
-		final BatchSignalProcessor<E> signalProcessor =
-				new BatchSignalProcessor<E>(this, pendingRequest, subscriber);
+		final TopicSubscriber<E> signalProcessor =
+				new TopicSubscriber<E>(this, pendingRequest, subscriber);
 
 		//bind eventProcessor sequence to observe the ringBuffer
 
@@ -703,7 +705,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	protected void requestTask(Subscription s) {
 		minimum.set(ringBuffer.getCursor());
 		ringBuffer.addGatingSequence(minimum);
-		new NamedDaemonThreadFactory("ringbuffer-request-task", null, null, false)
+		new NamedDaemonThreadFactory(name+"[request-task]", null, null, false)
 				.newThread(new RequestTask(s, new Consumer<Void>() {
 					@Override
 					public void accept(Void aVoid) {
@@ -756,11 +758,11 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 
 		private final Subscriber<? super E> subscriber;
 
-		private final BatchSignalProcessor<E> eventProcessor;
+		private final TopicSubscriber<E> eventProcessor;
 
 		public RingBufferSubscription(Sequence pendingRequest,
 		                              Subscriber<? super E> subscriber,
-		                              BatchSignalProcessor<E> eventProcessor) {
+		                              TopicSubscriber<E> eventProcessor) {
 			this.subscriber = subscriber;
 			this.eventProcessor = eventProcessor;
 			this.pendingRequest = pendingRequest;
@@ -811,6 +813,16 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		return ringBuffer.remainingCapacity();
 	}
 
+	@Override
+	public Iterator<?> downstreams() {
+		return Arrays.asList(ringBuffer.getSequencer().getGatingSequences()).iterator();
+	}
+
+	@Override
+	public long downstreamsCount() {
+		return ringBuffer.getSequencer().getGatingSequences().length - (isStarted() ? 1 : 0);
+	}
+
 	/**
 	 * Disruptor BatchEventProcessor port that deals with pending demand. <p> Convenience
 	 * class for handling the batching semantics of consuming entries from a {@link
@@ -818,12 +830,13 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * @param <T> event implementation storing the data for sharing during exchange or
 	 * parallel coordination of an event.
 	 */
-	private final static class BatchSignalProcessor<T> implements Runnable {
+	private final static class TopicSubscriber<T> implements Runnable, Downstream, Buffering, ActiveUpstream,
+	                                                         ActiveDownstream {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
 
 		private final Sequence sequence =
-				Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
+				Sequencer.wrap(Sequencer.INITIAL_CURSOR_VALUE, this);
 
 		private final RingBufferProcessor<T> processor;
 
@@ -837,7 +850,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		 * Construct a ringbuffer consumer that will automatically track the progress by
 		 * updating its sequence
 		 */
-		public BatchSignalProcessor(RingBufferProcessor<T> processor,
+		public TopicSubscriber(RingBufferProcessor<T> processor,
 		                            Sequence pendingRequest,
 		                            Subscriber<? super T> subscriber) {
 			this.processor = processor;
@@ -964,6 +977,36 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 				running.set(false);
 				processor.readWait.signalAllWhenBlocking();
 			}
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return !running.get();
+		}
+
+		@Override
+		public boolean isStarted() {
+			return sequence.get() != -1L;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return !running.get();
+		}
+
+		@Override
+		public long pending() {
+			return processor.ringBuffer.getCursor() - sequence.get();
+		}
+
+		@Override
+		public long getCapacity() {
+			return processor.getCapacity();
+		}
+
+		@Override
+		public Object downstream() {
+			return subscriber;
 		}
 	}
 
