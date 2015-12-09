@@ -298,7 +298,7 @@ public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<
 	 * @return
 	 */
 	public boolean hasRequested() {
-		return requested != 0L;
+		return !cancelled && requested != 0L;
 	}
 
 	/**
@@ -367,14 +367,14 @@ public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<
 	@Override
 	public void onNext(E e) {
 		Emission emission = emit(e);
+		if(emission.isCancelled()){
+			throw CancelException.get();
+		}
 		if(emission.isOk()){
 			return;
 		}
 		if(emission.isBackpressured()){
 			throw InsufficientCapacityException.get();
-		}
-		if(emission.isCancelled()){
-			throw CancelException.get();
 		}
 		if(emission.isFailed()){
 			if(uncaughtException != null) {
