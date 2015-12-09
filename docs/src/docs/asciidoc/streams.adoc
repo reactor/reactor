@@ -187,7 +187,7 @@ Cold Data Sources will be replayed from start for every fresh Subscriber passed 
 |T
 2+|Emit `onNext(T)` from the producing `Supplier.get()` factory everytime `Subscription.request(N)` is called. The demand N is ignored as only one data is emitted. When a null value is returned, emit `onComplete()`.
 
-|Promises.syncTask(Supplier<T>), Promises.task(, Supplier<T>)
+|Promises.syncTask(Supplier<T>), Promises.task(Supplier<T>)
 |T
 2+|Emit a single `onNext(T)` and `onComplete()` from the producing `Supplier.get()` on the first `Subscription.request(N)` received. The demand N is ignored.
 
@@ -286,7 +286,7 @@ h|Streams.combineLatest(*Publisher<T1>, Publisher<T2>*, _Publisher<T3-N> x6_, *F
 |C
 2+|http://rxmarbles.com/#combineLatest[Combine most recent emitted elements] from the passed sources using the given aggregating `Function`.
 
-h|Streams.combineLatest(*Publisher<T1>, Publisher<T2>,* _Publisher<T3-N> x6_, *Function<Tuple2-N, C>*)
+h|Streams.zip(*Publisher<T1>, Publisher<T2>,* _Publisher<T3-N> x6_, *Function<Tuple2-N, C>*)
 |C
 2+|http://rxmarbles.com/#zip[Combine most recent elements once], every time a source has emitted a signal, apply the given `Function` and clear the temporary aggregate. Effectively it's a flexible _join_ mechanism for multiple types of sources.
 
