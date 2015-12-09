@@ -32,7 +32,7 @@ import reactor.core.support.SingleUseExecutor;
  * @author Stephane Maldini
  */
 public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
-		implements ReactiveState.ActiveUpstream, ReactiveState.ActiveDownstream{
+		implements ReactiveState.ActiveUpstream, ReactiveState.ActiveDownstream, ReactiveState.Named, ReactiveState.Identified{
 
 	protected final ExecutorService executor;
 
@@ -40,6 +40,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 	protected volatile int     terminated;
 
 	protected final ClassLoader contextClassLoader;
+	protected final String name;
 
 	@SuppressWarnings("unused")
 	private volatile       int                                      subscriberCount  = 0;
@@ -56,6 +57,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 		contextClassLoader = new ClassLoader(Thread.currentThread()
 		                                           .getContextClassLoader()) {
 		};
+		this.name = name;
 		if (executor == null) {
 			this.executor = SingleUseExecutor.create(name, contextClassLoader);
 		}
@@ -209,6 +211,16 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 					.subscribe(subscriber);
 			return false;
 		}
+	}
+
+	@Override
+	public String getId() {
+		return contextClassLoader.hashCode()+"";
+	}
+
+	@Override
+	public String getName() {
+		return "/Processors/"+name;
 	}
 
 	protected boolean incrementSubscribers() {

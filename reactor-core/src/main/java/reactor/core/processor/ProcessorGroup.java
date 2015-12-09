@@ -537,9 +537,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
 			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
-			           ReactiveState.Bounded, ReactiveState.Upstream, ReactiveState.FeedbackLoop, ReactiveState
-					           .Downstream, ReactiveState.Buffering, ReactiveState.ActiveDownstream, ReactiveState
-					           .ActiveUpstream,
+			           Bounded, Upstream, FeedbackLoop, ReactiveState
+					           .Downstream, Buffering, ActiveDownstream, ReactiveState
+					           .ActiveUpstream, Named,
 			           Runnable {
 
 		protected final ProcessorGroup service;
@@ -700,6 +700,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			}
 		}
 
+		@Override
+		public String getName() {
+			return "DispatchOn";
+		}
+
 		@SuppressWarnings("unchecked")
 		protected void doStart(final Subscriber<? super V> subscriber) {
 			RUNNING.incrementAndGet(this);
@@ -801,7 +806,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 		@Override
 		public long pending() {
-			return emitBuffer.pending();
+			return emitBuffer != null ? emitBuffer.pending() : -1L;
 		}
 
 		@Override
@@ -1022,12 +1027,17 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
+		public String getName() {
+			return "PublishOn";
+		}
+
+		@Override
 		public long getCapacity() {
 			return Long.MAX_VALUE;
 		}
 	}
 
-	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> {
+	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> implements Trace{
 
 		public SyncProcessorBarrier(ProcessorGroup service) {
 			super(false, service);
