@@ -3,6 +3,7 @@
 import React              from 'react';
 
 import Sidebar            from './components/Sidebar';
+import Config             from './pages/Config';
 import API                from './utils/APIUtils';
 import Rx                 from 'rx-lite';
 
@@ -13,7 +14,7 @@ const propTypes = {
   graphStream: React.PropTypes.object,
   systemStream: React.PropTypes.object,
   stateStream: React.PropTypes.object,
-  query: React.PropTypes.object,
+  configuration: React.PropTypes.object,
   children: React.PropTypes.oneOfType([
     React.PropTypes.array,
     React.PropTypes.object
@@ -46,6 +47,7 @@ class App extends React.Component {
         nexusStream: nexusStream,
         nexusObserver: new Rx.Subject(),
         stateStream: new Rx.BehaviorSubject(API.offline),
+        configuration: null,
         graphStream: graphStream,
         logStream: logStream,
         systemStream: systemStream
@@ -71,18 +73,24 @@ class App extends React.Component {
   renderChildren() {
     return React.cloneElement(this.props.children, {
       params: this.props.params,
-      query: this.props.query,
-      currentUser: this.state.currentUser,
-        nexusStream: this.state.nexusStream,
-        nexusObserver: this.state.nexusObserver,
-        stateStream: this.state.stateStream,
-        graphStream: this.state.graphStream,
-        logStream: this.state.logStream,
-        systemStream: this.state.systemStream
+      nexusStream: this.state.nexusStream,
+      nexusObserver: this.state.nexusObserver,
+      stateStream: this.state.stateStream,
+      graphStream: this.state.graphStream,
+      logStream: this.state.logStream,
+      systemStream: this.state.systemStream,
+      configuration: this.state.configuration
     });
   }
 
   render() {
+
+    if (!this.state.configuration) {
+      return (
+          <Config {...this.state} />
+      );
+    }
+
     return (
       <div>
         <Sidebar {...this.state} />

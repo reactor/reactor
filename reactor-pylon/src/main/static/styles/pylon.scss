@@ -126,32 +126,82 @@ h1#logo {
   height: 450px;
 }
 
-#thread-timeline .vis-item {
-  border: 1px;
-  border-radius: 0px;
+// Configuration page
+
+#config {
+  max-width: 300px;
+  margin: 2em auto;
+  background: $reactorBackgroundLight;
+  padding: 2em 2em 1em 2em;
+  color: white;
+
+  h1#logo {
+    margin: 0;
+    padding: 0;
+    a {
+      display: block;
+      background: url(../images/logo-2x.png) no-repeat 0 0;
+      height: 40px;
+      width: 253px;
+      background-size: 253px 80px;
+      text-indent: -6000em;
+      padding: 0;
+      margin: 0 auto;
+    }
+  }
+  p.description {
+    text-align: center;
+    font-size: 0.9em;
+    padding: 0.4em 0;
+  }
+  p.checkbox {
+    label {
+      display: block;
+      padding: 0.2em 2em;
+    }
+  }
+  p.action {
+    .btn {
+      display: block;
+      //width: 200px;
+      text-align: center;
+      margin: 0 auto;
+      width: 100%;
+    }
+  }
+  input.form-control {
+    border: 0 none;
+  }
 }
 
-#thread-timeline .timedWaitingThread{
-  background-color: #743F2d;
-  border-color: #743F2d;
-}
-#thread-timeline .waitingThread{
-  background-color: #34302d;
-  border-color: #34302d;
-}
-#thread-timeline .runnableThread{
-  background-color: #6db33f;
-  border-color: #6db33f;
-}
-#thread-timeline .terminatedThread{
-  background-color: black;
-  border-color: black;
-}
-#thread-timeline .blockedThread{
-  background-color: indianred;
-  border-color: indianred;
-}
-#thread-timeline .newThread{
-  background-color: darkcyan;
-  border-color: darkcyan;
+
+#thread-timeline {
+  .vis-item {
+    border: 1px;
+    border-radius: 0px;
+  }
+  .timedWaitingThread{
+    background-color: #743F2d;
+    border-color: #743F2d;
+  }
+  .waitingThread{
+    background-color: #34302d;
+    border-color: #34302d;
+  }
+  .runnableThread{
+    background-color: #6db33f;
+    border-color: #6db33f;
+  }
+  .terminatedThread{
+    background-color: black;
+    border-color: black;
+  }
+  .blockedThread{
+    background-color: indianred;
+    border-color: indianred;
+  }
+  .newThread{
+    background-color: darkcyan;
+    border-color: darkcyan;
+  }
 }
