@@ -117,7 +117,7 @@ public class CombinationTests {
 	public void testEmitter() throws Throwable {
 		BaseProcessor<Integer, Integer> processor = Processors.emitter();
 
-		int n = 1_000_000;
+		int n = 100_000;
 		int subs = 4;
 		final CountDownLatch latch = new CountDownLatch((n + 1) * subs);
 
