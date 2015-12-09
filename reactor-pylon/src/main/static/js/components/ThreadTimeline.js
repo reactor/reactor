@@ -86,8 +86,6 @@ class ThreadTimeline extends React.Component {
             nextThreadState.lastStateId = nextThreadState.id + ":"+ timestamp.getTime();
 
             lastId = nextThreadState.lastStateId;
-            this.threads.add(nextThreadState);
-
             this.threadStates.add({
                 group : nextThreadState.id,
                 id : nextThreadState.lastStateId,
@@ -95,21 +93,22 @@ class ThreadTimeline extends React.Component {
                 end: new Date(timestamp.getTime() + 1000), //+1 sec
                 className: ThreadTimeline.mapStateColor(nextThreadState.state)
             });
+            this.threads.add(nextThreadState);
 
         }
         else if (nextThreadState.state != oldState.state) {
                 var lastThreadItem = this.threadStates.get(oldState.lastStateId);
-                oldState.lastStateId = oldState.id+":"+timestamp.getTime();
-                lastId = oldState.lastStateId;
+                nextThreadState.lastStateId = oldState.id+":"+timestamp.getTime();
+                lastId = nextThreadState.lastStateId;
 
-                this.threads.update(oldState);
                 this.threadStates.add({
                     group : nextThreadState.id,
-                    id : oldState.lastStateId,
+                    id : nextThreadState.lastStateId,
                     start : new Date(lastThreadItem.end.getTime()),
                     end: new Date(lastThreadItem.end.getTime() + 1000), //+1 sec
                     className: ThreadTimeline.mapStateColor(nextThreadState.state)
                 });
+                this.threads.update(nextThreadState);
         }
         else{
                 if(nextThreadState.state != 'TERMINATED') {
