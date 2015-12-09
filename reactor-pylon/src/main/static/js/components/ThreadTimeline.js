@@ -25,61 +25,105 @@ class ThreadTimeline extends React.Component {
 
     constructor(props) {
         super(props);
+        this.threadStates = new vis.DataSet();
         this.threads = new vis.DataSet();
+        this.timeline = null;
     }
 
     draw(){
+        if(this.timeline == null) {
+            var options = {
+                stack: false,
+                throttleRedraw: 15,
+                align: "left",
+                showCurrentTime: true
+            };
+            var container = document.getElementById('thread-timeline');
+            this.timeline = new vis.Timeline(container, null, options);
+            this.timeline.setGroups(this.threads);
+            this.timeline.setItems(this.threadStates);
+        }
+
 
         // create a data set
-
-        var start = new Date((new Date()).getTime() - 1 * 60 * 1000);
-        var end   = new Date((new Date()).getTime() + 3 * 60 * 1000);
-        var container = document.getElementById('thread-timeline');
-
-        var options = {
-            showCurrentTime: true
-        };
-        var timeline = new vis.Timeline(container, this.threads, options);
+        var start = new Date((new Date()).getTime() - 30 * 1000);
+        var end   = new Date((new Date()).getTime() + 60 * 1000);
 
         // timeline.addCustomTime(new Date());
 
         // set a custom range from -1 minute to +3 minutes current time
-        timeline.setWindow(start, end, {animation: false});
+        this.timeline.setWindow(start, end, {animation: false});
     }
 
-    updateThread(nextThreadState){
+    static mapStateColor(state){
+        if (state == 'WAITING') {
+            return "waitingThread";
+        }
+        else if (state == 'TIMED_WAITING') {
+            return "timedWaitingThread";
+        }
+        else if (state == 'RUNNABLE') {
+            return "runnableThread";
+        }
+        else if (state == 'BLOCKED') {
+            return"blockedThread";
+        }
+        else if (state == 'TERMINATED') {
+            return "terminatedThread";
+        }
+        else if (state == 'NEW') {
+            return"newThread";
+        }
+    }
+
+    updateThread(nextThreadState) {
         var oldState = this.threads.get(nextThreadState.id);
-        if(oldState == null) {
+        var lastId = null;
+        if (oldState == null) {
             nextThreadState.content = nextThreadState.name;
-            nextThreadState.start = new Date();
-            nextThreadState.end = new Date((new Date()).getTime() + 1000); //+1 sec
+            nextThreadState.lastStateId = nextThreadState.id + ":"+ new Date().getTime();
+
+            lastId = nextThreadState.lastStateId;
+
+            var timestamp = new Date();
+            this.threads.add(nextThreadState);
+
+            this.threadStates.add({
+                group : nextThreadState.id,
+                id : nextThreadState.lastStateId,
+                start : timestamp,
+                end: new Date(timestamp.getTime() + 1000), //+1 sec
+                className: ThreadTimeline.mapStateColor(nextThreadState.state)
+            });
+
         }
-        else {
-            nextThreadState.end = new Date(oldState.end.getTime() + 1000); //+1 sec
-            if (nextThreadState.state == oldState.state) {
-                //ignore
-            }
-            else if (nextThreadState.state == 'WAITING') {
-                //nextThreadState.className =
-            }
-            else if (nextThreadState.state == 'TIMED_WAITING') {
+        else if (nextThreadState.state != oldState.state) {
+                var lastThreadItem = this.threadStates.get(oldState.lastStateId);
+                oldState.lastStateId = oldState.id+":"+new Date().getTime();
+                lastId = oldState.lastStateId;
 
-            }
-            else if (nextThreadState.state == 'RUNNABLE') {
-
-            }
-            else if (nextThreadState.state == 'BLOCKED') {
-
-            }
-            else if (nextThreadState.state == 'TERMINATED') {
-
-            }
-            else if (nextThreadState.state == 'NEW') {
-
-            }
+                this.threads.update(oldState);
+                this.threadStates.add({
+                    group : nextThreadState.id,
+                    id : oldState.lastStateId,
+                    start : new Date(lastThreadItem.end.getTime()),
+                    end: new Date(lastThreadItem.end.getTime() + 1000), //+1 sec
+                    className: ThreadTimeline.mapStateColor(nextThreadState.state)
+                });
+        }
+        else{
+                if(nextThreadState.state != 'TERMINATED') {
+                    var lastThreadItem = this.threadStates.get(oldState.lastStateId);
+                    lastId = oldState.lastStateId;
+                    lastThreadItem.end = new Date(lastThreadItem.end.getTime() + 1000); //+1 sec
+                    this.threadStates.update(lastThreadItem);
+                }
+                this.threads.update(nextThreadState);
         }
 
-        this.threads.update(nextThreadState);
+        if (lastId != null && this.timeline != null) {
+            this.timeline.focus([lastId], {animation: {duration: 300, easingFunction: 'linear'}}); // ms
+        }
     }
 
     componentDidMount() {

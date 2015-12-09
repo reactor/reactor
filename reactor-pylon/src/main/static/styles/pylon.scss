@@ -125,3 +125,26 @@ h1#logo {
 #graphProcessor {
   height: 450px;
 }
+
+#thread-timeline .vis-item {
+  border: none;
+}
+
+#thread-timeline .waitingThread{
+  background-color: #743F2d;
+}
+#thread-timeline .timedWaitingThread{
+  background-color: #34302d;
+}
+#thread-timeline .runnableThread{
+  background-color: #6db33f;
+}
+#thread-timeline .terminatedThread{
+  background-color: black;
+}
+#thread-timeline .blockedThread{
+  background-color: indianred;
+}
+#thread-timeline .newThread{
+  background-color: darkcyan;
+}
