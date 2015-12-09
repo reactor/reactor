@@ -45,7 +45,7 @@
     "gulp-streamify": "0.0.5",
     "gulp-uglify": "^1.2.0",
     "gulp-util": "^3.0.6",
-    "history": "^1.13.1",
+    "history": "^1.15.0",
     "humps": "^0.6.0",
     "istanbul": "^0.4.0",
     "jsdom": "^3.1.2",
