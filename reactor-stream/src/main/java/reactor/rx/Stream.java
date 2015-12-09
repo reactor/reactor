@@ -340,6 +340,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<O> dispatchOn(final ProcessorGroup processorProvider) {
 		return new Lift<O, O>(this){
 			@Override
+			@SuppressWarnings("unchecked")
 			public void subscribe(Subscriber s) {
 				try {
 					Processor<O, O> processor = processorProvider.dispatchOn();
@@ -359,6 +360,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<O> publishOn(final ProcessorGroup processorProvider) {
 		return new Lift<O, O>(this){
 			@Override
+			@SuppressWarnings("unchecked")
 			public void subscribe(Subscriber s) {
 				try {
 					Processor<O, O> processor = processorProvider.publishOn();
