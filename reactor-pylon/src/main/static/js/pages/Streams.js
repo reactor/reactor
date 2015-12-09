@@ -201,6 +201,9 @@ class Streams extends React.Component {
                 }
             }
             n.label = n.name;
+            if(n.definedId){
+                n.shape = "square";
+            }
         }
         for (var edge in json.edges) {
             e = json.edges[edge];

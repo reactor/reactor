@@ -204,10 +204,25 @@ public final class ReactiveStateUtils implements ReactiveState {
 		return name.isEmpty() ? "anonymous" : name;
 	}
 
+	/**
+	 *
+	 * @param o
+	 * @param id
+	 * @return
+	 */
 	public static String getIdOrDefault(Object o, String id) {
 		return Identified.class.isAssignableFrom(o.getClass()) ?
 				((Identified)o).getId() :
 				id;
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
+	public static boolean isUnique(Object o) {
+		return  o != null && Identified.class.isAssignableFrom(o.getClass());
 	}
 
 	/**
@@ -523,6 +538,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		public final boolean isHighlight() {
 			return highlight;
+		}
+
+		public final boolean isDefinedId() {
+			return isUnique(object);
 		}
 
 		public final boolean isReference() {
