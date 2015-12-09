@@ -79,13 +79,13 @@ class ThreadTimeline extends React.Component {
     updateThread(nextThreadState) {
         var oldState = this.threads.get(nextThreadState.id);
         var lastId = null;
+        var timestamp = new Date();
         if (oldState == null) {
             nextThreadState.content = nextThreadState.name;
-            nextThreadState.lastStateId = nextThreadState.id + ":"+ new Date().getTime();
+
+            nextThreadState.lastStateId = nextThreadState.id + ":"+ timestamp.getTime();
 
             lastId = nextThreadState.lastStateId;
-
-            var timestamp = new Date();
             this.threads.add(nextThreadState);
 
             this.threadStates.add({
@@ -99,7 +99,7 @@ class ThreadTimeline extends React.Component {
         }
         else if (nextThreadState.state != oldState.state) {
                 var lastThreadItem = this.threadStates.get(oldState.lastStateId);
-                oldState.lastStateId = oldState.id+":"+new Date().getTime();
+                oldState.lastStateId = oldState.id+":"+timestamp.getTime();
                 lastId = oldState.lastStateId;
 
                 this.threads.update(oldState);

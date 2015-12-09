@@ -127,24 +127,31 @@ h1#logo {
 }
 
 #thread-timeline .vis-item {
-  border: none;
+  border: 1px;
+  border-radius: 0px;
 }
 
 #thread-timeline .waitingThread{
   background-color: #743F2d;
+  border-color: #743F2d;
 }
 #thread-timeline .timedWaitingThread{
   background-color: #34302d;
+  border-color: #34302d;
 }
 #thread-timeline .runnableThread{
   background-color: #6db33f;
+  border-color: #6db33f;
 }
 #thread-timeline .terminatedThread{
   background-color: black;
+  border-color: black;
 }
 #thread-timeline .blockedThread{
   background-color: indianred;
+  border-color: indianred;
 }
 #thread-timeline .newThread{
   background-color: darkcyan;
+  border-color: darkcyan;
 }
