@@ -41,6 +41,7 @@ import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.LiteBlockingWaitStrategy;
@@ -62,7 +63,8 @@ import reactor.fn.Supplier;
  * @param <E> Type of dispatched signal
  * @author Stephane Maldini
  */
-public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
+public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
+		implements ReactiveState.Buffering{
 
 	/**
 	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
@@ -681,6 +683,11 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 		return true;
 	}
 
+	@Override
+	public long pending() {
+		return ringBuffer.pending() + (retryBuffer != null ? retryBuffer.pending() : 0L);
+	}
+
 	RingBuffer<MutableSignal<E>> ringBuffer() {
 		return ringBuffer;
 	}
@@ -698,8 +705,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E> {
 		}
 		return retry;
 	}
-
-	;
 
 	private final class RingBufferSubscription implements Subscription, Upstream {
 

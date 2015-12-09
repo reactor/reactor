@@ -324,6 +324,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		@Override
+		public boolean isTerminated() {
+			return super.isTerminated() && subscribers.length == 0;
+		}
+
+		@Override
 		public long upstreamsCount() {
 			return subscribers.length;
 		}
@@ -398,7 +403,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					}
 				}
 
-				boolean d = isTerminated();
+				boolean d = super.isTerminated();
 				svq = emitBuffer;
 				BufferSubscriber<?, ?>[] inner = subscribers;
 				int n = inner.length;

@@ -40,6 +40,7 @@ import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.wait.LiteBlockingWaitStrategy;
 import reactor.core.support.wait.PhasedBackoffWaitStrategy;
@@ -71,7 +72,8 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @author Anatoly Kadyshev
  */
-public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
+public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
+		implements ReactiveState.Buffering{
 
 	/**
 	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
@@ -690,6 +692,11 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E> {
 
 	public Publisher<Void> writeWith(final Publisher<? extends E> source) {
 		return RingBufferSubscriberUtils.writeWith(source, ringBuffer);
+	}
+
+	@Override
+	public long pending() {
+		return ringBuffer.pending();
 	}
 
 	@Override

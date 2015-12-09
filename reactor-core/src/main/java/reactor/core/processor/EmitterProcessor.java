@@ -589,7 +589,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 	}
 
 	static final class EmitterSubscriber<T>
-			implements Subscription, ActiveUpstream, ActiveDownstream, Bounded, Upstream, Downstream {
+			implements Subscription, ActiveUpstream, ActiveDownstream, Buffering, Bounded, Upstream, Downstream {
 
 		final long                  id;
 		final EmitterProcessor<T>   parent;
@@ -665,6 +665,11 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 		@Override
 		public boolean isCancelled() {
 			return done;
+		}
+
+		@Override
+		public long pending() {
+			return pollCursor == null ? -1L : parent.emitBuffer.getCursor() - pollCursor.get();
 		}
 
 		@Override
