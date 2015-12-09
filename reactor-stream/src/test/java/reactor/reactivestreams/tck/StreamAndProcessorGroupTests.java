@@ -19,10 +19,15 @@ package reactor.reactivestreams.tck;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
+import org.reactivestreams.Processor;
 import org.testng.annotations.AfterClass;
 import reactor.Processors;
+import reactor.Subscribers;
 import reactor.core.processor.ProcessorGroup;
+import reactor.core.subscription.ReactiveSession;
 import reactor.fn.tuple.Tuple1;
+import reactor.io.net.ReactiveNet;
+import reactor.io.net.nexus.Nexus;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.StreamProcessor;
@@ -52,6 +57,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 				.dispatchOn(sharedGroup)
 		                  .partition(2)
 		                  .flatMap(stream -> stream.dispatchOn(asyncGroup)
+		                                           .log()
 		                                           .observe(this::monitorThreadUse)
 		                                           .scan((prev, next) -> next)
 		                                           .map(integer -> -integer)
@@ -87,6 +93,21 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		//for(int i =0; i < 1000; i++)
 		super.testHotIdentityProcessor();
 	}
+
+	public static void main(String... args) throws Exception {
+		AbstractStreamVerification s = new StreamAndProcessorGroupTests();
+		Processor p = s.createProcessor(256);
+		ReactiveSession sess = ReactiveSession.create(p);
+		p.subscribe(Subscribers.unbounded());
+		Nexus nexus = ReactiveNet.nexus().withSystemStats();
+		nexus.monitor(p);
+		nexus.startAndAwait();
+		final Integer n = 1;
+		for(;;){
+			sess.submit(n);
+		}
+	}
+
 
 	@Override
 	@Test

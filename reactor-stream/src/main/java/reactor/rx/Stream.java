@@ -158,32 +158,14 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public <V> Stream<V> liftProcessor(@Nonnull final Supplier<? extends Processor<O, V>> processorSupplier) {
-		final long capacity = getCapacity();
-
-		return new Stream<V>() {
-
+		return lift(new Function<Subscriber<? super V>, Subscriber<? super O>>() {
 			@Override
-			public long getCapacity() {
-				return capacity;
+			public Subscriber<? super O> apply(Subscriber<? super V> subscriber) {
+				Processor<O, V> processor = processorSupplier.get();
+				processor.subscribe(subscriber);
+				return processor;
 			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			public void subscribe(Subscriber<? super V> s) {
-				try {
-					Processor<O, V> processor = processorSupplier.get();
-					processor.subscribe(s);
-					Stream.this.subscribe(processor);
-				}
-				catch (Throwable t) {
-					s.onError(t);
-				}
-			}
-		};
+		});
 	}
 
 	/**
@@ -344,28 +326,10 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			return (Stream<E>) processor;
 		}
 
-		final long capacity = getCapacity();
-
-		return new Stream<E>() {
-
+		return new Lift<O, E>(this){
 			@Override
-			public long getCapacity() {
-				return capacity;
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			public void subscribe(Subscriber<? super E> s) {
-				try {
-					processor.subscribe(s);
-				}
-				catch (Throwable t) {
-					s.onError(t);
-				}
+			public void subscribe(Subscriber s) {
+				processor.subscribe(s);
 			}
 		};
 	}
@@ -374,23 +338,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 */
 	public final Stream<O> dispatchOn(final ProcessorGroup processorProvider) {
-		final long capacity = getCapacity();
-
-		return new Stream<O>() {
-
+		return new Lift<O, O>(this){
 			@Override
-			public long getCapacity() {
-				return capacity;
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			@SuppressWarnings("unchecked")
-			public void subscribe(Subscriber<? super O> s) {
+			public void subscribe(Subscriber s) {
 				try {
 					Processor<O, O> processor = processorProvider.dispatchOn();
 					processor.subscribe(s);
@@ -407,23 +357,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 */
 	public final Stream<O> publishOn(final ProcessorGroup processorProvider) {
-		final long capacity = getCapacity();
-
-		return new Stream<O>() {
-
+		return new Lift<O, O>(this){
 			@Override
-			public long getCapacity() {
-				return capacity;
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			@SuppressWarnings("unchecked")
-			public void subscribe(Subscriber<? super O> s) {
+			public void subscribe(Subscriber s) {
 				try {
 					Processor<O, O> processor = processorProvider.publishOn();
 					processor.subscribe(s);
@@ -957,20 +893,10 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 		final Publisher<V> mergedStream = Publishers.merge(Publishers.from(publisherList));
 
-		return new Stream<V>() {
+		return new Lift<O, V>(this) {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
 				mergedStream.subscribe(s);
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
 			}
 		};
 	}
@@ -985,21 +911,11 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final <V> Stream<V> flatMap(@Nonnull final Function<? super O, ? extends Publisher<? extends V>> fn) {
 
-		return new Stream<V>() {
+		return new Lift<O, V>(this) {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
 				Publishers.flatMap(Stream.this, fn)
 				          .subscribe(s);
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
 			}
 		};
 	}
@@ -1026,21 +942,11 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 1.1, 2.0
 	 */
 	public final <V> Stream<V> concatMap(@Nonnull final Function<? super O, Publisher<? extends V>> fn) {
-		return new Stream<V>() {
+		return new Lift<O, V>(this) {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
 				Publishers.concatMap(Stream.this, fn)
 				          .subscribe(s);
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
 			}
 		};
 	}
@@ -1057,21 +963,11 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final <V> Stream<V> merge() {
 		final Stream<? extends Publisher<? extends V>> thiz = (Stream<? extends Publisher<? extends V>>) this;
 
-		return new Stream<V>() {
+		return new Lift<O, V>(this) {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
 				Publishers.merge(thiz)
 				          .subscribe(s);
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
 			}
 		};
 	}
@@ -1082,21 +978,11 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> mergeWith(final Publisher<? extends O> publisher) {
-		return new Stream<O>() {
+		return new Lift<O, O>(this) {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
 				Publishers.merge(Publishers.from(Arrays.asList(Stream.this, publisher)))
 				          .subscribe(s);
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
 			}
 		};
 	}
@@ -1108,21 +994,11 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> concatWith(final Publisher<? extends O> publisher) {
-		return new Stream<O>() {
+		return new Lift<O, O>(this) {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
 				Publishers.concat(Publishers.from(Arrays.asList(Stream.this, publisher)))
 				          .subscribe(s);
-			}
-
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
 			}
 		};
 	}
@@ -1217,20 +1093,10 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final <T2, V> Stream<V> zipWith(final Publisher<? extends T2> publisher,
 			final @Nonnull BiFunction<? super O, ? super T2, ? extends V> zipper) {
-		return new Stream<V>() {
+		return new Lift<O, V>(this) {
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
 				Publishers.<O, T2, V>zip(Stream.this, publisher, zipper).subscribe(s);
-			}
-
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
 			}
 		};
 	}
@@ -1270,17 +1136,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			return this;
 		}
 
-		return new Stream<O>() {
-			@Override
-			public void subscribe(Subscriber<? super O> s) {
-				Stream.this.subscribe(s);
-			}
-
-			@Override
-			public Timer getTimer() {
-				return Stream.this.getTimer();
-			}
-
+		return new Lift<O, O>(this){
 			@Override
 			public long getCapacity() {
 				return elements;
@@ -1317,7 +1173,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> onOverflowBuffer(final int size) {
-		return new Stream<O>() {
+		return new Lift<O,O>(this) {
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
 				Processor<O, O> emitter = Processors.replay(size);
@@ -2424,17 +2280,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a configured stream
 	 */
 	public Stream<O> timer(final Timer timer) {
-		return new Stream<O>() {
-			@Override
-			public void subscribe(Subscriber<? super O> s) {
-				Stream.this.subscribe(s);
-			}
-
-			@Override
-			public long getCapacity() {
-				return Stream.this.getCapacity();
-			}
-
+		return new Lift<O, O>(this) {
 			@Override
 			public Timer getTimer() {
 				return timer;
@@ -2497,4 +2343,36 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 		}
 	};
+
+	private static abstract class Lift<E, O> extends Stream<O> implements Upstream{
+
+		protected final Stream<E> origin;
+		private final long capacity;
+
+		public Lift(Stream<E> origin) {
+			this.origin = origin;
+			this.capacity = origin.getCapacity();
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public void subscribe(Subscriber<? super O> s) {
+			origin.subscribe((Subscriber<? super E>)s);
+		}
+
+		@Override
+		public Object upstream() {
+			return origin;
+		}
+
+		@Override
+		public long getCapacity() {
+			return capacity;
+		}
+
+		@Override
+		public Timer getTimer() {
+			return origin.getTimer();
+		}
+	}
 }
