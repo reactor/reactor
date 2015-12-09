@@ -35,10 +35,10 @@ public class BufferAllocator implements Allocator<Buffer> {
 	private final Allocator<Buffer> delegate;
 
 	/**
-	 * Create a {@code BufferAllocator} of size=256, direct=false, and bufferSize=Buffer.SMALL_BUFFER_SIZE.
+	 * Create a {@code BufferAllocator} of size=256, direct=false, and bufferSize=Buffer.SMALL_IO_BUFFER_SIZE.
 	 */
 	public BufferAllocator() {
-		this(256, false, ReactiveState.SMALL_BUFFER_SIZE);
+		this(256, false, ReactiveState.SMALL_IO_BUFFER_SIZE);
 	}
 
 	/**

@@ -143,7 +143,7 @@ public final class IO {
 
 	private static final ChannelCloseConsumer channelCloseConsumer       = new ChannelCloseConsumer();
 	private static final ChannelReadConsumer  defaultChannelReadConsumer = new ChannelReadConsumer(ReactiveState
-	  .SMALL_BUFFER_SIZE);
+	  .SMALL_IO_BUFFER_SIZE);
 
 	/**
 	 * A read access to the source file

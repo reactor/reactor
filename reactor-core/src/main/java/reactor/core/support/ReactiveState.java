@@ -273,13 +273,13 @@ public interface ReactiveState {
 	 * The size, in bytes, of a small buffer. Can be configured using the {@code reactor.io.defaultBufferSize} system
 	 * property. Default to 16384 bytes.
 	 */
-	int SMALL_BUFFER_SIZE = Integer.parseInt(System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16));
+	int SMALL_IO_BUFFER_SIZE = Integer.parseInt(System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16));
 
 	/**
 	 * The maximum allowed buffer size in bytes. Can be configured using the {@code reactor.io.maxBufferSize} system
 	 * property. Defaults to 16384000 bytes.
 	 */
-	int MAX_BUFFER_SIZE = Integer.parseInt(System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000 * 16));
+	int MAX_IO_BUFFER_SIZE = Integer.parseInt(System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000 * 16));
 
 	/**
 	 *

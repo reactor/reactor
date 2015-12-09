@@ -414,7 +414,7 @@ class BufferSpec extends Specification {
 			def copy = buffer.copy()
 
 		then: "a new Buffer is created on a copy"
-			copy.capacity() == ReactiveState.SMALL_BUFFER_SIZE
+			copy.capacity() == ReactiveState.SMALL_IO_BUFFER_SIZE
 			copy.asString() == "Hello World!"
 	}
 
