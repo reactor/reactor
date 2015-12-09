@@ -81,7 +81,11 @@ class ThreadTimeline extends React.Component {
         var lastId = null;
         var timestamp = new Date();
         if (oldState == null) {
-            nextThreadState.content = nextThreadState.name;
+            nextThreadState.title = nextThreadState.name;
+            nextThreadState.content = nextThreadState.name.substring(0, Math.min(17, nextThreadState.name.length));
+            if(nextThreadState.name.length > 17){
+                nextThreadState.content += "...";
+            }
 
             nextThreadState.lastStateId = nextThreadState.id + ":"+ timestamp.getTime();
 
