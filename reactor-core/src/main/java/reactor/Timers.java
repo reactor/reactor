@@ -41,6 +41,18 @@ public final class Timers {
 	}
 
 	/**
+	 * Create a new {@link Timer} using the default resolution (50MS) and backlog size (64). All times
+	 * will
+	 * rounded up to the closest multiple of this resolution.
+	 * @param name timer thread prefix
+	 * <p>
+	 * return a new {@link Timer}
+	 */
+	public static Timer create(String name) {
+		return create(name, 50);
+	}
+
+	/**
 	 * Create a new {@link Timer} using the the given timer {@code resolution} and backlog size (64). All times
 	 * will
 	 * rounded up to the closest multiple of this resolution.
@@ -51,6 +63,20 @@ public final class Timers {
 	 */
 	public static Timer create(int resolution) {
 		return create(resolution, 64);
+	}
+
+	/**
+	 * Create a new {@link Timer} using the the given timer {@code resolution} and backlog size (64). All times
+	 * will
+	 * rounded up to the closest multiple of this resolution.
+	 *
+	 * @param name timer thread prefix
+	 * @param resolution resolution of this timer in milliseconds
+	 *                   <p>
+	 *                   return a new {@link Timer}
+	 */
+	public static Timer create(String name, int resolution) {
+		return create(name, resolution, 64);
 	}
 
 	/**
@@ -65,7 +91,23 @@ public final class Timers {
 	 *                   return a new {@link Timer}
 	 */
 	public static Timer create(int resolution, int bufferSize) {
-		Timer timer = new HashWheelTimer(resolution, bufferSize, new SleepingWaitStrategy());
+		return create("reactor-timer", resolution, bufferSize);
+	}
+
+	/**
+	 * Create a new {@code HashWheelTimer} using the given timer {@code resolution} and {@code bufferSize}. All times
+	 * will
+	 * rounded up to the closest multiple of this resolution.
+	 *
+	 * @param name timer thread prefix
+	 * @param resolution resolution of this timer in milliseconds
+	 * @param bufferSize size of the wheel supporting the Timer, the larger the wheel, the less the lookup time is
+	 *                   for sparse timeouts.
+	 *                   <p>
+	 *                   return a new {@link Timer}
+	 */
+	public static Timer create(String name, int resolution, int bufferSize) {
+		Timer timer = new HashWheelTimer(name, resolution, bufferSize, new SleepingWaitStrategy(), null);
 		timer.start();
 		return timer;
 	}
