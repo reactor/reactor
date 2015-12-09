@@ -16,6 +16,7 @@
 
 package reactor.rx.action.transformation;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,6 +33,7 @@ import reactor.core.processor.rb.disruptor.RingBuffer;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.rx.stream.GroupedStream;
@@ -56,7 +58,13 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		return new GroupByAction<>(subscriber, timer, fn);
 	}
 
-	static final class GroupedEmitter<T, K> extends GroupedStream<K, T> implements Subscription, Subscriber<T> {
+	static final class GroupedEmitter<T, K> extends GroupedStream<K, T>
+			implements Subscription, Subscriber<T>,
+			           ReactiveState.Upstream,
+			           ReactiveState.Downstream,
+			           ReactiveState.Buffering,
+			           ReactiveState.ActiveUpstream,
+			           ReactiveState.ActiveDownstream{
 
 		private final GroupByAction<T, K> parent;
 		private final BaseProcessor<T, T> processor;
@@ -89,7 +97,7 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		public GroupedEmitter(K key, GroupByAction<T, K> parent) {
 			super(key);
 			this.parent = parent;
-			this.processor = Processors.replay();
+			this.processor = Processors.replay(BaseProcessor.SMALL_BUFFER_SIZE, Integer.MAX_VALUE, true);
 		}
 
 
@@ -155,6 +163,9 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 				done = true;
 				error = t;
 				removeGroup();
+				if (RUNNING.getAndIncrement(this) == 0) {
+					drainRequests();
+				}
 			}
 		}
 
@@ -163,6 +174,9 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 			if (TERMINATED.compareAndSet(this, 0, 1)) {
 				done = true;
 				removeGroup();
+				if (RUNNING.getAndIncrement(this) == 0) {
+					drainRequests();
+				}
 			}
 		}
 
@@ -171,8 +185,34 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 			return BaseProcessor.SMALL_BUFFER_SIZE;
 		}
 
-		public long getAvailableCapacity() {
-			return requested;
+		@Override
+		public boolean isCancelled() {
+			return cancelled;
+		}
+
+		@Override
+		public boolean isStarted() {
+			return !cancelled;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return done;
+		}
+
+		@Override
+		public long pending() {
+			return buffer != null ? buffer.size() : -1L;
+		}
+
+		@Override
+		public Object downstream() {
+			return processor;
+		}
+
+		@Override
+		public Object upstream() {
+			return parent;
 		}
 
 		@Override
@@ -271,7 +311,8 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		}
 	}
 
-	static final class GroupByAction<T, K> extends SubscriberWithDemand<T, GroupedStream<K, T>> {
+	static final class GroupByAction<T, K> extends SubscriberWithDemand<T, GroupedStream<K, T>>
+			implements ReactiveState.LinkedDownstreams{
 
 		private final Function<? super T, ? extends K> fn;
 
@@ -363,6 +404,16 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 		}
 
 		@Override
+		public Iterator<?> downstreams() {
+			return groupByMap().values().iterator();
+		}
+
+		@Override
+		public long downstreamsCount() {
+			return groupByMap.size();
+		}
+
+		@Override
 		protected void doCancel() {
 			if(CANCELLED_GROUPS.decrementAndGet(this) == 0){
 				super.doCancel();
@@ -391,7 +442,7 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 
 		void checkGroupsCompleted(){
 			if(CANCELLED_GROUPS.decrementAndGet(this) == 0){
-				doCancel();
+				super.doCancel();
 			}
 			else if (isCompleted() &&
 					groupByMap.isEmpty() &&

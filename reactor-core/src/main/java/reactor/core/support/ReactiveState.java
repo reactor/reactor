@@ -230,12 +230,12 @@ public interface ReactiveState {
 	/**
 	 * A criteria grouped component
 	 */
-	interface Grouped extends ReactiveState {
+	interface Grouped<K> extends ReactiveState {
 
 		/**
 		 * Return defined identifier
 		 */
-		String getKey();
+		K key();
 	}
 
 	/**

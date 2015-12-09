@@ -15,6 +15,7 @@
  */
 package reactor.rx.stream;
 
+import reactor.core.support.ReactiveState;
 import reactor.rx.Stream;
 
 /**
@@ -27,7 +28,7 @@ import reactor.rx.Stream;
  *
  * @author Stephane Maldini
  */
-public abstract class GroupedStream<K, T> extends Stream<T> {
+public abstract class GroupedStream<K, T> extends Stream<T> implements ReactiveState.Grouped<K> {
 	private final K key;
 
 	public GroupedStream(K key) {

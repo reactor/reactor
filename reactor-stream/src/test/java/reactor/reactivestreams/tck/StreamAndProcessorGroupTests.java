@@ -57,7 +57,6 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 				.dispatchOn(sharedGroup)
 		                  .partition(2)
 		                  .flatMap(stream -> stream.dispatchOn(asyncGroup)
-		                                           .log()
 		                                           .observe(this::monitorThreadUse)
 		                                           .scan((prev, next) -> next)
 		                                           .map(integer -> -integer)
@@ -72,6 +71,11 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 				.dispatchOn(sharedGroup)
 				.when(Throwable.class, Throwable::printStackTrace)
 		                  .combine();
+	}
+
+	@Override
+	public void required_exerciseWhiteboxHappyPath() throws Throwable {
+		super.required_exerciseWhiteboxHappyPath();
 	}
 
 	@Override
@@ -94,7 +98,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		super.testHotIdentityProcessor();
 	}
 
-	public static void main(String... args) throws Exception {
+	/*public static void main(String... args) throws Exception {
 		AbstractStreamVerification s = new StreamAndProcessorGroupTests();
 		Processor p = s.createProcessor(256);
 		ReactiveSession sess = ReactiveSession.create(p);
@@ -106,7 +110,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		for(;;){
 			sess.submit(n);
 		}
-	}
+	}*/
 
 
 	@Override
