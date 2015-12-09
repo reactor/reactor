@@ -283,9 +283,12 @@ public final class ReactiveStateUtils implements ReactiveState {
 				return removedGraph;
 			}
 
-			for (Node node : nodes.values()) {
+			Iterator<Node> nodeIterator = nodes.values().iterator();
+			Node node;
+			while(nodeIterator.hasNext()){
+				node = nodeIterator.next();
 				if (node.isTerminated() || node.isCancelled()) {
-					nodes.remove(node.getId());
+					nodeIterator.remove();
 					removedGraph.nodes.put(node.getId(), node);
 				}
 			}
