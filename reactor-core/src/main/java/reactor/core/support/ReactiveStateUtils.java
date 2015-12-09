@@ -481,8 +481,8 @@ public final class ReactiveStateUtils implements ReactiveState {
 			return "{" +
 					" full : " + !subscan +
 					", trace : " + trace +
-					", edges : " + edges +
-					", nodes : " + nodes +
+					", edges : " + edges.values() +
+					", nodes : " + nodes.values() +
 					'}';
 		}
 	}

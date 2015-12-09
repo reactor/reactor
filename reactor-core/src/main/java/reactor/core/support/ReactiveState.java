@@ -79,8 +79,8 @@ public interface ReactiveState {
 	}
 
 	/**
-	 * A component that is linked to N {@link Publisher}. Useful to traverse from left to right a pipeline of
-	 * reactive actions implementing this interface.
+	 * A component that is linked to N {@link Publisher}. Useful to traverse from left to right a pipeline of reactive
+	 * actions implementing this interface.
 	 */
 	interface LinkedUpstreams extends ReactiveState {
 
@@ -137,7 +137,6 @@ public interface ReactiveState {
 		 */
 		Object downstream();
 	}
-
 
 	/**
 	 * A component that is linked to N target {@link Subscriber}. Useful to traverse from right to left a pipeline of
@@ -242,14 +241,8 @@ public interface ReactiveState {
 	 * A component that is meant to be introspectable on finest logging level
 	 */
 	interface Trace extends ReactiveState {
-	}
 
-	/**
-	 * A sub-component
-	 */
-	interface Inner extends ReactiveState {
 	}
-
 
 	/**
 	 * A component that is delegating to a sub-flow (processor, or publisher/subscriber chain)
@@ -263,6 +256,39 @@ public interface ReactiveState {
 
 
 	/*
-
+			Core System Env
 	 */
+
+	/**
+	 *
+	 */
+	boolean TRACE_CANCEL = Boolean.parseBoolean(System.getProperty("reactor.trace.cancel", "false"));
+
+	/**
+	 *
+	 */
+	boolean TRACE_NOCAPACITY = Boolean.parseBoolean(System.getProperty("reactor.trace.nocapacity", "false"));
+
+	/**
+	 * The size, in bytes, of a small buffer. Can be configured using the {@code reactor.io.defaultBufferSize} system
+	 * property. Default to 16384 bytes.
+	 */
+	int SMALL_BUFFER_SIZE = Integer.parseInt(System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16));
+
+	/**
+	 * The maximum allowed buffer size in bytes. Can be configured using the {@code reactor.io.maxBufferSize} system
+	 * property. Defaults to 16384000 bytes.
+	 */
+	int MAX_BUFFER_SIZE = Integer.parseInt(System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000 * 16));
+
+	/**
+	 *
+	 */
+	long DEFAULT_TIMEOUT = Long.parseLong(System.getProperty("reactor.await.defaultTimeout", "30000"));
+
+	/**
+	 * Whether the RingBuffer*Processor can be graphed by wrapping the individual Sequence with the target downstream
+	 */
+	boolean TRACEABLE_RING_BUFFER_PROCESSOR = Boolean.parseBoolean(System.getProperty("reactor.ringbuffer.trace",
+			"true"));
 }

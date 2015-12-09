@@ -31,7 +31,6 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
@@ -61,9 +60,6 @@ import reactor.rx.broadcast.Broadcaster;
 public class Promise<O>
 		implements Supplier<O>, Processor<O, O>, Consumer<O>, ReactiveState.Bounded, Subscription,
 		           ReactiveState.Upstream, ReactiveState.Downstream, ReactiveState.ActiveUpstream {
-
-	public static final long DEFAULT_TIMEOUT =
-			Long.parseLong(System.getProperty("reactor.await.defaultTimeout", "30000"));
 
 	private volatile int requested = 0;
 

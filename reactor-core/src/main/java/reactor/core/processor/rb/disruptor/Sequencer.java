@@ -59,11 +59,15 @@ public abstract class Sequencer
 	 *
      * @param init
      * @param delegate
-     * @param <E>
      * @return
      */
-    public static <E> Wrapped<E> wrap(long init, E delegate){
-        return wrap(newSequence(init), delegate);
+    public static Sequence wrap(long init, Object delegate){
+        if(ReactiveState.TRACEABLE_RING_BUFFER_PROCESSOR) {
+            return wrap(newSequence(init), delegate);
+        }
+        else{
+            return newSequence(init);
+        }
     }
 
 	/**

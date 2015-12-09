@@ -106,9 +106,9 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		Nexus nexus = ReactiveNet.nexus().withSystemStats();
 		nexus.monitor(p);
 		nexus.startAndAwait();
-		final Integer n = 1;
+		int n = 1;
 		for(;;){
-			sess.submit(n);
+			sess.submit(n++);
 		}
 	}*/
 

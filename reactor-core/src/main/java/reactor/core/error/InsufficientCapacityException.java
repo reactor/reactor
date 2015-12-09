@@ -15,6 +15,8 @@
  */
 package reactor.core.error;
 
+import reactor.core.support.ReactiveState;
+
 /**
  * <p>Exception thrown when the it is not possible to dispatch a signal
  * due to insufficient capacity.
@@ -25,19 +27,16 @@ package reactor.core.error;
 public final class InsufficientCapacityException extends RuntimeException {
 	private static final InsufficientCapacityException INSTANCE = new InsufficientCapacityException();
 
-	public static final boolean TRACE_NOCAPACITY = Boolean.parseBoolean(System.getProperty("reactor.trace.nocapacity",
-	  "false"));
-
 	private InsufficientCapacityException() {
 		super("The subscriber is overrun by more signals than expected (bounded queue...)");
 	}
 
 	public static InsufficientCapacityException get() {
-		return TRACE_NOCAPACITY ? new InsufficientCapacityException() : INSTANCE;
+		return ReactiveState.TRACE_NOCAPACITY ? new InsufficientCapacityException() : INSTANCE;
 	}
 
 	@Override
 	public synchronized Throwable fillInStackTrace() {
-		return TRACE_NOCAPACITY ? super.fillInStackTrace() : this;
+		return ReactiveState.TRACE_NOCAPACITY ? super.fillInStackTrace() : this;
 	}
 }

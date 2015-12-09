@@ -20,6 +20,7 @@ import org.reactivestreams.Subscriber;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.error.ReactorFatalException;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
@@ -141,7 +142,7 @@ public final class IO {
 	}
 
 	private static final ChannelCloseConsumer channelCloseConsumer       = new ChannelCloseConsumer();
-	private static final ChannelReadConsumer  defaultChannelReadConsumer = new ChannelReadConsumer(Buffer
+	private static final ChannelReadConsumer  defaultChannelReadConsumer = new ChannelReadConsumer(ReactiveState
 	  .SMALL_BUFFER_SIZE);
 
 	/**
