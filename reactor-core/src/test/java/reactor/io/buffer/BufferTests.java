@@ -10,8 +10,9 @@ import static org.junit.Assert.assertTrue;
  * @author Sergey Shcherbakov
  */
 public class BufferTests {
-
+/*
 	@Test
+	@Ignore
 	public void testAutoExpand() {
 
 		int initial_small_size = ReactiveState.SMALL_IO_BUFFER_SIZE;
@@ -27,7 +28,7 @@ public class BufferTests {
 			ReactiveState.SMALL_IO_BUFFER_SIZE = initial_small_size;
 			ReactiveState.MAX_IO_BUFFER_SIZE = initial_max_size;
 		}
-	}
+	}*/
 
 	@Test
 	public void testEquals() {
