@@ -38,16 +38,6 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 
 	static ProcessorGroup<Integer> sharedGroup;
 
-	static final Nexus nexus = ReactiveNet.nexus();
-
-	static {
-		try {
-			nexus.startAndAwait();
-		}
-		catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-	}
 
 	@Override
 	public StreamProcessor<Integer, Integer> createProcessor(int bufferSize) {
@@ -59,7 +49,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 				Processors.asyncGroup("stream-p-tck", bufferSize, 2,
 						Throwable::printStackTrace);
 
-		return nexus.monitor(Broadcaster.<Integer>create(true))
+		return Broadcaster.<Integer>create(true)
 				.log()
 				.dispatchOn(sharedGroup)
 		                  .partition(2)
