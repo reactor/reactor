@@ -129,18 +129,13 @@ public final class ReactiveStateUtils implements ReactiveState {
 		if(o == null){
 			return null;
 		}
-
-		int i = prettyPrint ? 1 : 0;
-
-		StringBuffer res = new StringBuffer();
-
-		indent("{", res, 0);
-
-		indent(property("name", getName(o)), res, i);
-
-		indent("}", res, 0);
-
-		return res.toString();
+		Node n = new Node(getName(o), getIdOrDefault(o, getName(o).hashCode()+":"+o.hashCode()), o, true);
+		if(prettyPrint) {
+			return n.toPrettyString();
+		}
+		else{
+			return n.toString();
+		}
 	}
 
 	/**
@@ -347,7 +342,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 			if (o == null) {
 				return null;
 			}
-			return nodes.remove(getIdOrDefault(o, getName(o) + ":" + o.hashCode()));
+			return nodes.remove(getIdOrDefault(o, getName(o).hashCode() + ":" + o.hashCode()));
 		}
 
 		public Collection<Node> getNodes() {
@@ -521,10 +516,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 		@Override
 		public String toString() {
 			return "{" +
-					" full : " + !subscan +
-					", trace : " + trace +
-					", edges : " + edges.values() +
-					", nodes : " + nodes.values() +
+					" \"full\" : " + !subscan +
+					", \"trace\" : " + trace +
+					", \"edges\" : " + edges.values() +
+					", \"nodes\" : " + nodes.values() +
 					'}';
 		}
 	}
@@ -641,7 +636,37 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		@Override
 		public String toString() {
-			return "{ id : \"" + id + "\", label : \"" + name + "\" }";
+			return toPrettyString(-1);
+		}
+
+		public String toPrettyString() {
+			return toPrettyString(1);
+		}
+
+		public String toPrettyString(int indent) {
+			int i = indent;
+
+			StringBuffer res = new StringBuffer();
+
+			indent("{", res, indent != -1 ? 0 : -1, false);
+
+			indent(property("id", getId()), res, i, true);
+			indent(property("name", getName()), res, i, true);
+			indent(property("capacity", getCapacity()), res, i, true);
+			indent(property("buffered", getBuffered()), res, i, true);
+			indent(property("highlight", getBuffered()), res, i, true);
+			indent(property("definedId", isDefinedId()), res, i, true);
+			if(isReference()) {
+				indent(property("reference", "true"), res, i, true);
+			}
+			indent(property("active", isActive()), res, i, true);
+			indent(property("terminated", isTerminated()), res, i, true);
+			indent(property("cancelled", isCancelled()), res, i, false);
+
+
+			indent("}", res, indent != -1 ? 0 : -1, false);
+
+			return res.toString();
 		}
 
 		@Override
@@ -708,31 +733,38 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		@Override
 		public String toString() {
-			return "{ from : \"" + from + "\", to : \"" + to + "\" }";
+			return "{ "+property("id", getId())+", "+property("from", from)+", "+property("to", to)+" }";
 		}
 	}
 
 
-	private static void indent(String symbol, StringBuffer res, int indent){
+	private static void indent(String symbol, StringBuffer res, int indent, boolean comma){
 		for(int i = 0; i < indent; i++){
 			res.append("\t");
 		}
 		res.append(symbol);
-		if(indent > 0){
+		if(comma){
+			res.append(", ");
+		}
+		if(indent > -1){
 			res.append("\n");
 		}
 	}
 
 	private static String property(String name, Object value){
-		StringBuffer res = new StringBuffer();
-		res.append(name);
-		res.append(" : ");
-		if(value == null){
-			res.append("null");
+		if(value == null || value.equals(-1)){
+			return "";
 		}
-		else {
-			res.append(String.class.isAssignableFrom(value.getClass()) ? "'" + value.toString() + "'" : value);
+
+		if(Number.class.isAssignableFrom(value.getClass())){
+			return "\"" +name + "\" : "+value.toString();
 		}
-		return res.toString();
+
+		if(Boolean.class.isAssignableFrom(value.getClass())){
+			return "\"" +name + "\" : "+value.toString();
+		}
+
+		return "\"" +name + "\" : " +
+				(String.class.isAssignableFrom(value.getClass()) ? "\"" + value.toString() + "\"" : value);
 	}
 }

@@ -23,6 +23,10 @@ buildscript {
 			'io.spring.gradle:spring-io-plugin:0.0.4.RELEASE'
   }
 }
+plugins {
+  id 'java' // or 'groovy' Must be explicitly applied
+  id 'com.github.johnrengelman.shadow' version '1.2.2'
+}
 
 description = 'Reactor Monitoring Client'
 
@@ -62,13 +66,16 @@ configurations.all {
 
 group = 'io.projectreactor'
 
-apply plugin: 'propdeps'
-apply plugin: 'java'
-apply plugin: 'groovy'
 apply from: "${gradleScriptDir}/ide.gradle"
-apply plugin: 'application'
+apply plugin: 'propdeps'
+apply plugin: 'groovy'
 
-mainClassName = "reactor.nexus.pylon.Pylon"
+
+jar {
+  manifest {
+	attributes 'Main-Class': "reactor.nexus.pylon.Pylon"
+  }
+}
 
 [compileJava, compileTestJava]*.options*.compilerArgs = ["-Xlint:varargs",
 														 "-Xlint:cast",

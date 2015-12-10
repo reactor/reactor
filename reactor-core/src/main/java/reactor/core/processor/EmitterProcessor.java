@@ -326,9 +326,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 				int j = getLastIndex(n, inner);
 				Sequence innerSequence;
 				long _r;
-				if (q == null) {
-					q = emitBuffer;
-				}
 
 				for (int i = 0; i < n; i++) {
 					@SuppressWarnings("unchecked") EmitterSubscriber<T> is = (EmitterSubscriber<T>) inner[j];
@@ -344,6 +341,9 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 						continue;
 					}
 
+					if (q == null) {
+						q = emitBuffer;
+					}
 					innerSequence = is.pollCursor;
 
 					if (innerSequence != null && r > 0) {
