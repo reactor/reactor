@@ -50,7 +50,6 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 						Throwable::printStackTrace);
 
 		return Broadcaster.<Integer>create(true)
-				.log()
 				.dispatchOn(sharedGroup)
 		                  .partition(2)
 		                  .flatMap(stream -> stream.dispatchOn(asyncGroup)
