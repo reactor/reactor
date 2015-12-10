@@ -1,8 +1,6 @@
 'use strict';
 
-import {camelizeKeys} from 'humps';
-import request        from 'superagent';
-import RxDOM           from 'rx-dom';
+//import {camelizeKeys} from 'humps';
 import Rx           from 'rx-lite';
 import JSON           from 'JSON2';
 import cookie           from 'react-cookie';
@@ -33,91 +31,11 @@ const APIUtils = {
         }
     },
 
-    normalizeResponse(response) {
-        return camelizeKeys(response.body);
-    },
-
     bytesToSize(bytes) {
         var sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
         if (bytes == 0) return [0, "Bytes"];
         var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
         return [Math.round(bytes / Math.pow(1024, i), 2), sizes[i]];
-    },
-
-    get(path) {
-        return new Promise((resolve, reject) => {
-            request.get(this.target + path)
-                .withCredentials()
-                .end((err, res) => {
-                    if (err || !res.ok) {
-                        reject(this.normalizeResponse(err || res));
-                    }
-                    else {
-                        resolve(this.normalizeResponse(res));
-                    }
-                });
-        });
-    },
-
-    post(path, body) {
-        return new Promise((resolve, reject) => {
-            request.post(this.target + path, body)
-                .withCredentials()
-                .end((err, res) => {
-                    console.log(err, res);
-                    if (err || !res.ok) {
-                        reject(this.normalizeResponse(err || res));
-                    }
-                    else {
-                        resolve(this.normalizeResponse(res));
-                    }
-                });
-        });
-    },
-
-    patch(path, body) {
-        return new Promise((resolve, reject) => {
-            request.patch(this.target + path, body)
-                .withCredentials()
-                .end((err, res) => {
-                    if (err || !res.ok) {
-                        reject(this.normalizeResponse(err || res));
-                    }
-                    else {
-                        resolve(this.normalizeResponse(res));
-                    }
-                });
-        });
-    },
-
-    put(path, body) {
-        return new Promise((resolve, reject) => {
-            request.put(this.target + path, body)
-                .withCredentials()
-                .end((err, res) => {
-                    if (err || !res.ok) {
-                        reject(this.normalizeResponse(err || res));
-                    }
-                    else {
-                        resolve(this.normalizeResponse(res));
-                    }
-                });
-        });
-    },
-
-    del(path) {
-        return new Promise((resolve, reject) => {
-            request.del(this.target + path)
-                .withCredentials()
-                .end((err, res) => {
-                    if (err || !res.ok) {
-                        reject(this.normalizeResponse(err || res));
-                    }
-                    else {
-                        resolve(this.normalizeResponse(res));
-                    }
-                });
-        });
     },
 
     ws(path, stateObserver) {

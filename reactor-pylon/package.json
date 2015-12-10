@@ -43,7 +43,7 @@
     "gulp-sass": "^2.0.x",
     "gulp-sourcemaps": "^1.5.2",
     "gulp-streamify": "0.0.5",
-    "gulp-uglify": "^1.2.0",
+    "gulp-uglify": "^1.5.1",
     "gulp-util": "^3.0.6",
     "history": "^1.15.0",
     "humps": "^0.6.0",
@@ -67,6 +67,7 @@
     "vis": "^4.10.0",
     "superagent": "^1.2.0",
     "vinyl-source-stream": "^1.1.0",
+    "vinyl-buffer": "^1.0.0",
     "watchify": "^3.2.x",
     "when": "^3.7.4",
     "yargs": "^3.27.0"
