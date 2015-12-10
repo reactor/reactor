@@ -45,7 +45,7 @@ public final class IO {
 
 	/**
 	 * Transform a {@link ReadableByteChannel} into a {@link Publisher} of {@link Buffer} with a max chunk size of
-	 * {@link ReactiveState.SMALL_IO_BUFFER_SIZE}.
+	 * {@link ReactiveState#SMALL_IO_BUFFER_SIZE}.
 	 * <p>
 	 * Complete when channel read is negative. The read sequence is unique per subscriber.
 	 *
@@ -79,7 +79,7 @@ public final class IO {
 
 	/**
 	 * Read bytes as {@link Buffer} from file specified by the {@link Path} argument with a max chunk size of
-	 * {@link ReactiveState.SMALL_IO_BUFFER_SIZE}.
+	 * {@link ReactiveState#SMALL_IO_BUFFER_SIZE}.
 	 * <p>
 	 * Complete when channel read is negative. The read sequence is unique per subscriber.
 	 *
@@ -105,7 +105,7 @@ public final class IO {
 
 	/**
 	 * Read bytes as {@link Buffer} from file specified by the {@link Path} argument with a max chunk size of
-	 * {@link ReactiveState.SMALL_IO_BUFFER_SIZE}.
+	 * {@link ReactiveState#SMALL_IO_BUFFER_SIZE}.
 	 * <p>
 	 * Complete when channel read is negative. The read sequence is unique per subscriber.
 	 *
@@ -143,7 +143,7 @@ public final class IO {
 
 	private static final ChannelCloseConsumer channelCloseConsumer       = new ChannelCloseConsumer();
 	private static final ChannelReadConsumer  defaultChannelReadConsumer = new ChannelReadConsumer(ReactiveState
-	  .SMALL_IO_BUFFER_SIZE);
+	  .SMALL_IO_BUFFER_SIZE * 8);
 
 	/**
 	 * A read access to the source file
