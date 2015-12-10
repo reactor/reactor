@@ -36,7 +36,7 @@ function buildScript(file, watch) {
 
         gutil.log('Rebundle...');
 
-        return stream.on('error', handleErrors)
+        var normal = stream.on('error', handleErrors)
             .pipe(source(file))
             //.pipe(gulpif(global.isProd, uglify()))
             .pipe(streamify(rename({
@@ -44,8 +44,13 @@ function buildScript(file, watch) {
             })))
             .pipe(gulpif(!global.isProd, sourcemaps.write('./')))
             .pipe(gulp.dest(config.scripts.dest))
-            .pipe(gulpif(!global.isProd && config.devDir !== undefined, gulp.dest(config.devDir + 'assets/js')))
             .pipe(gulpif(browserSync.active, browserSync.reload({stream: true, once: true})));
+
+        if (!global.isProd && config.devDir !== undefined) {
+            normal.pipe(gulp.dest(config.devDir + 'assets/js'));
+        }
+
+        return normal;
     }
 
     return rebundle();

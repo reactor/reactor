@@ -6,7 +6,11 @@ import config from '../config';
 
 gulp.task('copyFonts', function () {
 
-    return gulp.src([config.sourceDir + 'fonts/**/*'])
-        .pipe(gulp.dest(config.buildDir + 'assets/fonts/'))
-        .pipe(gulpif(config.devDir !== undefined, gulp.dest(config.devDir + 'assets/fonts')));
+    var stream = gulp.src([config.sourceDir + 'fonts/**/*']);
+
+    if (!global.isProd && config.devDir !== undefined) {
+        stream.pipe(gulp.dest(config.devDir + 'assets/fonts'));
+    }
+
+    return stream.pipe(gulp.dest(config.buildDir + 'assets/fonts/'));
 });

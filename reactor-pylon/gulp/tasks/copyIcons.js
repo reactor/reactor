@@ -7,8 +7,11 @@ import config from '../config';
 gulp.task('copyIcons', function () {
 
     // Copy icons from root directory to build/
-    return gulp.src([config.sourceDir + 'favicon.ico'])
-        .pipe(gulp.dest(config.buildDir))
-        .pipe(gulpif(config.devDir !== undefined, gulp.dest(config.devDir)))
+    var stream = gulp.src([config.sourceDir + 'favicon.ico']);
 
+    if (!global.isProd && config.devDir !== undefined) {
+        stream.pipe(gulp.dest(config.devDir));
+    }
+
+    return stream.pipe(gulp.dest(config.buildDir));
 });

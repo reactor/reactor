@@ -26,6 +26,7 @@ import reactor.core.error.CancelException
 import reactor.core.processor.ProcessorGroup
 import reactor.core.processor.RingBufferProcessor
 import reactor.core.subscriber.SubscriberWithContext
+import reactor.core.support.ReactiveStateUtils
 import reactor.fn.BiFunction
 import reactor.rx.action.Signal
 import reactor.rx.broadcast.Broadcaster
@@ -1705,6 +1706,7 @@ class StreamsSpec extends Specification {
 			}
 
 			println source.debug()
+	  println ReactiveStateUtils.prettyPrint(source)
 
 		when:
 			'some values are accepted'
