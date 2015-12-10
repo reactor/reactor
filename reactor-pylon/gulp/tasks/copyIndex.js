@@ -8,6 +8,6 @@ gulp.task('copyIndex', function () {
 
     return gulp.src([config.sourceDir + 'index.html', config.sourceDir +'index.appcache'])
         .pipe(gulp.dest(config.buildDir))
-        .pipe(gulpif(typeof config.devDir !== 'undefined', gulp.dest(config.devDir)))
+        .pipe(gulpif(config.devDir !== 'undefined', gulp.dest(config.devDir)))
 
 });

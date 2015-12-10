@@ -737,8 +737,14 @@ public final class ReactiveStateUtils implements ReactiveState {
 		}
 	}
 
-
-	private static void indent(String symbol, StringBuffer res, int indent, boolean comma){
+	/**
+	 *
+	 * @param symbol
+	 * @param res
+	 * @param indent
+	 * @param comma
+	 */
+	public static void indent(String symbol, StringBuffer res, int indent, boolean comma){
 		for(int i = 0; i < indent; i++){
 			res.append("\t");
 		}
@@ -751,7 +757,13 @@ public final class ReactiveStateUtils implements ReactiveState {
 		}
 	}
 
-	private static String property(String name, Object value){
+	/**
+	 *
+	 * @param name
+	 * @param value
+	 * @return
+	 */
+	public static String property(String name, Object value){
 		if(value == null || value.equals(-1)){
 			return "";
 		}

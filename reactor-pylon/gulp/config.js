@@ -19,7 +19,7 @@ const config = {
   },
   sourceDir: './src/main/static/',
   buildDir: './src/main/resources/public/',
-  devDir: './build/resources/main/public/'
+  devDir: './build/classes/main/public/'
 };
 
 export default config;

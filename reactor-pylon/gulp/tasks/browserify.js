@@ -44,7 +44,7 @@ function buildScript(file, watch) {
             })))
             .pipe(gulpif(!global.isProd, sourcemaps.write('./')))
             .pipe(gulp.dest(config.scripts.dest))
-            .pipe(gulpif(!global.isProd && config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/js')))
+            .pipe(gulpif(!global.isProd && config.devDir !== undefined, gulp.dest(config.devDir + 'assets/js')))
             .pipe(gulpif(browserSync.active, browserSync.reload({stream: true, once: true})));
     }
 

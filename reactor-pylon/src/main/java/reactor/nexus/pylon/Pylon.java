@@ -21,8 +21,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
 import java.util.jar.JarEntry;
@@ -63,7 +66,9 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	private final String                     staticPath;
 
 	public static void main(String... args) throws Exception {
-		Pylon pylon = create(ReactiveNet.httpServer(12013));
+		String port = System.getenv("PORT");
+		Pylon pylon = create(ReactiveNet.httpServer("0.0.0.0", port != null ? Integer.parseInt(port) : 12013),
+				extractAssets() );
 
 		final CountDownLatch stopped = new CountDownLatch(1);
 
@@ -88,8 +93,17 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	 * @return
 	 */
 	public static Pylon create(HttpServer<Buffer, Buffer> server) throws Exception {
+		return create(server, findOrExtractAssets());
+	}
 
-		String staticPath = findOrExtractAssets();
+	/**
+	 *
+	 * @param server
+	 * @param staticPath
+	 * @return
+	 * @throws Exception
+	 */
+	public static Pylon create(HttpServer<Buffer, Buffer> server, String staticPath) throws Exception {
 
 		Pylon pylon = new Pylon(server.getDefaultTimer(), server, staticPath);
 
@@ -109,30 +123,33 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 		if (Pylon.class.getResource(CONSOLE_STATIC_PATH + HTML_DEPENDENCY_CONSOLE)
 		               .getPath()
 		               .contains("jar!/")) {
-			final File dest = Files.createTempDirectory("reactor-pylon")
-			                       .toFile();
-
-			dest.deleteOnExit();
-
-			Runtime.getRuntime()
-			       .addShutdownHook(new Thread() {
-
-				       @Override
-				       public void run() {
-					       if (dest.delete()) {
-						       log.info("Probes called back from temporary zone");
-					       }
-				       }
-			       });
-
-			log.info("Sending scouting probes to : " + dest);
-			deployStaticFiles(dest.toString());
-			return dest.toString() + CONSOLE_STATIC_PATH;
+			return extractAssets();
 		}
 		else {
 			return Pylon.class.getResource(CONSOLE_STATIC_PATH)
 			                  .getPath();
 		}
+	}
+
+	private static String extractAssets() throws Exception{
+		final File dest = Files.createTempDirectory("reactor-pylon")
+		                       .toFile();
+
+		dest.deleteOnExit();
+
+		Runtime.getRuntime()
+		       .addShutdownHook(new Thread() {
+
+			       @Override
+			       public void run() {
+				       if (dest.delete()) {
+					       log.info("Probes called back from temporary zone");
+				       }
+			       }
+		       });
+
+		log.info("Sending scouting probes to : " + dest);
+		return deployStaticFiles(dest.toString()) + CONSOLE_STATIC_PATH;
 	}
 
 	private String pathToStatic(String target) {
@@ -181,13 +198,28 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	 *
 	 * @param destDir
 	 */
-	public static void deployStaticFiles(String destDir) throws IOException, URISyntaxException {
+	public static String deployStaticFiles(String destDir) throws IOException, URISyntaxException {
 
-		JarFile jar = new JarFile(new File(Pylon.class.getProtectionDomain()
-		                                              .getCodeSource()
-		                                              .getLocation()
-		                                              .toURI()
-		                                              .getPath()));
+
+
+		ProtectionDomain protectionDomain = Pylon.class.getProtectionDomain();
+		CodeSource codeSource = protectionDomain.getCodeSource();
+		URI location = (codeSource == null ? null : codeSource.getLocation().toURI());
+		String path = (location == null ? null : location.getSchemeSpecificPart());
+		if (path == null) {
+			throw new IllegalStateException("Unable to determine code source archive");
+		}
+		File root = new File(path);
+		if (!root.exists()) {
+			throw new IllegalStateException(
+					"Unable to determine code source archive from " + root);
+		}
+
+		if(root.isDirectory()){
+			return root.getAbsolutePath();
+		}
+
+		JarFile jar = new JarFile(root);
 		Enumeration enumEntries = jar.entries();
 		final String prefix = CONSOLE_STATIC_PATH.substring(1);
 		while (enumEntries.hasMoreElements()) {
@@ -209,6 +241,8 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 			fos.close();
 			is.close();
 		}
+
+		return destDir;
 	}
 
 	private static class CacheManifestHandler
