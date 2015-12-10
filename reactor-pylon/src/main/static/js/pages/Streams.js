@@ -181,7 +181,7 @@ class Streams extends React.Component {
             else {
                 if (n.capacity != -1) {
                     n.shape = "dot";
-                    if (n.capacity == 9223372036854775807) {
+                    if (n.capacity == "unbounded") {
                         n.color = {
                             border: "green", background: "#f1f1f1"
                         };

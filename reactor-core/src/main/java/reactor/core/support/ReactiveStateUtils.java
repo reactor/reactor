@@ -654,7 +654,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 			indent(property("name", getName()), res, i, true);
 			indent(property("capacity", getCapacity()), res, i, true);
 			indent(property("buffered", getBuffered()), res, i, true);
-			indent(property("highlight", getBuffered()), res, i, true);
+			indent(property("highlight", isHighlight()), res, i, true);
 			indent(property("definedId", isDefinedId()), res, i, true);
 			if(isReference()) {
 				indent(property("reference", "true"), res, i, true);
@@ -733,7 +733,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		@Override
 		public String toString() {
-			return "{ "+property("id", getId())+", "+property("from", from)+", "+property("to", to)+" }";
+			return "{ "+property("id", getId())+
+					(discrete ? ", "+property("discrete", "true") : "" )+
+					", "+property("from", from)+
+					", "+property("to", to)+" }";
 		}
 	}
 
@@ -769,6 +772,9 @@ public final class ReactiveStateUtils implements ReactiveState {
 		}
 
 		if(Number.class.isAssignableFrom(value.getClass())){
+			if(Long.MAX_VALUE == ((Number)value).longValue()){
+				return "\"" +name + "\" : \"unbounded\"";
+			}
 			return "\"" +name + "\" : "+value.toString();
 		}
 
