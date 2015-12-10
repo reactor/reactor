@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.rb.disruptor.RingBuffer;
@@ -41,8 +42,7 @@ import reactor.fn.tuple.Tuple;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class CombineLatestOperator<TUPLE extends Tuple, V>
-		implements Function<Subscriber<? super V>, Subscriber<? super Publisher[]>> {
+public final class CombineLatestOperator<TUPLE extends Tuple, V> implements Publishers.Operator<Publisher[], V>{
 
 	final Function<? super TUPLE, ? extends V> combinator;
 	final int                                  bufferSize;

@@ -29,7 +29,10 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Stephane Maldini
  * @since 2.0.2
  */
-public class SubscriberWithContext<T, C> implements Subscriber<T>, ReactiveState.Downstream {
+public class SubscriberWithContext<T, C> implements Subscriber<T>,
+                                                    ReactiveState.ActiveUpstream,
+                                                    ReactiveState.ActiveDownstream,
+                                                    ReactiveState.Downstream {
 
 	private volatile       int                                              terminated       = 0;
 	protected static final AtomicIntegerFieldUpdater<SubscriberWithContext> TERMINAL_UPDATER =
@@ -111,6 +114,16 @@ public class SubscriberWithContext<T, C> implements Subscriber<T>, ReactiveState
 			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);
 		}
+	}
+
+	@Override
+	public boolean isStarted() {
+		return terminated == 0;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return terminated == 1;
 	}
 
 	public boolean isCancelled() {

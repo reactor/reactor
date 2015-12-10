@@ -24,6 +24,7 @@ import reactor.Publishers;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
@@ -33,7 +34,9 @@ import reactor.rx.action.StreamProcessor;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class StreamOperator<I, O> extends Stream<O> implements ReactiveState.Upstream, PublisherFactory.LiftOperator<I, O> {
+public final class StreamOperator<I, O> extends Stream<O> implements ReactiveState.Named, ReactiveState.Upstream,
+                                                                     PublisherFactory.LiftOperator<I, O>,
+                                                                     ReactiveState.ActiveUpstream {
 
 	final private Publisher<I>                                           source;
 	final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
@@ -100,6 +103,21 @@ public final class StreamOperator<I, O> extends Stream<O> implements ReactiveSta
 	}
 
 	@Override
+	public String getName() {
+		return ReactiveStateUtils.getName(barrierProvider).replaceAll("Operator", "");
+	}
+
+	@Override
+	public boolean isStarted() {
+		return false;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return false;
+	}
+
+	@Override
 	public Object upstream() {
 		return source;
 	}
@@ -111,8 +129,9 @@ public final class StreamOperator<I, O> extends Stream<O> implements ReactiveSta
 
 	@Override
 	public String toString() {
-		return "ProxyStream{" +
-				"source=" + source +
+		return "{" +
+				"lift: true, " +
+				"source: " + source.toString() +
 				'}';
 	}
 }

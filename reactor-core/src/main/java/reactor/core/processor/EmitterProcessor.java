@@ -580,11 +580,11 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 
 	@Override
 	public String toString() {
-		return "EmitterProcessor{" +
-				"done=" + done +
-				", error=" + error +
-				", outstanding=" + outstanding +
-				", emitBuffer=" + emitBuffer +
+		return "{" +
+				"done: " + done +
+				(error != null ? ", error: '" + error.getMessage() + "', " : "") +
+				", outstanding: " + outstanding +
+				", pending: " + emitBuffer +
 				'}';
 	}
 

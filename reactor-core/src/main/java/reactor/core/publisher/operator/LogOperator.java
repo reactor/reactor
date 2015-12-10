@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.processor.rb.disruptor.Sequence;
 import reactor.core.processor.rb.disruptor.Sequencer;
 import reactor.core.subscriber.SubscriberBarrier;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Function;
 
 /**
@@ -30,7 +31,8 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class LogOperator<IN> implements Function<Subscriber<? super IN>, Subscriber<? super IN>> {
+public final class LogOperator<IN> implements ReactiveState.Named, Function<Subscriber<? super IN>, Subscriber<? super
+		IN>> {
 
 	public static final int SUBSCRIBE      = 0b010000000;
 	public static final int ON_SUBSCRIBE   = 0b001000000;
@@ -58,6 +60,11 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 	}
 
 	@Override
+	public String getName() {
+		return "/loggers/"+log.getName();
+	}
+
+	@Override
 	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
 		long newId = uniqueId++;
 		if ((options & SUBSCRIBE) == SUBSCRIBE && log.isInfoEnabled()) {
@@ -69,7 +76,7 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 		return new LoggerBarrier<>(this, newId, subscriber);
 	}
 
-	private static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> {
+	private static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> implements Named {
 
 		private final int      options;
 		private final Logger   log;
@@ -154,8 +161,13 @@ public final class LogOperator<IN> implements Function<Subscriber<? super IN>, S
 		}
 
 		@Override
+		public String getName() {
+			return "/loggers/"+log.getName()+"/"+uniqueId;
+		}
+
+		@Override
 		public String toString() {
-			return getClass().getSimpleName() + "{subId=" + uniqueId + ", logger=" + log.getName() + "}";
+			return "{logId: " + uniqueId + ", logger: '" + log.getName() + "' }";
 		}
 	}
 

@@ -106,6 +106,48 @@ public final class ReactiveStateUtils implements ReactiveState {
 	 * @param o
 	 * @return
 	 */
+	public static String prettyPrint(Object o) {
+		return print(o, true);
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
+	public static String print(Object o) {
+		return print(o, false);
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @param prettyPrint
+	 * @return
+	 */
+	public static String print(Object o, boolean prettyPrint) {
+		if(o == null){
+			return null;
+		}
+
+		int i = prettyPrint ? 1 : 0;
+
+		StringBuffer res = new StringBuffer();
+
+		indent("{", res, 0);
+
+		indent(property("name", getName(o)), res, i);
+
+		indent("}", res, 0);
+
+		return res.toString();
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
 	public static boolean hasUpstream(Object o) {
 		return o != null && Upstream.class.isAssignableFrom(o.getClass()) && ((Upstream) o).upstream() != null;
 	}
@@ -670,4 +712,27 @@ public final class ReactiveStateUtils implements ReactiveState {
 		}
 	}
 
+
+	private static void indent(String symbol, StringBuffer res, int indent){
+		for(int i = 0; i < indent; i++){
+			res.append("\t");
+		}
+		res.append(symbol);
+		if(indent > 0){
+			res.append("\n");
+		}
+	}
+
+	private static String property(String name, Object value){
+		StringBuffer res = new StringBuffer();
+		res.append(name);
+		res.append(" : ");
+		if(value == null){
+			res.append("null");
+		}
+		else {
+			res.append(String.class.isAssignableFrom(value.getClass()) ? "'" + value.toString() + "'" : value);
+		}
+		return res.toString();
+	}
 }

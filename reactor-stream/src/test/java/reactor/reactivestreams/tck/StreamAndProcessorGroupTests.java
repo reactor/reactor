@@ -19,14 +19,10 @@ package reactor.reactivestreams.tck;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
-import org.reactivestreams.Processor;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import reactor.Processors;
-import reactor.Subscribers;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.subscription.ReactiveSession;
-import reactor.core.support.ReactiveStateUtils;
-import reactor.fn.tuple.Tuple1;
 import reactor.io.net.ReactiveNet;
 import reactor.io.net.nexus.Nexus;
 import reactor.rx.Stream;
@@ -40,9 +36,18 @@ import reactor.rx.broadcast.Broadcaster;
 @org.testng.annotations.Test
 public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 
-	ProcessorGroup<Integer> sharedGroup =
-			Processors.asyncGroup("stream-tck", 32, 2,
-					Throwable::printStackTrace, null, false);
+	static ProcessorGroup<Integer> sharedGroup;
+
+	static final Nexus nexus = ReactiveNet.nexus();
+
+	static {
+		try {
+			nexus.startAndAwait();
+		}
+		catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
 
 	@Override
 	public StreamProcessor<Integer, Integer> createProcessor(int bufferSize) {
@@ -54,7 +59,8 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 				Processors.asyncGroup("stream-p-tck", bufferSize, 2,
 						Throwable::printStackTrace);
 
-		return Broadcaster.<Integer>passthrough()
+		return nexus.monitor(Broadcaster.<Integer>create(true))
+				.log()
 				.dispatchOn(sharedGroup)
 		                  .partition(2)
 		                  .flatMap(stream -> stream.dispatchOn(asyncGroup)
@@ -68,10 +74,10 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		                                           .<Integer>split()
 		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, (t1, t2) ->
 				                                           t1))
-		                  )
-				.dispatchOn(sharedGroup)
+
+				.dispatchOn(sharedGroup))
 				.when(Throwable.class, Throwable::printStackTrace)
-		                  .combine();
+				.combine();
 	}
 
 	@Override
@@ -85,11 +91,37 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		super.stochastic_spec103_mustSignalOnMethodsSequentially();
 	}
 
-	@AfterClass
+	@Override
+	public void required_spec205_mustCallSubscriptionCancelIfItAlreadyHasAnSubscriptionAndReceivesAnotherOnSubscribeSignal()
+			throws Throwable {
+		super.required_spec205_mustCallSubscriptionCancelIfItAlreadyHasAnSubscriptionAndReceivesAnotherOnSubscribeSignal();
+	}
+
+	@Override
+	public void required_spec213_onSubscribe_mustThrowNullPointerExceptionWhenParametersAreNull() throws Throwable {
+		super.required_spec213_onSubscribe_mustThrowNullPointerExceptionWhenParametersAreNull();
+	}
+
 	@Override
 	public void tearDown() {
-		sharedGroup.awaitAndShutdown();
+		//sharedGroup.awaitAndShutdown();
 		super.tearDown();
+	}
+
+
+	@org.junit.BeforeClass
+	@BeforeClass
+	public static void setupGlobal(){
+		System.out.println("test ");
+		sharedGroup = Processors.asyncGroup("stream-tck", 32, 2,
+				Throwable::printStackTrace, null, false);
+	}
+
+	@org.junit.AfterClass
+	@AfterClass
+	public static void tearDownGlobal(){
+		sharedGroup.awaitAndShutdown();
+		System.out.println("shutdown ");
 	}
 
 	@Override
@@ -98,6 +130,15 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		//for(int i =0; i < 1000; i++)
 		super.testHotIdentityProcessor();
 	}
+
+	@Override
+	@Test
+	public void testColdIdentityProcessor() throws InterruptedException {
+		//for (int i = 0; i < 1000; i++)
+		super.testColdIdentityProcessor();
+
+	}
+
 
 	/*public static void main(String... args) throws Exception {
 		AbstractStreamVerification s = new StreamAndProcessorGroupTests();
@@ -112,14 +153,5 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 			sess.submit(n++);
 		}
 	}*/
-
-
-	@Override
-	@Test
-	public void testColdIdentityProcessor() throws InterruptedException {
-		//for (int i = 0; i < 1000; i++)
-			super.testColdIdentityProcessor();
-
-	}
 
 }

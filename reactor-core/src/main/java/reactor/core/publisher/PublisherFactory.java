@@ -31,6 +31,7 @@ import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -52,7 +53,7 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 2.0.2
  */
-public abstract class PublisherFactory {
+public abstract class PublisherFactory implements ReactiveState {
 
 	/**
 	 * Create a {@link Publisher} reacting on requests with the passed {@link BiConsumer}
@@ -281,7 +282,7 @@ public abstract class PublisherFactory {
 		Function<Subscriber<? super O>, Subscriber<? super I>> operator();
 	}
 
-	private static class ReactorPublisher<T, C> implements Publisher<T> {
+	private static class ReactorPublisher<T, C> implements Publisher<T>, ActiveUpstream {
 
 		protected final Function<Subscriber<? super T>, C>            contextFactory;
 		protected final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
@@ -314,10 +315,19 @@ public abstract class PublisherFactory {
 			return new SubscriberProxy<>(this, subscriber, context, requestConsumer, shutdownConsumer);
 		}
 
+		@Override
+		public boolean isStarted() {
+			return false;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return false;
+		}
 	}
 
 	private static final class ForEachPublisher<T, C> extends ReactorPublisher<T, C>
-			implements ReactiveState.Upstream{
+			implements Upstream{
 
 		final Consumer<SubscriberWithContext<T, C>> forEachConsumer;
 
@@ -348,10 +358,10 @@ public abstract class PublisherFactory {
 	}
 
 	private final static class PublisherOperator<I, O>
-			implements ReactiveState.Bounded,
-			           ReactiveState.Named,
-			           ReactiveState.Upstream,
-			           ReactiveState.ActiveUpstream,
+			implements Bounded,
+			           Named,
+			           Upstream,
+			           ActiveUpstream,
 			           LiftOperator<I, O> {
 
 		final private Publisher<I>                                           source;
@@ -405,14 +415,14 @@ public abstract class PublisherFactory {
 
 		@Override
 		public long getCapacity() {
-			return ReactiveState.Bounded.class.isAssignableFrom(source.getClass()) ? ((ReactiveState.Bounded) source).getCapacity() :
+			return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() :
 					Long.MAX_VALUE;
 		}
 	}
 
 	private final static class BoundedPublisher<I>
-			implements Publisher<I>, ReactiveState.Bounded, ReactiveState.Named,
-			           ReactiveState.Upstream, ReactiveState.ActiveUpstream{
+			implements Publisher<I>, Bounded, Named,
+			           Upstream, ActiveUpstream{
 
 		final private Publisher<I>                                           source;
 		final private long capacity;
@@ -453,7 +463,7 @@ public abstract class PublisherFactory {
 		}
 	}
 	private final static class SubscriberProxy<T, C> extends SubscriberWithContext<T, C>
-			implements Subscription, ReactiveState.Upstream, ReactiveState.Trace {
+			implements Subscription, Upstream, ActiveUpstream, Named {
 
 		private final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
 
@@ -475,6 +485,11 @@ public abstract class PublisherFactory {
 		@Override
 		public Publisher<T> upstream() {
 			return source;
+		}
+
+		@Override
+		public String getName() {
+			return ReactiveStateUtils.getName(requestConsumer);
 		}
 
 		@Override

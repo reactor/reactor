@@ -31,7 +31,7 @@ import reactor.core.support.internal.PlatformDependent;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class SwapSubscription<T> implements Subscription, ReactiveState.Upstream {
+public final class SwapSubscription<T> implements Subscription, ReactiveState.Upstream, ReactiveState.Trace {
 
 	@SuppressWarnings("unused")
 	private volatile Subscription subscription;
@@ -70,7 +70,10 @@ public final class SwapSubscription<T> implements Subscription, ReactiveState.Up
 	 */
 	public void swapTo(Subscription subscription) {
 		Subscription old = SUBSCRIPTION.getAndSet(this, subscription);
-		old.cancel();
+		if(old != SignalType.NOOP_SUBSCRIPTION){
+			subscription.cancel();
+			return;
+		}
 		long r = REQUESTED.getAndSet(this, 0L);
 		if(r != 0L){
 			subscription.request(r);

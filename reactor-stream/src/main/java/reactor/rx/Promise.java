@@ -27,6 +27,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
@@ -171,7 +172,7 @@ public class Promise<O>
 			lock.unlock();
 		}
 
-		return stream().lift(new Function<Subscriber<? super O>, Subscriber<? super O>>() {
+		return stream().lift(new Publishers.Operator<O, O>() {
 			@Override
 			public Subscriber<? super O> apply(final Subscriber<? super O> subscriber) {
 				return new SubscriberBarrier<O, O>(subscriber){

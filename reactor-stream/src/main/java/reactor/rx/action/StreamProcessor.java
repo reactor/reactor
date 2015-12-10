@@ -151,9 +151,9 @@ public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>,
 
 	@Override
 	public String toString() {
-		return "ProcessorAction{" +
-				"receiver=" + receiver +
-				", publisher=" + publisher +
+		return "{" +
+				"receiver: " + receiver +
+				", publisher: " + publisher +
 				'}';
 	}
 }
