@@ -41,14 +41,16 @@ class Studio extends React.Component {
             .flatMap(d => {
                 try{
                     var parsed = JSON.parse(stripComments(d));
-                    if(typeof parsed !== Array){
-                        return Rx.Observable.just(parsed);
+                    if(parsed.constructor === Array){
+                        console.log("Graph collections", parsed);
+                        return Rx.Observable.from(parsed)
                     }
                     else{
-                        return Rx.Observable.from(parsed)
+                        return Rx.Observable.just(parsed);
                     }
                 }
                 catch(e){
+                    console.log("Fallback to line by line parsing : ", e);
                     return Rx.Observable
                         .from(d.split("\n"))
                         .filter(d => d.trim())
