@@ -65,7 +65,6 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 			           ReactiveState.Buffering,
 			           ReactiveState.ActiveUpstream,
 			           ReactiveState.ActiveDownstream,
-			           ReactiveState.DownstreamDemand,
 			           ReactiveState.Inner {
 
 		private final GroupByAction<T, K> parent;
@@ -127,11 +126,6 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 				cancelled = true;
 				removeGroup();
 			}
-		}
-
-		@Override
-		public long requestedFromDownstream() {
-			return requested;
 		}
 
 		void start() {
