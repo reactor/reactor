@@ -5,9 +5,10 @@ import Rx           from 'rx-lite';
 import JSON           from 'JSON2';
 import cookie           from 'react-cookie';
 
-const APIUtils = {
+const NexusService = {
 
-    defaultTarget: 'localhost:12012/nexus/', target: '',
+    defaultTarget: 'ws://localhost:12012/nexus/stream',
+    target: '',
 
     offline: 0, ready: 1, working: 2, retry: 3,
 
@@ -38,14 +39,14 @@ const APIUtils = {
         return [Math.round(bytes / Math.pow(1024, i), 2), sizes[i]];
     },
 
-    ws(path, stateObserver) {
+    ws(stateObserver) {
         // Handle the data
         return new Promise((resolve, reject) => {
 
             if (stateObserver !== undefined) {
                 stateObserver.onNext(this.working);
             }
-            var ws = new WebSocket("ws://" + this.target + path);
+            var ws = new WebSocket(this.target);
 
             var thiz = this;
             ws.onopen = (e) => {
@@ -57,7 +58,7 @@ const APIUtils = {
                     receiver: Rx.Observable.create ((obs) => {
                         // Handle messages
                         if (ws == null) {
-                            ws = new WebSocket("ws://" + thiz.target + path);
+                            ws = new WebSocket(thiz.target);
                             ws.onopen = (e) => {
                                 if (stateObserver !== undefined) {
                                     stateObserver.onNext(thiz.ready);
@@ -126,4 +127,4 @@ const APIUtils = {
     }
 };
 
-export default APIUtils;
+export default NexusService;

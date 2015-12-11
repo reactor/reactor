@@ -4,8 +4,9 @@ import React              from 'react';
 
 import Sidebar            from './components/Sidebar';
 import Config             from './pages/Config';
-import API                from './utils/APIUtils';
+import API                from './services/NexusService';
 import Rx                 from 'rx-lite';
+import ReactDOM           from 'react-dom';
 
 const propTypes = {
   params: React.PropTypes.object,
@@ -56,13 +57,35 @@ class App extends React.Component {
 
   componentWillMount() {
       var thiz = this;
-      API.ws('stream', this.state.stateStream).then(res => {
+      API.ws(this.state.stateStream).then(res => {
           res.receiver.subscribe(thiz.state.nexusStream);
           thiz.state.nexusObserver.subscribe(res.sender);
+
+          thiz.start();
+
       }, e => {
+          thiz.showConfig();
           console.log(e);
       });
   }
+
+  start(){
+      ReactDOM.render (
+          <div>
+              <Sidebar {...this.state} />
+              <div id='main'>
+                  {this.renderChildren()}
+              </div>
+          </div>,
+          document.getElementById('app')
+      );
+  }
+
+    showConfig(){
+        ReactDOM.render (
+                <Config {...this.state} />
+        , document.getElementById('app'));
+    }
 
   componentDidMount() {
   }
@@ -83,18 +106,11 @@ class App extends React.Component {
     });
   }
 
-  render() {
-
-
-    return (
-      <div>
-        <Sidebar {...this.state} />
-        <div id='main'>
-          {this.renderChildren()}
-        </div>
-      </div>
-    );
-  }
+    render(){
+        return (
+            <Loader />
+        )
+    }
 
 }
 

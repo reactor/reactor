@@ -50,7 +50,7 @@ function buildScript(file, watch) {
                 .pipe(sourcemaps.init({loadMaps: true}))
                 .pipe(uglify())
                 .pipe(rename({
-                    basename: 'main.min'
+                    basename: 'main'
                 }))
                 .pipe(sourcemaps.write('./'))
                 .pipe(gulp.dest(config.scripts.dest));

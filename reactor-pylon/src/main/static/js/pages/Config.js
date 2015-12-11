@@ -2,6 +2,7 @@
 
 import React         from 'react';
 import {Link}        from 'react-router';
+import API           from '../services/NexusService';
 import DocumentTitle from 'react-document-title';
 
 const propTypes = {
@@ -15,7 +16,7 @@ class Config extends React.Component {
     }
 
     componentDidMount() {
-        this.refs.url.value = "http://localhost/API";
+        this.refs.url.value = API.defaultOrLastTarget();
     }
 
     onSubmit(e) {
@@ -28,8 +29,8 @@ class Config extends React.Component {
         return (
             <div id="config">
                 <div className="header">
-                    <h1 id="logo"><a>Reactor console</a></h1>
-                    <p className="description">Connect to the Nexus API to start monitoring a Reactive System.</p>
+                    <h1 id="logo"><a>Reactor Pylon</a></h1>
+                    <p className="description">Connect to the Nexus API to start monitoring a Reactor System.</p>
                     <form onSubmit={this.onSubmit}>
                         <p>
                             <input ref="url" placeholder="API URL to monitor" className="form-control" type="text" />

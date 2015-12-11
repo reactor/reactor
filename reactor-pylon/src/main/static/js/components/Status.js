@@ -17,7 +17,7 @@
 
 import React         from 'react';
 import {Link}        from 'react-router';
-import API       from '../utils/APIUtils';
+import API       from '../services/NexusService';
 
 class Status extends React.Component {
 
