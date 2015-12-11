@@ -17,6 +17,7 @@
 
 import React         from 'react';
 import {Link}        from 'react-router';
+import Config        from '../pages/Config';
 import API       from '../services/NexusService';
 
 class Status extends React.Component {
@@ -25,6 +26,7 @@ class Status extends React.Component {
         super(props);
         this.state = {backgroundColor: ''};
         this.type = 0;
+        this.disposable = null;
     }
 
     stateUpdate(data){
@@ -47,11 +49,17 @@ class Status extends React.Component {
     }
 
     componentWillMount() {
-        this.props.stateStream.subscribe(
+        this.disposable = this.props.stateStream.subscribe(
             this.stateUpdate.bind(this),
             error => console.log(error),
             () => console.log("State stream completed")
         );
+    }
+
+    componentWillUnmount(){
+        if(this.disposable != null) {
+            this.disposable.dispose();
+        }
     }
 
     render() {

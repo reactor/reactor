@@ -79,7 +79,7 @@ class ThreadTimeline extends React.Component {
     updateThread(nextThreadState) {
         var oldState = this.threads.get(nextThreadState.id);
         var lastId = null;
-        var timestamp = new Date();
+        var timestamp = new Date(nextThreadState.timestamp);
         if (oldState == null) {
             nextThreadState.title = nextThreadState.name;
             nextThreadState.content = nextThreadState.name.substring(0, Math.min(17, nextThreadState.name.length));

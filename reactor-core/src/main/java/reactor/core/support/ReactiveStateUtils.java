@@ -520,6 +520,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 					", \"trace\" : " + trace +
 					", \"edges\" : " + edges.values() +
 					", \"nodes\" : " + nodes.values() +
+					", \"timestamp\" : " + System.currentTimeMillis() +
 					'}';
 		}
 	}

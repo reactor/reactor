@@ -45,6 +45,7 @@ class App extends React.Component {
           .subscribe(logStream);
 
       this.state = {
+        disposable: null,
         nexusStream: nexusStream,
         nexusObserver: new Rx.Subject(),
         stateStream: new Rx.BehaviorSubject(API.offline),
@@ -56,41 +57,40 @@ class App extends React.Component {
   }
 
   componentWillMount() {
-      var thiz = this;
-      API.ws(this.state.stateStream).then(res => {
-          res.receiver.subscribe(thiz.state.nexusStream);
-          thiz.state.nexusObserver.subscribe(res.sender);
 
-          thiz.start();
-
-      }, e => {
-          thiz.showConfig();
-          console.log(e);
-      });
   }
 
-  start(){
-      ReactDOM.render (
-          <div>
-              <Sidebar {...this.state} />
-              <div id='main'>
-                  {this.renderChildren()}
-              </div>
-          </div>,
-          document.getElementById('app')
-      );
-  }
+    startError(e){
+        this.showConfig();
+        console.log(e);
+    }
 
-    showConfig(){
-        ReactDOM.render (
-                <Config {...this.state} />
-        , document.getElementById('app'));
+    start(res) {
+        if(this.disposable == null) {
+            this.disposable = res.receiver.subscribe(this.state.nexusStream);
+            this.state.nexusObserver.subscribe(res.sender);
+        }
+        API.updateTargetAPI()
+    }
+
+    restart() {
+        this.componentWillMount();
+    }
+
+    showConfig() {
+        ReactDOM.render (<Config {...this.state} />, document.getElementById('main'));
     }
 
   componentDidMount() {
+      if(this.disposable == null) {
+          API.ws(this.state.stateStream).then(this.start.bind(this), this.startError.bind(this));
+      }
   }
 
   componentWillUnmount() {
+      if(this.disposable != null){
+          this.disposable.dispose();
+      }
   }
 
   renderChildren() {
@@ -108,7 +108,12 @@ class App extends React.Component {
 
     render(){
         return (
-            <Loader />
+            <div>
+                <Sidebar {...this.state} />
+                <div id='main'>
+                    {this.renderChildren()}
+                </div>
+            </div>
         )
     }
 

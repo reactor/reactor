@@ -28,9 +28,8 @@ class System extends React.Component {
      */
     addDataPoint(json) {
         // add a new data point to the dataset
-        var now = vis.moment();
         this.dataset.add({
-            x: now, y: json.freeMemory
+            x: new Date(json.timestamp), y: json.jvmStats.freeMemory
         });
 
         // remove all data points which are no longer visible
@@ -103,7 +102,6 @@ class System extends React.Component {
         var thiz = this;
         this.draw();
         thiz.disposable = this.props.systemStream
-            .map(json => json.jvmStats)
             .subscribe( json => {
                 thiz.addDataPoint(json);
             }, error =>{
@@ -127,7 +125,10 @@ class System extends React.Component {
                     <div className="section-content">
 
                         <Box heading="Threads">
-                            <ThreadTimeline threadStream={this.props.systemStream.flatMap(json => Rx.Observable.from(json.threads))} />
+                            <ThreadTimeline threadStream={this.props.systemStream
+                                .flatMap(json => Rx.Observable.from(json.threads).doOnNext(t =>
+                                    t.timestamp = json.timestamp
+                                ))} />
                         </Box>
 
                         <Box heading="Free Memory">

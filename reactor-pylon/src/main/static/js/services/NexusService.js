@@ -16,8 +16,6 @@ const NexusService = {
         var target = cookie.load('targetAPI');
         if (typeof target === 'undefined') {
             this.target = this.defaultTarget;
-            console.log("updating targetAPI cookie with : " + this.target)
-            cookie.save('targetAPI', this.target);
         }
         else {
             this.target = target;
