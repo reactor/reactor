@@ -24,6 +24,7 @@ import StreamGraph           from '../components/StreamGraph';
 import JSON           from 'JSON2';
 import Rx            from 'rx-lite';
 import ReactDOM      from 'react-dom';
+import stripComments      from 'strip-json-comments';
 
 const propTypes = {
     network: React.PropTypes.object, nodes: React.PropTypes.object, edges: React.PropTypes.object
@@ -39,11 +40,11 @@ class Studio extends React.Component {
         this.formEventsStream = this.formEvents
             .flatMap(d => {
                 try{
-                    return Rx.Observable.just(JSON.parse(d));
+                    return Rx.Observable.just(JSON.parse(stripComments(d)));
                 }
                 catch(e){
                     return Rx.Observable.from(d.split("\n")).filter(d => d.trim()).doOnNext(d => console.log(d)).map(
-                        d => JSON.parse(d));
+                        d => JSON.parse(stripComments(d)));
                 }
 
             });
