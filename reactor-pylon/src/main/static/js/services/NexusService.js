@@ -37,14 +37,14 @@ const NexusService = {
         return [Math.round(bytes / Math.pow(1024, i), 2), sizes[i]];
     },
 
-    ws(stateObserver) {
+    ws(path, stateObserver) {
         // Handle the data
         return new Promise((resolve, reject) => {
 
             if (stateObserver !== undefined) {
                 stateObserver.onNext(this.working);
             }
-            var ws = new WebSocket(this.target);
+            var ws = new WebSocket(path);
 
             var thiz = this;
             ws.onopen = (e) => {
@@ -56,7 +56,7 @@ const NexusService = {
                     receiver: Rx.Observable.create ((obs) => {
                         // Handle messages
                         if (ws == null) {
-                            ws = new WebSocket(thiz.target);
+                            ws = new WebSocket(path);
                             ws.onopen = (e) => {
                                 if (stateObserver !== undefined) {
                                     stateObserver.onNext(thiz.ready);

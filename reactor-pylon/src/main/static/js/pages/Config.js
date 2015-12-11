@@ -1,7 +1,6 @@
 'use strict';
 
 import React         from 'react';
-import {Link}        from 'react-router';
 import API           from '../services/NexusService';
 import DocumentTitle from 'react-document-title';
 
@@ -12,7 +11,6 @@ class Config extends React.Component {
 
     constructor(props) {
         super(props);
-        this.onSubmit = this.onSubmit.bind(this)
     }
 
     componentDidMount() {
@@ -22,7 +20,7 @@ class Config extends React.Component {
     onSubmit(e) {
         e.preventDefault();
         console.log(this.refs.url.value);
-        console.log(this.refs.opt1.checked);
+        this.props.startCallback(this.refs.url.value);
     }
 
     render() {
@@ -31,7 +29,7 @@ class Config extends React.Component {
                 <div className="header">
                     <h1 id="logo"><a>Reactor Pylon</a></h1>
                     <p className="description">Connect to the Nexus API to start monitoring a Reactor System.</p>
-                    <form onSubmit={this.onSubmit}>
+                    <form onSubmit={this.onSubmit.bind(this)}>
                         <p>
                             <input ref="url" placeholder="API URL to monitor" className="form-control" type="text" />
                         </p>

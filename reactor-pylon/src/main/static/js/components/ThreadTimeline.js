@@ -93,8 +93,8 @@ class ThreadTimeline extends React.Component {
             this.threadStates.add({
                 group : nextThreadState.id,
                 id : nextThreadState.lastStateId,
-                start : timestamp,
-                end: new Date(timestamp.getTime() + 1000), //+1 sec
+                start : new Date(timestamp.getTime() - 1000),
+                end: timestamp, //+1 sec
                 className: ThreadTimeline.mapStateColor(nextThreadState.state)
             });
             this.threads.add(nextThreadState);

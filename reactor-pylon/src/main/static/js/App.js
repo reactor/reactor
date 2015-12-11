@@ -26,7 +26,6 @@ class App extends React.Component {
 
   constructor(props) {
       super(props);
-      API.defaultOrLastTarget();
       var nexusStream = new Rx.Subject();
       var graphStream = new Rx.ReplaySubject(100);
       var systemStream = new Rx.ReplaySubject(200);
@@ -60,12 +59,12 @@ class App extends React.Component {
 
   }
 
-    startError(e){
+    onConnectError(e){
         this.showConfig();
         console.log(e);
     }
 
-    start(res) {
+    onConnect(res) {
         if(this.disposable == null) {
             this.disposable = res.receiver.subscribe(this.state.nexusStream);
             this.state.nexusObserver.subscribe(res.sender);
@@ -73,18 +72,21 @@ class App extends React.Component {
         API.updateTargetAPI()
     }
 
-    restart() {
-        this.componentWillMount();
-    }
-
     showConfig() {
-        ReactDOM.render (<Config {...this.state} />, document.getElementById('main'));
+        ReactDOM.render (<Config startCallback={this.start.bind(this)} />, document.getElementById('main'));
     }
 
+    start(apiURL){
+        if(this.disposable != null) {
+            this.disposable.dispose();
+            this.disposable = null;
+        }
+
+        API.ws(apiURL, this.state.stateStream).then(this.onConnect.bind(this), this.onConnectError.bind(this));
+        //ReactDOM.render (this.renderChildren(), document.getElementById('main'));
+    }
   componentDidMount() {
-      if(this.disposable == null) {
-          API.ws(this.state.stateStream).then(this.start.bind(this), this.startError.bind(this));
-      }
+      this.start(API.defaultOrLastTarget())
   }
 
   componentWillUnmount() {
