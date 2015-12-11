@@ -101,6 +101,9 @@ class StreamGraph extends React.Component {
         else if(this.fullscreenMode){
             this.fullscreenMode = false;
         }
+        else{
+            this.fullscreenMode = true;
+        }
 
         var container = document.getElementById('stream-graph');
         if(this.fullscreenMode) {
