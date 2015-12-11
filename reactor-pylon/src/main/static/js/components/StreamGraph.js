@@ -64,6 +64,9 @@ class StreamGraph extends React.Component {
         if(this.props.resetNodes !== undefined){
             this.props.resetNodes.subscribe(this.resetAllNodesStabilize.bind(this));
         }
+        if(this.props.onFullscreen !== undefined){
+            this.props.onFullscreen.subscribe(this.fullscreen.bind(this));
+        }
     }
 
     destroy() {
@@ -90,6 +93,24 @@ class StreamGraph extends React.Component {
             this.network.setData({nodes: nodes, edges: edges});
         }
 
+    }
+
+    fullscreen(e){
+        if(this.fullscreenMode === undefined){
+            this.fullscreenMode = true;
+        }
+        else if(this.fullscreenMode){
+            this.fullscreenMode = false;
+        }
+
+        var container = document.getElementById('stream-graph');
+        if(this.fullscreenMode) {
+            var h = this.calcHeight();
+            container.style.height = (h.y - 110) + "px";
+        }
+        else{
+            container.style.height = "260px";
+        }
     }
 
     draw(json) {

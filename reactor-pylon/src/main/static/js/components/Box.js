@@ -12,7 +12,7 @@ class Box extends React.Component {
     render() {
         return (
             <div className={(this.props.cols !== undefined ? 'box-'+this.props.cols : '') + ' box'}>
-                <h2 className="box-title">{this.props.heading}</h2>
+                <h2 onClick={this.props.onClick} className="box-title">{this.props.heading}</h2>
                 <div className="box-content">{this.props.children}</div>
             </div>
         );

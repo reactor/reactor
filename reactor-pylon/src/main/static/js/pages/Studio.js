@@ -35,6 +35,7 @@ class Studio extends React.Component {
         super(props);
 
         this.formEvents = new Rx.Subject();
+        this.fullscreenEvents = new Rx.Subject();
         this.formEventsStream = this.formEvents
             .flatMap(d => {
                 try{
@@ -53,6 +54,10 @@ class Studio extends React.Component {
         this.formEvents.onNext(this.refs.replay.value);
     }
 
+    requestFullscreen(e){
+        this.fullscreenEvents.onNext(e);
+    }
+
     render() {
         return (
             <DocumentTitle title="Reactor Console • Studio">
@@ -61,9 +66,9 @@ class Studio extends React.Component {
                         Studio
                     </div>
                     <div className="section-content">
-                        <Box cols="1" heading="Observing Station">
+                        <Box cols="1" heading="Observing Station" onClick={this.requestFullscreen.bind(this)}>
                             <div id="observing">
-                                <StreamGraph graphOptions={{interaction: {
+                                <StreamGraph onFullscreen={this.fullscreenEvents} graphOptions={{interaction: {
                                     dragNodes: true, zoomView: true, hover: true, }}} streams={this.formEventsStream}/>
                             </div>
                         </Box>
