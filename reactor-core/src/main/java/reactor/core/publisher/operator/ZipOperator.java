@@ -459,6 +459,8 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 	static final class BufferSubscriber<V> extends BaseSubscriber<Object> implements ReactiveState.Bounded, ZipState<Object>,
 	                                                                                 ReactiveState.Upstream,
 	                                                                                 ReactiveState.ActiveUpstream,
+	                                                                                 ReactiveState.UpstreamPrefetch,
+	                                                                                 ReactiveState.UpstreamDemand,
 	                                                                                 ReactiveState.Downstream {
 
 		final ZipBarrier<?, V> parent;
@@ -582,6 +584,16 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 					s.cancel();
 				}
 			}
+		}
+
+		@Override
+		public long limit() {
+			return limit;
+		}
+
+		@Override
+		public long expectedFromUpstream() {
+			return outstanding;
 		}
 
 		@Override

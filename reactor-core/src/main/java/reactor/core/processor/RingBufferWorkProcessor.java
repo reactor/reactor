@@ -762,7 +762,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 */
 	private final static class QueueSubscriber<T>
 			implements Runnable, Consumer<Void>, Downstream, Buffering, ActiveUpstream,
-			ActiveDownstream, Inner {
+			ActiveDownstream, Inner, DownstreamDemand {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -1050,7 +1050,10 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 			}
 		}
 
-
+		@Override
+		public long requestedFromDownstream() {
+			return pendingRequest.get();
+		}
 
 		@Override
 		public boolean isCancelled() {

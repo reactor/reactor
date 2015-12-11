@@ -43,6 +43,7 @@ import reactor.fn.timer.TimeUtils;
 public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<E>, Subscription,
                                            ReactiveState.Bounded,
                                            ReactiveState.ActiveDownstream,
+                                           ReactiveState.DownstreamDemand,
                                            Consumer<E>,
                                            Closeable {
 
@@ -299,6 +300,11 @@ public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<
 	 */
 	public boolean hasRequested() {
 		return !cancelled && requested != 0L;
+	}
+
+	@Override
+	public long requestedFromDownstream() {
+		return requested;
 	}
 
 	/**

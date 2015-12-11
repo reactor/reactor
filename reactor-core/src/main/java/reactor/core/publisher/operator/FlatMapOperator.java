@@ -569,6 +569,8 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			           ReactiveState.Downstream,
 			           ReactiveState.ActiveDownstream,
 			           ReactiveState.ActiveUpstream,
+			           ReactiveState.UpstreamDemand,
+			           ReactiveState.UpstreamPrefetch,
 			           ReactiveState.Inner {
 		final long               id;
 		final MergeBarrier<T, V> parent;
@@ -650,6 +652,16 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					s.cancel();
 				}
 			}
+		}
+
+		@Override
+		public long limit() {
+			return limit;
+		}
+
+		@Override
+		public long expectedFromUpstream() {
+			return outstanding;
 		}
 
 		@Override
