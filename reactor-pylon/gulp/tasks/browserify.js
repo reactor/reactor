@@ -19,7 +19,7 @@ import config       from '../config';
 
 // Based on: http://blog.avisi.nl/2014/04/25/how-to-keep-a-fast-build-with-browserify-and-reactjs/
 function buildScript(file, watch) {
-
+    console.log("browserifying "+(config.sourceDir + 'js/' + file));
     var bundler = browserify(file, {
         basedir: config.sourceDir + 'js', debug: !global.isProd, cache: {}, packageCache: {}, fullPaths: watch
     });

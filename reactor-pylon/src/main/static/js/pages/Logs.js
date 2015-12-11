@@ -39,7 +39,7 @@ class Logs extends React.Component {
             <DocumentTitle title="Reactor Console • Logs">
                 <section className="logs">
                     <div className="section-heading">
-                        Map
+                        Tail Logs
                     </div>
                 </section>
             </DocumentTitle>

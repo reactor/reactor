@@ -39,7 +39,7 @@ class Studio extends React.Component {
             <DocumentTitle title="Reactor Console • Studio">
                 <section className="studio">
                     <div className="section-heading">
-                        Map
+                        Studio
                     </div>
                 </section>
             </DocumentTitle>

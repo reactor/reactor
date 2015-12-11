@@ -19,7 +19,7 @@ class Metrics extends React.Component {
             <DocumentTitle title="Reactor Console • Metrics">
                 <section className="metrics">
                     <div className="section-heading">
-                        Map
+                        Metrics
                     </div>
                 </section>
             </DocumentTitle>
