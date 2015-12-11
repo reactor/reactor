@@ -236,6 +236,42 @@ public final class ReactiveStateUtils implements ReactiveState {
 	 * @param o
 	 * @return
 	 */
+	public static long getUpstreamLimit(Object o) {
+		if (o != null && UpstreamPrefetch.class.isAssignableFrom(o.getClass())) {
+			return ((UpstreamPrefetch) o).limit();
+		}
+		return -1L;
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
+	public static long  getExpectedUpstream(Object o) {
+		if (o != null && UpstreamDemand.class.isAssignableFrom(o.getClass())) {
+			return ((UpstreamDemand) o).expectedFromUpstream();
+		}
+		return -1L;
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
+	public static long  getRequestedDownstream(Object o) {
+		if (o != null && DownstreamDemand.class.isAssignableFrom(o.getClass())) {
+			return ((DownstreamDemand) o).requestedFromDownstream();
+		}
+		return -1L;
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
 	public static String getName(Object o) {
 		if (o == null) {
 			return null;
@@ -617,6 +653,18 @@ public final class ReactiveStateUtils implements ReactiveState {
 			return isUnique(object);
 		}
 
+		public final long getUpstreamLimit() {
+			return ReactiveStateUtils.getUpstreamLimit(object);
+		}
+
+		public final long getExpectedUpstream() {
+			return ReactiveStateUtils.getExpectedUpstream(object);
+		}
+
+		public final long getRequestedDownstream() {
+			return ReactiveStateUtils.getRequestedDownstream(object);
+		}
+
 		public final boolean isReference() {
 			return object == null;
 		}
@@ -693,6 +741,9 @@ public final class ReactiveStateUtils implements ReactiveState {
 			indent(property("group", getGroup()), res, i, true);
 			indent(property("buffered", getBuffered()), res, i, true);
 			indent(property("highlight", isHighlight()), res, i, true);
+			indent(property("upstreamLimit", getUpstreamLimit()), res, i, true);
+			indent(property("expectedUpstream", getExpectedUpstream()), res, i, true);
+			indent(property("requestedDownstream", getRequestedDownstream()), res, i, true);
 			indent(property("inner", isInner()), res, i, true);
 			indent(property("definedId", isDefinedId()), res, i, true);
 			if(isReference()) {

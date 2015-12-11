@@ -44,6 +44,8 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 		implements ReactiveState.LinkedDownstreams,
 		           ReactiveState.ActiveUpstream,
 		           ReactiveState.ActiveDownstream,
+		           ReactiveState.UpstreamDemand,
+		           ReactiveState.UpstreamPrefetch,
 		           ReactiveState.Buffering {
 
 	final int maxConcurrency;
@@ -278,6 +280,16 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 	@Override
 	public boolean isTerminated() {
 		return done && (emitBuffer == null || emitBuffer.pending() == 0L);
+	}
+
+	@Override
+	public long limit() {
+		return limit;
+	}
+
+	@Override
+	public long expectedFromUpstream() {
+		return outstanding;
 	}
 
 	RingBuffer<RingBuffer.Slot<T>> getMainQueue() {
@@ -589,7 +601,8 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 	}
 
 	static final class EmitterSubscriber<T>
-			implements Subscription, Inner, ActiveUpstream, ActiveDownstream, Buffering, Bounded, Upstream, Downstream {
+			implements Subscription, Inner, ActiveUpstream, ActiveDownstream, Buffering, Bounded, Upstream,
+			           DownstreamDemand, Downstream {
 
 		final long                  id;
 		final EmitterProcessor<T>   parent;
@@ -630,6 +643,11 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 		public void cancel() {
 			done = true;
 			parent.drain();
+		}
+
+		@Override
+		public long requestedFromDownstream() {
+			return requested;
 		}
 
 		@Override

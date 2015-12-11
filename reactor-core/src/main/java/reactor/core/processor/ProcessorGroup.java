@@ -541,7 +541,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
 			           Bounded, Upstream, FeedbackLoop, ReactiveState
 					           .Downstream, Buffering, ActiveDownstream, ReactiveState
-					           .ActiveUpstream, Named,
+					           .ActiveUpstream, Named, UpstreamDemand, UpstreamPrefetch, DownstreamDemand,
 			           Runnable {
 
 		protected final ProcessorGroup service;
@@ -723,6 +723,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			});
 		}
 
+		@Override
+		public long requestedFromDownstream() {
+			return requested;
+		}
+
 		@SuppressWarnings("unchecked")
 		protected void doNext(V o) {
 			long seq = emitBuffer.next();
@@ -764,6 +769,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 					subscription.request(n);
 				}
 			}
+		}
+
+		@Override
+		public long limit() {
+			return BaseProcessor.SMALL_BUFFER_SIZE;
+		}
+
+		@Override
+		public long expectedFromUpstream() {
+			return outstanding;
 		}
 
 		@Override

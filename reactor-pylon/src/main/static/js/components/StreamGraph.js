@@ -186,6 +186,7 @@ class StreamGraph extends React.Component {
         // randomly create some nodes and edges
 
         var highlights = [];
+        var edgeDetails = {};
         var n, e;
         for (var node in json.nodes) {
             n = json.nodes[node];
@@ -203,7 +204,7 @@ class StreamGraph extends React.Component {
                 n.value = 0;
             }
             else {
-                if (n.capacity != -1) {
+                if (n.capacity !== undefined && n.capacity != -1) {
                     n.shape = "dot";
                     if (n.capacity == "unbounded") {
                         n.color = {
@@ -224,6 +225,15 @@ class StreamGraph extends React.Component {
                     n.value = 0;
                 }
             }
+
+            if(n.requestedDownstream !== undefined && n.requestedDownstream != -1){
+                edgeDetails[n.id] = {downstreamRequested: n.requestedDownstream};
+            }
+            else if(n.expectedUpstream !== undefined && n.expectedUpstream != -1){
+                edgeDetails[n.id] = {upstreamRequested: n.expectedUpstream};
+            }
+
+
             n.label = n.name;
 
             if (n.definedId) {
@@ -237,6 +247,19 @@ class StreamGraph extends React.Component {
         }
         for (var edge in json.edges) {
             e = json.edges[edge];
+            var output = null;
+            if(edgeDetails[e.from] !== undefined && edgeDetails[e.from].downstreamRequested !== undefined){
+                output = edgeDetails[e.from].downstreamRequested;
+            }
+            if(edgeDetails[e.to] !== undefined && edgeDetails[e.to].upstreamRequested !== undefined ){
+                output = (output != null ? output +  '/ ' : '') + edgeDetails[e.to].upstreamRequested;
+            }
+            if(e.discrete === undefined && output != null){
+                e.label = output;
+                e.font = {
+                    align: 'top'
+                }
+            }
             e.arrows = {to: true};
             if (e.discrete) {
                 e.dashes = true;

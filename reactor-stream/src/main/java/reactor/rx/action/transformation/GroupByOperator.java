@@ -313,7 +313,7 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 	}
 
 	static final class GroupByAction<T, K> extends SubscriberWithDemand<T, GroupedStream<K, T>>
-			implements ReactiveState.LinkedDownstreams{
+			implements ReactiveState.LinkedDownstreams, ReactiveState.Buffering{
 
 		private final Function<? super T, ? extends K> fn;
 
@@ -450,6 +450,11 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 					ACTUAL_COMPLETED.compareAndSet(this, 0, 1)) {
 				subscriber.onComplete();
 			}
+		}
+
+		@Override
+		public long pending() {
+			return BUFFERED.get(this);
 		}
 
 		@Override
