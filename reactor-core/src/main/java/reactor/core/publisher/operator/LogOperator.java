@@ -61,7 +61,7 @@ public final class LogOperator<IN> implements ReactiveState.Named, Function<Subs
 
 	@Override
 	public String getName() {
-		return "/loggers/"+log.getName();
+		return "/loggers/"+(log.getName().equalsIgnoreCase(LogOperator.class.getName()) ? "default" : log.getName());
 	}
 
 	@Override
@@ -162,7 +162,8 @@ public final class LogOperator<IN> implements ReactiveState.Named, Function<Subs
 
 		@Override
 		public String getName() {
-			return "/loggers/"+log.getName()+"/"+uniqueId;
+			return "/loggers/"+(log.getName().equalsIgnoreCase(LogOperator.class.getName()) ? "default" : log.getName())
+					+"/"+uniqueId;
 		}
 
 		@Override

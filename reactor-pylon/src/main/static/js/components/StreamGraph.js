@@ -24,9 +24,8 @@ import ReactDOM      from 'react-dom';
 const propTypes = {
     network: React.PropTypes.object, nodes: React.PropTypes.object, edges: React.PropTypes.object
 };
-
-var percentColors = [{pct: 0.0, color: {r: 0xff, g: 0x00, b: 0}}, {pct: 0.5, color: {r: 0xff, g: 0xff, b: 0}},
-    {pct: 1.0, color: {r: 0x00, g: 0xff, b: 0}}];
+var percentColors = [{pct: 1.0, color: {r: 0x6d, g: 0xb3, b: 0x3f}}, {pct: 0.5, color: {r: 0xa0, g: 0xff, b: 0}},
+    {pct: 0.0, color: {r: 0xcd, g: 0x5c, b: 0x5c}}];
 
 const graphUtils = {
     getColorForPercentage(pct) {
