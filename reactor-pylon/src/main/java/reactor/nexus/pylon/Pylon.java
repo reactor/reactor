@@ -35,6 +35,7 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Publishers;
+import reactor.fn.Function;
 import reactor.fn.timer.Timer;
 import reactor.io.IO;
 import reactor.io.buffer.Buffer;
@@ -44,6 +45,7 @@ import reactor.io.net.ReactiveNet;
 import reactor.io.net.ReactivePeer;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpServer;
+import reactor.io.net.http.model.ResponseHeaders;
 import reactor.io.net.http.routing.ChannelMappings;
 
 /**
@@ -113,8 +115,9 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 		server.file(CONSOLE_FAVICON, pylon.pathToStatic(CONSOLE_FAVICON))
 		      .get(CACHE_MANIFEST, new CacheManifestHandler(cacheManifest))
-		      .file(ChannelMappings.prefix(CONSOLE_URL), pylon.pathToStatic(HTML_DEPENDENCY_CONSOLE))
-		      .directory(CONSOLE_ASSETS_PREFIX, pylon.pathToStatic(CONSOLE_STATIC_ASSETS_PATH));
+		      .file(ChannelMappings.prefix(CONSOLE_URL), pylon.pathToStatic(HTML_DEPENDENCY_CONSOLE), null)
+		      .directory(CONSOLE_ASSETS_PREFIX,
+				      pylon.pathToStatic(CONSOLE_STATIC_ASSETS_PATH), new AssetsInterceptor());
 
 		return pylon;
 	}
@@ -259,6 +262,23 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 			return channel.responseHeader("content-type", "text/cache-manifest")
 			              .writeBufferWith(cacheManifest);
+		}
+	}
+
+	private static class AssetsInterceptor
+			implements Function<HttpChannel<Buffer, Buffer>, HttpChannel<Buffer, Buffer>> {
+
+		@Override
+		public HttpChannel<Buffer, Buffer> apply(HttpChannel<Buffer, Buffer> channel) {
+
+			if(channel.uri().endsWith(".css")){
+				channel.responseHeader(ResponseHeaders.CONTENT_TYPE, "text/css; charset=utf-8");
+			}
+			else if(channel.uri().endsWith(".js")){
+				channel.responseHeader(ResponseHeaders.CONTENT_TYPE, "text/javascript; charset=utf-8");
+			}
+
+			return channel;
 		}
 	}
 }
