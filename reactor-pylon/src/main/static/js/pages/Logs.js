@@ -50,4 +50,4 @@ class Logs extends React.Component {
 
 Map.propTypes = propTypes;
 
-export default Map;
+export default Logs;

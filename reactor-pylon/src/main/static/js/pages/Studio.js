@@ -28,7 +28,7 @@ const propTypes = {
 };
 
 
-class Map extends React.Component {
+class Studio extends React.Component {
 
     constructor(props) {
         super(props);
@@ -36,8 +36,8 @@ class Map extends React.Component {
 
     render() {
         return (
-            <DocumentTitle title="Reactor Console • Map">
-                <section className="map">
+            <DocumentTitle title="Reactor Console • Studio">
+                <section className="studio">
                     <div className="section-heading">
                         Map
                     </div>
@@ -50,4 +50,4 @@ class Map extends React.Component {
 
 Map.propTypes = propTypes;
 
-export default Map;
+export default Studio;
