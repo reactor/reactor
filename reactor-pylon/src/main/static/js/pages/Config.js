@@ -15,7 +15,7 @@ class Config extends React.Component {
     }
 
     componentDidMount() {
-        this.refs.url.value = Config.formatUrl(API.defaultOrLastTarget());
+        this.refs.url.value = API.formatUrl(API.defaultOrLastTarget());
     }
 
     onCheck(e){
@@ -24,15 +24,8 @@ class Config extends React.Component {
 
     onSubmit(e) {
         e.preventDefault();
-        var url = Config.formatUrl(this.refs.url.value);
+        var url = API.formatUrl(this.refs.url.value);
         this.props.connect(url);
-    }
-
-    static formatUrl(uri){
-        if(uri.indexOf('://') == -1){
-            return 'ws://'+uri;
-        }
-        return uri;
     }
 
     render() {

@@ -9,6 +9,7 @@ import Dashboard                   from './pages/Dashboard';
 import Config                     from './pages/Config';
 import Metrics                     from './pages/Metrics';
 import Streams                     from './pages/Streams';
+import Buffers                       from './pages/Buffers';
 import Hosts                       from './pages/Hosts';
 import Logs                        from './pages/Logs';
 import System                      from './pages/System';
@@ -26,6 +27,7 @@ export default (
       <Route path="/pylon/metrics" component={Metrics} onEnter={API.checkConnection}/>
       <Route path="/pylon/streams" component={Streams} onEnter={API.checkConnection}/>
       <Route path="/pylon/hosts" component={Hosts} onEnter={API.checkConnection}/>
+      <Route path="/pylon/buffers" component={Buffers} onEnter={API.checkConnection}/>
       <Route path="/pylon/system" component={System} onEnter={API.checkConnection}/>
       <Route path="/pylon/logs" component={Logs} onEnter={API.checkConnection}/>
       <Route path="/pylon/studio" component={Studio} />

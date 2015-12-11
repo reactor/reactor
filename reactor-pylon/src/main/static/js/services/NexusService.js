@@ -31,6 +31,13 @@ const NexusService = {
         }
     },
 
+    formatUrl(uri){
+        if(uri.indexOf('://') == -1){
+            return 'ws://'+uri;
+        }
+        return uri;
+    },
+
     updateTargetAPI(target) {
         if (typeof target !== 'undefined') {
             this.target = target;
