@@ -4,6 +4,7 @@ import React              from 'react';
 
 import Sidebar            from './components/Sidebar';
 import Config             from './pages/Config';
+import routes             from './Routes';
 import API                from './services/NexusService';
 import Rx                 from 'rx-lite';
 import ReactDOM           from 'react-dom';
@@ -24,8 +25,8 @@ const propTypes = {
 
 class App extends React.Component {
 
-  constructor(props) {
-      super(props);
+  constructor(props, context) {
+      super(props, context);
       var nexusStream = new Rx.Subject();
       var graphStream = new Rx.ReplaySubject(100);
       var systemStream = new Rx.ReplaySubject(200);
@@ -43,6 +44,8 @@ class App extends React.Component {
           .filter(json => json.type == "LogEvent")
           .subscribe(logStream);
 
+      var startCB = this.start.bind(this);
+
       this.state = {
         disposable: null,
         nexusStream: nexusStream,
@@ -51,7 +54,8 @@ class App extends React.Component {
         configuration: null,
         graphStream: graphStream,
         logStream: logStream,
-        systemStream: systemStream
+        systemStream: systemStream,
+          connect: startCB
     };
   }
 
@@ -60,29 +64,29 @@ class App extends React.Component {
   }
 
     onConnectError(e){
-        this.showConfig();
         console.log(e);
     }
 
     onConnect(res) {
-        if(this.disposable == null) {
-            this.disposable = res.receiver.subscribe(this.state.nexusStream);
+        if(this.state.disposable == null) {
+            this.setState({
+                disposable: res.receiver.subscribe(this.state.nexusStream)
+            });
             this.state.nexusObserver.subscribe(res.sender);
         }
-        API.updateTargetAPI()
-    }
 
-    showConfig() {
-        ReactDOM.render (<Config startCallback={this.start.bind(this)} />, document.getElementById('main'));
+        const { location } = this.props;
+
+        if (location.state && location.state.nextPathname) {
+            console.log(API.socket)
+            routes.props.history.replaceState(null, location.state.nextPathname)
+        } else {
+            routes.props.history.replaceState(null, '/dashboard')
+        }
     }
 
     start(apiURL){
-        if(this.disposable != null) {
-            this.disposable.dispose();
-            this.disposable = null;
-        }
-
-        API.ws(apiURL, this.state.stateStream).then(this.onConnect.bind(this), this.onConnectError.bind(this));
+       API.ws(apiURL, this.state.stateStream).then(this.onConnect.bind(this), this.onConnectError.bind(this));
 
         //ReactDOM.render (this.renderChildren(), document.getElementById('main'));
     }
@@ -91,8 +95,9 @@ class App extends React.Component {
   }
 
   componentWillUnmount() {
-      if(this.disposable != null){
-          this.disposable.dispose();
+      if(this.state.disposable != null){
+          this.state.nexusObservable.dispose();
+          this.state.disposable.dispose();
       }
   }
 
@@ -100,6 +105,7 @@ class App extends React.Component {
     return React.cloneElement(this.props.children, {
       params: this.props.params,
       nexusStream: this.state.nexusStream,
+      connect: this.state.connect,
       nexusObserver: this.state.nexusObserver,
       stateStream: this.state.stateStream,
       graphStream: this.state.graphStream,
@@ -121,7 +127,6 @@ class App extends React.Component {
     }
 
 }
-
 App.propTypes = propTypes;
 
 export default App;

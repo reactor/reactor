@@ -65,7 +65,7 @@ class Status extends React.Component {
     render() {
         return (
             <h1 id="logo">
-                <Link style={this.state}  to="/pylon"><strong>Reactor Pylon</strong></Link>
+                <Link style={this.state}  to="/pylon/connect"><strong>Reactor Pylon</strong></Link>
             </h1>
         );
     }

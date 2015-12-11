@@ -10,21 +10,29 @@ const propTypes = {
 
 class Config extends React.Component {
 
-    constructor(props, context) {
-        super(props, context);
+    constructor(props) {
+        super(props);
     }
 
     componentDidMount() {
-        this.refs.url.value = API.defaultOrLastTarget();
+        this.refs.url.value = Config.formatUrl(API.defaultOrLastTarget());
+    }
+
+    onCheck(e){
+        console.log(e);
     }
 
     onSubmit(e) {
         e.preventDefault();
-        console.log( this.context.router);
-        console.log(Routes.context);
-        console.log(Routes);
-        console.log(this.refs.url.value);
-        this.props.startCallback(this.refs.url.value);
+        var url = Config.formatUrl(this.refs.url.value);
+        this.props.connect(url);
+    }
+
+    static formatUrl(uri){
+        if(uri.indexOf('://') == -1){
+            return 'ws://'+uri;
+        }
+        return uri;
     }
 
     render() {
@@ -38,10 +46,10 @@ class Config extends React.Component {
                             <input ref="url" placeholder="API URL to monitor" className="form-control" type="text" />
                         </p>
                         <p className="checkbox">
-                            <label><input ref="opt1" checked type="checkbox" /> Graph Stream</label>
-                            <label><input ref="opt1" checked type="checkbox" /> System Stats Stream</label>
-                            <label><input ref="opt1" checked type="checkbox" /> Log Stream</label>
-                            <label><input ref="opt1" checked type="checkbox" /> Metrics Stream</label>
+                            <label><input onChange={this.onCheck.bind(this)} ref="opt1" checked type="checkbox" /> Graph Stream</label>
+                            <label><input onChange={this.onCheck.bind(this)} ref="opt1" checked type="checkbox" /> System Stats Stream</label>
+                            <label><input onChange={this.onCheck.bind(this)} ref="opt1" checked type="checkbox" /> Log Stream</label>
+                            <label><input onChange={this.onCheck.bind(this)} ref="opt1" checked type="checkbox" /> Metrics Stream</label>
                         </p>
                         <p className="action">
                             <button className="btn btn-primary btn-block" type="submit">Run</button>
@@ -53,10 +61,6 @@ class Config extends React.Component {
     }
 
 }
-
-Config.contextTypes = {
-    router: React.PropTypes.object.isRequired
-};
 
 Config.propTypes = propTypes;
 

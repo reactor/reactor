@@ -12,6 +12,8 @@ const NexusService = {
 
     offline: 0, ready: 1, working: 2, retry: 3,
 
+    socket: null,
+
     defaultOrLastTarget() {
         var target = cookie.load('targetAPI');
         if (typeof target === 'undefined') {
@@ -21,6 +23,12 @@ const NexusService = {
             this.target = target;
         }
         return this.target;
+    },
+
+    checkConnection(nextState, replaceState){
+        if(NexusService.socket == null) {
+            replaceState({nextPathname: nextState.location.pathname}, '/pylon/connect')
+        }
     },
 
     updateTargetAPI(target) {
@@ -38,6 +46,7 @@ const NexusService = {
     },
 
     ws(path, stateObserver) {
+        NexusService.updateTargetAPI(path);
         // Handle the data
         return new Promise((resolve, reject) => {
 
@@ -48,6 +57,8 @@ const NexusService = {
 
             var thiz = this;
             ws.onopen = (e) => {
+                console.log('connected to '+path);
+                thiz.socket = ws;
                 if (stateObserver !== undefined) {
                     stateObserver.onNext(thiz.ready);
                 }
@@ -58,6 +69,8 @@ const NexusService = {
                         if (ws == null) {
                             ws = new WebSocket(path);
                             ws.onopen = (e) => {
+                                thiz.socket = ws;
+                                console.log('reconnected to '+path);
                                 if (stateObserver !== undefined) {
                                     stateObserver.onNext(thiz.ready);
                                 }
@@ -96,6 +109,7 @@ const NexusService = {
                             if (ws != null) {
                                 console.log("closing connection");
                                 var _ws = ws;
+                                thiz.socket = null;
                                 ws = null;
                                 _ws.close();
                             }
