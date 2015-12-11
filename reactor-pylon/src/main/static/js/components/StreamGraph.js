@@ -126,7 +126,7 @@ class StreamGraph extends React.Component {
             layout: {
                 randomSeed: 100
             }, interaction: {
-                dragNodes: false, zoomView: false, hover: true, tooltipDelay: 0
+                dragNodes: false, hover: true, tooltipDelay: 0
             }, //clickToUse: true,
             nodes: {
                 labelHighlightBold: false, color: {
