@@ -40,11 +40,19 @@ class Studio extends React.Component {
         this.formEventsStream = this.formEvents
             .flatMap(d => {
                 try{
-                    return Rx.Observable.just(JSON.parse(stripComments(d)));
+                    var parsed = JSON.parse(stripComments(d));
+                    if(typeof parsed !== Array){
+                        return Rx.Observable.just(parsed);
+                    }
+                    else{
+                        return Rx.Observable.from(parsed)
+                    }
                 }
                 catch(e){
-                    return Rx.Observable.from(d.split("\n")).filter(d => d.trim()).doOnNext(d => console.log(d)).map(
-                        d => JSON.parse(stripComments(d)));
+                    return Rx.Observable
+                        .from(d.split("\n"))
+                        .filter(d => d.trim())
+                        .map(d => JSON.parse(stripComments(d)));
                 }
 
             });
