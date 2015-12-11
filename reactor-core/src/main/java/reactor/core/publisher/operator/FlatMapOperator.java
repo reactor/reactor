@@ -568,7 +568,8 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			           ReactiveState.Upstream,
 			           ReactiveState.Downstream,
 			           ReactiveState.ActiveDownstream,
-			           ReactiveState.ActiveUpstream {
+			           ReactiveState.ActiveUpstream,
+			           ReactiveState.Inner {
 		final long               id;
 		final MergeBarrier<T, V> parent;
 		final int                limit;

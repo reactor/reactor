@@ -64,7 +64,8 @@ public final class GroupByOperator<T, K> implements Publishers.Operator<T, Group
 			           ReactiveState.Downstream,
 			           ReactiveState.Buffering,
 			           ReactiveState.ActiveUpstream,
-			           ReactiveState.ActiveDownstream{
+			           ReactiveState.ActiveDownstream,
+			           ReactiveState.Inner {
 
 		private final GroupByAction<T, K> parent;
 		private final BaseProcessor<T, T> processor;

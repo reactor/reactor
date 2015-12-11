@@ -53,7 +53,7 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 		return new RetryWhenAction<>(subscriber, timer, predicate, rootPublisher);
 	}
 
-	static final class RetryWhenAction<T> extends SubscriberWithDemand<T, T> {
+	static final class RetryWhenAction<T> extends SubscriberWithDemand<T, T> implements ReactiveState.FeedbackLoop {
 
 		private final Broadcaster<Throwable> retryStream;
 		private final Publisher<? extends T> rootPublisher;
@@ -104,11 +104,17 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 			retryStream.onNext(cause);
 		}
 
-		public Broadcaster<Throwable> retryStream() {
+		@Override
+		public Object delegateInput() {
 			return retryStream;
 		}
 
-		private class RestartSubscriber implements Subscriber<Object>, ReactiveState.Bounded {
+		@Override
+		public Object delegateOutput() {
+			return null;
+		}
+
+		private class RestartSubscriber implements Subscriber<Object>, Bounded,  Inner, FeedbackLoop{
 
 			Subscription s;
 
@@ -143,6 +149,16 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 			public void onComplete() {
 				cancel();
 				subscriber.onComplete();
+			}
+
+			@Override
+			public Object delegateInput() {
+				return RetryWhenAction.this;
+			}
+
+			@Override
+			public Object delegateOutput() {
+				return RetryWhenAction.this;
 			}
 		}
 	}

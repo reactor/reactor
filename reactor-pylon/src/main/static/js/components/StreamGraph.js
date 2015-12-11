@@ -226,8 +226,13 @@ class StreamGraph extends React.Component {
                 }
             }
             n.label = n.name;
+
             if (n.definedId) {
                 n.shape = "square";
+            }
+            else if(n.inner){
+                n.shape = "cicle";
+                n.label = n.buffered != -1 ? n.buffered : " ";
             }
         }
         for (var edge in json.edges) {

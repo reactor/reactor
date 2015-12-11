@@ -589,7 +589,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 	}
 
 	static final class EmitterSubscriber<T>
-			implements Subscription, ActiveUpstream, ActiveDownstream, Buffering, Bounded, Upstream, Downstream {
+			implements Subscription, Inner, ActiveUpstream, ActiveDownstream, Buffering, Bounded, Upstream, Downstream {
 
 		final long                  id;
 		final EmitterProcessor<T>   parent;

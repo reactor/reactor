@@ -245,6 +245,13 @@ public interface ReactiveState {
 	}
 
 	/**
+	 * A component that is meant to be embedded or gating user components
+	 */
+	interface Inner extends ReactiveState {
+
+	}
+
+	/**
 	 * A component that is delegating to a sub-flow (processor, or publisher/subscriber chain)
 	 */
 	interface FeedbackLoop extends ReactiveState {

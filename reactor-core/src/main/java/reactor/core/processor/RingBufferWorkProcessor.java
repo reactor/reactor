@@ -762,7 +762,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 */
 	private final static class QueueSubscriber<T>
 			implements Runnable, Consumer<Void>, Downstream, Buffering, ActiveUpstream,
-			ActiveDownstream {
+			ActiveDownstream, Inner {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
 

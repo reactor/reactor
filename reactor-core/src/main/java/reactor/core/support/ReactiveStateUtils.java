@@ -215,6 +215,15 @@ public final class ReactiveStateUtils implements ReactiveState {
 	 * @param o
 	 * @return
 	 */
+	public static boolean isContained(Object o) {
+		return o != null && Inner.class.isAssignableFrom(o.getClass());
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
 	public static long getCapacity(Object o) {
 		if (o != null && Bounded.class.isAssignableFrom(o.getClass())) {
 			return ((Bounded) o).getCapacity();
@@ -239,6 +248,25 @@ public final class ReactiveStateUtils implements ReactiveState {
 				                               .getSimpleName());
 
 		return name.isEmpty() ? "anonymous" : name;
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
+	public static String getGroup(Object o) {
+		if (o == null) {
+			return null;
+		}
+
+		Object key = Grouped.class.isAssignableFrom(o.getClass()) ? (((Grouped) o).key()) : null;
+
+		if(key == null){
+			return null;
+		}
+
+		return key.toString();
 	}
 
 	/**
@@ -569,6 +597,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 			return name;
 		}
 
+		public final String getGroup() {
+			return ReactiveStateUtils.getGroup(object);
+		}
+
 		public final long getCapacity() {
 			return ReactiveStateUtils.getCapacity(object);
 		}
@@ -595,6 +627,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		public final boolean isTerminated() {
 			return hasSubscription(object) && ((ActiveUpstream) object).isTerminated();
+		}
+
+		public final boolean isInner() {
+			return isContained(object);
 		}
 
 		public final boolean isCancelled() {
@@ -654,8 +690,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 			indent(property("id", getId()), res, i, true);
 			indent(property("name", getName()), res, i, true);
 			indent(property("capacity", getCapacity()), res, i, true);
+			indent(property("group", getGroup()), res, i, true);
 			indent(property("buffered", getBuffered()), res, i, true);
 			indent(property("highlight", isHighlight()), res, i, true);
+			indent(property("inner", isInner()), res, i, true);
 			indent(property("definedId", isDefinedId()), res, i, true);
 			if(isReference()) {
 				indent(property("reference", "true"), res, i, true);
@@ -749,6 +787,9 @@ public final class ReactiveStateUtils implements ReactiveState {
 	 * @param comma
 	 */
 	public static void indent(String symbol, StringBuffer res, int indent, boolean comma){
+		if(symbol.isEmpty()){
+			return;
+		}
 		for(int i = 0; i < indent; i++){
 			res.append("\t");
 		}

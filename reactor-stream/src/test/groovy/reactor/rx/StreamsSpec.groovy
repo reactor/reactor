@@ -2738,9 +2738,11 @@ class StreamsSpec extends Specification {
 			}.retryWhen { attempts ->
 				attempts.zipWith(Streams.range(1, 3)) { t1, t2 -> t2 }.log().flatMap { i ->
 					println "delay retry by " + i + " second(s)"
+				  println attempts.debug()
 					Streams.timer(i)
 				}
 			}.next()
+		println value.debug()
 			value.await(10, TimeUnit.SECONDS)
 
 		then:

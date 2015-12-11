@@ -1288,7 +1288,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return next().get();
 		}
 
-		private class InnerProcessorGroup<T> extends ProcessorGroup<T> {
+		private class InnerProcessorGroup<T> extends ProcessorGroup<T> implements Inner {
 
 			public InnerProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 					Consumer<Throwable> uncaughtExceptionHandler,

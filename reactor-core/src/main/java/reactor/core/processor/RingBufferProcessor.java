@@ -831,7 +831,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * parallel coordination of an event.
 	 */
 	private final static class TopicSubscriber<T> implements Runnable, Downstream, Buffering, ActiveUpstream,
-	                                                         ActiveDownstream {
+	                                                         ActiveDownstream, Inner {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
 

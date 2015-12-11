@@ -359,7 +359,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 	interface ZipState<V> extends Subscriber<Object>,
 	                              ReactiveState.ActiveDownstream,
 	                              ReactiveState.Buffering,
-	                              ReactiveState.ActiveUpstream {
+	                              ReactiveState.ActiveUpstream, ReactiveState.Inner {
 
 		V readNext();
 
