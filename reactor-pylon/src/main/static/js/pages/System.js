@@ -113,6 +113,10 @@ class System extends React.Component {
             });
     }
 
+    componentWillUnmount() {
+        this.disposable.dispose();
+    }
+
     render() {
         return (
             <DocumentTitle title="Reactor Console • System">
