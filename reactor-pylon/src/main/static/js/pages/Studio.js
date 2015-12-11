@@ -19,19 +19,23 @@ import React         from 'react';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import vis           from 'vis';
+import Box           from '../components/Box';
+import JSON           from 'JSON2';
 import Rx            from 'rx-lite';
 
 const propTypes = {
-    network: React.PropTypes.object,
-    nodes: React.PropTypes.object,
-    edges: React.PropTypes.object
+    network: React.PropTypes.object, nodes: React.PropTypes.object, edges: React.PropTypes.object
 };
-
 
 class Studio extends React.Component {
 
     constructor(props) {
         super(props);
+    }
+
+    onSubmit(e) {
+        e.preventDefault();
+        console.log(e)
     }
 
     render() {
@@ -40,6 +44,27 @@ class Studio extends React.Component {
                 <section className="studio">
                     <div className="section-heading">
                         Studio
+                    </div>
+                    <div className="section-content">
+                        <Box cols="1" heading="Observing Station">
+                            <div id="observing"></div>
+                        </Box>
+                        <Box heading="Editor">
+                            <div className="editor">
+                                <form onSubmit={this.onSubmit.bind(this)}>
+                                    <p>
+                                        <pre><textarea ref="replay"></textarea></pre>
+                                    </p>
+                                    <p className="action">
+                                        <button className="btn btn-primary btn-block" type="submit">Run</button>
+                                    </p>
+                                </form>
+                            </div>
+                        </Box>
+
+                        <Box heading="Timeline">
+                            <div id="timeline"></div>
+                        </Box>
                     </div>
                 </section>
             </DocumentTitle>
