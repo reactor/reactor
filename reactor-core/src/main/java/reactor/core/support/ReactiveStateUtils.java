@@ -740,12 +740,18 @@ public final class ReactiveStateUtils implements ReactiveState {
 			indent(property("capacity", getCapacity()), res, i, true);
 			indent(property("group", getGroup()), res, i, true);
 			indent(property("buffered", getBuffered()), res, i, true);
-			indent(property("highlight", isHighlight()), res, i, true);
+			if(isHighlight()) {
+				indent(property("highlight", "true"), res, i, true);
+			}
 			indent(property("upstreamLimit", getUpstreamLimit()), res, i, true);
 			indent(property("expectedUpstream", getExpectedUpstream()), res, i, true);
 			indent(property("requestedDownstream", getRequestedDownstream()), res, i, true);
-			indent(property("inner", isInner()), res, i, true);
-			indent(property("definedId", isDefinedId()), res, i, true);
+			if(isInner()) {
+				indent(property("inner", "true"), res, i, true);
+			}
+			if(isDefinedId()) {
+				indent(property("definedId", "true"), res, i, true);
+			}
 			if(isReference()) {
 				indent(property("reference", "true"), res, i, true);
 			}
@@ -860,7 +866,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 	 * @return
 	 */
 	public static String property(String name, Object value){
-		if(value == null || value.equals(-1)){
+		if(value == null || value.equals(-1) || value.equals(-1L)){
 			return "";
 		}
 
