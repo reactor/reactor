@@ -10,9 +10,14 @@ class Box extends React.Component {
     }
 
     render() {
+        var b = null;
+        if (this.props.onClick !== undefined){
+            b = <span className="fa fa-tv" onClick={this.props.onClick} />
+        }
+
         return (
             <div className={(this.props.cols !== undefined ? 'box-'+this.props.cols : '') + ' box'}>
-                <h2 onClick={this.props.onClick} className="box-title">{this.props.heading}</h2>
+                <h2 className="box-title">{this.props.heading} {b}</h2>
                 <div className="box-content">{this.props.children}</div>
             </div>
         );
