@@ -231,6 +231,7 @@ class StreamGraph extends React.Component {
             }
             else if(n.inner){
                 n.shape = "cicle";
+                delete n.color.border;
                 n.label = n.buffered != -1 ? n.buffered : " ";
             }
         }

@@ -2427,7 +2427,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 		private final ProcessorGroup processorProvider;
 
-		public DispatchOnLift(Stream s, ProcessorGroup processorProvider) {
+		public DispatchOnLift(Stream<O> s, ProcessorGroup processorProvider) {
 			super(s);
 			this.processorProvider = processorProvider;
 		}
@@ -2465,7 +2465,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 		private final ProcessorGroup processorProvider;
 
-		public PublishOnLift(Stream s, ProcessorGroup processorProvider) {
+		public PublishOnLift(Stream<O> s, ProcessorGroup processorProvider) {
 			super(s);
 			this.processorProvider = processorProvider;
 		}
