@@ -12,7 +12,7 @@ class Box extends React.Component {
     render() {
         var b = null;
         if (this.props.onClick !== undefined){
-            b = <span className="fa fa-tv" onClick={this.props.onClick} />
+            b = <span className="fa fa-tv" onClick={this.props.onClick} ></span>
         }
 
         return (
