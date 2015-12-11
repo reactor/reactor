@@ -9,6 +9,7 @@ import Dashboard                   from './pages/Dashboard';
 import Metrics                     from './pages/Metrics';
 import Streams                     from './pages/Streams';
 import Hosts                       from './pages/Hosts';
+import Logs                        from './pages/Logs';
 import System                      from './pages/System';
 import Studio                      from './pages/Studio';
 import NotFoundPage                from './pages/NotFoundPage';
@@ -23,6 +24,7 @@ export default (
       <Route path="/pylon/streams" component={Streams}/>
       <Route path="/pylon/hosts" component={Hosts} />
       <Route path="/pylon/system" component={System} />
+      <Route path="/pylon/logs" component={Logs} />
       <Route path="/pylon/studio" component={Studio} />
       <Route path="/pylon" component={Dashboard} />
       <Route path="*" component={NotFoundPage} />
