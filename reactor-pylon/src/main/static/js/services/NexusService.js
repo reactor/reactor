@@ -31,6 +31,7 @@ const NexusService = {
         }
     },
 
+
     formatUrl(uri){
         if(uri.indexOf('://') == -1){
             return 'ws://'+uri;

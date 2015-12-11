@@ -78,10 +78,9 @@ class App extends React.Component {
         const { location } = this.props;
 
         if (location.state && location.state.nextPathname) {
-            console.log(API.socket)
             routes.props.history.replaceState(null, location.state.nextPathname)
         } else {
-            routes.props.history.replaceState(null, '/dashboard')
+            routes.props.history.replaceState(null, location.pathname)
         }
     }
 

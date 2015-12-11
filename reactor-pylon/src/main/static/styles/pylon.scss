@@ -213,9 +213,13 @@ h1#logo {
   font-size: 8px;
 }
 
+#observing #stream-graph{
+  height:260px;
+}
+
 .studio .editor textarea{
   width:100%;
-  height:200px;
+  height:150px;
   -webkit-box-sizing: border-box;
   -moz-box-sizing: border-box;
   box-sizing: border-box;

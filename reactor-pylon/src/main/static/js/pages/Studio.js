@@ -20,8 +20,10 @@ import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import vis           from 'vis';
 import Box           from '../components/Box';
+import StreamGraph           from '../components/StreamGraph';
 import JSON           from 'JSON2';
 import Rx            from 'rx-lite';
+import ReactDOM      from 'react-dom';
 
 const propTypes = {
     network: React.PropTypes.object, nodes: React.PropTypes.object, edges: React.PropTypes.object
@@ -31,11 +33,24 @@ class Studio extends React.Component {
 
     constructor(props) {
         super(props);
+
+        this.formEvents = new Rx.Subject();
+        this.formEventsStream = this.formEvents
+            .flatMap(d => {
+                try{
+                    return Rx.Observable.just(JSON.parse(d));
+                }
+                catch(e){
+                    return Rx.Observable.from(d.split("\n")).filter(d => d.trim()).doOnNext(d => console.log(d)).map(
+                        d => JSON.parse(d));
+                }
+
+            });
     }
 
     onSubmit(e) {
         e.preventDefault();
-        console.log(e)
+        this.formEvents.onNext(this.refs.replay.value);
     }
 
     render() {
@@ -47,13 +62,16 @@ class Studio extends React.Component {
                     </div>
                     <div className="section-content">
                         <Box cols="1" heading="Observing Station">
-                            <div id="observing"></div>
+                            <div id="observing">
+                                <StreamGraph graphOptions={{interaction: {
+                                    dragNodes: true, zoomView: true, hover: true, }}} streams={this.formEventsStream}/>
+                            </div>
                         </Box>
                         <Box heading="Editor">
                             <div className="editor">
                                 <form onSubmit={this.onSubmit.bind(this)}>
                                     <p>
-                                        <pre><textarea ref="replay"></textarea></pre>
+                                        <textarea ref="replay"></textarea>
                                     </p>
                                     <p className="action">
                                         <button className="btn btn-primary btn-block" type="submit">Run</button>
