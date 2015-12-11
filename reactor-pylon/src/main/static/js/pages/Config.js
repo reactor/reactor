@@ -3,14 +3,15 @@
 import React         from 'react';
 import API           from '../services/NexusService';
 import DocumentTitle from 'react-document-title';
+import Routes from '../Routes';
 
 const propTypes = {
 };
 
 class Config extends React.Component {
 
-    constructor(props) {
-        super(props);
+    constructor(props, context) {
+        super(props, context);
     }
 
     componentDidMount() {
@@ -19,6 +20,9 @@ class Config extends React.Component {
 
     onSubmit(e) {
         e.preventDefault();
+        console.log( this.context.router);
+        console.log(Routes.context);
+        console.log(Routes);
         console.log(this.refs.url.value);
         this.props.startCallback(this.refs.url.value);
     }
@@ -49,6 +53,10 @@ class Config extends React.Component {
     }
 
 }
+
+Config.contextTypes = {
+    router: React.PropTypes.object.isRequired
+};
 
 Config.propTypes = propTypes;
 

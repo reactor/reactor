@@ -146,15 +146,9 @@ class Streams extends React.Component {
             document.getElementById('selection').innerHTML = 'Selection: ' + params.nodes;
         });
         this.network.on('hoverNode', (params) => {
-            ReactDOM.render(<ul>
-                <li>{nodes.get(params.node).id}</li>
-                <li>Name : {nodes.get(params.node).name}</li>
-                <li>Capacity : {nodes.get(params.node).capacity}</li>
-                <li>Cancelled : {nodes.get(params.node).cancelled+""}</li>
-                <li>Started : {nodes.get(params.node).active+""}</li>
-                <li>Terminated : {nodes.get(params.node).terminated+''}</li>
-                <li>Buffered : {nodes.get(params.node).buffered+''}</li>
-            </ul>, document.getElementById('selection'));
+            ReactDOM.render(<pre className="select">
+                {JSON.stringify(nodes.get(params.node), null, 2)}
+            </pre>, document.getElementById('selection'));
         });
 
 

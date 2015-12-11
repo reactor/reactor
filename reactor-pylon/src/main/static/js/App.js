@@ -83,10 +83,11 @@ class App extends React.Component {
         }
 
         API.ws(apiURL, this.state.stateStream).then(this.onConnect.bind(this), this.onConnectError.bind(this));
+
         //ReactDOM.render (this.renderChildren(), document.getElementById('main'));
     }
   componentDidMount() {
-      this.start(API.defaultOrLastTarget())
+      this.start(API.defaultTarget)
   }
 
   componentWillUnmount() {
