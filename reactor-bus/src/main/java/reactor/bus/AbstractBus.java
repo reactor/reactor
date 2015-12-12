@@ -196,7 +196,7 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, ReactiveState.Link
   @Override
   public <V1 extends V> Registration<K, BiConsumer<K, ? extends V>> on(final Selector selector,
                                                                        final Consumer<V1> consumer) {
-    return on(selector, new BusConsumer<>(consumer));
+    return on(selector, new BusConsumer(consumer));
   }
 
   @Override
@@ -211,7 +211,7 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, ReactiveState.Link
   @Override
   public <T extends V> Registration<K, BiConsumer<K, ? extends V>> onKey(final K key,
                                                                          final Consumer<T> consumer) {
-    return onKey(key, new BusConsumer<>(consumer));
+    return onKey(key, new BusConsumer(consumer));
   }
 
   /**

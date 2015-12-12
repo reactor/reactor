@@ -169,7 +169,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 
 	@Override
 	public long getCapacity() {
-		return ReactiveState.Bounded.class.isAssignableFrom(subscriber.getClass()) ?
+		return subscriber != null && ReactiveState.Bounded.class.isAssignableFrom(subscriber.getClass()) ?
 		  ((ReactiveState.Bounded) subscriber).getCapacity() :
 		  Long.MAX_VALUE;
 	}

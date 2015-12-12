@@ -16,15 +16,16 @@
 
 package reactor.core.subscriber.test;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.reactivestreams.Subscription;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author Anatoly Kadyshev
@@ -254,6 +255,11 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 
 	public long getNumNextSignalsReceived() {
 		return numNextSignalsReceived;
+	}
+
+
+	public ReactiveStateUtils.Graph debug(){
+		return ReactiveStateUtils.scan(this);
 	}
 
 }
