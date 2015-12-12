@@ -282,7 +282,7 @@ public abstract class PublisherFactory implements ReactiveState {
 		Function<Subscriber<? super O>, Subscriber<? super I>> operator();
 	}
 
-	private static class ReactorPublisher<T, C> implements Publisher<T>, ActiveUpstream {
+	private static class ReactorPublisher<T, C> implements Publisher<T> {
 
 		protected final Function<Subscriber<? super T>, C>            contextFactory;
 		protected final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
@@ -313,16 +313,6 @@ public abstract class PublisherFactory implements ReactiveState {
 
 		protected Subscription createSubscription(Subscriber<? super T> subscriber, C context) {
 			return new SubscriberProxy<>(this, subscriber, context, requestConsumer, shutdownConsumer);
-		}
-
-		@Override
-		public boolean isStarted() {
-			return false;
-		}
-
-		@Override
-		public boolean isTerminated() {
-			return false;
 		}
 	}
 
@@ -361,7 +351,6 @@ public abstract class PublisherFactory implements ReactiveState {
 			implements Bounded,
 			           Named,
 			           Upstream,
-			           ActiveUpstream,
 			           LiftOperator<I, O> {
 
 		final private Publisher<I>                                           source;
@@ -404,16 +393,6 @@ public abstract class PublisherFactory implements ReactiveState {
 		}
 
 		@Override
-		public boolean isStarted() {
-			return false;
-		}
-
-		@Override
-		public boolean isTerminated() {
-			return false;
-		}
-
-		@Override
 		public long getCapacity() {
 			return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() :
 					Long.MAX_VALUE;
@@ -422,7 +401,7 @@ public abstract class PublisherFactory implements ReactiveState {
 
 	private final static class BoundedPublisher<I>
 			implements Publisher<I>, Bounded, Named,
-			           Upstream, ActiveUpstream{
+			           Upstream {
 
 		final private Publisher<I>                                           source;
 		final private long capacity;
@@ -435,16 +414,6 @@ public abstract class PublisherFactory implements ReactiveState {
 		@Override
 		public void subscribe(Subscriber<? super I> s) {
 			source.subscribe(s);
-		}
-
-		@Override
-		public boolean isStarted() {
-			return false;
-		}
-
-		@Override
-		public boolean isTerminated() {
-			return false;
 		}
 
 		@Override

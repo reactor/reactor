@@ -24,8 +24,8 @@ import ReactDOM      from 'react-dom';
 const propTypes = {
     network: React.PropTypes.object, nodes: React.PropTypes.object, edges: React.PropTypes.object
 };
-var percentColors = [{pct: 1.0, color: {r: 0x6d, g: 0xb3, b: 0x3f}}, {pct: 0.5, color: {r: 0xa0, g: 0xff, b: 0}},
-    {pct: 0.0, color: {r: 0xcd, g: 0x5c, b: 0x5c}}];
+var percentColors = [{pct: 0.0, color: {r: 0xff, g: 0x66, b: 0x66}},  {pct: 0.5, color: {r: 0xff, g: 0xff, b: 0x00}},
+    {pct: 1.0, color: {r: 0x6d, g: 0xb3, b: 0x3f}}];
 
 const graphUtils = {
     getColorForPercentage(pct) {
@@ -200,7 +200,16 @@ class StreamGraph extends React.Component {
             if (n.highlight) {
                 highlights.push(n.id);
             }
-            if (n.active !== undefined && !n.active || n.cancelled || n.terminated) {
+            if (n.reference) {
+                n.shape = 'icon';
+                n.icon = {
+                        face: 'FontAwesome',
+                        code: '\uf0c2',
+                        color: '#00BFFF'
+                };
+
+            }
+            else if (n.active !== undefined && !n.active || n.cancelled || n.terminated) {
                 n.shape = "dot";
                 n.color = {
                     border: n.terminated ? "#6db33f" : "gray", background: "#f1f1f1"

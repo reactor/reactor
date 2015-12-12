@@ -546,17 +546,16 @@ public final class ReactiveStateUtils implements ReactiveState {
 				FeedbackLoop loop = (FeedbackLoop) o;
 
 				Object target = loop.delegateInput();
-
-				if (target != null && target != loop) {
-					Node input = expandReactiveSate(loop.delegateInput());
+				if (target != null && target != loop && !virtualRef(target, r)) {
+					Node input = expandReactiveSate(target);
 					addEdge(r.createEdgeTo(input, true));
 					addDownstream(input, null);
 				}
 
 				target = loop.delegateOutput();
 
-				if (target != null && target != loop) {
-					Node output = expandReactiveSate(loop.delegateOutput());
+				if (target != null && target != loop && !virtualRef(target, r)) {
+					Node output = expandReactiveSate(target);
 					addEdge(output.createEdgeTo(r, true));
 					addUpstream(output, null);
 				}
@@ -571,7 +570,9 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		private boolean virtualRef(Object o, Node ancestor){
 			if(o != null && ancestor != null && String.class.isAssignableFrom(o.getClass())){
-				ancestor.createEdgeTo(o.toString());
+				Node virtualNode = new Node(o.toString(), o.toString(), null, false);
+				nodes.put(virtualNode.id, virtualNode);
+				addEdge(ancestor.createEdgeTo(o.toString()));
 				return true;
 			}
 			return false;
@@ -739,29 +740,30 @@ public final class ReactiveStateUtils implements ReactiveState {
 			indent("{", res, indent != -1 ? 0 : -1, false);
 
 			indent(property("id", getId()), res, i, true);
-			indent(property("name", getName()), res, i, true);
-			indent(property("capacity", getCapacity()), res, i, true);
-			indent(property("group", getGroup()), res, i, true);
-			indent(property("buffered", getBuffered()), res, i, true);
-			if(isHighlight()) {
-				indent(property("highlight", "true"), res, i, true);
-			}
-			indent(property("upstreamLimit", getUpstreamLimit()), res, i, true);
-			indent(property("expectedUpstream", getExpectedUpstream()), res, i, true);
-			indent(property("requestedDownstream", getRequestedDownstream()), res, i, true);
-			if(isInner()) {
-				indent(property("inner", "true"), res, i, true);
-			}
-			if(isDefinedId()) {
+			if (isDefinedId()) {
 				indent(property("definedId", "true"), res, i, true);
+			}
+			indent(property("name", getName()), res, i, true);
+			if (isInner()) {
+				indent(property("inner", "true"), res, i, true);
 			}
 			if(isReference()) {
 				indent(property("reference", "true"), res, i, true);
 			}
-			indent(property("active", isActive()), res, i, true);
-			indent(property("terminated", isTerminated()), res, i, true);
-			indent(property("cancelled", isCancelled()), res, i, false);
-
+			else {
+				indent(property("capacity", getCapacity()), res, i, true);
+				indent(property("group", getGroup()), res, i, true);
+				indent(property("buffered", getBuffered()), res, i, true);
+				if (isHighlight()) {
+					indent(property("highlight", "true"), res, i, true);
+				}
+				indent(property("upstreamLimit", getUpstreamLimit()), res, i, true);
+				indent(property("expectedUpstream", getExpectedUpstream()), res, i, true);
+				indent(property("requestedDownstream", getRequestedDownstream()), res, i, true);
+				indent(property("active", isActive()), res, i, true);
+				indent(property("terminated", isTerminated()), res, i, true);
+				indent(property("cancelled", isCancelled()), res, i, false);
+			}
 
 			indent("}", res, indent != -1 ? 0 : -1, false);
 

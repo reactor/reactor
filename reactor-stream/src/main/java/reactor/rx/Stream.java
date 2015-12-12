@@ -2376,7 +2376,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		}
 	};
 
-	private static abstract class Lift<E, O> extends Stream<O> implements ActiveUpstream, Upstream, Named {
+	private static abstract class Lift<E, O> extends Stream<O>, Upstream, Named {
 
 		protected final Stream<E> origin;
 		private final long capacity;
@@ -2395,16 +2395,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		@Override
 		public Object upstream() {
 			return origin;
-		}
-
-		@Override
-		public boolean isStarted() {
-			return false;
-		}
-
-		@Override
-		public boolean isTerminated() {
-			return false;
 		}
 
 		@Override

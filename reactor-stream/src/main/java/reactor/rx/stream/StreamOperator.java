@@ -36,7 +36,7 @@ import reactor.rx.action.StreamProcessor;
  */
 public final class StreamOperator<I, O> extends Stream<O> implements ReactiveState.Named, ReactiveState.Upstream,
                                                                      PublisherFactory.LiftOperator<I, O>,
-                                                                     ReactiveState.ActiveUpstream {
+                                                                     {
 
 	final private Publisher<I>                                           source;
 	final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
@@ -105,16 +105,6 @@ public final class StreamOperator<I, O> extends Stream<O> implements ReactiveSta
 	@Override
 	public String getName() {
 		return ReactiveStateUtils.getName(barrierProvider).replaceAll("Operator", "");
-	}
-
-	@Override
-	public boolean isStarted() {
-		return false;
-	}
-
-	@Override
-	public boolean isTerminated() {
-		return false;
 	}
 
 	@Override
