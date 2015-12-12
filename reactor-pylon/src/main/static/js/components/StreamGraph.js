@@ -217,7 +217,7 @@ class StreamGraph extends React.Component {
                     }
                     else {
                         n.value = n.capacity;
-                        var backgroundColor = n.buffered != -1 ?
+                        var backgroundColor = n.buffered !== undefined && n.buffered != -1 ?
                             graphUtils.getColorForPercentage(1 - (n.buffered / n.capacity)) : "#6db33f";
                         n.color = {
                             border: "green", background: backgroundColor
