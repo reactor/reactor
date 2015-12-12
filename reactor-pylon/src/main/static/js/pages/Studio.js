@@ -35,18 +35,22 @@ class Studio extends React.Component {
     constructor(props) {
         super(props);
 
+        this.timeline = null;
+        this.records = new vis.DataSet();
         this.formEvents = new Rx.Subject();
         this.fullscreenEvents = new Rx.Subject();
+
+        var thiz = this;
         this.formEventsStream = this.formEvents
             .flatMap(d => {
                 try{
-                    var parsed = JSON.parse(stripComments(d));
+                    var parsed = d.parsed !== undefined ? d : JSON.parse(stripComments(d));
                     if(parsed.constructor === Array){
                         console.log("Graph collections", parsed);
-                        return Rx.Observable.from(parsed)
+                        return Rx.Observable.from(parsed).doOnNext(thiz.addTimelineItem.bind(thiz));
                     }
                     else{
-                        return Rx.Observable.just(parsed);
+                        return Rx.Observable.just(parsed).doOnNext(thiz.addTimelineItem.bind(thiz));
                     }
                 }
                 catch(e){
@@ -54,7 +58,7 @@ class Studio extends React.Component {
                     return Rx.Observable
                         .from(d.split("\n"))
                         .filter(d => d.trim())
-                        .map(d => JSON.parse(stripComments(d)));
+                        .map(d => JSON.parse(stripComments(d))).doOnNext(thiz.addTimelineItem.bind(thiz));;
                 }
 
             });
@@ -65,8 +69,37 @@ class Studio extends React.Component {
         this.formEvents.onNext(this.refs.replay.value);
     }
 
+    addTimelineItem(item){
+        item.start = new Date(item.timestamp);
+        item.content = new Date(item.timestamp);
+        item.parsed = true;
+        this.records.add(item);
+
+        var start = new Date(item.timestamp - 30 * 1000 * 20);
+        var end   = new Date(item.timestamp + 60 * 1000 * 20);
+        this.timeline.setWindow(start, end);
+        this.timeline.on("select", this.onSelectTimelineItem.bind(this));
+    }
+
+    onSelectTimelineItem(item){
+        //ReactDOM.render(<span>HELLO {item.content}</span>, document.getElementById("timeline-tools"));
+    }
+
     requestFullscreen(e){
         this.fullscreenEvents.onNext(e);
+    }
+
+    componentDidMount(){
+        var container = document.getElementById("timeline-box");
+        var options = {
+            type: 'point',
+            throttleRedraw: 15,
+            align: "left",
+            showCurrentTime: true
+        };
+        this.timeline = new vis.Timeline(container, null, options);
+        this.timeline.setItems(this.records);
+
     }
 
     render() {
@@ -97,7 +130,8 @@ class Studio extends React.Component {
                         </Box>
 
                         <Box heading="Timeline">
-                            <div id="timeline"></div>
+                            <div id="timeline-box"></div>
+                            <div id="timeline-tools"></div>
                         </Box>
                     </div>
                 </section>
