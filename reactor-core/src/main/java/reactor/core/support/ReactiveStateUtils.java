@@ -669,20 +669,23 @@ public final class ReactiveStateUtils implements ReactiveState {
 			return object == null;
 		}
 
-		public final boolean isActive() {
-			return !hasSubscription(object) || ((ActiveUpstream) object).isStarted();
+		public final Boolean isActive() {
+			if(!hasSubscription(object)) return null;
+			return ((ActiveUpstream) object).isStarted();
 		}
 
-		public final boolean isTerminated() {
-			return hasSubscription(object) && ((ActiveUpstream) object).isTerminated();
+		public final Boolean isTerminated() {
+			if(!hasSubscription(object)) return null;
+			return ((ActiveUpstream) object).isTerminated();
 		}
 
 		public final boolean isInner() {
 			return isContained(object);
 		}
 
-		public final boolean isCancelled() {
-			return isCancellable(object) && ((ActiveDownstream) object).isCancelled();
+		public final Boolean isCancelled() {
+			if(!isCancellable(object)) return null;
+			return  ((ActiveDownstream) object).isCancelled();
 		}
 
 		protected final Edge createEdgeTo(Node to) {

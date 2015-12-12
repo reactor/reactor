@@ -200,7 +200,7 @@ class StreamGraph extends React.Component {
             if (n.highlight) {
                 highlights.push(n.id);
             }
-            if (!n.active || n.cancelled || n.terminated) {
+            if (n.active !== undefined && !n.active || n.cancelled || n.terminated) {
                 n.shape = "dot";
                 n.color = {
                     border: n.terminated ? "#6db33f" : "gray", background: "#f1f1f1"
