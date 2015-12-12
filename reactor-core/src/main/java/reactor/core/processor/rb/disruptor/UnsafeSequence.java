@@ -16,6 +16,7 @@
 package reactor.core.processor.rb.disruptor;
 
 import reactor.core.processor.rb.disruptor.util.Util;
+import reactor.core.support.ReactiveState;
 import reactor.fn.LongSupplier;
 import sun.misc.Unsafe;
 
@@ -43,7 +44,7 @@ class RhsPadding extends reactor.core.processor.rb.disruptor.Value
  * <p>Also attempts to be more efficient with regards to false
  * sharing by adding padding around the volatile field.
  */
-public class UnsafeSequence extends RhsPadding implements Sequence, LongSupplier
+public class UnsafeSequence extends RhsPadding implements Sequence, LongSupplier, ReactiveState.Trace
 {
     private static final Unsafe UNSAFE;
     private static final long VALUE_OFFSET;

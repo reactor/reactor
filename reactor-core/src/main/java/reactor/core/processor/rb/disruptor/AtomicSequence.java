@@ -15,6 +15,7 @@
  */
 package reactor.core.processor.rb.disruptor;
 
+import reactor.core.support.ReactiveState;
 import reactor.fn.LongSupplier;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -27,7 +28,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * <p>Also attempts to be more efficient with regards to false
  * sharing by adding padding around the volatile field.
  */
-public class AtomicSequence extends RhsPadding implements LongSupplier, Sequence
+public class AtomicSequence extends RhsPadding implements LongSupplier, Sequence, ReactiveState.Trace
 {
 
     private static final AtomicLongFieldUpdater<Value> UPDATER =
