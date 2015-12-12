@@ -250,7 +250,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * @see reactor.Publishers#ignoreElement(Publisher)
+	 * @see reactor.Publishers#ignoreElements(Publisher)
 	 * @return {@literal new Stream}
 	 */
 	@SuppressWarnings("unchecked")

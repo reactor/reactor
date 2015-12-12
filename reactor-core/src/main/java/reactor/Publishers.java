@@ -403,8 +403,38 @@ public final class Publishers extends PublisherFactory {
 	 * @return a new filtered {@link Publisher<Void>}
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Publisher<T> ignoreElement(Publisher<T> source) {
+	public static <T> Publisher<T> ignoreElements(Publisher<T> source) {
 		return lift(source, IgnoreOnNextOperator.INSTANCE);
+	}
+
+	/**
+	 * @param publisher
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
+		return log(publisher, null, LogOperator.ALL);
+	}
+
+	/**
+	 * @param publisher
+	 * @param category
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
+		return log(publisher, category, LogOperator.ALL);
+	}
+
+	/**
+	 * @param publisher
+	 * @param category
+	 * @param options
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, int options) {
+		return lift(publisher, new LogOperator<IN>(category, options));
 	}
 
 	/**
@@ -445,36 +475,6 @@ public final class Publishers extends PublisherFactory {
 			boolean cancelAfterFirstRequestComplete,
 			Queue<IN> store) {
 		return new BlockingQueueSubscriber<>(source, null, store, cancelAfterFirstRequestComplete, size);
-	}
-
-	/**
-	 * @param publisher
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
-		return log(publisher, null, LogOperator.ALL);
-	}
-
-	/**
-	 * @param publisher
-	 * @param category
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
-		return log(publisher, category, LogOperator.ALL);
-	}
-
-	/**
-	 * @param publisher
-	 * @param category
-	 * @param options
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, int options) {
-		return lift(publisher, new LogOperator<IN>(category, options));
 	}
 
 	/**
