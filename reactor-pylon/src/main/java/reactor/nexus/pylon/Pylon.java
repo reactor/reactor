@@ -69,7 +69,8 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 	public static void main(String... args) throws Exception {
 		String port = System.getenv("PORT");
-		Pylon pylon = create(ReactiveNet.httpServer("0.0.0.0", port != null ? Integer.parseInt(port) : 12013),
+		String address = args.length > 0 ? args[0] : "0.0.0.0";
+		Pylon pylon = create(ReactiveNet.httpServer(address, port != null ? Integer.parseInt(port) : 12013),
 				extractAssets() );
 
 		final CountDownLatch stopped = new CountDownLatch(1);

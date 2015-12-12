@@ -81,4 +81,9 @@ public interface Registry<K, V> extends Iterable<Registration<K, ? extends V>> {
 	 */
 	void clear();
 
+	/**
+	 * Number of registration
+	 */
+	long size();
+
 }

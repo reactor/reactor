@@ -18,12 +18,18 @@ package reactor.bus.registry;
 
 import reactor.bus.selector.ObjectSelector;
 import reactor.bus.selector.Selector;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Pausable;
 
 /**
  * @author Jon Brisbin
+ * @author Stephane Maldini
  */
-public class CachableRegistration<K, V> implements Registration<K, V> {
+public class CachableRegistration<K, V> implements Registration<K, V>, ReactiveState.Downstream,
+                                                   ReactiveState.Grouped<Selector>,
+                                                   ReactiveState.ActiveDownstream,
+                                                   ReactiveState.Inner
+                                                   {
 
 	private static final Selector<Void> NO_MATCH = new ObjectSelector<Void, Void>(null) {
 		@Override
@@ -110,6 +116,16 @@ public class CachableRegistration<K, V> implements Registration<K, V> {
 			((Pausable) object).resume();
 		}
 		return this;
+	}
+
+	@Override
+	public Object downstream() {
+		return object;
+	}
+
+	@Override
+	public Selector key() {
+		return selector;
 	}
 
 	@Override

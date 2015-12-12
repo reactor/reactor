@@ -127,7 +127,7 @@ class StreamGraph extends React.Component {
 
         var options = Object.assign({
             layout: {
-                randomSeed: 100
+              randomSeed: 100
             }, interaction: {
                 dragNodes: false, hover: true, tooltipDelay: 0
             }, //clickToUse: true,
@@ -144,7 +144,11 @@ class StreamGraph extends React.Component {
                     }
                 }
             }, edges: {
-                smooth: true, //smooth: {
+                smooth: true,
+                font: {
+                    face: 'Montserrat', color: '#34302d'
+                },
+                 //smooth: {
                 //    type: 'dynamic'
                 //},
                 //dashes: true,
@@ -153,11 +157,11 @@ class StreamGraph extends React.Component {
                 //"hierarchicalRepulsion": {
                 //    "nodeDistance": 190
                 //},
-                //"minVelocity": 0.75,
+                ////"minVelocity": 0.75,
                 //"barnesHut": {
                 //    "avoidOverlap": 2,
                 //    springLength: 300
-                //}
+                //},
                 //"solver": "hierarchicalRepulsion"
             }
         }, this.graphOptions);
@@ -244,7 +248,9 @@ class StreamGraph extends React.Component {
             }
             else if(n.inner){
                 n.shape = "cicle";
-                delete n.color.border;
+                if(n.color !== undefined && n.color.border !== undefined) {
+                    delete n.color.border;
+                }
                 n.label = n.buffered != -1 ? n.buffered : " ";
             }
         }
@@ -253,9 +259,11 @@ class StreamGraph extends React.Component {
             var output = null;
             if(edgeDetails[e.from] !== undefined && edgeDetails[e.from].downstreamRequested !== undefined){
                 output = edgeDetails[e.from].downstreamRequested;
+                //e.value = edgeDetails[e.from].downstreamRequested;
             }
             if(edgeDetails[e.to] !== undefined && edgeDetails[e.to].upstreamRequested !== undefined ){
                 output = (output != null ? output +  '/ ' : '') + edgeDetails[e.to].upstreamRequested;
+                //e.value = edgeDetails[e.to].upstreamRequested;
             }
             if(e.discrete === undefined && output != null){
                 e.label = output;

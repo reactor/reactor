@@ -150,6 +150,11 @@ public class CachingRegistry<K, V> implements Registry<K, V> {
 	}
 
 	@Override
+	public long size() {
+		return registrations.size();
+	}
+
+	@Override
 	public Iterator<Registration<K, ? extends V>> iterator() {
 		return FastList.newList(registrations).iterator();
 	}

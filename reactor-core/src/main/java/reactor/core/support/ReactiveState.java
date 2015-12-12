@@ -252,6 +252,14 @@ public interface ReactiveState {
 	}
 
 	/**
+	 * A component that holds a failure state if any
+	 */
+	interface FailState extends ReactiveState {
+
+		Throwable getError();
+	}
+
+	/**
 	 * A component that is delegating to a sub-flow (processor, or publisher/subscriber chain)
 	 */
 	interface FeedbackLoop extends ReactiveState {
