@@ -63,7 +63,7 @@ import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.operator.LogOperator;
-import reactor.core.subscriber.Tap;
+import reactor.rx.action.terminal.Tap;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;

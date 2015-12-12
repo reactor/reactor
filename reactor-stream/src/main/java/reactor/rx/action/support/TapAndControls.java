@@ -15,7 +15,7 @@
  */
 package reactor.rx.action.support;
 
-import reactor.core.subscriber.Tap;
+import reactor.rx.action.terminal.Tap;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Supplier;
 import reactor.rx.action.Control;

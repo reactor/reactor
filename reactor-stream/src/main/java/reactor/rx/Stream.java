@@ -38,7 +38,7 @@ import reactor.core.publisher.operator.IgnoreOnNextOperator;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
 import reactor.core.publisher.operator.ZipOperator;
-import reactor.core.subscriber.Tap;
+import reactor.rx.action.terminal.Tap;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;

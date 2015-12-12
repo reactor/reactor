@@ -23,8 +23,6 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import reactor.Processors;
 import reactor.core.processor.ProcessorGroup;
-import reactor.io.net.ReactiveNet;
-import reactor.io.net.nexus.Nexus;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.StreamProcessor;

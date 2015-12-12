@@ -39,7 +39,6 @@ import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
 import reactor.core.publisher.operator.ZipOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
-import reactor.core.subscriber.Tap;
 import reactor.core.support.SignalType;
 import reactor.fn.BiFunction;
 import reactor.fn.Function;
@@ -476,18 +475,6 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, int options) {
 		return lift(publisher, new LogOperator<IN>(category, options));
-	}
-
-	/**
-	 * Monitor the most recent value of this publisher sequence to be returned by {@link Supplier#get}
-	 * @param publisher the sequence to monitor
-	 * @param <IN> the sequence type
-	 * @return a new {@link Supplier} tapping into publisher (requesting an unbounded demand of Long.MAX_VALUE)
-	 */
-	public static <IN> Supplier<IN> tap(Publisher<IN> publisher) {
-		Tap<IN> tap = Tap.create();
-		publisher.subscribe(tap);
-		return tap;
 	}
 
 	/**
