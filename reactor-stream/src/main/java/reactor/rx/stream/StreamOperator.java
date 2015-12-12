@@ -35,8 +35,7 @@ import reactor.rx.action.StreamProcessor;
  * @since 2.1
  */
 public final class StreamOperator<I, O> extends Stream<O> implements ReactiveState.Named, ReactiveState.Upstream,
-                                                                     PublisherFactory.LiftOperator<I, O>,
-                                                                     {
+                                                                     PublisherFactory.LiftOperator<I, O>{
 
 	final private Publisher<I>                                           source;
 	final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
