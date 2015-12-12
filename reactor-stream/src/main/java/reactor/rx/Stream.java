@@ -2376,7 +2376,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		}
 	};
 
-	private static abstract class Lift<E, O> extends Stream<O>, Upstream, Named {
+	private static abstract class Lift<E, O> extends Stream<O> implements Upstream, Named {
 
 		protected final Stream<E> origin;
 		private final long capacity;
