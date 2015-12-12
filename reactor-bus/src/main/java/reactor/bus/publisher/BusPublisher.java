@@ -23,6 +23,7 @@ import reactor.bus.EventBus;
 import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
 import reactor.core.subscriber.SerializedSubscriber;
+import reactor.core.support.ReactiveState;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 
@@ -73,27 +74,7 @@ public final class BusPublisher<T> implements Publisher<T> {
 
 
 
-		subscriber.onSubscribe(new Subscription() {
-
-			final Registration<?, ? extends BiConsumer<?, ? extends T>> registration =
-					observable.on(selector,
-												new Consumer<T>() {
-													@Override
-													public void accept(T event) {
-														subscriber.onNext(event);
-													}
-												});
-
-			@Override
-			public void request(long n) {
-				//IGNORE
-			}
-
-			@Override
-			public void cancel() {
-				registration.cancel();
-			}
-		});
+		subscriber.onSubscribe(new BusToSubscription(subscriber));
 	}
 
 	@Override
@@ -102,5 +83,48 @@ public final class BusPublisher<T> implements Publisher<T> {
 		  "selector=" + selector +
 		  ", bus=" + observable +
 		  '}';
+	}
+
+	private class BusToSubscriber implements Consumer<T>, ReactiveState.Trace, ReactiveState.Downstream {
+
+		private final Subscriber<? super T> subscriber;
+
+		public BusToSubscriber(Subscriber<? super T> subscriber) {
+			this.subscriber = subscriber;
+		}
+
+		@Override
+		public Object downstream() {
+			return subscriber;
+		}
+
+		@Override
+		public void accept(T event) {
+			subscriber.onNext(event);
+		}
+	}
+
+	private class BusToSubscription implements Subscription, ReactiveState.Trace, ReactiveState.Upstream {
+
+		final         Registration<?, ? extends BiConsumer<?, ? extends T>> registration;
+
+		public BusToSubscription(Subscriber<? super T> subscriber) {
+			registration = observable.on(selector, new BusToSubscriber(subscriber));
+		}
+
+		@Override
+		public void request(long n) {
+			//IGNORE
+		}
+
+		@Override
+		public Object upstream() {
+			return observable;
+		}
+
+		@Override
+		public void cancel() {
+			registration.cancel();
+		}
 	}
 }

@@ -284,6 +284,21 @@ class StreamGraph extends React.Component {
             network.selectNodes(highlights);
         }
 
+
+        // cluster inner
+        //var clusterOptionsByData = {
+        //    joinCondition:function(childOptions) {
+        //        return childOptions.inner;
+        //    },
+        //    processProperties: function(clusterOptions, childNodes) {
+        //        clusterOptions.label = "[" + childNodes.length + "]";
+        //        return clusterOptions;
+        //    },
+        //    clusterNodeProperties: {borderWidth:3, shape:'box', font:{size:30}}
+        //}
+        //network.cluster(clusterOptionsByData);
+        //network.clusterByHubsize(undefined, clusterOptionsByData);
+
         //font: {size:15, color:'red', face:'courier', strokeWidth:3, strokeColor:'#ffffff'}
         // create a network
 

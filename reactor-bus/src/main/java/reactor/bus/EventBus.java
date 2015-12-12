@@ -214,18 +214,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 			processor.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 		}
 
-		this.on(new ClassSelector(Throwable.class), new Consumer<Event<Throwable>>() {
-			final Logger log = LoggerFactory.getLogger(EventBus.class);
-
-			@Override
-			public void accept(Event<Throwable> ev) {
-				if (null == uncaughtErrorHandler) {
-					log.error(ev.getData().getMessage(), ev.getData());
-				} else {
-					uncaughtErrorHandler.accept(ev.getData());
-				}
-			}
-		});
+		this.on(new ClassSelector(Throwable.class), new BusErrorConsumer(uncaughtErrorHandler));
 	}
 
 	/**
@@ -606,6 +595,26 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 		}
 	}
 
+	private static class BusErrorConsumer implements Consumer<Event<Throwable>> {
+
+		final         Logger              log;
+		private final Consumer<Throwable> uncaughtErrorHandler;
+
+		public BusErrorConsumer(Consumer<Throwable> uncaughtErrorHandler) {
+			this.uncaughtErrorHandler = uncaughtErrorHandler;
+			log = LoggerFactory.getLogger(EventBus.class);
+		}
+
+		@Override
+		public void accept(Event<Throwable> ev) {
+			if (null == uncaughtErrorHandler) {
+				log.error(ev.getData().getMessage(), ev.getData());
+			} else {
+				uncaughtErrorHandler.accept(ev.getData());
+			}
+		}
+	}
+
 	public class ReplyToConsumer<E extends Event<?>, V> implements Consumer<E> {
 		private final Function<E, V> fn;
 
@@ -653,7 +662,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 		return ReactiveStateUtils.scan(this);
 	}
 
-	private class PreparedConsumer<T> implements Consumer<Event<T>> {
+	private final class PreparedConsumer<T> implements Consumer<Event<T>> {
 
 		final         List<Registration<Object, ? extends BiConsumer<Object, ? extends Event<?>>>> regs;
 		final         int                                                                          size;
@@ -684,7 +693,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 		}
 	}
 
-	private class EventSubscriber<T> implements Subscriber<T> {
+	private final class EventSubscriber<T> implements Subscriber<T> {
 
 		private final Function<? super T, Object> keyMapper;
 		Subscription s;
@@ -717,7 +726,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 		}
 	}
 
-	private class DispatchEventSubscriber implements BiConsumer<Event<?>, SubscriptionWithContext<Void>> {
+	private final class DispatchEventSubscriber implements BiConsumer<Event<?>, SubscriptionWithContext<Void>> {
 
 		@Override
 		public void accept(Event<?> event, SubscriptionWithContext<Void> voidSubscriptionWithContext) {

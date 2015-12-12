@@ -3030,6 +3030,8 @@ class StreamsSpec extends Specification {
 				r.notify(selector.object, Event.wrap(it))
 			}
 
+	  println r.debug()
+
 		then:
 			tail.await().size() == 10
 			tail.get().sum { it.t1 } >= 1000 //correctly serialized

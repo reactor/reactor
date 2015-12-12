@@ -1072,7 +1072,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 
 		@Override
 		public long pending() {
-			return processor.ringBuffer.getCursor() - sequence.get();
+			return processor.ringBuffer.pending();
 		}
 
 		@Override
