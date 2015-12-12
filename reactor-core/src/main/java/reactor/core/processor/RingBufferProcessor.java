@@ -626,10 +626,6 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 
 		}
 
-		//prepare the subscriber subscription to this processor
-		signalProcessor.setSubscription(
-				new RingBufferSubscription(pendingRequest, subscriber, signalProcessor));
-
 		try {
 			//start the subscriber thread
 			executor.execute(signalProcessor);
@@ -752,54 +748,6 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		return ringBuffer.remainingCapacity();
 	}
 
-	private final class RingBufferSubscription implements Subscription, Upstream {
-
-		private final Sequence pendingRequest;
-
-		private final Subscriber<? super E> subscriber;
-
-		private final TopicSubscriber<E> eventProcessor;
-
-		public RingBufferSubscription(Sequence pendingRequest,
-		                              Subscriber<? super E> subscriber,
-		                              TopicSubscriber<E> eventProcessor) {
-			this.subscriber = subscriber;
-			this.eventProcessor = eventProcessor;
-			this.pendingRequest = pendingRequest;
-		}
-
-		@Override
-		public Object upstream() {
-			return RingBufferProcessor.this;
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public void request(long n) {
-			if (BackpressureUtils.checkRequest(n, subscriber)) {
-				if (!eventProcessor.isRunning()) {
-					return;
-				}
-
-				BackpressureUtils.getAndAdd(pendingRequest, n);
-			}
-		}
-
-		@Override
-		public void cancel() {
-			eventProcessor.halt();
-		}
-
-		@Override
-		public String toString() {
-			return "RingBufferSubscription{" +
-					"pendingRequest=" + pendingRequest +
-					", sequence=" + eventProcessor.sequence +
-					", ringBuffer=" + ringBuffer.getCursor() +
-					'}';
-		}
-	}
-
 	@Override
 	public long getCapacity() {
 		return ringBuffer.getBufferSize();
@@ -831,7 +779,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * parallel coordination of an event.
 	 */
 	private final static class TopicSubscriber<T> implements Runnable, Downstream, Buffering, ActiveUpstream,
-	                                                         ActiveDownstream, Inner, DownstreamDemand {
+	                                                         ActiveDownstream, Inner, DownstreamDemand, Subscription {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -844,8 +792,6 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 
 		private final Subscriber<? super T> subscriber;
 
-		private Subscription subscription;
-
 		/**
 		 * Construct a ringbuffer consumer that will automatically track the progress by
 		 * updating its sequence
@@ -856,14 +802,6 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 			this.processor = processor;
 			this.pendingRequest = pendingRequest;
 			this.subscriber = subscriber;
-		}
-
-		public Subscription getSubscription() {
-			return subscription;
-		}
-
-		public void setSubscription(Subscription subscription) {
-			this.subscription = subscription;
 		}
 
 		public Sequence getSequence() {
@@ -892,7 +830,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 					return;
 				}
 
-				if(!processor.startSubscriber(subscriber, subscription)){
+				if(!processor.startSubscriber(subscriber, this)){
 					return;
 				}
 
@@ -1012,6 +950,22 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		@Override
 		public Object downstream() {
 			return subscriber;
+		}
+
+		@Override
+		public void request(long n) {
+			if (BackpressureUtils.checkRequest(n, subscriber)) {
+				if (!isRunning()) {
+					return;
+				}
+
+				BackpressureUtils.getAndAdd(pendingRequest, n);
+			}
+		}
+
+		@Override
+		public void cancel() {
+			halt();
 		}
 	}
 
