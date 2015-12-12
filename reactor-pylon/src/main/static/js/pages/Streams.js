@@ -10,7 +10,7 @@ class Streams extends React.Component {
 
     constructor(props) {
         super(props);
-        this.resetNodes = new Rx.Subject();
+        this.graphControls = new Rx.Subject();
     }
 
     componentDidUpdate() {
@@ -21,9 +21,9 @@ class Streams extends React.Component {
         return (
             <DocumentTitle title="Reactor Console • Streams">
                 <section className="streams">
-                    <div className="section-heading">Stream Monitor <a className="btn btn-primary pull-right" onClick={ e => this.resetNodes.onNext(e)}>Reset</a></div>
+                    <div className="section-heading">Stream Monitor <a className="btn btn-primary pull-right" onClick={ e => this.graphControls.onNext({type: 'reset'})}>Reset</a></div>
 
-                    <StreamGraph fullscreen={true} resetNodes={this.resetNodes} streams={this.props.graphStream.map(json => json.streams)} />
+                    <StreamGraph fullscreen={true} controlBus={this.graphControls} streams={this.props.graphStream.map(json => json.streams)} />
                 </section>
             </DocumentTitle>
         );

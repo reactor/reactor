@@ -456,11 +456,8 @@ public class StreamTests extends AbstractReactorTest {
 		Broadcaster<Integer> d = Broadcaster.create();
 
 		Control c = d.dispatchOn(asyncGroup)
-		             .log("main", LogOperator.REQUEST | LogOperator.NUMBER_ON_NEXT)
 		             .partition(8)
 		             .consume(stream -> stream.dispatchOn(asyncGroup)
-		                                      .log("partitioned-" + stream.key(), LogOperator.REQUEST | LogOperator
-				                                      .ON_SUBSCRIBE | LogOperator.NUMBER_ON_NEXT)
 		                                      .map(o -> {
 			                                      synchronized (internalLock) {
 

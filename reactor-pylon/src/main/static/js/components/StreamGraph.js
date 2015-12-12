@@ -60,11 +60,8 @@ class StreamGraph extends React.Component {
         this.edges = new vis.DataSet();
         this.graphOptions = this.props.graphOptions;
 
-        if(this.props.resetNodes !== undefined){
-            this.props.resetNodes.subscribe(this.resetAllNodesStabilize.bind(this));
-        }
-        if(this.props.onFullscreen !== undefined){
-            this.props.onFullscreen.subscribe(this.fullscreen.bind(this));
+        if(this.props.controlBus !== undefined){
+            this.props.controlBus.subscribe(this.controlBusHandler.bind(this));
         }
     }
 
@@ -83,6 +80,18 @@ class StreamGraph extends React.Component {
     resetAllNodes() {
         this.nodes.clear();
         this.edges.clear();
+    }
+
+    controlBusHandler(event){
+        if(event.type  == 'fullscreen'){
+            this.fullscreen(event);
+        }
+        else if(event.type == 'clear'){
+            this.resetAllNodes();
+        }
+        else if(event.type == 'reset'){
+            this.resetAllNodesStabilize();
+        }
     }
 
     resetAllNodesStabilize() {
@@ -125,52 +134,52 @@ class StreamGraph extends React.Component {
             container.style.height = (h.y - 110) + "px";
         }
 
-        var options = Object.assign({
-            layout: {
-              randomSeed: 100
-            }, interaction: {
-                dragNodes: false, hover: true, tooltipDelay: 0
-            }, //clickToUse: true,
-            nodes: {
-                labelHighlightBold: false, color: {
-                    highlight: {
-                        // border: '#6db33f', background: '#34302d'
-                    }, border: '#6db33f', background: '#6db33f'
-                }, shape: 'diamond', font: {
-                    size: 18, face: 'Montserrat', color: '#34302d'
-                }, borderWidth: 2, scaling: {
-                    min: 20, label: {
-                        min: 12, max: 18
-                    }
-                }
-            }, edges: {
-                smooth: true,
-                font: {
-                    face: 'Montserrat', color: '#34302d'
-                },
-                 //smooth: {
-                //    type: 'dynamic'
-                //},
-                //dashes: true,
-                width: 2
-            }, "physics": {
-                //"hierarchicalRepulsion": {
-                //    "nodeDistance": 190
-                //},
-                ////"minVelocity": 0.75,
-                //"barnesHut": {
-                //    "avoidOverlap": 2,
-                //    springLength: 300
-                //},
-                //"solver": "hierarchicalRepulsion"
-            }
-        }, this.graphOptions);
-
         var nodes = this.nodes;
         var edges = this.edges;
         var network = this.network;
         var first = false;
         if (network == null) {
+            var options = Object.assign({
+                layout: {
+                    randomSeed: 100
+                }, interaction: {
+                    dragNodes: false, hover: true, tooltipDelay: 0
+                }, //clickToUse: true,
+                nodes: {
+                    labelHighlightBold: false, color: {
+                        highlight: {
+                            // border: '#6db33f', background: '#34302d'
+                        }, border: '#6db33f', background: '#6db33f'
+                    }, shape: 'diamond', font: {
+                        size: 18, face: 'Montserrat', color: '#34302d'
+                    }, borderWidth: 2, scaling: {
+                        min: 20, label: {
+                            min: 12, max: 18
+                        }
+                    }
+                }, edges: {
+                    smooth: true,
+                    font: {
+                        face: 'Montserrat', color: '#34302d'
+                    },
+                    //smooth: {
+                    //    type: 'dynamic'
+                    //},
+                    //dashes: true,
+                    width: 2
+                }, "physics": {
+                    //"hierarchicalRepulsion": {
+                    //    "nodeDistance": 190
+                    //},
+                    ////"minVelocity": 0.75,
+                    //"barnesHut": {
+                    //    "avoidOverlap": 2,
+                    //    springLength: 300
+                    //},
+                    //"solver": "hierarchicalRepulsion"
+                }
+            }, this.graphOptions);
+
             network = new vis.Network(container, {}, options);
             this.network = network;
             first = true;
@@ -179,16 +188,6 @@ class StreamGraph extends React.Component {
         //var task =  function(){ test();setTimeout(task, 200); };
         //
         //setTimeout(task, 200);
-
-        // add event listeners
-        this.network.on('selectNode', (params) => {
-            document.getElementById('selection').innerHTML = 'Selection: ' + params.nodes;
-        });
-        this.network.on('hoverNode', (params) => {
-            ReactDOM.render(<pre className="select">
-                {JSON.stringify(nodes.get(params.node), null, 2)}
-            </pre>, document.getElementById('selection'));
-        });
 
         // randomly create some nodes and edges
 
@@ -289,6 +288,16 @@ class StreamGraph extends React.Component {
         edges.update(json.edges);
 
         if (first) {
+            // add event listeners
+            this.network.on('selectNode', (params) => {
+                document.getElementById('selection').innerHTML = 'Selection: ' + params.nodes;
+            });
+            this.network.on('hoverNode', (params) => {
+                ReactDOM.render(<pre className="select">
+                {JSON.stringify(nodes.get(params.node), null, 2)}
+            </pre>, document.getElementById('selection'));
+            });
+
             network.setData({nodes: nodes, edges: edges});
             network.selectNodes(highlights);
         }
@@ -321,7 +330,7 @@ class StreamGraph extends React.Component {
 
     componentDidMount() {
         this.disposable = this.props.streams
-            .subscribe(this.draw.bind(this), error => console.log("error:", error), () => console.log("terminated"));
+            .subscribe(this.draw.bind(this), error => console.log(error), () => console.log("terminated"));
     }
 
     calcHeight() {

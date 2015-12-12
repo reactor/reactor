@@ -38,13 +38,19 @@ class Studio extends React.Component {
         this.timeline = null;
         this.records = new vis.DataSet();
         this.formEvents = new Rx.Subject();
-        this.fullscreenEvents = new Rx.Subject();
+        this.graphControlEvents = new Rx.Subject();
 
         var thiz = this;
         this.formEventsStream = this.formEvents
             .flatMap(d => {
                 try{
-                    var parsed = d.parsed !== undefined ? d : JSON.parse(stripComments(d));
+                    if(d.parsed !== undefined){
+                        return Rx.Observable.just(d);
+                    }
+
+                    var parsed = JSON.parse(stripComments(d));
+
+
                     if(parsed.constructor === Array){
                         console.log("Graph collections", parsed);
                         return Rx.Observable.from(parsed).doOnNext(thiz.addTimelineItem.bind(thiz));
@@ -55,10 +61,12 @@ class Studio extends React.Component {
                 }
                 catch(e){
                     console.log("Fallback to line by line parsing : ", e);
-                    return Rx.Observable
+                    Rx.Observable
                         .from(d.split("\n"))
                         .filter(d => d.trim())
-                        .map(d => JSON.parse(stripComments(d))).doOnNext(thiz.addTimelineItem.bind(thiz));;
+                        .map(d => JSON.parse(stripComments(d))).subscribe(thiz.addTimelineItem.bind(thiz));
+
+                    return Rx.Observable.empty();
                 }
 
             });
@@ -82,11 +90,25 @@ class Studio extends React.Component {
     }
 
     onSelectTimelineItem(item){
+        if(item.items.length == 0){
+            return;
+        }
+
+        this.graphControlEvents.onNext({type: 'clear'});
+
+        for(var id in item.items) {
+            var node = this.records.get(item.items[id]);
+            if (node == null) {
+                continue;
+            }
+
+            this.formEvents.onNext(node);
+        }
         //ReactDOM.render(<span>HELLO {item.content}</span>, document.getElementById("timeline-tools"));
     }
 
     requestFullscreen(e){
-        this.fullscreenEvents.onNext(e);
+        this.graphControlEvents.onNext({type: 'fullscreen'});
     }
 
     componentDidMount(){
@@ -95,6 +117,7 @@ class Studio extends React.Component {
             type: 'point',
             throttleRedraw: 15,
             align: "left",
+            multiselect: true,
             showCurrentTime: true
         };
         this.timeline = new vis.Timeline(container, null, options);
@@ -112,7 +135,7 @@ class Studio extends React.Component {
                     <div className="section-content">
                         <Box cols="1" heading="Observing Station" onClick={this.requestFullscreen.bind(this)}>
                             <div id="observing">
-                                <StreamGraph onFullscreen={this.fullscreenEvents} graphOptions={{interaction: {
+                                <StreamGraph controlBus={this.graphControlEvents} graphOptions={{interaction: {
                                     dragNodes: true, zoomView: true, hover: true, }}} streams={this.formEventsStream}/>
                             </div>
                         </Box>
