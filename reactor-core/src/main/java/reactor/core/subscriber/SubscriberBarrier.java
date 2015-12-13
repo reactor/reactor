@@ -21,6 +21,7 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 
 /**
  * A {@link Subscriber} with an asymetric typed wrapped subscriber. Yet it represents a unique relationship between
@@ -164,7 +165,7 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 
 	@Override
 	public boolean isTerminated() {
-		return false;
+		return subscription != null;
 	}
 
 	@Override

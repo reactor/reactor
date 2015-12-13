@@ -92,6 +92,20 @@ class StreamGraph extends React.Component {
         else if(event.type == 'reset'){
             this.resetAllNodesStabilize();
         }
+        else if(event.type == 'context'){
+            var n = this.nodes.get(event.id);
+            if(n != null && n.state != event.state){
+                var newcolor = event.state == 'RUNNABLE' ? '#6db33f' : 'indianred';
+                this.nodes.update({
+                    id: n.id,
+                    state: event.state,
+                    font: {
+                        color: 'white',
+                        background: newcolor
+                    }
+                });
+            }
+        }
     }
 
     resetAllNodesStabilize() {
@@ -136,6 +150,13 @@ class StreamGraph extends React.Component {
 
         var nodes = this.nodes;
         var edges = this.edges;
+        if(json.type !== undefined && json.type == 'RemovedGraphEvent'){
+            nodes.remove(json.streams);
+            //if(this.network != null){
+            //    this.network.setData({nodes: nodes, edges: edges});
+            //}
+            return;
+        }
         var network = this.network;
         var first = false;
         if (network == null) {

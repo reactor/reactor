@@ -33,7 +33,7 @@ class App extends React.Component {
       var logStream = new Rx.ReplaySubject(200);
 
       nexusStream
-          .filter(json => json.type == "GraphEvent")
+          .filter(json => json.type == "GraphEvent" || json.type == "RemovedGraphEvent")
           .subscribe(graphStream);
 
       nexusStream

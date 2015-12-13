@@ -18,8 +18,10 @@ package reactor.core.support;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 
 /**
@@ -400,21 +402,57 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		/**
 		 *
-		 * @return
+		 * @return a json array of terminated ids
 		 */
-		public Graph removeTerminatedNodes() {
-			Graph removedGraph = new Graph(subscan, trace);
+		public Collection<String> removeTerminatedNodes() {
 			if (nodes.isEmpty()) {
-				return removedGraph;
+				return null;
 			}
+			Set<String> removedGraph = new HashSet<>();
 
 			Iterator<Node> nodeIterator = nodes.values().iterator();
 			Node node;
+			Boolean bool1;
+			boolean remove;
 			while(nodeIterator.hasNext()){
 				node = nodeIterator.next();
-				if (node.isTerminated() || node.isCancelled()) {
+
+				if(node.isReference()){
+					Node n;
+					remove = true;
+					for(Edge edge: node.connectionsRef){
+						n = nodes.get(edge.from);
+						if(n == null){
+							continue;
+						}
+						bool1 = n.isCancelled();
+						if(bool1 == null || !bool1){
+							remove = false;
+							break;
+						}
+						bool1 = n.isTerminated();
+						if(bool1 == null || !bool1){
+							remove = false;
+							break;
+						}
+					}
+				}
+				else {
+					bool1 = node.isTerminated();
+					remove = bool1 != null && bool1;
+
+					if (!remove) {
+						bool1 = node.isCancelled();
+						remove = bool1 != null && bool1;
+					}
+
+					if (!remove) {
+						remove = node.connectionsRef != null && node.connectionsRef.length == 0;
+					}
+				}
+				if(remove){
 					nodeIterator.remove();
-					removedGraph.nodes.put(node.getId(), node);
+					removedGraph.add("\""+node.getId()+"\"");
 				}
 			}
 
@@ -595,8 +633,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 		private boolean virtualRef(Object o, Node ancestor){
 			if(o != null && ancestor != null && String.class.isAssignableFrom(o.getClass())){
 				Node virtualNode = new Node(o.toString(), o.toString(), null, false);
+				Edge edge = ancestor.createEdgeTo(o.toString());
+				virtualNode.addEdgeRef(edge);
 				nodes.put(virtualNode.id, virtualNode);
-				addEdge(ancestor.createEdgeTo(o.toString()));
+				addEdge(edge);
 				return true;
 			}
 			return false;

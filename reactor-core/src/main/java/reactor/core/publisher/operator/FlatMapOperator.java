@@ -171,6 +171,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			}
 		}
 
+		@Override
+		public long getCapacity() {
+			return bufferSize;
+		}
+
 		void removeInner(BufferSubscriber<T, V> inner) {
 			for (; ; ) {
 				BufferSubscriber<?, ?>[] a = subscribers;

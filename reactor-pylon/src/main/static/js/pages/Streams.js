@@ -10,7 +10,12 @@ class Streams extends React.Component {
 
     constructor(props) {
         super(props);
-        this.graphControls = new Rx.Subject();
+        var graphControls = new Rx.Subject();
+        this.graphControls = graphControls;
+
+        this.props.systemStream.flatMap(json => Rx.Observable.from(json.threads)).subscribe(json => {
+            graphControls.onNext({type: 'context', id: json.contextHash, state: json.state });
+        });
     }
 
     componentDidUpdate() {
@@ -23,7 +28,9 @@ class Streams extends React.Component {
                 <section className="streams">
                     <div className="section-heading">Stream Monitor <a className="btn btn-primary pull-right" onClick={ e => this.graphControls.onNext({type: 'reset'})}>Reset</a></div>
 
-                    <StreamGraph fullscreen={true} controlBus={this.graphControls} streams={this.props.graphStream.map(json => json.streams)} />
+                    <StreamGraph fullscreen={true}
+                                 controlBus={this.graphControls}
+                                 streams={this.props.graphStream.map(json => json.type == 'RemovedGraphEvent' ? json : json.streams)} />
                 </section>
             </DocumentTitle>
         );

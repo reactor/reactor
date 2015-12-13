@@ -231,6 +231,11 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 			}
 		}
 
+		@Override
+		public long getCapacity() {
+			return subscribers != null ? subscribers.length : 1;
+		}
+
 		@SuppressWarnings("unchecked")
 		void drainLoop(ZipState[] inner) {
 
