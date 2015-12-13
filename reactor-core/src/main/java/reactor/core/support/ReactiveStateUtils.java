@@ -789,6 +789,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 				indent(property("period", getPeriod()), res, i, true);
 				indent(property("capacity", getCapacity()), res, i, true);
 				indent(property("group", getGroup()), res, i, true);
+				//indent(property("type", object.getClass().getName()), res, i, true);
 				indent(property("buffered", getBuffered()), res, i, true);
 				if (isHighlight()) {
 					indent(property("highlight", "true"), res, i, true);
@@ -833,10 +834,6 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		public final String getTo() {
 			return to;
-		}
-
-		public final boolean isDiscrete() {
-			return discrete;
 		}
 
 		public final String getId() {

@@ -210,15 +210,7 @@ class StreamGraph extends React.Component {
                 };
 
             }
-            if (n.period !== undefined) {
-                n.shape = 'icon';
-                n.icon = {
-                        face: 'FontAwesome',
-                        code: '\uf017'
-                };
-
-            }
-            if(n.failed !== undefined){
+            else if(n.failed !== undefined){
                 n.shape = 'icon';
                 n.icon = {
                     face: 'FontAwesome',
@@ -228,6 +220,14 @@ class StreamGraph extends React.Component {
                 n.color = {
                     background: 'black'
                 }
+            }
+            else if (n.period !== undefined) {
+                n.shape = 'icon';
+                n.icon = {
+                    face: 'FontAwesome',
+                    code: '\uf017'
+                };
+
             }
             else if (n.active !== undefined && !n.active || n.cancelled || n.terminated) {
                 n.shape = "dot";
@@ -241,6 +241,7 @@ class StreamGraph extends React.Component {
             }
             else {
                 if (n.capacity !== undefined && n.capacity != -1) {
+                    n.label = n.label.length > 20 ? n.label.substring(0, 20) + '...' : n.label;
                     n.shape = "dot";
                     if (n.capacity == "unbounded") {
                         n.color = {
@@ -279,6 +280,7 @@ class StreamGraph extends React.Component {
                 }
                 n.label = n.buffered != -1 ? n.buffered : " ";
             }
+
         }
         for (var edge in json.edges) {
             e = json.edges[edge];
