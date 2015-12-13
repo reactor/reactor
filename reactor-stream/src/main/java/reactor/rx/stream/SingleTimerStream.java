@@ -17,6 +17,7 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.fn.timer.Timer;
@@ -51,7 +52,7 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Stephane Maldini
  */
-public final class SingleTimerStream extends Stream<Long> {
+public final class SingleTimerStream extends Stream<Long> implements ReactiveState.FeedbackLoop{
 
 	final private long     delay;
 	final private TimeUnit unit;
@@ -73,7 +74,7 @@ public final class SingleTimerStream extends Stream<Long> {
 		}
 	}
 
-	private class TimerSubscription extends PushSubscription<Long> {
+	private class TimerSubscription extends PushSubscription<Long> implements Timed {
 
 		final Pausable registration = timer.submit(new Consumer<Long>() {
 			@Override
@@ -94,6 +95,21 @@ public final class SingleTimerStream extends Stream<Long> {
 			timer.cancel();
 			super.cancel();
 		}
+
+		@Override
+		public long period() {
+			return TimeUnit.MILLISECONDS.convert(delay, unit);
+		}
+	}
+
+	@Override
+	public Object delegateInput() {
+		return timer;
+	}
+
+	@Override
+	public Object delegateOutput() {
+		return timer;
 	}
 
 	@Override

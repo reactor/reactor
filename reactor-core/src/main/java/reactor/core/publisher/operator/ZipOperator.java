@@ -82,7 +82,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 	}
 
 	static final class ZipBarrier<TUPLE extends Tuple, V> extends SubscriberWithDemand<Publisher[], V>
-			implements ReactiveState.LinkedUpstreams {
+			implements ReactiveState.LinkedUpstreams, ReactiveState.FailState {
 
 		final Function<? super TUPLE, ? extends V> combinator;
 		final int                                  bufferSize;
@@ -214,6 +214,11 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		@Override
 		public long upstreamsCount() {
 			return subscribers.length;
+		}
+
+		@Override
+		public Throwable getError() {
+			return error;
 		}
 
 		void drain() {

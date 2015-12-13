@@ -236,6 +236,30 @@ public final class ReactiveStateUtils implements ReactiveState {
 	 * @param o
 	 * @return
 	 */
+	public static Throwable getFailedState(Object o) {
+		if (o != null && FailState.class.isAssignableFrom(o.getClass())) {
+			return ((FailState) o).getError();
+		}
+		return null;
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
+	public static long getTimedPeriod(Object o) {
+		if (o != null && Timed.class.isAssignableFrom(o.getClass())) {
+			return ((Timed) o).period();
+		}
+		return -1;
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
 	public static long getUpstreamLimit(Object o) {
 		if (o != null && UpstreamPrefetch.class.isAssignableFrom(o.getClass())) {
 			return ((UpstreamPrefetch) o).limit();
@@ -581,10 +605,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 		@Override
 		public String toString() {
 			return "{" +
-					" \"full\" : " + !subscan +
-					", \"trace\" : " + trace +
-					", \"edges\" : " + edges.values() +
+					" \"edges\" : " + edges.values() +
+					(trace ? ", \"trace\" : true": "") +
 					", \"nodes\" : " + nodes.values() +
+					(subscan ? ", \"full\" : false": "") +
 					", \"timestamp\" : " + System.currentTimeMillis() +
 					'}';
 		}
@@ -656,6 +680,14 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		public final long getUpstreamLimit() {
 			return ReactiveStateUtils.getUpstreamLimit(object);
+		}
+
+		public final long getPeriod() {
+			return ReactiveStateUtils.getTimedPeriod(object);
+		}
+
+		public final Throwable getFailedState() {
+			return ReactiveStateUtils.getFailedState(object);
 		}
 
 		public final long getExpectedUpstream() {
@@ -751,6 +783,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 				indent(property("reference", "true"), res, i, true);
 			}
 			else {
+				if(getFailedState() != null) {
+					indent(property("failed", getFailedState().getMessage()), res, i, true);
+				}
+				indent(property("period", getPeriod()), res, i, true);
 				indent(property("capacity", getCapacity()), res, i, true);
 				indent(property("group", getGroup()), res, i, true);
 				indent(property("buffered", getBuffered()), res, i, true);

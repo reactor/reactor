@@ -146,7 +146,7 @@ public class EventTimer implements Timer {
 	}
 
 	@Override
-	public long getResolution() {
+	public long period() {
 		return resolution;
 	}
 

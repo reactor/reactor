@@ -46,7 +46,8 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 		           ReactiveState.ActiveDownstream,
 		           ReactiveState.UpstreamDemand,
 		           ReactiveState.UpstreamPrefetch,
-		           ReactiveState.Buffering {
+		           ReactiveState.Buffering,
+		           ReactiveState.FailState{
 
 	final int maxConcurrency;
 	final int bufferSize;
@@ -255,6 +256,11 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 		}
 		done = true;
 		drain();
+	}
+
+	@Override
+	public Throwable getError() {
+		return error;
 	}
 
 	@Override

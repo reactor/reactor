@@ -158,7 +158,7 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 
 			@Override
 			public Object delegateOutput() {
-				return RetryWhenAction.this;
+				return null;
 			}
 		}
 	}

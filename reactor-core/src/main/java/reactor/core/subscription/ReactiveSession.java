@@ -42,6 +42,7 @@ import reactor.fn.timer.TimeUtils;
  */
 public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<E>, Subscription,
                                            ReactiveState.Bounded,
+                                           ReactiveState.FailState,
                                            ReactiveState.ActiveDownstream,
                                            ReactiveState.DownstreamDemand,
                                            Consumer<E>,
@@ -323,10 +324,7 @@ public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<
 		return cancelled;
 	}
 
-	/**
-	 *
-	 * @return
-	 */
+	@Override
 	public Throwable getError() {
 		return uncaughtException;
 	}

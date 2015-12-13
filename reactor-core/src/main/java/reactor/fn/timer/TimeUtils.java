@@ -121,7 +121,7 @@ public final class TimeUtils {
 	private final static class NoopTimer implements Timer{
 
 		@Override
-		public long getResolution() {
+		public long period() {
 			return 0;
 		}
 

@@ -18,6 +18,7 @@ package reactor.core.error;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.fn.Supplier;
 
@@ -219,7 +220,7 @@ public final class Exceptions {
 		}
 	}
 
-	private static class ErrorPublisher<IN> implements Publisher<IN> {
+	private static class ErrorPublisher<IN> implements Publisher<IN>, ReactiveState.FailState {
 
 		private final Throwable error;
 
@@ -234,6 +235,11 @@ public final class Exceptions {
 			}
 			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
 			s.onError(error);
+		}
+
+		@Override
+		public Throwable getError() {
+			return error;
 		}
 	}
 }

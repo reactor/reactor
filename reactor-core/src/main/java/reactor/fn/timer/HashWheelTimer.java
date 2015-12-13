@@ -204,7 +204,7 @@ public class HashWheelTimer implements Timer {
 	}
 
 	@Override
-	public long getResolution() {
+	public long period() {
 		return resolution;
 	}
 

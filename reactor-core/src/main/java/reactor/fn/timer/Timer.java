@@ -16,6 +16,7 @@
 
 package reactor.fn.timer;
 
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 
@@ -25,14 +26,7 @@ import java.util.concurrent.TimeUnit;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public interface Timer {
-
-	/**
-	 * Get the resolution of this t{@literal Timer}.
-	 *
-	 * @return the resolution in milliseconds
-	 */
-	long getResolution();
+public interface Timer extends ReactiveState.Timed {
 
 	/**
 	 * Schedule a recurring task. The given {@link reactor.fn.Consumer} will be invoked once every N time units

@@ -196,6 +196,8 @@ class StreamGraph extends React.Component {
         var n, e;
         for (var node in json.nodes) {
             n = json.nodes[node];
+            n.label = n.name;
+
             if (n.highlight) {
                 highlights.push(n.id);
             }
@@ -207,6 +209,25 @@ class StreamGraph extends React.Component {
                         color: '#00BFFF'
                 };
 
+            }
+            if (n.period !== undefined) {
+                n.shape = 'icon';
+                n.icon = {
+                        face: 'FontAwesome',
+                        code: '\uf017'
+                };
+
+            }
+            if(n.failed !== undefined){
+                n.shape = 'icon';
+                n.icon = {
+                    face: 'FontAwesome',
+                    code: '\uf071',
+                    color: '#ff6666'
+                };
+                n.color = {
+                    background: 'black'
+                }
             }
             else if (n.active !== undefined && !n.active || n.cancelled || n.terminated) {
                 n.shape = "dot";
@@ -247,9 +268,6 @@ class StreamGraph extends React.Component {
             else if(n.expectedUpstream !== undefined && n.expectedUpstream != -1){
                 edgeDetails[n.id] = {upstreamRequested: n.expectedUpstream};
             }
-
-
-            n.label = n.name;
 
             if (n.definedId) {
                 n.shape = "square";

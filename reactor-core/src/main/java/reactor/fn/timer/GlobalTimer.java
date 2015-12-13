@@ -17,6 +17,7 @@ package reactor.fn.timer;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import reactor.core.support.ReactiveState;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.SleepingWaitStrategy;
 
@@ -26,7 +27,7 @@ import reactor.core.support.wait.SleepingWaitStrategy;
  * @author Stephane Maldini
  * @since 2.1
  */
-public class GlobalTimer extends HashWheelTimer {
+public class GlobalTimer extends HashWheelTimer implements ReactiveState.Trace {
 
 	private static final class GlobalContext{
 		volatile GlobalTimer timer;

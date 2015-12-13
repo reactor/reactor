@@ -69,7 +69,8 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 	static final class MergeBarrier<T, V> extends SubscriberWithDemand<T, V> implements ReactiveState.LinkedUpstreams,
 	                                                                                    ReactiveState.ActiveDownstream,
-	                                                                                    ReactiveState.Buffering{
+	                                                                                    ReactiveState.Buffering,
+	                                                                                    ReactiveState.FailState {
 
 		final Function<? super T, ? extends Publisher<? extends V>> mapper;
 		final int                                                   maxConcurrency;
@@ -331,6 +332,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		@Override
 		public long upstreamsCount() {
 			return subscribers.length;
+		}
+
+		@Override
+		public Throwable getError() {
+			return error;
 		}
 
 		void reportError(Throwable t) {

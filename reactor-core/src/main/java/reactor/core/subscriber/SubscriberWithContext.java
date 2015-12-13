@@ -32,7 +32,8 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 public class SubscriberWithContext<T, C> implements Subscriber<T>,
                                                     ReactiveState.ActiveUpstream,
                                                     ReactiveState.ActiveDownstream,
-                                                    ReactiveState.Downstream {
+                                                    ReactiveState.Downstream,
+                                                    ReactiveState.FeedbackLoop {
 
 	private volatile       int                                              terminated       = 0;
 	protected static final AtomicIntegerFieldUpdater<SubscriberWithContext> TERMINAL_UPDATER =
@@ -128,5 +129,15 @@ public class SubscriberWithContext<T, C> implements Subscriber<T>,
 
 	public boolean isCancelled() {
 		return terminated == 1;
+	}
+
+	@Override
+	public Object delegateInput() {
+		return context;
+	}
+
+	@Override
+	public Object delegateOutput() {
+		return context;
 	}
 }

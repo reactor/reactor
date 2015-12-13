@@ -539,9 +539,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
 			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
-			           Bounded, Upstream, FeedbackLoop, ReactiveState
-					           .Downstream, Buffering, ActiveDownstream, ReactiveState
-					           .ActiveUpstream, Named, UpstreamDemand, UpstreamPrefetch, DownstreamDemand,
+			           Bounded, Upstream, FeedbackLoop, Downstream, Buffering, ActiveDownstream, ActiveUpstream,
+			           Named, UpstreamDemand, UpstreamPrefetch, DownstreamDemand, FailState,
 			           Runnable {
 
 		protected final ProcessorGroup service;
@@ -769,6 +768,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 					subscription.request(n);
 				}
 			}
+		}
+
+		@Override
+		public Throwable getError() {
+			return error;
 		}
 
 		@Override

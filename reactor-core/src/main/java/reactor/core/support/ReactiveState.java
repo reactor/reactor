@@ -258,6 +258,17 @@ public interface ReactiveState {
 
 		Throwable getError();
 	}
+	/**
+	 * A component that is timed
+	 */
+	interface Timed extends ReactiveState {
+
+		/**
+		 * Can represent a period in milliseconds
+		 * @return
+		 */
+		long period();
+	}
 
 	/**
 	 * A component that is delegating to a sub-flow (processor, or publisher/subscriber chain)
