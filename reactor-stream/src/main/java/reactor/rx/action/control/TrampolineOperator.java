@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
-import reactor.fn.Function;
 
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;

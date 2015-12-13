@@ -49,7 +49,8 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class FlatMapOperator<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>> {
+public final class FlatMapOperator<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>>,
+                                                    ReactiveState.Factory {
 
 	final Function<? super T, ? extends Publisher<? extends V>> mapper;
 	final int                                                   maxConcurrency;

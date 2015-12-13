@@ -31,8 +31,9 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class LogOperator<IN> implements ReactiveState.Named, Function<Subscriber<? super IN>, Subscriber<? super
-		IN>> {
+public final class LogOperator<IN> implements ReactiveState.Named,
+                                              ReactiveState.Factory,
+                                              Function<Subscriber<? super IN>, Subscriber<? super IN>> {
 
 	public static final int SUBSCRIBE      = 0b010000000;
 	public static final int ON_SUBSCRIBE   = 0b001000000;

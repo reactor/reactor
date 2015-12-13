@@ -46,7 +46,8 @@ import reactor.fn.tuple.Tuple;
  * @since 2.1
  */
 public final class ZipOperator<TUPLE extends Tuple, V>
-		implements Function<Subscriber<? super V>, Subscriber<? super Publisher[]>> {
+		implements Function<Subscriber<? super V>, Subscriber<? super Publisher[]>>,
+		           ReactiveState.Factory {
 
 	/**
 	 *

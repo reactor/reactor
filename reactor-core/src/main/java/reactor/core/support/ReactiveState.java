@@ -20,6 +20,7 @@ import java.util.Iterator;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.fn.Function;
 
 /**
  * A components that supports extra state control and access for reactive components: buffers, capacity, names,
@@ -258,6 +259,7 @@ public interface ReactiveState {
 
 		Throwable getError();
 	}
+
 	/**
 	 * A component that is timed
 	 */
@@ -280,6 +282,12 @@ public interface ReactiveState {
 		Object delegateOutput();
 	}
 
+	/**
+	 * A component that is intended to build others
+	 */
+	interface Factory extends ReactiveState {
+
+	}
 
 	/*
 			Core System Env

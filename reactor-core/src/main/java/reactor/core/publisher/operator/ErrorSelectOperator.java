@@ -27,7 +27,8 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 1.1, 2.0, 2.1
  */
-public final class ErrorSelectOperator<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>> {
+public final class ErrorSelectOperator<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>>,
+                                                        ReactiveState.Factory {
 
 	private final Function<? super T, ? extends V> fn;
 

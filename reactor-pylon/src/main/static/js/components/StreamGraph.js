@@ -242,13 +242,22 @@ class StreamGraph extends React.Component {
                     background: 'black'
                 }
             }
-            else if (n.period !== undefined) {
+            else if (n.period !== undefined && n.period > 0) {
                 n.shape = 'icon';
                 n.icon = {
                     face: 'FontAwesome',
-                    code: '\uf017'
+                    code: '\uf017',
+                    color: 'purple'
                 };
 
+            }
+            else if(n.factory !== undefined && n.factory){
+                n.shape = 'icon';
+                n.icon = {
+                    face: 'FontAwesome',
+                    code: '\uf013',
+                    color: 'black'
+                };
             }
             else if (n.active !== undefined && !n.active || n.cancelled || n.terminated) {
                 n.shape = "dot";
@@ -314,15 +323,27 @@ class StreamGraph extends React.Component {
                 output = (output != null ? output +  '/ ' : '') + edgeDetails[e.to].upstreamRequested;
                 //e.value = edgeDetails[e.to].upstreamRequested;
             }
-            if(e.discrete === undefined && output != null){
+            e.arrows = {to: true};
+            if(output != null){
                 e.label = output;
                 e.font = {
                     align: 'top'
-                }
+                };
             }
-            e.arrows = {to: true};
-            if (e.discrete) {
-                e.dashes = true;
+            if(e.type !== undefined){
+                if(e.type == 'reference') {
+                    e.dashes = true;
+                    e.arrows = {}
+                }
+                else if(e.type == 'feedbackLoop') {
+                    e.label = "";
+                    e.dashes = true;
+                }
+                else if(e.type == 'inner') {
+                    e.label = "";
+                    e.arrows = {}
+                }
+
             }
         }
         nodes.update(json.nodes);

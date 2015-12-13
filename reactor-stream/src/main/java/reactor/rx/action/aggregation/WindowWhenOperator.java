@@ -24,8 +24,6 @@ import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.fn.Supplier;
 import reactor.fn.timer.Timer;
 import reactor.rx.Stream;
-import reactor.rx.broadcast.BehaviorBroadcaster;
-import reactor.rx.broadcast.Broadcaster;
 
 /**
  * WindowAction is forwarding events on a steam until {@param boundarySupplier} returned stream emits a signal, after

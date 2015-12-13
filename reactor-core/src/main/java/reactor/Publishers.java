@@ -39,6 +39,7 @@ import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
 import reactor.core.publisher.operator.ZipOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.fn.BiFunction;
 import reactor.fn.Function;
@@ -478,10 +479,11 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
-	 * A marker interface for components responsible for augmenting subscribers with features {@link #lift(Publisher,
-	 * Function)}
+	 * A marker interface for components responsible for augmenting subscribers with features like
+	 * {@link Publishers#lift}
 	 */
-	public interface Operator<I, O> extends Function<Subscriber<? super O>, Subscriber<? super I>> {
+	public interface Operator<I, O> extends Function<Subscriber<? super O>, Subscriber<? super I>>,
+	                                        ReactiveState.Factory {
 
 	}
 

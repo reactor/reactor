@@ -277,12 +277,12 @@ public abstract class PublisherFactory implements ReactiveState {
 	/**
 	 * Marker interface for publishers refering to an operator {@link Function} used to augment {@link Subscriber}
 	 */
-	public interface LiftOperator<I, O> extends Publisher<O> {
+	public interface LiftOperator<I, O> extends Publisher<O>, Factory {
 
 		Function<Subscriber<? super O>, Subscriber<? super I>> operator();
 	}
 
-	private static class ReactorPublisher<T, C> implements Publisher<T> {
+	private static class ReactorPublisher<T, C> implements Publisher<T>, Factory {
 
 		protected final Function<Subscriber<? super T>, C>            contextFactory;
 		protected final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
@@ -683,7 +683,7 @@ public abstract class PublisherFactory implements ReactiveState {
 		}
 	}
 
-	private static class SessionPublisher<T> implements Publisher<T> {
+	private static class SessionPublisher<T> implements Publisher<T>, Factory {
 
 		final Consumer<? super ReactiveSession<T>> onSubscribe;
 

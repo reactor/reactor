@@ -357,6 +357,15 @@ public final class ReactiveStateUtils implements ReactiveState {
 	 * @param o
 	 * @return
 	 */
+	public static boolean isFactory(Object o) {
+		return  o != null && Factory.class.isAssignableFrom(o.getClass());
+	}
+
+	/**
+	 *
+	 * @param o
+	 * @return
+	 */
 	public static long getBuffered(Object o) {
 		if (o != null && Buffering.class.isAssignableFrom(o.getClass())) {
 			return ((Buffering) o).pending();
@@ -530,7 +539,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 				}
 				source = expandReactiveSate(in);
 				if (target != null && source != null) {
-					addEdge(source.createEdgeTo(target));
+					addEdge(source.createEdgeTo(target, Edge.Type.inner));
 				}
 				addUpstream(source, target);
 			}
@@ -584,7 +593,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 				}
 				downstream = expandReactiveSate(out);
 				if (source != null && downstream != null) {
-					addEdge(source.createEdgeTo(downstream));
+					addEdge(source.createEdgeTo(downstream, Edge.Type.inner));
 				}
 				addDownstream(downstream, source);
 			}
@@ -610,7 +619,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 				Object target = loop.delegateInput();
 				if (target != null && target != loop && !virtualRef(target, r)) {
 					Node input = expandReactiveSate(target);
-					addEdge(r.createEdgeTo(input, true));
+					addEdge(r.createEdgeTo(input, Edge.Type.feedbackLoop));
 					addDownstream(input, null);
 				}
 
@@ -618,7 +627,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 				if (target != null && target != loop && !virtualRef(target, r)) {
 					Node output = expandReactiveSate(target);
-					addEdge(output.createEdgeTo(r, true));
+					addEdge(output.createEdgeTo(r, Edge.Type.feedbackLoop));
 					addUpstream(output, null);
 				}
 			}
@@ -633,7 +642,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 		private boolean virtualRef(Object o, Node ancestor){
 			if(o != null && ancestor != null && String.class.isAssignableFrom(o.getClass())){
 				Node virtualNode = new Node(o.toString(), o.toString(), null, false);
-				Edge edge = ancestor.createEdgeTo(o.toString());
+				Edge edge = ancestor.createEdgeTo(o.toString(), Edge.Type.reference);
 				virtualNode.addEdgeRef(edge);
 				nodes.put(virtualNode.id, virtualNode);
 				addEdge(edge);
@@ -742,6 +751,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 			return object == null;
 		}
 
+		public final boolean isFactory() {
+			return ReactiveStateUtils.isFactory(object);
+		}
+
 		public final Boolean isActive() {
 			if(!hasSubscription(object)) return null;
 			return ((ActiveUpstream) object).isStarted();
@@ -762,19 +775,19 @@ public final class ReactiveStateUtils implements ReactiveState {
 		}
 
 		protected final Edge createEdgeTo(Node to) {
-			return createEdgeTo(to.id, false);
+			return createEdgeTo(to.id, null);
 		}
 
 		protected final Edge createEdgeTo(String to) {
-			return createEdgeTo(to, false);
+			return createEdgeTo(to, null);
 		}
 
-		protected final Edge createEdgeTo(Node to, boolean discrete) {
-			return createEdgeTo(to.id, discrete);
+		protected final Edge createEdgeTo(Node to, Edge.Type type) {
+			return createEdgeTo(to.id, type);
 		}
 
-		protected final Edge createEdgeTo(String to, boolean discrete) {
-			Edge edge = new Edge(id, to, discrete);
+		protected final Edge createEdgeTo(String to, Edge.Type type) {
+			Edge edge = new Edge(id, to, type);
 			addEdgeRef(edge);
 			return edge;
 		}
@@ -826,14 +839,21 @@ public final class ReactiveStateUtils implements ReactiveState {
 				if(getFailedState() != null) {
 					indent(property("failed", getFailedState().getMessage()), res, i, true);
 				}
+
 				indent(property("period", getPeriod()), res, i, true);
 				indent(property("capacity", getCapacity()), res, i, true);
 				indent(property("group", getGroup()), res, i, true);
 				//indent(property("type", object.getClass().getName()), res, i, true);
 				indent(property("buffered", getBuffered()), res, i, true);
+
+				if(isFactory()){
+					indent(property("factory", "true"), res, i, true);
+				}
+
 				if (isHighlight()) {
 					indent(property("highlight", "true"), res, i, true);
 				}
+
 				indent(property("upstreamLimit", getUpstreamLimit()), res, i, true);
 				indent(property("expectedUpstream", getExpectedUpstream()), res, i, true);
 				indent(property("requestedDownstream", getRequestedDownstream()), res, i, true);
@@ -858,14 +878,16 @@ public final class ReactiveStateUtils implements ReactiveState {
 	 */
 	public static class Edge {
 
-		private final String  from;
-		private final String  to;
-		private final boolean discrete;
+		public enum Type { feedbackLoop, inner, reference }
 
-		protected Edge(String from, String to, boolean discrete) {
+		private final String from;
+		private final String to;
+		private final Type   type;
+
+		protected Edge(String from, String to, Type type) {
 			this.from = from;
 			this.to = to;
-			this.discrete = discrete;
+			this.type = type;
 		}
 
 		public final String getFrom() {
@@ -874,6 +896,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		public final String getTo() {
 			return to;
+		}
+
+		public final Type getType() {
+			return type;
 		}
 
 		public final String getId() {
@@ -908,7 +934,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 		@Override
 		public String toString() {
 			return "{ "+property("id", getId())+
-					(discrete ? ", "+property("discrete", "true") : "" )+
+					(type != null ? ", "+property("type", type.name()) : "" )+
 					", "+property("from", from)+
 					", "+property("to", to)+" }";
 		}

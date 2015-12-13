@@ -29,7 +29,8 @@ import reactor.fn.tuple.Tuple2;
  * @author Stephane Maldini
  * @since 1.1, 2.0, 2.1
  */
-public final class MapOperator<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>> {
+public final class MapOperator<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>>,
+                                                ReactiveState.Factory {
 
 	/**
 	 * A predefined map operator producing timestamp tuples
