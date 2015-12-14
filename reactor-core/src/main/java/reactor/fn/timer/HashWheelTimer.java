@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.reactivestreams.Processor;
 import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
-import reactor.core.processor.rb.disruptor.RingBuffer;
+import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.wait.SleepingWaitStrategy;
@@ -54,12 +54,12 @@ public class HashWheelTimer implements Timer {
 	public static final  int    DEFAULT_WHEEL_SIZE = 512;
 	private static final String DEFAULT_TIMER_NAME = "hash-wheel-timer";
 
-	private final RingBuffer<Set<TimerPausable>> wheel;
-	private final int                            resolution;
-	private final Thread                         loop;
-	private final Executor                       executor;
-	private final WaitStrategy                   waitStrategy;
-	private final LongSupplier                   timeMillisResolver;
+	private final RingBuffer<Set<TimedSubscription>> wheel;
+	private final int                                resolution;
+	private final Thread                             loop;
+	private final Executor                           executor;
+	private final WaitStrategy                       waitStrategy;
+	private final LongSupplier                       timeMillisResolver;
 	private final AtomicBoolean started = new AtomicBoolean();
 
 	/**
@@ -118,9 +118,9 @@ public class HashWheelTimer implements Timer {
 		this.timeMillisResolver = timeResolver;
 		this.waitStrategy = strategy;
 
-		this.wheel = RingBuffer.createSingleProducer(new Supplier<Set<TimerPausable>>() {
+		this.wheel = RingBuffer.createSingleProducer(new Supplier<Set<TimedSubscription>>() {
 			@Override
-			public Set<TimerPausable> get() {
+			public Set<TimedSubscription> get() {
 				return new ConcurrentSkipListSet<>();
 			}
 		}, wheelSize);
@@ -152,9 +152,9 @@ public class HashWheelTimer implements Timer {
 				};
 
 				while (true) {
-					Set<TimerPausable> registrations = wheel.get(wheel.getCursor());
+					Set<TimedSubscription> registrations = wheel.get(wheel.getCursor());
 
-					for (TimerPausable r : registrations) {
+					for (TimedSubscription r : registrations) {
 						if (r.isCancelled()) {
 							registrations.remove(r);
 						}
@@ -234,7 +234,7 @@ public class HashWheelTimer implements Timer {
 	}
 
 	@SuppressWarnings("unchecked")
-	private TimerPausable schedule(long recurringTimeout, long firstDelay, Consumer<Long> consumer) {
+	private TimedSubscription schedule(long recurringTimeout, long firstDelay, Consumer<Long> consumer) {
 		if (loop.isInterrupted() || !loop.isAlive()) {
 			throw CancelException.get();
 		}
@@ -248,7 +248,7 @@ public class HashWheelTimer implements Timer {
 		long firstFireOffset = firstDelay / resolution;
 		long firstFireRounds = firstFireOffset / wheel.getBufferSize();
 
-		TimerPausable r = new TimerPausable(firstFireRounds, offset, consumer, rounds, timeMillisResolver);
+		TimedSubscription r = new TimedSubscription(firstFireRounds, offset, consumer, rounds, timeMillisResolver);
 		wheel.get(wheel.getCursor() + firstFireOffset + (recurringTimeout != 0 ? 1 : 0))
 		     .add(r);
 		return r;
@@ -260,9 +260,9 @@ public class HashWheelTimer implements Timer {
 	}
 
 	/**
-	 * Reschedule a {@link TimerPausable}  for the next fire
+	 * Reschedule a {@link TimedSubscription}  for the next fire
 	 */
-	private void reschedule(TimerPausable registration) {
+	private void reschedule(TimedSubscription registration) {
 		registration.rounds.set(registration.rescheduleRounds);
 		wheel.get(wheel.getCursor() + registration.getOffset())
 		     .add(registration);
@@ -298,7 +298,7 @@ public class HashWheelTimer implements Timer {
 	 * Timer Registration
 	 * @param <T> type of the Timer Registration Consumer
 	 */
-	public static class TimerPausable<T extends Consumer<Long>> implements Runnable, Comparable, Pausable {
+	public static class TimedSubscription<T extends Consumer<Long>> implements Runnable, Comparable, Pausable {
 
 		public static int STATUS_PAUSED    = 1;
 		public static int STATUS_CANCELLED = -1;
@@ -319,7 +319,7 @@ public class HashWheelTimer implements Timer {
 		 * @param offset offset of in the Ring Buffer for rescheduling
 		 * @param delegate delegate that will be ran whenever the timer is elapsed
 		 */
-		public TimerPausable(long rounds, long offset, T delegate, long rescheduleRounds, LongSupplier timeResolver) {
+		public TimedSubscription(long rounds, long offset, T delegate, long rescheduleRounds, LongSupplier timeResolver) {
 			Assert.notNull(delegate, "Delegate cannot be null");
 			this.now = timeResolver;
 			this.rescheduleRounds = rescheduleRounds;
@@ -372,7 +372,7 @@ public class HashWheelTimer implements Timer {
 		 * @return current Registration
 		 */
 		@Override
-		public TimerPausable cancel() {
+		public TimedSubscription cancel() {
 			if (!isCancelled()) {
 				if (lifecycle) {
 					((Pausable) delegate).cancel();
@@ -395,7 +395,7 @@ public class HashWheelTimer implements Timer {
 		 * @return current Registration
 		 */
 		@Override
-		public TimerPausable pause() {
+		public TimedSubscription pause() {
 			if (!isPaused()) {
 				if (lifecycle) {
 					((Pausable) delegate).pause();
@@ -418,7 +418,7 @@ public class HashWheelTimer implements Timer {
 		 * @return current Registration
 		 */
 		@Override
-		public TimerPausable resume() {
+		public TimedSubscription resume() {
 			if (isPaused()) {
 				if (lifecycle) {
 					((Pausable) delegate).resume();
@@ -429,11 +429,11 @@ public class HashWheelTimer implements Timer {
 		}
 
 		/**
-		 * Cancel this {@link HashWheelTimer.TimerPausable} after it has been selected and used. Implementations should
+		 * Cancel this {@link TimedSubscription} after it has been selected and used. Implementations should
 		 * respect this value and perform the cancellation.
 		 * @return {@literal this}
 		 */
-		public TimerPausable<T> cancelAfterUse() {
+		public TimedSubscription<T> cancelAfterUse() {
 			cancelAfterUse.set(true);
 			return this;
 		}
@@ -444,7 +444,7 @@ public class HashWheelTimer implements Timer {
 
 		@Override
 		public int compareTo(Object o) {
-			TimerPausable other = (TimerPausable) o;
+			TimedSubscription other = (TimedSubscription) o;
 			if (rounds.get() == other.rounds.get()) {
 				return other == this ? 0 : -1;
 			}

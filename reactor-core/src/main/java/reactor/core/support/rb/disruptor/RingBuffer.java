@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.core.processor.rb.disruptor;
+package reactor.core.support.rb.disruptor;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -22,7 +22,7 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.processor.rb.disruptor.util.Util;
+import reactor.core.support.rb.disruptor.util.Util;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.BlockingWaitStrategy;
 import reactor.core.support.wait.BusySpinWaitStrategy;

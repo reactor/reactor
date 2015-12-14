@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.processor.rb.disruptor;
+package reactor.core.support.rb.disruptor;
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.processor.rb.disruptor.util.Util;
+import reactor.core.support.rb.disruptor.util.Util;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 
@@ -33,7 +33,7 @@ import java.util.concurrent.locks.LockSupport;
  */
 public final class NotFunMultiProducerSequencer extends Sequencer
 {
-    private final Sequence gatingSequenceCache = new AtomicSequence(Sequencer.INITIAL_CURSOR_VALUE);
+    private final Sequence gatingSequenceCache = new AtomicSequence(INITIAL_CURSOR_VALUE);
 
     // availableBuffer tracks the state of each ringbuffer slot
     // see below for more details on the approach

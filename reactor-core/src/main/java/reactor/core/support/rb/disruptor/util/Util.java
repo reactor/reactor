@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.processor.rb.disruptor.util;
+package reactor.core.support.rb.disruptor.util;
 
-import reactor.core.processor.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.Sequence;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -44,7 +44,7 @@ public final class Util {
 	}
 
 	/**
-	 * Get the minimum sequence from an array of {@link reactor.core.processor.rb.disruptor.Sequence}s.
+	 * Get the minimum sequence from an array of {@link Sequence}s.
 	 *
 	 * @param sequences to compare.
 	 * @return the minimum sequence found or Long.MAX_VALUE if the array is empty.
@@ -54,7 +54,7 @@ public final class Util {
 	}
 
 	/**
-	 * Get the minimum sequence from an array of {@link reactor.core.processor.rb.disruptor.Sequence}s.
+	 * Get the minimum sequence from an array of {@link Sequence}s.
 	 *
 	 * @param sequences to compare.
 	 * @param minimum   an initial default minimum.  If the array is empty this value will be
@@ -71,7 +71,7 @@ public final class Util {
 	}
 
 	/**
-	 * Get the minimum sequence from an array of {@link reactor.core.processor.rb.disruptor.Sequence}s.
+	 * Get the minimum sequence from an array of {@link Sequence}s.
 	 *
 	 * @param excludeSequence to exclude from search.
 	 * @param sequences to compare.

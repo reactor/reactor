@@ -29,7 +29,7 @@ import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.processor.rb.disruptor.RingBuffer;
+import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;

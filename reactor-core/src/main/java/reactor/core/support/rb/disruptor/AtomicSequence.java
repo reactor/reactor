@@ -13,28 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.processor.rb.disruptor;
+package reactor.core.support.rb.disruptor;
 
-import reactor.core.processor.rb.disruptor.util.Util;
 import reactor.core.support.ReactiveState;
 import reactor.fn.LongSupplier;
-import sun.misc.Unsafe;
 
-
-class LhsPadding
-{
-    protected long p1, p2, p3, p4, p5, p6, p7;
-}
-
-class Value extends reactor.core.processor.rb.disruptor.LhsPadding
-{
-    protected volatile long value;
-}
-
-class RhsPadding extends reactor.core.processor.rb.disruptor.Value
-{
-    protected long p9, p10, p11, p12, p13, p14, p15;
-}
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * <p>Concurrent sequence class used for tracking the progress of
@@ -44,32 +28,20 @@ class RhsPadding extends reactor.core.processor.rb.disruptor.Value
  * <p>Also attempts to be more efficient with regards to false
  * sharing by adding padding around the volatile field.
  */
-public class UnsafeSequence extends RhsPadding implements Sequence, LongSupplier, ReactiveState.Trace
+public class AtomicSequence extends RhsPadding implements LongSupplier, Sequence, ReactiveState.Trace
 {
-    private static final Unsafe UNSAFE;
-    private static final long VALUE_OFFSET;
 
-    static
-    {
-        UNSAFE = Util.getUnsafe();
-        try
-        {
-            VALUE_OFFSET = UNSAFE.objectFieldOffset(Value.class.getDeclaredField("value"));
-        }
-        catch (final Exception e)
-        {
-            throw new RuntimeException(e);
-        }
-    }
+    private static final AtomicLongFieldUpdater<Value> UPDATER =
+      AtomicLongFieldUpdater.newUpdater(Value.class, "value");
 
     /**
      * Create a sequence with a specified initial value.
      *
      * @param initialValue The initial value for this sequence.
      */
-    public UnsafeSequence(final long initialValue)
+    AtomicSequence(final long initialValue)
     {
-        UNSAFE.putOrderedLong(this, VALUE_OFFSET, initialValue);
+        UPDATER.lazySet(this, initialValue);
     }
 
     @Override
@@ -81,19 +53,19 @@ public class UnsafeSequence extends RhsPadding implements Sequence, LongSupplier
     @Override
     public void set(final long value)
     {
-        UNSAFE.putOrderedLong(this, VALUE_OFFSET, value);
+        UPDATER.set(this, value);
     }
 
     @Override
     public void setVolatile(final long value)
     {
-        UNSAFE.putLongVolatile(this, VALUE_OFFSET, value);
+        UPDATER.lazySet(this, value);
     }
 
     @Override
     public boolean compareAndSet(final long expectedValue, final long newValue)
     {
-        return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expectedValue, newValue);
+        return UPDATER.compareAndSet(this, expectedValue, newValue);
     }
 
     @Override

@@ -17,8 +17,8 @@
 package reactor.fn.timer;
 
 import reactor.core.error.ReactorFatalException;
-import reactor.core.processor.rb.disruptor.Sequence;
-import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.support.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.SleepingWaitStrategy;
 import reactor.fn.Consumer;
@@ -26,6 +26,8 @@ import reactor.fn.LongSupplier;
 import reactor.fn.Pausable;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
@@ -161,4 +163,37 @@ public final class TimeUtils {
 		}
 	}
 
+	/**
+	 * Settable Time Supplier that could be used for Testing purposes or
+	 * in systems where time doesn't correspond to the wall clock.
+	 */
+	public static class SettableTimeSupplier implements LongSupplier {
+
+	    private volatile long                                         current;
+	    private final    AtomicLongFieldUpdater<SettableTimeSupplier> fieldUpdater;
+	    private final    AtomicBoolean                                initialValueRead;
+	    private final    long                                         initialTime;
+
+
+	    public SettableTimeSupplier(long initialTime) {
+	        this.initialValueRead = new AtomicBoolean(false);
+	        this.initialTime = initialTime;
+	        this.fieldUpdater = AtomicLongFieldUpdater.newUpdater(SettableTimeSupplier.class, "current");
+	    }
+
+	    @Override
+	    public long get() {
+	        if (initialValueRead.get()) {
+	            return current;
+	        } else {
+	            initialValueRead.set(true);
+	            return initialTime;
+	        }
+
+	    }
+
+	    public void set(long newCurrent) throws InterruptedException {
+	        this.fieldUpdater.set(this, newCurrent);
+	    }
+	}
 }

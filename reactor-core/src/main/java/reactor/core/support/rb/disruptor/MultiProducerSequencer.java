@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.processor.rb.disruptor;
+package reactor.core.support.rb.disruptor;
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.processor.rb.disruptor.util.Util;
+import reactor.core.support.rb.disruptor.util.Util;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import sun.misc.Unsafe;

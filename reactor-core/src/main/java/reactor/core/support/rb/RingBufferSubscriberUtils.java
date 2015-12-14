@@ -1,4 +1,19 @@
-package reactor.core.processor.rb;
+/*
+ * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package reactor.core.support.rb;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.LockSupport;
@@ -9,10 +24,10 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
-import reactor.core.processor.rb.disruptor.RingBuffer;
-import reactor.core.processor.rb.disruptor.Sequence;
-import reactor.core.processor.rb.disruptor.SequenceBarrier;
-import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.support.rb.disruptor.RingBuffer;
+import reactor.core.support.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.SequenceBarrier;
+import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
@@ -21,7 +36,7 @@ import reactor.fn.LongSupplier;
 /**
  * Utility methods to perform common tasks associated with {@link
  * org.reactivestreams.Subscriber} handling when the signals are stored in a {@link
- * reactor.core.processor.rb.disruptor.RingBuffer}.
+ * RingBuffer}.
  */
 public final class RingBufferSubscriberUtils {
 

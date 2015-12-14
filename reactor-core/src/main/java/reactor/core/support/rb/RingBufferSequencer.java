@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.processor.rb;
+package reactor.core.support.rb;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.processor.rb.disruptor.RingBuffer;
-import reactor.core.processor.rb.disruptor.Sequence;
-import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.support.rb.disruptor.RingBuffer;
+import reactor.core.support.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.fn.Consumer;
@@ -32,7 +32,7 @@ public final class RingBufferSequencer<T>
 		           Function<Subscriber<? super T>, Sequence> {
 
 	private final RingBuffer<MutableSignal<T>> ringBuffer;
-	private final long startSequence;
+	private final long                         startSequence;
 
 	public RingBufferSequencer(RingBuffer<MutableSignal<T>> ringBuffer, long startSequence) {
 		this.ringBuffer = ringBuffer;
