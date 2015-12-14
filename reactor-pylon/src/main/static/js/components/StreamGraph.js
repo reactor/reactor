@@ -282,7 +282,11 @@ class StreamGraph extends React.Component {
                     else {
                         n.value = n.capacity;
                         if(n.buffered !== undefined && n.buffered != -1){
-                            var backgroundColor = graphUtils.getColorForPercentage(1 - (n.buffered / n.capacity));
+                            var loadratio = 1 - n.buffered / n.capacity;
+                            if(loadratio < 0.9 && loadratio > 0){
+                                n.label = n.label + ' ['+(loadratio * 100).toFixed(1)+'%]'
+                            }
+                            var backgroundColor = graphUtils.getColorForPercentage(loadratio);
                             //if(n.buffered > 0){
                             //    n.mass = n.buffered;
                             //}

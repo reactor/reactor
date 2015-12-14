@@ -140,6 +140,6 @@ public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements
 
 	@Override
 	public boolean isStarted() {
-		return SUBSCRIPTION.get(this) == UNSUBSCRIBED ;
+		return SUBSCRIPTION.get(this) != UNSUBSCRIBED ;
 	}
 }
