@@ -718,7 +718,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
+	 * Attach a {@link reactor.core.support.Logger} to this {@code Stream} that will observe any signal emitted.
 	 * @return {@literal new Stream}
 	 * @since 2.0
 	 */
@@ -727,7 +727,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
+	 * Attach a {@link reactor.core.support.Logger} to this {@code Stream} that will observe any signal emitted.
 	 * @param category The logger name
 	 * @return {@literal new Stream}
 	 * @since 2.0
@@ -737,7 +737,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Attach a {@link java.util.logging.Logger} to this {@code Stream} that will observe any signal emitted.
+	 * Attach a {@link reactor.core.support.Logger} to this {@code Stream} that will observe any signal emitted.
 	 * @param category The logger name
 	 * @param options the bitwise checked flags for observed signals
 	 * @return {@literal new Stream}
