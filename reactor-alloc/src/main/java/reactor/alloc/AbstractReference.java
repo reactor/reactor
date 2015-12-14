@@ -17,7 +17,7 @@
 package reactor.alloc;
 
 import reactor.core.support.ReactiveState;
-import reactor.fn.timer.TimeUtils;
+import reactor.core.timer.TimeUtils;
 
 /**
  * An abstract {@link Reference} implementation that does reference counting.

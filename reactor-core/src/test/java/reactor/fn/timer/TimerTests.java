@@ -19,6 +19,9 @@ import org.junit.Assert;
 import org.junit.Test;
 import reactor.Timers;
 import reactor.core.support.wait.*;
+import reactor.core.timer.HashWheelTimer;
+import reactor.core.timer.TimeUtils;
+import reactor.core.timer.Timer;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 

@@ -20,7 +20,7 @@ import org.reactivestreams.Subscriber;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;

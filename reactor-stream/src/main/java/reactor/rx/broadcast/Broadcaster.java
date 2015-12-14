@@ -25,7 +25,7 @@ import reactor.Timers;
 import reactor.core.error.CancelException;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.ProcessorGroup;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.rx.action.StreamProcessor;
 import reactor.rx.subscription.SwapSubscription;
 
@@ -65,7 +65,7 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
 	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
 	 * subscribing to the returned instance.
-	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
+	 * @param timer the Reactor {@link Timer} to use downstream
 	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
@@ -77,7 +77,7 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
 	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
 	 * subscribing to the returned instance.
-	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
+	 * @param timer the Reactor {@link Timer} to use downstream
 	 * @param autoCancel Propagate cancel upstream
 	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
@@ -101,7 +101,7 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
 	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
 	 * subscribing to the returned instance. <p> Will not bubble up  any {@link CancelException}
-	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
+	 * @param timer the Reactor {@link Timer} to use downstream
 	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
@@ -138,7 +138,7 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
 	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
 	 * subscribing to the returned instance.
-	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
+	 * @param timer the Reactor {@link Timer} to use downstream
 	 * @param autoCancel Propagate cancel upstream
 	 * @param emitter Identity processor to support broadcasting
 	 * @param <T> the type of values passing through the {@literal Broadcaster}
@@ -178,7 +178,7 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link Broadcaster#onNext(Object)}, {@link
 	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
 	 * subscribing to the returned instance.
-	 * @param timer the Reactor {@link reactor.fn.timer.Timer} to use downstream
+	 * @param timer the Reactor {@link Timer} to use downstream
 	 * @param autoCancel Propagate cancel upstream
 	 * @param emitter Identity processor to support broadcasting
 	 * @param <T> the type of values passing through the {@literal Broadcaster}

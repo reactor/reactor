@@ -16,9 +16,9 @@
 package reactor;
 
 import reactor.core.support.wait.SleepingWaitStrategy;
-import reactor.fn.timer.GlobalTimer;
-import reactor.fn.timer.HashWheelTimer;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.GlobalTimer;
+import reactor.core.timer.HashWheelTimer;
+import reactor.core.timer.Timer;
 
 /**
  * @author Stephane Maldini
@@ -146,11 +146,11 @@ public final class Timers {
 	 * The global timer will also ignore {@link Timer#cancel()} calls and should be cleaned using {@link
 	 * #unregisterGlobal()}.
 	 * <p>
-	 * The default globalTimer is a {@link reactor.fn.timer.HashWheelTimer}. It is suitable for non blocking periodic
+	 * The default globalTimer is a {@link HashWheelTimer}. It is suitable for non blocking periodic
 	 * work
 	 * such as  eventing, memory access, lock-free code, dispatching...
 	 *
-	 * @return the globalTimer, usually a {@link reactor.fn.timer.HashWheelTimer}
+	 * @return the globalTimer, usually a {@link HashWheelTimer}
 	 */
 	public static Timer global() {
 		return GlobalTimer.get();

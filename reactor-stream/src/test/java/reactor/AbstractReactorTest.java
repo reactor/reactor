@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import reactor.core.processor.ProcessorGroup;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 
 /**
  * @author Stephane Maldini

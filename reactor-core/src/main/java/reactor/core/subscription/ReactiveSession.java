@@ -34,7 +34,7 @@ import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Predicate;
-import reactor.fn.timer.TimeUtils;
+import reactor.core.timer.TimeUtils;
 
 /**
  * @author Stephane Maldini

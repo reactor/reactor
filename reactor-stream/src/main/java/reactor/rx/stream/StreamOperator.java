@@ -26,7 +26,7 @@ import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Function;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.StreamProcessor;
 

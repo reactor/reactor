@@ -30,7 +30,7 @@ import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 
 /**
  * @author Stephane Maldini

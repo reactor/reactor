@@ -1,6 +1,7 @@
 package reactor.fn.timer
 
 import reactor.core.support.wait.BusySpinWaitStrategy
+import reactor.core.timer.HashWheelTimer
 import reactor.fn.Consumer
 import spock.lang.Specification
 

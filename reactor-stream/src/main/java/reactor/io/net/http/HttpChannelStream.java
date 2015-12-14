@@ -20,7 +20,7 @@ import java.util.Map;
 
 import org.reactivestreams.Publisher;
 import reactor.fn.Function;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.io.net.ChannelStream;
 import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.http.model.HttpHeaders;

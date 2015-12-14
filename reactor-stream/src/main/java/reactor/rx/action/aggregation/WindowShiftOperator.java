@@ -27,7 +27,7 @@ import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.rx.Stream;
 
 /**
