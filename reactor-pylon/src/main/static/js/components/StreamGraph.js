@@ -284,7 +284,7 @@ class StreamGraph extends React.Component {
                         var backgroundColor = n.buffered !== undefined && n.buffered != -1 ?
                             graphUtils.getColorForPercentage(1 - (n.buffered / n.capacity)) : "#6db33f";
                         n.color = {
-                            border: "green", background: backgroundColor
+                            border: backgroundColor, background: backgroundColor
                         };
                     }
                 }
@@ -305,9 +305,6 @@ class StreamGraph extends React.Component {
             }
             else if(n.inner){
                 n.shape = "cicle";
-                if(n.color !== undefined && n.color.border !== undefined) {
-                    delete n.color.border;
-                }
                 n.label = n.buffered != -1 ? n.buffered : " ";
             }
 
