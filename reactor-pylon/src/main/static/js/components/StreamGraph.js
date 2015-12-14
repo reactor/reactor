@@ -218,7 +218,7 @@ class StreamGraph extends React.Component {
         for (var node in json.nodes) {
             n = json.nodes[node];
             n.label = n.name;
-
+            //n.mass = 1;
             if (n.highlight) {
                 highlights.push(n.id);
             }
@@ -281,11 +281,15 @@ class StreamGraph extends React.Component {
                     }
                     else {
                         n.value = n.capacity;
-                        var backgroundColor = n.buffered !== undefined && n.buffered != -1 ?
-                            graphUtils.getColorForPercentage(1 - (n.buffered / n.capacity)) : "#6db33f";
-                        n.color = {
-                            border: backgroundColor, background: backgroundColor
-                        };
+                        if(n.buffered !== undefined && n.buffered != -1){
+                            var backgroundColor = graphUtils.getColorForPercentage(1 - (n.buffered / n.capacity));
+                            //if(n.buffered > 0){
+                            //    n.mass = n.buffered;
+                            //}
+                            n.color = {
+                                border: backgroundColor, background: backgroundColor
+                            };
+                        }
                     }
                 }
                 else {
