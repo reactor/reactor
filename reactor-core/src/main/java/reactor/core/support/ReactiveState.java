@@ -20,7 +20,6 @@ import java.util.Iterator;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.fn.Function;
 
 /**
  * A components that supports extra state control and access for reactive components: buffers, capacity, names,
@@ -286,6 +285,18 @@ public interface ReactiveState {
 	 * A component that is intended to build others
 	 */
 	interface Factory extends ReactiveState {
+
+	}
+
+	/**
+	 * A simple interface that marks an object as being recyclable.
+	 */
+	interface Recyclable {
+
+		/**
+		 * Free any internal resources and reset the state of the object to enable reuse.
+		 */
+		void recycle();
 
 	}
 

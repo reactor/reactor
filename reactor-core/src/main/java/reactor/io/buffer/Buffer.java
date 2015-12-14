@@ -18,7 +18,6 @@ package reactor.io.buffer;
 
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.Recyclable;
 import reactor.fn.Supplier;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -48,11 +47,11 @@ import java.util.List;
  * @author Stephane Maldini
  */
 @NotThreadSafe
-public class Buffer implements Recyclable,
-  Comparable<Buffer>,
-  Iterable<Byte>,
-  ReadableByteChannel,
-  WritableByteChannel {
+public class Buffer implements ReactiveState.Recyclable,
+                               Comparable<Buffer>,
+                               Iterable<Byte>,
+                               ReadableByteChannel,
+                               WritableByteChannel {
 
 	private static final Charset UTF8 = Charset.forName("UTF-8");
 	private final boolean        dynamic;

@@ -16,7 +16,7 @@
 
 package reactor.alloc;
 
-import reactor.core.support.Recyclable;
+import reactor.core.support.ReactiveState;
 
 import java.util.List;
 
@@ -27,7 +27,7 @@ import java.util.List;
  * @author Jon Brisbin
  * @since 1.1
  */
-public interface Allocator<T extends Recyclable> {
+public interface Allocator<T extends ReactiveState.Recyclable> {
 
 	/**
 	 * Allocate an object from the internal pool.
