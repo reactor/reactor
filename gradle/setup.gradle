@@ -14,11 +14,6 @@
  * limitations under the License.
  */
 
-task wrapper(type: Wrapper, description: "Create a Gradle self-download wrapper") {
-	group = 'Project Setup'
-	gradleVersion = "$gradleVersion"
-}
-
 configure(allprojects) { subproject ->
 	if(rootProject.name != 'reactor-pylon' && subproject == rootProject) return
 	if(subproject.name == 'docs') return

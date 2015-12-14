@@ -108,7 +108,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the value is not retrieved'
 			def value = ""
-			def controls = stream.observe { value = it }.consumeLater()
+			def controls = stream.observe { value = it }.log().consumeLater()
 
 		then:
 			'it is not available'

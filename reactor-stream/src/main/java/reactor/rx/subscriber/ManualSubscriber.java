@@ -73,9 +73,7 @@ public final class ManualSubscriber<T> extends InterruptableSubscriber<T> implem
 	public void request(long n) {
 		BackpressureUtils.checkRequest(n);
 		BackpressureUtils.getAndAdd(REQUESTED, this, n);
-		if(!isStarted()) {
-			drain();
-		}
+		drain();
 	}
 
 	protected void drain(){
