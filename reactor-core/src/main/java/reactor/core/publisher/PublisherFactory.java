@@ -172,7 +172,8 @@ public abstract class PublisherFactory implements ReactiveState {
 	 * @param <O> The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> lift(Publisher<I> source, BiConsumer<I, Subscriber<? super O>> dataConsumer) {
+	public static <I, O> Publisher<O> lift(Publisher<I> source,
+			BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer) {
 		return lift(source, dataConsumer, null, null);
 	}
 
@@ -186,7 +187,7 @@ public abstract class PublisherFactory implements ReactiveState {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Publisher<O> lift(Publisher<I> source,
-			BiConsumer<I, Subscriber<? super O>> dataConsumer,
+			BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer,
 			BiConsumer<Throwable, Subscriber<? super O>> errorConsumer) {
 		return lift(source, dataConsumer, errorConsumer, null);
 	}
@@ -203,7 +204,7 @@ public abstract class PublisherFactory implements ReactiveState {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Publisher<O> lift(Publisher<I> source,
-			final BiConsumer<I, Subscriber<? super O>> dataConsumer,
+			final BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer,
 			final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer,
 			final Consumer<Subscriber<? super O>> completeConsumer) {
 		return lift(source, new Function<Subscriber<? super O>, Subscriber<? super I>>() {
@@ -253,7 +254,6 @@ public abstract class PublisherFactory implements ReactiveState {
 		Assert.notNull(source, "A data source must be provided");
 		return new BoundedPublisher<>(source, capacity);
 	}
-
 
 	/**
 	 *
@@ -316,8 +316,7 @@ public abstract class PublisherFactory implements ReactiveState {
 		}
 	}
 
-	private static final class ForEachPublisher<T, C> extends ReactorPublisher<T, C>
-			implements Upstream{
+	private static final class ForEachPublisher<T, C> extends ReactorPublisher<T, C> implements Upstream {
 
 		final Consumer<SubscriberWithContext<T, C>> forEachConsumer;
 
@@ -347,11 +346,7 @@ public abstract class PublisherFactory implements ReactiveState {
 		}
 	}
 
-	private final static class PublisherOperator<I, O>
-			implements Bounded,
-			           Named,
-			           Upstream,
-			           LiftOperator<I, O> {
+	private final static class PublisherOperator<I, O> implements Bounded, Named, Upstream, LiftOperator<I, O> {
 
 		final private Publisher<I>                                           source;
 		final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
@@ -377,7 +372,9 @@ public abstract class PublisherFactory implements ReactiveState {
 
 		@Override
 		public String getName() {
-			return barrierProvider.getClass().getSimpleName().replaceAll("Operator", "");
+			return barrierProvider.getClass()
+			                      .getSimpleName()
+			                      .replaceAll("Operator", "");
 		}
 
 		@Override
@@ -388,7 +385,7 @@ public abstract class PublisherFactory implements ReactiveState {
 		@Override
 		public String toString() {
 			return "{" +
-					" operator : \"" +getName() + "\" " +
+					" operator : \"" + getName() + "\" " +
 					'}';
 		}
 
@@ -399,12 +396,10 @@ public abstract class PublisherFactory implements ReactiveState {
 		}
 	}
 
-	private final static class BoundedPublisher<I>
-			implements Publisher<I>, Bounded, Named,
-			           Upstream {
+	private final static class BoundedPublisher<I> implements Publisher<I>, Bounded, Named, Upstream {
 
-		final private Publisher<I>                                           source;
-		final private long capacity;
+		final private Publisher<I> source;
+		final private long         capacity;
 
 		public BoundedPublisher(Publisher<I> source, long capacity) {
 			this.source = source;
@@ -431,6 +426,7 @@ public abstract class PublisherFactory implements ReactiveState {
 			return "Bounded";
 		}
 	}
+
 	private final static class SubscriberProxy<T, C> extends SubscriberWithContext<T, C>
 			implements Subscription, Upstream, ActiveUpstream, Named {
 
@@ -629,12 +625,14 @@ public abstract class PublisherFactory implements ReactiveState {
 
 	private static final class ConsumerSubscriberBarrier<I, O> extends SubscriberBarrier<I, O> {
 
-		private final BiConsumer<I, Subscriber<? super O>>         dataConsumer;
-		private final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer;
-		private final Consumer<Subscriber<? super O>>              completeConsumer;
+		private final BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer;
+		private final BiConsumer<Throwable, Subscriber<? super O>>                  errorConsumer;
+		private final Consumer<Subscriber<? super O>>                               completeConsumer;
+
+		private SubscriberWithContext<? super O, Subscription>                subscriberWithContext;
 
 		public ConsumerSubscriberBarrier(Subscriber<? super O> subscriber,
-				BiConsumer<I, Subscriber<? super O>> dataConsumer,
+				BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer,
 				BiConsumer<Throwable, Subscriber<? super O>> errorConsumer,
 				Consumer<Subscriber<? super O>> completeConsumer) {
 			super(subscriber);
@@ -644,9 +642,15 @@ public abstract class PublisherFactory implements ReactiveState {
 		}
 
 		@Override
+		protected void doOnSubscribe(Subscription subscription) {
+			subscriberWithContext = SubscriberWithContext.create(subscriber, subscription);
+			subscriber.onSubscribe(subscription);
+		}
+
+		@Override
 		protected void doNext(I o) {
 			if (dataConsumer != null) {
-				dataConsumer.accept(o, subscriber);
+				dataConsumer.accept(o, subscriberWithContext);
 			}
 			else {
 				super.doNext(o);
