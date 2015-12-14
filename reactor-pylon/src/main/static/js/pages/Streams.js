@@ -29,6 +29,7 @@ class Streams extends React.Component {
                     <div className="section-heading">Stream Monitor <a className="btn btn-primary pull-right" onClick={ e => this.graphControls.onNext({type: 'reset'})}>Reset</a></div>
 
                     <StreamGraph fullscreen={true}
+                                 commands={this.props.nexusObserver}
                                  controlBus={this.graphControls}
                                  streams={this.props.graphStream.map(json => json.type == 'RemovedGraphEvent' ? json : json.streams)} />
                 </section>

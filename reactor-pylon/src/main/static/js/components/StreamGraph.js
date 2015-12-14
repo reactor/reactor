@@ -336,7 +336,7 @@ class StreamGraph extends React.Component {
                     e.arrows = {}
                 }
                 else if(e.type == 'feedbackLoop') {
-                    e.label = "";
+                    //e.label = "";
                     e.dashes = true;
                 }
                 else if(e.type == 'inner') {
@@ -352,7 +352,20 @@ class StreamGraph extends React.Component {
         if (first) {
             // add event listeners
             this.network.on('selectNode', (params) => {
-                document.getElementById('selection').innerHTML = 'Selection: ' + params.nodes;
+                if(this.props.commands !== undefined){
+                    var n = this.nodes.get(params.nodes[0]);
+                    if(n.paused === undefined || !n.paused){
+                        this.nodes.update({id:n.id, paused: true});
+                        this.props.commands.onNext('pause\n'+n.id);
+                    }
+                    else{
+                        this.nodes.update({id:n.id, paused: false});
+                        this.props.commands.onNext('resume\n'+n.id);
+                    }
+                }
+                else {
+                    document.getElementById('selection').innerHTML = 'Selection: ' + params.nodes[0];
+                }
             });
             this.network.on('hoverNode', (params) => {
                 ReactDOM.render(<pre className="select">
