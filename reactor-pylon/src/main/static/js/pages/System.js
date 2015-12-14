@@ -99,9 +99,9 @@ class System extends React.Component {
     }
 
     componentDidMount() {
-        var thiz = this;
         this.draw();
-        thiz.disposable = this.props.systemStream
+        var thiz = this;
+        this.disposable = this.props.systemStream
             .subscribe( json => {
                 thiz.addDataPoint(json);
             }, error =>{

@@ -130,7 +130,7 @@ class StreamGraph extends React.Component {
 
         var container = document.getElementById('stream-graph');
         if(this.fullscreenMode) {
-            var h = this.calcHeight();
+            var h = StreamGraph.calcHeight();
             container.style.height = (h.y - 110) + "px";
         }
         else{
@@ -144,7 +144,7 @@ class StreamGraph extends React.Component {
 
         // height
         if(this.props.fullscreen) {
-            var h = this.calcHeight();
+            var h = StreamGraph.calcHeight();
             container.style.height = (h.y - 110) + "px";
         }
 
@@ -413,7 +413,7 @@ class StreamGraph extends React.Component {
             .subscribe(this.draw.bind(this), error => console.log(error), () => console.log("terminated"));
     }
 
-    calcHeight() {
+    static calcHeight() {
         var w = window, d = document, e = d.documentElement, g = d.getElementsByTagName('body')[0], x = w.innerWidth ||
             e.clientWidth || g.clientWidth, y = w.innerHeight || e.clientHeight || g.clientHeight;
 
