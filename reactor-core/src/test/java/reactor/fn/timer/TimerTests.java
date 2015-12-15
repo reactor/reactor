@@ -18,12 +18,9 @@ package reactor.core.timer;
 import org.junit.Assert;
 import org.junit.Test;
 import reactor.Timers;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.wait.*;
-import reactor.core.timer.HashWheelTimer;
-import reactor.core.timer.TimeUtils;
-import reactor.core.timer.Timer;
 import reactor.fn.Consumer;
-import reactor.fn.Pausable;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -45,7 +42,7 @@ public class TimerTests {
 
 		AtomicLong sysTime = new AtomicLong();
 
-		Pausable pausable = timer.schedule((time) -> {
+		ReactiveState.Pausable pausable = timer.schedule((time) -> {
 			if (phaser.getPhase() == 0) {
 				phaser.arrive();
 				sysTime.set(System.nanoTime());

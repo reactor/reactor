@@ -289,8 +289,38 @@ public interface ReactiveState {
 	}
 
 	/**
+	 *
+	 */
+	interface Pausable extends ReactiveState {
+
+		/**
+		 * Cancel this {@literal Pausable}. The implementing component should never react to any stimulus,
+		 * closing resources if necessary.
+		 *
+		 * @return {@literal this}
+		 */
+		Pausable cancel();
+
+		/**
+		 * Pause this {@literal Pausable}. The implementing component should stop reacting, pausing resources if necessary.
+		 *
+		 * @return {@literal this}
+		 */
+		Pausable pause();
+
+		/**
+		 * Unpause this {@literal Pausable}. The implementing component should resume back from a previous pause,
+		 * re-activating resources if necessary.
+		 *
+		 * @return {@literal this}
+		 */
+		Pausable resume();
+
+	}
+	/**
 	 * A simple interface that marks an object as being recyclable.
 	 */
+
 	interface Recyclable {
 
 		/**

@@ -37,7 +37,6 @@ import reactor.core.support.wait.SleepingWaitStrategy;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
-import reactor.fn.Pausable;
 import reactor.fn.Supplier;
 
 /**
@@ -208,19 +207,6 @@ public class HashWheelTimer implements Timer {
 		return resolution;
 	}
 
-	@SuppressWarnings("unchecked")
-	@Override
-	public Pausable schedule(Consumer<Long> consumer, long period, TimeUnit timeUnit, long delayInMilliseconds) {
-		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), delayInMilliseconds, consumer);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public Pausable submit(Consumer<Long> consumer, long period, TimeUnit timeUnit) {
-		long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
-		return schedule(0, ms, consumer).cancelAfterUse();
-	}
-
 	@Override
 	@SuppressWarnings("unchecked")
 	public Pausable submit(Consumer<Long> consumer) {
@@ -229,8 +215,21 @@ public class HashWheelTimer implements Timer {
 
 	@Override
 	@SuppressWarnings("unchecked")
+	public Pausable submit(Consumer<Long> consumer, long period, TimeUnit timeUnit) {
+		long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
+		return schedule(0, ms, consumer);
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
 	public Pausable schedule(Consumer<Long> consumer, long period, TimeUnit timeUnit) {
 		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), 0, consumer);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public Pausable schedule(Consumer<Long> consumer, long period, TimeUnit timeUnit, long delayInMilliseconds) {
+		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), delayInMilliseconds, consumer);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -248,7 +247,14 @@ public class HashWheelTimer implements Timer {
 		long firstFireOffset = firstDelay / resolution;
 		long firstFireRounds = firstFireOffset / wheel.getBufferSize();
 
-		TimedSubscription r = new TimedSubscription(firstFireRounds, offset, consumer, rounds, timeMillisResolver);
+		TimedSubscription r;
+		if (recurringTimeout != 0) {
+			r = new TimedSubscription(firstFireRounds, offset, consumer, rounds, timeMillisResolver);
+		}
+		else{
+			r = new SingleTimedSubscription<>(firstFireRounds, offset, consumer, rounds, timeMillisResolver);
+		}
+
 		wheel.get(wheel.getCursor() + firstFireOffset + (recurringTimeout != 0 ? 1 : 0))
 		     .add(r);
 		return r;
@@ -309,7 +315,6 @@ public class HashWheelTimer implements Timer {
 		private final long          scheduleOffset;
 		private final AtomicLong    rounds;
 		private final AtomicInteger status;
-		private final AtomicBoolean cancelAfterUse;
 		private final boolean       lifecycle;
 		private final LongSupplier  now;
 
@@ -327,7 +332,6 @@ public class HashWheelTimer implements Timer {
 			this.delegate = delegate;
 			this.rounds = new AtomicLong(rounds);
 			this.status = new AtomicInteger(STATUS_READY);
-			this.cancelAfterUse = new AtomicBoolean(false);
 			this.lifecycle = Pausable.class.isAssignableFrom(delegate.getClass());
 		}
 
@@ -409,7 +413,7 @@ public class HashWheelTimer implements Timer {
 		 * Check whether the current Registration is paused
 		 * @return whether or not the current Registration is paused
 		 */
-		public boolean isPaused() {
+		public final boolean isPaused() {
 			return this.status.get() == STATUS_PAUSED;
 		}
 
@@ -418,7 +422,7 @@ public class HashWheelTimer implements Timer {
 		 * @return current Registration
 		 */
 		@Override
-		public TimedSubscription resume() {
+		public final TimedSubscription resume() {
 			if (isPaused()) {
 				if (lifecycle) {
 					((Pausable) delegate).resume();
@@ -428,18 +432,8 @@ public class HashWheelTimer implements Timer {
 			return this;
 		}
 
-		/**
-		 * Cancel this {@link TimedSubscription} after it has been selected and used. Implementations should
-		 * respect this value and perform the cancellation.
-		 * @return {@literal this}
-		 */
-		public TimedSubscription<T> cancelAfterUse() {
-			cancelAfterUse.set(true);
-			return this;
-		}
-
 		public boolean isCancelAfterUse() {
-			return this.cancelAfterUse.get();
+			return false;
 		}
 
 		@Override
@@ -463,4 +457,23 @@ public class HashWheelTimer implements Timer {
 		}
 	}
 
+	/**
+	 *
+	 * @param <T>
+	 */
+	public static class SingleTimedSubscription<T extends Consumer<Long>> extends TimedSubscription<T>{
+
+		public SingleTimedSubscription(long rounds,
+				long offset,
+				T delegate,
+				long rescheduleRounds,
+				LongSupplier timeResolver) {
+			super(rounds, offset, delegate, rescheduleRounds, timeResolver);
+		}
+
+		@Override
+		public boolean isCancelAfterUse() {
+			return true;
+		}
+	}
 }

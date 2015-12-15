@@ -19,7 +19,6 @@ import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
-import reactor.fn.Pausable;
 import reactor.core.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;

@@ -18,7 +18,6 @@ package reactor.core.timer;
 
 import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
-import reactor.fn.Pausable;
 
 import java.util.concurrent.TimeUnit;
 
@@ -38,9 +37,9 @@ public interface Timer extends ReactiveState.Timed {
 	 * @param timeUnit            the unit of time the {@code period} is to be measured in
 	 * @param delayInMilliseconds a number of milliseconds in which to delay any execution of the given {@code
 	 * Consumer}
-	 * @return a {@link reactor.fn.Pausable} that can be used to {@link
-	 * reactor.fn.Pausable#cancel() cancel}, {@link reactor.fn.Pausable#pause() pause} or
-	 * {@link reactor.fn.Pausable#resume() resume} the given task.
+	 * @return a {@link Pausable} that can be used to {@link
+	 * Pausable#cancel() cancel}, {@link Pausable#pause() pause} or
+	 * {@link Pausable#resume() resume} the given task.
 	 */
 	Pausable schedule(Consumer<Long> consumer,
 	                  long period,
@@ -55,9 +54,9 @@ public interface Timer extends ReactiveState.Timed {
 	 * @param consumer the {@code Consumer} to invoke each period
 	 * @param period   the amount of time that should elapse between invocations of the given {@code Consumer}
 	 * @param timeUnit the unit of time the {@code period} is to be measured in
-	 * @return a {@link reactor.fn.Pausable} that can be used to {@link
-	 * reactor.fn.Pausable#cancel() cancel}, {@link reactor.fn.Pausable#pause() pause} or
-	 * {@link reactor.fn.Pausable#resume() resume} the given task.
+	 * @return a {@link Pausable} that can be used to {@link
+	 * Pausable#cancel() cancel}, {@link Pausable#pause() pause} or
+	 * {@link Pausable#resume() resume} the given task.
 	 * @see #schedule(reactor.fn.Consumer, long, java.util.concurrent.TimeUnit, long)
 	 */
 	Pausable schedule(Consumer<Long> consumer,
@@ -70,9 +69,9 @@ public interface Timer extends ReactiveState.Timed {
 	 * @param consumer the {@code Consumer} to invoke
 	 * @param delay    the amount of time that should elapse before invocations of the given {@code Consumer}
 	 * @param timeUnit the unit of time the {@code period} is to be measured in
-	 * @return a {@link reactor.fn.Pausable} that can be used to {@link
-	 * reactor.fn.Pausable#cancel() cancel}, {@link reactor.fn.Pausable#pause() pause} or
-	 * {@link reactor.fn.Pausable#resume() resume} the given task.
+	 * @return a {@link Pausable} that can be used to {@link
+	 * Pausable#cancel() cancel}, {@link Pausable#pause() pause} or
+	 * {@link Pausable#resume() resume} the given task.
 	 */
 	Pausable submit(Consumer<Long> consumer,
 	                long delay,

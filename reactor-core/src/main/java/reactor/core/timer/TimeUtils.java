@@ -23,7 +23,6 @@ import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.SleepingWaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
-import reactor.fn.Pausable;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;

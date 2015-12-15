@@ -17,7 +17,7 @@
 package reactor.bus.registry;
 
 import reactor.bus.selector.Selector;
-import reactor.fn.Pausable;
+import reactor.core.support.ReactiveState;
 
 /**
  * A {@code Registration} represents an object that has been {@link Registry#register(Selector,
@@ -28,7 +28,7 @@ import reactor.fn.Pausable;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public interface Registration<K, V> extends Pausable {
+public interface Registration<K, V> extends ReactiveState.Pausable {
 
 	/**
 	 * The {@link reactor.bus.selector.Selector} that was used when the registration was made.

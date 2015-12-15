@@ -325,7 +325,7 @@ class StreamGraph extends React.Component {
                 //e.value = edgeDetails[e.from].downstreamRequested;
             }
             if(edgeDetails[e.to] !== undefined && edgeDetails[e.to].upstreamRequested !== undefined ){
-                output = (output != null ? output +  '/ ' : '') + edgeDetails[e.to].upstreamRequested;
+                output = (output != null && edgeDetails[e.to].upstreamRequested != output ? output +  ' / ' : '') + edgeDetails[e.to].upstreamRequested;
                 //e.value = edgeDetails[e.to].upstreamRequested;
             }
             e.arrows = {to: true};

@@ -19,7 +19,6 @@ package reactor.bus.registry;
 import reactor.bus.selector.ObjectSelector;
 import reactor.bus.selector.Selector;
 import reactor.core.support.ReactiveState;
-import reactor.fn.Pausable;
 
 /**
  * @author Jon Brisbin
