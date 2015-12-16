@@ -11,10 +11,11 @@ public class NoOpRouter<K, V> implements Router<K, V> {
 
     @Override
     public <E extends V> void route(K key, E data,
-        List<Registration<K, ? extends BiConsumer<K, ? extends V>>> consumers, Consumer<E> completionConsumer,
-        Consumer<Throwable> errorConsumer) {
-        for (Registration<K, ? extends BiConsumer<K, ? extends V>> reg: consumers){
-            ((BiConsumer<K,E>)reg.getObject()).accept(key, data);
+                                    List<Registration<K, ? extends BiConsumer<K, ? extends V>>> consumers,
+                                    Consumer<E> completionConsumer,
+                                    Consumer<Throwable> errorConsumer) {
+        for (Registration<K, ? extends BiConsumer<K, ? extends V>> reg : consumers) {
+            ((BiConsumer<K, E>) reg.getObject()).accept(key, data);
         }
     }
 }

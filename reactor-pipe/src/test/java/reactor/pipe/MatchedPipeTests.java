@@ -36,9 +36,6 @@ public class MatchedPipeTests extends AbstractPipeTests {
     assertThat(res2.get(1, TimeUnit.SECONDS), is(100));
   }
 
-
-
-
   @Test
   public void testMap() throws InterruptedException {
     AVar<String> res = new AVar<>();
@@ -99,12 +96,7 @@ public class MatchedPipeTests extends AbstractPipeTests {
 
     assertThat(res.get(LATCH_TIMEOUT, LATCH_TIME_UNIT), is(6));
   }
-
-
-
-
-
-
+  
   @Override
   protected <T, O> void subscribe(IPipe.IPipeEnd<T, O> pipe) {
     pipe.subscribe((k) -> k.getPart(0).equals("source"),
