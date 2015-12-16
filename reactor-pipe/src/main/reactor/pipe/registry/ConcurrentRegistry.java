@@ -40,7 +40,6 @@ public class ConcurrentRegistry<K, V> implements Registry<K, V> {
         final PVector<Registration<K, V>> lookedUpArr = exactKeyMatches.deref().get(key);
         final Registration<K, V> reg = new KeyRegistration<>(obj);
         if (lookedUpArr == null) {
-            System.out.println("FROM EMPTY" + key);
             exactKeyMatches.update(new UnaryOperator<PMap<K, PVector<Registration<K, V>>>>() {
                 @Override
                 public PMap<K, PVector<Registration<K, V>>> apply(PMap<K, PVector<Registration<K, V>>> old) {
@@ -48,7 +47,6 @@ public class ConcurrentRegistry<K, V> implements Registry<K, V> {
                 }
             });
         } else {
-            System.out.println("FROM NON EMPTY");
             exactKeyMatches.update(new UnaryOperator<PMap<K, PVector<Registration<K, V>>>>() {
                 @Override
                 public PMap<K, PVector<Registration<K, V>>> apply(PMap<K, PVector<Registration<K, V>>> old) {
@@ -56,7 +54,6 @@ public class ConcurrentRegistry<K, V> implements Registry<K, V> {
                 }
             });
         }
-        System.out.println(exactKeyMatches.deref());
         return reg;
     }
 

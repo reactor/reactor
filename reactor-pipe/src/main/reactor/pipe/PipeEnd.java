@@ -56,7 +56,6 @@ public class PipeEnd<INIT, FINAL> implements IPipe.IPipeEnd<INIT, FINAL> {
           @Override
           public void accept(Key key, Object o) {
             subscribers(firehose).apply(key).forEach((k, consumer) -> {
-              System.out.println(k);
               firehose.onKey(k, consumer);
             });
           }

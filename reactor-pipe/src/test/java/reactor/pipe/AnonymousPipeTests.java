@@ -59,7 +59,6 @@ public class AnonymousPipeTests extends AbstractPipeTests {
             .consume(res::set),
         1);
 
-    System.out.println(res.get(1, TimeUnit.SECONDS));
     assertThat(res.get(1, TimeUnit.SECONDS), is("4"));
   }
 
