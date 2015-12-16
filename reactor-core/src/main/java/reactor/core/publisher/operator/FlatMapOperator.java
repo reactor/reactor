@@ -24,9 +24,9 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.processor.rb.disruptor.RingBuffer;
-import reactor.core.processor.rb.disruptor.Sequence;
-import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.support.rb.disruptor.RingBuffer;
+import reactor.core.support.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.ReactiveState;
@@ -49,7 +49,8 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class FlatMapOperator<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>> {
+public final class FlatMapOperator<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>>,
+                                                    ReactiveState.Factory {
 
 	final Function<? super T, ? extends Publisher<? extends V>> mapper;
 	final int                                                   maxConcurrency;
@@ -67,7 +68,10 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		return new MergeBarrier<>(t, mapper, maxConcurrency, bufferSize);
 	}
 
-	static final class MergeBarrier<T, V> extends SubscriberWithDemand<T, V> implements ReactiveState.LinkedUpstreams {
+	static final class MergeBarrier<T, V> extends SubscriberWithDemand<T, V> implements ReactiveState.LinkedUpstreams,
+	                                                                                    ReactiveState.ActiveDownstream,
+	                                                                                    ReactiveState.Buffering,
+	                                                                                    ReactiveState.FailState {
 
 		final Function<? super T, ? extends Publisher<? extends V>> mapper;
 		final int                                                   maxConcurrency;
@@ -82,8 +86,6 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<MergeBarrier, Throwable> ERROR =
 				PlatformDependent.newAtomicReferenceFieldUpdater(MergeBarrier.class, "error");
-
-		private volatile boolean cancelled;
 
 		volatile BufferSubscriber<?, ?>[] subscribers;
 		@SuppressWarnings("rawtypes")
@@ -119,7 +121,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		@Override
 		protected void doOnSubscribe(Subscription s) {
 			subscriber.onSubscribe(this);
-			if (!cancelled) {
+			if (!isCancelled()) {
 				if (maxConcurrency == Integer.MAX_VALUE) {
 					subscription.request(Long.MAX_VALUE);
 				} else {
@@ -148,6 +150,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			p.subscribe(inner);
 		}
 
+		@Override
+		public long pending() {
+			return emitBuffer != null ? emitBuffer.pending() : -1;
+		}
+
 		void addInner(BufferSubscriber<T, V> inner) {
 			for (; ; ) {
 				BufferSubscriber<?, ?>[] a = subscribers;
@@ -163,6 +170,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					return;
 				}
 			}
+		}
+
+		@Override
+		public long getCapacity() {
+			return bufferSize;
 		}
 
 		void removeInner(BufferSubscriber<T, V> inner) {
@@ -210,7 +222,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		void tryEmit(V value) {
 			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				if (r != 0L) {
 					if (null != value) {
 						subscriber.onNext(value);
@@ -218,7 +230,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					if (r != Long.MAX_VALUE) {
 						REQUESTED.decrementAndGet(this);
 					}
-					if (maxConcurrency != Integer.MAX_VALUE && !cancelled
+					if (maxConcurrency != Integer.MAX_VALUE && !isCancelled()
 							&& ++lastRequest == limit) {
 						lastRequest = 0;
 						subscription.request(limit);
@@ -257,7 +269,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		void tryEmit(V value, BufferSubscriber<T, V> inner) {
 			if (RUNNING.get(this) == 0 && RUNNING.compareAndSet(this, 0, 1)) {
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				if (r != 0L) {
 					subscriber.onNext(value);
 					if (r != Long.MAX_VALUE) {
@@ -303,8 +315,9 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 
 		@Override
 		protected void doCancel() {
-			if (!cancelled) {
-				cancelled = true;
+			int terminated = TERMINATED.get(this);
+			if (terminated != TERMINATED_WITH_CANCEL && TERMINATED.compareAndSet(this, terminated,
+					TERMINATED_WITH_CANCEL)) {
 				if (RUNNING.getAndIncrement(this) == 0) {
 					subscription.cancel();
 					unsubscribe();
@@ -318,8 +331,18 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		@Override
+		public boolean isTerminated() {
+			return super.isTerminated() && subscribers.length == 0;
+		}
+
+		@Override
 		public long upstreamsCount() {
 			return subscribers.length;
+		}
+
+		@Override
+		public Throwable getError() {
+			return error;
 		}
 
 		void reportError(Throwable t) {
@@ -343,7 +366,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 				}
 				RingBuffer<RingBuffer.Slot<V>> svq = emitBuffer;
 
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				boolean unbounded = r == Long.MAX_VALUE;
 
 				long replenishMain = 0;
@@ -392,12 +415,12 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					}
 				}
 
-				boolean d = isTerminated();
+				boolean d = super.isTerminated();
 				svq = emitBuffer;
 				BufferSubscriber<?, ?>[] inner = subscribers;
 				int n = inner.length;
 
-				if (d && (svq == null || svq.pending() == 0) && n == 0) {
+				if (d && !isCancelled() && (svq == null || svq.pending() == 0) && n == 0) {
 					Throwable e = error;
 					if (e == null) {
 						child.onComplete();
@@ -506,7 +529,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 					lastId = inner[j].id;
 				}
 
-				if (replenishMain != 0L && !cancelled) {
+				if (replenishMain != 0L && !isCancelled()) {
 					subscription.request(maxConcurrency == 1 ? 1 : replenishMain);
 				}
 				if (innerCompleted) {
@@ -520,7 +543,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		boolean checkTerminate() {
-			if (cancelled) {
+			if (isCancelled()) {
 				subscription.cancel();
 				unsubscribe();
 				return true;
@@ -552,7 +575,15 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 	}
 
 	static final class BufferSubscriber<T, V>
-			extends BaseSubscriber<V> implements ReactiveState.Bounded, ReactiveState.Upstream {
+			extends BaseSubscriber<V>
+			implements ReactiveState.Bounded,
+			           ReactiveState.Upstream,
+			           ReactiveState.Downstream,
+			           ReactiveState.ActiveDownstream,
+			           ReactiveState.ActiveUpstream,
+			           ReactiveState.UpstreamDemand,
+			           ReactiveState.UpstreamPrefetch,
+			           ReactiveState.Inner {
 		final long               id;
 		final MergeBarrier<T, V> parent;
 		final int                limit;
@@ -620,6 +651,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			}
 		}
 
+		@Override
+		public Subscriber downstream() {
+			return parent;
+		}
+
 		public void cancel() {
 			Subscription s = SUBSCRIPTION.get(this);
 			if (s != SignalType.NOOP_SUBSCRIPTION) {
@@ -631,6 +667,16 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		}
 
 		@Override
+		public long limit() {
+			return limit;
+		}
+
+		@Override
+		public long expectedFromUpstream() {
+			return outstanding;
+		}
+
+		@Override
 		public Object upstream() {
 			return subscription;
 		}
@@ -638,6 +684,21 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		@Override
 		public long getCapacity() {
 			return bufferSize;
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return parent.isCancelled();
+		}
+
+		@Override
+		public boolean isStarted() {
+			return parent.isStarted();
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return done && (queue == null || queue.pending() == 0L);
 		}
 	}
 

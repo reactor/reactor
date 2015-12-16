@@ -50,7 +50,7 @@ span.version {
 // Application
 
 body {
-  font: normal 15px/1.5em $reactorFontMain;
+  font: normal 15px/1.5em $reactorFontSpecial;
   background-color: #f1f1f1;
   color: $reactorTextColor;
   margin: 0;
@@ -63,13 +63,12 @@ body {
   position: relative;
 }
 
-
 // Logo
 h1#logo {
   margin: 0 0 1px 0;
   a {
     display: block;
-    background: $reactorPrimary;
+    background: rgba(0,0,0,.2);
     padding: 0.4em;
     cursor: pointer;
     strong {
@@ -84,13 +83,156 @@ h1#logo {
   }
 }
 
+// Main
 #main {
   padding-left: 180px;
+  @include clearfix();
+  height: 100%;
+  .section-heading {
+    background: white;
+    padding: 1.5em 1.5em;
+    border-bottom: 1px solid #DDD;
+    font-size: 1.5em;
+    font-family: $reactorFontSpecial;
+  }
 }
 
+// Network
 #mynetwork {
-  border: 1px solid lightgray;
   height: 500px;
 }
 
+// Section box
+.section-content {
+  @include clearfix();
+  .box {
+    margin: 2% 0 0 2%;
+    width: 46%;
+    float: left;
+    background: white;
+    border: 1px solid #DDD;
+    .box-title {
+      padding: 0.6em;
+      margin: 0;
+      font-size: 1.1em;
+      border-bottom: 1px solid #DDD;
+    }
+  }
+  .box-1 {
+    width: 94.2%;
+  }
+}
 
+#selection{ color: white; }
+
+#graphProcessor {
+  height: 450px;
+}
+
+// Configuration page
+
+#config {
+  max-width: 300px;
+  margin: 2em auto;
+  background: $reactorBackgroundLight;
+  padding: 2em 2em 1em 2em;
+  color: white;
+
+  h1#logo {
+    margin: 0;
+    padding: 0;
+    a {
+      display: block;
+      background: url(../images/logo-2x.png) no-repeat 0 0;
+      height: 40px;
+      width: 253px;
+      background-size: 253px 80px;
+      text-indent: -6000em;
+      padding: 0;
+      margin: 0 auto;
+    }
+  }
+  p.description {
+    text-align: center;
+    font-size: 0.9em;
+    padding: 0.4em 0;
+  }
+  p.checkbox {
+    label {
+      display: block;
+      padding: 0.2em 2em;
+    }
+  }
+  p.action {
+    .btn {
+      display: block;
+      //width: 200px;
+      text-align: center;
+      margin: 0 auto;
+      width: 100%;
+    }
+  }
+  input.form-control {
+    border: 0 none;
+  }
+}
+
+
+#thread-timeline {
+  .vis-item {
+    border: 1px;
+    border-radius: 0px;
+  }
+  .timedWaitingThread{
+    background-color: #743F2d;
+    border-color: #743F2d;
+  }
+  .waitingThread{
+    background-color: #34302d;
+    border-color: #34302d;
+  }
+  .runnableThread{
+    background-color: #6db33f;
+    border-color: #6db33f;
+  }
+  .terminatedThread{
+    background-color: black;
+    border-color: black;
+  }
+  .blockedThread{
+    background-color: indianred;
+    border-color: indianred;
+  }
+  .newThread{
+    background-color: darkcyan;
+    border-color: darkcyan;
+  }
+}
+
+.select{
+  font-size: 8px;
+}
+
+#timeline-box{
+  height: 150px;
+}
+
+#observing #stream-graph{
+  height:260px;
+}
+
+.studio {
+  .editor textarea {
+    width: 100%;
+    height: 150px;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+  }
+  .vis-timeline {
+    .vis-item:hover {
+      cursor: hand;
+      background-color: #6db33f;
+    }
+  }
+}

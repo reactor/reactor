@@ -28,8 +28,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.processor.rb.disruptor.RingBuffer;
-import reactor.core.publisher.PublisherFactory;
+import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
@@ -47,7 +46,8 @@ import reactor.fn.tuple.Tuple;
  * @since 2.1
  */
 public final class ZipOperator<TUPLE extends Tuple, V>
-		implements Function<Subscriber<? super V>, Subscriber<? super Publisher[]>> {
+		implements Function<Subscriber<? super V>, Subscriber<? super Publisher[]>>,
+		           ReactiveState.Factory {
 
 	/**
 	 *
@@ -83,7 +83,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 	}
 
 	static final class ZipBarrier<TUPLE extends Tuple, V> extends SubscriberWithDemand<Publisher[], V>
-			implements ReactiveState.LinkedUpstreams {
+			implements ReactiveState.LinkedUpstreams, ReactiveState.FailState {
 
 		final Function<? super TUPLE, ? extends V> combinator;
 		final int                                  bufferSize;
@@ -190,6 +190,11 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		@Override
+		public boolean isStarted() {
+			return subscribers != null;
+		}
+
+		@Override
 		protected void checkedError(Throwable throwable) {
 			doOnSubscriberError(throwable);
 		}
@@ -212,6 +217,11 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 			return subscribers.length;
 		}
 
+		@Override
+		public Throwable getError() {
+			return error;
+		}
+
 		void drain() {
 			ZipState[] subscribers = this.subscribers;
 			if (subscribers == null) {
@@ -220,6 +230,11 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 			if (RUNNING.getAndIncrement(this) == 0) {
 				drainLoop(subscribers);
 			}
+		}
+
+		@Override
+		public long getCapacity() {
+			return subscribers != null ? subscribers.length : 1;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -234,7 +249,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 				int n = inner.length;
 				int replenishMain = 0;
-				long r = getRequested();
+				long r = requestedFromDownstream();
 
 				ZipState<?> state;
 
@@ -340,9 +355,22 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 			return false;
 		}
 
+		@Override
+		public boolean isTerminated() {
+			if(subscribers == null) return super.isTerminated();
+			for(int i = 0; i < subscribers.length; i++){
+				if(!subscribers[i].isTerminated()){
+					return false;
+				}
+			}
+			return true;
+		}
 	}
 
-	interface ZipState<V> extends Subscriber<Object> {
+	interface ZipState<V> extends Subscriber<Object>,
+	                              ReactiveState.ActiveDownstream,
+	                              ReactiveState.Buffering,
+	                              ReactiveState.ActiveUpstream, ReactiveState.Inner {
 
 		V readNext();
 
@@ -373,6 +401,16 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		@Override
 		public boolean isTerminated() {
 			return read;
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return read;
+		}
+
+		@Override
+		public boolean isStarted() {
+			return !read;
 		}
 
 		@Override
@@ -411,6 +449,16 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		@Override
+		public long pending() {
+			return read ? 0L : 1L;
+		}
+
+		@Override
+		public long getCapacity() {
+			return 1L;
+		}
+
+		@Override
 		public String toString() {
 			return "ScalarState{" +
 					"read=" + read +
@@ -421,7 +469,10 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 	static final class BufferSubscriber<V> extends BaseSubscriber<Object> implements ReactiveState.Bounded, ZipState<Object>,
 	                                                                                 ReactiveState.Upstream,
-	                                                                                 ReactiveState.Downstream<Publisher[]> {
+	                                                                                 ReactiveState.ActiveUpstream,
+	                                                                                 ReactiveState.UpstreamPrefetch,
+	                                                                                 ReactiveState.UpstreamDemand,
+	                                                                                 ReactiveState.Downstream {
 
 		final ZipBarrier<?, V> parent;
 		final Queue<Object>    queue;
@@ -446,6 +497,16 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		@Override
 		public Object upstream() {
 			return subscription;
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return parent.isCancelled();
+		}
+
+		@Override
+		public long pending() {
+			return queue.size();
 		}
 
 		@Override
@@ -505,6 +566,11 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		@Override
+		public boolean isStarted() {
+			return parent.isStarted();
+		}
+
+		@Override
 		public void requestMore() {
 			queue.poll();
 			int r = outstanding - 1;
@@ -529,6 +595,16 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 					s.cancel();
 				}
 			}
+		}
+
+		@Override
+		public long limit() {
+			return limit;
+		}
+
+		@Override
+		public long expectedFromUpstream() {
+			return outstanding;
 		}
 
 		@Override

@@ -4,6 +4,7 @@ import gulp         from 'gulp';
 import gulpif       from 'gulp-if';
 import gutil        from 'gulp-util';
 import source       from 'vinyl-source-stream';
+import buffer       from 'vinyl-buffer';
 import streamify    from 'gulp-streamify';
 import sourcemaps   from 'gulp-sourcemaps';
 import rename       from 'gulp-rename';
@@ -18,9 +19,9 @@ import config       from '../config';
 
 // Based on: http://blog.avisi.nl/2014/04/25/how-to-keep-a-fast-build-with-browserify-and-reactjs/
 function buildScript(file, watch) {
-
-    var bundler = browserify({
-        entries: [config.sourceDir + 'js/' + file], debug: !global.isProd, cache: {}, packageCache: {}, fullPaths: false
+    console.log("browserifying "+(config.sourceDir + 'js/' + file));
+    var bundler = browserify(file, {
+        basedir: config.sourceDir + 'js', debug: !global.isProd, cache: {}, packageCache: {}, fullPaths: watch
     });
 
     if (watch) {
@@ -29,23 +30,45 @@ function buildScript(file, watch) {
     }
 
     bundler.transform(babelify);
-    bundler.transform(debowerify);
+
+    if (!global.isProd) {
+        bundler.transform(debowerify);
+    }
+
 
     function rebundle() {
         let stream = bundler.bundle();
 
-        gutil.log('Rebundle...');
+        gutil.log('Rebundle... '+file);
 
-        return stream.on('error', handleErrors)
-            .pipe(source(file))
-            .pipe(gulpif(global.isProd, streamify(uglify())))
-            .pipe(streamify(rename({
-                basename: 'main'
-            })))
-            .pipe(gulpif(!global.isProd, sourcemaps.write('./')))
-            .pipe(gulp.dest(config.scripts.dest))
-            .pipe(gulpif(config.devDir !== 'undefined', gulp.dest(config.devDir + 'assets/js')))
-            .pipe(gulpif(browserSync.active, browserSync.reload({stream: true, once: true})));
+
+        if (global.isProd) {
+            return stream
+                .pipe(source(file))
+                .on('error', handleErrors)
+                .pipe(buffer())
+                .pipe(sourcemaps.init({loadMaps: true}))
+                .pipe(uglify())
+                .pipe(rename({
+                    basename: 'main'
+                }))
+                .pipe(sourcemaps.write('./'))
+                .pipe(gulp.dest(config.scripts.dest));
+        }
+        else {
+            var normal = stream.on('error', handleErrors)
+                .pipe(source(file))
+                .pipe(streamify(rename({
+                    basename: 'main'
+                })))
+                .pipe(gulpif(!global.isProd, sourcemaps.write('./')))
+                .pipe(gulp.dest(config.scripts.dest))
+                .pipe(gulpif(browserSync.active, browserSync.reload({stream: true, once: true})));
+            if (config.devDir !== undefined) {
+                normal.pipe(gulp.dest(config.devDir + 'assets/js'));
+            }
+            return normal;
+        }
     }
 
     return rebundle();

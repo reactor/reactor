@@ -205,3 +205,8 @@ fieldset[disabled] a.btn {
 .btn-default {
   @include button-variant(#444, #e4e8ea, #e4e8ea);
 }
+
+.btn-block {
+  display: block;
+  margin: 5px 0;
+}

@@ -13,15 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.fn.timer;
+package reactor.core.timer;
 
 import org.junit.Assert;
 import org.junit.Test;
 import reactor.Timers;
-import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.wait.*;
 import reactor.fn.Consumer;
-import reactor.fn.Pausable;
 
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,7 +42,7 @@ public class TimerTests {
 
 		AtomicLong sysTime = new AtomicLong();
 
-		Pausable pausable = timer.schedule((time) -> {
+		ReactiveState.Pausable pausable = timer.schedule((time) -> {
 			if (phaser.getPhase() == 0) {
 				phaser.arrive();
 				sysTime.set(System.nanoTime());
@@ -56,7 +55,7 @@ public class TimerTests {
 		pausable.pause();
 		long time = System.nanoTime() - sysTime.get();
 		Thread.sleep(1000);
-		HashWheelTimer.TimerPausable<?> registration = (HashWheelTimer.TimerPausable<?>) pausable;
+		HashWheelTimer.TimedSubscription<?> registration = (HashWheelTimer.TimedSubscription<?>) pausable;
 		Assert.assertTrue(registration.isPaused());
 		Assert.assertTrue(time < TimeUnit.MILLISECONDS.toNanos(100));
 		Assert.assertEquals(tasks, count.get());
@@ -88,7 +87,7 @@ public class TimerTests {
         AtomicInteger timesCalled = new AtomicInteger(0);
         CountDownLatch latch = new CountDownLatch(iterations);
         ExecutorService executor = Executors.newSingleThreadExecutor();
-        SettableTimeSupplier timeTravellingSupplier = new SettableTimeSupplier(0L);
+        TimeUtils.SettableTimeSupplier timeTravellingSupplier = new TimeUtils.SettableTimeSupplier(0L);
 
         Timer timer = new HashWheelTimer("time-travelling-timer" + waitStrategy,
                                          500,

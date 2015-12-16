@@ -18,7 +18,7 @@ package reactor.rx.stream;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.support.ReactiveState;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.rx.Stream;
 
 /**

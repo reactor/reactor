@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
-import reactor.fn.Function;
 
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,7 +31,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class TrampolineOperator<IN> implements Function<Subscriber<? super IN>, Subscriber<? super IN>> {
+public final class TrampolineOperator<IN> implements Publishers.Operator<IN, IN> {
 
 	public static final TrampolineOperator INSTANCE = new TrampolineOperator();
 

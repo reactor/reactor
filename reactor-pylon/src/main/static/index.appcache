@@ -1,0 +1,11 @@
+CACHE MANIFEST
+# 2015-12-7 v1.0.0
+#pylon
+#favicon.ico
+#assets/
+
+NETWORK:
+*
+
+#FALLBACK:
+#/html/ /offline.html

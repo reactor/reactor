@@ -19,6 +19,7 @@ import org.reactivestreams.Subscriber;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.Assert;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
@@ -90,7 +91,7 @@ public final class RangeStream {
 		);
 	}
 
-	private final static class Range {
+	private final static class Range implements ReactiveState.ActiveUpstream, ReactiveState.Named {
 		final int count;
 		final int start;
 
@@ -107,6 +108,21 @@ public final class RangeStream {
 			return "{" +
 			  "cursor=" + cursor + "" + (count > 0 ? "[" + 100 * (cursor - 1) / count + "%]" : "") +
 			  ", start=" + start + ", count=" + count + "}";
+		}
+
+		@Override
+		public String getName() {
+			return "Range["+(start + cursor - 1)+".."+(start+count - 1)+"]";
+		}
+
+		@Override
+		public boolean isStarted() {
+			return cursor > 0;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return cursor == count;
 		}
 	}
 
@@ -126,5 +142,7 @@ public final class RangeStream {
 				subscriber.onComplete();
 			}
 		}
+
+
 	}
 }

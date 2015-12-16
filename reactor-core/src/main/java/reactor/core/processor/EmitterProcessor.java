@@ -28,9 +28,9 @@ import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.processor.rb.disruptor.RingBuffer;
-import reactor.core.processor.rb.disruptor.Sequence;
-import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.support.rb.disruptor.RingBuffer;
+import reactor.core.support.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
@@ -40,7 +40,14 @@ import reactor.core.support.internal.PlatformDependent;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements ReactiveState.LinkedDownstreams{
+public final class EmitterProcessor<T> extends BaseProcessor<T, T>
+		implements ReactiveState.LinkedDownstreams,
+		           ReactiveState.ActiveUpstream,
+		           ReactiveState.ActiveDownstream,
+		           ReactiveState.UpstreamDemand,
+		           ReactiveState.UpstreamPrefetch,
+		           ReactiveState.Buffering,
+		           ReactiveState.FailState{
 
 	final int maxConcurrency;
 	final int bufferSize;
@@ -114,6 +121,11 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 			removeInner(inner, EMPTY);
 			Publishers.<T>error(t).subscribe(s);
 		}
+	}
+
+	@Override
+	public long pending() {
+		return (emitBuffer == null ? -1L : emitBuffer.pending());
 	}
 
 	@Override
@@ -247,6 +259,16 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 	}
 
 	@Override
+	public Throwable getError() {
+		return error;
+	}
+
+	@Override
+	public boolean isCancelled() {
+		return autoCancel && subscribers == CANCELLED;
+	}
+
+	@Override
 	final public long getAvailableCapacity() {
 		return emitBuffer == null ? bufferSize : emitBuffer.remainingCapacity();
 	}
@@ -254,6 +276,26 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 	@Override
 	final public long getCapacity() {
 		return bufferSize;
+	}
+
+	@Override
+	public boolean isStarted() {
+		return upstreamSubscription != null;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return done && (emitBuffer == null || emitBuffer.pending() == 0L);
+	}
+
+	@Override
+	public long limit() {
+		return limit;
+	}
+
+	@Override
+	public long expectedFromUpstream() {
+		return outstanding;
 	}
 
 	RingBuffer<RingBuffer.Slot<T>> getMainQueue() {
@@ -302,9 +344,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 				int j = getLastIndex(n, inner);
 				Sequence innerSequence;
 				long _r;
-				if (q == null) {
-					q = emitBuffer;
-				}
 
 				for (int i = 0; i < n; i++) {
 					@SuppressWarnings("unchecked") EmitterSubscriber<T> is = (EmitterSubscriber<T>) inner[j];
@@ -320,6 +359,9 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 						continue;
 					}
 
+					if (q == null) {
+						q = emitBuffer;
+					}
 					innerSequence = is.pollCursor;
 
 					if (innerSequence != null && r > 0) {
@@ -556,15 +598,17 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 
 	@Override
 	public String toString() {
-		return "EmitterProcessor{" +
-				"done=" + done +
-				", error=" + error +
-				", outstanding=" + outstanding +
-				", emitBuffer=" + emitBuffer +
+		return "{" +
+				"done: " + done +
+				(error != null ? ", error: '" + error.getMessage() + "', " : "") +
+				", outstanding: " + outstanding +
+				", pending: " + emitBuffer +
 				'}';
 	}
 
-	static final class EmitterSubscriber<T> implements Subscription, Bounded, Upstream, Downstream<T> {
+	static final class EmitterSubscriber<T>
+			implements Subscription, Inner, ActiveUpstream, ActiveDownstream, Buffering, Bounded, Upstream,
+			           DownstreamDemand, Downstream {
 
 		final long                  id;
 		final EmitterProcessor<T>   parent;
@@ -608,6 +652,11 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 		}
 
 		@Override
+		public long requestedFromDownstream() {
+			return requested;
+		}
+
+		@Override
 		public long getCapacity() {
 			return parent.bufferSize;
 		}
@@ -635,6 +684,26 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T> implements Re
 
 				actual.onSubscribe(this);
 			}
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return done;
+		}
+
+		@Override
+		public long pending() {
+			return pollCursor == null ? -1L : parent.emitBuffer.getCursor() - pollCursor.get();
+		}
+
+		@Override
+		public boolean isStarted() {
+			return parent.isStarted();
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return parent.isTerminated();
 		}
 
 		@Override

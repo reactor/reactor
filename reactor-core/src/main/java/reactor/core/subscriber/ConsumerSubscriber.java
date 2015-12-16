@@ -28,7 +28,7 @@ import reactor.fn.Consumer;
  * @since 2.1
  */
 public class ConsumerSubscriber<T> extends BaseSubscriber<T>
-		implements ReactiveState.Upstream, ReactiveState.Bounded {
+		implements ReactiveState.Upstream, ReactiveState.ActiveUpstream, ReactiveState.Bounded {
 
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;
@@ -186,5 +186,15 @@ public class ConsumerSubscriber<T> extends BaseSubscriber<T>
 	@Override
 	public long getCapacity() {
 		return Long.MAX_VALUE;
+	}
+
+	@Override
+	public boolean isStarted() {
+		return subscription != null;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return false;
 	}
 }

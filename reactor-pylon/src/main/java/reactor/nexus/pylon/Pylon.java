@@ -16,29 +16,36 @@
 
 package reactor.nexus.pylon;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
+import java.util.Enumeration;
 import java.util.concurrent.CountDownLatch;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.Processors;
 import reactor.Publishers;
-import reactor.Subscribers;
-import reactor.core.processor.BaseProcessor;
-import reactor.core.processor.ProcessorGroup;
-import reactor.core.subscription.ReactiveSession;
-import reactor.core.support.ReactiveStateUtils;
-import reactor.fn.timer.Timer;
+import reactor.fn.Function;
+import reactor.core.timer.Timer;
+import reactor.io.IO;
 import reactor.io.buffer.Buffer;
-import reactor.io.codec.json.JsonCodec;
 import reactor.io.net.ReactiveChannel;
 import reactor.io.net.ReactiveChannelHandler;
 import reactor.io.net.ReactiveNet;
 import reactor.io.net.ReactivePeer;
 import reactor.io.net.http.HttpChannel;
 import reactor.io.net.http.HttpServer;
+import reactor.io.net.http.model.ResponseHeaders;
 import reactor.io.net.http.routing.ChannelMappings;
 
 /**
@@ -50,75 +57,37 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	private static final Logger log = LoggerFactory.getLogger(Pylon.class);
 
 	private static final String CONSOLE_STATIC_PATH        = "/public";
-	private static final String CONSOLE_STATIC_ASSETS_PATH = CONSOLE_STATIC_PATH + "/assets";
-	private static final String EXIT_URL                   = "/exit";
+	private static final String CONSOLE_STATIC_ASSETS_PATH = "/assets";
 	private static final String CONSOLE_URL                = "/pylon";
 	private static final String CONSOLE_ASSETS_PREFIX      = "/assets";
 	private static final String CONSOLE_FAVICON            = "/favicon.ico";
 	private static final String HTML_DEPENDENCY_CONSOLE    = "/index.html";
+	private static final String CACHE_MANIFEST             = "/index.appcache";
 
 	private final HttpServer<Buffer, Buffer> server;
+	private final String                     staticPath;
 
 	public static void main(String... args) throws Exception {
-		log.info("Deploying Quick Expand with a Nexus and a Pylon... ");
-
-		//Nexus nexus = ReactiveNet.nexus();
-		Pylon pylon = create(ReactiveNet.httpServer());
+		String port = System.getenv("PORT");
+		String address = args.length > 0 ? args[0] : "0.0.0.0";
+		Pylon pylon = create(ReactiveNet.httpServer(address, port != null ? Integer.parseInt(port) : 12013),
+				extractAssets() );
 
 		final CountDownLatch stopped = new CountDownLatch(1);
 
-		pylon.server.get(EXIT_URL, new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
-			@Override
-			public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
-				stopped.countDown();
-				return Publishers.empty();
-			}
-		});
-
-		//EXAMPLE
-		final JsonCodec<ReactiveStateUtils.Graph, ReactiveStateUtils.Graph> codec =
-				new JsonCodec<>(ReactiveStateUtils.Graph.class);
-
-		pylon.server.get("/nexus/stream", new ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>>() {
-
-			@Override
-			public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
-				BaseProcessor p = Processors.replay();
-				BaseProcessor p2 = Processors.emitter();
-				//channel.input().subscribe(p2);
-				BaseProcessor p3 = Processors.emitter();
-				p.subscribe(p3);
-				ProcessorGroup group = Processors.singleGroup();
-				p3.dispatchOn(group)
-				  .subscribe(Subscribers.unbounded());
-				p3.subscribe(Subscribers.unbounded());
-				p3.subscribe(Subscribers.unbounded());
-				BaseProcessor p4 = Processors.emitter();
-				Publishers.zip(Publishers.log(p4), Publishers.timestamp(Publishers.just(1)))
-				          .subscribe(p2);
-				p2.dispatchOn(group)
-				  .subscribe(Subscribers.unbounded());
-				channel.input().subscribe(p4);
-				ReactiveSession s = p.startSession();
-
-				Publisher<Void> p5 = channel.writeBufferWith(codec.encode(p));
-				Subscriber x = Subscribers.unbounded();
-				s.submit(ReactiveStateUtils.scan(p5));
-				s.finish();
-
-				channel.responseHeader("Access-Control-Allow-Origin", "*");
-				return p5;
-			}
-		});
-		//EXAMPLE END
-
 		pylon.startAndAwait();
 
-		InetSocketAddress addr = pylon.getServer()
-		                              .getListenAddress();
-		log.info("Quick Expand Deployed, browse http://" + addr.getHostName() + ":" + addr.getPort() + CONSOLE_URL);
+		log.info("CTRL-C to return...");
 
 		stopped.await();
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public static Pylon create() throws Exception {
+		return create(ReactiveNet.httpServer(12013));
 	}
 
 	/**
@@ -126,27 +95,74 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	 * @param server
 	 * @return
 	 */
-	public static Pylon create(HttpServer<Buffer, Buffer> server) {
+	public static Pylon create(HttpServer<Buffer, Buffer> server) throws Exception {
+		return create(server, findOrExtractAssets());
+	}
 
-		Pylon pylon = new Pylon(server.getDefaultTimer(), server);
+	/**
+	 *
+	 * @param server
+	 * @param staticPath
+	 * @return
+	 * @throws Exception
+	 */
+	public static Pylon create(HttpServer<Buffer, Buffer> server, String staticPath) throws Exception {
+
+		Pylon pylon = new Pylon(server.getDefaultTimer(), server, staticPath);
 
 		log.info("Warping Pylon...");
 
-		server.file(ChannelMappings.prefix("/pylon"),
-				Pylon.class.getResource(CONSOLE_STATIC_PATH + HTML_DEPENDENCY_CONSOLE)
-				           .getPath())
-		      .file(CONSOLE_FAVICON,
-				      Pylon.class.getResource(CONSOLE_STATIC_PATH + CONSOLE_FAVICON)
-				                 .getPath())
+		final Publisher<Buffer> cacheManifest = IO.readFile(pylon.pathToStatic(CACHE_MANIFEST));
+
+		server.file(CONSOLE_FAVICON, pylon.pathToStatic(CONSOLE_FAVICON))
+		      .get(CACHE_MANIFEST, new CacheManifestHandler(cacheManifest))
+		      .file(ChannelMappings.prefix(CONSOLE_URL), pylon.pathToStatic(HTML_DEPENDENCY_CONSOLE), null)
 		      .directory(CONSOLE_ASSETS_PREFIX,
-				      Pylon.class.getResource(CONSOLE_STATIC_ASSETS_PATH)
-				                 .getPath());
+				      pylon.pathToStatic(CONSOLE_STATIC_ASSETS_PATH), new AssetsInterceptor());
 
 		return pylon;
 	}
 
-	private Pylon(Timer defaultTimer, HttpServer<Buffer, Buffer> server) {
+	private static String findOrExtractAssets() throws Exception {
+		if (Pylon.class.getResource(CONSOLE_STATIC_PATH + HTML_DEPENDENCY_CONSOLE)
+		               .getPath()
+		               .contains("jar!/")) {
+			return extractAssets();
+		}
+		else {
+			return Pylon.class.getResource(CONSOLE_STATIC_PATH)
+			                  .getPath();
+		}
+	}
+
+	private static String extractAssets() throws Exception{
+		final File dest = Files.createTempDirectory("reactor-pylon")
+		                       .toFile();
+
+		dest.deleteOnExit();
+
+		Runtime.getRuntime()
+		       .addShutdownHook(new Thread() {
+
+			       @Override
+			       public void run() {
+				       if (dest.delete()) {
+					       log.info("Probes called back from temporary zone");
+				       }
+			       }
+		       });
+
+		log.info("Sending scouting probes to : " + dest);
+		return deployStaticFiles(dest.toString()) + CONSOLE_STATIC_PATH;
+	}
+
+	private String pathToStatic(String target) {
+		return staticPath + target;
+	}
+
+	private Pylon(Timer defaultTimer, HttpServer<Buffer, Buffer> server, String staticPath) {
 		super(defaultTimer);
+		this.staticPath = staticPath;
 		this.server = server;
 	}
 
@@ -156,6 +172,9 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	public final void startAndAwait() throws InterruptedException {
 		Publishers.toReadQueue(start(null))
 		          .take();
+		InetSocketAddress addr = server.getListenAddress();
+		log.info("Pylon Warped. Troops can receive signal under http://" + addr.getHostName() + ":" + addr.getPort() +
+				CONSOLE_URL);
 	}
 
 	/**
@@ -177,5 +196,90 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 	public HttpServer<Buffer, Buffer> getServer() {
 		return server;
+	}
+
+	/**
+	 *
+	 * @param destDir
+	 */
+	public static String deployStaticFiles(String destDir) throws IOException, URISyntaxException {
+
+
+
+		ProtectionDomain protectionDomain = Pylon.class.getProtectionDomain();
+		CodeSource codeSource = protectionDomain.getCodeSource();
+		URI location = (codeSource == null ? null : codeSource.getLocation().toURI());
+		String path = (location == null ? null : location.getSchemeSpecificPart());
+		if (path == null) {
+			throw new IllegalStateException("Unable to determine code source archive");
+		}
+		File root = new File(path);
+		if (!root.exists()) {
+			throw new IllegalStateException(
+					"Unable to determine code source archive from " + root);
+		}
+
+		if(root.isDirectory()){
+			return root.getAbsolutePath();
+		}
+
+		JarFile jar = new JarFile(root);
+		Enumeration enumEntries = jar.entries();
+		final String prefix = CONSOLE_STATIC_PATH.substring(1);
+		while (enumEntries.hasMoreElements()) {
+			JarEntry file = (JarEntry) enumEntries.nextElement();
+			if (!file.getName()
+			         .startsWith(prefix)) {
+				continue;
+			}
+			File f = new File(destDir + File.separator + file.getName());
+			if (file.isDirectory()) {
+				f.mkdir();
+				continue;
+			}
+			InputStream is = jar.getInputStream(file); // get the input stream
+			FileOutputStream fos = new FileOutputStream(f);
+			while (is.available() > 0) {
+				fos.write(is.read());
+			}
+			fos.close();
+			is.close();
+		}
+
+		return destDir;
+	}
+
+	private static class CacheManifestHandler
+			implements ReactiveChannelHandler<Buffer, Buffer, HttpChannel<Buffer, Buffer>> {
+
+		private final Publisher<Buffer> cacheManifest;
+
+		public CacheManifestHandler(Publisher<Buffer> cacheManifest) {
+			this.cacheManifest = cacheManifest;
+		}
+
+		@Override
+		public Publisher<Void> apply(HttpChannel<Buffer, Buffer> channel) {
+
+			return channel.responseHeader("content-type", "text/cache-manifest")
+			              .writeBufferWith(cacheManifest);
+		}
+	}
+
+	private static class AssetsInterceptor
+			implements Function<HttpChannel<Buffer, Buffer>, HttpChannel<Buffer, Buffer>> {
+
+		@Override
+		public HttpChannel<Buffer, Buffer> apply(HttpChannel<Buffer, Buffer> channel) {
+
+			if(channel.uri().endsWith(".css")){
+				channel.responseHeader(ResponseHeaders.CONTENT_TYPE, "text/css; charset=utf-8");
+			}
+			else if(channel.uri().endsWith(".js")){
+				channel.responseHeader(ResponseHeaders.CONTENT_TYPE, "text/javascript; charset=utf-8");
+			}
+
+			return channel;
+		}
 	}
 }

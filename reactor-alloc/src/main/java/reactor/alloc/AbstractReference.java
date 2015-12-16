@@ -16,8 +16,8 @@
 
 package reactor.alloc;
 
-import reactor.core.support.Recyclable;
-import reactor.fn.timer.TimeUtils;
+import reactor.core.support.ReactiveState;
+import reactor.core.timer.TimeUtils;
 
 /**
  * An abstract {@link Reference} implementation that does reference counting.
@@ -25,7 +25,7 @@ import reactor.fn.timer.TimeUtils;
  * @author Jon Brisbin
  * @since 1.1
  */
-public abstract class AbstractReference<T extends Recyclable> implements Reference<T> {
+public abstract class AbstractReference<T extends ReactiveState.Recyclable> implements Reference<T> {
 
 	private volatile int refCnt = 0;
 

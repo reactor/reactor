@@ -20,9 +20,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import org.testng.annotations.AfterClass;
+import org.testng.annotations.BeforeClass;
 import reactor.Processors;
 import reactor.core.processor.ProcessorGroup;
-import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.StreamProcessor;
@@ -34,9 +34,8 @@ import reactor.rx.broadcast.Broadcaster;
 @org.testng.annotations.Test
 public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 
-	ProcessorGroup<Integer> sharedGroup =
-			Processors.asyncGroup("stream-tck", 32, 2,
-					Throwable::printStackTrace, null, false);
+	static ProcessorGroup<Integer> sharedGroup;
+
 
 	@Override
 	public StreamProcessor<Integer, Integer> createProcessor(int bufferSize) {
@@ -48,7 +47,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 				Processors.asyncGroup("stream-p-tck", bufferSize, 2,
 						Throwable::printStackTrace);
 
-		return Broadcaster.<Integer>passthrough()
+		return Broadcaster.<Integer>create(true)
 				.dispatchOn(sharedGroup)
 		                  .partition(2)
 		                  .flatMap(stream -> stream.dispatchOn(asyncGroup)
@@ -62,10 +61,15 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		                                           .<Integer>split()
 		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, (t1, t2) ->
 				                                           t1))
-		                  )
-				.dispatchOn(sharedGroup)
+
+				.dispatchOn(sharedGroup))
 				.when(Throwable.class, Throwable::printStackTrace)
-		                  .combine();
+				.combine();
+	}
+
+	@Override
+	public void required_exerciseWhiteboxHappyPath() throws Throwable {
+		super.required_exerciseWhiteboxHappyPath();
 	}
 
 	@Override
@@ -74,11 +78,37 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		super.stochastic_spec103_mustSignalOnMethodsSequentially();
 	}
 
-	@AfterClass
+	@Override
+	public void required_spec205_mustCallSubscriptionCancelIfItAlreadyHasAnSubscriptionAndReceivesAnotherOnSubscribeSignal()
+			throws Throwable {
+		super.required_spec205_mustCallSubscriptionCancelIfItAlreadyHasAnSubscriptionAndReceivesAnotherOnSubscribeSignal();
+	}
+
+	@Override
+	public void required_spec213_onSubscribe_mustThrowNullPointerExceptionWhenParametersAreNull() throws Throwable {
+		super.required_spec213_onSubscribe_mustThrowNullPointerExceptionWhenParametersAreNull();
+	}
+
 	@Override
 	public void tearDown() {
-		sharedGroup.awaitAndShutdown();
+		//sharedGroup.awaitAndShutdown();
 		super.tearDown();
+	}
+
+
+	@org.junit.BeforeClass
+	@BeforeClass
+	public static void setupGlobal(){
+		System.out.println("test ");
+		sharedGroup = Processors.asyncGroup("stream-tck", 32, 2,
+				Throwable::printStackTrace, null, false);
+	}
+
+	@org.junit.AfterClass
+	@AfterClass
+	public static void tearDownGlobal(){
+		sharedGroup.awaitAndShutdown();
+		System.out.println("shutdown ");
 	}
 
 	@Override
@@ -92,8 +122,23 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 	@Test
 	public void testColdIdentityProcessor() throws InterruptedException {
 		//for (int i = 0; i < 1000; i++)
-			super.testColdIdentityProcessor();
+		super.testColdIdentityProcessor();
 
 	}
+
+
+	/*public static void main(String... args) throws Exception {
+		AbstractStreamVerification s = new StreamAndProcessorGroupTests();
+		Processor p = s.createProcessor(256);
+		ReactiveSession sess = ReactiveSession.create(p);
+		p.subscribe(Subscribers.unbounded());
+		Nexus nexus = ReactiveNet.nexus().withSystemStats();
+		nexus.monitor(p);
+		nexus.startAndAwait();
+		int n = 1;
+		for(;;){
+			sess.submit(n++);
+		}
+	}*/
 
 }

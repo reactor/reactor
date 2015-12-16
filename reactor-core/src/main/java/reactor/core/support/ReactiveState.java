@@ -73,14 +73,14 @@ public interface ReactiveState {
 	interface Upstream extends ReactiveState {
 
 		/**
-		 * Return the direct source of data
+		 * Return the direct source of data, Supports reference
 		 */
 		Object upstream();
 	}
 
 	/**
-	 * A component that is linked to N {@link Publisher}. Useful to traverse from left to right a pipeline of
-	 * reactive actions implementing this interface.
+	 * A component that is linked to N {@link Publisher}. Useful to traverse from left to right a pipeline of reactive
+	 * actions implementing this interface.
 	 */
 	interface LinkedUpstreams extends ReactiveState {
 
@@ -130,14 +130,13 @@ public interface ReactiveState {
 	 * A component that is linked to N target {@link Subscriber}. Useful to traverse from right to left a pipeline of
 	 * reactive actions implementing this interface.
 	 */
-	interface Downstream<T> extends ReactiveState {
+	interface Downstream extends ReactiveState {
 
 		/**
 		 * Return the direct data receiver
 		 */
-		Subscriber<? super T> downstream();
+		Object downstream();
 	}
-
 
 	/**
 	 * A component that is linked to N target {@link Subscriber}. Useful to traverse from right to left a pipeline of
@@ -177,33 +176,100 @@ public interface ReactiveState {
 	 */
 
 	/**
-	 * An identifiable component
+	 * An nameable component
 	 */
 	interface Named extends ReactiveState {
 
 		/**
-		 * Return defined identifier
+		 * Return defined name
 		 */
 		String getName();
 	}
 
 	/**
+	 * An identifiable component
+	 */
+	interface Identified extends ReactiveState {
+
+		/**
+		 * Return defined id
+		 */
+		String getId();
+	}
+
+	/**
+	 * A lifecycle backed upstream
+	 */
+	interface ActiveUpstream extends ReactiveState {
+
+		/**
+		 * @return
+		 */
+		boolean isStarted();
+
+		/**
+		 *
+		 * @return
+		 */
+		boolean isTerminated();
+	}
+
+	/**
+	 * A lifecycle backed upstream
+	 */
+	interface ActiveDownstream extends ReactiveState {
+
+		/**
+		 *
+		 * @return
+		 */
+		boolean isCancelled();
+	}
+
+	/**
 	 * A criteria grouped component
 	 */
-	interface Grouped extends ReactiveState {
+	interface Grouped<K> extends ReactiveState {
 
 		/**
 		 * Return defined identifier
 		 */
-		String getKey();
+		K key();
 	}
 
 	/**
 	 * A component that is meant to be introspectable on finest logging level
 	 */
 	interface Trace extends ReactiveState {
+
 	}
 
+	/**
+	 * A component that is meant to be embedded or gating user components
+	 */
+	interface Inner extends ReactiveState {
+
+	}
+
+	/**
+	 * A component that holds a failure state if any
+	 */
+	interface FailState extends ReactiveState {
+
+		Throwable getError();
+	}
+
+	/**
+	 * A component that is timed
+	 */
+	interface Timed extends ReactiveState {
+
+		/**
+		 * Can represent a period in milliseconds
+		 * @return
+		 */
+		long period();
+	}
 
 	/**
 	 * A component that is delegating to a sub-flow (processor, or publisher/subscriber chain)
@@ -215,8 +281,89 @@ public interface ReactiveState {
 		Object delegateOutput();
 	}
 
+	/**
+	 * A component that is intended to build others
+	 */
+	interface Factory extends ReactiveState {
+
+	}
+
+	/**
+	 *
+	 */
+	interface Pausable extends ReactiveState {
+
+		/**
+		 * Cancel this {@literal Pausable}. The implementing component should never react to any stimulus,
+		 * closing resources if necessary.
+		 *
+		 * @return {@literal this}
+		 */
+		Pausable cancel();
+
+		/**
+		 * Pause this {@literal Pausable}. The implementing component should stop reacting, pausing resources if necessary.
+		 *
+		 * @return {@literal this}
+		 */
+		Pausable pause();
+
+		/**
+		 * Unpause this {@literal Pausable}. The implementing component should resume back from a previous pause,
+		 * re-activating resources if necessary.
+		 *
+		 * @return {@literal this}
+		 */
+		Pausable resume();
+
+	}
+	/**
+	 * A simple interface that marks an object as being recyclable.
+	 */
+
+	interface Recyclable {
+
+		/**
+		 * Free any internal resources and reset the state of the object to enable reuse.
+		 */
+		void recycle();
+
+	}
 
 	/*
-
+			Core System Env
 	 */
+
+	/**
+	 *
+	 */
+	boolean TRACE_CANCEL = Boolean.parseBoolean(System.getProperty("reactor.trace.cancel", "false"));
+
+	/**
+	 *
+	 */
+	boolean TRACE_NOCAPACITY = Boolean.parseBoolean(System.getProperty("reactor.trace.nocapacity", "false"));
+
+	/**
+	 * The size, in bytes, of a small buffer. Can be configured using the {@code reactor.io.defaultBufferSize} system
+	 * property. Default to 16384 bytes.
+	 */
+	int SMALL_IO_BUFFER_SIZE = Integer.parseInt(System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16));
+
+	/**
+	 * The maximum allowed buffer size in bytes. Can be configured using the {@code reactor.io.maxBufferSize} system
+	 * property. Defaults to 16384000 bytes.
+	 */
+	int MAX_IO_BUFFER_SIZE = Integer.parseInt(System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000 * 16));
+
+	/**
+	 *
+	 */
+	long DEFAULT_TIMEOUT = Long.parseLong(System.getProperty("reactor.await.defaultTimeout", "30000"));
+
+	/**
+	 * Whether the RingBuffer*Processor can be graphed by wrapping the individual Sequence with the target downstream
+	 */
+	boolean TRACEABLE_RING_BUFFER_PROCESSOR = Boolean.parseBoolean(System.getProperty("reactor.ringbuffer.trace",
+			"true"));
 }

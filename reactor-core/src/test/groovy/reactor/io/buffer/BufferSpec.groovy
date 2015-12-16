@@ -17,6 +17,7 @@
 
 package reactor.io.buffer
 
+import reactor.core.support.ReactiveState
 import spock.lang.Specification
 
 import java.nio.BufferOverflowException
@@ -413,7 +414,7 @@ class BufferSpec extends Specification {
 			def copy = buffer.copy()
 
 		then: "a new Buffer is created on a copy"
-			copy.capacity() == Buffer.SMALL_BUFFER_SIZE
+			copy.capacity() == ReactiveState.SMALL_IO_BUFFER_SIZE
 			copy.asString() == "Hello World!"
 	}
 

@@ -14,11 +14,12 @@ const config = {
   },
   styles: {
     src: './src/main/static/styles/main.scss',
-    dest: './src/main/resources/public/assets/css/'
+    dest: './src/main/resources/public/assets/css/',
+    watch: './src/main/static/styles/**.scss'
   },
   sourceDir: './src/main/static/',
   buildDir: './src/main/resources/public/',
-  devDir: './build/resources/main/public/'
+  devDir: './build/classes/main/public/'
 };
 
 export default config;

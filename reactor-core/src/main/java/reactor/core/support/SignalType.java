@@ -28,7 +28,7 @@ public enum SignalType {
 	 */
 	public static final Subscription NOOP_SUBSCRIPTION = new NoopSubscription();
 
-	private final static class NoopSubscription implements Subscription {
+	private final static class NoopSubscription implements Subscription, ReactiveState.Trace {
 		@Override
 		public void request(long n) {
 		}

@@ -24,7 +24,7 @@ import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Function;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -79,7 +79,7 @@ public final class RepeatWhenOperator<T> implements Publishers.Operator<T, T> {
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
 			if (TERMINATED.compareAndSet(this, TERMINATED_WITH_SUCCESS, NOT_TERMINATED)) {
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				if( r > 0L ){
 					requestMore(r);
 				}

@@ -17,6 +17,8 @@
 
 package reactor.core
 
+import org.reactivestreams.Publisher
+
 import static reactor.Publishers.*
 import spock.lang.Specification
 

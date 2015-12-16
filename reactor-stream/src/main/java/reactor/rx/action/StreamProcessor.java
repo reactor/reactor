@@ -29,8 +29,7 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>, ReactiveState.Upstream,
-                                                                ReactiveState.Downstream<E> {
+public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>, ReactiveState.FeedbackLoop{
 
 	protected final Subscriber<E> receiver;
 	protected final Publisher<O> publisher;
@@ -111,12 +110,12 @@ public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>,
 	}
 
 	@Override
-	public Subscriber<E> downstream() {
+	public Object delegateInput() {
 		return receiver;
 	}
 
 	@Override
-	public Object upstream() {
+	public Object delegateOutput() {
 		return publisher;
 	}
 
@@ -152,9 +151,9 @@ public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>,
 
 	@Override
 	public String toString() {
-		return "ProcessorAction{" +
-				"receiver=" + receiver +
-				", publisher=" + publisher +
+		return "{" +
+				"receiver: " + receiver +
+				", publisher: " + publisher +
 				'}';
 	}
 }

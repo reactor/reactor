@@ -24,7 +24,9 @@ import reactor.fn.Consumer;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class BoundedSubscriber<T> extends InterruptableSubscriber<T> implements ReactiveState.Bounded {
+public final class BoundedSubscriber<T> extends InterruptableSubscriber<T> implements ReactiveState.Bounded,
+                                                                                      ReactiveState.UpstreamPrefetch,
+                                                                                      ReactiveState.UpstreamDemand {
 
 	final int capacity;
 	final int limit;
@@ -70,6 +72,16 @@ public final class BoundedSubscriber<T> extends InterruptableSubscriber<T> imple
 	@Override
 	public long getCapacity() {
 		return capacity;
+	}
+
+	@Override
+	public long limit() {
+		return limit;
+	}
+
+	@Override
+	public long expectedFromUpstream() {
+		return outstanding;
 	}
 
 	@Override

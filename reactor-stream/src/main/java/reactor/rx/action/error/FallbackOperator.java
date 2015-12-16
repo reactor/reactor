@@ -103,7 +103,7 @@ public abstract class FallbackOperator<T> implements Publishers.Operator<T, T> {
 			subscriber.onNext(ev);
 		}
 
-		private class FallbackSubscriber extends BaseSubscriber<T>{
+		private class FallbackSubscriber extends BaseSubscriber<T> implements Inner, FeedbackLoop{
 
 			Subscription subscription;
 
@@ -111,7 +111,7 @@ public abstract class FallbackOperator<T> implements Publishers.Operator<T, T> {
 			public void onSubscribe(Subscription s) {
 				super.onSubscribe(s);
 				subscription = s;
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				if(r > 0){
 					subscription.request(r);
 				}
@@ -134,6 +134,16 @@ public abstract class FallbackOperator<T> implements Publishers.Operator<T, T> {
 			public void onComplete() {
 				super.onComplete();
 				checkedComplete();
+			}
+
+			@Override
+			public Object delegateInput() {
+				return FallbackAction.this;
+			}
+
+			@Override
+			public Object delegateOutput() {
+				return null;
 			}
 		}
 	}

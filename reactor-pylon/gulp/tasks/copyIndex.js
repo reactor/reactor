@@ -6,8 +6,12 @@ import config from '../config';
 
 gulp.task('copyIndex', function () {
 
-    return gulp.src(config.sourceDir + 'index.html')
-        .pipe(gulp.dest(config.buildDir))
-        .pipe(gulpif(config.devDir !== 'undefined', gulp.dest(config.devDir)))
+    var stream = gulp.src([config.sourceDir + 'index.html', config.sourceDir +'index.appcache']);
+
+    if (!global.isProd && config.devDir !== undefined) {
+        stream.pipe(gulp.dest(config.devDir));
+    }
+
+    return stream.pipe(gulp.dest(config.buildDir));
 
 });

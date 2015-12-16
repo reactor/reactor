@@ -18,6 +18,7 @@ package reactor.core.publisher.operator;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.subscriber.SubscriberBarrier;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Function;
 
 /**
@@ -26,7 +27,8 @@ import reactor.fn.Function;
  * @since 2.1
  */
 public final class IgnoreOnNextOperator<IN>
-		implements Function<Subscriber<? super Void>, Subscriber<? super IN>> {
+		implements Function<Subscriber<? super Void>, Subscriber<? super IN>>,
+		           ReactiveState.Factory {
 
 	public static final IgnoreOnNextOperator INSTANCE = new IgnoreOnNextOperator();
 

@@ -133,7 +133,7 @@ public final class SwitchOperator<T> implements Publishers.Operator<Publisher<? 
 			@Override
 			public void onSubscribe(final Subscription s) {
 				this.s = s;
-				long pending = getRequested();
+				long pending = requestedFromDownstream();
 				if (pending > 0 && !isTerminated()) {
 					s.request(pending);
 				}

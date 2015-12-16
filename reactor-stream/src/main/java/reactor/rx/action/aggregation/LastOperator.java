@@ -51,8 +51,8 @@ public final class LastOperator<T> implements Publishers.Operator<T, T> {
 		@Override
 		protected void doNext(T value) {
 			last = value;
-			if(getRequested() != Long.MAX_VALUE && COUNTED.decrementAndGet(this) == 0L){
-				requestMore(count = getRequested());
+			if(requestedFromDownstream() != Long.MAX_VALUE && COUNTED.decrementAndGet(this) == 0L){
+				requestMore(count = requestedFromDownstream());
 			}
 		}
 

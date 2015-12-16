@@ -18,7 +18,7 @@ package reactor.rx.broadcast;
 import org.reactivestreams.Processor;
 import reactor.Processors;
 import reactor.core.subscriber.SerializedSubscriber;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 
 /**
  * A {@code Broadcaster} is a subclass of {@code Stream} which exposes methods for publishing values into the pipeline.
@@ -56,7 +56,7 @@ public final class SerializedBroadcaster<O> extends Broadcaster<O> {
 	 * broadcast at a time.
 	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
 	 *
-	 * @param env the Reactor {@link reactor.fn.timer.Timer} to use
+	 * @param env the Reactor {@link Timer} to use
 	 * @param <T> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */

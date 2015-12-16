@@ -15,9 +15,10 @@
  */
 package reactor.rx
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import org.reactivestreams.Publisher
 import org.reactivestreams.Subscription
 import reactor.Processors
+import reactor.Publishers
 import reactor.Timers
 import reactor.bus.Event
 import reactor.bus.EventBus
@@ -25,6 +26,7 @@ import reactor.core.error.CancelException
 import reactor.core.processor.ProcessorGroup
 import reactor.core.processor.RingBufferProcessor
 import reactor.core.subscriber.SubscriberWithContext
+import reactor.core.support.ReactiveStateUtils
 import reactor.fn.BiFunction
 import reactor.rx.action.Signal
 import reactor.rx.broadcast.Broadcaster
@@ -35,6 +37,7 @@ import spock.lang.Specification
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
+import static reactor.Publishers.error
 import static reactor.bus.selector.Selectors.anonymous
 
 class StreamsSpec extends Specification {
@@ -105,7 +108,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the value is not retrieved'
 			def value = ""
-			def controls = stream.observe { value = it }.consumeLater()
+			def controls = stream.observe { value = it }.log().consumeLater()
 
 		then:
 			'it is not available'
@@ -1703,6 +1706,7 @@ class StreamsSpec extends Specification {
 			}
 
 			println source.debug()
+	  println ReactiveStateUtils.prettyPrint(source)
 
 		when:
 			'some values are accepted'
@@ -2734,9 +2738,11 @@ class StreamsSpec extends Specification {
 			}.retryWhen { attempts ->
 				attempts.zipWith(Streams.range(1, 3)) { t1, t2 -> t2 }.log().flatMap { i ->
 					println "delay retry by " + i + " second(s)"
+				  println attempts.debug()
 					Streams.timer(i)
 				}
 			}.next()
+		println value.debug()
 			value.await(10, TimeUnit.SECONDS)
 
 		then:
@@ -3024,6 +3030,8 @@ class StreamsSpec extends Specification {
 				r.notify(selector.object, Event.wrap(it))
 			}
 
+	  println r.debug()
+
 		then:
 			tail.await().size() == 10
 			tail.get().sum { it.t1 } >= 1000 //correctly serialized
@@ -3032,6 +3040,17 @@ class StreamsSpec extends Specification {
 			r.processor.onComplete()
 	}
 
+
+
+  def "error publishers don't fast fail"(){
+	when: 'preparing error publisher'
+		Publisher<Object> publisher = error(new IllegalStateException("boo"));
+		Streams.wrap(publisher).onErrorReturn{ex -> "error"}
+	    def a = 1
+
+	then: 'no exceptions'
+		a == 1
+  }
 
 	static class SimplePojo {
 		int id

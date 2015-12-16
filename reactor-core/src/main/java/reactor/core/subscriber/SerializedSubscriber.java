@@ -37,7 +37,7 @@ import reactor.core.support.ReactiveState;
  *            Port from RxJava's SerializedObserver applied to Reactive Stream
  */
 public class SerializedSubscriber<T> implements Subscriber<T>, Subscription, ReactiveState.Bounded,
-                                                ReactiveState.Upstream, ReactiveState.Downstream<T> {
+                                                ReactiveState.Upstream, ReactiveState.Downstream {
 	private final Subscriber<? super T> delegate;
 
 	private boolean emitting   = false;

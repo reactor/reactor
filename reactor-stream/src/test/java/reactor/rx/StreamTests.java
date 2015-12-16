@@ -63,7 +63,7 @@ import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.operator.LogOperator;
-import reactor.core.subscriber.Tap;
+import reactor.rx.action.terminal.Tap;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -456,11 +456,8 @@ public class StreamTests extends AbstractReactorTest {
 		Broadcaster<Integer> d = Broadcaster.create();
 
 		Control c = d.dispatchOn(asyncGroup)
-		             .log("main", LogOperator.REQUEST | LogOperator.NUMBER_ON_NEXT)
 		             .partition(8)
 		             .consume(stream -> stream.dispatchOn(asyncGroup)
-		                                      .log("partitioned-" + stream.key(), LogOperator.REQUEST | LogOperator
-				                                      .ON_SUBSCRIBE | LogOperator.NUMBER_ON_NEXT)
 		                                      .map(o -> {
 			                                      synchronized (internalLock) {
 

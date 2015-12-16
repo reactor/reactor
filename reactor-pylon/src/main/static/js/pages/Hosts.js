@@ -16,10 +16,10 @@ class Hosts extends React.Component {
 
     render() {
         return (
-            <DocumentTitle title="Hosts">
+            <DocumentTitle title="Reactor Console • Hosts">
                 <section className="hosts">
-                    <div>
-                        Hosts !
+                    <div className="section-heading">
+                        Hosts
                     </div>
                 </section>
             </DocumentTitle>

@@ -28,7 +28,7 @@ import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.error.ReactorFatalException;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -146,7 +146,7 @@ public class EventTimer implements Timer {
 	}
 
 	@Override
-	public long getResolution() {
+	public long period() {
 		return resolution;
 	}
 

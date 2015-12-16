@@ -34,14 +34,18 @@ import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Predicate;
-import reactor.fn.timer.TimeUtils;
+import reactor.core.timer.TimeUtils;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ReactiveSession<E> implements ReactiveState.Downstream<E>, Subscriber<E>, Subscription,
-                                           ReactiveState.Bounded, Consumer<E>,
+public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<E>, Subscription,
+                                           ReactiveState.Bounded,
+                                           ReactiveState.FailState,
+                                           ReactiveState.ActiveDownstream,
+                                           ReactiveState.DownstreamDemand,
+                                           Consumer<E>,
                                            Closeable {
 
 	/**
@@ -122,8 +126,8 @@ public class ReactiveSession<E> implements ReactiveState.Downstream<E>, Subscrib
 			actual.onSubscribe(this);
 		}
 		catch (Throwable t) {
-			Publishers.<E>error(t).subscribe(actual);
 			uncaughtException = t;
+			Publishers.<E>error(t).subscribe(actual);
 		}
 	}
 
@@ -296,7 +300,12 @@ public class ReactiveSession<E> implements ReactiveState.Downstream<E>, Subscrib
 	 * @return
 	 */
 	public boolean hasRequested() {
-		return requested != 0L;
+		return !cancelled && requested != 0L;
+	}
+
+	@Override
+	public long requestedFromDownstream() {
+		return requested;
 	}
 
 	/**
@@ -315,10 +324,7 @@ public class ReactiveSession<E> implements ReactiveState.Downstream<E>, Subscrib
 		return cancelled;
 	}
 
-	/**
-	 *
-	 * @return
-	 */
+	@Override
 	public Throwable getError() {
 		return uncaughtException;
 	}
@@ -365,14 +371,14 @@ public class ReactiveSession<E> implements ReactiveState.Downstream<E>, Subscrib
 	@Override
 	public void onNext(E e) {
 		Emission emission = emit(e);
+		if(emission.isCancelled()){
+			throw CancelException.get();
+		}
 		if(emission.isOk()){
 			return;
 		}
 		if(emission.isBackpressured()){
 			throw InsufficientCapacityException.get();
-		}
-		if(emission.isCancelled()){
-			throw CancelException.get();
 		}
 		if(emission.isFailed()){
 			if(uncaughtException != null) {
@@ -391,6 +397,11 @@ public class ReactiveSession<E> implements ReactiveState.Downstream<E>, Subscrib
 	@Override
 	public void onComplete() {
 		actual.onComplete();
+	}
+
+	@Override
+	public boolean isCancelled() {
+		return cancelled;
 	}
 
 	@Override

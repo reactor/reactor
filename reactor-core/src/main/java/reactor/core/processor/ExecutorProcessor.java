@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.SingleUseExecutor;
 
@@ -30,7 +31,8 @@ import reactor.core.support.SingleUseExecutor;
  *
  * @author Stephane Maldini
  */
-public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> {
+public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
+		implements ReactiveState.ActiveUpstream, ReactiveState.ActiveDownstream, ReactiveState.Named, ReactiveState.Identified{
 
 	protected final ExecutorService executor;
 
@@ -38,6 +40,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> 
 	protected volatile int     terminated;
 
 	protected final ClassLoader contextClassLoader;
+	protected final String name;
 
 	@SuppressWarnings("unused")
 	private volatile       int                                      subscriberCount  = 0;
@@ -54,6 +57,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> 
 		contextClassLoader = new ClassLoader(Thread.currentThread()
 		                                           .getContextClassLoader()) {
 		};
+		this.name = null != name ? name : getClass().getSimpleName();
 		if (executor == null) {
 			this.executor = SingleUseExecutor.create(name, contextClassLoader);
 		}
@@ -173,6 +177,20 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> 
 	 */
 	public abstract boolean isWork();
 
+	@Override
+	public boolean isCancelled() {
+		return cancelled;
+	}
+
+	@Override
+	public boolean isStarted() {
+		return upstreamSubscription != null;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return terminated == 1;
+	}
 
 	/**
 	 * @return true if the classLoader marker is detected in the current thread
@@ -193,6 +211,16 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT> 
 					.subscribe(subscriber);
 			return false;
 		}
+	}
+
+	@Override
+	public String getId() {
+		return contextClassLoader.hashCode()+"";
+	}
+
+	@Override
+	public String getName() {
+		return "/Processors/"+name;
 	}
 
 	protected boolean incrementSubscribers() {

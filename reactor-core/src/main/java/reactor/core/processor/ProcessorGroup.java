@@ -31,9 +31,9 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.processor.rb.disruptor.RingBuffer;
-import reactor.core.processor.rb.disruptor.Sequence;
-import reactor.core.processor.rb.disruptor.Sequencer;
+import reactor.core.support.rb.disruptor.RingBuffer;
+import reactor.core.support.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
@@ -539,8 +539,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
 			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
-			           ReactiveState.Bounded, ReactiveState.Upstream, ReactiveState.FeedbackLoop, ReactiveState
-					           .Downstream<V>, Runnable {
+			           Bounded, Upstream, FeedbackLoop, Downstream, Buffering, ActiveDownstream, ActiveUpstream,
+			           Named, UpstreamDemand, UpstreamPrefetch, DownstreamDemand, FailState,
+			           Runnable {
 
 		protected final ProcessorGroup service;
 
@@ -700,6 +701,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			}
 		}
 
+		@Override
+		public String getName() {
+			return "DispatchOn";
+		}
+
 		@SuppressWarnings("unchecked")
 		protected void doStart(final Subscriber<? super V> subscriber) {
 			RUNNING.incrementAndGet(this);
@@ -714,6 +720,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 					}
 				}
 			});
+		}
+
+		@Override
+		public long requestedFromDownstream() {
+			return requested;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -760,6 +771,21 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
+		public Throwable getError() {
+			return error;
+		}
+
+		@Override
+		public long limit() {
+			return BaseProcessor.SMALL_BUFFER_SIZE;
+		}
+
+		@Override
+		public long expectedFromUpstream() {
+			return outstanding;
+		}
+
+		@Override
 		public final void cancel() {
 			if (TERMINATED.compareAndSet(this, 0, 1)) {
 				cancelled = true;
@@ -790,6 +816,26 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
+		public boolean isCancelled() {
+			return cancelled;
+		}
+
+		@Override
+		public boolean isStarted() {
+			return upstreamSubscription != null;
+		}
+
+		@Override
+		public long pending() {
+			return emitBuffer != null ? emitBuffer.pending() : -1L;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return terminated == 1;
+		}
+
+		@Override
 		public void run() {
 			int missed = 1;
 			long cursor = pollCursor.get();
@@ -803,6 +849,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 				for (; ; ) {
 					if (cancelled) {
+						this.upstreamSubscription = null;
+						subscriber = null;
 						return;
 					}
 
@@ -831,10 +879,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 				if (terminated == 1) {
 					if ((error = this.error) != null) {
 						route(error, subscriber, SignalType.ERROR);
+						this.upstreamSubscription = null;
+						subscriber = null;
 						return;
 					}
 					else if (emitBuffer.pending() == 0) {
 						route(null, subscriber, SignalType.COMPLETE);
+						this.upstreamSubscription = null;
+						subscriber = null;
 						return;
 					}
 				}
@@ -945,7 +997,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			dispatch(new Runnable() {
 				@Override
 				public void run() {
-					subscriber.onSubscribe(WorkProcessorBarrier.this);
+					Subscriber subscriber = WorkProcessorBarrier.this.subscriber;
+					if(subscriber != null) {
+						subscriber.onSubscribe(WorkProcessorBarrier.this);
+					}
 				}
 			});
 		}
@@ -1002,12 +1057,17 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
+		public String getName() {
+			return "PublishOn";
+		}
+
+		@Override
 		public long getCapacity() {
 			return Long.MAX_VALUE;
 		}
 	}
 
-	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> {
+	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> implements Trace{
 
 		public SyncProcessorBarrier(ProcessorGroup service) {
 			super(false, service);
@@ -1025,7 +1085,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 		@Override
 		protected void doComplete() {
+			upstreamSubscription = null;
 			route(null, subscriber, SignalType.COMPLETE);
+			subscriber = null;
 		}
 
 		@Override
@@ -1035,7 +1097,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 		@Override
 		protected void doError(Throwable t) {
+			upstreamSubscription = null;
 			route(t, subscriber, SignalType.ERROR);
+			subscriber = null;
 		}
 
 		@Override
@@ -1068,7 +1132,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 	}
 
-	private static class TaskSubscriber implements Subscriber<Runnable> {
+	private static class TaskSubscriber implements Subscriber<Runnable>, Trace {
 
 		private final Consumer<Throwable> uncaughtExceptionHandler;
 		private final Consumer<Void>      shutdownHandler;
@@ -1099,6 +1163,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			}
 			catch (CancelException ce) {
 				//IGNORE
+			}
+			catch(Throwable t){
+				t.printStackTrace();
 			}
 		}
 
@@ -1131,7 +1198,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 	}
 
-	final static class PooledProcessorGroup<T> extends ProcessorGroup<T> {
+	final static class PooledProcessorGroup<T> extends ProcessorGroup<T> implements LinkedDownstreams {
 
 		final ProcessorGroup[] processorGroups;
 
@@ -1148,19 +1215,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 			for (int i = 0; i < concurrency; i++) {
 				processorGroups[i] =
-						new ProcessorGroup<T>(processor, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown) {
-							@Override
-							protected void decrementReference() {
-								REF_COUNT.decrementAndGet(this);
-								PooledProcessorGroup.this.decrementReference();
-							}
-
-							@Override
-							protected void incrementReference() {
-								REF_COUNT.incrementAndGet(this);
-								PooledProcessorGroup.this.incrementReference();
-							}
-						};
+						new InnerProcessorGroup<T>(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 			}
 		}
 
@@ -1179,6 +1234,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 				}
 			}
 			return true;
+		}
+
+		@Override
+		public Iterator<?> downstreams() {
+			return Arrays.asList(processorGroups).iterator();
+		}
+
+		@Override
+		public long downstreamsCount() {
+			return processorGroups.length;
 		}
 
 		@Override
@@ -1240,6 +1305,28 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		@Override
 		public BaseProcessor<T, T> get() {
 			return next().get();
+		}
+
+		private class InnerProcessorGroup<T> extends ProcessorGroup<T> implements Inner {
+
+			public InnerProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
+					Consumer<Throwable> uncaughtExceptionHandler,
+					Consumer<Void> shutdownHandler,
+					boolean autoShutdown) {
+				super(processor, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+			}
+
+			@Override
+			protected void decrementReference() {
+				REF_COUNT.decrementAndGet(this);
+				PooledProcessorGroup.this.decrementReference();
+			}
+
+			@Override
+			protected void incrementReference() {
+				REF_COUNT.incrementAndGet(this);
+				PooledProcessorGroup.this.incrementReference();
+			}
 		}
 	}
 }
