@@ -110,12 +110,22 @@ h1#logo {
     width: 46%;
     float: left;
     background: white;
-    border: 1px solid #DDD;
+    //border: 1px solid #DDD;
     .box-title {
-      padding: 0.6em;
+      padding: 0.4em 0.8em;
       margin: 0;
-      font-size: 1.1em;
-      border-bottom: 1px solid #DDD;
+      font-size: 1em;
+      background: $reactorBackgroundLight;
+      color: white;
+    }
+    .box-content {
+      font-size: 0.8em;
+      border: 1px solid #DDD;
+      border-top: 0 none;
+
+      .box-padding {
+        padding: 1em 2em;
+      }
     }
   }
   .box-1 {
@@ -179,33 +189,40 @@ h1#logo {
 
 
 #thread-timeline {
+  border: 0 none;
+  .vis-timeline {
+    border: 0 none;
+  }
   .vis-item {
     border: 1px;
     border-radius: 0px;
   }
-  .timedWaitingThread{
+  .timedWaitingThread {
     background-color: #743F2d;
     border-color: #743F2d;
   }
-  .waitingThread{
-    background-color: #34302d;
-    border-color: #34302d;
+  .waitingThread {
+    background-color: $reactorBackgroundLight;
+    border-color: $reactorBackgroundLight;
   }
-  .runnableThread{
-    background-color: #6db33f;
-    border-color: #6db33f;
+  .runnableThread {
+    background-color: $reactorPrimary;
+    border-color: $reactorPrimary;
   }
-  .terminatedThread{
+  .terminatedThread {
     background-color: black;
     border-color: black;
   }
-  .blockedThread{
+  .blockedThread {
     background-color: indianred;
     border-color: indianred;
   }
-  .newThread{
+  .newThread {
     background-color: darkcyan;
     border-color: darkcyan;
+  }
+  .vis-background .vis-minor {
+    display: none;
   }
 }
 
