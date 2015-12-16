@@ -14,6 +14,7 @@ import static org.hamcrest.core.Is.is;
 
 public class MatchedPipeTests extends AbstractPipeTests {
 
+  @SuppressWarnings("unchecked")
   @Test
   public void testMatching() throws InterruptedException {
     AVar<Integer> res1 = new AVar<>(1);
