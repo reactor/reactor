@@ -18,13 +18,13 @@
 import React         from 'react';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
-import { Line, Doughnut }      from 'react-chartjs';
+import CapacityDoughnut from '../components/CapacityDoughnut'
+import Rx            from 'rx-lite';
 
 const propTypes = {
-    currentUser: React.PropTypes.object
 };
 
-var chartLineOptions = {
+var chartOptions = {
     bezierCurve : true,
     datasetFill : false,
     pointDotStrokeWidth: 2,
@@ -36,6 +36,13 @@ class Buffers extends React.Component {
 
     constructor(props) {
         super(props);
+
+        this.buffers = this.props.graphStream
+            .flatMap(json => Rx.Observable.from(json.streams.nodes))
+            .filter(json => json.buffered !== undefined)
+            .map(json => {
+                return { max: json.capacity, pending: json.buffered }
+            });
     }
 
     render() {
@@ -45,11 +52,13 @@ class Buffers extends React.Component {
                     <div className="section-heading">
                         Buffers
                     </div>
+                    <div className="section-content">
+                        <CapacityDoughnut buffers={this.buffers} chartOptions={chartOptions}/>
+                    </div>
                 </section>
             </DocumentTitle>
         );
     }
-
 }
 
 Buffers.propTypes = propTypes;
