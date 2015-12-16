@@ -37,6 +37,7 @@ import reactor.core.publisher.operator.FlatMapOperator;
 import reactor.core.publisher.operator.IgnoreOnNextOperator;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
+import reactor.core.publisher.operator.OnErrorResumeOperator;
 import reactor.core.publisher.operator.ZipOperator;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.ReactiveState;
@@ -46,6 +47,7 @@ import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * @author Stephane Maldini
@@ -90,15 +92,6 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
-	 * @param error
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> error(final Throwable error) {
-		return Exceptions.publisher(error);
-	}
-
-	/**
 	 * @param <IN>
 	 * @return
 	 */
@@ -108,52 +101,60 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
-	 *
-	 * @param source
-	 * @param <IN>
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	public static <IN> Publisher<IN> convert(Object source) {
-
-		if (Publisher.class.isAssignableFrom(source.getClass())) {
-			return (Publisher<IN>) source;
-		}
-		else if (Iterable.class.isAssignableFrom(source.getClass())) {
-			return from((Iterable<IN>) source);
-		}
-		else if (Iterator.class.isAssignableFrom(source.getClass())) {
-			return from((Iterator<IN>) source);
-		}
-		else {
-			return (Publisher<IN>) DependencyUtils.convertToPublisher(source);
-		}
-	}
-
-	/**
-	 *
-	 * @param source
-	 * @param to
-	 * @param <T>
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> T convert(Publisher<?> source, Class<T> to) {
-		if (Publisher.class.isAssignableFrom(to.getClass())) {
-			return (T) source;
-		}
-		else {
-			return DependencyUtils.convertFromPublisher(source, to);
-		}
-	}
-
-	/**
 	 * @param <IN>
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
 	public static <IN> Publisher<IN> never() {
 		return (NeverPublisher<IN>) NEVER;
+	}
+
+	/**
+	 * @param error
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> error(final Throwable error) {
+		return Exceptions.publisher(error);
+	}
+
+	/**
+	 * @param fallbackValue
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> onErrorReturn(final Publisher<IN> source, final IN fallbackValue) {
+		return onErrorResumeNext(source, new Function<Throwable, Publisher<? extends IN>>() {
+			@Override
+			public Publisher<? extends IN> apply(Throwable throwable) {
+				return just(fallbackValue);
+			}
+		});
+	}
+
+	/**
+	 * @param fallback
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> onErrorResumeNext(final Publisher<IN> source,
+			final Publisher<? extends IN> fallback) {
+		return onErrorResumeNext(source, new Function<Throwable, Publisher<? extends IN>>() {
+			@Override
+			public Publisher<? extends IN> apply(Throwable throwable) {
+				return fallback;
+			}
+		});
+	}
+
+	/**
+	 * @param fallbackFunction
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> onErrorResumeNext(final Publisher<IN> source,
+			Function<Throwable, ? extends Publisher<? extends IN>> fallbackFunction) {
+		return lift(source, new OnErrorResumeOperator<>(fallbackFunction));
 	}
 
 	/**
@@ -378,6 +379,46 @@ public final class Publishers extends PublisherFactory {
 
 		return lift(just(list.toArray(new Publisher[list.size()])),
 				new ZipOperator<>(combinator, BaseProcessor.XS_BUFFER_SIZE));
+	}
+
+	/**
+	 *
+	 * @param source
+	 * @param <IN>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <IN> Publisher<IN> convert(Object source) {
+
+		if (Publisher.class.isAssignableFrom(source.getClass())) {
+			return (Publisher<IN>) source;
+		}
+		else if (Iterable.class.isAssignableFrom(source.getClass())) {
+			return from((Iterable<IN>) source);
+		}
+		else if (Iterator.class.isAssignableFrom(source.getClass())) {
+			return from((Iterator<IN>) source);
+		}
+		else {
+			return (Publisher<IN>) DependencyUtils.convertToPublisher(source);
+		}
+	}
+
+	/**
+	 *
+	 * @param source
+	 * @param to
+	 * @param <T>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> T convert(Publisher<?> source, Class<T> to) {
+		if (Publisher.class.isAssignableFrom(to.getClass())) {
+			return (T) source;
+		}
+		else {
+			return DependencyUtils.convertFromPublisher(source, to);
+		}
 	}
 
 	/**

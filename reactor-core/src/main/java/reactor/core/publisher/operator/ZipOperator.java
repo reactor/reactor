@@ -173,7 +173,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 			if (!cancelled) {
 				cancelled = true;
 				if (RUNNING.getAndIncrement(this) == 0) {
-					subscription.cancel();
+					super.doCancel();
 					cancelStates();
 				}
 			}

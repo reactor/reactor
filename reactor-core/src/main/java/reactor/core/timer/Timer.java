@@ -22,10 +22,20 @@ import reactor.fn.Consumer;
 import java.util.concurrent.TimeUnit;
 
 /**
- * @author Jon Brisbin
  * @author Stephane Maldini
+ * @since 2.1
  */
-public interface Timer extends ReactiveState.Timed {
+public class Timer implements ReactiveState.Timed {
+
+	protected final int resolution;
+
+	Timer() {
+		this.resolution = 0;
+	}
+
+	protected Timer(int resolution) {
+		this.resolution = resolution;
+	}
 
 	/**
 	 * Schedule a recurring task. The given {@link reactor.fn.Consumer} will be invoked once every N time units
@@ -41,10 +51,12 @@ public interface Timer extends ReactiveState.Timed {
 	 * Pausable#cancel() cancel}, {@link Pausable#pause() pause} or
 	 * {@link Pausable#resume() resume} the given task.
 	 */
-	Pausable schedule(Consumer<Long> consumer,
+	public Pausable schedule(Consumer<Long> consumer,
 	                  long period,
 	                  TimeUnit timeUnit,
-	                  long delayInMilliseconds);
+	                  long delayInMilliseconds){
+		return null;
+	}
 
 	/**
 	 * Schedule a recurring task. The given {@link reactor.fn.Consumer} will be invoked immediately, as well as
@@ -59,9 +71,11 @@ public interface Timer extends ReactiveState.Timed {
 	 * {@link Pausable#resume() resume} the given task.
 	 * @see #schedule(reactor.fn.Consumer, long, java.util.concurrent.TimeUnit, long)
 	 */
-	Pausable schedule(Consumer<Long> consumer,
+	public Pausable schedule(Consumer<Long> consumer,
 	                  long period,
-	                  TimeUnit timeUnit);
+	                  TimeUnit timeUnit){
+		return schedule(consumer, period, timeUnit, 0);
+	}
 
 	/**
 	 * Submit a task for arbitrary execution after the given time delay.
@@ -73,9 +87,11 @@ public interface Timer extends ReactiveState.Timed {
 	 * Pausable#cancel() cancel}, {@link Pausable#pause() pause} or
 	 * {@link Pausable#resume() resume} the given task.
 	 */
-	Pausable submit(Consumer<Long> consumer,
+	public Pausable submit(Consumer<Long> consumer,
 	                long delay,
-	                TimeUnit timeUnit);
+	                TimeUnit timeUnit){
+		return null;
+	}
 
 	/**
 	 * Submit a task for arbitrary execution after the delay of this timer's resolution.
@@ -83,22 +99,34 @@ public interface Timer extends ReactiveState.Timed {
 	 * @param consumer the {@code Consumer} to invoke
 	 * @return {@literal this}
 	 */
-	Pausable submit(Consumer<Long> consumer);
+	public Pausable submit(Consumer<Long> consumer){
+		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
+	}
 
 	/**
 	 * Start the Timer, may throw an IllegalStateException if already started
 	 */
-	void start();
+	public void start(){
+
+	}
 
 	/**
 	 * Cancel this timer by interrupting the task thread. No more tasks can be submitted to this timer after
 	 * cancellation.
 	 */
-	void cancel();
+	public void cancel(){
+
+	}
 
 	/**
 	 * Is this timer cancelled ?
 	 */
-	boolean isCancelled();
+	public boolean isCancelled(){
+		return false;
+	}
 
+	@Override
+	public long period() {
+		return resolution;
+	}
 }
