@@ -16,11 +16,8 @@
 package reactor.rx.action.control;
 
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
-import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.core.support.BackpressureUtils;
 
 /**
  * @author Stephane Maldini

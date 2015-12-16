@@ -21,9 +21,9 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.core.support.Bounded;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Function;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -72,15 +72,9 @@ public final class ThrottleRequestWhenOperator<T> implements Publishers.Operator
 			throttleStream.onComplete();
 		}
 
-		private class ThrottleSubscriber implements Subscriber<Long>, Bounded {
+		private class ThrottleSubscriber implements Subscriber<Long>, ReactiveState.Bounded {
 
 			Subscription s;
-
-			@Override
-			public boolean isExposedToOverflow(Bounded upstream) {
-				return ThrottleRequestWhenAction.this
-						.isExposedToOverflow(upstream);
-			}
 
 			@Override
 			public long getCapacity() {

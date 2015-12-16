@@ -15,9 +15,9 @@
  */
 package reactor.rx.action.support;
 
+import reactor.rx.action.terminal.Tap;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Supplier;
-import reactor.core.subscriber.Tap;
-import reactor.rx.StreamUtils;
 import reactor.rx.action.Control;
 
 /**
@@ -31,11 +31,6 @@ public class TapAndControls<O> implements Control, Supplier<O>{
 	public TapAndControls(Tap<? extends O> tap, Control controls) {
 		this.tap = tap;
 		this.controls = controls;
-	}
-
-	@Override
-	public void requestAll() {
-		controls.requestAll();
 	}
 
 	@Override
@@ -54,12 +49,7 @@ public class TapAndControls<O> implements Control, Supplier<O>{
 	}
 
 	@Override
-	public void requestMore(long n) {
-		controls.requestMore(n);
-	}
-
-	@Override
-	public StreamUtils.StreamVisitor debug() {
+	public ReactiveStateUtils.Graph debug() {
 		return controls.debug();
 	}
 }

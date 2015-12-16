@@ -27,20 +27,19 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
-import reactor.fn.timer.Timer;
-import reactor.rx.action.Action;
+import reactor.core.timer.Timer;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -60,11 +59,8 @@ import reactor.rx.broadcast.Broadcaster;
  * specification</a>
  */
 public class Promise<O>
-		implements Supplier<O>, Processor<O, O>, Consumer<O>, Bounded, Subscription,
-		Publishable<O> {
-
-	public static final long DEFAULT_TIMEOUT =
-			Long.parseLong(System.getProperty("reactor.await.defaultTimeout", "30000"));
+		implements Supplier<O>, Processor<O, O>, Consumer<O>, ReactiveState.Bounded, Subscription,
+		           ReactiveState.Upstream, ReactiveState.Downstream, ReactiveState.ActiveUpstream {
 
 	private volatile int requested = 0;
 
@@ -176,7 +172,7 @@ public class Promise<O>
 			lock.unlock();
 		}
 
-		return stream().lift(new Function<Subscriber<? super O>, Subscriber<? super O>>() {
+		return stream().lift(new Publishers.Operator<O, O>() {
 			@Override
 			public Subscriber<? super O> apply(final Subscriber<? super O> subscriber) {
 				return new SubscriberBarrier<O, O>(subscriber){
@@ -373,8 +369,8 @@ public class Promise<O>
 	}
 
 	@Override
-	public final Publisher<O> upstream() {
-		return PublisherFactory.fromSubscription(subscription);
+	public final Object upstream() {
+		return subscription;
 	}
 
 	/**
@@ -677,12 +673,8 @@ public class Promise<O>
 		valueAccepted(o);
 	}
 
-	public StreamUtils.StreamVisitor debug() {
-		Action<?, ?> debugged = Action.findOldestUpstream(this, Action.class);
-		if (subscription == null || debugged == null) {
-			return outboundStream != null ? outboundStream.debug() : null;
-		}
-		return debugged.debug();
+	public ReactiveStateUtils.Graph debug() {
+		return ReactiveStateUtils.scan(this);
 	}
 
 	protected void errorAccepted(Throwable error) {
@@ -796,11 +788,6 @@ public class Promise<O>
 	}
 
 	@Override
-	public boolean isExposedToOverflow(Bounded upstream) {
-		return true;
-	}
-
-	@Override
 	public final long getCapacity() {
 		return 1;
 	}
@@ -820,4 +807,18 @@ public class Promise<O>
 		}
 	}
 
+	@Override
+	public Subscriber downstream() {
+		return outboundStream;
+	}
+
+	@Override
+	public boolean isStarted() {
+		return requested > 0;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return finalState == FinalState.COMPLETE;
+	}
 }

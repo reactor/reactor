@@ -22,9 +22,9 @@ import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Function;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -42,7 +42,7 @@ public final class RepeatWhenOperator<T> implements Publishers.Operator<T, T> {
 			Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
 			Publisher<? extends T> rootPublisher) {
 
-		this.rootPublisher = rootPublisher != null ? Publishers.trampoline(rootPublisher) : null;
+		this.rootPublisher = rootPublisher != null ? TrampolineOperator.create(rootPublisher) : null;
 		this.predicate = predicate;
 		this.timer = timer;
 	}
@@ -79,7 +79,7 @@ public final class RepeatWhenOperator<T> implements Publishers.Operator<T, T> {
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
 			if (TERMINATED.compareAndSet(this, TERMINATED_WITH_SUCCESS, NOT_TERMINATED)) {
-				long r = getRequested();
+				long r = requestedFromDownstream();
 				if( r > 0L ){
 					requestMore(r);
 				}
@@ -99,14 +99,9 @@ public final class RepeatWhenOperator<T> implements Publishers.Operator<T, T> {
 			retryStream.onNext(System.currentTimeMillis());
 		}
 
-		private class RestartSubscriber implements Subscriber<Object>, Bounded {
+		private class RestartSubscriber implements Subscriber<Object>, ReactiveState.Bounded {
 
 			Subscription s;
-
-			@Override
-			public boolean isExposedToOverflow(Bounded upstream) {
-				return RepeatWhenAction.this.isExposedToOverflow(upstream);
-			}
 
 			@Override
 			public long getCapacity() {

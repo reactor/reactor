@@ -15,7 +15,7 @@
  */
 package reactor.rx.action;
 
-import reactor.rx.StreamUtils;
+import reactor.core.support.ReactiveStateUtils;
 
 /**
  * An interface generally associated with a {@link reactor.rx.Stream} terminal action such as
@@ -27,20 +27,7 @@ import reactor.rx.StreamUtils;
 public interface Control {
 
 	/**
-	 * Request the next n elements from the source
-	 *
-	 * @param n the number of elements to request
-	 */
-	void requestMore(long n);
-
-	/**
-	 * Usually requests Long.MAX_VALUE, which instructs a stream to never end until completed or cancelled.
-	 */
-	void requestAll();
-
-	/**
-	 * Stop consuming signals from upstream. Cancel should not be considered blocking, but usually it happens to be
-	 * rather immediate as it will be updating {@link reactor.rx.subscription.PushSubscription#terminated} flag.
+	 * Stop consuming signals from upstream. Cancel should not be considered blocking.
 	 */
 	void cancel();
 
@@ -53,7 +40,7 @@ public interface Control {
 	/**
 	 * Parse the materialized upstream source to fetch a materialized map form which allows for graph-style printing.
 	 *
-	 * @return {@link reactor.rx.StreamUtils.StreamVisitor} a Debug container for the current source
+	 * @return {@link ReactiveStateUtils.Graph} a Debug container for the current source
 	 */
-	StreamUtils.StreamVisitor debug();
+	ReactiveStateUtils.Graph debug();
 }

@@ -17,7 +17,7 @@ package reactor.rx.broadcast;
 
 import org.reactivestreams.Processor;
 import reactor.Processors;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 
 /**
  * A {@code Broadcaster} is a subclass of {@code Stream} which exposes methods for publishing values into the pipeline.

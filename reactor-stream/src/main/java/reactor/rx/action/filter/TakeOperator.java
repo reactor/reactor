@@ -56,7 +56,7 @@ public final class TakeOperator<T> implements Publishers.Operator<T, T> {
 			else {
 				long r, toAdd;
 				do {
-					r = getRequested();
+					r = requestedFromDownstream();
 					if (r >= limit) {
 						return;
 					}

@@ -17,30 +17,27 @@
 package reactor.core.processor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
-import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.processor.rb.disruptor.RingBuffer;
-import reactor.core.processor.rb.disruptor.Sequence;
-import reactor.core.processor.rb.disruptor.Sequencer;
-import reactor.core.publisher.PublisherFactory;
+import reactor.core.support.rb.disruptor.RingBuffer;
+import reactor.core.support.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
-import reactor.core.support.Subscribable;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -61,7 +58,7 @@ import reactor.fn.Supplier;
  * @author Anatoly Kadyshev
  * @author Stephane Maldini
  */
-public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
+public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveState.FeedbackLoop {
 
 	/**
 	 * @param <E>
@@ -359,7 +356,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 	/* INTERNAL */
 
-
 	@SuppressWarnings("unchecked")
 	private static final ProcessorGroup SYNC_SERVICE = new ProcessorGroup(null, -1, null, null, false);
 
@@ -448,6 +444,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	}
 
+	@Override
+	public Object delegateInput() {
+		return processor;
+	}
+
+	@Override
+	public Object delegateOutput() {
+		return processor;
+	}
+
 	protected void decrementReference() {
 		if ((processor != null || concurrency > 1) && REF_COUNT.decrementAndGet(this) <= 0 && autoShutdown) {
 			shutdown();
@@ -532,8 +538,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 	}
 
 	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
-			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription, Bounded,
-			           Publishable<V>, Subscribable<V>, Runnable {
+			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
+			           Bounded, Upstream, FeedbackLoop, Downstream, Buffering, ActiveDownstream, ActiveUpstream,
+			           Named, UpstreamDemand, UpstreamPrefetch, DownstreamDemand, FailState,
+			           Runnable {
 
 		protected final ProcessorGroup service;
 
@@ -579,8 +587,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		public Publisher<V> upstream() {
-			return PublisherFactory.fromSubscription(upstreamSubscription);
+		public Object upstream() {
+			return upstreamSubscription;
 		}
 
 		@Override
@@ -692,6 +700,12 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				doComplete();
 			}
 		}
+
+		@Override
+		public String getName() {
+			return "DispatchOn";
+		}
+
 		@SuppressWarnings("unchecked")
 		protected void doStart(final Subscriber<? super V> subscriber) {
 			RUNNING.incrementAndGet(this);
@@ -701,11 +715,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				@Override
 				public void run() {
 					doRequest(SMALL_BUFFER_SIZE);
-					if(RUNNING.decrementAndGet(ProcessorBarrier.this) != 0){
+					if (RUNNING.decrementAndGet(ProcessorBarrier.this) != 0) {
 						ProcessorBarrier.this.run();
 					}
 				}
 			});
+		}
+
+		@Override
+		public long requestedFromDownstream() {
+			return requested;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -752,6 +771,21 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
+		public Throwable getError() {
+			return error;
+		}
+
+		@Override
+		public long limit() {
+			return BaseProcessor.SMALL_BUFFER_SIZE;
+		}
+
+		@Override
+		public long expectedFromUpstream() {
+			return outstanding;
+		}
+
+		@Override
 		public final void cancel() {
 			if (TERMINATED.compareAndSet(this, 0, 1)) {
 				cancelled = true;
@@ -782,6 +816,26 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
+		public boolean isCancelled() {
+			return cancelled;
+		}
+
+		@Override
+		public boolean isStarted() {
+			return upstreamSubscription != null;
+		}
+
+		@Override
+		public long pending() {
+			return emitBuffer != null ? emitBuffer.pending() : -1L;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return terminated == 1;
+		}
+
+		@Override
 		public void run() {
 			int missed = 1;
 			long cursor = pollCursor.get();
@@ -795,17 +849,17 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 				for (; ; ) {
 					if (cancelled) {
+						this.upstreamSubscription = null;
+						subscriber = null;
 						return;
 					}
 
-					if (r != 0L
-							&& cursor + 1L <= emitBuffer.getCursor()) {
-						route(emitBuffer.get(++cursor).value, subscriber, SignalType.NEXT);
-
-						if(r != Long.MAX_VALUE){
+					if (r != 0L && cursor + 1L <= emitBuffer.getCursor()) {
+						if (r != Long.MAX_VALUE) {
 							r--;
 						}
 						outstanding--;
+						route(emitBuffer.get(++cursor).value, subscriber, SignalType.NEXT);
 						produced++;
 					}
 					else {
@@ -825,21 +879,24 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				if (terminated == 1) {
 					if ((error = this.error) != null) {
 						route(error, subscriber, SignalType.ERROR);
+						this.upstreamSubscription = null;
+						subscriber = null;
 						return;
 					}
 					else if (emitBuffer.pending() == 0) {
 						route(null, subscriber, SignalType.COMPLETE);
+						this.upstreamSubscription = null;
+						subscriber = null;
 						return;
 					}
 				}
 
 				Subscription subscription = upstreamSubscription;
-				if (outstanding < LIMIT_BUFFER_SIZE
-							&& subscription != null) {
-						int k = SMALL_BUFFER_SIZE - outstanding;
+				if (outstanding < LIMIT_BUFFER_SIZE && subscription != null) {
+					int k = SMALL_BUFFER_SIZE - outstanding;
 
-						this.outstanding = SMALL_BUFFER_SIZE;
-						subscription.request(k);
+					this.outstanding = SMALL_BUFFER_SIZE;
+					subscription.request(k);
 				}
 //				else{
 //					System.out.println(this+ " "+PublisherFactory.fromSubscription(upstreamSubscription));
@@ -852,6 +909,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			}
 
 
+		}
+
+		@Override
+		public Object delegateInput() {
+			return service.processor;
+		}
+
+		@Override
+		public Object delegateOutput() {
+			return service.processor;
 		}
 
 		@SuppressWarnings("unchecked")
@@ -899,13 +966,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			Subscriber sub = subscriber;
-			return sub != null && Bounded.class.isAssignableFrom(sub.getClass()) &&
-					((Bounded) sub).isExposedToOverflow(parentPublisher);
-		}
-
-		@Override
 		public long getAvailableCapacity() {
 			return emitBuffer != null ? emitBuffer.pending() : getCapacity();
 		}
@@ -919,8 +979,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		public String toString() {
 			return getClass().getSimpleName() + "{" +
 					"subscription=" + upstreamSubscription +
-					(emitBuffer != null ? ", pendingReceive="+outstanding+", buffered="+emitBuffer.pending() : "") +
-					(requested != 0 ? ", pendingSend="+requested: "") +
+					(emitBuffer != null ? ", pendingReceive=" + outstanding + ", buffered=" + emitBuffer.pending() :
+							"") +
+					(requested != 0 ? ", pendingSend=" + requested : "") +
 					'}';
 		}
 	}
@@ -936,7 +997,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			dispatch(new Runnable() {
 				@Override
 				public void run() {
-					subscriber.onSubscribe(WorkProcessorBarrier.this);
+					Subscriber subscriber = WorkProcessorBarrier.this.subscriber;
+					if(subscriber != null) {
+						subscriber.onSubscribe(WorkProcessorBarrier.this);
+					}
 				}
 			});
 		}
@@ -960,19 +1024,19 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		public void run() {
 			int missed = 1;
 			long r;
-			for(;;){
+			for (; ; ) {
 				r = REQUESTED.getAndSet(this, 0);
-				if(r == Long.MAX_VALUE){
+				if (r == Long.MAX_VALUE) {
 					doRequest(Long.MAX_VALUE);
 					return;
 				}
 
-				if(r != 0L) {
+				if (r != 0L) {
 					doRequest(r);
 				}
 
 				missed = RUNNING.addAndGet(this, -missed);
-				if(missed == 0){
+				if (missed == 0) {
 					break;
 				}
 			}
@@ -982,7 +1046,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		@SuppressWarnings("unchecked")
 		public void request(final long n) {
 			BackpressureUtils.getAndAdd(REQUESTED, this, n);
-			if(RUNNING.getAndIncrement(this) == 0) {
+			if (RUNNING.getAndIncrement(this) == 0) {
 				if (service.executorProcessor != null && !service.executorProcessor.isInContext()) {
 					service.processor.onNext(this);
 				}
@@ -993,8 +1057,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 
 		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return false;
+		public String getName() {
+			return "PublishOn";
 		}
 
 		@Override
@@ -1003,7 +1067,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	}
 
-	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> {
+	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> implements Trace{
 
 		public SyncProcessorBarrier(ProcessorGroup service) {
 			super(false, service);
@@ -1021,7 +1085,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		@Override
 		protected void doComplete() {
+			upstreamSubscription = null;
 			route(null, subscriber, SignalType.COMPLETE);
+			subscriber = null;
 		}
 
 		@Override
@@ -1031,12 +1097,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 		@Override
 		protected void doError(Throwable t) {
+			upstreamSubscription = null;
 			route(t, subscriber, SignalType.ERROR);
-		}
-
-		@Override
-		public boolean isExposedToOverflow(Bounded parentPublisher) {
-			return false;
+			subscriber = null;
 		}
 
 		@Override
@@ -1069,14 +1132,15 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	}
 
-	private static class TaskSubscriber implements Subscriber<Runnable> {
+	private static class TaskSubscriber implements Subscriber<Runnable>, Trace {
 
 		private final Consumer<Throwable> uncaughtExceptionHandler;
 		private final Consumer<Void>      shutdownHandler;
-		private final TailRecurser tailRecurser;
+		private final TailRecurser        tailRecurser;
 
-		public TaskSubscriber(TailRecurser tailRecurser, Consumer<Throwable> uncaughtExceptionHandler, Consumer<Void>
-				shutdownHandler) {
+		public TaskSubscriber(TailRecurser tailRecurser,
+				Consumer<Throwable> uncaughtExceptionHandler,
+				Consumer<Void> shutdownHandler) {
 			this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 			this.shutdownHandler = shutdownHandler;
 			this.tailRecurser = tailRecurser;
@@ -1092,13 +1156,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 			try {
 				task.run();
 
-			if (tailRecurser != null) {
-				tailRecurser.consumeTasks();
-			}
+				if (tailRecurser != null) {
+					tailRecurser.consumeTasks();
+				}
 
 			}
 			catch (CancelException ce) {
 				//IGNORE
+			}
+			catch(Throwable t){
+				t.printStackTrace();
 			}
 		}
 
@@ -1131,7 +1198,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		}
 	}
 
-	final static class PooledProcessorGroup<T> extends ProcessorGroup<T> {
+	final static class PooledProcessorGroup<T> extends ProcessorGroup<T> implements LinkedDownstreams {
 
 		final ProcessorGroup[] processorGroups;
 
@@ -1148,19 +1215,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 
 			for (int i = 0; i < concurrency; i++) {
 				processorGroups[i] =
-						new ProcessorGroup<T>(processor, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown) {
-							@Override
-							protected void decrementReference() {
-								REF_COUNT.decrementAndGet(this);
-								PooledProcessorGroup.this.decrementReference();
-							}
-
-							@Override
-							protected void incrementReference() {
-								REF_COUNT.incrementAndGet(this);
-								PooledProcessorGroup.this.incrementReference();
-							}
-						};
+						new InnerProcessorGroup<T>(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 			}
 		}
 
@@ -1179,6 +1234,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 				}
 			}
 			return true;
+		}
+
+		@Override
+		public Iterator<?> downstreams() {
+			return Arrays.asList(processorGroups).iterator();
+		}
+
+		@Override
+		public long downstreamsCount() {
+			return processorGroups.length;
 		}
 
 		@Override
@@ -1240,6 +1305,28 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>> {
 		@Override
 		public BaseProcessor<T, T> get() {
 			return next().get();
+		}
+
+		private class InnerProcessorGroup<T> extends ProcessorGroup<T> implements Inner {
+
+			public InnerProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
+					Consumer<Throwable> uncaughtExceptionHandler,
+					Consumer<Void> shutdownHandler,
+					boolean autoShutdown) {
+				super(processor, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+			}
+
+			@Override
+			protected void decrementReference() {
+				REF_COUNT.decrementAndGet(this);
+				PooledProcessorGroup.this.decrementReference();
+			}
+
+			@Override
+			protected void incrementReference() {
+				REF_COUNT.incrementAndGet(this);
+				PooledProcessorGroup.this.incrementReference();
+			}
 		}
 	}
 }

@@ -19,9 +19,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
-import reactor.core.support.Subscribable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
 
@@ -31,7 +29,7 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>, Publishable<O>, Subscribable<E> {
+public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>, ReactiveState.FeedbackLoop{
 
 	protected final Subscriber<E> receiver;
 	protected final Publisher<O> publisher;
@@ -112,12 +110,12 @@ public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>,
 	}
 
 	@Override
-	public Subscriber<E> downstream() {
+	public Object delegateInput() {
 		return receiver;
 	}
 
 	@Override
-	public Publisher<O> upstream() {
+	public Object delegateOutput() {
 		return publisher;
 	}
 
@@ -146,23 +144,16 @@ public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>,
 		receiver.onComplete();
 	}
 
-
-	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return Bounded.class.isAssignableFrom(publisher.getClass()) && ((Bounded) publisher).isExposedToOverflow(
-				parentPublisher);
-	}
-
 	@Override
 	public long getCapacity() {
-		return Bounded.class.isAssignableFrom(publisher.getClass()) ? ((Bounded) publisher).getCapacity() : Long.MAX_VALUE;
+		return ReactiveState.Bounded.class.isAssignableFrom(publisher.getClass()) ? ((ReactiveState.Bounded) publisher).getCapacity() : Long.MAX_VALUE;
 	}
 
 	@Override
 	public String toString() {
-		return "ProcessorAction{" +
-				"receiver=" + receiver +
-				", publisher=" + publisher +
+		return "{" +
+				"receiver: " + receiver +
+				", publisher: " + publisher +
 				'}';
 	}
 }

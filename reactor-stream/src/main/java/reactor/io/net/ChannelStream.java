@@ -22,7 +22,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.rx.Stream;
 import reactor.rx.Streams;

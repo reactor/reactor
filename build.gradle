@@ -45,9 +45,9 @@ ext {
 
 	// Libraries
 	gsCollectionsVersion = '5.1.0'
-  pcollectionsVersion = "2.1.2"
-	nettyVersion = '4.0.31.Final'
-	jacksonDatabindVersion = '2.5.1'
+    pcollectionsVersion = "2.1.2"
+  	nettyVersion = '4.0.33.Final'
+  	jacksonDatabindVersion = '2.5.1'
 	jsonPathVersion = '2.0.0'
 	openHftChronicleVersion = '3.4.2'
   	rxJavaVersion = '1.0.14'
@@ -67,6 +67,11 @@ ext {
 
 apply from: "$gradleScriptDir/setup.gradle"
 apply from: "$gradleScriptDir/doc.gradle"
+
+configurations.all {
+  // check for updates every build
+  resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
 
 configure(subprojects) { project ->
 	group = 'io.projectreactor'
@@ -235,6 +240,7 @@ project('reactor-stream') {
 		optional "io.projectreactor:reactor-codec:$version"
 
 		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
+	  	testCompile "io.netty:netty-all:$nettyVersion"
 		testCompile project(':reactor-bus')
 		testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 	}
@@ -326,14 +332,15 @@ project("reactor-pipe") {
 }
 
 project('reactor-alloc') {
-	description = 'Pooling utilities'
+  description = 'Pooling utilities'
 
-	dependencies {
-		compile project(':reactor-core')
+  dependencies {
+	  compile project(':reactor-core')
 
-		optional project(':reactor-bus')
+	  optional project(':reactor-bus')
 	}
 }
+
 
 project('reactor-logback') {
 	description = 'Async Logback appender implementation'

@@ -19,6 +19,8 @@ package reactor.core.publisher.operator;
 import org.reactivestreams.Subscriber;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.Assert;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
@@ -27,7 +29,8 @@ import reactor.fn.tuple.Tuple2;
  * @author Stephane Maldini
  * @since 1.1, 2.0, 2.1
  */
-public final class MapOperator<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>> {
+public final class MapOperator<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>>,
+                                                ReactiveState.Factory {
 
 	/**
 	 * A predefined map operator producing timestamp tuples
@@ -56,7 +59,7 @@ public final class MapOperator<T, V> implements Function<Subscriber<? super V>, 
 		return new MapBarrier<>(subscriber, fn);
 	}
 
-	static final class MapBarrier<T, V> extends SubscriberBarrier<T, V> {
+	static final class MapBarrier<T, V> extends SubscriberBarrier<T, V> implements ReactiveState.Named {
 
 		private final Function<? super T, ? extends V> fn;
 
@@ -64,6 +67,11 @@ public final class MapOperator<T, V> implements Function<Subscriber<? super V>, 
 			super(actual);
 			Assert.notNull(fn, "Map function cannot be null.");
 			this.fn = fn;
+		}
+
+		@Override
+		public String getName() {
+			return ReactiveStateUtils.getName(fn);
 		}
 
 		@Override

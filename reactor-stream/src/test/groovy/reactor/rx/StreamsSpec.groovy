@@ -15,9 +15,10 @@
  */
 package reactor.rx
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import org.reactivestreams.Publisher
 import org.reactivestreams.Subscription
 import reactor.Processors
+import reactor.Publishers
 import reactor.Timers
 import reactor.bus.Event
 import reactor.bus.EventBus
@@ -25,6 +26,7 @@ import reactor.core.error.CancelException
 import reactor.core.processor.ProcessorGroup
 import reactor.core.processor.RingBufferProcessor
 import reactor.core.subscriber.SubscriberWithContext
+import reactor.core.support.ReactiveStateUtils
 import reactor.fn.BiFunction
 import reactor.rx.action.Signal
 import reactor.rx.broadcast.Broadcaster
@@ -35,6 +37,7 @@ import spock.lang.Specification
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
+import static reactor.Publishers.error
 import static reactor.bus.selector.Selectors.anonymous
 
 class StreamsSpec extends Specification {
@@ -105,7 +108,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the value is not retrieved'
 			def value = ""
-			def controls = stream.observe { value = it }.consumeLater()
+			def controls = stream.observe { value = it }.log().consumeLater()
 
 		then:
 			'it is not available'
@@ -134,9 +137,9 @@ class StreamsSpec extends Specification {
 			'cumulated request of Long MAX'
 			long test = Long.MAX_VALUE / 2l
 			def controls = stream.consumeLater()
-			controls.requestMore(test)
-			controls.requestMore(test)
-			controls.requestMore(1)
+			controls.request(test)
+			controls.request(test)
+			controls.request(1)
 
 			//sleep(2000)
 
@@ -811,7 +814,7 @@ class StreamsSpec extends Specification {
 			'source composables to merge, buffer and tap'
 			def source1 = Broadcaster.<Integer> create()
 			def source2 = Broadcaster.<Integer> create()
-			def zippedStream = Streams.zip(source1, source2) { println it; it.t1 + it.t2 }.log()
+			def zippedStream = Streams.zip(source1, source2) { t1, t2 -> println t1; t1 + t2 }.log()
 			def tap = zippedStream.tap()
 
 		when:
@@ -847,7 +850,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the sources are zipped'
-			def zippedStream = Streams.zip(odds.log('left'), even.log('right')) { [it.t1, it.t2] }
+			def zippedStream = Streams.zip(odds.log('left'), even.log('right')) { t1, t2 -> [t1, t2] }
 			def tap = zippedStream.log().toList()
 			tap.await(3, TimeUnit.SECONDS)
 			println tap.debug()
@@ -859,7 +862,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the sources are zipped in a flat map'
 			zippedStream = odds.log('before-flatmap').flatMap {
-				Streams.zip(Streams.just(it), even) { [it.t1, it.t2] }
+				Streams.zip(Streams.just(it), even) { t1, t2 -> [t1, t2] }
 						.log('second-fm')
 			}
 			tap = zippedStream.log('after-zip').toList()
@@ -903,9 +906,9 @@ class StreamsSpec extends Specification {
 		when:
 			'the source is consumed every in 3 times'
 			def res = []
-			s.capacity(1).batchConsume(
+			s.log().consumeWithRequest(
 					{ res << it },
-					{ res << "r:${it * 2}"; it * 2 }
+					{ def i = it == 0L ? 2L : (it * 2L); res << "r:$i"; i }
 			)
 
 		then:
@@ -1661,8 +1664,7 @@ class StreamsSpec extends Specification {
 				}
 			}
 
-			def objetMapper = new ObjectMapper()
-			println objetMapper.writeValueAsString(source.debug().toMap())
+			println source.debug()
 
 		when:
 			'some values are accepted'
@@ -1703,8 +1705,8 @@ class StreamsSpec extends Specification {
 				}
 			}
 
-			def objetMapper = new ObjectMapper()
-			println objetMapper.writeValueAsString(source.debug().toMap())
+			println source.debug()
+	  println ReactiveStateUtils.prettyPrint(source)
 
 		when:
 			'some values are accepted'
@@ -1750,12 +1752,12 @@ class StreamsSpec extends Specification {
 			source.onNext(new SimplePojo(id: 3, title: 'Acme2'))
 			source.onNext(new SimplePojo(id: 3, title: 'Acme3'))
 			println source.debug()
-			def result = source.debug().toMap()
+			def result = source.debug()
 
 
 		then:
 			'the result should contain all stream titles by id'
-			result.to[0].id == "GroupBy"
+			result.nodes.to[0].id == "GroupBy"
 			result.to[0].to[0].id == "Consumer"
 			result.to[0].boundTo[0].id == "Consumer"
 			result.to[0].boundTo[1].id == "Consumer"
@@ -2231,21 +2233,21 @@ class StreamsSpec extends Specification {
 			'A source stream emits next signals followed by an error'
 			def res = []
 			def myStream = Streams.yield { aSubscriber ->
-				aSubscriber.onNext('Three')
-				aSubscriber.onNext('Two')
-				aSubscriber.onNext('One')
-				aSubscriber.onError(new Exception())
-				aSubscriber.onNext('Zero')
+				aSubscriber.emit('Three')
+				aSubscriber.emit('Two')
+				aSubscriber.emit('One')
+				aSubscriber.failWith(new Exception())
+				aSubscriber.emit('Zero')
 			}
 
 		and:
 			'A fallback stream will emit values and complete'
 			def myFallback = Streams.yield { aSubscriber ->
-				aSubscriber.onNext('0')
-				aSubscriber.onNext('1')
-				aSubscriber.onNext('2')
-				aSubscriber.onComplete()
-				aSubscriber.onNext('3')
+				aSubscriber.emit('0')
+				aSubscriber.emit('1')
+				aSubscriber.emit('2')
+				aSubscriber.finish()
+				aSubscriber.emit('3')
 			}
 
 		and:
@@ -2289,11 +2291,10 @@ class StreamsSpec extends Specification {
 			'A source stream emits next signals followed by complete'
 			List res = []
 			def myStream = Streams.yield { aSubscriber ->
-				aSubscriber.onNext('Three')
-				aSubscriber.onNext('Two')
-				aSubscriber.onNext('One')
-				aSubscriber.onComplete()
-				aSubscriber.onError(new Exception())
+				aSubscriber.emit('Three')
+				aSubscriber.emit('Two')
+				aSubscriber.emit('One')
+				aSubscriber.finish()
 			}
 
 		and:
@@ -2311,8 +2312,8 @@ class StreamsSpec extends Specification {
 			'A source stream emits next signals followed by complete'
 			res = []
 			myStream = Streams.yield { aSubscriber ->
-				aSubscriber.onNext('Three')
-				aSubscriber.onError(new Exception())
+				aSubscriber.emit('Three')
+				aSubscriber.failWith(new Exception())
 			}
 
 		and:
@@ -2415,7 +2416,10 @@ class StreamsSpec extends Specification {
 			def source = Broadcaster.<Integer> create()
 
 			def value = null
-			def tail = source.log("drop").onOverflowDrop().observe { value = it }.log('overflow-drop-test').consume(5)
+			def tail = source.log("drop").onOverflowDrop().observe { value = it }.log('overflow-drop-test')
+					.consumeLater()
+
+			tail.request(5)
 			println tail.debug()
 
 		when:
@@ -2431,7 +2435,7 @@ class StreamsSpec extends Specification {
 
 		and:
 			'we try to consume the tail to check if 6 has been buffered'
-			tail.requestMore(1)
+			tail.request(1)
 
 		then:
 			'last value known is 5'
@@ -2732,11 +2736,13 @@ class StreamsSpec extends Specification {
 				counter++
 				it.onError(new RuntimeException("always fails $counter"))
 			}.retryWhen { attempts ->
-				attempts.zipWith(Streams.range(1, 3)) { it.t2 }.log().flatMap { i ->
+				attempts.zipWith(Streams.range(1, 3)) { t1, t2 -> t2 }.log().flatMap { i ->
 					println "delay retry by " + i + " second(s)"
+				  println attempts.debug()
 					Streams.timer(i)
 				}
 			}.next()
+		println value.debug()
 			value.await(10, TimeUnit.SECONDS)
 
 		then:
@@ -2795,7 +2801,7 @@ class StreamsSpec extends Specification {
 				counter++
 				it.onComplete()
 			}.log().repeatWhen { attempts ->
-				attempts.zipWith(Streams.range(1, 3)) { it.t2 }.flatMap { i ->
+				attempts.zipWith(Streams.range(1, 3)) { t1, t2 -> t2 }.flatMap { i ->
 					println "delay repeat by " + i + " second(s)"
 					Streams.timer(i)
 				}
@@ -3024,6 +3030,8 @@ class StreamsSpec extends Specification {
 				r.notify(selector.object, Event.wrap(it))
 			}
 
+	  println r.debug()
+
 		then:
 			tail.await().size() == 10
 			tail.get().sum { it.t1 } >= 1000 //correctly serialized
@@ -3032,6 +3040,17 @@ class StreamsSpec extends Specification {
 			r.processor.onComplete()
 	}
 
+
+
+  def "error publishers don't fast fail"(){
+	when: 'preparing error publisher'
+		Publisher<Object> publisher = error(new IllegalStateException("boo"));
+		Streams.wrap(publisher).onErrorReturn{ex -> "error"}
+	    def a = 1
+
+	then: 'no exceptions'
+		a == 1
+  }
 
 	static class SimplePojo {
 		int id

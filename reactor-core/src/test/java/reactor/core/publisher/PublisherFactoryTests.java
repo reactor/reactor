@@ -42,7 +42,6 @@ public class PublisherFactoryTests extends PublisherVerification<Long> {
 	@Override
 	public Publisher<Long> createPublisher(long elements) {
 		return
-		  Publishers.trampoline(
 			Publishers.log(
 			  Publishers.lift(
 			    Publishers.<Long, AtomicLong>create(
@@ -59,7 +58,6 @@ public class PublisherFactoryTests extends PublisherVerification<Long> {
 			    (data, sub) -> sub.onNext(data * 10)
 			  ),
 			  "log-test"
-			)
 		  );
 	}
 

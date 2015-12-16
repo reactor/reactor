@@ -17,7 +17,7 @@ package reactor.core.support.wait;
 
 
 import reactor.core.error.AlertException;
-import reactor.core.processor.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.Sequence;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 

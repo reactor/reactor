@@ -22,7 +22,7 @@ import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Consumer;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 
 /**
  * @author Stephane Maldini

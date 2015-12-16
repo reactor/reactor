@@ -17,7 +17,7 @@
 package reactor.bus;
 
 import reactor.core.support.Assert;
-import reactor.core.support.Recyclable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple;
@@ -34,7 +34,7 @@ import java.util.*;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Event<T> implements Serializable, Recyclable {
+public class Event<T> implements Serializable, ReactiveState.Recyclable {
 
 	private static final long serialVersionUID = -2476263092040373361L;
 	private final transient Consumer<Throwable> errorConsumer;

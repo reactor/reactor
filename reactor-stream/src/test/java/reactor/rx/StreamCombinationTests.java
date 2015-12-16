@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -34,12 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
-import reactor.Subscribers;
-import reactor.core.processor.BaseProcessor;
-import reactor.core.subscription.ReactiveSession;
-import reactor.core.support.Assert;
 import reactor.fn.Consumer;
-import reactor.fn.tuple.Tuple2;
 import reactor.rx.action.Control;
 
 /**
@@ -92,79 +86,6 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		final CountDownLatch latch = new CountDownLatch(n);
 		awaitLatch(stream.consume(integer -> latch.countDown()), latch);
-	}
-
-	@Test
-	public void tesSubmitSession() throws Exception {
-		BaseProcessor<Integer, Integer> processor = Processors.emitter();
-		AtomicInteger count = new AtomicInteger();
-		processor.process(Processors.ioGroup().get())
-		         .subscribe(Subscribers.create(s -> {
-			         try {
-				         Thread.sleep(1000);
-			         }
-			         catch (InterruptedException ie) {
-				         //IGNORE
-			         }
-			         s.request(1L);
-			         return null;
-		         }, (d, s) -> count.incrementAndGet()));
-
-		ReactiveSession<Integer> session = processor.startSession();
-		long emission = session.submit(1);
-		if (emission == -1L) {
-			throw new IllegalStateException("Negatime " + emission);
-		}
-		//System.out.println(emission);
-		if (session.hasFailed()) {
-			session.getError()
-			       .printStackTrace();
-		}
-		session.finish();
-
-		Assert.isTrue(count.get() == 1, "latch : " + count);
-		Assert.isTrue(emission >= 1, "time : " + emission);
-	}
-
-	@Test
-	public void testEmitter() throws Throwable {
-		BaseProcessor<Integer, Integer> processor = Processors.emitter();
-
-		int n = 1_000_000;
-		int subs = 4;
-		final CountDownLatch latch = new CountDownLatch((n + 1) * subs);
-
-		for (int i = 0; i < subs; i++) {
-			processor.process(Processors.singleGroup()
-			                            .get())
-			         .subscribe(Subscribers.create(s -> {
-				         s.request(1L);
-				         return null;
-			         }, (d, s) -> {
-				         monitorThreadUse();
-//				         System.out.println(d);
-				         s.request(1L);
-				         latch.countDown();
-			         }, null, d -> latch.countDown()));
-		}
-
-		ReactiveSession<Integer> session = processor.startSession();
-
-		for (int i = 0; i < n; i++) {
-			while (!session.emit(i).isOk()) {
-				//System.out.println(emission);
-				if (session.hasFailed()) {
-					session.getError()
-					       .printStackTrace();
-					throw session.getError();
-				}
-			}
-		}
-		session.finish();
-
-		boolean waited = latch.await(5, TimeUnit.SECONDS);
-		System.out.println(counters);
-		Assert.isTrue(waited, "latch : " + latch.getCount());
 	}
 
 	public Stream<SensorData> sensorOdd() {
@@ -348,9 +269,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 	}
 
-	private SensorData computeMin(Tuple2<SensorData, SensorData> tuple) {
-		SensorData sd1 = tuple.getT1();
-		SensorData sd2 = tuple.getT2();
+	private SensorData computeMin(SensorData sd1, SensorData sd2) {
 		return (null != sd2 ? (sd2.getValue() < sd1.getValue() ? sd2 : sd1) : sd1);
 	}
 

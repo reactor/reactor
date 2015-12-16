@@ -23,7 +23,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 
@@ -31,7 +31,7 @@ import reactor.core.support.internal.PlatformDependent;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class SwapSubscription<T> implements Subscription, Publishable<T> {
+public final class SwapSubscription<T> implements Subscription, ReactiveState.Upstream, ReactiveState.Trace {
 
 	@SuppressWarnings("unused")
 	private volatile Subscription subscription;
@@ -70,7 +70,10 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 	 */
 	public void swapTo(Subscription subscription) {
 		Subscription old = SUBSCRIPTION.getAndSet(this, subscription);
-		old.cancel();
+		if(old != SignalType.NOOP_SUBSCRIPTION){
+			subscription.cancel();
+			return;
+		}
 		long r = REQUESTED.getAndSet(this, 0L);
 		if(r != 0L){
 			subscription.request(r);
@@ -134,8 +137,8 @@ public final class SwapSubscription<T> implements Subscription, Publishable<T> {
 	}
 
 	@Override
-	public Publisher<T> upstream() {
-		return Publishers.fromSubscription(subscription);
+	public Object upstream() {
+		return subscription;
 	}
 
 	@Override

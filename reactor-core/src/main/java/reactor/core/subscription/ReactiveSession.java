@@ -30,18 +30,22 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.support.Subscribable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Predicate;
-import reactor.fn.timer.TimeUtils;
+import reactor.core.timer.TimeUtils;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
-public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subscription, Bounded, Consumer<E>,
+public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<E>, Subscription,
+                                           ReactiveState.Bounded,
+                                           ReactiveState.FailState,
+                                           ReactiveState.ActiveDownstream,
+                                           ReactiveState.DownstreamDemand,
+                                           Consumer<E>,
                                            Closeable {
 
 	/**
@@ -122,8 +126,8 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 			actual.onSubscribe(this);
 		}
 		catch (Throwable t) {
-			Publishers.<E>error(t).subscribe(actual);
 			uncaughtException = t;
+			Publishers.<E>error(t).subscribe(actual);
 		}
 	}
 
@@ -133,11 +137,11 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	 * @return
 	 */
 	public Emission emit(E data) {
-		if (cancelled) {
-			return Emission.CANCELLED;
-		}
 		if (uncaughtException != null) {
 			return Emission.FAILED;
+		}
+		if (cancelled) {
+			return Emission.CANCELLED;
 		}
 		try {
 			if (BackpressureUtils.getAndSub(REQUESTED, this, 1L) == 0L) {
@@ -166,7 +170,15 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	public void failWith(Throwable error) {
 		if (uncaughtException == null) {
 			uncaughtException = error;
-			actual.onError(error);
+			if(!cancelled) {
+				cancelled = true;
+				actual.onError(error);
+			}
+			else{
+				IllegalStateException ise = new IllegalStateException("Session has been cancelled previously");
+				Exceptions.addCause(ise, error);
+				throw ise;
+			}
 		}
 		else {
 			IllegalStateException ise = new IllegalStateException("Session already failed");
@@ -180,11 +192,11 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	 * @return
 	 */
 	public Emission finish() {
-		if (cancelled) {
-			return Emission.CANCELLED;
-		}
 		if (uncaughtException != null) {
 			return Emission.FAILED;
+		}
+		if (cancelled) {
+			return Emission.CANCELLED;
 		}
 		try {
 			cancelled = true;
@@ -288,7 +300,12 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	 * @return
 	 */
 	public boolean hasRequested() {
-		return requested != 0L;
+		return !cancelled && requested != 0L;
+	}
+
+	@Override
+	public long requestedFromDownstream() {
+		return requested;
 	}
 
 	/**
@@ -307,10 +324,7 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 		return cancelled;
 	}
 
-	/**
-	 *
-	 * @return
-	 */
+	@Override
 	public Throwable getError() {
 		return uncaughtException;
 	}
@@ -335,14 +349,8 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	}
 
 	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return Bounded.class.isAssignableFrom(actual.getClass()) && ((Bounded) actual).isExposedToOverflow(
-				parentPublisher);
-	}
-
-	@Override
 	public long getCapacity() {
-		return Bounded.class.isAssignableFrom(actual.getClass()) ? ((Bounded) actual).getCapacity() : Long.MAX_VALUE;
+		return ReactiveState.Bounded.class.isAssignableFrom(actual.getClass()) ? ((ReactiveState.Bounded) actual).getCapacity() : Long.MAX_VALUE;
 	}
 
 	@Override
@@ -363,14 +371,14 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	@Override
 	public void onNext(E e) {
 		Emission emission = emit(e);
+		if(emission.isCancelled()){
+			throw CancelException.get();
+		}
 		if(emission.isOk()){
 			return;
 		}
 		if(emission.isBackpressured()){
 			throw InsufficientCapacityException.get();
-		}
-		if(emission.isCancelled()){
-			throw CancelException.get();
 		}
 		if(emission.isFailed()){
 			if(uncaughtException != null) {
@@ -389,6 +397,11 @@ public class ReactiveSession<E> implements Subscribable<E>, Subscriber<E>, Subsc
 	@Override
 	public void onComplete() {
 		actual.onComplete();
+	}
+
+	@Override
+	public boolean isCancelled() {
+		return cancelled;
 	}
 
 	@Override

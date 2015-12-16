@@ -22,7 +22,7 @@ import reactor.Publishers;
 import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
+import reactor.core.support.ReactiveState;
 
 /**
  * @author Stephane Maldini
@@ -116,18 +116,13 @@ public final class SwitchOperator<T> implements Publishers.Operator<Publisher<? 
 			}
 		}
 
-		public class SwitchSubscriber implements Bounded, Subscriber<T>, Subscription {
+		public class SwitchSubscriber implements ReactiveState.Bounded, Subscriber<T>, Subscription {
 			final Publisher<? extends T> publisher;
 
 			Subscription s;
 
 			public SwitchSubscriber(Publisher<? extends T> publisher) {
 				this.publisher = publisher;
-			}
-
-			@Override
-			public boolean isExposedToOverflow(Bounded upstream) {
-				return SwitchAction.this.isExposedToOverflow(upstream);
 			}
 
 			@Override
@@ -138,7 +133,7 @@ public final class SwitchOperator<T> implements Publishers.Operator<Publisher<? 
 			@Override
 			public void onSubscribe(final Subscription s) {
 				this.s = s;
-				long pending = getRequested();
+				long pending = requestedFromDownstream();
 				if (pending > 0 && !isTerminated()) {
 					s.request(pending);
 				}

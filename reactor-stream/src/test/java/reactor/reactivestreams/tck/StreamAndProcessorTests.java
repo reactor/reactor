@@ -56,7 +56,8 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		                                                                .buffer(batch, 50, TimeUnit.MILLISECONDS)
 		                                                                .<Integer>split()
 		                                                                .observe(array -> cumulated.getAndIncrement())
-		                                                                .flatMap(i -> Streams.zip(Streams.just(i), otherStream, Tuple1::getT1))
+		                                                                .flatMap(i -> Streams.zip(Streams.just(i),
+				                                                                otherStream, (t1, t2) -> t1))
 		                                                                .observe(this::monitorThreadUse))
 		                                   .observe(array -> cumulatedJoin.getAndIncrement())
 		                                   .process(Processors.topic("stream-raw-join", bufferSize))

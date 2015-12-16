@@ -226,8 +226,8 @@ backpressure and auto-flush options.
 |Reflect the implementation of the Reactive Stream Publisher
 
 |Operator
-|reactor.rx.action.Action
-|Reflect the implementation of the Reactive Stream Processor
+|Function<Subscriber<? super OUT>, Subscriber<? super IN>>
+|Decorate/Lift given output and providing input Reactive Streams Subscribers
 
 |Observable with 1 data at most
 |reactor.rx.Promise

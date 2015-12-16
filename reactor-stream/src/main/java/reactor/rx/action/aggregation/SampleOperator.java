@@ -19,7 +19,7 @@ package reactor.rx.action.aggregation;
 import java.util.concurrent.TimeUnit;
 
 import org.reactivestreams.Subscriber;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 
 /**
  * @author Stephane Maldini

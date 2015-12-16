@@ -43,16 +43,15 @@ public class FizzBuzzTests extends AbstractReactorTest {
 		int batchSize = 8;
 		final Timer timer = new Timer();
 		AtomicLong globalCounter = new AtomicLong();
-		CountDownLatch latch = new CountDownLatch(1);
 
 		Control c = Streams.createWith((demand, subscriber) -> {
 			System.out.println("demand is " + demand);
 			if (!subscriber.isCancelled()) {
 				for (int i = 0; i < demand; i++) {
 					long curr = globalCounter.incrementAndGet();
-					if (curr % 5 == 0 && curr % 3 == 0) subscriber.onNext("FizBuz \r\n");
-					else if (curr % 3 == 0) subscriber.onNext("Fiz ");
-					else if (curr % 5 == 0) subscriber.onNext("Buz ");
+					if (curr % 5 == 0 && curr % 3 == 0) subscriber.onNext("FizBuz "+curr+" \r\n");
+					else if (curr % 3 == 0) subscriber.onNext("Fiz "+curr);
+					else if (curr % 5 == 0) subscriber.onNext("Buz "+curr);
 					else subscriber.onNext(String.valueOf(curr) + " ");
 
 					if (globalCounter.get() > numOfItems) {
@@ -61,7 +60,7 @@ public class FizzBuzzTests extends AbstractReactorTest {
 					}
 				}
 			}
-		})
+		}).log("oooo")
 		  .flatMap((s) -> Streams.withOverflowSupport((sub) -> timer.schedule(new TimerTask() {
 			  @Override
 			  public void run() {
@@ -72,7 +71,7 @@ public class FizzBuzzTests extends AbstractReactorTest {
 		  .capacity(batchSize)
 		  .log()
 //                .observe(System.out::print)
-		  .consume(numOfItems);
+		  .consumeOnly(numOfItems+1);
 
 		while (!c.isTerminated()) ;
 	}
@@ -94,9 +93,11 @@ public class FizzBuzzTests extends AbstractReactorTest {
 		Stream<String> stream2 = stream
 		  .zipWith(Streams.createWith((d, s) -> {
 			  for (int i = 0; i < d; i++) {
-				  s.onNext(System.currentTimeMillis());
+				  if(!s.isCancelled()) {
+					  s.onNext(System.currentTimeMillis());
+				  }
 			  }
-		  }), t -> String.format("%s : %s", t.getT2(), t.getT1()))
+		  }), (t1, t2) -> String.format("%s : %s", t1, t2))
 		  .observeError(Throwable.class, (o, t) -> {
 			  System.err.println(t.toString());
 			  t.printStackTrace();
@@ -108,9 +109,9 @@ public class FizzBuzzTests extends AbstractReactorTest {
 		  .next();
 
 		for (int curr = 0; curr < numOfItems; curr++) {
-			if (curr % 5 == 0 && curr % 3 == 0) ring.onNext("FizBuz");
-			else if (curr % 3 == 0) ring.onNext("Fiz");
-			else if (curr % 5 == 0) ring.onNext("Buz");
+			if (curr % 5 == 0 && curr % 3 == 0) ring.onNext("FizBuz"+curr);
+			else if (curr % 3 == 0) ring.onNext("Fiz"+curr);
+			else if (curr % 5 == 0) ring.onNext("Buz"+curr);
 			else ring.onNext(String.valueOf(curr));
 		}
 

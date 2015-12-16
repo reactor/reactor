@@ -18,7 +18,6 @@ package reactor.rx;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
@@ -27,7 +26,7 @@ import reactor.core.support.Assert;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.fn.tuple.*;
 
 import java.util.Arrays;
@@ -82,7 +81,7 @@ public final class Promises {
 	/**
 	 * Create a {@link Promise}.
 	 *
-	 * @param timer        the {@link reactor.fn.timer.Timer} to use by default for scheduled operations
+	 * @param timer        the {@link Timer} to use by default for scheduled operations
 	 * @param <T>        type of the expected value
 	 * @return a new {@link reactor.rx.Promise}
 	 */
@@ -103,7 +102,7 @@ public final class Promises {
 	/**
 	 * Create a `{@link Promise}.
 	 *
-	 * @param timer        the {@link reactor.fn.timer.Timer} to use by default for scheduled operations
+	 * @param timer        the {@link Timer} to use by default for scheduled operations
 	 * @param <T>        type of the expected value
 	 * @return a new {@link reactor.rx.Promise}
 	 */
@@ -142,7 +141,7 @@ public final class Promises {
 	 * Create a {@link Promise} producing the value for the {@link Promise} using the
 	 * given supplier.
 	 *
-	 * @param timer        the {@link reactor.fn.timer.Timer} to use by default for scheduled operations
+	 * @param timer        the {@link Timer} to use by default for scheduled operations
 	 * @param supplier {@link Supplier} that will produce the value
 	 * @param <T>      type of the expected value
 	 * @return A {@link Promise}.
@@ -196,7 +195,7 @@ public final class Promises {
 	 * immediately.
 	 *
 	 * @param value the value to complete the {@link Promise} with
-	 * @param timer        the {@link reactor.fn.timer.Timer} to use by default for scheduled operations
+	 * @param timer        the {@link Timer} to use by default for scheduled operations
 	 * @param <T>   the type of the value
 	 * @return A {@link Promise} that is completed with the given value
 	 */
@@ -221,7 +220,7 @@ public final class Promises {
 	 * immediately.
 	 *
 	 * @param error the error to complete the {@link Promise} with
-	 * @param timer        the {@link reactor.fn.timer.Timer} to use by default for scheduled operations
+	 * @param timer        the {@link Timer} to use by default for scheduled operations
 	 * @param <T>   the type of the value
 	 * @return A {@link Promise} that is completed with the given error
 	 */

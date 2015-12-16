@@ -59,13 +59,32 @@ public class Tuple implements Iterable, Serializable {
 	}
 
 	/**
-	 * Create a {@link TupleN} with the given object.
+	 * Create a {@link Tuple} with the given object.
 	 *
 	 * @param list Build an unbounded tuple
 	 * @return The new {@link TupleN}.
 	 */
 	@SuppressWarnings("rawtypes")
-	public static TupleN of(Object[] list) {
+	public static Tuple of(Object[] list) {
+		if(list == null) return empty();
+		switch (list.length){
+			case 0:
+				return empty();
+			case 1:
+				return of(list[0]);
+			case 2:
+				return of(list[0], list[1]);
+			case 3:
+				return of(list[0], list[1], list[2]);
+			case 4:
+				return of(list[0], list[1], list[2], list[3]);
+			case 5:
+				return of(list[0], list[1], list[2], list[3], list[4]);
+			case 6:
+				return of(list[0], list[1], list[2], list[3], list[4], list[5]);
+			case 7:
+				return of(list[0], list[1], list[2], list[3], list[4], list[5], list[6]);
+		}
 		return new TupleN(list);
 	}
 

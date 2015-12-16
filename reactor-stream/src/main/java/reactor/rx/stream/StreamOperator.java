@@ -23,10 +23,10 @@ import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.support.Bounded;
-import reactor.core.support.Publishable;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Function;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.action.StreamProcessor;
 
@@ -34,7 +34,8 @@ import reactor.rx.action.StreamProcessor;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class StreamOperator<I, O> extends Stream<O> implements PublisherFactory.LiftOperator<I, O> {
+public final class StreamOperator<I, O> extends Stream<O> implements ReactiveState.Named, ReactiveState.Upstream,
+                                                                     PublisherFactory.LiftOperator<I, O>{
 
 	final private Publisher<I>                                           source;
 	final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
@@ -53,14 +54,8 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 	}
 
 	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return Bounded.class.isAssignableFrom(source.getClass()) && ((Bounded) source).isExposedToOverflow(
-				parentPublisher);
-	}
-
-	@Override
 	public long getCapacity() {
-		return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() : Long.MAX_VALUE;
+		return ReactiveState.Bounded.class.isAssignableFrom(source.getClass()) ? ((ReactiveState.Bounded) source).getCapacity() : Long.MAX_VALUE;
 	}
 
 	@Override
@@ -74,10 +69,10 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 		Subscriber<?> oldestReceiver = null;
 		Function oldestOperator = barrierProvider;
 
-		Publisher<?> oldestSender = this;
+		Object oldestSender = this;
 
-		while( oldestSender != null && Publishable.class.isAssignableFrom(oldestSender.getClass())){
-			oldestSender = ((Publishable<?>)oldestSender).upstream();
+		while( oldestSender != null && Upstream.class.isAssignableFrom(oldestSender.getClass())){
+			oldestSender = ((Upstream)oldestSender).upstream();
 			if (oldestSender != null){
 				if(Subscriber.class.isAssignableFrom(oldestSender.getClass())){
 					oldestReceiver = (Subscriber)oldestSender;
@@ -107,14 +102,25 @@ public final class StreamOperator<I, O> extends Stream<O> implements PublisherFa
 	}
 
 	@Override
+	public String getName() {
+		return ReactiveStateUtils.getName(barrierProvider).replaceAll("Operator", "");
+	}
+
+	@Override
+	public Object upstream() {
+		return source;
+	}
+
+	@Override
 	public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
 		return barrierProvider;
 	}
 
 	@Override
 	public String toString() {
-		return "ProxyStream{" +
-				"source=" + source +
+		return "{" +
+				"lift: true, " +
+				"source: " + source.toString() +
 				'}';
 	}
 }

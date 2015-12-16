@@ -22,12 +22,14 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.support.BackpressureUtils;
+import reactor.core.support.ReactiveState;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
-public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
+public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O>
+		implements ReactiveState.DownstreamDemand, ReactiveState.FailState {
 
 	protected final static int NOT_TERMINATED = 0;
 	protected final static int TERMINATED_WITH_SUCCESS = 1;
@@ -46,6 +48,7 @@ public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 	protected static final AtomicLongFieldUpdater<SubscriberWithDemand> REQUESTED =
 			AtomicLongFieldUpdater.newUpdater(SubscriberWithDemand.class, "requested");
 
+
 	public SubscriberWithDemand(Subscriber<? super O> subscriber) {
 		super(subscriber);
 	}
@@ -54,7 +57,8 @@ public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 	 *
 	 * @return
 	 */
-	public final boolean isTerminated() {
+	@Override
+	public boolean isTerminated() {
 		return terminated != NOT_TERMINATED;
 	}
 
@@ -86,7 +90,8 @@ public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 	 *
 	 * @return
 	 */
-	public final long getRequested() {
+	@Override
+	public final long requestedFromDownstream() {
 		return requested;
 	}
 
@@ -150,4 +155,16 @@ public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O> {
 	public String toString() {
 		return super.toString() + (requested != 0L ? "{requested=" + requested + "}": "");
 	}
+
+	@Override
+	public Throwable getError() {
+		return isFailed() ? FAILED_SATE : null;
+	}
+
+	private static final Exception FAILED_SATE = new RuntimeException("Failed Subscriber"){
+		@Override
+		public synchronized Throwable fillInStackTrace() {
+			return null;
+		}
+	};
 }

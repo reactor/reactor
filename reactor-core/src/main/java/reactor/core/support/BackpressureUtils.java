@@ -19,7 +19,7 @@ package reactor.core.support;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.processor.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.Sequence;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLong;

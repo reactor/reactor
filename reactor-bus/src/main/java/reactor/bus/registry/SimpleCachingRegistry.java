@@ -151,6 +151,11 @@ public class SimpleCachingRegistry<K, V> implements Registry<K, V> {
 	}
 
 	@Override
+	public long size() {
+		return registrations.size();
+	}
+
+	@Override
 	public Iterable<? extends V> selectValues(final K key) {
 		return selectValues(this, key);
 	}

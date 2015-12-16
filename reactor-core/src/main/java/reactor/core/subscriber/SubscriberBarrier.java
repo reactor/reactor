@@ -15,17 +15,13 @@
  */
 package reactor.core.subscriber;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
-import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
-import reactor.core.error.SpecificationExceptions;
-import reactor.core.support.Publishable;
-import reactor.core.support.Subscribable;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 
 /**
  * A {@link Subscriber} with an asymetric typed wrapped subscriber. Yet it represents a unique relationship between
@@ -35,8 +31,11 @@ import reactor.core.support.Subscribable;
  * @author Stephane Maldini
  * @since 2.0.4
  */
-public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription, Bounded, Subscribable<O>,
-  Publishable<I> {
+public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscription,
+                                                                          ReactiveState.Bounded,
+                                                                          ReactiveState.ActiveUpstream,
+                                                                          ReactiveState.Downstream,
+                                                                          ReactiveState.Upstream {
 
 	protected final Subscriber<? super O> subscriber;
 
@@ -47,8 +46,13 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 	}
 
 	@Override
-	public Publisher<I> upstream() {
-		return PublisherFactory.fromSubscription(subscription);
+	public Object upstream() {
+		return subscription;
+	}
+
+	@Override
+	public boolean isStarted() {
+		return subscription != null;
 	}
 
 	@Override
@@ -83,7 +87,11 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 		} catch (CancelException c) {
 			throw c;
 		} catch (Throwable throwable) {
-			cancel();
+			Exceptions.throwIfFatal(throwable);
+			Subscription subscription = this.subscription;
+			if(subscription != null){
+				subscription.cancel();
+			}
 			doOnSubscriberError(Exceptions.addValueAsLastCause(throwable, i));
 		}
 	}
@@ -155,17 +163,15 @@ public class SubscriberBarrier<I, O> extends BaseSubscriber<I> implements Subscr
 		}
 	}
 
-
 	@Override
-	public boolean isExposedToOverflow(Bounded parentPublisher) {
-		return Bounded.class.isAssignableFrom(subscriber.getClass())
-		  && ((Bounded) subscriber).isExposedToOverflow(parentPublisher);
+	public boolean isTerminated() {
+		return ReactiveStateUtils.hasSubscription(subscription) && ((ActiveUpstream)subscription).isTerminated();
 	}
 
 	@Override
 	public long getCapacity() {
-		return Bounded.class.isAssignableFrom(subscriber.getClass()) ?
-		  ((Bounded) subscriber).getCapacity() :
+		return subscriber != null && ReactiveState.Bounded.class.isAssignableFrom(subscriber.getClass()) ?
+		  ((ReactiveState.Bounded) subscriber).getCapacity() :
 		  Long.MAX_VALUE;
 	}
 

@@ -30,6 +30,7 @@ import reactor.bus.selector.Selector;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.support.Assert;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -37,6 +38,7 @@ import reactor.fn.Supplier;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
 
@@ -54,9 +56,9 @@ import java.util.UUID;
  * @author Alex Petrov
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public abstract class AbstractBus<K, V> implements Bus<K, V> {
+public abstract class AbstractBus<K, V> implements Bus<K, V>, ReactiveState.LinkedDownstreams {
 
-  private static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
+  protected static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
     new PassThroughFilter()
   );
 
@@ -71,23 +73,22 @@ public abstract class AbstractBus<K, V> implements Bus<K, V> {
   /**
    * Create a new {@literal Reactor} that uses the given {@code processor} and {@code eventRouter}.
    *
-   * @param consumerRegistry     The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
-   *                             Consumer}
-   * @param concurrency          The allowed number of concurrent routing. This is highly dependent on the
-   *                             processor used. Only "Work" processors like {@link reactor.core.processor
-   *                             .RingBufferWorkProcessor}
-   *                             will be meaningful as they distribute their messages, default RS behavior is to
-   *                             broadcast resulting
-   *                             in a matching number of duplicate routing.
-   * @param router               The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code
-   *                             null} in which case the
-   *                             default event router that broadcasts events to all of the registered consumers that
-   *                             {@link
-   *                             Selector#matches(Object) match} the notification key and does not perform any type
-   *                             conversion will be used.
-   * @param consumerRegistry     The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
-   * @param uncaughtErrorHandler The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
-   *                             Consumer}.
+   * @param consumerRegistry      The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
+   *                              Consumer}
+   * @param concurrency           The allowed number of concurrent routing. This is highly dependent on the
+   *                              processor used. Only "Work" processors like {@link reactor.core.processor
+   *                              .RingBufferWorkProcessor} will be meaningful as they distribute their messages,
+   *                              default RS behavior is to broadcast resulting in a matching number of duplicate
+   *                              routing.
+   * @param router                The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code
+   *                              null} in which case the default event router that broadcasts events to all of the
+   *                              registered consumers that {@link
+   *                              Selector#matches(Object) match} the notification key and does not perform any type
+   *                              conversion will be used.
+   * @param processorErrorHandler The {@link Consumer} to be used on {@link Processor} exceptions. May be {@code null}
+   *                              in which case exceptions will be delegated to {@code uncaughtErrorHandler}.
+   * @param uncaughtErrorHandler  Default {@link Consumer} to be used on all uncaught exceptions. May be {@code null}
+   *                              in which case exceptions will be logged.
    */
   @SuppressWarnings("unchecked")
   public AbstractBus(@Nonnull Registry<K, BiConsumer<K, ? extends V>> consumerRegistry,
@@ -195,12 +196,7 @@ public abstract class AbstractBus<K, V> implements Bus<K, V> {
   @Override
   public <V1 extends V> Registration<K, BiConsumer<K, ? extends V>> on(final Selector selector,
                                                                        final Consumer<V1> consumer) {
-    return on(selector, new BiConsumer<K, V1>() {
-      @Override
-      public void accept(K k, V1 v) {
-        consumer.accept(v);
-      }
-    });
+    return on(selector, new BusConsumer(consumer));
   }
 
   @Override
@@ -215,12 +211,7 @@ public abstract class AbstractBus<K, V> implements Bus<K, V> {
   @Override
   public <T extends V> Registration<K, BiConsumer<K, ? extends V>> onKey(final K key,
                                                                          final Consumer<T> consumer) {
-    return onKey(key, new BiConsumer<K, T>() {
-      @Override
-      public void accept(K k, T v) {
-        consumer.accept(v);
-      }
-    });
+    return onKey(key, new BusConsumer(consumer));
   }
 
   /**
@@ -258,6 +249,16 @@ public abstract class AbstractBus<K, V> implements Bus<K, V> {
     return notify(key, supplier.get());
   }
 
+  @Override
+  public Iterator<?> downstreams() {
+    return consumerRegistry.iterator();
+  }
+
+  @Override
+  public long downstreamsCount() {
+    return consumerRegistry.size();
+  }
+
   protected void errorHandlerOrThrow(Throwable t) {
     if (processorErrorHandler != null) {
       Exceptions.throwIfFatal(t);
@@ -273,4 +274,22 @@ public abstract class AbstractBus<K, V> implements Bus<K, V> {
     router.route(key, value, consumerRegistry.select(key), null, processorErrorHandler);
   }
 
+  private static class BusConsumer<K, T> implements BiConsumer<K, T>, Trace, Downstream {
+
+    private final Consumer<T> consumer;
+
+    public BusConsumer(Consumer<T> consumer) {
+      this.consumer = consumer;
+    }
+
+    @Override
+    public Object downstream() {
+      return consumer;
+    }
+
+    @Override
+    public void accept(K k, T v) {
+      consumer.accept(v);
+    }
+  }
 }

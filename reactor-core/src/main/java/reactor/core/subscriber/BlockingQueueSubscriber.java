@@ -22,8 +22,7 @@ import reactor.core.error.*;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Publishable;
-import reactor.core.support.Subscribable;
+import reactor.core.support.ReactiveState;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -31,15 +30,16 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * @author Stephane Maldini
+ * @since 2.1
  */
-public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements Publishable<IN>, Subscribable<IN>,
-  Subscription,
-  BlockingQueue<IN> {
+public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements ReactiveState.Upstream,
+                                                                               ReactiveState.Downstream,
+                                                                               Subscription,
+                                                                               BlockingQueue<IN> {
 
 	private final Publisher<IN>  source;
 	private final Subscriber<IN> target;
@@ -159,8 +159,8 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements P
 	}
 
 	@Override
-	public Publisher<IN> upstream() {
-		return PublisherFactory.fromSubscription(subscription);
+	public Object upstream() {
+		return subscription;
 	}
 
 	@Override

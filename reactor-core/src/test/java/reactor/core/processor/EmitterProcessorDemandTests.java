@@ -29,8 +29,8 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
 import reactor.Publishers;
-import reactor.core.subscriber.DataTestSubscriber;
-import reactor.core.subscriber.TestSubscriber;
+import reactor.core.subscriber.test.DataTestSubscriber;
+import reactor.core.subscriber.test.TestSubscriber;
 import reactor.core.support.BackpressureUtils;
 import reactor.io.buffer.Buffer;
 

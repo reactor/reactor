@@ -22,10 +22,11 @@ import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.Bounded;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Function;
-import reactor.fn.timer.Timer;
+import reactor.core.timer.Timer;
 import reactor.rx.Stream;
+import reactor.rx.action.control.TrampolineOperator;
 import reactor.rx.broadcast.Broadcaster;
 
 /**
@@ -42,7 +43,7 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 			Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate,
 			Publisher<? extends T> rootPublisher) {
 
-		this.rootPublisher = Publishers.trampoline(rootPublisher);
+		this.rootPublisher = TrampolineOperator.create(rootPublisher);
 		this.predicate = predicate;
 		this.timer = timer;
 	}
@@ -52,7 +53,7 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 		return new RetryWhenAction<>(subscriber, timer, predicate, rootPublisher);
 	}
 
-	static final class RetryWhenAction<T> extends SubscriberWithDemand<T, T> {
+	static final class RetryWhenAction<T> extends SubscriberWithDemand<T, T> implements ReactiveState.FeedbackLoop {
 
 		private final Broadcaster<Throwable> retryStream;
 		private final Publisher<? extends T> rootPublisher;
@@ -90,7 +91,7 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
 			if(TERMINATED.compareAndSet(this, TERMINATED_WITH_ERROR, NOT_TERMINATED)) {
-				requestMore(BackpressureUtils.addOrLongMax(getRequested(), 1L));
+				requestMore(BackpressureUtils.addOrLongMax(requestedFromDownstream(), 1L));
 			}
 			else {
 				subscriber.onSubscribe(this);
@@ -103,18 +104,19 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 			retryStream.onNext(cause);
 		}
 
-		public Broadcaster<Throwable> retryStream() {
+		@Override
+		public Object delegateInput() {
 			return retryStream;
 		}
 
-		private class RestartSubscriber implements Subscriber<Object>, Bounded {
+		@Override
+		public Object delegateOutput() {
+			return null;
+		}
+
+		private class RestartSubscriber implements Subscriber<Object>, Bounded,  Inner, FeedbackLoop{
 
 			Subscription s;
-
-			@Override
-			public boolean isExposedToOverflow(Bounded upstream) {
-				return RetryWhenAction.this.isExposedToOverflow(upstream);
-			}
 
 			@Override
 			public long getCapacity() {
@@ -147,6 +149,16 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 			public void onComplete() {
 				cancel();
 				subscriber.onComplete();
+			}
+
+			@Override
+			public Object delegateInput() {
+				return RetryWhenAction.this;
+			}
+
+			@Override
+			public Object delegateOutput() {
+				return null;
 			}
 		}
 	}

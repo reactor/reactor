@@ -17,7 +17,7 @@
 package reactor.io.buffer;
 
 import reactor.core.support.Assert;
-import reactor.core.support.Recyclable;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Supplier;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -47,27 +47,11 @@ import java.util.List;
  * @author Stephane Maldini
  */
 @NotThreadSafe
-public class Buffer implements Recyclable,
-  Comparable<Buffer>,
-  Iterable<Byte>,
-  ReadableByteChannel,
-  WritableByteChannel {
-
-	/**
-	 * The size, in bytes, of a small buffer. Can be configured using the {@code reactor.io.defaultBufferSize} system
-	 * property. Default to 16384 bytes.
-	 */
-	public static int SMALL_BUFFER_SIZE = Integer.parseInt(
-	  System.getProperty("reactor.io.defaultBufferSize", "" + 1024 * 16)
-	);
-
-	/**
-	 * The maximum allowed buffer size in bytes. Can be configured using the {@code reactor.io.maxBufferSize} system
-	 * property. Defaults to 16384000 bytes.
-	 */
-	public static int MAX_BUFFER_SIZE = Integer.parseInt(
-	  System.getProperty("reactor.io.maxBufferSize", "" + 1024 * 1000 * 16)
-	);
+public class Buffer implements ReactiveState.Recyclable,
+                               Comparable<Buffer>,
+                               Iterable<Byte>,
+                               ReadableByteChannel,
+                               WritableByteChannel {
 
 	private static final Charset UTF8 = Charset.forName("UTF-8");
 	private final boolean        dynamic;
@@ -94,10 +78,10 @@ public class Buffer implements Recyclable,
 	 */
 	public Buffer(int atLeast, boolean fixed) {
 		if (fixed) {
-			if (atLeast <= MAX_BUFFER_SIZE) {
+			if (atLeast <= ReactiveState.MAX_IO_BUFFER_SIZE) {
 				this.buffer = ByteBuffer.allocate(atLeast);
 			} else {
-				throw new IllegalArgumentException("Requested buffer size exceeds maximum allowed (" + MAX_BUFFER_SIZE
+				throw new IllegalArgumentException("Requested buffer size exceeds maximum allowed (" + ReactiveState.MAX_IO_BUFFER_SIZE
 				  + ")");
 			}
 		} else {
@@ -369,7 +353,7 @@ public class Buffer implements Recyclable,
 	 * @return The current capacity.
 	 */
 	public int capacity() {
-		return (null == buffer ? SMALL_BUFFER_SIZE : buffer.capacity());
+		return (null == buffer ? ReactiveState.SMALL_IO_BUFFER_SIZE : buffer.capacity());
 	}
 
 	/**
@@ -379,7 +363,7 @@ public class Buffer implements Recyclable,
 	 * @return The number of bytes available in this {@literal Buffer}.
 	 */
 	public int remaining() {
-		return (null == buffer ? SMALL_BUFFER_SIZE : buffer.remaining());
+		return (null == buffer ? ReactiveState.SMALL_IO_BUFFER_SIZE : buffer.remaining());
 	}
 
 	/**
@@ -1277,7 +1261,7 @@ public class Buffer implements Recyclable,
 
 	private synchronized void ensureCapacity(int atLeast) {
 		if (null == buffer) {
-			buffer = ByteBuffer.allocate(Math.max(atLeast, SMALL_BUFFER_SIZE));
+			buffer = ByteBuffer.allocate(Math.max(atLeast, ReactiveState.SMALL_IO_BUFFER_SIZE));
 			return;
 		}
 		int pos = buffer.position();
@@ -1289,7 +1273,7 @@ public class Buffer implements Recyclable,
 				expand(neededCapacity - cap);
 			}
 			buffer.limit(Math.max(neededCapacity, buffer.limit()));
-		} else if (pos + SMALL_BUFFER_SIZE > MAX_BUFFER_SIZE) {
+		} else if (pos + ReactiveState.SMALL_IO_BUFFER_SIZE > ReactiveState.MAX_IO_BUFFER_SIZE) {
 			throw new BufferOverflowException();
 		}
 	}

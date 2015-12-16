@@ -15,6 +15,8 @@
  */
 package reactor.core.error;
 
+import reactor.core.support.ReactiveState;
+
 /**
  * An error signal from downstream subscribers consuming data when their state is denying any additional event.
  *
@@ -23,19 +25,16 @@ package reactor.core.error;
 public final class CancelException extends ReactorFatalException {
 	public static final CancelException INSTANCE = new CancelException();
 
-	public static final boolean TRACE_CANCEL = Boolean.parseBoolean(System.getProperty("reactor.trace.cancel",
-	  "false"));
-
 	private CancelException() {
 		super("The subscriber has denied dispatching");
 	}
 
 	public static CancelException get() {
-		return TRACE_CANCEL ? new CancelException() : INSTANCE;
+		return ReactiveState.TRACE_CANCEL ? new CancelException() : INSTANCE;
 	}
 
 	@Override
 	public synchronized Throwable fillInStackTrace() {
-		return TRACE_CANCEL ? super.fillInStackTrace() : this;
+		return ReactiveState.TRACE_CANCEL ? super.fillInStackTrace() : this;
 	}
 }

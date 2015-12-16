@@ -19,13 +19,14 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Publishers;
+import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.fn.Supplier;
 
 /**
  * @author Stephane Maldini
  */
-public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN> {
+public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN>, ReactiveState.FeedbackLoop {
 
 	private final IN data;
 
@@ -41,29 +42,21 @@ public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN> {
 				s.onComplete();
 				return;
 			}
-			s.onSubscribe(new Subscription() {
-				boolean terminado = false;
-
-				@Override
-				public void request(long elements) {
-					if (terminado) {
-						return;
-					}
-
-					terminado = true;
-					s.onNext(data);
-					s.onComplete();
-				}
-
-				@Override
-				public void cancel() {
-					terminado = true;
-				}
-			});
+			s.onSubscribe(new SingleSubscription<>(data, s));
 		}
 		catch (Throwable throwable) {
 			Publishers.<IN>error(throwable).subscribe(s);
 		}
+	}
+
+	@Override
+	public Object delegateInput() {
+		return null;
+	}
+
+	@Override
+	public Object delegateOutput() {
+		return data;
 	}
 
 	@Override
@@ -73,6 +66,39 @@ public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN> {
 
 	@Override
 	public String toString() {
-		return "single-value=" + data;
+		return "{ singleValue: \"" + data +"\" }";
+	}
+
+	private static class SingleSubscription<IN> implements Subscription, Upstream {
+
+		private final Subscriber<? super IN> s;
+		private final IN data;
+		boolean terminado;
+
+		public SingleSubscription(IN data, Subscriber<? super IN> s) {
+			this.s = s;
+			this.data = data;
+		}
+
+		@Override
+		public void request(long elements) {
+			if (terminado) {
+				return;
+			}
+
+			terminado = true;
+			s.onNext(data);
+			s.onComplete();
+		}
+
+		@Override
+		public void cancel() {
+			terminado = true;
+		}
+
+		@Override
+		public Object upstream() {
+			return data;
+		}
 	}
 }

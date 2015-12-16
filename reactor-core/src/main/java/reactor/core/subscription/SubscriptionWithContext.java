@@ -15,27 +15,19 @@
  */
 package reactor.core.subscription;
 
-import org.reactivestreams.Publisher;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
-import reactor.core.publisher.PublisherFactory;
-import reactor.core.support.Publishable;
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import reactor.core.support.ReactiveState;
 
 /**
- * A {@link Subscription} with a typed stateful context. Some request utils are also provided to read pending demand and
- * request relatively to it.
+ * A {@link Subscription} with a typed stateful context.
  *
  * @author Stephane Maldini
  * @since 2.0.2
  */
-public class SubscriptionWithContext<C> implements Subscription, Publishable {
-
-	private volatile       long                                            pending         = 0;
-	protected static final AtomicLongFieldUpdater<SubscriptionWithContext> PENDING_UPDATER = AtomicLongFieldUpdater
-	  .newUpdater(SubscriptionWithContext.class, "pending");
+public class SubscriptionWithContext<C> implements Subscription, ReactiveState.Upstream, ReactiveState.Trace {
 
 	private volatile       int                                                terminated         = 0;
 	protected static final AtomicIntegerFieldUpdater<SubscriptionWithContext> TERMINATED_UPDATER =
@@ -66,8 +58,8 @@ public class SubscriptionWithContext<C> implements Subscription, Publishable {
 
 
 	@Override
-	public Publisher upstream() {
-		return PublisherFactory.fromSubscription(subscription);
+	public Object upstream() {
+		return subscription;
 	}
 
 	/**
