@@ -25,21 +25,21 @@ import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Supplier;
-import reactor.io.buffer.Buffer;
 
 /**
  * @author Anatoly Kadyshev
+ * @author Stephane Maldini
  * @since 2.1
  */
-public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
+public class TestSubscriber<T> extends SubscriberWithDemand<T, T> {
 
 	/**
 	 *
 	 * @param timeoutSecs
 	 * @return
 	 */
-	public static TestSubscriber createWithTimeoutSecs(int timeoutSecs) {
-		return new TestSubscriber(timeoutSecs);
+	public static <T> TestSubscriber<T> createWithTimeoutSecs(int timeoutSecs) {
+		return new TestSubscriber<>(timeoutSecs);
 	}
 
 	/**
@@ -237,7 +237,7 @@ public class TestSubscriber extends SubscriberWithDemand<Buffer, Buffer> {
 	}
 
 	@Override
-	protected void doNext(Buffer buffer) {
+	protected void doNext(T buffer) {
 		BackpressureUtils.getAndSub(REQUESTED, this, 1L);
 		numNextSignalsReceived++;
 	}

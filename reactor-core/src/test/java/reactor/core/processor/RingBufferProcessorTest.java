@@ -23,7 +23,7 @@ public class RingBufferProcessorTest {
 		// Waiting till publisher sends Complete into the processor
 		Thread.sleep(1000);
 
-		TestSubscriber subscriber = TestSubscriber.createWithTimeoutSecs(1);
+		TestSubscriber<String> subscriber = TestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
 		subscriber.assertCompleteReceived();

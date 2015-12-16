@@ -13,8 +13,8 @@ public class DataTestSubscriberTest {
 
 	@Test
 	public void testAssertNextSignals() throws Exception {
-		DataTestSubscriber subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
-		Publishers.log(Publishers.map(Publishers.from(Arrays.asList("1", "2")), i -> Buffer.wrap("" + i)))
+		DataTestSubscriber<String> subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
+		Publishers.log(Publishers.from(Arrays.asList("1", "2")))
 				.subscribe(subscriber);
 
 		subscriber.request(1);
