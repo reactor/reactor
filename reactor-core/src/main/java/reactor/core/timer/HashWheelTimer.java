@@ -48,7 +48,7 @@ import reactor.fn.Supplier;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class HashWheelTimer implements Timer {
+public class HashWheelTimer extends Timer {
 
 	public static final  int    DEFAULT_WHEEL_SIZE = 512;
 	private static final String DEFAULT_TIMER_NAME = "hash-wheel-timer";
@@ -209,21 +209,9 @@ public class HashWheelTimer implements Timer {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Pausable submit(Consumer<Long> consumer) {
-		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
 	public Pausable submit(Consumer<Long> consumer, long period, TimeUnit timeUnit) {
 		long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
 		return schedule(0, ms, consumer);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public Pausable schedule(Consumer<Long> consumer, long period, TimeUnit timeUnit) {
-		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), 0, consumer);
 	}
 
 	@SuppressWarnings("unchecked")

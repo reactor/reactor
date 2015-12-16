@@ -72,12 +72,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class EventTimer implements Timer {
+public class EventTimer extends Timer {
 
 	private static final Logger LOG = LoggerFactory.getLogger(EventTimer.class);
 
 	private final Registry<Long, Consumer<Long>> tasks = Registries.create(true, false, null);
-	private final int    resolution;
 	private final Thread loop;
 	private final AtomicBoolean started = new AtomicBoolean();
 
@@ -109,7 +108,7 @@ public class EventTimer implements Timer {
 	 * @param resolution the resolution of this timer, in milliseconds
 	 */
 	private EventTimer(final int resolution) {
-		this.resolution = resolution;
+		super(resolution);
 
 		this.loop = new NamedDaemonThreadFactory("simple-hash-wheel-timer").newThread(
 		  new Runnable() {
@@ -169,13 +168,6 @@ public class EventTimer implements Timer {
 	}
 
 	@Override
-	public Registration<Long, ? extends Consumer<Long>> schedule(Consumer<Long> consumer,
-	                                                             long period,
-	                                                             TimeUnit timeUnit) {
-		return schedule(consumer, period, timeUnit, 0);
-	}
-
-	@Override
 	public Registration<Long, ? extends Consumer<Long>> submit(Consumer<Long> consumer,
 	                                                           long delay,
 	                                                           TimeUnit timeUnit) {
@@ -185,11 +177,6 @@ public class EventTimer implements Timer {
 		  new PeriodSelector(0l, ms, resolution),
 		  consumer
 		).cancelAfterUse();
-	}
-
-	@Override
-	public Registration<Long, ? extends Consumer<Long>> submit(Consumer<Long> consumer) {
-		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
 	}
 
 	/**
