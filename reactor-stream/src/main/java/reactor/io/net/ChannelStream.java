@@ -20,8 +20,7 @@ import java.net.InetSocketAddress;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.core.timer.Timer;
 import reactor.io.buffer.Buffer;
 import reactor.rx.Stream;
@@ -36,7 +35,7 @@ import reactor.rx.Streams;
 public class ChannelStream<IN, OUT> extends Stream<IN> implements
                                                        ReactiveChannel<IN, OUT> {
 
-	protected static final Logger log = LoggerFactory.getLogger(ChannelStream.class);
+	protected static final Logger log = Logger.getLogger(ChannelStream.class);
 
 
 	private final ReactiveChannel<IN, OUT> actual;

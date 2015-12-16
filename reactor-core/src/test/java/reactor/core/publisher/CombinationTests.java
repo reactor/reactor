@@ -27,8 +27,7 @@ import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
@@ -43,7 +42,7 @@ import reactor.fn.Consumer;
  */
 public class CombinationTests {
 
-	private static final Logger LOG = LoggerFactory.getLogger(CombinationTests.class);
+	private static final Logger LOG = Logger.getLogger(CombinationTests.class);
 
 	private Processor<SensorData, SensorData> sensorEven;
 	private Processor<SensorData, SensorData> sensorOdd;

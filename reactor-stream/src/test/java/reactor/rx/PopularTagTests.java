@@ -16,8 +16,7 @@
 package reactor.rx;
 
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.AbstractReactorTest;
 import reactor.fn.tuple.Tuple;
 import reactor.rx.action.Control;
@@ -33,7 +32,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
  */
 public class PopularTagTests extends AbstractReactorTest {
 
-	private static final Logger LOG = LoggerFactory.getLogger(PopularTagTests.class);
+	private static final Logger LOG = Logger.getLogger(PopularTagTests.class);
 
 	private static final List<String> PULP_SAMPLE = Arrays.asList(
 	  "Look, ", "just because I don't be givin' no man a #foot massage don't make it right for #Marsellus #to throw " +
