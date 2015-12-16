@@ -18,9 +18,18 @@
 import React         from 'react';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
+import { Line, Doughnut }      from 'react-chartjs';
 
 const propTypes = {
     currentUser: React.PropTypes.object
+};
+
+var chartLineOptions = {
+    bezierCurve : true,
+    datasetFill : false,
+    pointDotStrokeWidth: 2,
+    scaleShowVerticalLines: false,
+    responsive: true
 };
 
 class Buffers extends React.Component {

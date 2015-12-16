@@ -4,8 +4,7 @@ import React         from 'react';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import Box           from '../components/Box';
-import { Line }      from 'react-chartjs';
-import { Doughnut }      from 'react-chartjs';
+import { Line, Doughnut }      from 'react-chartjs';
 
 const propTypes = {
 };
