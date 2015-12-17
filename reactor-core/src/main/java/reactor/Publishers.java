@@ -123,12 +123,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> onErrorReturn(final Publisher<IN> source, final IN fallbackValue) {
-		return onErrorResumeNext(source, new Function<Throwable, Publisher<? extends IN>>() {
-			@Override
-			public Publisher<? extends IN> apply(Throwable throwable) {
-				return just(fallbackValue);
-			}
-		});
+		return onErrorResumeNext(source, just(fallbackValue));
 	}
 
 	/**
@@ -138,12 +133,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <IN> Publisher<IN> onErrorResumeNext(final Publisher<IN> source,
 			final Publisher<? extends IN> fallback) {
-		return onErrorResumeNext(source, new Function<Throwable, Publisher<? extends IN>>() {
-			@Override
-			public Publisher<? extends IN> apply(Throwable throwable) {
-				return fallback;
-			}
-		});
+		return lift(source, new OnErrorResumeOperator<>(fallback));
 	}
 
 	/**

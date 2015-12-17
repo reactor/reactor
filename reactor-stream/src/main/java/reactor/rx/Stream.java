@@ -79,7 +79,6 @@ import reactor.rx.action.control.RepeatWhenOperator;
 import reactor.rx.action.control.ThrottleRequestOperator;
 import reactor.rx.action.control.ThrottleRequestWhenOperator;
 import reactor.rx.action.error.ErrorOperator;
-import reactor.rx.action.error.ErrorReturnOperator;
 import reactor.rx.action.error.ErrorWithValueOperator;
 import reactor.rx.action.error.IgnoreErrorOperator;
 import reactor.rx.action.error.RetryOperator;
@@ -198,12 +197,21 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * Produce a default value if any error occurs.
+	 * @param fallback the error handler for each error
+	 * @return {@literal new Stream}
+	 */
+	public final Stream<O> onErrorReturn(@Nonnull final O fallback) {
+		return onErrorResumeNext(Streams.just(fallback));
+	}
+
+	/**
 	 * Subscribe to a fallback publisher when any error occurs.
 	 * @param fallback the error handler for each error
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> onErrorResumeNext(@Nonnull final Publisher<? extends O> fallback) {
-		return onErrorResumeNext(Throwable.class, fallback);
+		return lift(new OnErrorResumeOperator<O>(fallback));
 	}
 
 	/**
@@ -214,41 +222,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<O> onErrorResumeNext(@Nonnull final Function<Throwable, ? extends Publisher<? extends O>>
 			fallback) {
 		return lift(new OnErrorResumeOperator<>(fallback));
-	}
-
-	/**
-	 * Subscribe to a fallback publisher when exceptions of the given type occur, otherwise propagate the error.
-	 * @param exceptionType the type of exceptions to handle
-	 * @param fallback the error handler for each error
-	 * @param <E> type of the error to handle
-	 * @return {@literal new Stream}
-	 */
-	@SuppressWarnings("unchecked")
-	public final <E extends Throwable> Stream<O> onErrorResumeNext(@Nonnull final Class<E> exceptionType,
-			@Nonnull final Publisher<? extends O> fallback) {
-		return lift(new ErrorOperator<O, E>(exceptionType, null, fallback));
-	}
-
-	/**
-	 * Produce a default value if any error occurs.
-	 * @param fallback the error handler for each error
-	 * @return {@literal new Stream}
-	 */
-	public final Stream<O> onErrorReturn(@Nonnull final Function<Throwable, ? extends O> fallback) {
-		return onErrorReturn(Throwable.class, fallback);
-	}
-
-	/**
-	 * Produce a default value when exceptions of the given type occur, otherwise propagate the error.
-	 * @param exceptionType the type of exceptions to handle
-	 * @param fallback the error handler for each error
-	 * @param <E> type of the error to handle
-	 * @return {@literal new Stream}
-	 */
-	@SuppressWarnings("unchecked")
-	public final <E extends Throwable> Stream<O> onErrorReturn(@Nonnull final Class<E> exceptionType,
-			@Nonnull final Function<E, ? extends O> fallback) {
-		return lift(new ErrorReturnOperator<O, E>(exceptionType, fallback));
 	}
 
 	/**

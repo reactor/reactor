@@ -37,6 +37,15 @@ public final class OnErrorResumeOperator<T>
 
 	private final Function<Throwable, ? extends Publisher<? extends T>> fallbackSelector;
 
+	public OnErrorResumeOperator(final Publisher<? extends T> fallbackSelector) {
+		this.fallbackSelector = new Function<Throwable, Publisher<? extends T>>() {
+			@Override
+			public Publisher<? extends T> apply(Throwable throwable) {
+				return fallbackSelector;
+			}
+		};
+	}
+
 	public OnErrorResumeOperator(Function<Throwable, ? extends Publisher<? extends T>> fallbackSelector) {
 		this.fallbackSelector = fallbackSelector;
 	}
