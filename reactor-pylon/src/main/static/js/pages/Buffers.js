@@ -24,16 +24,6 @@ import Rx            from 'rx-lite';
 const propTypes = {
 };
 
-var chartOptions = {
-    bezierCurve : true,
-    datasetFill : false,
-    pointDotStrokeWidth: 2,
-    scaleShowVerticalLines: false,
-    responsive: true,
-    animateRotate : false,
-    animateScale : false
-};
-
 class Buffers extends React.Component {
 
     constructor(props) {
@@ -58,13 +48,12 @@ class Buffers extends React.Component {
             .subscribe(json => {
                 if(thiz.buffers[json.id] === undefined) {
                     var s = new Rx.Subject();
-                    thiz.buffers[json.id] = ({id: json.id, max: json.capacity, pending: json.buffered, stream: s});
+                    thiz.buffers[json.id] = { last: json, stream: s};
                     thiz.setState({buffers: thiz.buffers})
                 }
                 else{
-                    thiz.buffers[json.id].max = json.capacity;
-                    thiz.buffers[json.id].pending = json.buffered;
-                    thiz.buffers[json.id].stream.onNext(thiz.buffers[json.id]);
+                    thiz.buffers[json.id].last = json;
+                    thiz.buffers[json.id].stream.onNext(json);
                 }
 
             });
@@ -74,10 +63,8 @@ class Buffers extends React.Component {
         var list = [];
         for( var b in this.buffers){
             list.push(<CapacityDoughnut key={b}
-                                        chartOptions={chartOptions}
-                                        max={this.buffers[b].max}
-                                        buffers={this.buffers[b].stream}
-                                        pending={this.buffers[b].pending} />)
+                                        last={this.buffers[b].last}
+                                        updates={this.buffers[b].stream} />)
         }
         return (
             <DocumentTitle title="Reactor Console • Buffers">

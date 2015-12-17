@@ -18,7 +18,6 @@
 
 import React         from 'react';
 import {Link}        from 'react-router';
-import Chartjs       from 'chart.js';
 import ReactDOM      from 'react-dom';
 
 const propTypes = {
@@ -33,14 +32,12 @@ class CapacityDoughnut extends React.Component {
 
         var thiz = this;
         this.state = {
-            dataset: [{
-                value: thiz.props.pending, color: "#F7464A", highlight: "#FF5A5E", label: "Pending"
-            }, {
-                value: thiz.props.max - thiz.props.pending, color: "#46BFBD", highlight: "#5AD3D1", label: "Available"
-            }]
+            last: thiz.props.last
         };
 
-        this.doughnut = null;
+        if (this.state.last.capacity != -1 && this.state.last.capacity != 'unbounded') {
+            this.state.last.free = this.state.last.capacity - this.state.last.buffered;
+        }
 
         if (this.props.controlBus !== undefined) {
             this.props.controlBus.subscribe(this.controlBusHandler.bind(this));
@@ -51,23 +48,18 @@ class CapacityDoughnut extends React.Component {
         if (this.disposable != null) {
             this.disposable.dispose();
         }
-        if (this.doughnut != null) {
-            this.doughnut.destroy();
-        }
     }
 
     controlBusHandler(event) {
     }
 
     draw(json) {
-        this.state.dataset[0].value = json.pending;
-        if (json.max !== undefined) {
-            this.state.dataset[1].value = json.max - json.pending;
-            // this.state.dataset[2].value = json.max;
+        this.state.last = json;
+        if (json.capacity != -1 && json.capacity != 'unbounded') {
+            json.free = json.capacity - json.buffered;
         }
 
-        this.setState({dataset: this.state.dataset})
-        this.doughnut.update()
+        this.setState({last: json});
     }
 
     componentWillUnmount() {
@@ -75,29 +67,23 @@ class CapacityDoughnut extends React.Component {
     }
 
     componentDidMount() {
-        if (this.props.buffers !== undefined) {
-            this.disposable = this.props.buffers
+        if (this.props.updates !== undefined) {
+            this.disposable = this.props.updates
                 .subscribe(this.draw.bind(this), error => console.log(error), () => console.log("terminated"));
         }
     }
 
-    mount(element){
-        if(element !== null) {
-            if(this.doughnut !== null){
-                this.doughnut.destroy();
-            }
-            var ctx = element.getContext("2d");
-            this.doughnut = new Chartjs(ctx).Doughnut(this.state.dataset, this.props.chartOptions);
-        }
-    }
-
     render() {
-        var value = (this.state.dataset[1].value / (this.state.dataset[0].value + this.state.dataset[1].value) * 100)
+        var value = ((this.state.last.buffered / (this.state.last.buffered + this.state.last.free)) * 100)
             .toFixed(1);
         return (
-            <div className="box" style={{height:'100px', width:'100px'}}>
-                <canvas width="200" ref={this.mount.bind(this)}></canvas>
-                <span>{value}%</span>
+            <div className="box buffer" style={{height:'130px', width:'130px'}}>
+                <div className="meter">
+                    <span style={{width: value+'%'}}></span>
+                </div>
+                <div>{value}%</div>
+                <div>({this.state.last.buffered}/{this.state.last.capacity})</div>
+                <div className="name">{this.state.last.name}</div>
             </div>
         );
     }
