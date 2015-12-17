@@ -1172,7 +1172,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 				//IGNORE
 			}
 			catch (Throwable t){
-				Exceptions.throwIfFatal(t);
 				log.error("Unrouted exception", t);
 			}
 		}
