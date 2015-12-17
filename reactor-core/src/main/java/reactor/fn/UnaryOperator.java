@@ -1,8 +1,6 @@
 package reactor.fn;
 
 /**
- * THIS IS JUST A BACKPORT
- *
  * Implementations of this class perform work on the given parameter and return a result of the same type.
  *
  * @param <T> The type of the input (and ouput) to the apply operation

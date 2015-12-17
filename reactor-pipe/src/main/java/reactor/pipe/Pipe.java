@@ -24,6 +24,10 @@ public class Pipe<INIT, CURRENT> implements IPipe<INIT, CURRENT> {
         this(TreePVector.empty(), new DefaultStateProvider<>());
     }
 
+    protected Pipe(StateProvider<Key> stateProvider) {
+        this(TreePVector.empty(), stateProvider);
+    }
+
     protected Pipe(PVector<StreamSupplier> suppliers,
                    StateProvider<Key> stateProvider) {
         this.suppliers = suppliers;
@@ -243,6 +247,10 @@ public class Pipe<INIT, CURRENT> implements IPipe<INIT, CURRENT> {
 
     public static <A> IPipe<A, A> build() {
         return new Pipe<>();
+    }
+
+    public static <A> IPipe<A, A> build(StateProvider<Key> stateProvider) {
+        return new Pipe<>(stateProvider);
     }
 
     protected <NEXT> Pipe<INIT, NEXT> next(StreamSupplier supplier) {

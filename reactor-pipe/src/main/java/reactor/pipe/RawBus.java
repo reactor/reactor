@@ -58,8 +58,7 @@ public class RawBus<K, V> extends AbstractBus<K, V> {
                !this.firehoseSubscription.maybeClaimSlot()) {
             try {
                 //LockSupport.parkNanos(10000);
-                System.out.println("Backpressure");
-                Thread.sleep(500); // TODO: Obviously this is stupid use parknanos instead.
+                Thread.sleep(10); // TODO: Obviously this is stupid use parknanos instead.
             } catch (InterruptedException e) {
                 errorHandlerOrThrow(e);
             }

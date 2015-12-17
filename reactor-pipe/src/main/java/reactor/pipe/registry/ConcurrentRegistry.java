@@ -86,6 +86,11 @@ public class ConcurrentRegistry<K, V> implements Registry<K, V> {
     }
 
     @Override
+    public long size() {
+        return exactKeyMatches.deref().size();
+    }
+
+    @Override
     public Iterator<Registration<K, ? extends V>> iterator() {
         return null;
     }
