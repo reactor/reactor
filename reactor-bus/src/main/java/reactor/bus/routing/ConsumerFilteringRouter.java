@@ -16,8 +16,7 @@
 
 package reactor.bus.routing;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.bus.Event;
 import reactor.bus.filter.Filter;
 import reactor.bus.registry.Registration;
@@ -38,7 +37,7 @@ import java.util.List;
  */
 public class ConsumerFilteringRouter implements Router<Object, Event<?>> {
 
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private final Logger logger = Logger.getLogger(getClass());
 	private final Filter filter;
 
 	/**

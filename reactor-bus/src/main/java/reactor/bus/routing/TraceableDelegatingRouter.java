@@ -16,8 +16,7 @@
 
 package reactor.bus.routing;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.bus.registry.Registration;
 import reactor.core.support.Assert;
 import reactor.fn.BiConsumer;
@@ -36,7 +35,7 @@ public class TraceableDelegatingRouter<K, V> implements Router<K, V> {
 	public TraceableDelegatingRouter(Router<K, V> delegate) {
 		Assert.notNull(delegate, "Delegate EventRouter cannot be null.");
 		this.delegate = delegate;
-		this.log = LoggerFactory.getLogger(delegate.getClass());
+		this.log = Logger.getLogger(delegate.getClass());
 	}
 
 	@Override

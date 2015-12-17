@@ -18,8 +18,7 @@ package reactor.bus;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.bus.filter.PassThroughFilter;
 import reactor.bus.publisher.BusPublisher;
 import reactor.bus.registry.Registration;
@@ -105,7 +104,7 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, ReactiveState.Link
         @Override
         public void accept(Throwable t) {
           if (uncaughtErrorHandler == null) {
-            final Logger log = LoggerFactory.getLogger(AbstractBus.class);
+            final Logger log = Logger.getLogger(AbstractBus.class);
             log.error(t.getMessage(), t);
           } else {
             uncaughtErrorHandler.accept(t);

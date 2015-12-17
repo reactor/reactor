@@ -18,8 +18,7 @@ package reactor.core.publisher.operator;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.subscriber.SubscriberBarrier;
@@ -55,8 +54,8 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 
 	public LogOperator(final String category, int options) {
 
-		this.log = category != null && !category.isEmpty() ? LoggerFactory.getLogger(category) :
-				LoggerFactory.getLogger(LogOperator.class);
+		this.log = category != null && !category.isEmpty() ? Logger.getLogger(category) :
+				Logger.getLogger(LogOperator.class);
 		this.options = options;
 	}
 

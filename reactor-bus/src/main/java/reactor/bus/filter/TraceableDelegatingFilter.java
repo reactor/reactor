@@ -16,8 +16,7 @@
 
 package reactor.bus.filter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.core.support.Assert;
 
 import java.util.Collections;
@@ -34,7 +33,7 @@ public class TraceableDelegatingFilter implements Filter {
 	public TraceableDelegatingFilter(Filter delegate) {
 		Assert.notNull(delegate, "Delegate Filter cannot be null.");
 		this.delegate = delegate;
-		this.log = LoggerFactory.getLogger(delegate.getClass());
+		this.log = Logger.getLogger(delegate.getClass());
 	}
 
 	@Override

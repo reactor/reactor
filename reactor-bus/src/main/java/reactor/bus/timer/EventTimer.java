@@ -16,8 +16,7 @@
 
 package reactor.bus.timer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
@@ -74,7 +73,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class EventTimer extends Timer {
 
-	private static final Logger LOG = LoggerFactory.getLogger(EventTimer.class);
+	private static final Logger LOG = Logger.getLogger(EventTimer.class);
 
 	private final Registry<Long, Consumer<Long>> tasks = Registries.create(true, false, null);
 	private final Thread loop;
