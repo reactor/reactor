@@ -1461,7 +1461,7 @@ public class StreamTests extends AbstractReactorTest {
 		return list;
 	}
 
-	class TestSubscriber<String> implements Subscriber<String> {
+	class TestSubscriber implements Subscriber<String> {
 
 		private final Logger log = LoggerFactory.getLogger(getClass());
 
