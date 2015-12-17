@@ -159,6 +159,7 @@ public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<
 		catch (Throwable t) {
 			Exceptions.throwIfFatal(t);
 			uncaughtException = t;
+			actual.onError(t);
 			return Emission.FAILED;
 		}
 	}
