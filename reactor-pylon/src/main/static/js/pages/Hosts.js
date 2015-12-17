@@ -4,7 +4,6 @@ import React         from 'react';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
 import Box           from '../components/Box';
-import { Line, Doughnut }      from 'react-chartjs';
 
 const propTypes = {
 };
@@ -71,14 +70,14 @@ class Hosts extends React.Component {
                         <Box heading="Line Chart">
                             <div className="box-padding">
                                 <div className="box-wrap">
-                                    <Line data={this.state.chartLineData} options={chartLineOptions} height="200" />
+                                    /*<Line data={this.state.chartLineData} options={chartLineOptions} height="200" />*/
                                 </div>
                             </div>
                         </Box>
                         <Box heading="Donut Chart">
                             <div className="box-padding">
                                 <div className="box-wrap">
-                                    <Doughnut data={this.state.chartDonutData} options={chartLineOptions} height="200" />
+                                   /* <Doughnut data={this.state.chartDonutData} options={chartLineOptions} height="200" />*/
                                 </div>
                             </div>
                         </Box>
