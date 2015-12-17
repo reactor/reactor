@@ -116,6 +116,7 @@ public final class OnErrorResumeOperator<T>
 			}
 			else if (r != 0 && Supplier.class.isAssignableFrom(fallback.getClass())) {
 				subscriber.onNext(((Supplier<T>) fallback).get());
+				subscriber.onComplete();
 			}
 			else {
 				FallbackSubscriber<T> s = new FallbackSubscriber<>(subscriber, r);
