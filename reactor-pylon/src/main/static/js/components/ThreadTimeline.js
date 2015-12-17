@@ -36,7 +36,8 @@ class ThreadTimeline extends React.Component {
                 stack: false,
                 throttleRedraw: 15,
                 align: "left",
-                showCurrentTime: true
+                showCurrentTime: true,
+                showMajorLabels: false,
             };
             var container = document.getElementById('thread-timeline');
             this.timeline = new vis.Timeline(container, null, options);

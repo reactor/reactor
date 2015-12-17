@@ -17,6 +17,7 @@ package reactor.io;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.Publishers;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.error.ReactorFatalException;
@@ -24,6 +25,7 @@ import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
+import reactor.io.buffer.StringBuffer;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -40,7 +42,27 @@ import java.nio.file.Path;
  */
 public final class IO {
 
+	private static final Function<? super String, ? extends Buffer> STRING_TO_BUFFER = new StringToBuffer();
+	private static final Function<? super Buffer, ? extends String> BUFFER_TO_STRING = new BufferToString();
+
 	private IO() {
+	}
+
+	/**
+	 *
+	 * @param channel
+	 * @return
+	 */
+	public static Publisher<String> bufferToString(final Publisher<Buffer> channel) {
+		return Publishers.map(channel, BUFFER_TO_STRING);
+	}
+	/**
+	 *
+	 * @param channel
+	 * @return
+	 */
+	public static Publisher<Buffer> stringToBuffer(final Publisher<String> channel) {
+		return Publishers.map(channel, STRING_TO_BUFFER);
 	}
 
 	/**
@@ -213,6 +235,22 @@ public final class IO {
 			} catch (IOException ioe) {
 				throw new IllegalStateException(ioe);
 			}
+		}
+	}
+
+
+	private static final class BufferToString implements Function<Buffer, String> {
+		@Override
+		public String apply(Buffer buffer) {
+			return buffer.asString();
+		}
+	}
+
+
+	private static final class StringToBuffer implements Function<String, Buffer> {
+		@Override
+		public Buffer apply(String buffer) {
+			return StringBuffer.wrap(buffer);
 		}
 	}
 

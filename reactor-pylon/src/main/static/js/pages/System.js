@@ -80,6 +80,7 @@ class System extends React.Component {
 
             var options = {
                 start: vis.moment().add(-30, 'seconds'), // changed so its faster
+                showMajorLabels: false,
                 end: vis.moment(), dataAxis: {
                     left: {
                         range : {

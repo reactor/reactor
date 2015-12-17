@@ -48,13 +48,12 @@ import reactor.fn.Supplier;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class HashWheelTimer implements Timer {
+public class HashWheelTimer extends Timer {
 
 	public static final  int    DEFAULT_WHEEL_SIZE = 512;
 	private static final String DEFAULT_TIMER_NAME = "hash-wheel-timer";
 
 	private final RingBuffer<Set<TimedSubscription>> wheel;
-	private final int                                resolution;
 	private final Thread                             loop;
 	private final Executor                           executor;
 	private final WaitStrategy                       waitStrategy;
@@ -114,6 +113,8 @@ public class HashWheelTimer implements Timer {
 						  WaitStrategy strategy,
 						  Executor exec,
 						  LongSupplier timeResolver) {
+		super(res);
+
 		this.timeMillisResolver = timeResolver;
 		this.waitStrategy = strategy;
 
@@ -133,8 +134,6 @@ public class HashWheelTimer implements Timer {
 		else {
 			this.executor = exec;
 		}
-
-		this.resolution = res;
 
 		this.loop = new NamedDaemonThreadFactory(name).newThread(new Runnable() {
 			@Override
@@ -209,21 +208,9 @@ public class HashWheelTimer implements Timer {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Pausable submit(Consumer<Long> consumer) {
-		return submit(consumer, resolution, TimeUnit.MILLISECONDS);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
 	public Pausable submit(Consumer<Long> consumer, long period, TimeUnit timeUnit) {
 		long ms = TimeUnit.MILLISECONDS.convert(period, timeUnit);
 		return schedule(0, ms, consumer);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public Pausable schedule(Consumer<Long> consumer, long period, TimeUnit timeUnit) {
-		return schedule(TimeUnit.MILLISECONDS.convert(period, timeUnit), 0, consumer);
 	}
 
 	@SuppressWarnings("unchecked")
