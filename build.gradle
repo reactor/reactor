@@ -235,11 +235,9 @@ project('reactor-stream') {
 
 	dependencies {
 		compile project(':reactor-core')
-		optional "io.projectreactor:reactor-net:$version"
 		optional "io.projectreactor:reactor-codec:$version"
 
 		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
-	  	testCompile "io.netty:netty-all:$nettyVersion"
 		testCompile project(':reactor-bus')
 		testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 	}
