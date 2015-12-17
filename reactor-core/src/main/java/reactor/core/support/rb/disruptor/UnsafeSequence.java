@@ -15,8 +15,8 @@
  */
 package reactor.core.support.rb.disruptor;
 
-import reactor.core.support.rb.disruptor.util.Util;
 import reactor.core.support.ReactiveState;
+import reactor.core.support.internal.PlatformDependent0;
 import reactor.fn.LongSupplier;
 import sun.misc.Unsafe;
 
@@ -51,7 +51,7 @@ public class UnsafeSequence extends RhsPadding implements Sequence, LongSupplier
 
     static
     {
-        UNSAFE = Util.getUnsafe();
+        UNSAFE = PlatformDependent0.getUnsafe();
         try
         {
             VALUE_OFFSET = UNSAFE.objectFieldOffset(Value.class.getDeclaredField("value"));

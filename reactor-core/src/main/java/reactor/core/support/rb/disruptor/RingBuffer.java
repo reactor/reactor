@@ -22,7 +22,6 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.support.rb.disruptor.util.Util;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.BlockingWaitStrategy;
 import reactor.core.support.wait.BusySpinWaitStrategy;
@@ -166,7 +165,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 			WaitStrategy waitStrategy,
 			Consumer<Void> spinObserver) {
 
-		if (PlatformDependent.hasUnsafe() && Util.isPowerOfTwo(bufferSize)) {
+		if (PlatformDependent.hasUnsafe() && Sequencer.isPowerOfTwo(bufferSize)) {
 			MultiProducerSequencer sequencer = new MultiProducerSequencer(bufferSize, waitStrategy, spinObserver);
 
 			return new UnsafeRingBuffer<E>(factory, sequencer);
@@ -208,7 +207,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 			Consumer<Void> spinObserver) {
 		SingleProducerSequencer sequencer = new SingleProducerSequencer(bufferSize, waitStrategy, spinObserver);
 
-		if (PlatformDependent.hasUnsafe() && Util.isPowerOfTwo(bufferSize)) {
+		if (PlatformDependent.hasUnsafe() && Sequencer.isPowerOfTwo(bufferSize)) {
 			return new UnsafeRingBuffer<>(factory, sequencer);
 		}
 		else {
