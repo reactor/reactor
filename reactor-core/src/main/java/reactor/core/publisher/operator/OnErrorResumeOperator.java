@@ -18,18 +18,22 @@ package reactor.core.publisher.operator;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberBarrier;
+import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Function;
+import reactor.fn.Supplier;
 
 /**
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class OnErrorResumeOperator<T> implements Function<Subscriber<? super T>, Subscriber<? super T>>,
-                                                          ReactiveState.Factory {
+public final class OnErrorResumeOperator<T>
+		implements Function<Subscriber<? super T>, Subscriber<? super T>>, ReactiveState.Factory {
 
 	private final Function<Throwable, ? extends Publisher<? extends T>> fallbackSelector;
 
@@ -42,12 +46,16 @@ public final class OnErrorResumeOperator<T> implements Function<Subscriber<? sup
 		return new ErrorSelectBarrier<>(subscriber, fallbackSelector);
 	}
 
-	static final class ErrorSelectBarrier<T> extends SubscriberBarrier<T, T> implements ReactiveState.Named {
+	static final class ErrorSelectBarrier<T> extends SubscriberWithDemand<T, T> implements Named {
 
-		private final  Function<Throwable, ? extends Publisher<? extends T>> fallbackSelector;
+		private final Function<Throwable, ? extends Publisher<? extends T>> fallbackSelector;
 
-		public ErrorSelectBarrier(
-				Subscriber<? super T> actual,
+		private volatile FallbackSubscriber<T> fallback;
+		private FallbackSubscriber<T> cachedFallback;
+
+		private Throwable error;
+
+		public ErrorSelectBarrier(Subscriber<? super T> actual,
 				Function<Throwable, ? extends Publisher<? extends T>> fallbackSelector) {
 			super(actual);
 			Assert.notNull(fallbackSelector, "Fallback Selector function cannot be null.");
@@ -60,9 +68,83 @@ public final class OnErrorResumeOperator<T> implements Function<Subscriber<? sup
 		}
 
 		@Override
-		protected void doError(Throwable throwable) {
-			super.doError(throwable);
+		public Throwable getError() {
+			return error;
+		}
+
+		@Override
+		protected void doRequest(long n) {
+			if(this.cachedFallback == null){
+				this.cachedFallback = this.fallback;
+				if(this.cachedFallback != null){
+					this.cachedFallback.request(n);
+					return;
+				}
+			}
+			super.doRequest(n);
+		}
+
+		@Override
+		protected void doCancel() {
+			if(this.cachedFallback == null){
+				this.cachedFallback = this.fallback;
+				if(this.cachedFallback != null){
+					this.cachedFallback.cancel();
+					return;
+				}
+			}
+			super.doCancel();
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		protected void checkedError(Throwable throwable) {
+			this.error = throwable;
 			Publisher<? extends T> fallback = fallbackSelector.apply(throwable);
+			final long r = requestedFromDownstream();
+			if (fallback == null) {
+				super.checkedError(throwable);
+			}
+			else if (r != 0 && Supplier.class.isAssignableFrom(fallback.getClass())) {
+				subscriber.onNext(((Supplier<T>) fallback).get());
+			}
+			else {
+				FallbackSubscriber<T> s = new FallbackSubscriber<>(subscriber, r);
+				this.fallback = s;
+				fallback.subscribe(s);
+			}
+		}
+
+		private static class FallbackSubscriber<T> extends SubscriberBarrier<T, T> {
+
+			private final long initRequest;
+
+			public FallbackSubscriber(Subscriber<? super T> subscriber, long r) {
+				super(subscriber);
+				this.initRequest = r;
+			}
+
+			@Override
+			public void doOnSubscribe(Subscription s) {
+				if (initRequest != 0L) {
+					s.request(initRequest);
+				}
+			}
+
+			@Override
+			public void doNext(T t) {
+				subscriber.onNext(t);
+			}
+
+			@Override
+			public void doError(Throwable t) {
+				subscriber.onError(t);
+			}
+
+			@Override
+			public void doComplete() {
+				subscriber.onComplete();
+			}
 		}
 	}
 
