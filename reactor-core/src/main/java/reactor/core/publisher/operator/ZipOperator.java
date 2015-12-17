@@ -331,6 +331,9 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 		void cancelStates() {
 			ZipState[] inner = subscribers;
+			if(inner == null){
+				return;
+			}
 			for (int i = 0; i < inner.length; i++) {
 				inner[i].cancel();
 			}
