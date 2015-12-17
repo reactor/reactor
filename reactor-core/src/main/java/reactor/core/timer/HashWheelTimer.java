@@ -54,7 +54,6 @@ public class HashWheelTimer extends Timer {
 	private static final String DEFAULT_TIMER_NAME = "hash-wheel-timer";
 
 	private final RingBuffer<Set<TimedSubscription>> wheel;
-	private final int                                resolution;
 	private final Thread                             loop;
 	private final Executor                           executor;
 	private final WaitStrategy                       waitStrategy;
@@ -114,6 +113,8 @@ public class HashWheelTimer extends Timer {
 						  WaitStrategy strategy,
 						  Executor exec,
 						  LongSupplier timeResolver) {
+		super(res);
+
 		this.timeMillisResolver = timeResolver;
 		this.waitStrategy = strategy;
 
@@ -133,8 +134,6 @@ public class HashWheelTimer extends Timer {
 		else {
 			this.executor = exec;
 		}
-
-		this.resolution = res;
 
 		this.loop = new NamedDaemonThreadFactory(name).newThread(new Runnable() {
 			@Override
