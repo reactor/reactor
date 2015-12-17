@@ -29,7 +29,9 @@ var chartOptions = {
     datasetFill : false,
     pointDotStrokeWidth: 2,
     scaleShowVerticalLines: false,
-    responsive: true
+    responsive: true,
+    animateRotate : false,
+    animateScale : false
 };
 
 class Buffers extends React.Component {
@@ -37,15 +39,46 @@ class Buffers extends React.Component {
     constructor(props) {
         super(props);
 
-        this.buffers = this.props.graphStream
+        this.buffers = {};
+        this.disposable = null;
+    }
+
+    componentWillUnmount(){
+        this.buffers = null;
+        if(this.disposable !== null) {
+            this.disposable.dispose();
+        }
+    }
+
+    componentDidMount(){
+        var thiz = this;
+        this.disposable = this.props.graphStream
             .flatMap(json => Rx.Observable.from(json.streams.nodes))
             .filter(json => json.buffered !== undefined)
-            .map(json => {
-                return { max: json.capacity, pending: json.buffered }
+            .subscribe(json => {
+                if(thiz.buffers[json.id] === undefined) {
+                    var s = new Rx.Subject();
+                    thiz.buffers[json.id] = ({id: json.id, max: json.capacity, pending: json.buffered, stream: s});
+                    thiz.setState({buffers: thiz.buffers})
+                }
+                else{
+                    thiz.buffers[json.id].max = json.capacity;
+                    thiz.buffers[json.id].pending = json.buffered;
+                    thiz.buffers[json.id].stream.onNext(thiz.buffers[json.id]);
+                }
+
             });
     }
 
     render() {
+        var list = [];
+        for( var b in this.buffers){
+            list.push(<CapacityDoughnut key={b}
+                                        chartOptions={chartOptions}
+                                        max={this.buffers[b].max}
+                                        buffers={this.buffers[b].stream}
+                                        pending={this.buffers[b].pending} />)
+        }
         return (
             <DocumentTitle title="Reactor Console • Buffers">
                 <section className="buffers">
@@ -53,7 +86,7 @@ class Buffers extends React.Component {
                         Buffers
                     </div>
                     <div className="section-content">
-                        <CapacityDoughnut buffers={this.buffers} chartOptions={chartOptions}/>
+                        {list}
                     </div>
                 </section>
             </DocumentTitle>
@@ -61,6 +94,7 @@ class Buffers extends React.Component {
     }
 }
 
+//<CapacityDoughnut max={res.max} pending={res.pending} buffers={res.stream} chartOptions={chartOptions}/>
 Buffers.propTypes = propTypes;
 
 export default Buffers;

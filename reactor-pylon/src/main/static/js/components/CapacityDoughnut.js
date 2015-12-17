@@ -18,12 +18,11 @@
 
 import React         from 'react';
 import {Link}        from 'react-router';
-import {Doughnut }      from 'react-chartjs';
+import Chartjs       from 'chart.js';
 import ReactDOM      from 'react-dom';
 
 const propTypes = {
-    controlBus: React.PropTypes.object,
-    chartOptions: React.PropTypes.object
+    controlBus: React.PropTypes.object, chartOptions: React.PropTypes.object
 };
 
 class CapacityDoughnut extends React.Component {
@@ -32,30 +31,18 @@ class CapacityDoughnut extends React.Component {
         super(props);
         this.disposable = null;
 
+        var thiz = this;
         this.state = {
-            dataset: [
-                {
-                    value: 0,
-                    color:"#F7464A",
-                    highlight: "#FF5A5E",
-                    label: "Pending"
-                },
-                {
-                    value: 0,
-                    color: "#46BFBD",
-                    highlight: "#5AD3D1",
-                    label: "Available"
-                },
-                {
-                    value: 0,
-                    color: "#FDB45C",
-                    highlight: "#FFC870",
-                    label: "Max Capacity"
-                }
-            ]
+            dataset: [{
+                value: thiz.props.pending, color: "#F7464A", highlight: "#FF5A5E", label: "Pending"
+            }, {
+                value: thiz.props.max - thiz.props.pending, color: "#46BFBD", highlight: "#5AD3D1", label: "Available"
+            }]
         };
 
-        if(this.props.controlBus !== undefined){
+        this.doughnut = null;
+
+        if (this.props.controlBus !== undefined) {
             this.props.controlBus.subscribe(this.controlBusHandler.bind(this));
         }
     }
@@ -64,26 +51,23 @@ class CapacityDoughnut extends React.Component {
         if (this.disposable != null) {
             this.disposable.dispose();
         }
+        if (this.doughnut != null) {
+            this.doughnut.destroy();
+        }
     }
 
-    controlBusHandler(event){
-    }
-
-    init(doughnut){
-        this.doughnut = doughnut;
+    controlBusHandler(event) {
     }
 
     draw(json) {
         this.state.dataset[0].value = json.pending;
-        if(json.max !== undefined) {
+        if (json.max !== undefined) {
             this.state.dataset[1].value = json.max - json.pending;
-            this.state.dataset[2].value = json.max;
+            // this.state.dataset[2].value = json.max;
         }
 
-        if(this.doughnut == null){
-            return;
-        }
-        this.doughnut.update();
+        this.setState({dataset: this.state.dataset})
+        this.doughnut.update()
     }
 
     componentWillUnmount() {
@@ -91,21 +75,35 @@ class CapacityDoughnut extends React.Component {
     }
 
     componentDidMount() {
-        this.disposable = this.props.buffers
-            .subscribe(this.draw.bind(this), error => console.log(error), () => console.log("terminated"));
+        if (this.props.buffers !== undefined) {
+            this.disposable = this.props.buffers
+                .subscribe(this.draw.bind(this), error => console.log(error), () => console.log("terminated"));
+        }
+    }
+
+    mount(element){
+        if(element !== null) {
+            if(this.doughnut !== null){
+                this.doughnut.destroy();
+            }
+            var ctx = element.getContext("2d");
+            this.doughnut = new Chartjs(ctx).Doughnut(this.state.dataset, this.props.chartOptions);
+        }
     }
 
     render() {
+        var value = (this.state.dataset[1].value / (this.state.dataset[0].value + this.state.dataset[1].value) * 100)
+            .toFixed(1);
         return (
-            <Doughnut ref={this.init.bind(this)}
-                      data={this.state.dataset}
-                      options={this.props.chartOptions} height="200" />
+            <div className="box" style={{height:'100px', width:'100px'}}>
+                <canvas width="200" ref={this.mount.bind(this)}></canvas>
+                <span>{value}%</span>
+            </div>
         );
     }
 
 }
 
 CapacityDoughnut.propTypes = propTypes;
-
 
 export default CapacityDoughnut;
