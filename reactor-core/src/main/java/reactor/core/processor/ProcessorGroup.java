@@ -31,6 +31,7 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.support.Logger;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.Sequencer;
@@ -59,6 +60,8 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  */
 public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveState.FeedbackLoop {
+
+	private static final Logger log = Logger.getLogger(ProcessorGroup.class);
 
 	/**
 	 * @param <E>
@@ -1170,8 +1173,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			}
 			catch (Throwable t){
 				Exceptions.throwIfFatal(t);
-				//TODO replace with logger
-				t.printStackTrace();
+				log.error("Unrouted exception", t);
 			}
 		}
 
