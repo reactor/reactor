@@ -178,7 +178,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	@SuppressWarnings("unchecked")
 	public final <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
 			@Nonnull final Consumer<E> onError) {
-		return lift(new ErrorOperator<O, E>(exceptionType, onError, null));
+		return lift(new ErrorOperator<O, E>(exceptionType, onError));
 	}
 
 	/**

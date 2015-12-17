@@ -22,6 +22,7 @@ package reactor.core.support.internal;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.security.AccessController;
@@ -96,7 +97,7 @@ final class PlatformDependent0 {
 
 	static <U, W> AtomicReferenceFieldUpdater<U, W> newAtomicReferenceFieldUpdater(
 			Class<U> tclass, String fieldName) throws Exception {
-		return new UnsafeAtomicReferenceFieldUpdater<U, W>(UNSAFE, tclass, fieldName);
+		return new UnsafeAtomicReferenceFieldUpdater<U, W>(tclass, fieldName);
 	}
 
 	static ClassLoader getSystemClassLoader() {
@@ -115,4 +116,41 @@ final class PlatformDependent0 {
 	private PlatformDependent0() {
 	}
 
+	private static final class UnsafeAtomicReferenceFieldUpdater<U, M> extends AtomicReferenceFieldUpdater<U, M> {
+		private final long offset;
+
+		UnsafeAtomicReferenceFieldUpdater(Class<U> tClass, String fieldName) throws NoSuchFieldException {
+			Field field = tClass.getDeclaredField(fieldName);
+			if (!Modifier.isVolatile(field.getModifiers())) {
+				throw new IllegalArgumentException("Must be volatile");
+			}
+			offset = UNSAFE.objectFieldOffset(field);
+		}
+
+		@Override
+		public boolean compareAndSet(U obj, M expect, M update) {
+			return UNSAFE.compareAndSwapObject(obj, offset, expect, update);
+		}
+
+		@Override
+		public boolean weakCompareAndSet(U obj, M expect, M update) {
+			return UNSAFE.compareAndSwapObject(obj, offset, expect, update);
+		}
+
+		@Override
+		public void set(U obj, M newValue) {
+			UNSAFE.putObjectVolatile(obj, offset, newValue);
+		}
+
+		@Override
+		public void lazySet(U obj, M newValue) {
+			UNSAFE.putOrderedObject(obj, offset, newValue);
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public M get(U obj) {
+			return (M) UNSAFE.getObjectVolatile(obj, offset);
+		}
+	}
 }

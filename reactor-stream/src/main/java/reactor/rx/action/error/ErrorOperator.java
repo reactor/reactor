@@ -15,45 +15,45 @@
  */
 package reactor.rx.action.error;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.Publishers;
 import reactor.core.error.CancelException;
+import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
  * @since 1.1, 2.0, 2.1
  */
-final public class ErrorOperator<T, E extends Throwable> extends FallbackOperator<T> {
+final public class ErrorOperator<T, E extends Throwable> implements Publishers.Operator<T, T> {
 
 	private final Consumer<? super E> consumer;
 	private final Class<E>            selector;
 
-	public ErrorOperator(Class<E> selector, Consumer<? super E> consumer, Publisher<? extends T> fallback) {
-		super(fallback);
+	public ErrorOperator(Class<E> selector, Consumer<? super E> consumer) {
 		this.consumer = consumer;
 		this.selector = selector;
 	}
 
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new ErrorAction<>(subscriber, selector, consumer, fallback);
+		return new ErrorAction<>(subscriber, selector, consumer);
 	}
 
-	final static class ErrorAction<T, E extends Throwable> extends FallbackOperator.FallbackAction<T> {
+	final static class ErrorAction<T, E extends Throwable> extends SubscriberBarrier<T, T> {
 
 		private final Consumer<? super E> consumer;
 		private final Class<E>            selector;
 
 		public ErrorAction(Subscriber<? super T> actual,
-				Class<E> selector, Consumer<? super E> consumer, Publisher<? extends T> fallback) {
-			super(actual, fallback);
+				Class<E> selector, Consumer<? super E> consumer) {
+			super(actual);
 			this.consumer = consumer;
 			this.selector = selector;
 		}
 
 		@Override
-		protected void doNormalNext(T ev) {
+		protected void doNext(T ev) {
 			try {
 				subscriber.onNext(ev);
 			}
@@ -69,9 +69,6 @@ final public class ErrorOperator<T, E extends Throwable> extends FallbackOperato
 			if (selector.isAssignableFrom(cause.getClass())) {
 				if (consumer != null) {
 					consumer.accept((E) cause);
-				} else if (fallback != null) {
-					doSwitch();
-					return;
 				}
 			}
 			super.doError(cause);
