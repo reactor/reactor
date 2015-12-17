@@ -37,6 +37,7 @@ import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.operator.IgnoreOnNextOperator;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
+import reactor.core.publisher.operator.OnErrorResumeOperator;
 import reactor.core.publisher.operator.ZipOperator;
 import reactor.rx.action.terminal.Tap;
 import reactor.core.support.Assert;
@@ -203,6 +204,16 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Stream<O> onErrorResumeNext(@Nonnull final Publisher<? extends O> fallback) {
 		return onErrorResumeNext(Throwable.class, fallback);
+	}
+
+	/**
+	 * Subscribe to a returned fallback publisher when any error occurs.
+	 * @param fallback the error handler for each error
+	 * @return {@literal new Stream}
+	 */
+	public final Stream<O> onErrorResumeNext(@Nonnull final Function<Throwable, ? extends Publisher<? extends O>>
+			fallback) {
+		return lift(new OnErrorResumeOperator<>(fallback));
 	}
 
 	/**
