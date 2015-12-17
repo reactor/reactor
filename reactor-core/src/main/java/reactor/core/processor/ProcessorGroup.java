@@ -433,7 +433,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 			for (int i = 0; i < concurrency; i++) {
 				this.processor.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-				this.processor.subscribe(new TaskSubscriber(tailRecurser, uncaughtExceptionHandler, shutdownHandler));
+				this.processor.subscribe(new TaskSubscriber(tailRecurser, autoShutdown, uncaughtExceptionHandler,
+						shutdownHandler));
 			}
 
 		}
@@ -1137,13 +1138,16 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		private final Consumer<Throwable> uncaughtExceptionHandler;
 		private final Consumer<Void>      shutdownHandler;
 		private final TailRecurser        tailRecurser;
+		private final boolean        autoShutdown;
 
 		public TaskSubscriber(TailRecurser tailRecurser,
+				boolean autoShutdown,
 				Consumer<Throwable> uncaughtExceptionHandler,
 				Consumer<Void> shutdownHandler) {
 			this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 			this.shutdownHandler = shutdownHandler;
 			this.tailRecurser = tailRecurser;
+			this.autoShutdown = autoShutdown;
 		}
 
 		@Override
@@ -1164,7 +1168,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			catch (CancelException ce) {
 				//IGNORE
 			}
-			catch(Throwable t){
+			catch (Throwable t){
+				Exceptions.throwIfFatal(t);
+				//TODO replace with logger
 				t.printStackTrace();
 			}
 		}
@@ -1175,6 +1181,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			if (uncaughtExceptionHandler != null) {
 				uncaughtExceptionHandler.accept(t);
 			}
+
+			//TODO support resubscribe ?
 			throw new UnsupportedOperationException("No error handler provided for this ProcessorGroup", t);
 		}
 
@@ -1215,7 +1223,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 			for (int i = 0; i < concurrency; i++) {
 				processorGroups[i] =
-						new InnerProcessorGroup<T>(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
+						new InnerProcessorGroup(processor, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 			}
 		}
 
@@ -1307,7 +1315,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return next().get();
 		}
 
-		private class InnerProcessorGroup<T> extends ProcessorGroup<T> implements Inner {
+		private class InnerProcessorGroup extends ProcessorGroup<T> implements Inner {
 
 			public InnerProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 					Consumer<Throwable> uncaughtExceptionHandler,

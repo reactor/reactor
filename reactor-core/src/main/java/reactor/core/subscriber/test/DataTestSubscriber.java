@@ -59,7 +59,8 @@ public class DataTestSubscriber<T> extends TestSubscriber<T> {
 	 *
 	 * @throws InterruptedException if a thread was interrupted during a waiting
 	 */
-	public void assertNextSignals(T... expectedNextSignals) throws InterruptedException {
+	@SafeVarargs
+	public final void assertNextSignals(T... expectedNextSignals) throws InterruptedException {
 		int expectedNum = expectedNextSignals.length;
 		assertNumNextSignalsReceived(numAssertedNextSignals + expectedNum);
 
