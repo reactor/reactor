@@ -97,10 +97,34 @@ class StreamGraph extends React.Component {
 
             if (n != null) {
                 var logs = n.label.split('\n');
-                logs.shift();
-                this.nodes.update({
-                    id: n.id, label: logs.join('\n') + event.message + '\n'
-                });
+                logs.pop();
+                var up = {
+                    id: n.id, label: event.message + '\n' + logs.join('\n')
+                };
+                if(event.level == 'SEVERE'){
+                    up.color = { border: 'indianred', background  : 'indianred' };
+                    up.font = { color : 'white'};
+                    //explosion mode
+                    //
+                    //up.mass = 40;
+                    //var edges = this.edges.get({
+                    //    filter: function (item) {
+                    //        return (item.to == event.id || item.from == event.id);
+                    //    }
+                    //});
+                    //for(var i in edges) {
+                    //    this.edges.remove(edges[i].id);
+                    //}
+                }
+                else if(event.kind == 'request'){
+                    up.color = { background  : '#6db33f' };
+                    up.font = { color : 'white'};
+                }
+                else{
+                    up.color = { background  : 'black' };
+                    up.font = { color : 'green'};
+                }
+                this.nodes.update(up);
             }
         }
         else if (event.type == 'context') {
@@ -224,11 +248,13 @@ class StreamGraph extends React.Component {
         var n, e;
         for (var node in json.nodes) {
             n = json.nodes[node];
-            //n.mass = 1;
             if (n.highlight) {
                 highlights.push(n.id);
             }
             if (n.logging !== undefined && n.logging) {
+                if (this.nodes.get(n.id) != null) {
+                    continue;
+                }
                 n.shape = 'box';
                 n.color = {
                     border: 'gray',
@@ -236,14 +262,13 @@ class StreamGraph extends React.Component {
                 };
                 n.font = {
                     color : 'green'
-                }
-                if (this.nodes.get(n.id) != null) {
-                    continue;
-                }
-                n.label = n.label + '\n\n\n\n';
+                };
+                n.mass = 3;
+                n.label = n.name + '\n\n';
             }
             else {
                 n.label = n.name;
+                n.mass = 1;
 
                 if (n.reference) {
                     n.shape = 'icon';
@@ -332,6 +357,7 @@ class StreamGraph extends React.Component {
             }
 
             if (n.definedId) {
+                n.mass = 2;
                 n.shape = "square";
             }
             else if (n.inner) {
@@ -354,7 +380,7 @@ class StreamGraph extends React.Component {
                 //e.value = edgeDetails[e.from].downstreamRequested;
             }
             if (edgeDetails[e.to] !== undefined && edgeDetails[e.to].upstreamRequested !== undefined) {
-                output = (output != null && edgeDetails[e.to].upstreamRequested != output ? output + ' / ' : '') +
+                output = (output != null && edgeDetails[e.to].upstreamRequested != output ? output + '\n' : '') +
                     edgeDetails[e.to].upstreamRequested;
                 //e.value = edgeDetails[e.to].upstreamRequested;
             }
@@ -439,7 +465,8 @@ class StreamGraph extends React.Component {
 
     componentDidMount() {
         this.disposable = this.props.streams
-            .subscribe(this.draw.bind(this), error => console.log(error), () => console.log("terminated"));
+            .subscribe(this.draw.bind(this), error =>
+                log(error), () => console.log("terminated"));
     }
 
     static calcHeight() {

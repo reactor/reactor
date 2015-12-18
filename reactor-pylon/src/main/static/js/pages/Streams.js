@@ -18,7 +18,7 @@ class Streams extends React.Component {
         });
 
         this.props.logStream.filter(json => json.origin !== undefined).subscribe(json => {
-            graphControls.onNext({type: 'log', id: json.origin, message: json.message });
+            graphControls.onNext({type: 'log', id: json.origin, message: json.message, level: json.level, kind: json.kind });
         });
     }
 

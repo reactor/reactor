@@ -161,7 +161,7 @@ public final class LogOperator<IN> implements ReactiveState.Named, ReactiveState
 		@Override
 		protected void doComplete() {
 			if ((options & ON_COMPLETE) == ON_COMPLETE && (level != Level.INFO || log.isInfoEnabled())) {
-				log(SignalKind.onComplete, null, this);
+				log(SignalKind.onComplete, "", this);
 			}
 			subscriber.onComplete();
 		}
@@ -177,7 +177,7 @@ public final class LogOperator<IN> implements ReactiveState.Named, ReactiveState
 		@Override
 		protected void doCancel() {
 			if ((options & CANCEL) == CANCEL && (level != Level.INFO || log.isInfoEnabled())) {
-				log(SignalKind.cancel, null, this);
+				log(SignalKind.cancel, "", this);
 			}
 			super.doCancel();
 		}

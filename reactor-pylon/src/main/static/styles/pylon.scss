@@ -274,3 +274,36 @@ h1#logo {
     font-size: x-small;
   }
 }
+
+.logs {
+  .box-content {
+    background: black;
+    color: $reactorPrimary;
+    .item:hover {
+      color: black;
+      background: $reactorPrimary;
+    }
+    .onError, .SEVERE{
+      background: indianred;
+      color: white;
+      border-bottom: 1px dotted red;
+    }
+
+    .onComplete{
+      background: green;
+      border-bottom: 1px dotted green;
+      color: white;
+    }
+    .request {
+      background: #743F2d;
+      color: white;
+      border-bottom: 1px dotted #743F2d;
+    }
+    .item {
+      border-bottom: 1px dotted $reactorPrimary;
+      span {
+        padding: 0 5px;
+      }
+    }
+  }
+}

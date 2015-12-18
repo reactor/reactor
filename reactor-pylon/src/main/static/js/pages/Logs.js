@@ -38,9 +38,9 @@ class Logs extends React.Component {
         this.disposable = this.props.logStream.subscribe(json => {
             json.id = thiz.state.id++;
             if(thiz.state.logs.length > 200){
-                thiz.state.logs.shift();
+                thiz.state.logs.pop();
             }
-            thiz.state.logs.push(json);
+            thiz.state.logs.unshift(json);
             thiz.setState({logs: thiz.state.logs});
         });
     }
@@ -53,9 +53,9 @@ class Logs extends React.Component {
                         Logs
                     </div>
                     <div className="section-content">
-                        <Box cols="1" heading="Tail">
+                        <Box cols="1" heading="Tail" className="logs">
                             {this.state.logs.map( json => {
-                                return <div key={json.id}><span>{new Date(json.timestamp).toTimeString()}</span><span>{json.message}</span></div>
+                                return <div className={'item ' + (json.kind !== undefined ? json.kind : json.level)} key={json.id}><span>{new Date(json.timestamp).toTimeString()}</span><span>{json.category}</span><span>{json.message}</span></div>
                             })}
                         </Box>
                     </div>
