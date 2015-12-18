@@ -1071,7 +1071,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 	}
 
-	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V> implements Trace{
+	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V>{
 
 		public SyncProcessorBarrier(ProcessorGroup service) {
 			super(false, service);

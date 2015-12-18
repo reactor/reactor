@@ -24,7 +24,7 @@ import ReactDOM      from 'react-dom';
 const propTypes = {
     network: React.PropTypes.object, nodes: React.PropTypes.object, edges: React.PropTypes.object
 };
-var percentColors = [{pct: 0.0, color: {r: 0xff, g: 0x66, b: 0x66}},  {pct: 0.5, color: {r: 0xff, g: 0xff, b: 0x00}},
+var percentColors = [{pct: 0.0, color: {r: 0xff, g: 0x66, b: 0x66}}, {pct: 0.5, color: {r: 0xff, g: 0xff, b: 0x00}},
     {pct: 1.0, color: {r: 0x6d, g: 0xb3, b: 0x3f}}];
 
 const graphUtils = {
@@ -60,7 +60,7 @@ class StreamGraph extends React.Component {
         this.edges = new vis.DataSet();
         this.graphOptions = this.props.graphOptions;
 
-        if(this.props.controlBus !== undefined){
+        if (this.props.controlBus !== undefined) {
             this.props.controlBus.subscribe(this.controlBusHandler.bind(this));
         }
     }
@@ -82,38 +82,34 @@ class StreamGraph extends React.Component {
         this.edges.clear();
     }
 
-    controlBusHandler(event){
-        if(event.type  == 'fullscreen'){
+    controlBusHandler(event) {
+        if (event.type == 'fullscreen') {
             this.fullscreen(event);
         }
-        else if(event.type == 'clear'){
+        else if (event.type == 'clear') {
             this.resetAllNodes();
         }
-        else if(event.type == 'reset'){
+        else if (event.type == 'reset') {
             this.resetAllNodesStabilize();
         }
-        else if(event.type == 'log'){
+        else if (event.type == 'log') {
             var n = this.nodes.get(event.id);
-            if(n != null){
+
+            if (n != null) {
+                var logs = n.label.split('\n');
+                logs.shift();
                 this.nodes.update({
-                    id: n.id,
-                    logging: true,
-                    label: event.message,
-                    color: { background: 'yellow', border: 'black' },
-                    shape: 'box'
+                    id: n.id, label: logs.join('\n') + event.message + '\n'
                 });
             }
         }
-        else if(event.type == 'context'){
+        else if (event.type == 'context') {
             var n = this.nodes.get(event.id);
-            if(n != null && n.state != event.state){
+            if (n != null && n.state != event.state) {
                 var newcolor = event.state == 'RUNNABLE' ? '#6db33f' : 'indianred';
                 this.nodes.update({
-                    id: n.id,
-                    state: event.state,
-                    font: {
-                        color: 'white',
-                        background: newcolor
+                    id: n.id, state: event.state, font: {
+                        color: 'white', background: newcolor
                     }
                 });
             }
@@ -129,23 +125,23 @@ class StreamGraph extends React.Component {
 
     }
 
-    fullscreen(e){
-        if(this.fullscreenMode === undefined){
+    fullscreen(e) {
+        if (this.fullscreenMode === undefined) {
             this.fullscreenMode = true;
         }
-        else if(this.fullscreenMode){
+        else if (this.fullscreenMode) {
             this.fullscreenMode = false;
         }
-        else{
+        else {
             this.fullscreenMode = true;
         }
 
         var container = document.getElementById('stream-graph');
-        if(this.fullscreenMode) {
+        if (this.fullscreenMode) {
             var h = StreamGraph.calcHeight();
             container.style.height = (h.y - 110) + "px";
         }
-        else{
+        else {
             container.style.height = "260px";
         }
     }
@@ -155,14 +151,14 @@ class StreamGraph extends React.Component {
         var container = document.getElementById('stream-graph');
 
         // height
-        if(this.props.fullscreen) {
+        if (this.props.fullscreen) {
             var h = StreamGraph.calcHeight();
             container.style.height = (h.y - 110) + "px";
         }
 
         var nodes = this.nodes;
         var edges = this.edges;
-        if(json.type !== undefined && json.type == 'RemovedGraphEvent'){
+        if (json.type !== undefined && json.type == 'RemovedGraphEvent') {
             nodes.remove(json.streams);
             //if(this.network != null){
             //    this.network.setData({nodes: nodes, edges: edges});
@@ -191,10 +187,9 @@ class StreamGraph extends React.Component {
                         }
                     }
                 }, edges: {
-                    smooth: true,
-                    font: {
+                    smooth: true, font: {
                         face: 'Montserrat', color: '#34302d'
-                    },
+                    }, //color: '#34302d',
                     //smooth: {
                     //    type: 'dynamic'
                     //},
@@ -229,105 +224,117 @@ class StreamGraph extends React.Component {
         var n, e;
         for (var node in json.nodes) {
             n = json.nodes[node];
-            n.label = n.name;
             //n.mass = 1;
             if (n.highlight) {
                 highlights.push(n.id);
             }
-            if (n.reference) {
-                n.shape = 'icon';
-                n.icon = {
-                        face: 'FontAwesome',
-                        code: '\uf0c2',
-                        color: '#00BFFF'
-                };
-
-            }
-            else if(n.failed !== undefined){
-                n.shape = 'icon';
-                n.icon = {
-                    face: 'FontAwesome',
-                    code: '\uf071',
-                    color: '#ff6666'
-                };
+            if (n.logging !== undefined && n.logging) {
+                n.shape = 'box';
                 n.color = {
+                    border: 'gray',
                     background: 'black'
+                };
+                n.font = {
+                    color : 'green'
                 }
-            }
-            else if (n.period !== undefined && n.period > 0) {
-                n.shape = 'icon';
-                n.icon = {
-                    face: 'FontAwesome',
-                    code: '\uf017',
-                    color: 'purple'
-                };
-
-            }
-            else if(n.factory !== undefined && n.factory){
-                n.shape = 'icon';
-                n.icon = {
-                    face: 'FontAwesome',
-                    code: '\uf013',
-                    color: 'black'
-                };
-            }
-            else if (n.active !== undefined && !n.active || n.cancelled || n.terminated) {
-                n.shape = "dot";
-                n.color = {
-                    border: n.terminated ? "#6db33f" : "gray", background: "#f1f1f1"
-                };
-                if (!n.active && !n.cancelled && !n.terminated) {
-                    n.shapeProperties = {borderDashes: [10, 10]};
+                if (this.nodes.get(n.id) != null) {
+                    continue;
                 }
-                n.value = 0;
+                n.label = n.label + '\n\n\n\n';
             }
             else {
-                if (n.capacity !== undefined && n.capacity != -1) {
-                    n.label = n.label.length > 20 ? n.label.substring(0, 20) + '...' : n.label;
-                    n.shape = "dot";
-                    if (n.capacity == "unbounded") {
-                        n.color = {
-                            border: "green", background: "#f1f1f1"
-                        };
-                        n.shapeProperties = {borderDashes: [10, 10]};
-                    }
-                    else {
-                        n.value = n.capacity;
-                        if(n.buffered !== undefined && n.buffered != -1){
-                            var loadratio = 1 - n.buffered / n.capacity;
-                            if(loadratio < 0.9 && loadratio > 0){
-                                n.label = n.label + ' ['+(loadratio * 100).toFixed(1)+'%]'
-                            }
-                            //else if(loadratio == 0){
-                            //    n.image = '/assets/images/haha.jpg';
-                            //    n.shape = 'image';
-                            //}
-                            var backgroundColor = graphUtils.getColorForPercentage(loadratio);
-                            //if(n.buffered > 0){
-                            //    n.mass = n.buffered;
-                            //}
-                            n.color = {
-                                border: backgroundColor, background: backgroundColor
-                            };
-                        }
+                n.label = n.name;
+
+                if (n.reference) {
+                    n.shape = 'icon';
+                    n.icon = {
+                        face: 'FontAwesome', code: '\uf0c2', color: '#00BFFF'
+                    };
+
+                }
+                else if (n.failed !== undefined) {
+                    n.shape = 'icon';
+                    n.icon = {
+                        face: 'FontAwesome', code: '\uf071', color: '#ff6666'
+                    };
+                    n.color = {
+                        background: 'black'
                     }
                 }
-                else {
+                else if (n.period !== undefined && n.period > 0) {
+                    n.shape = 'icon';
+                    n.icon = {
+                        face: 'FontAwesome', code: '\uf017', color: 'purple'
+                    };
+
+                }
+                else if (n.factory !== undefined && n.factory) {
+                    n.shape = 'icon';
+                    n.icon = {
+                        face: 'FontAwesome', code: '\uf013', color: 'black'
+                    };
+                }
+                else if (n.active !== undefined && !n.active || n.cancelled || n.terminated) {
+                    n.shape = "dot";
+                    n.color = {
+                        border: n.terminated ? "#6db33f" : "gray", background: "#f1f1f1"
+                    };
+                    if (!n.active && !n.cancelled && !n.terminated) {
+                        n.shapeProperties = {borderDashes: [10, 10]};
+                    }
                     n.value = 0;
+                }
+                else {
+                    if (n.capacity !== undefined && n.capacity != -1) {
+                        n.label = n.label.length > 20 ? n.label.substring(0, 20) + '...' : n.label;
+                        n.shape = "dot";
+                        if (n.capacity == "unbounded") {
+                            n.color = {
+                                border: "green", background: "#f1f1f1"
+                            };
+                            n.shapeProperties = {borderDashes: [10, 10]};
+                        }
+                        else {
+                            n.value = n.capacity;
+                            if (n.buffered !== undefined && n.buffered != -1) {
+                                var loadratio = 1 - n.buffered / n.capacity;
+                                if (loadratio < 0.9 && loadratio > 0) {
+                                    n.label = n.label + ' [' + (loadratio * 100).toFixed(1) + '%]'
+                                }
+                                //else if(loadratio == 0){
+                                //    n.image = '/assets/images/haha.jpg';
+                                //    n.shape = 'image';
+                                //}
+                                var backgroundColor = graphUtils.getColorForPercentage(loadratio);
+                                //if(n.buffered > 0){
+                                //    n.mass = n.buffered;
+                                //}
+                                n.color = {
+                                    border: backgroundColor
+                                };
+                                if (n.group === undefined) {
+                                    n.color.background = backgroundColor;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        n.value = 0;
+                    }
                 }
             }
 
-            if(n.requestedDownstream !== undefined && n.requestedDownstream != -1){
+            if (n.requestedDownstream !== undefined && n.requestedDownstream != -1) {
                 edgeDetails[n.id] = {downstreamRequested: n.requestedDownstream};
             }
-            else if(n.expectedUpstream !== undefined && n.expectedUpstream != -1){
+            else if (n.expectedUpstream !== undefined && n.expectedUpstream != -1) {
                 edgeDetails[n.id] = {upstreamRequested: n.expectedUpstream};
             }
 
             if (n.definedId) {
                 n.shape = "square";
             }
-            else if(n.inner){
+            else if (n.inner) {
                 n.shape = "cicle";
                 n.label = n.buffered != -1 ? n.buffered : " ";
             }
@@ -336,31 +343,38 @@ class StreamGraph extends React.Component {
         for (var edge in json.edges) {
             e = json.edges[edge];
             var output = null;
-            if(edgeDetails[e.from] !== undefined && edgeDetails[e.from].downstreamRequested !== undefined){
+
+            //var origin = this.nodes.get(e.from);
+            //if(origin != null && origin.buffered !== undefined) {
+            //    e.color = origin.color.background;
+            //}
+
+            if (edgeDetails[e.from] !== undefined && edgeDetails[e.from].downstreamRequested !== undefined) {
                 output = edgeDetails[e.from].downstreamRequested;
                 //e.value = edgeDetails[e.from].downstreamRequested;
             }
-            if(edgeDetails[e.to] !== undefined && edgeDetails[e.to].upstreamRequested !== undefined ){
-                output = (output != null && edgeDetails[e.to].upstreamRequested != output ? output +  ' / ' : '') + edgeDetails[e.to].upstreamRequested;
+            if (edgeDetails[e.to] !== undefined && edgeDetails[e.to].upstreamRequested !== undefined) {
+                output = (output != null && edgeDetails[e.to].upstreamRequested != output ? output + ' / ' : '') +
+                    edgeDetails[e.to].upstreamRequested;
                 //e.value = edgeDetails[e.to].upstreamRequested;
             }
             e.arrows = {to: true};
-            if(output != null){
+            if (output != null) {
                 e.label = output;
                 e.font = {
                     align: 'top'
                 };
             }
-            if(e.type !== undefined){
-                if(e.type == 'reference') {
+            if (e.type !== undefined) {
+                if (e.type == 'reference') {
                     e.dashes = true;
                     e.arrows = {}
                 }
-                else if(e.type == 'feedbackLoop') {
+                else if (e.type == 'feedbackLoop') {
                     //e.label = "";
                     e.dashes = true;
                 }
-                else if(e.type == 'inner') {
+                else if (e.type == 'inner') {
                     e.label = "";
                     e.arrows = {}
                 }
@@ -373,15 +387,15 @@ class StreamGraph extends React.Component {
         if (first) {
             // add event listeners
             this.network.on('selectNode', (params) => {
-                if(this.props.commands !== undefined){
+                if (this.props.commands !== undefined) {
                     var n = this.nodes.get(params.nodes[0]);
-                    if(n.paused === undefined || !n.paused){
-                        this.nodes.update({id:n.id, paused: true});
-                        this.props.commands.onNext('pause\n'+n.id);
+                    if (n.paused === undefined || !n.paused) {
+                        this.nodes.update({id: n.id, paused: true});
+                        this.props.commands.onNext('pause\n' + n.id);
                     }
-                    else{
-                        this.nodes.update({id:n.id, paused: false});
-                        this.props.commands.onNext('resume\n'+n.id);
+                    else {
+                        this.nodes.update({id: n.id, paused: false});
+                        this.props.commands.onNext('resume\n' + n.id);
                     }
                 }
                 else {
@@ -397,7 +411,6 @@ class StreamGraph extends React.Component {
             network.setData({nodes: nodes, edges: edges});
             network.selectNodes(highlights);
         }
-
 
         // cluster inner
         //var clusterOptionsByData = {
@@ -447,6 +460,5 @@ class StreamGraph extends React.Component {
 
 StreamGraph.propTypes = propTypes;
 StreamGraph.graphUtils = graphUtils;
-
 
 export default StreamGraph;

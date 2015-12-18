@@ -154,6 +154,11 @@ public final class LogOperator<IN> implements ReactiveState.Named, ReactiveState
 		}
 
 		@Override
+		protected void doOnSubscriberError(Throwable throwable) {
+			doError(throwable);
+		}
+
+		@Override
 		protected void doComplete() {
 			if ((options & ON_COMPLETE) == ON_COMPLETE && (level != Level.INFO || log.isInfoEnabled())) {
 				log(SignalKind.onComplete, null, this);
