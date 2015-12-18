@@ -195,6 +195,10 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
         });
     }
 
+    public Pipe<INIT, List<CURRENT>> custom(StreamSupplier<Key, CURRENT> supplier) {
+        return next(supplier);
+    }
+
     /**
      * STREAM ENDS
      */
