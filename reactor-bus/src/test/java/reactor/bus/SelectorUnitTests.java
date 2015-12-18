@@ -18,8 +18,7 @@ package reactor.bus;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
@@ -44,7 +43,7 @@ import static reactor.bus.selector.JsonPathSelector.J;
  */
 public class SelectorUnitTests {
 
-	static final Logger LOG        = LoggerFactory.getLogger(SelectorUnitTests.class);
+	static final Logger LOG        = Logger.getLogger(SelectorUnitTests.class);
 	final        int    selectors  = 50;
 	final        int    iterations = 10000;
 

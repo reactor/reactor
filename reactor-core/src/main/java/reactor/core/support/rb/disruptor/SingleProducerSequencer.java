@@ -16,7 +16,6 @@
 package reactor.core.support.rb.disruptor;
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.support.rb.disruptor.util.Util;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 
@@ -79,7 +78,7 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
 
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > nextValue)
         {
-            long minSequence = Util.getMinimumSequence(gatingSequences, nextValue);
+            long minSequence = Sequencer.getMinimumSequence(gatingSequences, nextValue);
             this.cachedValue = minSequence;
 
             if (wrapPoint > minSequence)
@@ -120,7 +119,7 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > nextValue)
         {
             long minSequence;
-            while (wrapPoint > (minSequence = Util.getMinimumSequence(gatingSequences, nextValue)))
+            while (wrapPoint > (minSequence = Sequencer.getMinimumSequence(gatingSequences, nextValue)))
             {
                 if(spinObserver != null) {
                     spinObserver.accept(null);
@@ -183,7 +182,7 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
     {
         long nextValue = this.nextValue;
 
-        long consumed = Util.getMinimumSequence(gatingSequences, nextValue);
+        long consumed = Sequencer.getMinimumSequence(gatingSequences, nextValue);
         long produced = nextValue;
         return produced - consumed;
     }

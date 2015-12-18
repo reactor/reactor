@@ -42,7 +42,7 @@ public final class TimeUtils {
 		}
 	};
 
-	final static private Timer NOOP = new NoopTimer();
+	final static private Timer NOOP = new Timer();
 
 	private static final int      DEFAULT_RESOLUTION = 100;
 	private static final Sequence now                = Sequencer.newSequence(-1);
@@ -116,49 +116,6 @@ public final class TimeUtils {
 			  "Period must be a multiple of Timer resolution (e.g. period % resolution == 0 ). " +
 				"Resolution for this Timer is: " + resolution + "ms"
 			));
-		}
-	}
-
-	private final static class NoopTimer implements Timer{
-
-		@Override
-		public long period() {
-			return 0;
-		}
-
-		@Override
-		public Pausable schedule(Consumer<Long> consumer, long period, TimeUnit timeUnit, long delayInMilliseconds) {
-			return null;
-		}
-
-		@Override
-		public Pausable schedule(Consumer<Long> consumer, long period, TimeUnit timeUnit) {
-			return null;
-		}
-
-		@Override
-		public Pausable submit(Consumer<Long> consumer, long delay, TimeUnit timeUnit) {
-			return null;
-		}
-
-		@Override
-		public Pausable submit(Consumer<Long> consumer) {
-			return null;
-		}
-
-		@Override
-		public void start() {
-
-		}
-
-		@Override
-		public void cancel() {
-
-		}
-
-		@Override
-		public boolean isCancelled() {
-			return false;
 		}
 	}
 

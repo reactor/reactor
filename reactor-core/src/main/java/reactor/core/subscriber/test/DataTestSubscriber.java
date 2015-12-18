@@ -16,8 +16,6 @@
 
 package reactor.core.subscriber.test;
 
-import reactor.io.buffer.Buffer;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,13 +23,14 @@ import java.util.List;
  * Subscriber capturing Next signals for assertion
  *
  * @author Anatoly Kadyshev
+ * @author Stephane Maldini
  */
-public class DataTestSubscriber extends TestSubscriber {
+public class DataTestSubscriber<T> extends TestSubscriber<T> {
 
 	/**
 	 * Received Next signals
 	 */
-	private volatile List<String> nextSignals = new ArrayList<>();
+	private volatile List<T> nextSignals = new ArrayList<>();
 
 	/**
 	 * Total number of asserted Next signals
@@ -44,8 +43,8 @@ public class DataTestSubscriber extends TestSubscriber {
 	 * @param timeoutSecs timeout interval in seconds
 	 * @return a newly created test subscriber
 	 */
-	public static DataTestSubscriber createWithTimeoutSecs(int timeoutSecs) {
-		return new DataTestSubscriber(timeoutSecs);
+	public static <T> DataTestSubscriber<T> createWithTimeoutSecs(int timeoutSecs) {
+		return new DataTestSubscriber<>(timeoutSecs);
 	}
 
 	private DataTestSubscriber(int timeoutSecs) {
@@ -60,11 +59,12 @@ public class DataTestSubscriber extends TestSubscriber {
 	 *
 	 * @throws InterruptedException if a thread was interrupted during a waiting
 	 */
-	public void assertNextSignals(String... expectedNextSignals) throws InterruptedException {
+	@SafeVarargs
+	public final void assertNextSignals(T... expectedNextSignals) throws InterruptedException {
 		int expectedNum = expectedNextSignals.length;
 		assertNumNextSignalsReceived(numAssertedNextSignals + expectedNum);
 
-		List<String> nextSignalsSnapshot;
+		List<T> nextSignalsSnapshot;
 		synchronized (nextSignals) {
 			nextSignalsSnapshot = nextSignals;
 			nextSignals = new ArrayList<>();
@@ -77,8 +77,8 @@ public class DataTestSubscriber extends TestSubscriber {
 		}
 
 		for (int i = 0; i < expectedNum; i++) {
-			String expectedSignal = expectedNextSignals[i];
-			String actualSignal = nextSignalsSnapshot.get(i);
+			T expectedSignal = expectedNextSignals[i];
+			T actualSignal = nextSignalsSnapshot.get(i);
 			if (!actualSignal.equals(expectedSignal)) {
 				throw new AssertionError(
 						String.format("Expected Next signal: %s, but got: %s", expectedSignal, actualSignal));
@@ -89,11 +89,11 @@ public class DataTestSubscriber extends TestSubscriber {
 	}
 
 	@Override
-	protected void doNext(Buffer buffer) {
+	protected void doNext(T data) {
 		synchronized (nextSignals) {
-			nextSignals.add(buffer.asString());
+			nextSignals.add(data);
 		}
-		super.doNext(buffer);
+		super.doNext(data);
 	}
 
 }

@@ -15,13 +15,13 @@
  */
 package reactor.core.support.rb.disruptor;
 
+import java.util.concurrent.locks.LockSupport;
+
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.support.rb.disruptor.util.Util;
+import reactor.core.support.internal.PlatformDependent0;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 import sun.misc.Unsafe;
-
-import java.util.concurrent.locks.LockSupport;
 
 
 /**
@@ -34,7 +34,7 @@ import java.util.concurrent.locks.LockSupport;
  */
 public final class MultiProducerSequencer extends Sequencer
 {
-    private static final Unsafe UNSAFE = Util.getUnsafe();
+    private static final Unsafe UNSAFE = PlatformDependent0.getUnsafe();
     private static final long   BASE   = UNSAFE.arrayBaseOffset(int[].class);
     private static final long   SCALE  = UNSAFE.arrayIndexScale(int[].class);
 
@@ -55,13 +55,13 @@ public final class MultiProducerSequencer extends Sequencer
     public MultiProducerSequencer(int bufferSize, final WaitStrategy waitStrategy, Consumer<Void> spinObserver) {
         super(bufferSize, waitStrategy, spinObserver);
 
-        if (!Util.isPowerOfTwo(bufferSize)) {
+        if (!Sequencer.isPowerOfTwo(bufferSize)) {
             throw new IllegalArgumentException("bufferSize must be a power of 2");
         }
 
         availableBuffer = new int[bufferSize];
         indexMask = bufferSize - 1;
-        indexShift = Util.log2(bufferSize);
+        indexShift = Sequencer.log2(bufferSize);
         initialiseAvailableBuffer();
     }
 
@@ -78,7 +78,7 @@ public final class MultiProducerSequencer extends Sequencer
         long cachedGatingSequence = gatingSequenceCache.get();
 
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > cursorValue) {
-            long minSequence = Util.getMinimumSequence(gatingSequences, cursorValue);
+            long minSequence = Sequencer.getMinimumSequence(gatingSequences, cursorValue);
             gatingSequenceCache.set(minSequence);
 
             if (wrapPoint > minSequence) {
@@ -131,7 +131,7 @@ public final class MultiProducerSequencer extends Sequencer
 
             if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current)
             {
-                long gatingSequence = Util.getMinimumSequence(gatingSequences, current);
+                long gatingSequence = Sequencer.getMinimumSequence(gatingSequences, current);
 
                 if (wrapPoint > gatingSequence)
                 {
@@ -206,7 +206,7 @@ public final class MultiProducerSequencer extends Sequencer
     @Override
     public long pending()
     {
-        long consumed = Util.getMinimumSequence(gatingSequences, cursor.get());
+        long consumed = Sequencer.getMinimumSequence(gatingSequences, cursor.get());
         long produced = cursor.get();
         return produced - consumed;
     }

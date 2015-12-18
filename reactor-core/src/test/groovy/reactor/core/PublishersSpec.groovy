@@ -14,41 +14,76 @@
  * limitations under the License.
  */
 
-
 package reactor.core
 
-import org.reactivestreams.Publisher
+import reactor.Publishers
+import reactor.fn.BiConsumer
+import spock.lang.Specification
 
 import static reactor.Publishers.*
-import spock.lang.Specification
 
 /**
  * @author Stephane Maldini
  */
 class PublishersSpec extends Specification {
 
-	def "Read Queues from Publishers"() {
+  def "Read Queues from Publishers"() {
 
-		given:
-			"Iterable publisher of 1000 to read queue"
-			def pub = from(1..1000)
-			def queue = toReadQueue(pub)
+	given: "Iterable publisher of 1000 to read queue"
+	def pub = from(1..1000)
+	def queue = toReadQueue(pub)
 
-		when:
-			"read the queue"
-			def v = queue.take()
-			def v2 = queue.take()
-		  997.times {
-			  queue.poll()
-		  }
-
-		def v3 = queue.take()
-
-		then:
-			"queues values correct"
-			v == 1
-			v2 == 2
-			v3 == 1000
+	when: "read the queue"
+	def v = queue.take()
+	def v2 = queue.take()
+	997.times {
+	  queue.poll()
 	}
+
+	def v3 = queue.take()
+
+	then: "queues values correct"
+	v == 1
+	v2 == 2
+	v3 == 1000
+  }
+
+  def "Error handling with onErrorReturn"() {
+
+	given: "Iterable publisher of 1000 to read queue"
+	def pub = lift(from(1..1000), { d, s ->
+	  if (d == 3) {
+		throw new Exception('test')
+	  }
+	  s.onNext(d)
+	} as BiConsumer)
+
+	when: "read the queue"
+	def q = toReadQueue(onErrorReturn(pub, 100000))
+	def res = []
+	q.drainTo(res)
+
+	then: "queues values correct"
+	res == [1, 2, 100000]
+  }
+
+  def "Error handling with onErrorResume"() {
+
+	given: "Iterable publisher of 1000 to read queue"
+	def pub = lift(from(1..1000), { d, s ->
+	  if (d == 3) {
+		throw new Exception('test')
+	  }
+	  s.onNext(d)
+	} as BiConsumer)
+
+	when: "read the queue"
+	def q = toReadQueue(onErrorResumeNext(pub, from(9999..10002)))
+	def res = []
+	q.drainTo(res)
+
+	then: "queues values correct"
+	res == [1, 2, 9999, 10000, 10001, 10002]
+  }
 
 }

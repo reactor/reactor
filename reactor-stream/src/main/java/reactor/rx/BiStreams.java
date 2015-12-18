@@ -20,8 +20,8 @@ import java.util.Map;
 import org.reactivestreams.Publisher;
 import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple2;
-import reactor.rx.action.pair.ReduceByKeyOperator;
-import reactor.rx.action.pair.ScanByKeyOperator;
+import reactor.rx.action.ReduceByKeyOperator;
+import reactor.rx.action.ScanByKeyOperator;
 import reactor.rx.stream.MapStream;
 
 /**

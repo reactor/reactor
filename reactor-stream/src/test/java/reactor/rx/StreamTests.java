@@ -49,8 +49,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
 import reactor.Timers;
@@ -62,8 +61,7 @@ import reactor.core.error.CancelException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.operator.LogOperator;
-import reactor.rx.action.terminal.Tap;
+import reactor.rx.action.Tap;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -71,7 +69,7 @@ import reactor.io.IO;
 import reactor.io.codec.StandardCodecs;
 import reactor.rx.action.Control;
 import reactor.rx.action.StreamProcessor;
-import reactor.rx.action.support.TapAndControls;
+import reactor.rx.action.TapAndControls;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.BarrierStream;
@@ -1463,7 +1461,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	class TestSubscriber implements Subscriber<String> {
 
-		private final Logger log = LoggerFactory.getLogger(getClass());
+		private final Logger log = Logger.getLogger(getClass());
 
 		private Subscription subscription;
 

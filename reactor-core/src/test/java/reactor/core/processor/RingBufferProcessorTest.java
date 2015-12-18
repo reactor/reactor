@@ -16,14 +16,14 @@ public class RingBufferProcessorTest {
 	@Ignore
 	public void required_spec209_mustBePreparedToReceiveAnOnCompleteSignalWithoutPrecedingRequestCall()
 			throws InterruptedException {
-		RingBufferProcessor<Buffer> processor = RingBufferProcessor.create();
-		Publisher<Buffer> publisher = Subscriber::onComplete;
+		RingBufferProcessor<String> processor = RingBufferProcessor.create();
+		Publisher<String> publisher = Subscriber::onComplete;
 		publisher.subscribe(processor);
 
 		// Waiting till publisher sends Complete into the processor
 		Thread.sleep(1000);
 
-		TestSubscriber subscriber = TestSubscriber.createWithTimeoutSecs(1);
+		TestSubscriber<String> subscriber = TestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
 		subscriber.assertCompleteReceived();

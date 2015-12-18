@@ -16,13 +16,14 @@
 package reactor.core.support.rb.disruptor;
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.support.rb.disruptor.util.Util;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
+import static java.util.Arrays.copyOf;
 
 /**
  * Base class for the various sequencer types (single/multi).  Provides
@@ -81,24 +82,101 @@ public abstract class Sequencer
         return new Wrapped<>(delegate, init);
     }
 
-    /**
-     * Create with the specified buffer size and wait strategy.
-     *
-     * @param bufferSize The total number of entries, must be a positive power of 2.
-     * @param waitStrategy
-     * @param spinObserver
-     */
-    public Sequencer(int bufferSize, WaitStrategy waitStrategy, Consumer<Void> spinObserver) {
-        if (bufferSize < 1) {
-            throw new IllegalArgumentException("bufferSize must not be less than 1");
-        }
+	public static boolean isPowerOfTwo(final int x){
+		return Integer.bitCount(x) == 1;
+	}
 
-        this.spinObserver = spinObserver;
-        this.bufferSize = bufferSize;
-        this.waitStrategy = waitStrategy;
-    }
+	/**
+	 * Calculate the next power of 2, greater than or equal to x.<p>
+	 * From Hacker's Delight, Chapter 3, Harry S. Warren Jr.
+	 *
+	 * @param x Value to round up
+	 * @return The next power of 2 from x inclusive
+	 */
+	public static int ceilingNextPowerOfTwo(final int x) {
+		return 1 << (32 - Integer.numberOfLeadingZeros(x - 1));
+	}
 
-    /**
+	/**
+	 * Get the minimum sequence from an array of {@link Sequence}s.
+	 *
+	 * @param sequences to compare.
+	 * @return the minimum sequence found or Long.MAX_VALUE if the array is empty.
+	 */
+	public static long getMinimumSequence(final Sequence[] sequences) {
+		return getMinimumSequence(sequences, Long.MAX_VALUE);
+	}
+
+	/**
+	 * Get the minimum sequence from an array of {@link Sequence}s.
+	 *
+	 * @param sequences to compare.
+	 * @param minimum   an initial default minimum.  If the array is empty this value will be
+	 *                  returned.
+	 * @return the minimum sequence found or Long.MAX_VALUE if the array is empty.
+	 */
+	public static long getMinimumSequence(final Sequence[] sequences, long minimum) {
+		for (int i = 0, n = sequences.length; i < n; i++) {
+			long value = sequences[i].get();
+			minimum = Math.min(minimum, value);
+		}
+
+		return minimum;
+	}
+
+	/**
+	 * Get the minimum sequence from an array of {@link Sequence}s.
+	 *
+	 * @param excludeSequence to exclude from search.
+	 * @param sequences to compare.
+	 * @param minimum   an initial default minimum.  If the array is empty this value will be
+	 *                  returned.
+	 * @return the minimum sequence found or Long.MAX_VALUE if the array is empty.
+	 */
+	public static long getMinimumSequence(Sequence excludeSequence, final Sequence[] sequences, long minimum) {
+		for (int i = 0, n = sequences.length; i < n; i++) {
+			if (excludeSequence == null || sequences[i] != excludeSequence) {
+				long value = sequences[i].get();
+				minimum = Math.min(minimum, value);
+			}
+		}
+
+		return minimum;
+	}
+
+	/**
+	 * Calculate the log base 2 of the supplied integer, essentially reports the location
+	 * of the highest bit.
+	 *
+	 * @param i Value to calculate log2 for.
+	 * @return The log2 value
+	 */
+	public static int log2(int i) {
+		int r = 0;
+		while ((i >>= 1) != 0) {
+			++r;
+		}
+		return r;
+	}
+
+	/**
+	 * Create with the specified buffer size and wait strategy.
+	 *
+	 * @param bufferSize The total number of entries, must be a positive power of 2.
+	 * @param waitStrategy
+	 * @param spinObserver
+	 */
+	public Sequencer(int bufferSize, WaitStrategy waitStrategy, Consumer<Void> spinObserver) {
+		if (bufferSize < 1) {
+			throw new IllegalArgumentException("bufferSize must not be less than 1");
+		}
+
+		this.spinObserver = spinObserver;
+		this.bufferSize = bufferSize;
+		this.waitStrategy = waitStrategy;
+	}
+
+	/**
      * Get the current cursor value.
      *
      * @return current cursor value
@@ -168,7 +246,7 @@ public abstract class Sequencer
          */
     public long getMinimumSequence(Sequence excludeSequence)
     {
-        return Util.getMinimumSequence(excludeSequence, gatingSequences, cursor.get());
+        return getMinimumSequence(excludeSequence, gatingSequences, cursor.get());
     }
 
     /**
@@ -378,4 +456,108 @@ public abstract class Sequencer
             return sequence.hashCode();
         }
     }
+
+	/**
+	 * Provides static methods for managing a {@link Sequence} object.
+	 */
+	static class SequenceGroups
+	{
+	    static <T> void addSequences(final T holder,
+	                                 final AtomicReferenceFieldUpdater<T, Sequence[]> updater,
+	                                 final Sequencer cursor,
+	                                 final Sequence... sequencesToAdd)
+	    {
+	        long cursorSequence;
+	        Sequence[] updatedSequences;
+	        Sequence[] currentSequences;
+
+	        do
+	        {
+	            currentSequences = updater.get(holder);
+	            updatedSequences = copyOf(currentSequences, currentSequences.length + sequencesToAdd.length);
+	            cursorSequence = cursor.getCursor();
+
+	            int index = currentSequences.length;
+	            for (Sequence sequence : sequencesToAdd)
+	            {
+	                sequence.set(cursorSequence);
+	                updatedSequences[index++] = sequence;
+	            }
+	        }
+	        while (!updater.compareAndSet(holder, currentSequences, updatedSequences));
+
+	        cursorSequence = cursor.getCursor();
+	        for (Sequence sequence : sequencesToAdd)
+	        {
+	            sequence.set(cursorSequence);
+	        }
+	    }
+
+	    static <T> void addSequence(final T holder,
+	            final AtomicReferenceFieldUpdater<T, Sequence[]> updater,
+	            final Sequence sequence)
+	    {
+
+	        Sequence[] updatedSequences;
+	        Sequence[] currentSequences;
+
+	        do
+	        {
+	            currentSequences = updater.get(holder);
+	            updatedSequences = copyOf(currentSequences, currentSequences.length + 1);
+
+	            updatedSequences[currentSequences.length] = sequence;
+	        }
+	        while (!updater.compareAndSet(holder, currentSequences, updatedSequences));
+	    }
+
+	    static <T> boolean removeSequence(final T holder,
+	                                      final AtomicReferenceFieldUpdater<T, Sequence[]> sequenceUpdater,
+	                                      final Sequence sequence)
+	    {
+	        int numToRemove;
+	        Sequence[] oldSequences;
+	        Sequence[] newSequences;
+
+	        do
+	        {
+	            oldSequences = sequenceUpdater.get(holder);
+
+	            numToRemove = countMatching(oldSequences, sequence);
+
+	            if (0 == numToRemove)
+	            {
+	                break;
+	            }
+
+	            final int oldSize = oldSequences.length;
+	            newSequences = new Sequence[oldSize - numToRemove];
+
+	            for (int i = 0, pos = 0; i < oldSize; i++)
+	            {
+	                final Sequence testSequence = oldSequences[i];
+	                if (sequence != testSequence)
+	                {
+	                    newSequences[pos++] = testSequence;
+	                }
+	            }
+	        }
+	        while (!sequenceUpdater.compareAndSet(holder, oldSequences, newSequences));
+
+	        return numToRemove != 0;
+	    }
+
+	    private static <T> int countMatching(T[] values, final T toMatch)
+	    {
+	        int numToRemove = 0;
+	        for (T value : values)
+	        {
+	            if (value == toMatch) // Specifically uses identity
+	            {
+	                numToRemove++;
+	            }
+	        }
+	        return numToRemove;
+	    }
+	}
 }

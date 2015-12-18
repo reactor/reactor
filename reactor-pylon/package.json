@@ -70,6 +70,7 @@
     "vinyl-buffer": "^1.0.0",
     "watchify": "^3.2.x",
     "when": "^3.7.4",
-    "yargs": "^3.27.0"
+    "yargs": "^3.27.0",
+    "chart.js": "^1.0.2"
   }
 }

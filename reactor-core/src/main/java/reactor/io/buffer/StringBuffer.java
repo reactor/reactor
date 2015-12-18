@@ -47,6 +47,17 @@ public final class StringBuffer extends Buffer {
 				.append(bytes)
 				.flip();
 	}
+	/**
+	 * Convenience method to create a new, fixed-length {@literal Buffer} and putting the given byte array into the
+	 * buffer.
+	 *
+	 * @param str The String to create a buffer from.
+	 * @return The new {@literal Buffer}.
+	 */
+	@SuppressWarnings("resource")
+	public static Buffer wrap(String str) {
+		return wrap(str.getBytes());
+	}
 
 	@Override
 	public Buffer newBuffer() {

@@ -15,9 +15,8 @@
  */
 package reactor.core.support.rb.disruptor;
 
-
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.support.rb.disruptor.util.Util;
+import reactor.core.support.internal.PlatformDependent0;
 import reactor.fn.Supplier;
 import sun.misc.Unsafe;
 
@@ -31,7 +30,7 @@ abstract class RingBufferFields<E> extends RingBufferPad<E>
     private static final int  BUFFER_PAD;
     private static final long REF_ARRAY_BASE;
     private static final int  REF_ELEMENT_SHIFT;
-    private static final Unsafe UNSAFE = Util.getUnsafe();
+    private static final Unsafe UNSAFE = PlatformDependent0.getUnsafe();
 
     static {
         final int scale = UNSAFE.arrayIndexScale(Object[].class);
@@ -60,7 +59,7 @@ abstract class RingBufferFields<E> extends RingBufferPad<E>
         if (bufferSize < 1) {
             throw new IllegalArgumentException("bufferSize must not be less than 1");
         }
-        if (!Util.isPowerOfTwo(bufferSize))
+        if (!Sequencer.isPowerOfTwo(bufferSize))
         {
             throw new IllegalArgumentException("bufferSize must be a power of 2");
         }

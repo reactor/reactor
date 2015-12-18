@@ -40,12 +40,12 @@ import reactor.core.publisher.operator.ZipOperator;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
+import reactor.core.timer.Timer;
 import reactor.fn.BiConsumer;
 import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
-import reactor.core.timer.Timer;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.Tuple3;
@@ -55,12 +55,11 @@ import reactor.fn.tuple.Tuple6;
 import reactor.fn.tuple.Tuple7;
 import reactor.fn.tuple.Tuple8;
 import reactor.rx.action.StreamProcessor;
-import reactor.rx.action.combination.CombineLatestOperator;
-import reactor.rx.action.combination.SwitchOperator;
-import reactor.rx.action.control.TrampolineOperator;
+import reactor.rx.action.CombineLatestOperator;
+import reactor.rx.action.SwitchOperator;
+import reactor.rx.action.TrampolineOperator;
 import reactor.rx.stream.DecoratingStream;
 import reactor.rx.stream.DeferredStream;
-import reactor.rx.stream.ErrorStream;
 import reactor.rx.stream.FutureStream;
 import reactor.rx.stream.PeriodicTimerStream;
 import reactor.rx.stream.PublisherStream;
@@ -322,7 +321,7 @@ public class Streams {
 	 * @return a new {@link Stream}
 	 */
 	public static <O, T extends Throwable> Stream<O> fail(T throwable) {
-		return new ErrorStream<O, T>(throwable);
+		return wrap(Publishers.<O>error(throwable));
 	}
 
 

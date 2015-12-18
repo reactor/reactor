@@ -286,6 +286,10 @@ class StreamGraph extends React.Component {
                             if(loadratio < 0.9 && loadratio > 0){
                                 n.label = n.label + ' ['+(loadratio * 100).toFixed(1)+'%]'
                             }
+                            //else if(loadratio == 0){
+                            //    n.image = '/assets/images/haha.jpg';
+                            //    n.shape = 'image';
+                            //}
                             var backgroundColor = graphUtils.getColorForPercentage(loadratio);
                             //if(n.buffered > 0){
                             //    n.mass = n.buffered;

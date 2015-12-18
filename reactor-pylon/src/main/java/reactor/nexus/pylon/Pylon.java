@@ -32,8 +32,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import org.reactivestreams.Publisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.Publishers;
 import reactor.fn.Function;
 import reactor.core.timer.Timer;
@@ -54,7 +53,7 @@ import reactor.io.net.http.routing.ChannelMappings;
  */
 public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> {
 
-	private static final Logger log = LoggerFactory.getLogger(Pylon.class);
+	private static final Logger log = Logger.getLogger(Pylon.class);
 
 	private static final String CONSOLE_STATIC_PATH        = "/public";
 	private static final String CONSOLE_STATIC_ASSETS_PATH = "/assets";

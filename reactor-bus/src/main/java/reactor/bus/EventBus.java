@@ -27,8 +27,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.Subscribers;
 import reactor.bus.publisher.BusPublisher;
 import reactor.bus.registry.CachingRegistry;
@@ -602,7 +601,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 
 		public BusErrorConsumer(Consumer<Throwable> uncaughtErrorHandler) {
 			this.uncaughtErrorHandler = uncaughtErrorHandler;
-			log = LoggerFactory.getLogger(EventBus.class);
+			log = Logger.getLogger(EventBus.class);
 		}
 
 		@Override

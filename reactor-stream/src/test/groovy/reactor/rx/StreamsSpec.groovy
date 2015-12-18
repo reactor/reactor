@@ -2276,7 +2276,7 @@ class StreamsSpec extends Specification {
 
 		and:
 			'A fallback value will emit values and complete'
-			myStream.onErrorReturn { 'Zero' }.consume(
+			myStream.onErrorReturn('Zero').consume(
 					{ println(it); res << it },                          // onNext
 					{ println("Error: " + it.message) }, // onError
 					{ println("Sequence complete"); res << 'complete' }          // onCompleted

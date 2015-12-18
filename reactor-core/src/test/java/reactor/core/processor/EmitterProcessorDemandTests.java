@@ -32,56 +32,49 @@ import reactor.Publishers;
 import reactor.core.subscriber.test.DataTestSubscriber;
 import reactor.core.subscriber.test.TestSubscriber;
 import reactor.core.support.BackpressureUtils;
-import reactor.io.buffer.Buffer;
 
 /**?
  * @author Anatoly Kadyshev
  */
 public class EmitterProcessorDemandTests {
 
-	static final List<Integer> DATA = new ArrayList<>();
+	static final List<String> DATA = new ArrayList<>();
 	static final int MAX_SIZE = 100;
 
 	static {
 		for(int i = 1; i < MAX_SIZE; i++){
-			DATA.add(i);
+			DATA.add(""+i);
 		}
 	}
 
 	@Test
 	@Ignore
 	public void test() throws InterruptedException {
-		ProcessorGroup<Buffer> asyncGroup = Processors.asyncGroup("async", 128, 1);
-		BaseProcessor<Buffer, Buffer> publishOn = asyncGroup.publishOn();
-		BaseProcessor<Buffer, Buffer> emitter = Processors.emitter();
+		ProcessorGroup<String> asyncGroup = Processors.asyncGroup("async", 128, 1);
+		BaseProcessor<String, String> publishOn = asyncGroup.publishOn();
+		BaseProcessor<String, String> emitter = Processors.emitter();
 
 		publishOn.subscribe(emitter);
 
 		CountDownLatch requestReceived = new CountDownLatch(1);
 		AtomicLong demand = new AtomicLong(0);
-		Publisher<Buffer> publisher = new Publisher<Buffer>() {
+		Publisher<String> publisher = s -> s.onSubscribe(new Subscription() {
+			@Override
+			public void request(long n) {
+				System.out.println("request: " + n+" "+ s);
+				demand.addAndGet(n);
+				requestReceived.countDown();
+			}
 
 			@Override
-			public void subscribe(Subscriber<? super Buffer> s) {
-				s.onSubscribe(new Subscription() {
-					@Override
-					public void request(long n) {
-						System.out.println("request: " + n+" "+ s);
-						demand.addAndGet(n);
-						requestReceived.countDown();
-					}
-
-					@Override
-					public void cancel() {
-						System.out.println("cancel");
-					}
-				});
+			public void cancel() {
+				System.out.println("cancel");
 			}
-		};
+		});
 
 		publisher.subscribe(publishOn);
 
-		TestSubscriber subscriber = TestSubscriber.createWithTimeoutSecs(1);
+		TestSubscriber<String> subscriber = TestSubscriber.createWithTimeoutSecs(1);
 		emitter.subscribe(subscriber);
 
 		subscriber.request(Long.MAX_VALUE);
@@ -93,7 +86,7 @@ public class EmitterProcessorDemandTests {
 		int i = 0;
 		for ( ; ; ) {
 			if (BackpressureUtils.getAndSub(demand, 1) != 0) {
-				publishOn.onNext(Buffer.wrap("" + i++));
+				publishOn.onNext(""+(i++));
 			} else {
 				System.out.println("NO REQUESTED: "+ publishOn+ " "+ emitter);
 				LockSupport.parkNanos(100_000_000);
@@ -104,18 +97,18 @@ public class EmitterProcessorDemandTests {
 	@Test
 	@Ignore
 	public void testPerformance() throws InterruptedException {
-		BaseProcessor<Buffer, Buffer> emitter = Processors.emitter();
+		BaseProcessor<String, String> emitter = Processors.emitter();
 
 		CountDownLatch requestReceived = new CountDownLatch(1);
 
 		AtomicLong maxDelay = new AtomicLong(0);
 		AtomicLong demand = new AtomicLong(0);
-		Publisher<Buffer> publisher = new Publisher<Buffer>() {
+		Publisher<String> publisher = new Publisher<String>() {
 
 			long lastTimeRequestReceivedNs = -1;
 
 			@Override
-			public void subscribe(Subscriber<? super Buffer> s) {
+			public void subscribe(Subscriber<? super String> s) {
 				s.onSubscribe(new Subscription() {
 					@Override
 					public void request(long n) {
@@ -142,7 +135,7 @@ public class EmitterProcessorDemandTests {
 
 		publisher.subscribe(emitter);
 
-		TestSubscriber subscriber = TestSubscriber.createWithTimeoutSecs(1);
+		TestSubscriber<String> subscriber = TestSubscriber.createWithTimeoutSecs(1);
 		emitter.subscribe(subscriber);
 		subscriber.requestUnboundedWithTimeout();
 
@@ -150,7 +143,7 @@ public class EmitterProcessorDemandTests {
 			throw new RuntimeException();
 		}
 
-		Buffer buffer = Buffer.wrap("Hello");
+		String buffer = "Hello";
 		int i = 0;
 		for ( ; ; ) {
 			if (BackpressureUtils.getAndSub(demand, 1) > 0) {
@@ -165,24 +158,24 @@ public class EmitterProcessorDemandTests {
 
 	@Test
 	public void testRed() throws InterruptedException {
-		BaseProcessor<Buffer, Buffer> processor = Processors.emitter();
-		DataTestSubscriber subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
+		BaseProcessor<String, String> processor = Processors.emitter();
+		DataTestSubscriber<String> subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
 
 		subscriber.request(1);
-		Publishers.log(Publishers.map(Publishers.from(DATA), i -> Buffer.wrap("" + i))).subscribe(processor);
+		Publishers.log(Publishers.from(DATA)).subscribe(processor);
 
 		subscriber.assertNextSignals("1");
 	}
 
 	@Test
 	public void testGreen() throws InterruptedException {
-		BaseProcessor<Buffer, Buffer> processor = Processors.emitter();
-		DataTestSubscriber subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
+		BaseProcessor<String, String> processor = Processors.emitter();
+		DataTestSubscriber<String> subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
-		Publishers.log(Publishers.map(Publishers.from(DATA), i -> Buffer.wrap("" + i))).subscribe(processor);
+		Publishers.log(Publishers.from(DATA)).subscribe(processor);
 
 		subscriber.request(1);
 
@@ -191,13 +184,13 @@ public class EmitterProcessorDemandTests {
 
 	@Test
 	public void testHanging() throws InterruptedException {
-		BaseProcessor<Buffer, Buffer> processor = Processors.emitter(2);
-		Publishers.log(Publishers.map(Publishers.from(DATA), i -> Buffer.wrap("" + i))).subscribe(processor);
+		BaseProcessor<String, String> processor = Processors.emitter(2);
+		Publishers.log(Publishers.from(DATA)).subscribe(processor);
 
-		DataTestSubscriber first = DataTestSubscriber.createWithTimeoutSecs(1);
+		DataTestSubscriber<String> first = DataTestSubscriber.createWithTimeoutSecs(1);
 		Publishers.log(processor, "after-1").subscribe(first);
 
-		DataTestSubscriber second = DataTestSubscriber.createWithTimeoutSecs(1);
+		DataTestSubscriber<String> second = DataTestSubscriber.createWithTimeoutSecs(1);
 		Publishers.log(processor, "after-2").subscribe(second);
 
 		second.request(1);
@@ -209,16 +202,16 @@ public class EmitterProcessorDemandTests {
 
 	@Test
 	public void testNPE() throws InterruptedException {
-		BaseProcessor<Buffer, Buffer> processor = Processors.emitter(8);
-		Publishers.log(Publishers.map(Publishers.from(DATA), i -> Buffer.wrap("" + i))).subscribe(processor);
+		BaseProcessor<String, String> processor = Processors.emitter(8);
+		Publishers.log(Publishers.from(DATA)).subscribe(processor);
 
-		DataTestSubscriber first = DataTestSubscriber.createWithTimeoutSecs(1);
+		DataTestSubscriber<String> first = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(first);
 
 		first.request(1);
 		first.assertNextSignals("1");
 
-		DataTestSubscriber second = DataTestSubscriber.createWithTimeoutSecs(1);
+		DataTestSubscriber<String> second = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(second);
 
 		second.request(3);

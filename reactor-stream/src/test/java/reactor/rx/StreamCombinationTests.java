@@ -29,8 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import reactor.core.support.Logger;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
 import reactor.fn.Consumer;
@@ -41,7 +40,7 @@ import reactor.rx.action.Control;
  */
 public class StreamCombinationTests extends AbstractReactorTest {
 
-	private static final Logger LOG = LoggerFactory.getLogger(StreamCombinationTests.class);
+	private static final Logger LOG = Logger.getLogger(StreamCombinationTests.class);
 
 	private ArrayList<Stream<SensorData>> allSensors;
 

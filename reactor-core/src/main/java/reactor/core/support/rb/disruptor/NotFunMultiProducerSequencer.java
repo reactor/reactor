@@ -16,7 +16,6 @@
 package reactor.core.support.rb.disruptor;
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.support.rb.disruptor.util.Util;
 import reactor.core.support.wait.WaitStrategy;
 import reactor.fn.Consumer;
 
@@ -51,7 +50,7 @@ public final class NotFunMultiProducerSequencer extends Sequencer
         super(bufferSize, waitStrategy, spinObserver);
         availableBuffer = new int[bufferSize];
         indexMask = bufferSize - 1;
-        indexShift = Util.log2(bufferSize);
+        indexShift = Sequencer.log2(bufferSize);
         initialiseAvailableBuffer();
     }
 
@@ -68,7 +67,7 @@ public final class NotFunMultiProducerSequencer extends Sequencer
         long cachedGatingSequence = gatingSequenceCache.get();
 
         if (wrapPoint > cachedGatingSequence || cachedGatingSequence > cursorValue) {
-            long minSequence = Util.getMinimumSequence(gatingSequences, cursorValue);
+            long minSequence = Sequencer.getMinimumSequence(gatingSequences, cursorValue);
             gatingSequenceCache.set(minSequence);
 
             if (wrapPoint > minSequence) {
@@ -121,7 +120,7 @@ public final class NotFunMultiProducerSequencer extends Sequencer
 
             if (wrapPoint > cachedGatingSequence || cachedGatingSequence > current)
             {
-                long gatingSequence = Util.getMinimumSequence(gatingSequences, current);
+                long gatingSequence = Sequencer.getMinimumSequence(gatingSequences, current);
 
                 if (wrapPoint > gatingSequence)
                 {
@@ -196,7 +195,7 @@ public final class NotFunMultiProducerSequencer extends Sequencer
     @Override
     public long pending()
     {
-        long consumed = Util.getMinimumSequence(gatingSequences, cursor.get());
+        long consumed = Sequencer.getMinimumSequence(gatingSequences, cursor.get());
         long produced = cursor.get();
         return produced - consumed;
     }
