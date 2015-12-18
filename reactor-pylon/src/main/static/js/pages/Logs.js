@@ -18,20 +18,31 @@
 import React         from 'react';
 import {Link}        from 'react-router';
 import DocumentTitle from 'react-document-title';
-import vis           from 'vis';
 import Rx            from 'rx-lite';
+import Box            from '../components/Box';
 
 const propTypes = {
-    network: React.PropTypes.object,
-    nodes: React.PropTypes.object,
-    edges: React.PropTypes.object
+    network: React.PropTypes.object, nodes: React.PropTypes.object, edges: React.PropTypes.object
 };
-
 
 class Logs extends React.Component {
 
     constructor(props) {
         super(props);
+
+        this.state = {
+            logs : [],
+            id: 1
+        };
+        var thiz = this;
+        this.disposable = this.props.logStream.subscribe(json => {
+            json.id = thiz.state.id++;
+            if(thiz.state.logs.length > 200){
+                thiz.state.logs.shift();
+            }
+            thiz.state.logs.push(json);
+            thiz.setState({logs: thiz.state.logs});
+        });
     }
 
     render() {
@@ -39,7 +50,14 @@ class Logs extends React.Component {
             <DocumentTitle title="Reactor Console • Logs">
                 <section className="logs">
                     <div className="section-heading">
-                        Tail Logs
+                        Logs
+                    </div>
+                    <div className="section-content">
+                        <Box cols="1" heading="Tail">
+                            {this.state.logs.map( json => {
+                                return <div key={json.id}><span>{new Date(json.timestamp).toTimeString()}</span><span>{json.message}</span></div>
+                            })}
+                        </Box>
                     </div>
                 </section>
             </DocumentTitle>

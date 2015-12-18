@@ -13,8 +13,12 @@ class Streams extends React.Component {
         var graphControls = new Rx.Subject();
         this.graphControls = graphControls;
 
-        this.props.systemStream.flatMap(json => Rx.Observable.from(json.threads)).subscribe(json => {
+        this.props.systemStream.flatMap(json => Rx.Observable.from(json.threads).filter(json => json.contextHash !== undefined)).subscribe(json => {
             graphControls.onNext({type: 'context', id: json.contextHash, state: json.state });
+        });
+
+        this.props.logStream.filter(json => json.origin !== undefined).subscribe(json => {
+            graphControls.onNext({type: 'log', id: json.origin, message: json.message });
         });
     }
 

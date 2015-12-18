@@ -131,7 +131,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 		if (o == null) {
 			return null;
 		}
-		Node n = new Node(getName(o), getIdOrDefault(o, getName(o).hashCode() + ":" + o.hashCode()), o, true);
+		Node n = new Node(getName(o), getIdOrDefault(o), o, true);
 		if (prettyPrint) {
 			return n.toPrettyString();
 		}
@@ -334,11 +334,13 @@ public final class ReactiveStateUtils implements ReactiveState {
 	/**
 	 *
 	 * @param o
-	 * @param id
 	 * @return
 	 */
-	public static String getIdOrDefault(Object o, String id) {
-		return Identified.class.isAssignableFrom(o.getClass()) ? ((Identified) o).getId() : id;
+	public static String getIdOrDefault(Object o) {
+		if(Identified.class.isAssignableFrom(o.getClass())){
+			return ((Identified) o).getId();
+		}
+		return getName(o).hashCode() + ":" + o.hashCode();
 	}
 
 	/**
@@ -475,7 +477,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 			if (o == null) {
 				return null;
 			}
-			return nodes.remove(getIdOrDefault(o, getName(o).hashCode() + ":" + o.hashCode()));
+			return nodes.remove(getIdOrDefault(o));
 		}
 
 		public Collection<Node> getNodes() {
@@ -607,7 +609,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 			}
 
 			String name = getName(o);
-			String id = getIdOrDefault(o, name.hashCode() + ":" + o.hashCode());
+			String id = getIdOrDefault(o);
 
 			Node r = new Node(name, id, o, highlight);
 

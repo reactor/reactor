@@ -68,10 +68,9 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
 		long newId = uniqueId++;
 		if ((options & SUBSCRIBE) == SUBSCRIBE && log.isInfoEnabled()) {
-			log.trace("subscribe: [{}] {}",
-					newId,
-					subscriber.getClass()
-					          .getSimpleName());
+			log.trace("subscribe: ["+newId+"] "+subscriber.getClass()
+			                                              .getSimpleName(),
+					this);
 		}
 		return new LoggerBarrier<>(this, newId, subscriber);
 	}
@@ -106,7 +105,8 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
 			if ((options & ON_SUBSCRIBE) == ON_SUBSCRIBE && log.isInfoEnabled()) {
-				log.info("⇩ " + concatId() + "onSubscribe({})", this.subscription);
+				log.info("⇩ " + concatId() + "onSubscribe("+this.subscription+")",
+						this);
 			}
 			subscriber.onSubscribe(this);
 		}
@@ -117,9 +117,9 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 				sequence.incrementAndGet();
 			}
 			if ((options & ON_NEXT) == ON_NEXT && log.isInfoEnabled()) {
-				log.info("↓ " + concatId() + "onNext({}){}",
-						in,
-						sequence != null ? " [" + sequence.get() + "]" : "");
+				log.info("↓ " + concatId() + "onNext("+in+"){}",
+						sequence != null ? " [" + sequence.get() + "]" : "",
+						this);
 			}
 			subscriber.onNext(in);
 		}
@@ -127,8 +127,9 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 		@Override
 		protected void doError(Throwable throwable) {
 			if ((options & ON_ERROR) == ON_ERROR && log.isErrorEnabled()) {
-				log.error("↯ " + concatId() + "onError({}){}", throwable,
-						sequence != null ? " [" + sequence.get() + "]" : "");
+				log.error("↯ " + concatId() + "onError("+throwable+"){}",
+						sequence != null ? " [" + sequence.get() + "]" : "",
+						this);
 			}
 			subscriber.onError(throwable);
 		}
@@ -137,7 +138,8 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 		protected void doComplete() {
 			if ((options & ON_COMPLETE) == ON_COMPLETE && log.isInfoEnabled()) {
 				log.info("↧ " + concatId() + "onComplete(){}",
-						sequence != null ? " [" + sequence.get() + "]" : "");
+						sequence != null ? " [" + sequence.get() + "]" : "",
+						this);
 			}
 			subscriber.onComplete();
 		}
@@ -145,8 +147,9 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 		@Override
 		protected void doRequest(long n) {
 			if ((options & REQUEST) == REQUEST && log.isInfoEnabled()) {
-				log.info("⇡ " + concatId() + "request({}){}", Long.MAX_VALUE == n ? "unbounded" : n,
-						sequence != null ? " [" + sequence.get() + "]" : "");
+				log.info("⇡ " + concatId() + "request("+(Long.MAX_VALUE == n ? "unbounded" : n)+"){}",
+						sequence != null ? " [" + sequence.get() + "]" : "",
+						this);
 			}
 			super.doRequest(n);
 		}
@@ -155,7 +158,8 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 		protected void doCancel() {
 			if ((options & CANCEL) == CANCEL && log.isInfoEnabled()) {
 				log.info("↥ " + concatId() + "cancel(){}",
-						sequence != null ? " [" + sequence.get() + "]" : "");
+						sequence != null ? " [" + sequence.get() + "]" : "",
+						this);
 			}
 			super.doCancel();
 		}

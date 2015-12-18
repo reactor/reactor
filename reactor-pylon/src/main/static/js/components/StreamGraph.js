@@ -92,6 +92,18 @@ class StreamGraph extends React.Component {
         else if(event.type == 'reset'){
             this.resetAllNodesStabilize();
         }
+        else if(event.type == 'log'){
+            var n = this.nodes.get(event.id);
+            if(n != null){
+                this.nodes.update({
+                    id: n.id,
+                    logging: true,
+                    label: event.message,
+                    color: { background: 'yellow', border: 'black' },
+                    shape: 'box'
+                });
+            }
+        }
         else if(event.type == 'context'){
             var n = this.nodes.get(event.id);
             if(n != null && n.state != event.state){
