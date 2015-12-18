@@ -112,12 +112,8 @@ public class ConsumerSubscriber<T> extends BaseSubscriber<T>
 	@Override
 	public final void onError(Throwable t) {
 		super.onError(t);
-		Subscription s = subscription;
-		if (s == null) {
-			return;
-		}
-		subscription = null;
 		doError(t);
+		subscription = null;
 	}
 
 	/**

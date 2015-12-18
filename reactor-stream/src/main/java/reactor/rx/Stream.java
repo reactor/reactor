@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import javax.annotation.Nonnull;
 
 import org.reactivestreams.Processor;
@@ -267,7 +268,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	/**
 	 * Subscribe a new {@link Broadcaster} and return it for future subscribers interactions. Effectively it turns any
 	 * stream into an Hot Stream where subscribers will only values from the time T when they subscribe to the returned
-	 * stream. Complete and Error signals are however retained unless {@link #keepAlive()} has been called before. <p>
+	 * stream. Complete and Error signals are however retained. <p>
 	 * @return a new {@literal stream} whose values are broadcasted to all subscribers
 	 */
 	public final Stream<O> broadcast() {
@@ -624,7 +625,19 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> log(final String category, int options) {
-		return lift(new LogOperator<O>(category, options));
+		return log(category, Level.INFO, options);
+	}
+
+	/**
+	 * Attach a {@link reactor.core.support.Logger} to this {@code Stream} that will observe any signal emitted.
+	 * @param category The logger name
+	 * @param level The logger level
+	 * @param options the bitwise checked flags for observed signals
+	 * @return {@literal new Stream}
+	 * @since 2.0
+	 */
+	public final Stream<O> log(final String category, Level level, int options) {
+		return lift(new LogOperator<O>(category, level, options));
 	}
 
 	/**

@@ -24,6 +24,7 @@ import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.logging.Level;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -444,7 +445,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
-		return log(publisher, null, LogOperator.ALL);
+		return log(publisher, null, Level.INFO, LogOperator.ALL);
 	}
 
 	/**
@@ -454,18 +455,30 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
-		return log(publisher, category, LogOperator.ALL);
+		return log(publisher, category, Level.INFO, LogOperator.ALL);
 	}
 
 	/**
 	 * @param publisher
 	 * @param category
+	 * @param level
+	 * @param <IN>
+	 * @return
+	 */
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level) {
+		return log(publisher, category, level, LogOperator.ALL);
+	}
+
+	/**
+	 * @param publisher
+	 * @param category
+	 * @param level
 	 * @param options
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, int options) {
-		return lift(publisher, new LogOperator<IN>(category, options));
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level, int options) {
+		return lift(publisher, new LogOperator<IN>(category, level, options));
 	}
 
 	/**

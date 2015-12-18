@@ -260,6 +260,14 @@ public interface ReactiveState {
 	}
 
 	/**
+	 * A component that emits traces with the following standard :
+	 * <pre>message, arg1: signalType, arg2: signalPayload and arg3: this</pre>
+	 */
+	interface Logging extends ReactiveState {
+
+	}
+
+	/**
 	 * A component that is timed
 	 */
 	interface Timed extends ReactiveState {

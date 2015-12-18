@@ -20,6 +20,7 @@ import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
@@ -657,10 +658,24 @@ public final class Processors {
 	public static <IN, OUT> Processor<IN, OUT> log(final Processor<IN, OUT> processor,
 			final String category,
 			final int options) {
+		return log(processor, category, Level.INFO, options);
+	}
+
+	/**
+	 * @param processor
+	 * @param category
+	 * @param <IN>
+	 * @param <OUT>
+	 * @return
+	 */
+	public static <IN, OUT> Processor<IN, OUT> log(final Processor<IN, OUT> processor,
+			final String category,
+			final Level level,
+			final int options) {
 		return lift(processor, new Function<Processor<IN, OUT>, Publisher<OUT>>() {
 			@Override
 			public Publisher<OUT> apply(Processor<IN, OUT> processor) {
-				return Publishers.log(processor, category, options);
+				return Publishers.log(processor, category, level, options);
 			}
 		});
 	}
