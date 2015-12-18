@@ -81,10 +81,8 @@ public abstract class Logger {
 	 *
 	 * @param extension
 	 */
-	public static void enableExtension(Extension extension) {
-		if (!EXTENSION.compareAndSet(LoggerFactory.globalExtension, null, extension)) {
-			throw new IllegalStateException("Cannot set a global extension twice");
-		}
+	public static boolean enableExtension(Extension extension) {
+		return !EXTENSION.compareAndSet(LoggerFactory.globalExtension, null, extension);
 	}
 
 	/**
