@@ -31,7 +31,7 @@ public class LogTests {
 	public void testExtension() throws Exception {
 		AtomicInteger count = new AtomicInteger();
 
-		Logger.Extension extension = (level, msg, args) -> {
+		Logger.Extension extension = (c, level, msg, args) -> {
 			if(level == Level.FINEST) {
 				System.out.println("extension");
 				count.incrementAndGet();

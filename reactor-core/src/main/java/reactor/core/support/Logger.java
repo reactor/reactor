@@ -112,7 +112,7 @@ public abstract class Logger {
 	 */
 	public interface Extension {
 
-		void log(java.util.logging.Level level, String msg, Object... arguments);
+		void log(String category, java.util.logging.Level level, String msg, Object... arguments);
 	}
 
 	/**
@@ -343,19 +343,19 @@ public abstract class Logger {
 		@Override
 		public void trace(String msg) {
 			logger.trace(msg);
-			LoggerFactory.globalExtension.log(Level.FINEST, msg);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.FINEST, msg);
 		}
 
 		@Override
 		public void trace(String format, Object... arguments) {
 			logger.trace(format, arguments);
-			LoggerFactory.globalExtension.log(Level.FINEST, format, arguments);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.FINEST, format, arguments);
 		}
 
 		@Override
 		public void trace(String msg, Throwable t) {
 			logger.trace(msg, t);
-			LoggerFactory.globalExtension.log(Level.FINEST, msg, t);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.FINEST, msg, t);
 		}
 
 		@Override
@@ -366,19 +366,19 @@ public abstract class Logger {
 		@Override
 		public void debug(String msg) {
 			logger.debug(msg);
-			LoggerFactory.globalExtension.log(Level.FINE, msg);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.FINE, msg);
 		}
 
 		@Override
 		public void debug(String format, Object... arguments) {
 			logger.debug(format, arguments);
-			LoggerFactory.globalExtension.log(Level.FINE, format, arguments);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.FINE, format, arguments);
 		}
 
 		@Override
 		public void debug(String msg, Throwable t) {
 			logger.debug(msg, t);
-			LoggerFactory.globalExtension.log(Level.FINE, msg, t);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.FINE, msg, t);
 		}
 
 		@Override
@@ -389,19 +389,19 @@ public abstract class Logger {
 		@Override
 		public void info(String msg) {
 			logger.info(msg);
-			LoggerFactory.globalExtension.log(Level.INFO, msg);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.INFO, msg);
 		}
 
 		@Override
 		public void info(String format, Object... arguments) {
 			logger.info(format, arguments);
-			LoggerFactory.globalExtension.log(Level.INFO, format, arguments);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.INFO, format, arguments);
 		}
 
 		@Override
 		public void info(String msg, Throwable t) {
 			logger.info(msg, t);
-			LoggerFactory.globalExtension.log(Level.INFO, msg, t);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.INFO, msg, t);
 		}
 
 		@Override
@@ -412,19 +412,19 @@ public abstract class Logger {
 		@Override
 		public void warn(String msg) {
 			logger.warn(msg);
-			LoggerFactory.globalExtension.log(Level.WARNING, msg);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.WARNING, msg);
 		}
 
 		@Override
 		public void warn(String format, Object... arguments) {
 			logger.warn(format, arguments);
-			LoggerFactory.globalExtension.log(Level.WARNING, format, arguments);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.WARNING, format, arguments);
 		}
 
 		@Override
 		public void warn(String msg, Throwable t) {
 			logger.warn(msg, t);
-			LoggerFactory.globalExtension.log(Level.WARNING, msg, t);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.WARNING, msg, t);
 		}
 
 		@Override
@@ -435,19 +435,19 @@ public abstract class Logger {
 		@Override
 		public void error(String msg) {
 			logger.error(msg);
-			LoggerFactory.globalExtension.log(Level.SEVERE, msg);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.SEVERE, msg);
 		}
 
 		@Override
 		public void error(String format, Object... arguments) {
 			logger.error(format, arguments);
-			LoggerFactory.globalExtension.log(Level.SEVERE, format, arguments);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.SEVERE, format, arguments);
 		}
 
 		@Override
 		public void error(String msg, Throwable t) {
 			logger.error(msg, t);
-			LoggerFactory.globalExtension.log(Level.SEVERE, msg, t);
+			LoggerFactory.globalExtension.log(logger.getName(), Level.SEVERE, msg, t);
 		}
 	}
 
@@ -484,7 +484,7 @@ public abstract class Logger {
 		public void trace(String msg) {
 			if (logger.isLoggable(Level.FINEST)) {
 				logger.log(Level.FINEST, msg);
-				LoggerFactory.globalExtension.log(Level.FINEST, msg);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.FINEST, msg);
 			}
 		}
 
@@ -492,7 +492,7 @@ public abstract class Logger {
 		public void trace(String format, Object... arguments) {
 			if (logger.isLoggable(Level.FINEST)) {
 				logger.log(Level.FINEST, format, arguments);
-				LoggerFactory.globalExtension.log(Level.FINEST, format, arguments);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.FINEST, format, arguments);
 			}
 		}
 
@@ -500,7 +500,7 @@ public abstract class Logger {
 		public void trace(String msg, Throwable t) {
 			if (logger.isLoggable(Level.FINEST)) {
 				logger.log(Level.FINEST, msg, t);
-				LoggerFactory.globalExtension.log(Level.FINEST, msg, t);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.FINEST, msg, t);
 			}
 		}
 
@@ -513,7 +513,7 @@ public abstract class Logger {
 		public void debug(String msg) {
 			if (logger.isLoggable(Level.FINE)) {
 				logger.log(Level.FINE, msg);
-				LoggerFactory.globalExtension.log(Level.FINE, msg);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.FINE, msg);
 			}
 		}
 
@@ -521,7 +521,7 @@ public abstract class Logger {
 		public void debug(String format, Object... arguments) {
 			if (logger.isLoggable(Level.FINE)) {
 				logger.log(Level.FINE, format, arguments);
-				LoggerFactory.globalExtension.log(Level.FINE, format, arguments);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.FINE, format, arguments);
 			}
 		}
 
@@ -529,7 +529,7 @@ public abstract class Logger {
 		public void debug(String msg, Throwable t) {
 			if (logger.isLoggable(Level.FINE)) {
 				logger.log(Level.FINE, msg, t);
-				LoggerFactory.globalExtension.log(Level.FINE, msg, t);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.FINE, msg, t);
 			}
 		}
 
@@ -542,7 +542,7 @@ public abstract class Logger {
 		public void info(String msg) {
 			if (logger.isLoggable(Level.INFO)) {
 				logger.log(Level.INFO, msg);
-				LoggerFactory.globalExtension.log(Level.INFO, msg);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.INFO, msg);
 			}
 		}
 
@@ -550,7 +550,7 @@ public abstract class Logger {
 		public void info(String format, Object... arguments) {
 			if (logger.isLoggable(Level.INFO)) {
 				logger.log(Level.INFO, format, arguments);
-				LoggerFactory.globalExtension.log(Level.INFO, format, arguments);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.INFO, format, arguments);
 			}
 		}
 
@@ -558,7 +558,7 @@ public abstract class Logger {
 		public void info(String msg, Throwable t) {
 			if (logger.isLoggable(Level.INFO)) {
 				logger.log(Level.INFO, msg, t);
-				LoggerFactory.globalExtension.log(Level.INFO, msg, t);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.INFO, msg, t);
 			}
 		}
 
@@ -571,7 +571,7 @@ public abstract class Logger {
 		public void warn(String msg) {
 			if (logger.isLoggable(Level.WARNING)) {
 				logger.log(Level.WARNING, msg);
-				LoggerFactory.globalExtension.log(Level.WARNING, msg);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.WARNING, msg);
 			}
 		}
 
@@ -579,7 +579,7 @@ public abstract class Logger {
 		public void warn(String format, Object... arguments) {
 			if (logger.isLoggable(Level.WARNING)) {
 				logger.log(Level.WARNING, format, arguments);
-				LoggerFactory.globalExtension.log(Level.WARNING, format, arguments);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.WARNING, format, arguments);
 			}
 		}
 
@@ -587,7 +587,7 @@ public abstract class Logger {
 		public void warn(String msg, Throwable t) {
 			if (logger.isLoggable(Level.WARNING)) {
 				logger.log(Level.WARNING, msg, t);
-				LoggerFactory.globalExtension.log(Level.WARNING, msg, t);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.WARNING, msg, t);
 			}
 		}
 
@@ -600,7 +600,7 @@ public abstract class Logger {
 		public void error(String msg) {
 			if (logger.isLoggable(Level.SEVERE)) {
 				logger.log(Level.SEVERE, msg);
-				LoggerFactory.globalExtension.log(Level.SEVERE, msg);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.SEVERE, msg);
 			}
 		}
 
@@ -608,7 +608,7 @@ public abstract class Logger {
 		public void error(String format, Object... arguments) {
 			if (logger.isLoggable(Level.SEVERE)) {
 				logger.log(Level.SEVERE, format, arguments);
-				LoggerFactory.globalExtension.log(Level.SEVERE, format, arguments);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.SEVERE, format, arguments);
 			}
 		}
 
@@ -616,7 +616,7 @@ public abstract class Logger {
 		public void error(String msg, Throwable t) {
 			if (logger.isLoggable(Level.SEVERE)) {
 				logger.log(Level.SEVERE, msg, t);
-				LoggerFactory.globalExtension.log(Level.SEVERE, msg, t);
+				LoggerFactory.globalExtension.log(logger.getName(), Level.SEVERE, msg, t);
 			}
 		}
 
@@ -629,7 +629,7 @@ public abstract class Logger {
 		private          Extension cachedExtension;
 
 		@Override
-		public void log(Level level, String msg, Object... arguments) {
+		public void log(String category, Level level, String msg, Object... arguments) {
 			if (cachedExtension == null) {
 				cachedExtension = extension;
 				if (cachedExtension == null) {
@@ -637,7 +637,7 @@ public abstract class Logger {
 				}
 			}
 
-			cachedExtension.log(level, msg, arguments);
+			cachedExtension.log(category, level, msg, arguments);
 		}
 	}
 }
