@@ -15,9 +15,9 @@ import reactor.pipe.stream.StreamSupplier;
 import java.util.List;
 
 @SuppressWarnings("unchecked")
-public class Pipe<INIT, CURRENT> implements IPipe<INIT, CURRENT> {
+public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
 
-    private final StateProvider<Key>      stateProvider;
+    private final StateProvider<Key> stateProvider;
     private final PVector<StreamSupplier> suppliers;
 
     protected Pipe() {
@@ -29,18 +29,17 @@ public class Pipe<INIT, CURRENT> implements IPipe<INIT, CURRENT> {
     }
 
     protected Pipe(PVector<StreamSupplier> suppliers,
-                   StateProvider<Key> stateProvider) {
+            StateProvider<Key> stateProvider) {
         this.suppliers = suppliers;
         this.stateProvider = stateProvider;
     }
 
-    @SuppressWarnings(value = {"unchecked"})
-    public <NEXT> IPipe<INIT, NEXT> map(Function<CURRENT, NEXT> mapper) {
+    public <NEXT> Pipe<INIT, NEXT> map(Function<CURRENT, NEXT> mapper) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                                                Key dst,
-                                                Bus<Key, Object> firehose) {
+                    Key dst,
+                    Bus<Key, Object> firehose) {
                 return (key, value) -> {
                     firehose.notify(dst.clone(key), mapper.apply(value));
                 };
@@ -48,13 +47,12 @@ public class Pipe<INIT, CURRENT> implements IPipe<INIT, CURRENT> {
         });
     }
 
-    @SuppressWarnings(value = {"unchecked"})
-    public <NEXT> IPipe<INIT, NEXT> map(Supplier<Function<CURRENT, NEXT>> supplier) {
+    public <NEXT> Pipe<INIT, NEXT> map(Supplier<Function<CURRENT, NEXT>> supplier) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                                                Key dst,
-                                                Bus<Key, Object> firehose) {
+                    Key dst,
+                    Bus<Key, Object> firehose) {
                 Function<CURRENT, NEXT> mapper = supplier.get();
                 return (key, value) -> {
                     firehose.notify(dst.clone(key), mapper.apply(value));
@@ -63,14 +61,13 @@ public class Pipe<INIT, CURRENT> implements IPipe<INIT, CURRENT> {
         });
     }
 
-    @SuppressWarnings(value = {"unchecked"})
-    public <ST, NEXT> IPipe<INIT, NEXT> map(BiFunction<Atom<ST>, CURRENT, NEXT> mapper,
-                                            ST init) {
+    public <ST, NEXT> Pipe<INIT, NEXT> map(BiFunction<Atom<ST>, CURRENT, NEXT> mapper,
+            ST init) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                                                Key dst,
-                                                Bus<Key, Object> firehose) {
+                    Key dst,
+                    Bus<Key, Object> firehose) {
                 Atom<ST> st = stateProvider.makeAtom(src, init);
 
                 return (key, value) -> {
@@ -80,14 +77,13 @@ public class Pipe<INIT, CURRENT> implements IPipe<INIT, CURRENT> {
         });
     }
 
-    @SuppressWarnings(value = {"unchecked"})
-    public <ST> IPipe<INIT, ST> scan(BiFunction<ST, CURRENT, ST> mapper,
-                                     ST init) {
+    public <ST> Pipe<INIT, ST> scan(BiFunction<ST, CURRENT, ST> mapper,
+            ST init) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                                                Key dst,
-                                                Bus<Key, Object> firehose) {
+                    Key dst,
+                    Bus<Key, Object> firehose) {
                 Atom<ST> st = stateProvider.makeAtom(src, init);
 
                 return (key, value) -> {
@@ -152,13 +148,12 @@ public class Pipe<INIT, CURRENT> implements IPipe<INIT, CURRENT> {
     //    });
     //  }
 
-    @SuppressWarnings(value = {"unchecked"})
-    public IPipe<INIT, CURRENT> filter(Predicate<CURRENT> predicate) {
+    public Pipe<INIT, CURRENT> filter(Predicate<CURRENT> predicate) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                                                Key dst,
-                                                Bus<Key, Object> firehose) {
+                    Key dst,
+                    Bus<Key, Object> firehose) {
                 return (key, value) -> {
                     if (predicate.test(value)) {
                         firehose.notify(dst.clone(key), value);
@@ -168,36 +163,34 @@ public class Pipe<INIT, CURRENT> implements IPipe<INIT, CURRENT> {
         });
     }
 
-    @SuppressWarnings(value = {"unchecked"})
     public Pipe<INIT, List<CURRENT>> slide(UnaryOperator<List<CURRENT>> drop) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                                                Key dst,
-                                                Bus<Key, Object> firehose) {
+                    Key dst,
+                    Bus<Key, Object> firehose) {
                 Atom<PVector<CURRENT>> buffer = stateProvider.makeAtom(src, TreePVector.empty());
 
                 return new SlidingWindowOperation<>(firehose,
-                                                    buffer,
-                                                    drop,
-                                                    dst);
+                        buffer,
+                        drop,
+                        dst);
             }
         });
     }
 
-    @SuppressWarnings(value = {"unchecked"})
-    public IPipe<INIT, List<CURRENT>> partition(Predicate<List<CURRENT>> emit) {
+    public Pipe<INIT, List<CURRENT>> partition(Predicate<List<CURRENT>> emit) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                                                Key dst,
-                                                Bus<Key, Object> firehose) {
+                    Key dst,
+                    Bus<Key, Object> firehose) {
                 Atom<PVector<CURRENT>> buffer = stateProvider.makeAtom(dst, TreePVector.empty());
 
                 return new PartitionOperation<>(firehose,
-                                                buffer,
-                                                emit,
-                                                dst);
+                        buffer,
+                        emit,
+                        dst);
             }
         });
     }
@@ -206,56 +199,51 @@ public class Pipe<INIT, CURRENT> implements IPipe<INIT, CURRENT> {
      * STREAM ENDS
      */
 
-    @SuppressWarnings(value = {"unchecked"})
     public <SRC extends Key> IPipeEnd consume(BiConsumer<SRC, CURRENT> consumer) {
         return end(new StreamSupplier<SRC, CURRENT>() {
             @Override
             public BiConsumer<SRC, CURRENT> get(SRC src,
-                                                Key dst,
-                                                Bus<Key, Object> firehose) {
+                    Key dst,
+                    Bus<Key, Object> firehose) {
                 return consumer;
             }
         });
     }
 
-
-    @SuppressWarnings(value = {"unchecked"})
     public IPipeEnd consume(Consumer<CURRENT> consumer) {
         return end(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                                                Key dst,
-                                                Bus<Key, Object> pipe) {
+                    Key dst,
+                    Bus<Key, Object> pipe) {
                 return (key, value) -> consumer.accept(value);
             }
         });
     }
 
-
-    @SuppressWarnings(value = {"unchecked"})
     public <SRC extends Key> IPipeEnd consume(Supplier<BiConsumer<SRC, CURRENT>> supplier) {
         return end(new StreamSupplier<SRC, CURRENT>() {
             @Override
             public BiConsumer<SRC, CURRENT> get(SRC src,
-                                                Key dst,
-                                                Bus<Key, Object> pipe) {
+                    Key dst,
+                    Bus<Key, Object> pipe) {
                 return supplier.get();
             }
 
         });
     }
 
-    public static <A> IPipe<A, A> build() {
+    public static <A> Pipe<A, A> build() {
         return new Pipe<>();
     }
 
-    public static <A> IPipe<A, A> build(StateProvider<Key> stateProvider) {
+    public static <A> Pipe<A, A> build(StateProvider<Key> stateProvider) {
         return new Pipe<>(stateProvider);
     }
 
     protected <NEXT> Pipe<INIT, NEXT> next(StreamSupplier supplier) {
         return new Pipe<>(suppliers.plus(supplier),
-                          stateProvider);
+                stateProvider);
     }
 
     protected <NEXT> IPipeEnd end(StreamSupplier supplier) {
