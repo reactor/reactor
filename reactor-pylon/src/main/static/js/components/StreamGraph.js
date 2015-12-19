@@ -225,9 +225,10 @@ class StreamGraph extends React.Component {
                     //},
                     ////"minVelocity": 0.75,
                     //"barnesHut": {
-                    //    "avoidOverlap": 2,
-                    //    springLength: 300
+                    //    "avoidOverlap": 1,
+                    //    //springLength: 300
                     //},
+                   // enabled: true
                     //"solver": "hierarchicalRepulsion"
                 }
             }, this.graphOptions);
