@@ -142,9 +142,9 @@ class StreamGraph extends React.Component {
 
     resetAllNodesStabilize() {
         if (this.network != null) {
-            var nodes = this.nodes;
-            var edges = this.edges;
-            this.network.setData({nodes: nodes, edges: edges});
+            //var nodes = this.nodes;
+            //var edges = this.edges;
+            this.network.redraw();
         }
 
     }
@@ -194,7 +194,7 @@ class StreamGraph extends React.Component {
         if (network == null) {
             var options = Object.assign({
                 layout: {
-                    randomSeed: 100
+                   // randomSeed: 100
                 }, interaction: {
                     dragNodes: false, hover: true, tooltipDelay: 0
                 }, //clickToUse: true,
@@ -211,7 +211,7 @@ class StreamGraph extends React.Component {
                         }
                     }
                 }, edges: {
-                    smooth: true, font: {
+                    smooth: true, color: { inherit: 'to' }, font: {
                         face: 'Montserrat', color: '#34302d'
                     }, //color: '#34302d',
                     //smooth: {
@@ -225,9 +225,9 @@ class StreamGraph extends React.Component {
                     //},
                     ////"minVelocity": 0.75,
                     //"barnesHut": {
-                    //    "avoidOverlap": 1,
-                    //    //springLength: 300
-                    //},
+                    //    "avoidOverlap": 0.9,
+                    //    centralGravity: 1.2
+                    //}
                    // enabled: true
                     //"solver": "hierarchicalRepulsion"
                 }
@@ -249,7 +249,7 @@ class StreamGraph extends React.Component {
         var n, e;
         for (var node in json.nodes) {
             n = json.nodes[node];
-            if (n.highlight) {
+            if (n.startNode !== undefined && n.startNode) {
                 highlights.push(n.id);
             }
             if (n.logging !== undefined && n.logging) {
@@ -381,7 +381,7 @@ class StreamGraph extends React.Component {
                 //e.value = edgeDetails[e.from].downstreamRequested;
             }
             if (edgeDetails[e.to] !== undefined && edgeDetails[e.to].upstreamRequested !== undefined) {
-                output = (output != null && edgeDetails[e.to].upstreamRequested != output ? output + '\n' : '') +
+                output = (output != null && edgeDetails[e.to].upstreamRequested != output ? output + '\n\n' : '') +
                     edgeDetails[e.to].upstreamRequested;
                 //e.value = edgeDetails[e.to].upstreamRequested;
             }
@@ -429,6 +429,22 @@ class StreamGraph extends React.Component {
                     document.getElementById('selection').innerHTML = 'Selection: ' + params.nodes[0];
                 }
             });
+            network.on("stabilizationProgress", function(params) {
+                var maxWidth = 496;
+                var minWidth = 20;
+                var widthFactor = params.iterations/params.total;
+                var width = Math.max(minWidth,maxWidth * widthFactor);
+
+                document.getElementById('bar').style.width = width + 'px';
+                document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%';
+            });
+            network.once("stabilizationIterationsDone", function() {
+                document.getElementById('text').innerHTML = '100%';
+                document.getElementById('bar').style.width = '496px';
+                document.getElementById('loadingBar').style.opacity = 0;
+                // really clean the dom element
+                setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);
+            });
             this.network.on('hoverNode', (params) => {
                 ReactDOM.render(<pre className="select">
                 {JSON.stringify(nodes.get(params.node), null, 2)}
@@ -436,7 +452,9 @@ class StreamGraph extends React.Component {
             });
 
             network.setData({nodes: nodes, edges: edges});
-            network.selectNodes(highlights);
+            if(highlights.length > 0) {
+                network.selectNodes(highlights);
+            }
         }
 
         // cluster inner
@@ -478,7 +496,17 @@ class StreamGraph extends React.Component {
 
     render() {
         return (
-            <div id="stream-graph">
+            <div>
+                <div id="stream-graph">
+                </div>
+                <div id="loadingBar">
+                    <div class="outerBorder">
+                        <div id="text">0%</div>
+                        <div id="border">
+                            <div id="bar"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }

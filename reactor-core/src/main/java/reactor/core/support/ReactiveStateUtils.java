@@ -892,7 +892,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 				}
 
 				if (isHighlight()) {
-					indent(property("highlight", "true"), res, i, true);
+					indent(property("startNode", "true"), res, i, true);
 				}
 
 				indent(property("upstreamLimit", getUpstreamLimit()), res, i, true);
