@@ -460,7 +460,6 @@ class StreamGraph extends React.Component {
     }
 
     componentWillUnmount() {
-        this.disposable.dispose();
         this.destroy();
     }
 

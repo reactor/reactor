@@ -23,8 +23,6 @@ import org.reactivestreams.Subscription;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.Logger;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.rb.disruptor.Sequence;
-import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.fn.Function;
 
 /**
@@ -46,7 +44,7 @@ public final class LogOperator<IN> implements ReactiveState.Named, ReactiveState
 
 	public static final int ALL = TERMINAL | REQUEST | ON_SUBSCRIBE | ON_NEXT | SUBSCRIBE;
 
-	public enum SignalKind { request, onSubscribe, onNext, onError, onComplete, cancel }
+	public enum SignalKind { request, onSubscribe, onNext, onError, onComplete, cancel, graph }
 
 	private final Logger log;
 	private final Level  level;
@@ -72,9 +70,11 @@ public final class LogOperator<IN> implements ReactiveState.Named, ReactiveState
 	@Override
 	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
 		long newId = uniqueId++;
-		if ((options & SUBSCRIBE) == SUBSCRIBE && log.isInfoEnabled()) {
-			log.trace("subscribe: [" + newId + "] " + subscriber.getClass()
-			                                                    .getSimpleName(), this);
+		if ((options & SUBSCRIBE) == SUBSCRIBE) {
+			if(log.isTraceEnabled()) {
+				log.trace("subscribe: [" + newId + "] " + subscriber.getClass()
+				                                                    .getSimpleName(), this);
+			}
 		}
 		return new LoggerBarrier<>(this, newId, subscriber);
 	}
@@ -149,6 +149,7 @@ public final class LogOperator<IN> implements ReactiveState.Named, ReactiveState
 						SignalKind.onError,
 						throwable,
 						this);
+				log.error(concatId(), throwable);
 			}
 			subscriber.onError(throwable);
 		}

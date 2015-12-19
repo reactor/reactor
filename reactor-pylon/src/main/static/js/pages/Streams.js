@@ -13,17 +13,26 @@ class Streams extends React.Component {
         var graphControls = new Rx.Subject();
         this.graphControls = graphControls;
 
-        this.props.systemStream.flatMap(json => Rx.Observable.from(json.threads).filter(json => json.contextHash !== undefined)).subscribe(json => {
+        this.systemDisposable = this.props.systemStream.flatMap(json => Rx.Observable.from(json.threads).filter(json => json.contextHash !== undefined)).subscribe(json => {
             graphControls.onNext({type: 'context', id: json.contextHash, state: json.state });
         });
 
-        this.props.logStream.filter(json => json.origin !== undefined).subscribe(json => {
+        this.logDisposable = this.props.logStream.filter(json => json.origin !== undefined).subscribe(json => {
             graphControls.onNext({type: 'log', id: json.origin, message: json.message, level: json.level, kind: json.kind });
         });
     }
 
     componentDidUpdate() {
         //this.draw();
+    }
+
+    componentWillUnmount() {
+        if(this.systemDisposable != null){
+            this.systemDisposable.dispose();
+        }
+        if(this.logDisposable != null){
+            this.logDisposable.dispose();
+        }
     }
 
     render() {

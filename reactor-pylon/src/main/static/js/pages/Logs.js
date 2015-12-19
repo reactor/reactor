@@ -34,6 +34,11 @@ class Logs extends React.Component {
             logs : [],
             id: 1
         };
+
+        this.disposable = null;
+    }
+
+    componentDidMount(){
         var thiz = this;
         this.disposable = this.props.logStream.subscribe(json => {
             json.id = thiz.state.id++;
@@ -43,6 +48,12 @@ class Logs extends React.Component {
             thiz.state.logs.unshift(json);
             thiz.setState({logs: thiz.state.logs});
         });
+    }
+
+    componentWillUnmount(){
+        if(this.disposable != null) {
+            this.disposable.dispose();
+        }
     }
 
     render() {
