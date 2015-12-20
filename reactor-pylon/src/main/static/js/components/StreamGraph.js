@@ -495,7 +495,7 @@ class StreamGraph extends React.Component {
 
                         ctx.beginPath();
                         ctx.strokeStyle = '#A6D5F7';
-                        ctx.fillStyle = 'rgba(109, 179, 63, 0.3)';
+                        ctx.fillStyle = 'rgba(109, 179, 63, 0.2)';
                         ctx.moveTo(p1.x, p1.y);
                         ctx.lineTo(p2.x, p2.y);
                         for(var i = 2; i < convexHull.hull.length; i++){
@@ -517,7 +517,7 @@ class StreamGraph extends React.Component {
             </pre>, document.getElementById('selection'));
             });
 
-            if(highlights.length > 0) {
+            if(highlights.length == 1) {
                 network.selectNodes(highlights);
             }
         }
@@ -529,7 +529,7 @@ class StreamGraph extends React.Component {
                     joinCondition: function (childOptions) {
                         return childOptions.origin == i;
                     }, clusterNodeProperties: {
-                        id: 'cidCluster_' + i, label: 'Monitor: ' + nodes.get(i).name, borderWidth: 3, shape: 'database'
+                        id: 'cidCluster_' + i, label: 'Monitor: ' + nodes.get(i).name, borderWidth: 3, shape: 'box'
                     }
                 };
                 if(nodes.get(i).open === undefined) {
