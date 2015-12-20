@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
  *
@@ -20,6 +19,7 @@
 import React         from 'react';
 import {Link}        from 'react-router';
 import vis           from 'vis';
+import Rx           from 'rx-lite';
 
 class ThreadTimeline extends React.Component {
 
@@ -28,16 +28,31 @@ class ThreadTimeline extends React.Component {
         this.threadStates = new vis.DataSet();
         this.threads = new vis.DataSet();
         this.timeline = null;
+        var thiz = this;
+        //remove old state change
+        this.threadDisposable = Rx.Observable.interval(15000).subscribe(i => {
+            var now = new Date().getTime();
+            var toClean = thiz.threadStates.get({
+                filter: d => now - d.end.getTime() > 120000
+            });
+
+            for (var i in toClean) {
+                thiz.threadStates.remove(toClean[i].id);
+                //console.log(toClean[i])
+                //thiz.threadStates.update({
+                //    id: toClean[i].group + "_$finished",
+                //    group: toClean[i].group,
+                //    start: thiz.threads.get(toClean[i].group).first,
+                //    end: new Date(thiz.threadStates.get(thiz.threads.get(toClean[i].lastStateId)).start)
+                //});
+            }
+        });
     }
 
-    draw(){
-        if(this.timeline == null) {
+    draw() {
+        if (this.timeline == null) {
             var options = {
-                stack: false,
-                throttleRedraw: 15,
-                align: "left",
-                showCurrentTime: true,
-                showMajorLabels: false,
+                stack: false, throttleRedraw: 15, align: "left", showCurrentTime: true, showMajorLabels: false,
             };
             var container = document.getElementById('thread-timeline');
             this.timeline = new vis.Timeline(container, null, options);
@@ -45,10 +60,9 @@ class ThreadTimeline extends React.Component {
             this.timeline.setItems(this.threadStates);
         }
 
-
         // create a data set
         var start = new Date((new Date()).getTime() - 30 * 1000);
-        var end   = new Date((new Date()).getTime() + 60 * 1000);
+        var end = new Date((new Date()).getTime() + 60 * 1000);
 
         // timeline.addCustomTime(new Date());
 
@@ -56,7 +70,7 @@ class ThreadTimeline extends React.Component {
         this.timeline.setWindow(start, end, {animation: false});
     }
 
-    static mapStateColor(state){
+    static mapStateColor(state) {
         if (state == 'WAITING') {
             return "waitingThread";
         }
@@ -67,13 +81,13 @@ class ThreadTimeline extends React.Component {
             return "runnableThread";
         }
         else if (state == 'BLOCKED') {
-            return"blockedThread";
+            return "blockedThread";
         }
         else if (state == 'TERMINATED') {
             return "terminatedThread";
         }
         else if (state == 'NEW') {
-            return"newThread";
+            return "newThread";
         }
     }
 
@@ -84,17 +98,18 @@ class ThreadTimeline extends React.Component {
         if (oldState == null) {
             nextThreadState.title = nextThreadState.name;
             nextThreadState.content = nextThreadState.name.substring(0, Math.min(17, nextThreadState.name.length));
-            if(nextThreadState.name.length > 17){
+            if (nextThreadState.name.length > 17) {
                 nextThreadState.content += "...";
             }
 
-            nextThreadState.lastStateId = nextThreadState.id + ":"+ timestamp.getTime();
+            nextThreadState.first = timestamp;
+            nextThreadState.lastStateId = nextThreadState.id + ":" + timestamp.getTime();
 
             lastId = nextThreadState.lastStateId;
             this.threadStates.add({
-                group : nextThreadState.id,
-                id : nextThreadState.lastStateId,
-                start : new Date(timestamp.getTime() - 1000),
+                group: nextThreadState.id,
+                id: nextThreadState.lastStateId,
+                start: new Date(timestamp.getTime() - 1000),
                 end: timestamp, //+1 sec
                 className: ThreadTimeline.mapStateColor(nextThreadState.state)
             });
@@ -102,27 +117,27 @@ class ThreadTimeline extends React.Component {
 
         }
         else if (nextThreadState.state != oldState.state) {
-                var lastThreadItem = this.threadStates.get(oldState.lastStateId);
-                nextThreadState.lastStateId = oldState.id+":"+timestamp.getTime();
-                lastId = nextThreadState.lastStateId;
+            var lastThreadItem = this.threadStates.get(oldState.lastStateId);
+            nextThreadState.lastStateId = oldState.id + ":" + timestamp.getTime();
+            lastId = nextThreadState.lastStateId;
 
-                this.threadStates.add({
-                    group : nextThreadState.id,
-                    id : nextThreadState.lastStateId,
-                    start : new Date(lastThreadItem.end.getTime()),
-                    end: timestamp,
-                    className: ThreadTimeline.mapStateColor(nextThreadState.state)
-                });
-                this.threads.update(nextThreadState);
+            this.threadStates.add({
+                group: nextThreadState.id,
+                id: nextThreadState.lastStateId,
+                start: new Date(lastThreadItem.end.getTime()),
+                end: timestamp,
+                className: ThreadTimeline.mapStateColor(nextThreadState.state)
+            });
+            this.threads.update(nextThreadState);
         }
-        else{
-                if(nextThreadState.state != 'TERMINATED') {
-                    var lastThreadItem = this.threadStates.get(oldState.lastStateId);
-                    lastId = oldState.lastStateId;
-                    lastThreadItem.end = timestamp; //+1 sec
-                    this.threadStates.update(lastThreadItem);
-                }
-                this.threads.update(nextThreadState);
+        else {
+            if (nextThreadState.state != 'TERMINATED') {
+                var lastThreadItem = this.threadStates.get(oldState.lastStateId);
+                lastId = oldState.lastStateId;
+                lastThreadItem.end = timestamp; //+1 sec
+                this.threadStates.update(lastThreadItem);
+            }
+            this.threads.update(nextThreadState);
         }
 
         if (lastId != null && this.timeline != null) {
@@ -134,12 +149,13 @@ class ThreadTimeline extends React.Component {
         this.draw();
         var thiz = this;
         this.disposable = this.props.threadStream
-            .subscribe(
-                thiz.updateThread.bind(this),
-                e => console.log(e),
-                () => console.log("Thread timeline terminated")
-            );
+            .subscribe(thiz.updateThread.bind(this), e => console.log(e),
+                () => console.log("Thread timeline terminated"));
+    }
 
+    componentWillUnmount() {
+        this.threadDisposable.dispose();
+        this.disposable.dispose();
     }
 
     render() {
@@ -150,6 +166,5 @@ class ThreadTimeline extends React.Component {
     }
 
 }
-
 
 export default ThreadTimeline;

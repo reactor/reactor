@@ -1301,7 +1301,7 @@ public class Buffer implements ReactiveState.Recyclable,
 				chars.rewind();
 			}
 			decoder.reset();
-			CoderResult cr = decoder.decode(buffer, chars, true);
+			CoderResult cr = decoder.decode(buffer.duplicate(), chars, true);
 			if (cr.isUnderflow()) {
 				decoder.flush(chars);
 			}

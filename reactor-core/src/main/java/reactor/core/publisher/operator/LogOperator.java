@@ -16,12 +16,12 @@
 
 package reactor.core.publisher.operator;
 
+import java.util.logging.Level;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.support.Logger;
-import reactor.core.support.rb.disruptor.Sequence;
-import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.subscriber.SubscriberBarrier;
+import reactor.core.support.Logger;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Function;
 
@@ -30,8 +30,7 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class LogOperator<IN> implements ReactiveState.Named,
-                                              ReactiveState.Factory,
+public final class LogOperator<IN> implements ReactiveState.Named, ReactiveState.Factory,
                                               Function<Subscriber<? super IN>, Subscriber<? super IN>> {
 
 	public static final int SUBSCRIBE      = 0b010000000;
@@ -41,57 +40,61 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 	public static final int ON_COMPLETE    = 0b000001000;
 	public static final int REQUEST        = 0b000000100;
 	public static final int CANCEL         = 0b000000010;
-	public static final int NUMBER_ON_NEXT = 0b000000001;
 	public static final int TERMINAL       = CANCEL | ON_COMPLETE | ON_ERROR;
 
 	public static final int ALL = TERMINAL | REQUEST | ON_SUBSCRIBE | ON_NEXT | SUBSCRIBE;
 
+	public enum SignalKind { request, onSubscribe, onNext, onError, onComplete, cancel, graph }
+
 	private final Logger log;
+	private final Level  level;
 
 	private final int options;
 
 	private long uniqueId = 1L;
 
-	public LogOperator(final String category, int options) {
+	public LogOperator(final String category, Level level, int options) {
 
 		this.log = category != null && !category.isEmpty() ? Logger.getLogger(category) :
 				Logger.getLogger(LogOperator.class);
 		this.options = options;
+		this.level = level;
 	}
 
 	@Override
 	public String getName() {
-		return "/loggers/"+(log.getName().equalsIgnoreCase(LogOperator.class.getName()) ? "default" : log.getName());
+		return "/loggers/" + (log.getName()
+		                         .equalsIgnoreCase(LogOperator.class.getName()) ? "default" : log.getName());
 	}
 
 	@Override
 	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
 		long newId = uniqueId++;
-		if ((options & SUBSCRIBE) == SUBSCRIBE && log.isInfoEnabled()) {
-			log.trace("subscribe: [{}] {}",
-					newId,
-					subscriber.getClass()
-					          .getSimpleName());
+		if ((options & SUBSCRIBE) == SUBSCRIBE) {
+			if(log.isTraceEnabled()) {
+				log.trace("subscribe: [" + newId + "] " + subscriber.getClass()
+				                                                    .getSimpleName(), this);
+			}
 		}
 		return new LoggerBarrier<>(this, newId, subscriber);
 	}
 
-	private static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> implements Named {
+	private final static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> implements Named, Logging {
 
 		private final int      options;
 		private final Logger   log;
 		private final long     uniqueId;
-		final private Sequence sequence;
+		final private Level    level;
 
 		private final LogOperator parent;
 
 		public LoggerBarrier(LogOperator<IN> parent, long uniqueId, Subscriber<? super IN> subscriber) {
 			super(subscriber);
 			this.parent = parent;
+			this.level = parent.level;
 			this.log = parent.log;
 			this.options = parent.options;
 			this.uniqueId = uniqueId;
-			this.sequence = (options & NUMBER_ON_NEXT) == NUMBER_ON_NEXT ? Sequencer.newSequence(0L) : null;
 		}
 
 		private String concatId() {
@@ -103,23 +106,38 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 			}
 		}
 
+		static private final String LOG_TEMPLATE = "{}({})";
+
+		private void log(Object... args){
+			if(level == Level.FINEST){
+				log.trace(concatId() +" "+LOG_TEMPLATE, args);
+			}
+			else if (level == Level.FINE){
+				log.debug(concatId() +" "+LOG_TEMPLATE, args);
+			}
+			else if (level == Level.INFO) {
+				log.info(concatId() +" "+LOG_TEMPLATE, args);
+			}
+			else if (level == Level.WARNING) {
+				log.warn(concatId() +" "+LOG_TEMPLATE, args);
+			}
+			else if(level == Level.SEVERE) {
+				log.error(concatId() +" "+LOG_TEMPLATE, args);
+			}
+		}
+
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
-			if ((options & ON_SUBSCRIBE) == ON_SUBSCRIBE && log.isInfoEnabled()) {
-				log.info("⇩ " + concatId() + "onSubscribe({})", this.subscription);
+			if ((options & ON_SUBSCRIBE) == ON_SUBSCRIBE && (level != Level.INFO || log.isInfoEnabled())) {
+				log(SignalKind.onSubscribe, this.subscription, this);
 			}
 			subscriber.onSubscribe(this);
 		}
 
 		@Override
 		protected void doNext(IN in) {
-			if(sequence != null){
-				sequence.incrementAndGet();
-			}
-			if ((options & ON_NEXT) == ON_NEXT && log.isInfoEnabled()) {
-				log.info("↓ " + concatId() + "onNext({}){}",
-						in,
-						sequence != null ? " [" + sequence.get() + "]" : "");
+			if ((options & ON_NEXT) == ON_NEXT && (level != Level.INFO || log.isInfoEnabled())) {
+				log(SignalKind.onNext, in, this);
 			}
 			subscriber.onNext(in);
 		}
@@ -127,48 +145,49 @@ public final class LogOperator<IN> implements ReactiveState.Named,
 		@Override
 		protected void doError(Throwable throwable) {
 			if ((options & ON_ERROR) == ON_ERROR && log.isErrorEnabled()) {
-				log.error("↯ " + concatId() + "onError({}){}", throwable,
-						sequence != null ? " [" + sequence.get() + "]" : "");
+				log.error(concatId() + " "+LOG_TEMPLATE,
+						SignalKind.onError,
+						throwable,
+						this);
+				log.error(concatId(), throwable);
 			}
 			subscriber.onError(throwable);
 		}
 
 		@Override
+		protected void doOnSubscriberError(Throwable throwable) {
+			doError(throwable);
+		}
+
+		@Override
 		protected void doComplete() {
-			if ((options & ON_COMPLETE) == ON_COMPLETE && log.isInfoEnabled()) {
-				log.info("↧ " + concatId() + "onComplete(){}",
-						sequence != null ? " [" + sequence.get() + "]" : "");
+			if ((options & ON_COMPLETE) == ON_COMPLETE && (level != Level.INFO || log.isInfoEnabled())) {
+				log(SignalKind.onComplete, "", this);
 			}
 			subscriber.onComplete();
 		}
 
 		@Override
 		protected void doRequest(long n) {
-			if ((options & REQUEST) == REQUEST && log.isInfoEnabled()) {
-				log.info("⇡ " + concatId() + "request({}){}", Long.MAX_VALUE == n ? "unbounded" : n,
-						sequence != null ? " [" + sequence.get() + "]" : "");
+			if ((options & REQUEST) == REQUEST && (level != Level.INFO || log.isInfoEnabled())) {
+				log(SignalKind.request, Long.MAX_VALUE == n ? "unbounded" : n, this);
 			}
 			super.doRequest(n);
 		}
 
 		@Override
 		protected void doCancel() {
-			if ((options & CANCEL) == CANCEL && log.isInfoEnabled()) {
-				log.info("↥ " + concatId() + "cancel(){}",
-						sequence != null ? " [" + sequence.get() + "]" : "");
+			if ((options & CANCEL) == CANCEL && (level != Level.INFO || log.isInfoEnabled())) {
+				log(SignalKind.cancel, "", this);
 			}
 			super.doCancel();
 		}
 
 		@Override
 		public String getName() {
-			return "/loggers/"+(log.getName().equalsIgnoreCase(LogOperator.class.getName()) ? "default" : log.getName())
-					+"/"+uniqueId;
-		}
-
-		@Override
-		public String toString() {
-			return "{logId: " + uniqueId + ", logger: '" + log.getName() + "' }";
+			return "/loggers/" + (log.getName()
+			                         .equalsIgnoreCase(LogOperator.class.getName()) ? "default" :
+					log.getName()) + "/" + uniqueId;
 		}
 	}
 

@@ -579,6 +579,7 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 			implements ReactiveState.Bounded,
 			           ReactiveState.Upstream,
 			           ReactiveState.Downstream,
+			           ReactiveState.Buffering,
 			           ReactiveState.ActiveDownstream,
 			           ReactiveState.ActiveUpstream,
 			           ReactiveState.UpstreamDemand,
@@ -684,6 +685,11 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		@Override
 		public long getCapacity() {
 			return bufferSize;
+		}
+
+		@Override
+		public long pending() {
+			return !done && queue != null ? queue.pending() : -1L;
 		}
 
 		@Override

@@ -693,7 +693,8 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 
 		@Override
 		public long pending() {
-			return pollCursor == null ? -1L : parent.emitBuffer.getCursor() - pollCursor.get();
+			return pollCursor == null || done ? -1L : parent.emitBuffer.getCursor() - pollCursor
+					.get();
 		}
 
 		@Override

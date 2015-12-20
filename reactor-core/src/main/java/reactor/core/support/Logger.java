@@ -82,7 +82,7 @@ public abstract class Logger {
 	 * @param extension
 	 */
 	public static boolean enableExtension(Extension extension) {
-		return !EXTENSION.compareAndSet(LoggerFactory.globalExtension, null, extension);
+		return EXTENSION.compareAndSet(LoggerFactory.globalExtension, null, extension);
 	}
 
 	/**

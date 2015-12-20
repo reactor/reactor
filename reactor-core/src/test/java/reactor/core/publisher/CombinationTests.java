@@ -245,7 +245,7 @@ public class CombinationTests {
 
 		Publishers.log(Publishers.zip(Publishers.just(new SensorData(2L, 12.0f)),
 				Publishers.just(new SensorData(1L, 14.0f)),
-				this::computeMin), "zip3", LogOperator.ON_COMPLETE)
+				this::computeMin), "zip3")
 		          .subscribe(sensorDataProcessor);
 
 		awaitLatch(null, latch);
