@@ -326,7 +326,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	 */
 	public final <T> EventBus notify(@Nonnull final Publisher<? extends T> source, @Nonnull final Function<? super T,
 			Object> keyMapper) {
-		source.subscribe(new EventSubscriber<>(keyMapper));
+		source.subscribe(new EventSubscriber<T>(keyMapper));
 		return this;
 	}
 
