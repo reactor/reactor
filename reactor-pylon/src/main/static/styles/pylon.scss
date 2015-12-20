@@ -283,13 +283,13 @@ h1#logo {
       color: black;
       background: $reactorPrimary;
     }
-    .onError, .SEVERE{
+    .onError, .SEVERE {
       background: indianred;
       color: white;
       border-bottom: 1px dotted red;
     }
 
-    .onComplete{
+    .onComplete {
       background: green;
       border-bottom: 1px dotted green;
       color: white;

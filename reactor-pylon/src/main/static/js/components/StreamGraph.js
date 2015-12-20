@@ -20,6 +20,7 @@ import React         from 'react';
 import {Link}        from 'react-router';
 import vis           from 'vis';
 import ReactDOM      from 'react-dom';
+import { Point, ConvexHull }      from './Hull';
 
 const propTypes = {
     network: React.PropTypes.object, nodes: React.PropTypes.object, edges: React.PropTypes.object
@@ -59,6 +60,10 @@ class StreamGraph extends React.Component {
         this.nodes = new vis.DataSet();
         this.edges = new vis.DataSet();
         this.graphOptions = this.props.graphOptions;
+
+        //this.state = {
+        //    loading: 0
+        //};
 
         if (this.props.controlBus !== undefined) {
             this.props.controlBus.subscribe(this.controlBusHandler.bind(this));
@@ -229,7 +234,7 @@ class StreamGraph extends React.Component {
                     //    centralGravity: 1.2
                     //}
                    // enabled: true
-                    //"solver": "hierarchicalRepulsion"
+                    //"solver": "forceAtlas2Based"
                 }
             }, this.graphOptions);
 
@@ -249,7 +254,7 @@ class StreamGraph extends React.Component {
         var n, e;
         for (var node in json.nodes) {
             n = json.nodes[node];
-            if (n.startNode !== undefined && n.startNode) {
+            if (n.origin == n.id) {
                 highlights.push(n.id);
             }
             if (n.logging !== undefined && n.logging) {
@@ -414,6 +419,13 @@ class StreamGraph extends React.Component {
         if (first) {
             // add event listeners
             this.network.on('selectNode', (params) => {
+                if (params.nodes.length == 1) {
+                    if (network.isCluster(params.nodes[0]) ) {
+                        this.nodes.update({id:params.nodes[0].split("_")[1], open:true});
+                        network.openCluster(params.nodes[0]);
+                        return
+                    }
+                }
                 if (this.props.commands !== undefined) {
                     var n = this.nodes.get(params.nodes[0]);
                     if (n.paused === undefined || !n.paused) {
@@ -429,50 +441,103 @@ class StreamGraph extends React.Component {
                     document.getElementById('selection').innerHTML = 'Selection: ' + params.nodes[0];
                 }
             });
-            network.on("stabilizationProgress", function(params) {
+            /*var thiz = this;
+            network.on("stabilizationProgress", params => {
                 var maxWidth = 496;
                 var minWidth = 20;
                 var widthFactor = params.iterations/params.total;
                 var width = Math.max(minWidth,maxWidth * widthFactor);
-
                 document.getElementById('bar').style.width = width + 'px';
-                document.getElementById('text').innerHTML = Math.round(widthFactor*100) + '%';
+
+                thiz.setState({loading:  Math.round(widthFactor*100)});
             });
-            network.once("stabilizationIterationsDone", function() {
-                document.getElementById('text').innerHTML = '100%';
+
+            network.once("stabilizationIterationsDone", () => {
                 document.getElementById('bar').style.width = '496px';
                 document.getElementById('loadingBar').style.opacity = 0;
+                thiz.setState({loading: 100});
                 // really clean the dom element
-                setTimeout(function () {document.getElementById('loadingBar').style.display = 'none';}, 500);
+                setTimeout(() => {document.getElementById('loadingBar').style.display = 'none';}, 500);
+            });*/
+
+            network.setData({nodes: nodes, edges: edges});
+
+            network.on("beforeDrawing", ctx => {
+                var origins = nodes.distinct('origin');
+                if(origins.length < 2){
+                    return;
+                }
+                origins.forEach( nodeId => {
+                        var node = nodes.get(nodeId);
+                        if(node.open === undefined || !node.open){
+                            return;
+                        }
+
+                        var nodesInCluster = nodes.map(d => d.id, {fields: ['id'], filter: n => n.origin == nodeId});
+
+                        var positions = network.getPositions(nodesInCluster);
+
+                        if(Object.keys(positions).length == 0){
+                            return;
+                        }
+                        var points = [];
+                        nodesInCluster.forEach(id  =>
+                            points.push(new Point(positions[id].x,positions[id].y))
+                        );
+                        var convexHull = new ConvexHull(points);
+                        convexHull.calculate();
+                        var p1 = convexHull.hull[0];
+                        var p2 = convexHull.hull[1];
+
+                        if(p2 == null){
+                            return;
+                        }
+
+                        ctx.beginPath();
+                        ctx.strokeStyle = '#A6D5F7';
+                        ctx.fillStyle = 'rgba(109, 179, 63, 0.3)';
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        for(var i = 2; i < convexHull.hull.length; i++){
+                            p1 = convexHull.hull[i-1];
+                            p2 = convexHull.hull[i];
+
+                            ctx.lineTo(p2.x, p2.y);
+                        }
+                        ctx.stroke();
+                        ctx.fill();
+                        ctx.closePath();
+                    });
             });
+
+
             this.network.on('hoverNode', (params) => {
                 ReactDOM.render(<pre className="select">
                 {JSON.stringify(nodes.get(params.node), null, 2)}
             </pre>, document.getElementById('selection'));
             });
 
-            network.setData({nodes: nodes, edges: edges});
             if(highlights.length > 0) {
                 network.selectNodes(highlights);
             }
         }
 
-        // cluster inner
-        //var clusterOptionsByData = {
-        //    joinCondition:function(childOptions) {
-        //        return childOptions.inner;
-        //    },
-        //    processProperties: function(clusterOptions, childNodes) {
-        //        clusterOptions.label = "[" + childNodes.length + "]";
-        //        return clusterOptions;
-        //    },
-        //    clusterNodeProperties: {borderWidth:3, shape:'box', font:{size:30}}
-        //}
-        //network.cluster(clusterOptionsByData);
-        //network.clusterByHubsize(undefined, clusterOptionsByData);
 
-        //font: {size:15, color:'red', face:'courier', strokeWidth:3, strokeColor:'#ffffff'}
-        // create a network
+        if(highlights.length > 1) {
+            highlights.forEach(i => {
+                var clusterOptionsByData = {
+                    joinCondition: function (childOptions) {
+                        return childOptions.origin == i;
+                    }, clusterNodeProperties: {
+                        id: 'cidCluster_' + i, label: 'Monitor: ' + nodes.get(i).name, borderWidth: 3, shape: 'database'
+                    }
+                };
+                if(nodes.get(i).open === undefined) {
+                    nodes.update({id: i, open: false});
+                    network.cluster(clusterOptionsByData);
+                }
+            });
+        }
 
         return false;
     }
@@ -496,18 +561,8 @@ class StreamGraph extends React.Component {
 
     render() {
         return (
-            <div>
                 <div id="stream-graph">
                 </div>
-                <div id="loadingBar">
-                    <div class="outerBorder">
-                        <div id="text">0%</div>
-                        <div id="border">
-                            <div id="bar"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         );
     }
 

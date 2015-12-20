@@ -68,7 +68,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 		}
 
 		Graph graph = new Graph(false, trace);
-		Node origin = graph.expandReactiveSate(o, true);
+		Node origin = graph.expandReactiveSate(o, null);
 		graph.addUpstream(origin, null);
 		graph.addDownstream(origin, null);
 
@@ -97,7 +97,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 		}
 
 		Graph graph = new Graph(true, trace);
-		Node root = graph.expandReactiveSate(o);
+		Node root = graph.expandReactiveSate(o, null);
 		graph.addDownstream(root, null);
 
 		return graph;
@@ -131,7 +131,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 		if (o == null) {
 			return null;
 		}
-		Node n = new Node(getName(o), getIdOrDefault(o), o, true);
+		Node n = new Node(getName(o), getIdOrDefault(o), o, null);
 		if (prettyPrint) {
 			return n.toPrettyString();
 		}
@@ -524,7 +524,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 			if (hasUpstream(target.object)) {
 				Object in = ((Upstream) target.object).upstream();
 				if (!virtualRef(in, target)) {
-					Node upstream = expandReactiveSate(in, child == null);
+					Node upstream = expandReactiveSate(in, target.rootId);
 					if (child != null && (trace || !isTraceOnly(upstream.object))) {
 						addEdge(upstream.createEdgeTo(child));
 					}
@@ -550,7 +550,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 				if (virtualRef(in, target)) {
 					continue;
 				}
-				source = expandReactiveSate(in);
+				source = expandReactiveSate(in, target != null ? target.rootId : null);
 				if (target != null && source != null) {
 					addEdge(source.createEdgeTo(target, Edge.Type.inner));
 				}
@@ -577,7 +577,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 			if (hasDownstream(origin.object)) {
 				Object out = ((Downstream) origin.object).downstream();
 				if (!virtualRef(out, origin)) {
-					Node downstream = expandReactiveSate(out, root == null);
+					Node downstream = expandReactiveSate(out, origin.rootId);
 					if (root != null && (trace || !isTraceOnly(downstream.object))) {
 						addEdge(root.createEdgeTo(downstream));
 					}
@@ -604,7 +604,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 				if (virtualRef(out, source)) {
 					continue;
 				}
-				downstream = expandReactiveSate(out);
+				downstream = expandReactiveSate(out, source != null ? source.rootId : null);
 				if (source != null && downstream != null) {
 					addEdge(source.createEdgeTo(downstream, Edge.Type.inner));
 				}
@@ -612,11 +612,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 			}
 		}
 
-		private Node expandReactiveSate(Object o) {
-			return expandReactiveSate(o, false);
-		}
-
-		private Node expandReactiveSate(Object o, boolean highlight) {
+		private Node expandReactiveSate(Object o, String rootid) {
 			if (o == null) {
 				return null;
 			}
@@ -624,14 +620,14 @@ public final class ReactiveStateUtils implements ReactiveState {
 			String name = getName(o);
 			String id = getIdOrDefault(o);
 
-			Node r = new Node(name, id, o, highlight);
+			Node r = new Node(name, id, o, rootid);
 
 			if ((trace || !isTraceOnly(o)) && hasFeedbackLoop(o)) {
 				FeedbackLoop loop = (FeedbackLoop) o;
 
 				Object target = loop.delegateInput();
 				if (target != null && target != loop && !virtualRef(target, r)) {
-					Node input = expandReactiveSate(target);
+					Node input = expandReactiveSate(target, r.rootId);
 					addEdge(r.createEdgeTo(input, Edge.Type.feedbackLoop));
 					addDownstream(input, null);
 				}
@@ -639,7 +635,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 				target = loop.delegateOutput();
 
 				if (target != null && target != loop && !virtualRef(target, r)) {
-					Node output = expandReactiveSate(target);
+					Node output = expandReactiveSate(target, r.rootId);
 					addEdge(output.createEdgeTo(r, Edge.Type.feedbackLoop));
 					addUpstream(output, null);
 				}
@@ -654,7 +650,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		private boolean virtualRef(Object o, Node ancestor) {
 			if (o != null && ancestor != null && String.class.isAssignableFrom(o.getClass())) {
-				Node virtualNode = new Node(o.toString(), o.toString(), null, false);
+				Node virtualNode = new Node(o.toString(), o.toString(), null, ancestor.rootId);
 				Edge edge = ancestor.createEdgeTo(o.toString(), Edge.Type.reference);
 				virtualNode.addEdgeRef(edge);
 				nodes.put(virtualNode.id, virtualNode);
@@ -698,11 +694,10 @@ public final class ReactiveStateUtils implements ReactiveState {
 		private final           boolean unique;
 		private final           boolean factory;
 		private final           boolean inner;
-		private final           boolean highlight;
 		private final           boolean logging;
+		private final           String rootId;
 
-		protected Node(String name, String id, Object o, boolean highlight) {
-			this.highlight = highlight;
+		protected Node(String name, String id, Object o, String rootId) {
 			this.object = o;
 			this.id = id;
 			this.name = name;
@@ -710,6 +705,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 			this.inner = isContained(o);
 			this.group = ReactiveStateUtils.getGroup(o);
 			this.unique = isUnique(o);
+			this.rootId = rootId == null ? id : rootId;
 			this.logging = ReactiveStateUtils.isLogging(o);
 		}
 
@@ -736,10 +732,6 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 		public final String getName() {
 			return name;
-		}
-
-		public final boolean isHighlight() {
-			return highlight;
 		}
 
 		public final String getGroup() {
@@ -862,6 +854,7 @@ public final class ReactiveStateUtils implements ReactiveState {
 			indent("{", res, indent != -1 ? 0 : -1, false);
 
 			indent(property("id", getId()), res, i, true);
+			indent(property("origin", rootId), res, i, true);
 			if (isDefinedId()) {
 				indent(property("definedId", "true"), res, i, true);
 			}
@@ -889,10 +882,6 @@ public final class ReactiveStateUtils implements ReactiveState {
 
 				if (isLogging()) {
 					indent(property("logging", "true"), res, i, true);
-				}
-
-				if (isHighlight()) {
-					indent(property("startNode", "true"), res, i, true);
 				}
 
 				indent(property("upstreamLimit", getUpstreamLimit()), res, i, true);
