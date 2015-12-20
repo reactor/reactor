@@ -498,7 +498,6 @@ class StreamGraph extends React.Component {
                     if (p2 == null) {
                         return;
                     }
-                    console.log(ratio)
 
                     ctx.beginPath();
                     ctx.strokeStyle = '#A6D5F7';
