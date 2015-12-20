@@ -29,7 +29,8 @@ var percentColors = [{pct: 0.0, color: {r: 0xff, g: 0x66, b: 0x66}}, {pct: 0.5, 
     {pct: 1.0, color: {r: 0x6d, g: 0xb3, b: 0x3f}}];
 
 const graphUtils = {
-    getColorForPercentage(pct) {
+    getColorForPercentage(pct, opacity) {
+        opacity = opacity === undefined ? 1 : opacity;
         for (var i = 1; i < percentColors.length - 1; i++) {
             if (pct < percentColors[i].pct) {
                 break;
@@ -46,7 +47,7 @@ const graphUtils = {
             g: Math.floor(lower.color.g * pctLower + upper.color.g * pctUpper),
             b: Math.floor(lower.color.b * pctLower + upper.color.b * pctUpper)
         };
-        return 'rgb(' + [color.r, color.g, color.b].join(',') + ')';
+        return 'rgba(' + [color.r, color.g, color.b].join(',') + ', ' + opacity + ')';
     }
 };
 
@@ -106,9 +107,9 @@ class StreamGraph extends React.Component {
                 var up = {
                     id: n.id, label: event.message + '\n' + logs.join('\n')
                 };
-                if(event.level == 'SEVERE'){
-                    up.color = { border: 'indianred', background  : 'indianred' };
-                    up.font = { color : 'white'};
+                if (event.level == 'SEVERE') {
+                    up.color = {border: 'indianred', background: 'indianred'};
+                    up.font = {color: 'white'};
                     //explosion mode
                     //
                     //up.mass = 40;
@@ -121,13 +122,13 @@ class StreamGraph extends React.Component {
                     //    this.edges.remove(edges[i].id);
                     //}
                 }
-                else if(event.kind == 'request'){
-                    up.color = { background  : '#6db33f' };
-                    up.font = { color : 'white'};
+                else if (event.kind == 'request') {
+                    up.color = {background: '#6db33f'};
+                    up.font = {color: 'white'};
                 }
-                else{
-                    up.color = { background  : 'black' };
-                    up.font = { color : 'green'};
+                else {
+                    up.color = {background: 'black'};
+                    up.font = {color: 'green'};
                 }
                 this.nodes.update(up);
             }
@@ -199,7 +200,7 @@ class StreamGraph extends React.Component {
         if (network == null) {
             var options = Object.assign({
                 layout: {
-                   // randomSeed: 100
+                    // randomSeed: 100
                 }, interaction: {
                     dragNodes: false, hover: true, tooltipDelay: 0
                 }, //clickToUse: true,
@@ -216,7 +217,7 @@ class StreamGraph extends React.Component {
                         }
                     }
                 }, edges: {
-                    smooth: true, color: { inherit: 'to' }, font: {
+                    smooth: true, color: {inherit: 'to'}, font: {
                         face: 'Montserrat', color: '#34302d'
                     }, //color: '#34302d',
                     //smooth: {
@@ -233,7 +234,7 @@ class StreamGraph extends React.Component {
                     //    "avoidOverlap": 0.9,
                     //    centralGravity: 1.2
                     //}
-                   // enabled: true
+                    // enabled: true
                     //"solver": "forceAtlas2Based"
                 }
             }, this.graphOptions);
@@ -263,11 +264,10 @@ class StreamGraph extends React.Component {
                 }
                 n.shape = 'box';
                 n.color = {
-                    border: 'gray',
-                    background: 'black'
+                    border: 'gray', background: 'black'
                 };
                 n.font = {
-                    color : 'green'
+                    color: 'green'
                 };
                 n.mass = 3;
                 n.label = n.name + '\n\n';
@@ -420,8 +420,8 @@ class StreamGraph extends React.Component {
             // add event listeners
             this.network.on('selectNode', (params) => {
                 if (params.nodes.length == 1) {
-                    if (network.isCluster(params.nodes[0]) ) {
-                        this.nodes.update({id:params.nodes[0].split("_")[1], open:true});
+                    if (network.isCluster(params.nodes[0])) {
+                        this.nodes.update({id: params.nodes[0].split("_")[1], open: true});
                         network.openCluster(params.nodes[0]);
                         return
                     }
@@ -442,74 +442,80 @@ class StreamGraph extends React.Component {
                 }
             });
             /*var thiz = this;
-            network.on("stabilizationProgress", params => {
-                var maxWidth = 496;
-                var minWidth = 20;
-                var widthFactor = params.iterations/params.total;
-                var width = Math.max(minWidth,maxWidth * widthFactor);
-                document.getElementById('bar').style.width = width + 'px';
+             network.on("stabilizationProgress", params => {
+             var maxWidth = 496;
+             var minWidth = 20;
+             var widthFactor = params.iterations/params.total;
+             var width = Math.max(minWidth,maxWidth * widthFactor);
+             document.getElementById('bar').style.width = width + 'px';
 
-                thiz.setState({loading:  Math.round(widthFactor*100)});
-            });
+             thiz.setState({loading:  Math.round(widthFactor*100)});
+             });
 
-            network.once("stabilizationIterationsDone", () => {
-                document.getElementById('bar').style.width = '496px';
-                document.getElementById('loadingBar').style.opacity = 0;
-                thiz.setState({loading: 100});
-                // really clean the dom element
-                setTimeout(() => {document.getElementById('loadingBar').style.display = 'none';}, 500);
-            });*/
+             network.once("stabilizationIterationsDone", () => {
+             document.getElementById('bar').style.width = '496px';
+             document.getElementById('loadingBar').style.opacity = 0;
+             thiz.setState({loading: 100});
+             // really clean the dom element
+             setTimeout(() => {document.getElementById('loadingBar').style.display = 'none';}, 500);
+             });*/
 
             network.setData({nodes: nodes, edges: edges});
 
             network.on("beforeDrawing", ctx => {
                 var origins = nodes.distinct('origin');
-                if(origins.length < 2){
+                if (origins.length < 2) {
                     return;
                 }
-                origins.forEach( nodeId => {
-                        var node = nodes.get(nodeId);
-                        if(node.open === undefined || !node.open){
-                            return;
+                origins.forEach(nodeId => {
+                    var node = nodes.get(nodeId);
+                    if (node.open === undefined || !node.open) {
+                        return;
+                    }
+
+                    var nodesInCluster = nodes.map(d => d.id, {fields: ['id'], filter: n => n.origin == nodeId});
+
+                    var positions = network.getPositions(nodesInCluster);
+
+                    if (Object.keys(positions).length == 0) {
+                        return;
+                    }
+                    var points = [];
+                    var ratio = 1;
+
+                    nodesInCluster.forEach(id  => {
+                        var child = nodes.get(id);
+                        if(child.buffered !== undefined && child.buffered != -1 && child.capacity != -1 && child.capacity !== 'unbounded') {
+                            ratio = (ratio + (child.buffered / child.capacity)) / 2;
                         }
-
-                        var nodesInCluster = nodes.map(d => d.id, {fields: ['id'], filter: n => n.origin == nodeId});
-
-                        var positions = network.getPositions(nodesInCluster);
-
-                        if(Object.keys(positions).length == 0){
-                            return;
-                        }
-                        var points = [];
-                        nodesInCluster.forEach(id  =>
-                            points.push(new Point(positions[id].x,positions[id].y))
-                        );
-                        var convexHull = new ConvexHull(points);
-                        convexHull.calculate();
-                        var p1 = convexHull.hull[0];
-                        var p2 = convexHull.hull[1];
-
-                        if(p2 == null){
-                            return;
-                        }
-
-                        ctx.beginPath();
-                        ctx.strokeStyle = '#A6D5F7';
-                        ctx.fillStyle = 'rgba(109, 179, 63, 0.2)';
-                        ctx.moveTo(p1.x, p1.y);
-                        ctx.lineTo(p2.x, p2.y);
-                        for(var i = 2; i < convexHull.hull.length; i++){
-                            p1 = convexHull.hull[i-1];
-                            p2 = convexHull.hull[i];
-
-                            ctx.lineTo(p2.x, p2.y);
-                        }
-                        ctx.stroke();
-                        ctx.fill();
-                        ctx.closePath();
+                        points.push(new Point(positions[id].x, positions[id].y));
                     });
-            });
+                    var convexHull = new ConvexHull(points);
+                    convexHull.calculate();
+                    var p1 = convexHull.hull[0];
+                    var p2 = convexHull.hull[1];
 
+                    if (p2 == null) {
+                        return;
+                    }
+                    console.log(ratio)
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#A6D5F7';
+                    ctx.fillStyle = graphUtils.getColorForPercentage(1 - ratio, 0.3);
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    for (var i = 2; i < convexHull.hull.length; i++) {
+                        p1 = convexHull.hull[i - 1];
+                        p2 = convexHull.hull[i];
+
+                        ctx.lineTo(p2.x, p2.y);
+                    }
+                    ctx.stroke();
+                    ctx.fill();
+                    ctx.closePath();
+                });
+            });
 
             this.network.on('hoverNode', (params) => {
                 ReactDOM.render(<pre className="select">
@@ -517,23 +523,23 @@ class StreamGraph extends React.Component {
             </pre>, document.getElementById('selection'));
             });
 
-            if(highlights.length == 1) {
+            if (highlights.length == 1) {
                 network.selectNodes(highlights);
             }
         }
 
-
-        if(highlights.length > 1) {
-            highlights.forEach(i => {
+        if (highlights.length > 1) {
+            highlights.forEach(n => {
                 var clusterOptionsByData = {
                     joinCondition: function (childOptions) {
-                        return childOptions.origin == i;
+                        return childOptions.origin == n;
                     }, clusterNodeProperties: {
-                        id: 'cidCluster_' + i, label: 'Monitor: ' + nodes.get(i).name, borderWidth: 3, shape: 'box'
+                        id: 'cidCluster_' + n, label: 'Monitor: ' + nodes.get(n).name, borderWidth: 3, shape: 'box'
                     }
                 };
-                if(nodes.get(i).open === undefined) {
-                    nodes.update({id: i, open: false});
+
+                if (nodes.get(n).open === undefined) {
+                    nodes.update({id: n, open: false});
                     network.cluster(clusterOptionsByData);
                 }
             });
@@ -561,8 +567,8 @@ class StreamGraph extends React.Component {
 
     render() {
         return (
-                <div id="stream-graph">
-                </div>
+            <div id="stream-graph">
+            </div>
         );
     }
 
