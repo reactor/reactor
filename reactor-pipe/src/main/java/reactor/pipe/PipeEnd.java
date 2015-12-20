@@ -1,6 +1,7 @@
 package reactor.pipe;
 
 import org.pcollections.PVector;
+import reactor.bus.AbstractBus;
 import reactor.bus.Bus;
 import reactor.bus.selector.PredicateSelector;
 import reactor.bus.selector.Selector;
@@ -17,6 +18,7 @@ import java.util.Map;
  * FinalizedMatchedPipe represents a stream builder that can take values
  * of `INIT` and transform them via the pipeline to `FINAL` type.
  */
+@SuppressWarnings("unchecked")
 public class PipeEnd<INIT, FINAL> implements IPipe.IPipeEnd<INIT, FINAL> {
 
     private final PVector<StreamSupplier> suppliers;
@@ -27,7 +29,7 @@ public class PipeEnd<INIT, FINAL> implements IPipe.IPipeEnd<INIT, FINAL> {
 
 
     @Override
-    public void subscribe(Key key, Bus<Key, Object> firehose) {
+    public void subscribe(Key key, AbstractBus<Key, Object> firehose) {
         Key currentKey = key;
         for (StreamSupplier supplier : suppliers) {
             Key nextKey = currentKey.derive();
@@ -37,7 +39,7 @@ public class PipeEnd<INIT, FINAL> implements IPipe.IPipeEnd<INIT, FINAL> {
     }
 
     @Override
-    public void subscribe(Selector<Key> matcher, Bus<Key, Object> firehose) {
+    public void subscribe(Selector<Key> matcher, AbstractBus<Key, Object> firehose) {
         firehose.on(matcher,
                     new BiConsumer<Key, Object>() {
                         @Override
@@ -50,7 +52,7 @@ public class PipeEnd<INIT, FINAL> implements IPipe.IPipeEnd<INIT, FINAL> {
     }
 
     @Override
-    public void subscribe(Predicate<Key> matcher, Bus<Key, Object> firehose) {
+    public void subscribe(Predicate<Key> matcher, AbstractBus<Key, Object> firehose) {
         firehose.on(new PredicateSelector<Key>(matcher),
                     new BiConsumer<Key, Object>() {
                         @Override

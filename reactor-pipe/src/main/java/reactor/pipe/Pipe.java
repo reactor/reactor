@@ -2,9 +2,13 @@ package reactor.pipe;
 
 import org.pcollections.PVector;
 import org.pcollections.TreePVector;
+import reactor.Timers;
 import reactor.bus.Bus;
+import reactor.core.support.ReactiveState;
+import reactor.core.timer.Timer;
 import reactor.fn.*;
 import reactor.pipe.concurrent.Atom;
+import reactor.pipe.concurrent.LazyVar;
 import reactor.pipe.key.Key;
 import reactor.pipe.operation.PartitionOperation;
 import reactor.pipe.operation.SlidingWindowOperation;
@@ -13,12 +17,15 @@ import reactor.pipe.state.StateProvider;
 import reactor.pipe.stream.StreamSupplier;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 @SuppressWarnings("unchecked")
 public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
 
     private final StateProvider<Key> stateProvider;
     private final PVector<StreamSupplier> suppliers;
+    private final LazyVar<Timer> timer;
 
     protected Pipe() {
         this(TreePVector.empty(), new DefaultStateProvider<>());
@@ -32,6 +39,12 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
             StateProvider<Key> stateProvider) {
         this.suppliers = suppliers;
         this.stateProvider = stateProvider;
+        this.timer = new LazyVar<>(new Supplier<Timer>() {
+            @Override
+            public Timer get() {
+                return Timers.create(10);
+            }
+        });
     }
 
     public <NEXT> Pipe<INIT, NEXT> map(Function<CURRENT, NEXT> mapper) {
@@ -94,59 +107,58 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
         });
     }
 
-    //  @Override
-    //  public IPipe<INIT, CURRENT> debounce(long period, TimeUnit timeUnit) {
-    //    return next(new StreamSupplier<Key, CURRENT>() {
-    //      @Override
-    //      public BiConsumer<Key, CURRENT> get(Key src, Key dst, Bus<Key, Object> firehose) {
-    //        final Atom<CURRENT> debounced = stateProvider.makeAtom(src, null);
-    //        final AtomicReference<Pausable> pausable = new AtomicReference<>(null);
-    //
-    //        return (key, value) -> {
-    //          debounced.update(current -> value);
-    //
-    //          if (pausable.get() == null) {
-    //            pausable.set(
-    //              firehose.getTimer().submit(new Consumer<Long>() {
-    //                @Override
-    //                public void accept(Long v) {
-    //                  firehose.notify(dst, debounced.deref());
-    //                  pausable.set(null);
-    //                }
-    //              }, period, timeUnit));
-    //          }
-    //        };
-    //      }
-    //    });
-    //  }
+    @Override
+    public Pipe<INIT, CURRENT> debounce(long period, TimeUnit timeUnit) {
+        return next(new StreamSupplier<Key, CURRENT>() {
+            @Override
+            public BiConsumer<Key, CURRENT> get(Key src, Key dst, Bus<Key, Object> firehose) {
+                final Atom<CURRENT> debounced = stateProvider.makeAtom(src, null);
+                final AtomicReference<ReactiveState.Pausable> pausable = new AtomicReference<>(null);
 
-    //  @Override
-    //  public IPipe<INIT, CURRENT> throttle(long period, TimeUnit timeUnit) {
-    //    return next(new StreamSupplier<Key, CURRENT>() {
-    //      @Override
-    //      public BiConsumer<Key, CURRENT> get(Key src, Key dst, Bus<Key, Object> firehose) {
-    //        final Atom<CURRENT> debounced = stateProvider.makeAtom(src, null);
-    //        final AtomicReference<Pausable> pausable = new AtomicReference<>(null);
-    //
-    //        return (key, value) -> {
-    //          Pausable oldScheduled = pausable.getAndUpdate((p) -> null);
-    //          if (oldScheduled != null) {
-    //            oldScheduled.cancel();
-    //          }
-    //
-    //          debounced.update(current -> value);
-    //
-    //          pausable.set(firehose.getTimer().submit(new Consumer<Long>() {
-    //            @Override
-    //            public void accept(Long v) {
-    //              firehose.notify(dst, debounced.deref());
-    //              pausable.set(null);
-    //            }
-    //          }, period, timeUnit));
-    //        };
-    //      }
-    //    });
-    //  }
+                return (key, value) -> {
+                    debounced.update(current -> value);
+
+                    if (pausable.get() == null) {
+                        pausable.set(timer.get().submit(new Consumer<Long>() {
+                            @Override
+                            public void accept(Long v) {
+                                firehose.notify(dst, debounced.deref());
+                                pausable.set(null);
+                            }
+                        }, period, timeUnit));
+                    }
+                };
+            }
+        });
+    }
+
+    @Override
+    public Pipe<INIT, CURRENT> throttle(long period, TimeUnit timeUnit) {
+        return next(new StreamSupplier<Key, CURRENT>() {
+            @Override
+            public BiConsumer<Key, CURRENT> get(Key src, Key dst, Bus<Key, Object> firehose) {
+                final Atom<CURRENT> debounced = stateProvider.makeAtom(src, null);
+                final AtomicReference<ReactiveState.Pausable> pausable = new AtomicReference<>(null);
+
+                return (key, value) -> {
+                    ReactiveState.Pausable oldScheduled = pausable.getAndUpdate((p) -> null);
+                    if (oldScheduled != null) {
+                        oldScheduled.cancel();
+                    }
+
+                    debounced.update(current -> value);
+
+                    pausable.set(timer.get().submit(new Consumer<Long>() {
+                        @Override
+                        public void accept(Long v) {
+                            firehose.notify(dst, debounced.deref());
+                            pausable.set(null);
+                        }
+                    }, period, timeUnit));
+                };
+            }
+        });
+    }
 
     public Pipe<INIT, CURRENT> filter(Predicate<CURRENT> predicate) {
         return next(new StreamSupplier<Key, CURRENT>() {

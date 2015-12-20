@@ -21,38 +21,35 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
 
     protected abstract <T, O> void subscribeAndDispatch(IPipe.IPipeEnd<T, O> pipe, List<T> value);
 
-    protected abstract <T, O> void subscribeAndDispatch(IPipe.IPipeEnd<T, O> pipe, T value);
-
-
     @Test
     public void testSmoke() throws InterruptedException { // Tests backpressure and in-thread dispatches
         RingBufferWorkProcessor<Runnable> processor = RingBufferWorkProcessor.<Runnable>create(
-            Executors.newFixedThreadPool(4),
-            256);
+                Executors.newFixedThreadPool(4),
+                256);
         RawBus<Key, Object> bus = new RawBus<Key, Object>(new ConcurrentRegistry<>(),
-                                                               processor,
-                                                               4,
-                                                               new NoOpRouter<>(),
-                                                               null,
-                                                               null);
+                processor,
+                4,
+                new NoOpRouter<>(),
+                null,
+                null);
 
 
         int iterations = 2000;
         CountDownLatch latch = new CountDownLatch(iterations);
 
         Pipe.<Integer>build()
-            .map((i) -> i + 1)
-            .map(i -> {
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                return i * 2;
-            })
-            .consume((i_) -> {
-                latch.countDown();
-            }).subscribe(Key.wrap("source", "first"), bus);
+                .map((i) -> i + 1)
+                .map(i -> {
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return i * 2;
+                })
+                .consume((i_) -> {
+                    latch.countDown();
+                }).subscribe(Key.wrap("source", "first"), bus);
 
         for (int i = 0; i < iterations; i++) {
             bus.notify(Key.wrap("source", "first"), i);

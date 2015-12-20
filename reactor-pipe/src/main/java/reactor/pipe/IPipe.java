@@ -1,5 +1,6 @@
 package reactor.pipe;
 
+import reactor.bus.AbstractBus;
 import reactor.bus.Bus;
 import reactor.bus.selector.Selector;
 import reactor.fn.*;
@@ -7,6 +8,7 @@ import reactor.pipe.concurrent.Atom;
 import reactor.pipe.key.Key;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Pipe represents a streaming transformation from `INIT` type,
@@ -24,9 +26,9 @@ public interface IPipe<COVARIANT extends IPipe, INIT, CURRENT> {
     <ST> IPipe<COVARIANT, INIT, ST> scan(BiFunction<ST, CURRENT, ST> mapper,
                               ST init);
 
-    //  IPipe<INIT, CURRENT> debounce(long period, TimeUnit timeUnit);
-    //
-    //  IPipe<INIT, CURRENT> throttle(long period, TimeUnit timeUnit);
+    IPipe<COVARIANT, INIT, CURRENT> debounce(long period, TimeUnit timeUnit);
+
+    IPipe<COVARIANT, INIT, CURRENT> throttle(long period, TimeUnit timeUnit);
 
     IPipe<COVARIANT, INIT, CURRENT> filter(Predicate<CURRENT> predicate);
 
@@ -41,10 +43,10 @@ public interface IPipe<COVARIANT extends IPipe, INIT, CURRENT> {
     IPipeEnd<INIT, CURRENT> consume(Consumer<CURRENT> consumer);
 
     interface IPipeEnd<INIT, CURRENT> {
-        void subscribe(Key key, Bus<Key, Object> firehose);
+        void subscribe(Key key, AbstractBus<Key, Object> firehose);
 
-        void subscribe(Selector<Key> matcher, Bus<Key, Object> firehose);
+        void subscribe(Selector<Key> matcher, AbstractBus<Key, Object> firehose);
 
-        void subscribe(Predicate<Key> matcher, Bus<Key, Object> firehose);
+        void subscribe(Predicate<Key> matcher, AbstractBus<Key, Object> firehose);
     }
 }

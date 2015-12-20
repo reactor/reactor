@@ -19,20 +19,20 @@ import java.util.List;
 public class RawBus<K, V> extends AbstractBus<K, V> {
 
     private final Processor<Runnable, Runnable> processor;
-    private final ThreadLocal<Boolean>          inDispatcherContext;
-    private final FirehoseSubscription          firehoseSubscription;
+    private final ThreadLocal<Boolean> inDispatcherContext;
+    private final FirehoseSubscription firehoseSubscription;
 
     public RawBus(@Nonnull final Registry<K, BiConsumer<K, ? extends V>> consumerRegistry,
-                  @Nullable Processor<Runnable, Runnable> processor,
-                  int concurrency,
-                  @Nullable final Router router,
-                  @Nullable Consumer<Throwable> processorErrorHandler,
-                  @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+            @Nullable Processor<Runnable, Runnable> processor,
+            int concurrency,
+            @Nullable final Router router,
+            @Nullable Consumer<Throwable> processorErrorHandler,
+            @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
         super(consumerRegistry,
-              concurrency,
-              router,
-              processorErrorHandler,
-              uncaughtErrorHandler);
+                concurrency,
+                router,
+                processorErrorHandler,
+                uncaughtErrorHandler);
         this.processor = processor;
         this.inDispatcherContext = new ThreadLocal<>();
         this.firehoseSubscription = new FirehoseSubscription();
@@ -45,7 +45,7 @@ public class RawBus<K, V> extends AbstractBus<K, V> {
                                                                   runnable.run();
                                                               }
                                                           },
-                                                          uncaughtErrorHandler));
+                        uncaughtErrorHandler));
             }
             processor.onSubscribe(firehoseSubscription);
         }
@@ -58,7 +58,7 @@ public class RawBus<K, V> extends AbstractBus<K, V> {
                !this.firehoseSubscription.maybeClaimSlot()) {
             try {
                 //LockSupport.parkNanos(10000);
-                Thread.sleep(10); // TODO: Obviously this is stupid use parknanos instead.
+                Thread.sleep(10); // TODO: Migrate to parknanos
             } catch (InterruptedException e) {
                 errorHandlerOrThrow(e);
             }
@@ -86,20 +86,20 @@ public class RawBus<K, V> extends AbstractBus<K, V> {
         }
     }
 
+    @SuppressWarnings("unchecked")
     protected void route(K key, V value) {
-        {
-            List<Registration<K, ? extends BiConsumer<K, ? extends V>>> registrations = getConsumerRegistry().select(
-                key);
-            if (registrations.isEmpty()) {
-                return;
-            } else if (registrations.get(0) instanceof DelayedRegistration) {
-                getRouter().route(key, value, registrations, null, getProcessorErrorHandler());
-                getRouter().route(key, value, getConsumerRegistry().select(key), null, getProcessorErrorHandler());
-            } else {
-                getRouter().route(key, value, registrations, null, getProcessorErrorHandler());
-            }
+        List<Registration<K, ? extends BiConsumer<K, ? extends V>>> registrations = getConsumerRegistry().select(key);
+
+        if (registrations.isEmpty()) {
+            return;
         }
 
+        if (registrations.get(0) instanceof DelayedRegistration) {
+            getRouter().route(key, value, registrations, null, getProcessorErrorHandler());
+            getRouter().route(key, value, getConsumerRegistry().select(key), null, getProcessorErrorHandler());
+        } else {
+            getRouter().route(key, value, registrations, null, getProcessorErrorHandler());
+        }
     }
 
 }

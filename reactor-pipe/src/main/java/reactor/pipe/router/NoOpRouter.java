@@ -9,6 +9,7 @@ import java.util.List;
 
 public class NoOpRouter<K, V> implements Router<K, V> {
 
+    @SuppressWarnings("unchecked")
     @Override
     public <E extends V> void route(K key, E data,
                                     List<Registration<K, ? extends BiConsumer<K, ? extends V>>> consumers,
