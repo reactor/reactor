@@ -341,7 +341,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 		boolean checkImmediateTerminate() {
 			if (cancelled) {
-				subscription.cancel();
+				super.doCancel();
 				cancelStates();
 				return true;
 			}
