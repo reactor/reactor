@@ -16,31 +16,6 @@
 
 package reactor.rx;
 
-import java.awt.event.KeyEvent;
-import java.io.IOException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Timer;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Phaser;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
 import org.hamcrest.Matcher;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -49,10 +24,8 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.support.Logger;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
-import reactor.Timers;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.selector.Selector;
@@ -61,18 +34,27 @@ import reactor.core.error.CancelException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.publisher.PublisherFactory;
-import reactor.rx.action.Tap;
+import reactor.core.support.Logger;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.io.IO;
-import reactor.io.codec.StandardCodecs;
 import reactor.rx.action.Control;
 import reactor.rx.action.StreamProcessor;
-import reactor.rx.action.TapAndControls;
+import reactor.rx.action.Tap;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.BarrierStream;
+
+import java.awt.event.KeyEvent;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -1139,33 +1121,6 @@ public class StreamTests extends AbstractReactorTest {
 					", inCircle=" + inCircle +
 					'}';
 		}
-	}
-
-	@Test
-	@Ignore
-	public void testCustomFileStream() throws InterruptedException {
-
-		Stream<?> fileStream = Streams.wrap(StandardCodecs.LINE_FEED_CODEC.decode(IO.readFile("settings.gradle", 1)));
-
-		Timers.global();
-		Stream<?> processor = fileStream.log()
-		                                .throttle(50)
-		                                .flatMap(Streams::just);
-
-		TapAndControls<Long> counter = processor.capacity(5L)
-		                                        .count()
-		                                        .tap();
-
-		Thread.sleep(3000);
-		Assert.assertTrue(counter.get() == 10);
-	/*	downstream
-				.capacity(3L)
-				.consume(
-						System.out::println,
-						Throwable::printStackTrace,
-						nothing -> System.out.println("## EOF ##")
-				);
-		Thread.sleep(300);*/
 	}
 
 	@Test
