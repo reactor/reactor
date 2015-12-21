@@ -106,7 +106,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 
 	public abstract Processor<Integer, Integer> createProcessor(int bufferSize);
 
-	protected void monitorThreadUse(int val) {
+	protected void monitorThreadUse(Object val) {
 		AtomicLong counter = counters.get(Thread.currentThread());
 		if (counter == null) {
 			counter = new AtomicLong();

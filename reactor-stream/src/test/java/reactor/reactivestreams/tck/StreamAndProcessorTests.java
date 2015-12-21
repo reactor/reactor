@@ -23,6 +23,7 @@ import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.testng.SkipException;
 import reactor.Processors;
+import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple1;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
@@ -47,6 +48,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		cumulated.set(0);
 		cumulatedJoin.set(0);
 
+		BiFunction<Integer, String, Integer> combinator = (t1, t2) -> t1;
 		return Processors.create(p, Streams.wrap(p)
 		                                   .forkJoin(2, stream -> stream.scan((prev, next) -> next)
 		                                                                .map(integer -> -integer)
@@ -57,7 +59,8 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		                                                                .<Integer>split()
 		                                                                .observe(array -> cumulated.getAndIncrement())
 		                                                                .flatMap(i -> Streams.zip(Streams.just(i),
-				                                                                otherStream, (t1, t2) -> t1))
+		                                                                                          otherStream,
+		                                                                                          combinator))
 		                                                                .observe(this::monitorThreadUse))
 		                                   .observe(array -> cumulatedJoin.getAndIncrement())
 		                                   .process(Processors.topic("stream-raw-join", bufferSize))
