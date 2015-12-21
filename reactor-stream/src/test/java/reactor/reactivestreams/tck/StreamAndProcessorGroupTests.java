@@ -23,6 +23,7 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import reactor.Processors;
 import reactor.core.processor.ProcessorGroup;
+import reactor.fn.BiFunction;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.StreamProcessor;
@@ -47,6 +48,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 				Processors.asyncGroup("stream-p-tck", bufferSize, 2,
 						Throwable::printStackTrace);
 
+		BiFunction<Integer, String, Integer> combinator = (t1, t2) -> t1;
 		return Broadcaster.<Integer>create(true)
 				.dispatchOn(sharedGroup)
 		                  .partition(2)
@@ -59,8 +61,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		                                           .map(integer -> -integer)
 		                                           .buffer(batch, 50, TimeUnit.MILLISECONDS)
 		                                           .<Integer>split()
-		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, (t1, t2) ->
-				                                           t1))
+		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, combinator))
 
 				.dispatchOn(sharedGroup))
 				.when(Throwable.class, Throwable::printStackTrace)
