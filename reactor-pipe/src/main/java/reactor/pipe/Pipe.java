@@ -42,7 +42,7 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
         this.timer = new LazyVar<>(new Supplier<Timer>() {
             @Override
             public Timer get() {
-                return Timers.create(10);
+                return Timers.create("pipe-timer", 10, 512);
             }
         });
     }
@@ -137,7 +137,7 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src, Key dst, Bus<Key, Object> firehose) {
-                final Atom<CURRENT> debounced = stateProvider.makeAtom(src, null);
+                final Atom<CURRENT> debouncedValue = stateProvider.makeAtom(src, null);
                 final AtomicReference<ReactiveState.Pausable> pausable = new AtomicReference<>(null);
 
                 return (key, value) -> {
@@ -146,12 +146,12 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
                         oldScheduled.cancel();
                     }
 
-                    debounced.update(current -> value);
+                    debouncedValue.update(current -> value);
 
                     pausable.set(timer.get().submit(new Consumer<Long>() {
                         @Override
                         public void accept(Long v) {
-                            firehose.notify(dst, debounced.deref());
+                            firehose.notify(dst, debouncedValue.deref());
                             pausable.set(null);
                         }
                     }, period, timeUnit));
