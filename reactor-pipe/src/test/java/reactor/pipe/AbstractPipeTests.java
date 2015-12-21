@@ -1,6 +1,5 @@
 package reactor.pipe;
 
-import org.junit.Ignore;
 import org.junit.Test;
 import org.pcollections.TreePVector;
 import reactor.core.processor.RingBufferWorkProcessor;
@@ -205,7 +204,6 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
     }
 
 
-    @Ignore
     @Test
     public void testSmoke() throws InterruptedException { // Tests backpressure and in-thread dispatches
         RingBufferWorkProcessor<Runnable> processor = RingBufferWorkProcessor.<Runnable>create(

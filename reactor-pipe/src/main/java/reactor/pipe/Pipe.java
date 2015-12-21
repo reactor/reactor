@@ -119,13 +119,13 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
                     debounced.update(current -> value);
 
                     if (pausable.get() == null) {
-                        pausable.set(timer.get().submit(new Consumer<Long>() {
+                        pausable.set(timer.get().schedule(new Consumer<Long>() {
                             @Override
                             public void accept(Long v) {
                                 firehose.notify(dst, debounced.deref());
                                 pausable.set(null);
                             }
-                        }, period, timeUnit));
+                        }, period, timeUnit, TimeUnit.MILLISECONDS.convert(period, timeUnit)));
                     }
                 };
             }
@@ -148,13 +148,13 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
 
                     debouncedValue.update(current -> value);
 
-                    pausable.set(timer.get().submit(new Consumer<Long>() {
+                    pausable.set(timer.get().schedule(new Consumer<Long>() {
                         @Override
                         public void accept(Long v) {
                             firehose.notify(dst, debouncedValue.deref());
                             pausable.set(null);
                         }
-                    }, period, timeUnit));
+                    }, period, timeUnit, TimeUnit.MILLISECONDS.convert(period, timeUnit)));
                 };
             }
         });
