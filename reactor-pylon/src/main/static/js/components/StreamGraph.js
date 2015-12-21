@@ -482,11 +482,13 @@ class StreamGraph extends React.Component {
                     }
                     var points = [];
                     var ratio = 1;
+                    var ratio_n = 0;
 
                     nodesInCluster.forEach(id  => {
                         var child = nodes.get(id);
                         if(child.buffered !== undefined && child.buffered != -1 && child.capacity != -1 && child.capacity !== 'unbounded') {
-                            ratio = (ratio + (child.buffered / child.capacity)) / 2;
+                            ratio = (ratio + (child.buffered / child.capacity));
+                            ratio_n++;
                         }
                         points.push(new Point(positions[id].x, positions[id].y));
                     });
@@ -501,7 +503,7 @@ class StreamGraph extends React.Component {
 
                     ctx.beginPath();
                     ctx.strokeStyle = '#A6D5F7';
-                    ctx.fillStyle = graphUtils.getColorForPercentage(1 - ratio, 0.3);
+                    ctx.fillStyle = graphUtils.getColorForPercentage(1 - (ratio / ratio_n == 0 ? 1 : ratio_n), 0.3);
                     ctx.moveTo(p1.x, p1.y);
                     ctx.lineTo(p2.x, p2.y);
                     for (var i = 2; i < convexHull.hull.length; i++) {
