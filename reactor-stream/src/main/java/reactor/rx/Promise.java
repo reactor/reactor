@@ -251,7 +251,7 @@ public class Promise<O>
 		finally {
 			lock.unlock();
 		}
-		return stream().map(transformation).next();
+		return (Promise<V>) stream().map(transformation).next();
 	}
 
 	/**
@@ -288,7 +288,7 @@ public class Promise<O>
 		finally {
 			lock.unlock();
 		}
-		return stream().flatMap(transformation).next();
+		return (Promise<V>) stream().flatMap(transformation).next();
 
 	}
 
