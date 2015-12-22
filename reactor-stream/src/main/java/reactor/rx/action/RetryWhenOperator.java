@@ -16,17 +16,18 @@
 
 package reactor.rx.action;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.fn.Function;
 import reactor.core.timer.Timer;
+import reactor.fn.Function;
 import reactor.rx.Stream;
-import reactor.rx.action.TrampolineOperator;
 import reactor.rx.broadcast.Broadcaster;
 
 /**
@@ -43,7 +44,7 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 			Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate,
 			Publisher<? extends T> rootPublisher) {
 
-		this.rootPublisher = TrampolineOperator.create(rootPublisher);
+		this.rootPublisher = rootPublisher;
 		this.predicate = predicate;
 		this.timer = timer;
 	}
@@ -79,7 +80,9 @@ public final class RetryWhenOperator<T> implements Publishers.Operator<T, T> {
 
 		protected void doRetry() {
 			subscription = null;
-			rootPublisher.subscribe(RetryWhenAction.this);
+			Processor<T, T> emitter = Processors.emitter();
+			emitter.subscribe(RetryWhenAction.this);
+			rootPublisher.subscribe(emitter);
 		}
 
 		@Override

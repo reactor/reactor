@@ -16,9 +16,11 @@
 
 package reactor.rx.action;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
@@ -42,7 +44,7 @@ public final class RepeatWhenOperator<T> implements Publishers.Operator<T, T> {
 			Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
 			Publisher<? extends T> rootPublisher) {
 
-		this.rootPublisher = rootPublisher != null ? TrampolineOperator.create(rootPublisher) : null;
+		this.rootPublisher = rootPublisher;
 		this.predicate = predicate;
 		this.timer = timer;
 	}
@@ -91,7 +93,9 @@ public final class RepeatWhenOperator<T> implements Publishers.Operator<T, T> {
 
 		protected void doRetry() {
 			subscription = null;
-			rootPublisher.subscribe(RepeatWhenAction.this);
+			Processor<T, T> emitter = Processors.emitter();
+			emitter.subscribe(RepeatWhenAction.this);
+			rootPublisher.subscribe(emitter);
 		}
 
 		@Override

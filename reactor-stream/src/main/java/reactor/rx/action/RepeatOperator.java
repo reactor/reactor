@@ -16,9 +16,11 @@
 
 package reactor.rx.action;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
@@ -34,7 +36,7 @@ public final class RepeatOperator<T> implements Publishers.Operator<T, T> {
 
 	public RepeatOperator(int numRetries, Publisher<? extends T> parentStream) {
 		this.numRetries = numRetries;
-		this.rootPublisher = parentStream != null ? TrampolineOperator.create(parentStream) : null;
+		this.rootPublisher = parentStream;
 	}
 
 	@Override
@@ -82,7 +84,9 @@ public final class RepeatOperator<T> implements Publishers.Operator<T, T> {
 			else {
 				if (rootPublisher != null) {
 					subscription = null;
-					rootPublisher.subscribe(RepeatAction.this);
+					Processor<T, T> emitter = Processors.emitter();
+					emitter.subscribe(RepeatAction.this);
+					rootPublisher.subscribe(emitter);
 				}
 			}
 		}

@@ -56,7 +56,6 @@ import reactor.fn.tuple.Tuple7;
 import reactor.rx.action.CombineLatestOperator;
 import reactor.rx.action.StreamProcessor;
 import reactor.rx.action.SwitchOperator;
-import reactor.rx.action.TrampolineOperator;
 import reactor.rx.stream.DecoratingStream;
 import reactor.rx.stream.DeferredStream;
 import reactor.rx.stream.FutureStream;
@@ -1734,15 +1733,5 @@ public class Streams {
 			}
 		}
 	};
-
-	/**
-	 * @param publisher
-	 * @param <IN>
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	public static <IN> Publisher<IN> trampoline(Publisher<IN> publisher) {
-		return lift(publisher, TrampolineOperator.INSTANCE);
-	}
 
 }
