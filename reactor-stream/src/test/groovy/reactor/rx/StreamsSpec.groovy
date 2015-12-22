@@ -18,10 +18,7 @@ package reactor.rx
 import org.reactivestreams.Publisher
 import org.reactivestreams.Subscription
 import reactor.Processors
-import reactor.Publishers
 import reactor.Timers
-import reactor.bus.Event
-import reactor.bus.EventBus
 import reactor.core.error.CancelException
 import reactor.core.processor.ProcessorGroup
 import reactor.core.processor.RingBufferProcessor
@@ -38,7 +35,6 @@ import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
 import static reactor.Publishers.error
-import static reactor.bus.selector.Selectors.anonymous
 
 class StreamsSpec extends Specification {
 
@@ -577,57 +573,11 @@ class StreamsSpec extends Specification {
 			errors == 2
 	}
 
-	def 'Accepted errors and values are passed to a registered Consumer'() {
-		when:
-			'a composable with a registered consumer of RuntimeExceptions'
-			def res = []
-			def stream = Broadcaster.<Integer> create()
-			def tail = stream
-					.observe { if (it > 1) throw new RuntimeException() }
-					.observeError(RuntimeException) { data, error -> res << data }
-					.retry()
-					.log()
-					.consume()
-			println tail.debug()
-
-			stream.onNext(1)
-			stream.onNext(2)
-			stream.onNext(3)
-			stream.onNext(4)
-			//stream.onComplete()
-
-		then:
-			'it is called since publisher is in error state'
-			res == [2, 3, 4]
-
-		when:
-			'Recover values'
-			def b = Broadcaster.<Integer> create()
-			tail = b.toList()
-
-			stream
-					.observe { if (it > 1) throw new RuntimeException() }
-					.recover(RuntimeException, b)
-					.consume()
-
-			stream.onNext(1)
-			stream.onNext(2)
-			stream.onNext(3)
-			stream.onNext(4)
-			stream.onComplete()
-
-			println tail.debug()
-
-		then:
-			'it is not passed to the consumer'
-			tail.await(5, TimeUnit.SECONDS) == [2, 3, 4]
-	}
-
 	def 'When the accepted event is Iterable, split can iterate over values'() {
 		given:
 			'a composable with a known number of values'
 			def d = Broadcaster.<Iterable<String>> create()
-			Stream<String> composable = d.split()
+			Stream<String> composable = d.flatMap{ Streams.from(it) }
 
 		when:
 			'accept list of Strings'
@@ -3002,45 +2952,6 @@ class StreamsSpec extends Specification {
 			res == ['Hello World!', 'Hello World!', 'Hello World!', 'Test', 'Test', 'Test', 'End']
 	}
 */
-
-	def 'Creating Stream from event bus'() {
-		given:
-			'a source stream with a given event bus'
-			def r = EventBus.config().get()
-			def selector = anonymous()
-			int event = 0
-			def s = Streams.withOverflowSupport(r.on(selector)).map { it.data }.consume { event = it }
-			println s.debug()
-
-		when:
-			'accept a value'
-			r.notify(selector.object, Event.wrap(1))
-			println s.debug()
-
-		then:
-			'dispatching works'
-			event == 1
-
-		when:
-			"multithreaded bus can be serialized"
-			r = EventBus.create(Processors.queue("bus", 8), 4)
-			def tail = Streams.wrap(r.on(selector)).map { it.data }.observe { sleep(100) }.elapsed().log().take(10).toList()
-
-			10.times {
-				r.notify(selector.object, Event.wrap(it))
-			}
-
-	  println r.debug()
-
-		then:
-			tail.await().size() == 10
-			tail.get().sum { it.t1 } >= 1000 //correctly serialized
-
-		cleanup:
-			r.processor.onComplete()
-	}
-
-
 
   def "error publishers don't fast fail"(){
 	when: 'preparing error publisher'

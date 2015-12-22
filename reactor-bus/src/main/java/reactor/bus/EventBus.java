@@ -29,7 +29,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.support.Logger;
 import reactor.Subscribers;
-import reactor.bus.publisher.BusPublisher;
+import reactor.bus.stream.BusStream;
 import reactor.bus.registry.CachingRegistry;
 import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
@@ -49,6 +49,7 @@ import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
+import reactor.rx.Stream;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} {@link Consumer}s that can
@@ -275,14 +276,14 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 
 
 	/**
-	 * Attach a Publisher to the {@link Bus} with the specified {@link Selector}.
+	 * Attach a Stream to the {@link Bus} with the specified {@link Selector}.
 	 *
 	 * @param broadcastSelector the {@link Selector}/{@literal Object} tuple to listen to
-	 * @return a new {@link Publisher}
+	 * @return a new {@link Stream}
 	 * @since 2.0
 	 */
-	public Publisher<? extends Event<?>> on(Selector broadcastSelector) {
-		return new BusPublisher<>(this, broadcastSelector);
+	public Stream<? extends Event<?>> on(Selector broadcastSelector) {
+		return new BusStream<>(this, broadcastSelector);
 	}
 
 	protected void accept(Object key, Event<?> ev) {

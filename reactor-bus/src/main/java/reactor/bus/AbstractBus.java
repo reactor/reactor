@@ -16,30 +16,31 @@
 
 package reactor.bus;
 
+import java.util.Iterator;
+import java.util.List;
+import java.util.UUID;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
-import reactor.core.support.Logger;
 import reactor.bus.filter.PassThroughFilter;
-import reactor.bus.publisher.BusPublisher;
 import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registry;
 import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
 import reactor.bus.selector.Selector;
+import reactor.bus.stream.BusStream;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.support.Assert;
+import reactor.core.support.Logger;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.Iterator;
-import java.util.List;
-import java.util.UUID;
+import reactor.rx.Stream;
 
 /**
  * A reactor is an event gateway that allows other components to register {@link Event} {@link Consumer}s that can
@@ -229,8 +230,8 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, ReactiveState.Link
    * @return a new {@link Publisher}
    * @since 2.0
    */
-  public Publisher<? extends V> on(Selector broadcastSelector) {
-    return new BusPublisher<>(this, broadcastSelector);
+  public Stream<? extends V> on(Selector broadcastSelector) {
+    return new BusStream<>(this, broadcastSelector);
   }
 
   @Override

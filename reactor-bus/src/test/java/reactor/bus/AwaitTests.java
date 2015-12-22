@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2016 Pivotal Software Inc., Inc. All Rights Reserved.
+ * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,18 @@
  * limitations under the License.
  */
 
-package reactor.rx;
+package reactor.bus;
+
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
-import reactor.AbstractReactorTest;
 import reactor.Processors;
-import reactor.bus.Event;
-import reactor.bus.EventBus;
 import reactor.bus.selector.Selectors;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.Consumer;
+import reactor.rx.Promise;
+import reactor.rx.Promises;
 import reactor.rx.broadcast.Broadcaster;
-
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 

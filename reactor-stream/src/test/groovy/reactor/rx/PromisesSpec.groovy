@@ -16,8 +16,6 @@
 package reactor.rx
 
 import reactor.Processors
-import reactor.bus.EventBus
-import reactor.bus.selector.Selectors
 import reactor.core.error.CancelException
 import reactor.core.error.ReactorFatalException
 import reactor.rx.broadcast.Broadcaster
@@ -290,42 +288,6 @@ class PromisesSpec extends Specification {
 		then:
 			"the promise has completed"
 			promise.isComplete()
-	}
-
-	def "An Observable can be used to consume a promise's value when it's fulfilled"() {
-		given:
-			"a promise with a consuming Observable"
-			def promise = Promises.<Object> ready()
-			def promise2 = Promises.<Object> ready()
-			def bus = EventBus.create()
-
-			bus.on(Selectors.$('key'), promise2)
-			bus.notify(promise, 'key')
-
-		when:
-			"the promise is fulfilled"
-			promise.onNext 'test'
-
-		then:
-			"the observable is notified"
-			promise2.await()?.data == 'test'
-	}
-
-	def "An Observable can be used to consume the value of an already-fulfilled promise"() {
-		given:
-			"a fulfilled promise"
-			def promise = Promises.success('test')
-			def promise2 = Promises.<Object> ready()
-			def bus = EventBus.create()
-
-		when:
-			"an Observable is added as a consumer"
-			bus.on(Selectors.$('key'), promise2)
-			bus.notify(promise, 'key')
-
-		then:
-			"the observable is notified"
-			promise2.await()?.data == 'test'
 	}
 
 	def "A function can be used to map a Promise's value when it's fulfilled"() {

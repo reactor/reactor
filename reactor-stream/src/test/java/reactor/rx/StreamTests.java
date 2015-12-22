@@ -16,6 +16,31 @@
 
 package reactor.rx;
 
+import java.awt.event.KeyEvent;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Timer;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import org.hamcrest.Matcher;
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -26,10 +51,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
-import reactor.bus.Event;
-import reactor.bus.EventBus;
-import reactor.bus.selector.Selector;
-import reactor.bus.selector.Selectors;
 import reactor.core.error.CancelException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
@@ -40,28 +61,14 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.action.Control;
 import reactor.rx.action.StreamProcessor;
-import reactor.rx.action.Tap;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
-import reactor.rx.stream.BarrierStream;
-
-import java.awt.event.KeyEvent;
-import java.io.IOException;
-import java.time.Instant;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.number.OrderingComparison.lessThan;
 import static org.junit.Assert.*;
-import static reactor.bus.selector.Selectors.$;
 
 /**
  * @author Jon Brisbin
@@ -145,34 +152,6 @@ public class StreamTests extends AbstractReactorTest {
 	}
 
 	@Test
-	public void testComposedErrorHandlingWitIgnoreErrors() throws InterruptedException {
-		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
-
-		final AtomicBoolean exception = new AtomicBoolean(false);
-		Stream<Integer> s = stream.map(STRING_2_INTEGER)
-		                          .observe(i -> {
-			                          if (i == 3) {
-				                          throw new IllegalArgumentException();
-			                          }
-		                          })
-		                          .ignoreError()
-		                          .log("errorHandling")
-		                          .map(new Function<Integer, Integer>() {
-			                          int sum = 0;
-
-			                          @Override
-			                          public Integer apply(Integer i) {
-				                          sum += i;
-				                          return sum;
-			                          }
-		                          })
-		                          .when(IllegalArgumentException.class, e -> exception.set(true));
-
-		await(2, s, is(3));
-		assertThat("error triggered", exception.get(), is(false));
-	}
-
-	@Test
 	public void testReduce() throws InterruptedException {
 		Stream<String> stream = Streams.just("1", "2", "3", "4", "5");
 		Stream<Integer> s = stream.map(STRING_2_INTEGER)
@@ -207,31 +186,6 @@ public class StreamTests extends AbstractReactorTest {
 		assertThat("Last is 5",
 				last.tap()
 				    .get(),
-				is(5));
-	}
-
-	@Test
-	public void testRelaysEventsToReactor() throws InterruptedException {
-		EventBus r = EventBus.config()
-		                     .get();
-		Selector key = Selectors.$();
-
-		final CountDownLatch latch = new CountDownLatch(5);
-		final Tap<Event<Integer>> tap = Tap.create();
-
-		r.on(key, (Event<Integer> d) -> {
-			tap.accept(d);
-			latch.countDown();
-		});
-
-		r.notify(Streams.just("1", "2", "3", "4", "5")
-		                .map(STRING_2_INTEGER), key.getObject());
-
-		//await(s, is(5));
-		assertThat("latch was counted down", latch.getCount(), is(0l));
-		assertThat("value is 5",
-				tap.get()
-				   .getData(),
 				is(5));
 	}
 
@@ -1336,48 +1290,6 @@ public class StreamTests extends AbstractReactorTest {
 			Assert.assertTrue(time > 0);
 			Assert.assertTrue("was " + (time - prev), time - prev <= delayMS*1.2);
 		}
-	}
-
-	@Test
-	public void barrierStreamWaitsForAllDelegatesToBeInvoked() throws Exception {
-		CountDownLatch latch1 = new CountDownLatch(1);
-		CountDownLatch latch2 = new CountDownLatch(1);
-		CountDownLatch latch3 = new CountDownLatch(1);
-
-		BarrierStream barrierStream = new BarrierStream();
-
-		EventBus bus = EventBus.create(RingBufferProcessor.create());
-		bus.on($("hello"), barrierStream.wrap((Event<String> ev) -> {
-			try {
-				Thread.sleep(500);
-			}
-			catch (InterruptedException e) {
-			}
-			latch1.countDown();
-		}));
-
-		Streams.just("Hello World!")
-		       .map(barrierStream.wrap((Function<String, String>) String::toUpperCase))
-		       .consume(s -> {
-			       latch2.countDown();
-		       });
-
-		barrierStream.consume(vals -> {
-			try {
-				Thread.sleep(500);
-			}
-			catch (InterruptedException e) {
-			}
-			latch3.countDown();
-		});
-
-		bus.notify("hello", Event.wrap("Hello World!"));
-		bus.getProcessor()
-		   .onComplete();
-
-		assertThat("EventBus Consumer has been invoked", latch1.await(1, TimeUnit.SECONDS), is(true));
-		assertThat("Stream map Function has been invoked", latch2.getCount(), is(0L));
-		assertThat("BarrierStreams has published downstream", latch3.await(1, TimeUnit.SECONDS), is(true));
 	}
 
 	// test issue https://github.com/reactor/reactor/issues/485

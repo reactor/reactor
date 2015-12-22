@@ -32,7 +32,6 @@ import org.reactivestreams.Subscription;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Timers;
-import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.operator.IgnoreOnNextOperator;
@@ -79,7 +78,6 @@ import reactor.rx.action.ThrottleRequestOperator;
 import reactor.rx.action.ThrottleRequestWhenOperator;
 import reactor.rx.action.ErrorOperator;
 import reactor.rx.action.ErrorWithValueOperator;
-import reactor.rx.action.IgnoreErrorOperator;
 import reactor.rx.action.RetryOperator;
 import reactor.rx.action.RetryWhenOperator;
 import reactor.rx.action.TimeoutOperator;
@@ -398,72 +396,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		return consume(NOOP);
 	}
 
-
-	/**
-	 * Instruct the action to request upstream subscription if any for N elements.
-	 * @param n
-	 * @return a new {@link Control} interface to operate on the materialized upstream
-	 */
-	public Control consumeOnly(final long n) {
-		return consumeOnly(n, null);
-	}
-
-
-
-	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
-	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
-	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
-	 * @param n
-	 * @param consumer the consumer to invoke on each value
-	 * @return a new {@link Control} interface to operate on the materialized upstream
-	 */
-	public final Control consumeOnly(long n, final Consumer<? super O> consumer) {
-		return consumeOnly(n, consumer, null, null);
-	}
-
-	/**
-	 * Attach 2 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code Stream}. As
-	 * such this a terminal action to be placed on a stream flow. Any Error signal will be consumed by the error
-	 * consumer. It will also eagerly prefetch upstream publisher. <p>
-	 * @param n
-	 * @param consumer the consumer to invoke on each next signal
-	 * @param errorConsumer the consumer to invoke on each error signal
-	 * @return a new {@link Control} interface to operate on the materialized upstream
-	 */
-	public final Control consumeOnly(long n, final Consumer<? super O> consumer, Consumer<? super Throwable>
-			errorConsumer) {
-		return consumeOnly(n, consumer, errorConsumer, null);
-	}
-
-	/**
-	 * Attach 3 {@link Consumer} to this {@code Stream} that will consume any values signaled by this {@code Stream}. As
-	 * such this a terminal action to be placed on a stream flow. Any Error signal will be consumed by the error
-	 * consumer. The Complete signal will be consumed by the complete consumer. Only error and complete signal will be
-	 * signaled downstream. It will also eagerly prefetch upstream publisher. <p>
-	 * @param n
-	 * @param consumer the consumer to invoke on each value
-	 * @param errorConsumer the consumer to invoke on each error signal
-	 * @param completeConsumer the consumer to invoke on complete signal
-	 * @return {@literal new Stream}
-	 */
-	public final Control consumeOnly(long n,
-			final Consumer<? super O> consumer,
-			Consumer<? super Throwable> errorConsumer,
-			Consumer<Void> completeConsumer) {
-
-		if(n == Long.MAX_VALUE){
-			return consume(consumer, errorConsumer, completeConsumer);
-		}
-
-		ManualSubscriber<O> controls = new ManualSubscriber<O>(consumer, errorConsumer, completeConsumer);
-		if (n > 0) {
-			controls.request(n);
-		}
-		subscribe(controls);
-		return controls;
-	}
-
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
 	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
@@ -668,28 +600,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Stream<O> observeCancel(@Nonnull final Consumer<Void> consumer) {
 		return lift(new StreamStateCallbackOperator<O>(consumer, null));
-	}
-
-	/**
-	 * Connect an error-proof action that will transform an incoming error signal into a complete signal.
-	 * @return a new fail-proof {@link Stream}
-	 */
-	public Stream<O> ignoreError() {
-		return ignoreError(new Predicate<Throwable>() {
-			@Override
-			public boolean test(Throwable o) {
-				return true;
-			}
-		});
-	}
-
-	/**
-	 * Connect an error-proof action based on the given predicate matching the current error.
-	 * @param ignorePredicate a predicate to test if an error should be transformed to a complete signal.
-	 * @return a new fail-proof {@link Stream}
-	 */
-	public <E> Stream<O> ignoreError(final Predicate<? super Throwable> ignorePredicate) {
-		return lift(new IgnoreErrorOperator<O>(ignorePredicate));
 	}
 
 	/**
@@ -945,7 +855,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final <T> Stream<List<T>> join() {
-		return zip((Function<Tuple, List<T>>)ZipOperator.JOIN_FUNCTION);
+		return zip((Function<Tuple, List<T>>) ZipOperator.JOIN_FUNCTION);
 	}
 
 	/**
@@ -956,7 +866,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final <T> Stream<List<T>> joinWith(Publisher<T> publisher) {
-		return zipWith(publisher, (BiFunction<Object, Object, List<T>>)ZipOperator.JOIN_BIFUNCTION);
+		return zipWith(publisher, (BiFunction<Object, Object, List<T>>) ZipOperator.JOIN_BIFUNCTION);
 	}
 
 	/**
@@ -1189,52 +1099,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Stream<O> retry(final int numRetries, final Predicate<Throwable> retryMatcher) {
 		return lift(new RetryOperator<O>(numRetries, retryMatcher, this));
-	}
-
-	/**
-	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair if the error is of the
-	 * given type. The recoveredValues subscriber will be emitted the associated value if any. If it doesn't match the
-	 * given error type, the error signal will be propagated downstream but not to the recovered values sink.
-	 * @param recoveredValuesSink the subscriber to listen for recovered values
-	 * @param exceptionType the type of exceptions to handle
-	 * @return a new fault-tolerant {@code Stream}
-	 * @since 2.0
-	 */
-	public final Stream<O> recover(@Nonnull final Class<? extends Throwable> exceptionType,
-			final Subscriber<Object> recoveredValuesSink) {
-		return retryWhen(new Function<Stream<? extends Throwable>, Publisher<?>>() {
-
-			@Override
-			public Publisher<?> apply(Stream<? extends Throwable> stream) {
-
-				stream.map(new Function<Throwable, Object>() {
-					@Override
-					public Object apply(Throwable throwable) {
-						if (exceptionType.isAssignableFrom(throwable.getClass())) {
-							return Exceptions.getFinalValueCause(throwable);
-						}
-						else {
-							return null;
-						}
-					}
-				})
-				      .subscribe(recoveredValuesSink);
-
-				return stream.map(new Function<Throwable, Signal<Throwable>>() {
-
-					@Override
-					public Signal<Throwable> apply(Throwable throwable) {
-						if (exceptionType.isAssignableFrom(throwable.getClass())) {
-							return Signal.next(throwable);
-						}
-						else {
-							return Signal.<Throwable>error(throwable);
-						}
-					}
-				}).<Throwable>dematerialize();
-			}
-		});
-
 	}
 
 	/**
@@ -1601,23 +1465,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Stream<Boolean> exists(final Predicate<? super O> predicate) {
 		return lift(new ExistsOperator<O>(predicate));
-	}
-
-	/**
-	 * Create a new {@code Stream} whose values will be each element E of any Iterable<E> flowing this Stream When a new
-	 * batch is triggered, the last value of that next batch will be pushed into this {@code Stream}.
-	 * @return a new {@link Stream} whose values result from the iterable downstream
-	 * @since 1.1, 2.0
-	 */
-	@SuppressWarnings("unchecked")
-	public final <V> Stream<V> split() {
-		final Stream<Iterable<? extends V>> iterableStream = (Stream<Iterable<? extends V>>) this;
-		return iterableStream.flatMap(new Function<Iterable<? extends V>, Publisher<? extends V>>() {
-			@Override
-			public Publisher<? extends V> apply(Iterable<? extends V> vs) {
-				return Streams.from(vs);
-			}
-		});
 	}
 
 	/**
@@ -2146,51 +1993,19 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	/**
 	 * Fetch all values in a List to the returned Promise
 	 * @return the promise of all data from this Stream
-	 * @since 2.1
+	 * @since 2.0
 	 */
-	public final Promise<List<O>> consumeAsList() {
-		return consumeAsList(-1);
-	}
-
-	/**
-	 * Return the promise of N signals collected into an array list.
-	 * @param maximum list size and therefore events signal to listen for
-	 * @return the promise of all data from this Stream
-	 * @since 2.1
-	 */
-	public final Promise<List<O>> consumeAsList(long maximum) {
-		if (maximum > 0) {
-			return take(maximum).buffer()
-			                    .consumeNext();
-		}
-		else {
-			return buffer(Integer.MAX_VALUE).consumeNext();
-		}
+	public final Promise<List<O>> toList() {
+		return buffer(Integer.MAX_VALUE).next();
 	}
 
 	/**
 	 * Fetch all values in a List to the returned Promise
 	 * @return the promise of all data from this Stream
-	 * @since 2.0
+	 * @since 2.1
 	 */
-	public final Promise<List<O>> toList() {
-		return toList(-1);
-	}
-
-	/**
-	 * Return the promise of N signals collected into an array list.
-	 * @param maximum list size and therefore events signal to listen for
-	 * @return the promise of all data from this Stream
-	 * @since 2.0
-	 */
-	public final Promise<List<O>> toList(long maximum) {
-		if (maximum > 0) {
-			return take(maximum).buffer()
-			                    .next();
-		}
-		else {
-			return buffer(Integer.MAX_VALUE).next();
-		}
+	public final Promise<List<O>> consumeAsList() {
+		return buffer(Integer.MAX_VALUE).consumeNext();
 	}
 
 	/**

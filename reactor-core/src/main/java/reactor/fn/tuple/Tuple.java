@@ -269,6 +269,15 @@ public class Tuple implements Iterable, Serializable {
 	}
 
 	/**
+	 * Turn this {@literal Tuple} into a plain Object list.
+	 *
+	 * @return A new Object list.
+	 */
+	public List<Object> toList() {
+		return Arrays.asList(toArray());
+	}
+
+	/**
 	 * Return the number of elements in this {@literal Tuple}.
 	 *
 	 * @return The size of this {@literal Tuple}.

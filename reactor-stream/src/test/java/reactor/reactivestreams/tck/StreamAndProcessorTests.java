@@ -56,7 +56,7 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		                                                                .sample(1)
 		                                                                .map(integer -> -integer)
 		                                                                .buffer(batch, 50, TimeUnit.MILLISECONDS)
-		                                                                .<Integer>split()
+		                                                                .flatMap(Streams::from)
 		                                                                .observe(array -> cumulated.getAndIncrement())
 		                                                                .flatMap(i -> Streams.zip(Streams.just(i),
 		                                                                                          otherStream,

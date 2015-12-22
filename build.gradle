@@ -238,7 +238,6 @@ project('reactor-stream') {
 		optional "io.projectreactor:reactor-codec:$version"
 
 		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
-		testCompile project(':reactor-bus')
 		testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
 	}
 }
@@ -286,7 +285,7 @@ project('reactor-bus') {
 	dependencies {
 		jarjar("com.googlecode.jarjar:jarjar:1.3")
 
-		compile project(':reactor-core')
+		compile project(':reactor-stream')
 
 		jsr166e "io.gatling:jsr166e:1.0@jar"
 		compile(files(jsr166eRepackJar))

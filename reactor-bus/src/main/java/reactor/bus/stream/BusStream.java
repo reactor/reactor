@@ -1,21 +1,22 @@
 /*
- * Copyright (c) 2011-2014 Pivotal Software, Inc.
+ * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- *         http://www.apache.org/licenses/LICENSE-2.0
+ *       http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-package reactor.bus.publisher;
+package reactor.bus.stream;
 
-import org.reactivestreams.Publisher;
+import javax.annotation.Nonnull;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.bus.Bus;
@@ -26,8 +27,7 @@ import reactor.core.subscriber.SerializedSubscriber;
 import reactor.core.support.ReactiveState;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
-
-import javax.annotation.Nonnull;
+import reactor.rx.Stream;
 
 /**
  * Emit signals whenever an Event arrives from the {@link reactor.bus.selector.Selector} topic from the {@link
@@ -37,20 +37,20 @@ import javax.annotation.Nonnull;
  * Create such stream with the provided factory, E.g.:
  * <pre>
  * {@code
- * Streams.create(eventBus.on($("topic"))).consume(System.out::println)
+ * eventBus.on($("topic")).consume(System.out::println)
  * }
  * </pre>
  *
  * @author Stephane Maldini
  */
-public final class BusPublisher<T> implements Publisher<T> {
+public final class BusStream<T> extends Stream<T> {
 
 	private final Selector  selector;
 	private final Bus<?, T> observable;
 	private final boolean   ordering;
 
 
-	public BusPublisher(final @Nonnull Bus<?, T> observable,
+	public BusStream(final @Nonnull Bus<?, T> observable,
 	                    final @Nonnull Selector selector) {
 
 		this.selector = selector;
@@ -79,7 +79,7 @@ public final class BusPublisher<T> implements Publisher<T> {
 
 	@Override
 	public String toString() {
-		return "BusPublisher{" +
+		return "BusStream{" +
 		  "selector=" + selector +
 		  ", bus=" + observable +
 		  '}';
