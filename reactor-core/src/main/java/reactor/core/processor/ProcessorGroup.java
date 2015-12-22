@@ -278,7 +278,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return (BiConsumer<V, Consumer<? super V>>) SYNC_DATA_DISPATCHER;
 		}
 
-		return (BiConsumer<V, Consumer<? super V>>) createBarrier(false);
+		return createBarrier(false);
 	}
 
 	/**
@@ -468,8 +468,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		REF_COUNT.incrementAndGet(this);
 	}
 
-	@SuppressWarnings("unchecked")
-	private ProcessorBarrier<T> createBarrier(boolean forceWork) {
+	private <Y> ProcessorBarrier<Y> createBarrier(boolean forceWork) {
 
 		if (processor == null) {
 			return new SyncProcessorBarrier<>(this);
