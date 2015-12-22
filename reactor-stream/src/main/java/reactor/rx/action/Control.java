@@ -15,6 +15,7 @@
  */
 package reactor.rx.action;
 
+import org.reactivestreams.Subscription;
 import reactor.core.support.ReactiveStateUtils;
 
 /**
@@ -43,4 +44,19 @@ public interface Control {
 	 * @return {@link ReactiveStateUtils.Graph} a Debug container for the current source
 	 */
 	ReactiveStateUtils.Graph debug();
+
+	/**
+	 * An interface generally associated with a {@link reactor.rx.Stream} terminal action such as
+	 * {@link reactor.rx.Stream#consume(reactor.fn.Consumer)}
+	 *
+	 * @author Stephane Maldini
+	 * @since 2.1
+	 */
+	interface Demand extends Subscription, Control {
+
+		/**
+		 * Request Long.MAX_VALUE, which instructs a stream to never end until completed, errored or cancelled.
+		 */
+		void requestAll();
+	}
 }

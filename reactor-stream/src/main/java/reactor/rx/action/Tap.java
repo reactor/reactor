@@ -18,6 +18,7 @@ package reactor.rx.action;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.ReactorFatalException;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
 
@@ -81,5 +82,39 @@ public final class Tap<T> implements Consumer<T>, Supplier<T>, Subscriber<T> {
 	@Override
 	public void onComplete() {
 
+	}
+
+	/**
+	 * @author Stephane Maldini
+	 */
+	public static class Control<O> implements reactor.rx.action.Control, Supplier<O>{
+
+		private final reactor.rx.action.Control controls;
+		private final Tap<? extends O>          tap;
+
+		public Control(Tap<? extends O> tap, reactor.rx.action.Control controls) {
+			this.tap = tap;
+			this.controls = controls;
+		}
+
+		@Override
+		public void cancel() {
+			controls.cancel();
+		}
+
+		@Override
+		public O get() {
+			return tap.get();
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return controls.isTerminated();
+		}
+
+		@Override
+		public ReactiveStateUtils.Graph debug() {
+			return controls.debug();
+		}
 	}
 }

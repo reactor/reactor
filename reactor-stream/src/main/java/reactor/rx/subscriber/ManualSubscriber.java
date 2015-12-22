@@ -23,13 +23,14 @@ import org.reactivestreams.Subscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
-import reactor.rx.action.DemandControl;
+import reactor.rx.action.Control;
 
 /**
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class ManualSubscriber<T> extends InterruptableSubscriber<T> implements ReactiveState.Bounded, DemandControl {
+public final class ManualSubscriber<T> extends InterruptableSubscriber<T> implements ReactiveState.Bounded,
+                                                                                     Control.Demand {
 
 	@SuppressWarnings("unused")
 	private volatile long requested;
