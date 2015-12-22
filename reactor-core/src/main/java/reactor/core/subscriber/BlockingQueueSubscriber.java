@@ -234,6 +234,9 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements R
 		if (terminated) {
 			if (endError != null) {
 				Exceptions.throwIfFatal(endError);
+				if(endError instanceof RuntimeException){
+					throw ((RuntimeException)endError);
+				}
 				throw ReactorFatalException.create(endError);
 			}
 			return true;
