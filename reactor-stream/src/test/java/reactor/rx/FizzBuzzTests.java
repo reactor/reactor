@@ -19,12 +19,11 @@ import org.junit.Test;
 import reactor.AbstractReactorTest;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.support.Assert;
-import reactor.rx.action.Control;
+import reactor.rx.subscriber.Control;
 
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 

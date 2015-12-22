@@ -52,53 +52,53 @@ import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.fn.tuple.TupleN;
-import reactor.rx.action.Signal;
-import reactor.rx.action.StreamProcessor;
 import reactor.rx.action.BatchOperator;
 import reactor.rx.action.BufferOperator;
 import reactor.rx.action.BufferShiftOperator;
 import reactor.rx.action.BufferShiftWhenOperator;
 import reactor.rx.action.BufferWhenOperator;
+import reactor.rx.action.CallbackOperator;
+import reactor.rx.action.DefaultIfEmptyOperator;
+import reactor.rx.action.DematerializeOperator;
+import reactor.rx.action.DistinctOperator;
+import reactor.rx.action.DistinctUntilChangedOperator;
+import reactor.rx.action.DropOperator;
+import reactor.rx.action.ElapsedOperator;
+import reactor.rx.action.ElementAtOperator;
+import reactor.rx.action.ErrorOperator;
+import reactor.rx.action.ErrorWithValueOperator;
+import reactor.rx.action.ExistsOperator;
+import reactor.rx.action.FilterOperator;
+import reactor.rx.action.FinallyOperator;
+import reactor.rx.action.GroupByOperator;
 import reactor.rx.action.LastOperator;
+import reactor.rx.action.MaterializeOperator;
+import reactor.rx.action.RepeatOperator;
+import reactor.rx.action.RepeatWhenOperator;
+import reactor.rx.action.RetryOperator;
+import reactor.rx.action.RetryWhenOperator;
 import reactor.rx.action.SampleOperator;
+import reactor.rx.action.ScanOperator;
+import reactor.rx.action.Signal;
+import reactor.rx.action.SkipOperator;
+import reactor.rx.action.SkipUntilTimeoutOperator;
 import reactor.rx.action.SortOperator;
+import reactor.rx.action.StreamProcessor;
+import reactor.rx.action.StreamStateCallbackOperator;
+import reactor.rx.action.SwitchOperator;
+import reactor.rx.action.TakeOperator;
+import reactor.rx.action.TakeUntilTimeoutOperator;
+import reactor.rx.action.TakeWhileOperator;
+import reactor.rx.subscriber.Control;
+import reactor.rx.subscriber.Tap;
+import reactor.rx.action.ThrottleRequestOperator;
+import reactor.rx.action.ThrottleRequestWhenOperator;
+import reactor.rx.action.TimeoutOperator;
 import reactor.rx.action.WindowOperator;
 import reactor.rx.action.WindowShiftOperator;
 import reactor.rx.action.WindowShiftWhenOperator;
 import reactor.rx.action.WindowWhenOperator;
-import reactor.rx.action.SwitchOperator;
 import reactor.rx.action.ZipWithIterableOperator;
-import reactor.rx.action.ExistsOperator;
-import reactor.rx.action.DropOperator;
-import reactor.rx.action.RepeatOperator;
-import reactor.rx.action.RepeatWhenOperator;
-import reactor.rx.action.ThrottleRequestOperator;
-import reactor.rx.action.ThrottleRequestWhenOperator;
-import reactor.rx.action.ErrorOperator;
-import reactor.rx.action.ErrorWithValueOperator;
-import reactor.rx.action.RetryOperator;
-import reactor.rx.action.RetryWhenOperator;
-import reactor.rx.action.TimeoutOperator;
-import reactor.rx.action.DistinctOperator;
-import reactor.rx.action.DistinctUntilChangedOperator;
-import reactor.rx.action.ElementAtOperator;
-import reactor.rx.action.FilterOperator;
-import reactor.rx.action.SkipOperator;
-import reactor.rx.action.SkipUntilTimeoutOperator;
-import reactor.rx.action.TakeOperator;
-import reactor.rx.action.TakeUntilTimeoutOperator;
-import reactor.rx.action.TakeWhileOperator;
-import reactor.rx.action.CountOperator;
-import reactor.rx.action.ElapsedOperator;
-import reactor.rx.action.CallbackOperator;
-import reactor.rx.action.FinallyOperator;
-import reactor.rx.action.StreamStateCallbackOperator;
-import reactor.rx.action.Tap;
-import reactor.rx.action.DefaultIfEmptyOperator;
-import reactor.rx.action.DematerializeOperator;
-import reactor.rx.action.GroupByOperator;
-import reactor.rx.action.MaterializeOperator;
-import reactor.rx.action.ScanOperator;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscriber.AdaptiveSubscriber;
@@ -336,7 +336,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * Defer a Controls operations ready to be requested.
 	 * @return the consuming action
 	 */
-	public reactor.rx.action.Control.Demand consumeLater() {
+	public Control.Demand consumeLater() {
 		return consumeLater(null);
 	}
 
@@ -346,9 +346,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
 	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 * @param consumer the consumer to invoke on each value
-	 * @return a new {@link reactor.rx.action.Control} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final reactor.rx.action.Control.Demand consumeLater(final Consumer<? super O> consumer) {
+	public final Control.Demand consumeLater(final Consumer<? super O> consumer) {
 		return consumeLater(consumer, null, null);
 	}
 
@@ -358,9 +358,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * consumer. It will also eagerly prefetch upstream publisher. <p>
 	 * @param consumer the consumer to invoke on each next signal
 	 * @param errorConsumer the consumer to invoke on each error signal
-	 * @return a new {@link reactor.rx.action.Control} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final reactor.rx.action.Control.Demand consumeLater(final Consumer<? super O> consumer, Consumer<? super Throwable> errorConsumer) {
+	public final Control.Demand consumeLater(final Consumer<? super O> consumer, Consumer<? super Throwable> errorConsumer) {
 		return consumeLater(consumer, errorConsumer, null);
 	}
 
@@ -374,7 +374,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @param completeConsumer the consumer to invoke on complete signal
 	 * @return {@literal new Stream}
 	 */
-	public final reactor.rx.action.Control.Demand consumeLater(
+	public final Control.Demand consumeLater(
 			final Consumer<? super O> consumer,
 			Consumer<? super Throwable> errorConsumer,
 			Consumer<Void> completeConsumer) {
@@ -389,7 +389,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return the consuming action
 	 */
 	@SuppressWarnings("unchecked")
-	public reactor.rx.action.Control consume() {
+	public Control consume() {
 		return consume(NOOP);
 	}
 
@@ -398,9 +398,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
 	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 * @param consumer the consumer to invoke on each value
-	 * @return a new {@link reactor.rx.action.Control} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final reactor.rx.action.Control consume(final Consumer<? super O> consumer) {
+	public final Control consume(final Consumer<? super O> consumer) {
 		long c = Math.min(Integer.MAX_VALUE, getCapacity());
 		InterruptableSubscriber<O> consumerAction;
 		if(c == Integer.MAX_VALUE){
@@ -419,9 +419,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * consumer. It will also eagerly prefetch upstream publisher. <p>
 	 * @param consumer the consumer to invoke on each next signal
 	 * @param errorConsumer the consumer to invoke on each error signal
-	 * @return a new {@link reactor.rx.action.Control} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final reactor.rx.action.Control consume(final Consumer<? super O> consumer, Consumer<? super Throwable> errorConsumer) {
+	public final Control consume(final Consumer<? super O> consumer, Consumer<? super Throwable> errorConsumer) {
 		return consume(consumer, errorConsumer, null);
 	}
 
@@ -435,7 +435,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @param completeConsumer the consumer to invoke on complete signal
 	 * @return {@literal new Stream}
 	 */
-	public final reactor.rx.action.Control consume(final Consumer<? super O> consumer,
+	public final Control consume(final Consumer<? super O> consumer,
 			Consumer<? super Throwable> errorConsumer,
 			Consumer<Void> completeConsumer) {
 
@@ -462,9 +462,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * the "batch" size if wished. <p> <p> For a passive version that observe and forward incoming data see {@link
 	 * #observe(reactor.fn.Consumer)}
 	 * @param consumer the consumer to invoke on each value
-	 * @return a new {@link reactor.rx.action.Control} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final reactor.rx.action.Control consumeWithRequest(final Consumer<? super O> consumer,
+	public final Control consumeWithRequest(final Consumer<? super O> consumer,
 			final Function<Long, ? extends Long> requestMapper) {
 		return consumeWhen(consumer, new Function<Stream<Long>, Publisher<? extends Long>>() {
 			@Override
@@ -482,9 +482,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * {@link Publisher} of long signals S that will instruct the consumer to request S more elements. <p> For a passive
 	 * version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
 	 * @param consumer the consumer to invoke on each value
-	 * @return a new {@link reactor.rx.action.Control} interface to operate on the materialized upstream
+	 * @return a new {@link Control} interface to operate on the materialized upstream
 	 */
-	public final reactor.rx.action.Control consumeWhen(final Consumer<? super O> consumer,
+	public final Control consumeWhen(final Consumer<? super O> consumer,
 			final Function<Stream<Long>, ? extends Publisher<? extends Long>> requestMapper) {
 		AdaptiveSubscriber<O> consumerAction =
 				new AdaptiveSubscriber<O>(getTimer(), consumer, requestMapper);
@@ -1860,7 +1860,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<Long> count(final long i) {
 		Stream<O> thiz = i != Long.MAX_VALUE ? take(i) : this;
 
-		return thiz.lift(CountOperator.INSTANCE)
+		return thiz.lift((ScanOperator<O, Long>)ScanOperator.COUNTER)
 		           .last();
 	}
 

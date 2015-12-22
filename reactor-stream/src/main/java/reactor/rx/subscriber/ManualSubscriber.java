@@ -23,7 +23,6 @@ import org.reactivestreams.Subscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
-import reactor.rx.action.Control;
 
 /**
  * @author Stephane Maldini

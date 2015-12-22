@@ -59,7 +59,7 @@ import reactor.core.support.Logger;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.rx.action.Control;
+import reactor.rx.subscriber.Control;
 import reactor.rx.action.StreamProcessor;
 import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;

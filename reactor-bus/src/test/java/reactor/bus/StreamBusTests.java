@@ -24,7 +24,7 @@ import reactor.bus.selector.Selectors;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.Function;
 import reactor.rx.Streams;
-import reactor.rx.action.Tap;
+import reactor.rx.subscriber.Tap;
 import reactor.bus.stream.BarrierStream;
 
 import static org.hamcrest.CoreMatchers.is;

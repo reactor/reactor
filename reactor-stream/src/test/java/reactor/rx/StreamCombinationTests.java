@@ -33,7 +33,7 @@ import reactor.core.support.Logger;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
 import reactor.fn.Consumer;
-import reactor.rx.action.Control;
+import reactor.rx.subscriber.Control;
 
 /**
  * @author Stephane Maldini

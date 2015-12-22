@@ -19,7 +19,7 @@ import org.junit.Test;
 import reactor.core.support.Logger;
 import reactor.AbstractReactorTest;
 import reactor.fn.tuple.Tuple;
-import reactor.rx.action.Control;
+import reactor.rx.subscriber.Control;
 
 import java.util.Arrays;
 import java.util.List;

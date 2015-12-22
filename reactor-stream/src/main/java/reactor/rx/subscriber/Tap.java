@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.rx.action;
+package reactor.rx.subscriber;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -87,12 +87,12 @@ public final class Tap<T> implements Consumer<T>, Supplier<T>, Subscriber<T> {
 	/**
 	 * @author Stephane Maldini
 	 */
-	public static class Control<O> implements reactor.rx.action.Control, Supplier<O>{
+	public static class Control<O> implements reactor.rx.subscriber.Control, Supplier<O>{
 
-		private final reactor.rx.action.Control controls;
-		private final Tap<? extends O>          tap;
+		private final reactor.rx.subscriber.Control controls;
+		private final Tap<? extends O>              tap;
 
-		public Control(Tap<? extends O> tap, reactor.rx.action.Control controls) {
+		public Control(Tap<? extends O> tap, reactor.rx.subscriber.Control controls) {
 			this.tap = tap;
 			this.controls = controls;
 		}

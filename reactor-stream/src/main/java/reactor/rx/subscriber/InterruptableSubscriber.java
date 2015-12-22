@@ -23,7 +23,6 @@ import reactor.core.subscriber.ConsumerSubscriber;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
-import reactor.rx.action.Control;
 
 /**
  * @author Stephane Maldini

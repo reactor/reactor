@@ -27,6 +27,13 @@ import reactor.fn.BiFunction;
  */
 public final class ScanOperator<T, A> implements Publishers.Operator<T, A> {
 
+	public static ScanOperator<?, Long> COUNTER = new ScanOperator<>(new BiFunction<Long, Object, Long>() {
+		@Override
+		public Long apply(Long prev, Object o) {
+			return prev + 1L;
+		}
+	}, 0L);
+
 	private final BiFunction<A, ? super T, A> fn;
 	private final A                           initialValue;
 
