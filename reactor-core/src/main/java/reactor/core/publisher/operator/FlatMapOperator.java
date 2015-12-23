@@ -611,6 +611,13 @@ public final class FlatMapOperator<T, V> implements Function<Subscriber<? super 
 		@Override
 		public void onSubscribe(Subscription s) {
 			super.onSubscribe(s);
+
+//Should it try here a last time to check before requesting
+//			if(parent.isCancelled()){
+//				s.cancel();
+//				return;
+//			}
+
 			if (!SUBSCRIPTION.compareAndSet(this, null, s)) {
 				s.cancel();
 				return;

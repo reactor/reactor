@@ -35,6 +35,8 @@ import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Consumer;
 
 /**
@@ -247,6 +249,8 @@ public class CombinationTests {
 				Publishers.just(new SensorData(1L, 14.0f)),
 				this::computeMin), "zip3")
 		          .subscribe(sensorDataProcessor);
+
+		System.out.println(ReactiveStateUtils.scan(sensorDataProcessor).toString());
 
 		awaitLatch(null, latch);
 	}

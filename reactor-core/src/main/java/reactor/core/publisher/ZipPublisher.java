@@ -119,6 +119,7 @@ public final class ZipPublisher<TUPLE extends Tuple, V>
 			           ReactiveState.LinkedUpstreams,
 			           ReactiveState.ActiveDownstream,
 			           ReactiveState.Buffering,
+			           ReactiveState.ActiveUpstream,
 			           ReactiveState.DownstreamDemand,
 			           ReactiveState.FailState {
 
@@ -149,6 +150,8 @@ public final class ZipPublisher<TUPLE extends Tuple, V>
 				AtomicIntegerFieldUpdater.newUpdater(ZipBarrier.class, "running");
 
 		Object[] valueCache;
+
+		final static Object[] TERMINATED_CACHE = new Object[0];
 
 		public ZipBarrier(Subscriber<? super V> actual, ZipPublisher<TUPLE, V> parent) {
 			this.actual = actual;
@@ -233,9 +236,25 @@ public final class ZipPublisher<TUPLE extends Tuple, V>
 		}
 
 		@Override
+		public boolean isStarted() {
+			return TERMINATED_CACHE != valueCache;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return TERMINATED_CACHE == valueCache;
+		}
+
+		@Override
 		public long pending() {
 			Object[] values = valueCache;
-			return values != null ? values.length : 0;
+			int count = 0;
+			for(int i = 0; i < values.length; i++){
+				if(values[i] != null){
+					count++;
+				}
+			}
+			return count;
 		}
 
 		@Override
@@ -277,6 +296,7 @@ public final class ZipPublisher<TUPLE extends Tuple, V>
 				for (; ; ) {
 
 					final Object[] tuple = valueCache;
+					if(TERMINATED_CACHE == tuple) return;
 					boolean completeTuple = true;
 					int i;
 					for (i = 0; i < n; i++) {
@@ -351,12 +371,9 @@ public final class ZipPublisher<TUPLE extends Tuple, V>
 		}
 
 		void cancelStates() {
-			ZipState[] inner = subscribers;
-			if (inner == null) {
-				return;
-			}
-			for (int i = 0; i < inner.length; i++) {
-				inner[i].cancel();
+			valueCache = TERMINATED_CACHE;
+			for (int i = 0; i < subscribers.length; i++) {
+				subscribers[i].cancel();
 			}
 		}
 
@@ -510,6 +527,12 @@ public final class ZipPublisher<TUPLE extends Tuple, V>
 		@Override
 		public void onSubscribe(Subscription s) {
 			super.onSubscribe(s);
+
+			if(parent.cancelled){
+				s.cancel();
+				return;
+			}
+
 			if (!SUBSCRIPTION.compareAndSet(this, null, s)) {
 				s.cancel();
 				return;
