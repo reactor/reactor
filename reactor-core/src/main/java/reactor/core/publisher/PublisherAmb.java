@@ -34,13 +34,14 @@ import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 
 /**
- * An amb operator to select the first emitting sequence
+ * An emitter to select the first emitting sequence, therefore challenging to a stop racing upstream ambuiguity.
  * <p>
- * {@see http://github.com/reactive-streams-commons}
+ * {@see http://github.com/reactor/reactive-streams-commons}
  *
  * @since 2.1
  */
-public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factory, ReactiveState.LinkedUpstreams {
+public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factory, ReactiveState.Named, ReactiveState
+		.LinkedUpstreams {
 
 	final Publisher[] sources;
 
@@ -82,11 +83,17 @@ public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factor
 	}
 
 	@Override
+	public String getName() {
+		return "Amb";
+	}
+
+	@Override
 	public long upstreamsCount() {
 		return sources != null ? sources.length : 0;
 	}
 
-	static final class AmbBarrier<T> implements Subscription {
+	static final class AmbBarrier<T>
+			implements Subscription, Downstream, LinkedUpstreams, ActiveDownstream {
 
 		final Subscriber<? super T>   actual;
 		final AmbInnerSubscriber<T>[] subscribers;
@@ -149,20 +156,43 @@ public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factor
 		}
 
 		@Override
+		public boolean isCancelled() {
+			return winner == -1;
+		}
+
+		@Override
+		public Object downstream() {
+			return actual;
+		}
+
+		@Override
+		public Iterator<?> upstreams() {
+			return Arrays.asList(subscribers)
+			             .iterator();
+		}
+
+		@Override
+		public long upstreamsCount() {
+			return subscribers.length;
+		}
+
+		@Override
 		public void cancel() {
 			if (winner != -1) {
 				WINNER.lazySet(this, -1);
 
 				for (AmbInnerSubscriber<T> a : subscribers) {
-					if(a != null) {
+					if (a != null) {
 						a.cancel();
 					}
 				}
 			}
 		}
+
 	}
 
-	static final class AmbInnerSubscriber<T> extends BaseSubscriber<T> implements Subscription {
+	static final class AmbInnerSubscriber<T> extends BaseSubscriber<T>
+			implements Subscription, Downstream, Inner, Upstream, DownstreamDemand, ActiveUpstream, ActiveDownstream {
 
 		final AmbBarrier<T>         parent;
 		final int                   index;
@@ -200,6 +230,7 @@ public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factor
 
 		@Override
 		public void onSubscribe(Subscription s) {
+			super.onSubscribe(s);
 			if (!SUBSCRIPTION.compareAndSet(this, null, s)) {
 				s.cancel();
 				return;
@@ -231,6 +262,7 @@ public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factor
 
 		@Override
 		public void onNext(T t) {
+			super.onNext(t);
 			if (won) {
 				actual.onNext(t);
 			}
@@ -240,13 +272,15 @@ public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factor
 					actual.onNext(t);
 				}
 				else {
-					SUBSCRIPTION.get(this).cancel();
+					SUBSCRIPTION.get(this)
+					            .cancel();
 				}
 			}
 		}
 
 		@Override
 		public void onError(Throwable t) {
+			super.onError(t);
 			if (won) {
 				actual.onError(t);
 			}
@@ -256,7 +290,8 @@ public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factor
 					actual.onError(t);
 				}
 				else {
-					SUBSCRIPTION.get(this).cancel();
+					SUBSCRIPTION.get(this)
+					            .cancel();
 				}
 			}
 		}
@@ -272,7 +307,8 @@ public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factor
 					actual.onComplete();
 				}
 				else {
-					SUBSCRIPTION.get(this).cancel();
+					SUBSCRIPTION.get(this)
+					            .cancel();
 				}
 			}
 		}
@@ -288,6 +324,35 @@ public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factor
 			}
 		}
 
+		@Override
+		public boolean isCancelled() {
+			return subscription == CANCELLED;
+		}
+
+		@Override
+		public boolean isStarted() {
+			return subscription != null;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return parent.winner > 0 && parent.winner != index;
+		}
+
+		@Override
+		public Object downstream() {
+			return parent;
+		}
+
+		@Override
+		public long requestedFromDownstream() {
+			return missedRequested;
+		}
+
+		@Override
+		public Object upstream() {
+			return subscription;
+		}
 	}
 
 }

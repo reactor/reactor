@@ -753,6 +753,11 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		return ringBuffer.getBufferSize();
 	}
 
+	@Override
+	public boolean isStarted() {
+		return super.isStarted() || ringBuffer.get() != -1;
+	}
+
 	/**
 	 * Get the remaining capacity for the ring buffer
 	 * @return number of remaining slots
@@ -779,6 +784,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * parallel coordination of an event.
 	 */
 	private final static class TopicSubscriber<T> implements Runnable, Downstream, Buffering, ActiveUpstream,
+	                                                         Upstream,
 	                                                         ActiveDownstream, Inner, DownstreamDemand, Subscription {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
@@ -950,6 +956,11 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		@Override
 		public Object downstream() {
 			return subscriber;
+		}
+
+		@Override
+		public Object upstream() {
+			return processor;
 		}
 
 		@Override

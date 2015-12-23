@@ -196,9 +196,15 @@ public class CombinationTests {
 
 		Publisher<SensorData> p = Publishers.log(Publishers.amb(sensorOdd(), sensorEven()), "amb");
 
-		generateData(elements);
+		System.out.println(ReactiveStateUtils.scan(p).toString());
 
-		awaitLatch(p, latch);
+		Subscriber<SensorData> s = Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch
+				.countDown());
+		p.subscribe(s);
+		Thread.sleep(1000);
+		System.out.println(ReactiveStateUtils.scan(s).toString());
+
+		generateData(elements);
 	}
 
 	/*@Test
@@ -290,6 +296,7 @@ public class CombinationTests {
 			else {
 				upstream = sensorOdd;
 			}
+			System.out.println(ReactiveStateUtils.scan(upstream).toString());
 			upstream.onNext(data);
 		}
 

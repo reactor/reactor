@@ -657,6 +657,11 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	@Override
+	public boolean isStarted() {
+		return super.isStarted() || ringBuffer.get() != -1;
+	}
+
+	@Override
 	public long getAvailableCapacity() {
 		return ringBuffer.remainingCapacity();
 	}
@@ -720,7 +725,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 */
 	private final static class QueueSubscriber<T>
 			implements Runnable, Consumer<Void>, Downstream, Buffering, ActiveUpstream,
-			ActiveDownstream, Inner, DownstreamDemand, Subscription {
+			ActiveDownstream, Inner, DownstreamDemand, Subscription, Upstream {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -1031,6 +1036,11 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 		@Override
 		public Object downstream() {
 			return subscriber;
+		}
+
+		@Override
+		public Object upstream() {
+			return processor;
 		}
 
 		@Override
