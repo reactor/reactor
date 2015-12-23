@@ -141,11 +141,13 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 	 * Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values broadcasted are directly consumable by
 	 * subscribing to the returned instance.
 	 * @param emitter Identity processor to support broadcasting
-	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @param <I> the type of values passing through the {@literal Broadcaster}
+	 * @param <O> the type of values passing through the {@literal Broadcaster}
 	 * @return a new {@link Broadcaster}
 	 */
-	public static <T> Broadcaster<T> from(Processor<T, T> emitter) {
-		return from(emitter, false);
+	@SuppressWarnings("unchecked")
+	public static <I, O> StreamProcessor<I, O> from(Processor<I, O> emitter) {
+		return (StreamProcessor<I, O>)from((Processor<O, O>)emitter, false);
 	}
 
 	/**
