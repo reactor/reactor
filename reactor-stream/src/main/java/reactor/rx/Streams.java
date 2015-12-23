@@ -36,7 +36,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.ZipPublisher;
+import reactor.core.publisher.PublisherZip;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
@@ -1741,7 +1741,7 @@ public class Streams {
 		return wrap(sources).buffer().flatMap(new Function<List<? extends Publisher<?>>, Publisher<V>>() {
 			@Override
 			public Publisher<V> apply(List<? extends Publisher<?>> publishers) {
-				return new ZipPublisher<>(publishers.toArray(
+				return new PublisherZip<>(publishers.toArray(
 						new Publisher[publishers.size()]),
 						combinator,
 						BaseProcessor.XS_BUFFER_SIZE);
@@ -1779,7 +1779,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<List<T>> join(List<? extends Publisher<?>> sources) {
-		return zip(sources, (Function<Tuple, List<T>>) ZipPublisher.JOIN_FUNCTION);
+		return zip(sources, (Function<Tuple, List<T>>) PublisherZip.JOIN_FUNCTION);
 	}
 
 	/**

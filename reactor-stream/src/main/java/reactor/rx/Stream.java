@@ -34,7 +34,7 @@ import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.publisher.ZipPublisher;
+import reactor.core.publisher.PublisherZip;
 import reactor.core.publisher.operator.IgnoreElementsOperator;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
@@ -1031,7 +1031,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final <T> Stream<List<T>> joinWith(Publisher<T> publisher) {
-		return zipWith(publisher, (BiFunction<Object, Object, List<T>>) ZipPublisher.JOIN_BIFUNCTION);
+		return zipWith(publisher, (BiFunction<Object, Object, List<T>>) PublisherZip.JOIN_BIFUNCTION);
 	}
 
 	/**

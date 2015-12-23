@@ -28,7 +28,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.ValuePublisher;
+import reactor.core.publisher.PublisherJust;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.BackpressureUtils;
 import reactor.fn.BiConsumer;
@@ -227,7 +227,7 @@ public final class CompletableFutureConverter
 		public void subscribe(final Subscriber<? super T> subscriber) {
 			try {
 				if (future.isDone()) {
-					new ValuePublisher<>(future.get()).subscribe(subscriber);
+					new PublisherJust<>(future.get()).subscribe(subscriber);
 				}
 				else if (future.isCancelled()) {
 					Exceptions.publisher(CancelException.get());

@@ -30,11 +30,11 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.publisher.AmbPublisher;
+import reactor.core.publisher.PublisherAmb;
 import reactor.core.publisher.ForEachSequencer;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.ValuePublisher;
-import reactor.core.publisher.ZipPublisher;
+import reactor.core.publisher.PublisherJust;
+import reactor.core.publisher.PublisherZip;
 import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.publisher.operator.FlatMapOperator;
 import reactor.core.publisher.operator.IgnoreElementsOperator;
@@ -72,7 +72,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> just(final IN data) {
-		return new ValuePublisher<>(data);
+		return new PublisherJust<>(data);
 	}
 
 	/**
@@ -326,7 +326,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I> Publisher<I> amb(Publisher<? extends I> source1, Publisher<? extends I> source2) {
-		return new AmbPublisher<>(new Publisher[]{source1, source2});
+		return new PublisherAmb<>(new Publisher[]{source1, source2});
 	}
 
 	/**
@@ -360,7 +360,7 @@ public final class Publishers extends PublisherFactory {
 		}
 		while (it.hasNext());
 
-		return new AmbPublisher<>(list.toArray(new Publisher[list.size()]));
+		return new PublisherAmb<>(list.toArray(new Publisher[list.size()]));
 	}
 
 	/**
@@ -429,7 +429,7 @@ public final class Publishers extends PublisherFactory {
 	public static <T1, T2> Publisher<Tuple2<T1, T2>> zip(Publisher<? extends T1> source1,
 			Publisher<? extends T2> source2) {
 
-		return new ZipPublisher<>(new Publisher[]{source1, source2},
+		return new PublisherZip<>(new Publisher[]{source1, source2},
 				(Function<Tuple2<T1, T2>, Tuple2<T1, T2>>) IDENTITY_FUNCTION,
 				BaseProcessor.XS_BUFFER_SIZE);
 	}
@@ -448,7 +448,7 @@ public final class Publishers extends PublisherFactory {
 			Publisher<? extends T2> source2,
 			final BiFunction<? super T1, ? super T2, ? extends O> combinator) {
 
-		return new ZipPublisher<>(new Publisher[]{source1, source2}, new Function<Tuple2<T1, T2>, O>() {
+		return new PublisherZip<>(new Publisher[]{source1, source2}, new Function<Tuple2<T1, T2>, O>() {
 			@Override
 			public O apply(Tuple2<T1, T2> tuple) {
 				return combinator.apply(tuple.getT1(), tuple.getT2());
@@ -506,7 +506,7 @@ public final class Publishers extends PublisherFactory {
 		}
 		while (it.hasNext());
 
-		return new ZipPublisher<>(list.toArray(new Publisher[list.size()]), combinator, BaseProcessor.XS_BUFFER_SIZE);
+		return new PublisherZip<>(list.toArray(new Publisher[list.size()]), combinator, BaseProcessor.XS_BUFFER_SIZE);
 	}
 
 	/**

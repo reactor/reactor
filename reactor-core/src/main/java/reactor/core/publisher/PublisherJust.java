@@ -26,11 +26,11 @@ import reactor.fn.Supplier;
 /**
  * @author Stephane Maldini
  */
-public class ValuePublisher<IN> implements Publisher<IN>, Supplier<IN>, ReactiveState.FeedbackLoop {
+public class PublisherJust<IN> implements Publisher<IN>, Supplier<IN>, ReactiveState.FeedbackLoop {
 
 	private final IN data;
 
-	public ValuePublisher(IN data) {
+	public PublisherJust(IN data) {
 		this.data = data;
 	}
 

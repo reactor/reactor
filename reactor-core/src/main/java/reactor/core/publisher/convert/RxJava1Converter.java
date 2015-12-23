@@ -23,7 +23,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.publisher.ValuePublisher;
+import reactor.core.publisher.PublisherJust;
 import reactor.core.support.BackpressureUtils;
 import rx.Observable;
 import rx.Producer;
@@ -67,7 +67,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 	public Publisher toPublisher(Object o) {
 		final Observable<Object> obs = (Observable<Object>) o;
 		if (ScalarSynchronousObservable.class.isAssignableFrom(obs.getClass())) {
-			return new ValuePublisher<>(((ScalarSynchronousObservable) obs).get());
+			return new PublisherJust<>(((ScalarSynchronousObservable) obs).get());
 		}
 		return new Publisher<Object>() {
 			@Override

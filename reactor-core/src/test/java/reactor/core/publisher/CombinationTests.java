@@ -189,6 +189,18 @@ public class CombinationTests {
 		awaitLatch(p, latch);
 	}
 
+	@Test
+	public void sampleAmbTest() throws Exception {
+		int elements = 40;
+		CountDownLatch latch = new CountDownLatch(elements/2 + 1);
+
+		Publisher<SensorData> p = Publishers.log(Publishers.amb(sensorOdd(), sensorEven()), "amb");
+
+		generateData(elements);
+
+		awaitLatch(p, latch);
+	}
+
 	/*@Test
 	public void sampleConcatTestConsistent() throws Exception {
 		for(int i = 0; i < 1000; i++){
