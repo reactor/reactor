@@ -26,6 +26,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.BackpressureUtils;
@@ -292,6 +293,8 @@ public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factor
 				else {
 					SUBSCRIPTION.get(this)
 					            .cancel();
+
+					throw ReactorFatalException.create(t);
 				}
 			}
 		}
