@@ -36,7 +36,7 @@ import reactor.Timers;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.operator.ZipOperator;
+import reactor.core.publisher.ZipPublisher;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
@@ -1602,14 +1602,17 @@ public class Streams {
 	 */
 	public static <TUPLE extends Tuple, V> Stream<V> zip(
 	  Publisher<? extends Publisher<?>> sources,
-	  Function<? super TUPLE, ? extends V> combinator) {
+	  final Function<? super TUPLE, ? extends V> combinator) {
 
-		return wrap(sources).buffer().map(new Function<List<? extends Publisher<?>>, Publisher[]>() {
+		return wrap(sources).buffer().flatMap(new Function<List<? extends Publisher<?>>, Publisher<V>>() {
 			@Override
-			public Publisher[] apply(List<? extends Publisher<?>> publishers) {
-				return publishers.toArray(new Publisher[publishers.size()]);
+			public Publisher<V> apply(List<? extends Publisher<?>> publishers) {
+				return new ZipPublisher<>(publishers.toArray(
+						new Publisher[publishers.size()]),
+						combinator,
+						BaseProcessor.XS_BUFFER_SIZE);
 			}
-		}).lift(new ZipOperator<>(combinator, BaseProcessor.XS_BUFFER_SIZE));
+		});
 	}
 
 	/**
@@ -1642,7 +1645,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<List<T>> join(List<? extends Publisher<?>> sources) {
-		return zip(sources, (Function<Tuple, List<T>>) ZipOperator.JOIN_FUNCTION);
+		return zip(sources, (Function<Tuple, List<T>>) ZipPublisher.JOIN_FUNCTION);
 	}
 
 	/**

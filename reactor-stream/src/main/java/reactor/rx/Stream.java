@@ -34,11 +34,11 @@ import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
+import reactor.core.publisher.ZipPublisher;
 import reactor.core.publisher.operator.IgnoreOnNextOperator;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
 import reactor.core.publisher.operator.OnErrorResumeOperator;
-import reactor.core.publisher.operator.ZipOperator;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
@@ -49,9 +49,7 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Predicate;
 import reactor.fn.Supplier;
-import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
-import reactor.fn.tuple.TupleN;
 import reactor.rx.action.BatchOperator;
 import reactor.rx.action.BufferOperator;
 import reactor.rx.action.BufferShiftOperator;
@@ -83,14 +81,11 @@ import reactor.rx.action.Signal;
 import reactor.rx.action.SkipOperator;
 import reactor.rx.action.SkipUntilTimeoutOperator;
 import reactor.rx.action.SortOperator;
-import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.action.StreamStateCallbackOperator;
 import reactor.rx.action.SwitchOperator;
 import reactor.rx.action.TakeOperator;
 import reactor.rx.action.TakeUntilTimeoutOperator;
 import reactor.rx.action.TakeWhileOperator;
-import reactor.rx.subscriber.Control;
-import reactor.rx.subscriber.Tap;
 import reactor.rx.action.ThrottleRequestOperator;
 import reactor.rx.action.ThrottleRequestWhenOperator;
 import reactor.rx.action.TimeoutOperator;
@@ -100,11 +95,14 @@ import reactor.rx.action.WindowShiftWhenOperator;
 import reactor.rx.action.WindowWhenOperator;
 import reactor.rx.action.ZipWithIterableOperator;
 import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscriber.AdaptiveSubscriber;
 import reactor.rx.subscriber.BoundedSubscriber;
+import reactor.rx.subscriber.Control;
 import reactor.rx.subscriber.InterruptableSubscriber;
 import reactor.rx.subscriber.ManualSubscriber;
+import reactor.rx.subscriber.Tap;
 
 /**
  * Base class for components designed to provide a succinct API for working with future values. Provides base
@@ -851,37 +849,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public final <T> Stream<List<T>> join() {
-		return zip((Function<Tuple, List<T>>) ZipOperator.JOIN_FUNCTION);
-	}
-
-	/**
-	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The
-	 * result will be produced with a list of each upstream most recent emitted data.
-	 * @return the zipped and joined stream
-	 * @since 2.0
-	 */
-	@SuppressWarnings("unchecked")
 	public final <T> Stream<List<T>> joinWith(Publisher<T> publisher) {
-		return zipWith(publisher, (BiFunction<Object, Object, List<T>>) ZipOperator.JOIN_BIFUNCTION);
-	}
-
-	/**
-	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The
-	 * result will be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
-	 * @return the merged stream
-	 * @since 2.0
-	 */
-	@SuppressWarnings("unchecked")
-	public final <V> Stream<V> zip(final @Nonnull Function<? super TupleN, ? extends V> zipper) {
-		final Stream<Publisher<?>> thiz = (Stream<Publisher<?>>) this;
-
-		return thiz.buffer().map(new Function<List<Publisher<?>>, Publisher[]>() {
-			@Override
-			public Publisher[] apply(List<Publisher<?>> publishers) {
-				return publishers.toArray(new Publisher[publishers.size()]);
-			}
-		}).lift(new ZipOperator<>(zipper, BaseProcessor.XS_BUFFER_SIZE));
+		return zipWith(publisher, (BiFunction<Object, Object, List<T>>) ZipPublisher.JOIN_BIFUNCTION);
 	}
 
 	/**

@@ -39,7 +39,7 @@ import reactor.core.publisher.operator.IgnoreOnNextOperator;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
 import reactor.core.publisher.operator.OnErrorResumeOperator;
-import reactor.core.publisher.operator.ZipOperator;
+import reactor.core.publisher.ZipPublisher;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
@@ -283,9 +283,8 @@ public final class Publishers extends PublisherFactory {
 			Publisher<? extends T1> source1,
 			Publisher<? extends T2> source2) {
 
-		return lift(just(new Publisher[]{source1, source2}),
-				new ZipOperator<>((Function<Tuple2<T1, T2>, Tuple2<T1, T2>>) IDENTITY_FUNCTION,
-						BaseProcessor.XS_BUFFER_SIZE));
+		return new ZipPublisher<>(new Publisher[]{source1, source2}, (Function<Tuple2<T1, T2>, Tuple2<T1, T2>>)
+				IDENTITY_FUNCTION, BaseProcessor.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -302,12 +301,12 @@ public final class Publishers extends PublisherFactory {
 			Publisher<? extends T1> source1,
 			Publisher<? extends T2> source2,
 			final BiFunction<? super T1, ? super T2, ? extends O> combinator) {
-		return lift(just(new Publisher[]{source1, source2}), new ZipOperator<>(new Function<Tuple2<T1, T2>, O>() {
+		return new ZipPublisher<>(new Publisher[]{source1, source2}, new Function<Tuple2<T1, T2>, O>() {
 			@Override
 			public O apply(Tuple2<T1, T2> tuple) {
 				return combinator.apply(tuple.getT1(), tuple.getT2());
 			}
-		}, BaseProcessor.XS_BUFFER_SIZE));
+		}, BaseProcessor.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -367,8 +366,7 @@ public final class Publishers extends PublisherFactory {
 		}
 		while (it.hasNext());
 
-		return lift(just(list.toArray(new Publisher[list.size()])),
-				new ZipOperator<>(combinator, BaseProcessor.XS_BUFFER_SIZE));
+		return new ZipPublisher<>(list.toArray(new Publisher[list.size()]), combinator, BaseProcessor.XS_BUFFER_SIZE);
 	}
 
 	/**

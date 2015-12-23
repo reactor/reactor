@@ -361,7 +361,6 @@ public class StreamTests extends AbstractReactorTest {
 	@Test
 	public void mapNotifiesOnceConsistent() throws InterruptedException {
 		for (int i = 0; i < 100; i++) {
-			System.out.println("iteration");
 			mapNotifiesOnce();
 		}
 	}

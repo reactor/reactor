@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package reactor.core.publisher.operator;
+package reactor.core.publisher;
 
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.reactivestreams.Publisher;
@@ -28,13 +29,13 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.support.rb.disruptor.RingBuffer;
+import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
-import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
+import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.fn.BiFunction;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -45,9 +46,8 @@ import reactor.fn.tuple.Tuple;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class ZipOperator<TUPLE extends Tuple, V>
-		implements Function<Subscriber<? super V>, Subscriber<? super Publisher[]>>,
-		           ReactiveState.Factory {
+public final class ZipPublisher<TUPLE extends Tuple, V>
+		implements Publisher<V>, ReactiveState.Factory, ReactiveState.LinkedUpstreams {
 
 	/**
 	 *
@@ -71,23 +71,61 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 	final Function<? super TUPLE, ? extends V> combinator;
 	final int                                  bufferSize;
+	final Publisher[]                          sources;
 
-	public ZipOperator(final Function<? super TUPLE, ? extends V> combinator, int bufferSize) {
+	public ZipPublisher(final Publisher[] sources,
+			final Function<? super TUPLE, ? extends V> combinator,
+			int bufferSize) {
 		this.combinator = combinator;
 		this.bufferSize = bufferSize;
+		this.sources = sources;
 	}
 
 	@Override
-	public Subscriber<? super Publisher[]> apply(Subscriber<? super V> t) {
-		return new ZipBarrier<>(t, combinator, bufferSize);
+	public void subscribe(Subscriber<? super V> s) {
+		if (s == null) {
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
+		try {
+			if (sources == null || sources.length == 0) {
+				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				s.onComplete();
+				return;
+			}
+
+			ZipBarrier<TUPLE, V> barrier = new ZipBarrier<>(s, this);
+			barrier.start();
+			s.onSubscribe(barrier);
+		}
+		catch (Throwable t) {
+			Exceptions.throwIfFatal(t);
+			s.onError(t);
+		}
 	}
 
-	static final class ZipBarrier<TUPLE extends Tuple, V> extends SubscriberWithDemand<Publisher[], V>
-			implements ReactiveState.LinkedUpstreams, ReactiveState.FailState {
+	@Override
+	public Iterator<?> upstreams() {
+		return Arrays.asList(sources)
+		             .iterator();
+	}
 
-		final Function<? super TUPLE, ? extends V> combinator;
-		final int                                  bufferSize;
-		final int                                  limit;
+	@Override
+	public long upstreamsCount() {
+		return sources != null ? sources.length : 0;
+	}
+
+	static final class ZipBarrier<TUPLE extends Tuple, V>
+			implements Subscription,
+			           ReactiveState.LinkedUpstreams,
+			           ReactiveState.ActiveDownstream,
+			           ReactiveState.Buffering,
+			           ReactiveState.DownstreamDemand,
+			           ReactiveState.FailState {
+
+		final ZipPublisher<TUPLE, V> parent;
+		final int                    limit;
+		final ZipState<?>[]          subscribers;
+		final Subscriber<? super V>  actual;
 
 		@SuppressWarnings("unused")
 		private volatile Throwable error;
@@ -98,7 +136,11 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		static final AtomicReferenceFieldUpdater<ZipBarrier, Throwable> ERROR =
 				PlatformDependent.newAtomicReferenceFieldUpdater(ZipBarrier.class, "error");
 
-		private ZipState<?>[] subscribers;
+		@SuppressWarnings("unused")
+		private volatile       long                               requested = 0L;
+		@SuppressWarnings("rawtypes")
+		protected static final AtomicLongFieldUpdater<ZipBarrier> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(ZipBarrier.class, "requested");
 
 		@SuppressWarnings("unused")
 		private volatile int running;
@@ -108,108 +150,71 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 		Object[] valueCache;
 
-		public ZipBarrier(Subscriber<? super V> actual,
-				Function<? super TUPLE, ? extends V> combinator,
-				int bufferSize) {
-			super(actual);
-			this.combinator = combinator;
-			this.bufferSize = bufferSize;
-			this.limit = Math.max(1, bufferSize / 2);
+		public ZipBarrier(Subscriber<? super V> actual, ZipPublisher<TUPLE, V> parent) {
+			this.actual = actual;
+			this.parent = parent;
+			this.subscribers = new ZipState[parent.sources.length];
+			this.limit = Math.max(1, parent.bufferSize / 2);
 		}
 
-		@Override
-		protected void doOnSubscribe(Subscription s) {
-			subscriber.onSubscribe(this);
-			requestMore(1L);
-		}
-
-		@Override
 		@SuppressWarnings("unchecked")
-		protected void doNext(Publisher[] sources) {
-			if (TERMINATED.compareAndSet(this, NOT_TERMINATED, TERMINATED_WITH_SUCCESS)) {
-				checkedCancel();
-
-				if (sources.length == 0) {
-					subscriber.onComplete();
-					return;
-				}
-
-				ZipState[] subscribers = new ZipState[sources.length];
-				valueCache = new Object[sources.length];
-
-				int i;
-				ZipState<?> inner;
-				Publisher pub;
-				for (i = 0; i < sources.length; i++) {
-					pub = sources[i];
-					if (pub instanceof Supplier) {
-						inner = new ScalarState(((Supplier<?>) pub).get());
-						subscribers[i] = inner;
-					}
-					else {
-						inner = new BufferSubscriber(this);
-						subscribers[i] = inner;
-					}
-				}
-
-				this.subscribers = subscribers;
-
-				for (i = 0; i < sources.length; i++) {
-					subscribers[i].subscribeTo(sources[i]);
-				}
-
-				drain();
+		void start() {
+			if (cancelled) {
+				return;
 			}
+
+			ZipState[] subscribers = this.subscribers;
+			valueCache = new Object[subscribers.length];
+
+			int i;
+			ZipState<?> inner;
+			Publisher pub;
+			for (i = 0; i < subscribers.length; i++) {
+				pub = parent.sources[i];
+				if (pub instanceof Supplier) {
+					inner = new ScalarState(((Supplier<?>) pub).get());
+					subscribers[i] = inner;
+				}
+				else {
+					inner = new BufferSubscriber(this);
+					subscribers[i] = inner;
+				}
+			}
+
+			for (i = 0; i < subscribers.length; i++) {
+				subscribers[i].subscribeTo(parent.sources[i]);
+			}
+
+			drain();
 		}
 
 		@Override
-		protected void doRequest(long n) {
+		public void request(long n) {
 			BackpressureUtils.getAndAdd(REQUESTED, this, n);
 			drain();
 		}
 
 		@Override
-		protected void doCancel() {
+		public void cancel() {
 			if (!cancelled) {
 				cancelled = true;
 				if (RUNNING.getAndIncrement(this) == 0) {
-					super.doCancel();
 					cancelStates();
 				}
 			}
 		}
 
-		@Override
-		protected void checkedComplete() {
-			ZipState[] s = subscribers;
-			if (s == null || s.length == 0) {
-				if (RUNNING.getAndIncrement(this) == 0) {
-					subscriber.onComplete();
-				}
-			}
-		}
-
-		@Override
-		public boolean isStarted() {
-			return subscribers != null;
-		}
-
-		@Override
-		protected void checkedError(Throwable throwable) {
-			doOnSubscriberError(throwable);
-		}
-
-		@Override
-		protected void doOnSubscriberError(Throwable throwable) {
+		void reportError(Throwable throwable) {
 			if (!ERROR.compareAndSet(this, null, throwable)) {
 				throw ReactorFatalException.create(throwable);
 			}
-			subscriber.onError(throwable);
+			actual.onError(throwable);
 		}
 
 		@Override
 		public Iterator<?> upstreams() {
-			return Arrays.asList(subscribers).iterator();
+			return Arrays.asList(subscribers)
+			             .iterator();
 		}
 
 		@Override
@@ -220,6 +225,22 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		@Override
 		public Throwable getError() {
 			return error;
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return cancelled;
+		}
+
+		@Override
+		public long pending() {
+			Object[] values = valueCache;
+			return values != null ? values.length : 0;
+		}
+
+		@Override
+		public long requestedFromDownstream() {
+			return requested;
 		}
 
 		void drain() {
@@ -240,7 +261,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		@SuppressWarnings("unchecked")
 		void drainLoop(ZipState[] inner) {
 
-			final Subscriber<? super V> actual = this.subscriber;
+			final Subscriber<? super V> actual = this.actual;
 			int missed = 1;
 			for (; ; ) {
 				if (checkImmediateTerminate()) {
@@ -249,7 +270,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 				int n = inner.length;
 				int replenishMain = 0;
-				long r = requestedFromDownstream();
+				long r = requested;
 
 				ZipState<?> state;
 
@@ -274,14 +295,14 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 							continue;
 						}
 
-						if(r != 0) {
+						if (r != 0) {
 							tuple[i] = next;
 						}
 					}
 
 					if (r != 0 && completeTuple) {
 						try {
-							actual.onNext(combinator.apply((TUPLE) Tuple.of(tuple)));
+							actual.onNext(parent.combinator.apply((TUPLE) Tuple.of(tuple)));
 							if (r != Long.MAX_VALUE) {
 								r--;
 							}
@@ -331,7 +352,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 		void cancelStates() {
 			ZipState[] inner = subscribers;
-			if(inner == null){
+			if (inner == null) {
 				return;
 			}
 			for (int i = 0; i < inner.length; i++) {
@@ -341,14 +362,13 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 		boolean checkImmediateTerminate() {
 			if (cancelled) {
-				super.doCancel();
 				cancelStates();
 				return true;
 			}
 			Throwable e = error;
 			if (e != null) {
 				try {
-					subscriber.onError(error);
+					actual.onError(error);
 				}
 				finally {
 					cancelStates();
@@ -357,22 +377,9 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 			}
 			return false;
 		}
-
-		@Override
-		public boolean isTerminated() {
-			if(subscribers == null) return super.isTerminated();
-			for(int i = 0; i < subscribers.length; i++){
-				if(!subscribers[i].isTerminated()){
-					return false;
-				}
-			}
-			return true;
-		}
 	}
 
-	interface ZipState<V> extends Subscriber<Object>,
-	                              ReactiveState.ActiveDownstream,
-	                              ReactiveState.Buffering,
+	interface ZipState<V> extends ReactiveState.ActiveDownstream, ReactiveState.Buffering,
 	                              ReactiveState.ActiveUpstream, ReactiveState.Inner {
 
 		V readNext();
@@ -417,26 +424,6 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		@Override
-		public void onSubscribe(Subscription s) {
-			//IGNORE
-		}
-
-		@Override
-		public void onNext(Object o) {
-			//IGNORE
-		}
-
-		@Override
-		public void onError(Throwable t) {
-			//IGNORE
-		}
-
-		@Override
-		public void onComplete() {
-			//IGNORE
-		}
-
-		@Override
 		public void subscribeTo(Publisher<?> o) {
 			//IGNORE
 		}
@@ -470,12 +457,10 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 	}
 
-	static final class BufferSubscriber<V> extends BaseSubscriber<Object> implements ReactiveState.Bounded, ZipState<Object>,
-	                                                                                 ReactiveState.Upstream,
-	                                                                                 ReactiveState.ActiveUpstream,
-	                                                                                 ReactiveState.UpstreamPrefetch,
-	                                                                                 ReactiveState.UpstreamDemand,
-	                                                                                 ReactiveState.Downstream {
+	static final class BufferSubscriber<V> extends BaseSubscriber<Object>
+			implements Subscriber<Object>, ReactiveState.Bounded, ZipState<Object>, ReactiveState.Upstream,
+			           ReactiveState.ActiveUpstream, ReactiveState.UpstreamPrefetch, ReactiveState.UpstreamDemand,
+			           ReactiveState.Downstream {
 
 		final ZipBarrier<?, V> parent;
 		final Queue<Object>    queue;
@@ -492,7 +477,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 		public BufferSubscriber(ZipBarrier<?, V> parent) {
 			this.parent = parent;
-			this.bufferSize = parent.bufferSize;
+			this.bufferSize = parent.parent.bufferSize;
 			this.limit = bufferSize >> 2;
 			this.queue = RingBuffer.newSequencedQueue(RingBuffer.createSingleProducer(bufferSize));
 		}
@@ -513,7 +498,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 		}
 
 		@Override
-		public Subscriber<? super Publisher[]> downstream() {
+		public Object downstream() {
 			return parent;
 		}
 
@@ -542,14 +527,14 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 			}
 			catch (Throwable t) {
 				Exceptions.throwIfFatal(t);
-				parent.doOnSubscriberError(t);
+				parent.reportError(t);
 			}
 		}
 
 		@Override
 		public void onError(Throwable t) {
 			super.onError(t);
-			parent.doOnSubscriberError(t);
+			parent.reportError(t);
 		}
 
 		@Override
@@ -570,7 +555,7 @@ public final class ZipOperator<TUPLE extends Tuple, V>
 
 		@Override
 		public boolean isStarted() {
-			return parent.isStarted();
+			return subscription != null;
 		}
 
 		@Override
