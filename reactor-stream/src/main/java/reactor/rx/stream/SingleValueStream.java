@@ -13,11 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
@@ -26,8 +26,8 @@ import reactor.rx.subscription.PushSubscription;
 /**
  * A Stream that emits only one value and then complete.
  * <p>
- * Since the stream retains the value in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)}
- * will replay the value. This is a "Cold" stream.
+ * Since the stream retains the value in a final field, any {@link this#subscribe(org.reactivestreams.Subscriber)} will
+ * replay the value. This is a "Cold" stream.
  * <p>
  * Create such stream with the provided factory, E.g.:
  * <pre>
@@ -49,7 +49,7 @@ import reactor.rx.subscription.PushSubscription;
  *
  * @author Stephane Maldini
  */
-public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>, ReactiveState.FeedbackLoop{
+public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>, ReactiveState.FeedbackLoop {
 
 	final public static SingleValueStream<?> EMPTY = new SingleValueStream<>(null);
 
@@ -62,9 +62,6 @@ public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>
 
 	@Override
 	public T get() {
-		if(this != EMPTY && value == null){
-			throw new SpecificationExceptions.Spec213_ArgumentIsNull();
-		}
 		return value;
 	}
 
@@ -76,7 +73,9 @@ public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>
 
 				@Override
 				public void request(long elements) {
-					if (terminado) return;
+					if (terminado) {
+						return;
+					}
 
 					terminado = true;
 					if (value != null) {
@@ -85,7 +84,8 @@ public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>
 					onComplete();
 				}
 			});
-		} catch (Throwable throwable) {
+		}
+		catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);
 		}

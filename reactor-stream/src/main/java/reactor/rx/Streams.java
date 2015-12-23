@@ -33,6 +33,7 @@ import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
+import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.ZipPublisher;
@@ -559,6 +560,10 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> just(T value1) {
+		if(value1 == null){
+			throw new SpecificationExceptions.Spec213_ArgumentIsNull();
+		}
+
 		return new SingleValueStream<T>(value1);
 	}
 
