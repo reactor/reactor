@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.reactivestreams.Subscriber;
 import reactor.Publishers;
-import reactor.core.subscriber.SerializedSubscriber;
+import reactor.rx.subscriber.SerializedSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.fn.Consumer;

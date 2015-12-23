@@ -27,6 +27,7 @@ import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.timer.Timer;
 import reactor.rx.action.StreamProcessor;
+import reactor.rx.subscriber.SerializedSubscriber;
 import reactor.rx.subscription.SwapSubscription;
 
 /**
@@ -107,6 +108,30 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 	 */
 	public static <T> Broadcaster<T> passthrough(Timer timer) {
 		return from(ProcessorGroup.sync(), timer, true);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster} that will support concurrent signals (onNext, onError, onComplete) and use
+	 * thread-stealing to serialize underlying emitter processor calls.
+	 *
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> serialize() {
+		return serialize(null);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster} that will support concurrent signals (onNext, onError, onComplete) and use
+	 * thread-stealing to serialize underlying emitter processor calls.
+	 *
+	 * @param timer the Reactor {@link Timer} to use downstream
+	 * @param <T> the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> serialize(Timer timer) {
+		Processor<T, T> processor = Processors.emitter();
+		return new Broadcaster<T>(SerializedSubscriber.create(processor), processor, timer, true);
 	}
 
 	/**

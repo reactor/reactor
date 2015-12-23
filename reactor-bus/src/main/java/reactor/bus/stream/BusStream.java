@@ -23,7 +23,7 @@ import reactor.bus.Bus;
 import reactor.bus.EventBus;
 import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
-import reactor.core.subscriber.SerializedSubscriber;
+import reactor.rx.subscriber.SerializedSubscriber;
 import reactor.core.support.ReactiveState;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
