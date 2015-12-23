@@ -233,14 +233,6 @@ public class Streams {
 			return (Stream<T>) publisher;
 		}
 
-		if (publisher == Publishers.empty()){
-			return empty();
-		}
-
-		if (publisher == Publishers.never()){
-			return never();
-		}
-
 		if (Supplier.class.isAssignableFrom(publisher.getClass())) {
 			T t = ((Supplier<T>)publisher).get();
 			if(t != null){
