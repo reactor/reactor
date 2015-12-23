@@ -26,30 +26,30 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
-import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
-import reactor.fn.Supplier;
 
 /**
  * An amb operator to select the first emitting sequence
- * @author Stephane Maldini
+ * <p>
+ * {@see http://github.com/reactive-streams-commons}
+ *
  * @since 2.1
  */
-public final class PublisherAmb<T>
-		implements Publisher<T>, ReactiveState.Factory, ReactiveState.LinkedUpstreams {
+public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factory, ReactiveState.LinkedUpstreams {
 
-	final Publisher[]                          sources;
+	final Publisher[] sources;
 
 	public PublisherAmb(final Publisher[] sources) {
 		this.sources = sources;
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public void subscribe(Subscriber<? super T> s) {
 		if (s == null) {
 			throw SpecificationExceptions.spec_2_13_exception();
@@ -61,9 +61,13 @@ public final class PublisherAmb<T>
 				return;
 			}
 
-			AmbBarrier<T> barrier = new AmbBarrier<>(s, this);
-			barrier.start();
-			s.onSubscribe(barrier);
+			if (sources.length == 1) {
+				sources[1].subscribe(s);
+				return;
+			}
+
+			AmbBarrier<T> barrier = new AmbBarrier<>(s, sources.length);
+			barrier.subscribe(sources);
 		}
 		catch (Throwable t) {
 			Exceptions.throwIfFatal(t);
@@ -82,475 +86,208 @@ public final class PublisherAmb<T>
 		return sources != null ? sources.length : 0;
 	}
 
-	static final class AmbBarrier<V>
-			implements Subscription,
-			           LinkedUpstreams,
-			           ActiveDownstream,
-			           ActiveUpstream,
-			           DownstreamDemand,
-			           FailState {
+	static final class AmbBarrier<T> implements Subscription {
 
-		final PublisherAmb<V>       parent;
-		final ZipState<?>[]         subscribers;
-		final Subscriber<? super V> actual;
+		final Subscriber<? super T>   actual;
+		final AmbInnerSubscriber<T>[] subscribers;
 
-		@SuppressWarnings("unused")
-		private volatile Throwable error;
-
-		private volatile boolean cancelled;
-
+		volatile int winner;
 		@SuppressWarnings("rawtypes")
-		static final AtomicReferenceFieldUpdater<AmbBarrier, Throwable> ERROR =
-				PlatformDependent.newAtomicReferenceFieldUpdater(AmbBarrier.class, "error");
-
-		@SuppressWarnings("unused")
-		private volatile       long                               requested = 0L;
-		@SuppressWarnings("rawtypes")
-		protected static final AtomicLongFieldUpdater<AmbBarrier> REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(AmbBarrier.class, "requested");
-
-		@SuppressWarnings("unused")
-		private volatile int running;
-		@SuppressWarnings("rawtypes")
-		static final AtomicIntegerFieldUpdater<AmbBarrier> RUNNING =
-				AtomicIntegerFieldUpdater.newUpdater(AmbBarrier.class, "running");
-
-		Object[] valueCache;
-
-		final static Object[] TERMINATED_CACHE = new Object[0];
-
-		public AmbBarrier(Subscriber<? super V> actual, PublisherAmb<V> parent) {
-			this.actual = actual;
-			this.parent = parent;
-			this.subscribers = new ZipState[parent.sources.length];
-		}
+		static final AtomicIntegerFieldUpdater<AmbBarrier> WINNER =
+				AtomicIntegerFieldUpdater.newUpdater(AmbBarrier.class, "winner");
 
 		@SuppressWarnings("unchecked")
-		void start() {
-			if (cancelled) {
-				return;
+		public AmbBarrier(Subscriber<? super T> actual, int count) {
+			this.actual = actual;
+			this.subscribers = new AmbInnerSubscriber[count];
+			WINNER.lazySet(this, 0); // release the contents of 'as'
+		}
+
+		public void subscribe(Publisher<? extends T>[] sources) {
+			AmbInnerSubscriber<T>[] as = subscribers;
+			int len = as.length;
+			for (int i = 0; i < len; i++) {
+				as[i] = new AmbInnerSubscriber<>(this, i + 1, actual);
 			}
+			actual.onSubscribe(this);
 
-			ZipState[] subscribers = this.subscribers;
-			valueCache = new Object[subscribers.length];
-
-			int i;
-			ZipState<?> inner;
-			Publisher pub;
-			for (i = 0; i < subscribers.length; i++) {
-				pub = parent.sources[i];
-				if (pub instanceof Supplier) {
-					inner = new ScalarState(((Supplier<?>) pub).get());
-					subscribers[i] = inner;
+			for (int i = 0; i < len; i++) {
+				if (winner != 0) {
+					return;
 				}
-				else {
-					inner = new BufferSubscriber(this);
-					subscribers[i] = inner;
-				}
-			}
 
-			for (i = 0; i < subscribers.length; i++) {
-				subscribers[i].subscribeTo(parent.sources[i]);
+				sources[i].subscribe(as[i]);
 			}
-
-			drain();
 		}
 
 		@Override
 		public void request(long n) {
-			BackpressureUtils.getAndAdd(REQUESTED, this, n);
-			drain();
-		}
-
-		@Override
-		public void cancel() {
-			if (!cancelled) {
-				cancelled = true;
-				if (RUNNING.getAndIncrement(this) == 0) {
-					cancelStates();
-				}
-			}
-		}
-
-		void reportError(Throwable throwable) {
-			if (!ERROR.compareAndSet(this, null, throwable)) {
-				throw ReactorFatalException.create(throwable);
-			}
-			actual.onError(throwable);
-		}
-
-		@Override
-		public Iterator<?> upstreams() {
-			return Arrays.asList(subscribers)
-			             .iterator();
-		}
-
-		@Override
-		public long upstreamsCount() {
-			return subscribers.length;
-		}
-
-		@Override
-		public Throwable getError() {
-			return error;
-		}
-
-		@Override
-		public boolean isCancelled() {
-			return cancelled;
-		}
-
-		@Override
-		public boolean isStarted() {
-			return TERMINATED_CACHE != valueCache;
-		}
-
-		@Override
-		public boolean isTerminated() {
-			return TERMINATED_CACHE == valueCache;
-		}
-
-		@Override
-		public long requestedFromDownstream() {
-			return requested;
-		}
-
-		void drain() {
-			ZipState[] subscribers = this.subscribers;
-			if (subscribers == null) {
+			if (!BackpressureUtils.checkRequest(n, actual)) {
 				return;
 			}
-			if (RUNNING.getAndIncrement(this) == 0) {
-				drainLoop(subscribers);
+
+			int w = winner;
+			if (w > 0) {
+				subscribers[w - 1].request(n);
 			}
-		}
-
-		@SuppressWarnings("unchecked")
-		void drainLoop(ZipState[] inner) {
-
-			final Subscriber<? super V> actual = this.actual;
-			int missed = 1;
-			for (; ; ) {
-				if (checkImmediateTerminate()) {
-					return;
-				}
-
-				int n = inner.length;
-				int replenishMain = 0;
-				long r = requested;
-
-				ZipState<?> state;
-
-				for (; ; ) {
-
-					final Object[] tuple = valueCache;
-					if(TERMINATED_CACHE == tuple) return;
-					boolean completeTuple = true;
-					int i;
-					for (i = 0; i < n; i++) {
-						state = inner[i];
-
-						Object next = state.readNext();
-
-						if (next == null) {
-							if (state.isTerminated()) {
-								actual.onComplete();
-								cancelStates();
-								return;
-							}
-
-							completeTuple = false;
-							continue;
-						}
-
-						if (r != 0) {
-							tuple[i] = next;
-						}
-					}
-
-					if (r != 0 && completeTuple) {
-						try {
-							//actual.onNext(tuple);
-							if (r != Long.MAX_VALUE) {
-								r--;
-							}
-							replenishMain++;
-						}
-						catch (Throwable e) {
-							Exceptions.throwIfFatal(e);
-							actual.onError(Exceptions.addValueAsLastCause(e, tuple));
-							return;
-						}
-
-						// consume 1 from each and check if complete
-
-						for (i = 0; i < n; i++) {
-
-							if (checkImmediateTerminate()) {
-								return;
-							}
-
-							state = inner[i];
-							state.requestMore();
-
-							if (state.readNext() == null && state.isTerminated()) {
-								actual.onComplete();
-								cancelStates();
-								return;
-							}
-						}
-
-						valueCache = new Object[n];
-					}
-					else {
-						break;
-					}
-				}
-
-				if (replenishMain > 0) {
-					BackpressureUtils.getAndSub(REQUESTED, this, replenishMain);
-				}
-
-				missed = RUNNING.addAndGet(this, -missed);
-				if (missed == 0) {
-					break;
+			else if (w == 0) {
+				for (AmbInnerSubscriber<T> a : subscribers) {
+					a.request(n);
 				}
 			}
 		}
 
-		void cancelStates() {
-			valueCache = TERMINATED_CACHE;
-			for (int i = 0; i < subscribers.length; i++) {
-				subscribers[i].cancel();
-			}
-		}
-
-		boolean checkImmediateTerminate() {
-			if (cancelled) {
-				cancelStates();
-				return true;
-			}
-			Throwable e = error;
-			if (e != null) {
-				try {
-					actual.onError(error);
+		public boolean win(int index) {
+			int w = winner;
+			if (w == 0) {
+				if (WINNER.compareAndSet(this, 0, index)) {
+					return true;
 				}
-				finally {
-					cancelStates();
-				}
-				return true;
+				return false;
 			}
-			return false;
-		}
-	}
-
-	interface ZipState<V> extends ActiveDownstream, Buffering,
-	                              ActiveUpstream, Inner {
-
-		V readNext();
-
-		boolean isTerminated();
-
-		void requestMore();
-
-		void cancel();
-
-		void subscribeTo(Publisher<?> o);
-	}
-
-	static final class ScalarState implements ZipState<Object> {
-
-		final Object val;
-
-		boolean read = false;
-
-		ScalarState(Object val) {
-			this.val = val;
-		}
-
-		@Override
-		public Object readNext() {
-			return read ? null : val;
-		}
-
-		@Override
-		public boolean isTerminated() {
-			return read;
-		}
-
-		@Override
-		public boolean isCancelled() {
-			return read;
-		}
-
-		@Override
-		public boolean isStarted() {
-			return !read;
-		}
-
-		@Override
-		public void subscribeTo(Publisher<?> o) {
-			//IGNORE
-		}
-
-		@Override
-		public void requestMore() {
-			read = true;
+			return w == index;
 		}
 
 		@Override
 		public void cancel() {
-			read = true;
-		}
+			if (winner != -1) {
+				WINNER.lazySet(this, -1);
 
-		@Override
-		public long pending() {
-			return read ? 0L : 1L;
-		}
-
-		@Override
-		public long getCapacity() {
-			return 1L;
-		}
-
-		@Override
-		public String toString() {
-			return "ScalarState{" +
-					"read=" + read +
-					", val=" + val +
-					'}';
+				for (AmbInnerSubscriber<T> a : subscribers) {
+					if(a != null) {
+						a.cancel();
+					}
+				}
+			}
 		}
 	}
 
-	static final class BufferSubscriber<V> extends BaseSubscriber<Object>
-			implements Subscriber<Object>, Bounded, ZipState<Object>, Upstream,
-			           ActiveUpstream,
-			           Downstream {
+	static final class AmbInnerSubscriber<T> extends BaseSubscriber<T> implements Subscription {
 
-		final AmbBarrier<V> parent;
+		final AmbBarrier<T>         parent;
+		final int                   index;
+		final Subscriber<? super T> actual;
 
-		@SuppressWarnings("unused")
+		boolean won;
+
+		volatile long missedRequested;
+		@SuppressWarnings("rawtypes")
+		static final AtomicLongFieldUpdater<AmbInnerSubscriber> MISSED_REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(AmbInnerSubscriber.class, "missedRequested");
+
 		volatile Subscription subscription;
-		final static AtomicReferenceFieldUpdater<BufferSubscriber, Subscription> SUBSCRIPTION =
-				PlatformDependent.newAtomicReferenceFieldUpdater(BufferSubscriber.class, "subscription");
+		@SuppressWarnings("rawtypes")
+		static final AtomicReferenceFieldUpdater<AmbInnerSubscriber, Subscription> SUBSCRIPTION =
+				PlatformDependent.newAtomicReferenceFieldUpdater(AmbInnerSubscriber.class, "subscription");
 
-		volatile boolean done;
-		int outstanding;
+		static final Subscription CANCELLED = new Subscription() {
+			@Override
+			public void request(long n) {
 
-		public BufferSubscriber(AmbBarrier<V> parent) {
+			}
+
+			@Override
+			public void cancel() {
+
+			}
+		};
+
+		public AmbInnerSubscriber(AmbBarrier<T> parent, int index, Subscriber<? super T> actual) {
 			this.parent = parent;
-		}
-
-		@Override
-		public Object upstream() {
-			return subscription;
-		}
-
-		@Override
-		public boolean isCancelled() {
-			return parent.isCancelled();
-		}
-
-
-		@Override
-		public Object downstream() {
-			return parent;
-		}
-
-		@Override
-		public Object readNext() {
-			return null;
-		}
-
-		@Override
-		public boolean isTerminated() {
-			return false;
-		}
-
-		@Override
-		public void requestMore() {
-
-		}
-
-		@Override
-		public boolean isStarted() {
-			return false;
-		}
-
-		@Override
-		public long pending() {
-			return 0;
-		}
-
-		@Override
-		public long getCapacity() {
-			return 0;
-		}
-
-		@Override
-		public void subscribeTo(Publisher<?> o) {
-			o.subscribe(this);
+			this.index = index;
+			this.actual = actual;
 		}
 
 		@Override
 		public void onSubscribe(Subscription s) {
-			super.onSubscribe(s);
-
-			if(parent.cancelled){
-				s.cancel();
-				return;
-			}
-
 			if (!SUBSCRIPTION.compareAndSet(this, null, s)) {
 				s.cancel();
 				return;
 			}
-			s.request(outstanding);
+
+			long r = MISSED_REQUESTED.getAndSet(this, 0L);
+			if (r != 0L) {
+				s.request(r);
+			}
 		}
 
 		@Override
-		public void onNext(Object x) {
-			super.onNext(x);
-			try {
-				parent.drain();
+		public void request(long n) {
+			Subscription s = SUBSCRIPTION.get(this);
+			if (s != null) {
+				s.request(n);
 			}
-			catch (Throwable t) {
-				Exceptions.throwIfFatal(t);
-				parent.reportError(t);
+			else {
+				BackpressureUtils.getAndAdd(MISSED_REQUESTED, this, n);
+				s = SUBSCRIPTION.get(this);
+				if (s != null && s != CANCELLED) {
+					long r = MISSED_REQUESTED.getAndSet(this, 0L);
+					if (r != 0L) {
+						s.request(r);
+					}
+				}
+			}
+		}
+
+		@Override
+		public void onNext(T t) {
+			if (won) {
+				actual.onNext(t);
+			}
+			else {
+				if (parent.win(index)) {
+					won = true;
+					actual.onNext(t);
+				}
+				else {
+					SUBSCRIPTION.get(this).cancel();
+				}
 			}
 		}
 
 		@Override
 		public void onError(Throwable t) {
-			super.onError(t);
-			parent.reportError(t);
-		}
-
-		@Override
-		public void onComplete() {
-			done = true;
-			parent.drain();
-		}
-
-		@Override
-		public void cancel() {
-			Subscription s = SUBSCRIPTION.get(this);
-			if (s != SignalType.NOOP_SUBSCRIPTION) {
-				s = SUBSCRIPTION.getAndSet(this, SignalType.NOOP_SUBSCRIPTION);
-				if (s != SignalType.NOOP_SUBSCRIPTION && s != null) {
-					s.cancel();
+			if (won) {
+				actual.onError(t);
+			}
+			else {
+				if (parent.win(index)) {
+					won = true;
+					actual.onError(t);
+				}
+				else {
+					SUBSCRIPTION.get(this).cancel();
 				}
 			}
 		}
 
 		@Override
-		public String toString() {
-			return "AmbSubscriber{" +
-					", done=" + done +
-					", outstanding=" + outstanding +
-					", subscription=" + subscription +
-					'}';
+		public void onComplete() {
+			if (won) {
+				actual.onComplete();
+			}
+			else {
+				if (parent.win(index)) {
+					won = true;
+					actual.onComplete();
+				}
+				else {
+					SUBSCRIPTION.get(this).cancel();
+				}
+			}
 		}
+
+		@Override
+		public void cancel() {
+			Subscription s = SUBSCRIPTION.get(this);
+			if (s != CANCELLED) {
+				s = SUBSCRIPTION.getAndSet(this, CANCELLED);
+				if (s != CANCELLED && s != null) {
+					s.cancel();
+				}
+			}
+		}
+
 	}
 
 }
