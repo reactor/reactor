@@ -26,13 +26,13 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class IgnoreOnNextOperator<IN>
+public final class IgnoreElementsOperator<IN>
 		implements Function<Subscriber<? super Void>, Subscriber<? super IN>>,
 		           ReactiveState.Factory {
 
-	public static final IgnoreOnNextOperator INSTANCE = new IgnoreOnNextOperator();
+	public static final IgnoreElementsOperator INSTANCE = new IgnoreElementsOperator();
 
-	public IgnoreOnNextOperator() {
+	public IgnoreElementsOperator() {
 
 	}
 

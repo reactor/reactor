@@ -19,7 +19,6 @@ package reactor.core.publisher.operator;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
@@ -60,7 +59,7 @@ public final class OnErrorResumeOperator<T>
 		private final Function<Throwable, ? extends Publisher<? extends T>> fallbackSelector;
 
 		private volatile FallbackSubscriber<T> fallback;
-		private FallbackSubscriber<T> cachedFallback;
+		private          FallbackSubscriber<T> cachedFallback;
 
 		private Throwable error;
 
@@ -83,9 +82,9 @@ public final class OnErrorResumeOperator<T>
 
 		@Override
 		protected void doRequest(long n) {
-			if(this.cachedFallback == null){
+			if (this.cachedFallback == null) {
 				this.cachedFallback = this.fallback;
-				if(this.cachedFallback != null){
+				if (this.cachedFallback != null) {
 					this.cachedFallback.request(n);
 					return;
 				}
@@ -95,9 +94,9 @@ public final class OnErrorResumeOperator<T>
 
 		@Override
 		protected void doCancel() {
-			if(this.cachedFallback == null){
+			if (this.cachedFallback == null) {
 				this.cachedFallback = this.fallback;
-				if(this.cachedFallback != null){
+				if (this.cachedFallback != null) {
 					this.cachedFallback.cancel();
 					return;
 				}

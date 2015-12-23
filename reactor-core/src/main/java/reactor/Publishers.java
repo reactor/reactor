@@ -30,16 +30,17 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.publisher.AmbPublisher;
 import reactor.core.publisher.ForEachSequencer;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.ValuePublisher;
+import reactor.core.publisher.ZipPublisher;
 import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.publisher.operator.FlatMapOperator;
-import reactor.core.publisher.operator.IgnoreOnNextOperator;
+import reactor.core.publisher.operator.IgnoreElementsOperator;
 import reactor.core.publisher.operator.LogOperator;
 import reactor.core.publisher.operator.MapOperator;
 import reactor.core.publisher.operator.OnErrorResumeOperator;
-import reactor.core.publisher.ZipPublisher;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
@@ -50,10 +51,20 @@ import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 
 /**
+ * Create Reactive Streams Publishers from existing data, from custom callbacks (PublisherFactory) or from existing
+ * Publishers (lift or combinatory operators).
  * @author Stephane Maldini
  * @since 2.1
  */
 public final class Publishers extends PublisherFactory {
+
+	/**
+	 *
+	 * "Cold" Source Publisher Creation
+	 *
+	 *
+	 *
+	 */
 
 	/**
 	 * @param data
@@ -83,7 +94,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <T> Publisher<T> from(final Iterator<? extends T> defaultValues) {
-		if(defaultValues == null || !defaultValues.hasNext()){
+		if (defaultValues == null || !defaultValues.hasNext()) {
 			return empty();
 		}
 		ForEachSequencer.IteratorSequencer<T> iteratorPublisher =
@@ -116,6 +127,23 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <IN> Publisher<IN> error(final Throwable error) {
 		return Exceptions.publisher(error);
+	}
+
+	/**
+	 *
+	 *  Liftable Operators
+	 *
+	 *
+	 *
+	 */
+
+	/**
+	 * A marker interface for components responsible for augmenting subscribers with features like {@link
+	 * Publishers#lift}
+	 */
+	public interface Operator<I, O>
+			extends Function<Subscriber<? super O>, Subscriber<? super I>>, ReactiveState.Factory {
+
 	}
 
 	/**
@@ -171,57 +199,45 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
-	 * @param <I> The source type of the data sequence
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @param publisher
+	 * @param <IN>
+	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> merge(Publisher<? extends Publisher<? extends I>> source) {
-		return flatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
+		return log(publisher, null, Level.INFO, LogOperator.ALL);
 	}
 
 	/**
-	 * @param <I> The source type of the data sequence
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @param publisher
+	 * @param category
+	 * @param <IN>
+	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> merge(Iterable<? extends Publisher<? extends I>> source) {
-		return flatMap(from(source), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
+		return log(publisher, category, Level.INFO, LogOperator.ALL);
 	}
 
 	/**
-	 * @param <I> The source type of the data sequence
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @param publisher
+	 * @param category
+	 * @param level
+	 * @param <IN>
+	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> merge(Publisher<? extends I> source1, Publisher<? extends I> source2) {
-		return flatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level) {
+		return log(publisher, category, level, LogOperator.ALL);
 	}
 
 	/**
-	 * @param <I> The source type of the data sequence
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @param publisher
+	 * @param category
+	 * @param level
+	 * @param options
+	 * @param <IN>
+	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> concat(Publisher<? extends Publisher<? extends I>> source) {
-		return concatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
-	}
-
-	/**
-	 * @param <I> The source type of the data sequence
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
-	 */
-	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> concat(Iterable<? extends Publisher<? extends I>> source) {
-		return concatMap(from(source), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
-	}
-
-	/**
-	 * @param <I> The source type of the data sequence
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
-	 */
-	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> concat(Publisher<? extends I> source1, Publisher<? extends I> source2) {
-		return concatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level, int options) {
+		return lift(publisher, new LogOperator<IN>(category, level, options));
 	}
 
 	/**
@@ -271,6 +287,137 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
+	 * Ignore sequence data (onNext) but bridge all other events: - downstream: onSubscribe, onComplete, onError -
+	 * upstream: request, cancel. The difference with ignoreElements is the generic type becoming Void with after.
+	 *
+	 * This useful to acknowledge the completion of a data sequence and trigger further processing using for instance
+	 * {@link #concat(Publisher)}.
+	 * @param source the emitted sequence to filter
+	 * @return a new filtered {@link Publisher<Void>}
+	 */
+	@SuppressWarnings("unchecked")
+	public static Publisher<Void> after(Publisher<?> source) {
+		return lift(source, IgnoreElementsOperator.INSTANCE);
+	}
+
+	/**
+	 * Ignore sequence data (onNext) but bridge all other events: - downstream: onSubscribe, onComplete, onError -
+	 * upstream: request, cancel.
+	 *
+	 * This useful to acknowledge the completion of a data sequence and trigger further processing using for instance
+	 * {@link #concat(Publisher)}.
+	 * @param source the emitted sequence to filter
+	 * @return a new filtered {@link Publisher<Void>}
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Publisher<T> ignoreElements(Publisher<T> source) {
+		return lift(source, IgnoreElementsOperator.INSTANCE);
+	}
+
+	/**
+	 *
+	 *  Combinatory operations
+	 *
+	 *
+	 */
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <I> Publisher<I> amb(Publisher<? extends I> source1, Publisher<? extends I> source2) {
+		return new AmbPublisher<>(new Publisher[]{source1, source2});
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> amb(Iterable<? extends Publisher<? extends I>> sources) {
+		if (sources == null) {
+			return empty();
+		}
+
+		Iterator<? extends Publisher<? extends I>> it = sources.iterator();
+		if (!it.hasNext()) {
+			return empty();
+		}
+
+		List<Publisher<? extends I>> list = null;
+		Publisher<? extends I> p;
+		do {
+			p = it.next();
+			if (list == null) {
+				if (it.hasNext()) {
+					list = new ArrayList<>();
+				}
+				else {
+					return (Publisher<I>) p;
+				}
+			}
+			list.add(p);
+		}
+		while (it.hasNext());
+
+		return new AmbPublisher<>(list.toArray(new Publisher[list.size()]));
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> concat(Publisher<? extends Publisher<? extends I>> source) {
+		return concatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> concat(Iterable<? extends Publisher<? extends I>> source) {
+		return concatMap(from(source), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> concat(Publisher<? extends I> source1, Publisher<? extends I> source2) {
+		return concatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> merge(Publisher<? extends Publisher<? extends I>> source) {
+		return flatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> merge(Iterable<? extends Publisher<? extends I>> source) {
+		return flatMap(from(source), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Publisher<I> merge(Publisher<? extends I> source1, Publisher<? extends I> source2) {
+		return flatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	}
+
+	/**
 	 *
 	 * @param source1
 	 * @param source2
@@ -279,12 +426,12 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T1, T2> Publisher<Tuple2<T1, T2>> zip(
-			Publisher<? extends T1> source1,
+	public static <T1, T2> Publisher<Tuple2<T1, T2>> zip(Publisher<? extends T1> source1,
 			Publisher<? extends T2> source2) {
 
-		return new ZipPublisher<>(new Publisher[]{source1, source2}, (Function<Tuple2<T1, T2>, Tuple2<T1, T2>>)
-				IDENTITY_FUNCTION, BaseProcessor.XS_BUFFER_SIZE);
+		return new ZipPublisher<>(new Publisher[]{source1, source2},
+				(Function<Tuple2<T1, T2>, Tuple2<T1, T2>>) IDENTITY_FUNCTION,
+				BaseProcessor.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -297,10 +444,10 @@ public final class Publishers extends PublisherFactory {
 	 * @param <T2>
 	 * @return
 	 */
-	public static <T1, T2, O> Publisher<O> zip(
-			Publisher<? extends T1> source1,
+	public static <T1, T2, O> Publisher<O> zip(Publisher<? extends T1> source1,
 			Publisher<? extends T2> source2,
 			final BiFunction<? super T1, ? super T2, ? extends O> combinator) {
+
 		return new ZipPublisher<>(new Publisher[]{source1, source2}, new Function<Tuple2<T1, T2>, O>() {
 			@Override
 			public O apply(Tuple2<T1, T2> tuple) {
@@ -316,12 +463,6 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static Publisher<Tuple> zip(Iterable<? extends Publisher<?>> sources) {
-
-		List<Publisher<?>> publishers = new ArrayList<>();
-		for (Publisher<?> p : sources) {
-			publishers.add(p);
-		}
-
 		return zip(sources, IDENTITY_FUNCTION);
 	}
 
@@ -332,8 +473,7 @@ public final class Publishers extends PublisherFactory {
 	 * @param <O>
 	 * @return
 	 */
-	public static <O> Publisher<O> zip(
-			Iterable<? extends Publisher<?>> sources,
+	public static <O> Publisher<O> zip(Iterable<? extends Publisher<?>> sources,
 			final Function<? super Tuple, ? extends O> combinator) {
 
 		if (sources == null) {
@@ -368,6 +508,15 @@ public final class Publishers extends PublisherFactory {
 
 		return new ZipPublisher<>(list.toArray(new Publisher[list.size()]), combinator, BaseProcessor.XS_BUFFER_SIZE);
 	}
+
+	/**
+	 *
+	 *
+	 * Miscellaneous : Convert, Blocking Queue conversion...
+	 *
+	 *
+	 *
+	 */
 
 	/**
 	 *
@@ -407,76 +556,6 @@ public final class Publishers extends PublisherFactory {
 		else {
 			return DependencyUtils.convertFromPublisher(source, to);
 		}
-	}
-
-	/**
-	 * Ignore sequence data (onNext) but bridge all other events: - downstream: onSubscribe, onComplete, onError -
-	 * upstream: request, cancel. The difference with ignoreElements is the generic type becoming Void with after.
-	 *
-	 * This useful to acknowledge the completion of a data sequence and trigger further processing using for instance
-	 * {@link #concat(Publisher)}.
-	 * @param source the emitted sequence to filter
-	 * @return a new filtered {@link Publisher<Void>}
-	 */
-	@SuppressWarnings("unchecked")
-	public static Publisher<Void> after(Publisher<?> source) {
-		return lift(source, IgnoreOnNextOperator.INSTANCE);
-	}
-
-	/**
-	 * Ignore sequence data (onNext) but bridge all other events: - downstream: onSubscribe, onComplete, onError -
-	 * upstream: request, cancel.
-	 *
-	 * This useful to acknowledge the completion of a data sequence and trigger further processing using for instance
-	 * {@link #concat(Publisher)}.
-	 * @param source the emitted sequence to filter
-	 * @return a new filtered {@link Publisher<Void>}
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Publisher<T> ignoreElements(Publisher<T> source) {
-		return lift(source, IgnoreOnNextOperator.INSTANCE);
-	}
-
-	/**
-	 * @param publisher
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
-		return log(publisher, null, Level.INFO, LogOperator.ALL);
-	}
-
-	/**
-	 * @param publisher
-	 * @param category
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
-		return log(publisher, category, Level.INFO, LogOperator.ALL);
-	}
-
-	/**
-	 * @param publisher
-	 * @param category
-	 * @param level
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level) {
-		return log(publisher, category, level, LogOperator.ALL);
-	}
-
-	/**
-	 * @param publisher
-	 * @param category
-	 * @param level
-	 * @param options
-	 * @param <IN>
-	 * @return
-	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level, int options) {
-		return lift(publisher, new LogOperator<IN>(category, level, options));
 	}
 
 	/**
@@ -520,13 +599,8 @@ public final class Publishers extends PublisherFactory {
 	}
 
 	/**
-	 * A marker interface for components responsible for augmenting subscribers with features like
-	 * {@link Publishers#lift}
+	 * Internals
 	 */
-	public interface Operator<I, O> extends Function<Subscriber<? super O>, Subscriber<? super I>>,
-	                                        ReactiveState.Factory {
-
-	}
 
 	private static final NeverPublisher<?> NEVER = new NeverPublisher<>();
 

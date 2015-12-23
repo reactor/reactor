@@ -18,9 +18,8 @@ package reactor.core.publisher;
 
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.reactivestreams.Publisher;
@@ -28,48 +27,72 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
+import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
-import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
-import reactor.core.support.rb.disruptor.RingBuffer;
-import reactor.fn.BiFunction;
-import reactor.fn.Function;
 import reactor.fn.Supplier;
-import reactor.fn.tuple.Tuple;
 
 /**
- * An amb operator to select the first emitting publisher
- *
+ * A zip operator to combine 1 by 1 each upstream in parallel given the combinator function.
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class AmbPublisher<TUPLE extends Tuple, V>
-		implements Function<Subscriber<? super V>, Subscriber<? super Publisher[]>>,
-		           ReactiveState.Factory {
+public final class AmbPublisher<T>
+		implements Publisher<T>, ReactiveState.Factory, ReactiveState.LinkedUpstreams {
 
+	final Publisher[]                          sources;
 
-	final Function<? super TUPLE, ? extends V> combinator;
-	final int                                  bufferSize;
-
-	public AmbPublisher(final Function<? super TUPLE, ? extends V> combinator, int bufferSize) {
-		this.combinator = combinator;
-		this.bufferSize = bufferSize;
+	public AmbPublisher(final Publisher[] sources) {
+		this.sources = sources;
 	}
 
 	@Override
-	public Subscriber<? super Publisher[]> apply(Subscriber<? super V> t) {
-		return new ZipBarrier<>(t, combinator, bufferSize);
+	public void subscribe(Subscriber<? super T> s) {
+		if (s == null) {
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
+		try {
+			if (sources == null || sources.length == 0) {
+				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				s.onComplete();
+				return;
+			}
+
+			AmbBarrier<T> barrier = new AmbBarrier<>(s, this);
+			barrier.start();
+			s.onSubscribe(barrier);
+		}
+		catch (Throwable t) {
+			Exceptions.throwIfFatal(t);
+			s.onError(t);
+		}
 	}
 
-	static final class ZipBarrier<TUPLE extends Tuple, V> extends SubscriberWithDemand<Publisher[], V>
-			implements LinkedUpstreams, FailState {
+	@Override
+	public Iterator<?> upstreams() {
+		return Arrays.asList(sources)
+		             .iterator();
+	}
 
-		final Function<? super TUPLE, ? extends V> combinator;
-		final int                                  bufferSize;
-		final int                                  limit;
+	@Override
+	public long upstreamsCount() {
+		return sources != null ? sources.length : 0;
+	}
+
+	static final class AmbBarrier<V>
+			implements Subscription,
+			           LinkedUpstreams,
+			           ActiveDownstream,
+			           ActiveUpstream,
+			           DownstreamDemand,
+			           FailState {
+
+		final AmbPublisher<V> parent;
+		final ZipState<?>[]          subscribers;
+		final Subscriber<? super V>  actual;
 
 		@SuppressWarnings("unused")
 		private volatile Throwable error;
@@ -77,121 +100,89 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 		private volatile boolean cancelled;
 
 		@SuppressWarnings("rawtypes")
-		static final AtomicReferenceFieldUpdater<ZipBarrier, Throwable> ERROR =
-				PlatformDependent.newAtomicReferenceFieldUpdater(ZipBarrier.class, "error");
+		static final AtomicReferenceFieldUpdater<AmbBarrier, Throwable> ERROR =
+				PlatformDependent.newAtomicReferenceFieldUpdater(AmbBarrier.class, "error");
 
-		private ZipState<?>[] subscribers;
+		@SuppressWarnings("unused")
+		private volatile       long                               requested = 0L;
+		@SuppressWarnings("rawtypes")
+		protected static final AtomicLongFieldUpdater<AmbBarrier> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(AmbBarrier.class, "requested");
 
 		@SuppressWarnings("unused")
 		private volatile int running;
 		@SuppressWarnings("rawtypes")
-		static final AtomicIntegerFieldUpdater<ZipBarrier> RUNNING =
-				AtomicIntegerFieldUpdater.newUpdater(ZipBarrier.class, "running");
+		static final AtomicIntegerFieldUpdater<AmbBarrier> RUNNING =
+				AtomicIntegerFieldUpdater.newUpdater(AmbBarrier.class, "running");
 
 		Object[] valueCache;
 
-		public ZipBarrier(Subscriber<? super V> actual,
-				Function<? super TUPLE, ? extends V> combinator,
-				int bufferSize) {
-			super(actual);
-			this.combinator = combinator;
-			this.bufferSize = bufferSize;
-			this.limit = Math.max(1, bufferSize / 2);
+		final static Object[] TERMINATED_CACHE = new Object[0];
+
+		public AmbBarrier(Subscriber<? super V> actual, AmbPublisher<V> parent) {
+			this.actual = actual;
+			this.parent = parent;
+			this.subscribers = new ZipState[parent.sources.length];
 		}
 
-		@Override
-		protected void doOnSubscribe(Subscription s) {
-			subscriber.onSubscribe(this);
-			requestMore(1L);
-		}
-
-		@Override
 		@SuppressWarnings("unchecked")
-		protected void doNext(Publisher[] sources) {
-			if (TERMINATED.compareAndSet(this, NOT_TERMINATED, TERMINATED_WITH_SUCCESS)) {
-				checkedCancel();
-
-				if (sources.length == 0) {
-					subscriber.onComplete();
-					return;
-				}
-
-				ZipState[] subscribers = new ZipState[sources.length];
-				valueCache = new Object[sources.length];
-
-				int i;
-				ZipState<?> inner;
-				Publisher pub;
-				for (i = 0; i < sources.length; i++) {
-					pub = sources[i];
-					if (pub instanceof Supplier) {
-						inner = new ScalarState(((Supplier<?>) pub).get());
-						subscribers[i] = inner;
-					}
-					else {
-						inner = new BufferSubscriber(this);
-						subscribers[i] = inner;
-					}
-				}
-
-				this.subscribers = subscribers;
-
-				for (i = 0; i < sources.length; i++) {
-					subscribers[i].subscribeTo(sources[i]);
-				}
-
-				drain();
+		void start() {
+			if (cancelled) {
+				return;
 			}
+
+			ZipState[] subscribers = this.subscribers;
+			valueCache = new Object[subscribers.length];
+
+			int i;
+			ZipState<?> inner;
+			Publisher pub;
+			for (i = 0; i < subscribers.length; i++) {
+				pub = parent.sources[i];
+				if (pub instanceof Supplier) {
+					inner = new ScalarState(((Supplier<?>) pub).get());
+					subscribers[i] = inner;
+				}
+				else {
+					inner = new BufferSubscriber(this);
+					subscribers[i] = inner;
+				}
+			}
+
+			for (i = 0; i < subscribers.length; i++) {
+				subscribers[i].subscribeTo(parent.sources[i]);
+			}
+
+			drain();
 		}
 
 		@Override
-		protected void doRequest(long n) {
+		public void request(long n) {
 			BackpressureUtils.getAndAdd(REQUESTED, this, n);
 			drain();
 		}
 
 		@Override
-		protected void doCancel() {
+		public void cancel() {
 			if (!cancelled) {
 				cancelled = true;
 				if (RUNNING.getAndIncrement(this) == 0) {
-					super.doCancel();
 					cancelStates();
 				}
 			}
 		}
 
-		@Override
-		protected void checkedComplete() {
-			ZipState[] s = subscribers;
-			if (s == null || s.length == 0) {
-				if (RUNNING.getAndIncrement(this) == 0) {
-					subscriber.onComplete();
-				}
-			}
-		}
-
-		@Override
-		public boolean isStarted() {
-			return subscribers != null;
-		}
-
-		@Override
-		protected void checkedError(Throwable throwable) {
-			doOnSubscriberError(throwable);
-		}
-
-		@Override
-		protected void doOnSubscriberError(Throwable throwable) {
+		void reportError(Throwable throwable) {
 			if (!ERROR.compareAndSet(this, null, throwable)) {
 				throw ReactorFatalException.create(throwable);
 			}
-			subscriber.onError(throwable);
+			actual.onError(throwable);
 		}
 
 		@Override
 		public Iterator<?> upstreams() {
-			return Arrays.asList(subscribers).iterator();
+			return Arrays.asList(subscribers)
+			             .iterator();
 		}
 
 		@Override
@@ -204,6 +195,26 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 			return error;
 		}
 
+		@Override
+		public boolean isCancelled() {
+			return cancelled;
+		}
+
+		@Override
+		public boolean isStarted() {
+			return TERMINATED_CACHE != valueCache;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return TERMINATED_CACHE == valueCache;
+		}
+
+		@Override
+		public long requestedFromDownstream() {
+			return requested;
+		}
+
 		void drain() {
 			ZipState[] subscribers = this.subscribers;
 			if (subscribers == null) {
@@ -214,15 +225,10 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 			}
 		}
 
-		@Override
-		public long getCapacity() {
-			return subscribers != null ? subscribers.length : 1;
-		}
-
 		@SuppressWarnings("unchecked")
 		void drainLoop(ZipState[] inner) {
 
-			final Subscriber<? super V> actual = this.subscriber;
+			final Subscriber<? super V> actual = this.actual;
 			int missed = 1;
 			for (; ; ) {
 				if (checkImmediateTerminate()) {
@@ -231,13 +237,14 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 
 				int n = inner.length;
 				int replenishMain = 0;
-				long r = requestedFromDownstream();
+				long r = requested;
 
 				ZipState<?> state;
 
 				for (; ; ) {
 
 					final Object[] tuple = valueCache;
+					if(TERMINATED_CACHE == tuple) return;
 					boolean completeTuple = true;
 					int i;
 					for (i = 0; i < n; i++) {
@@ -256,14 +263,14 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 							continue;
 						}
 
-						if(r != 0) {
+						if (r != 0) {
 							tuple[i] = next;
 						}
 					}
 
 					if (r != 0 && completeTuple) {
 						try {
-							actual.onNext(combinator.apply((TUPLE) Tuple.of(tuple)));
+							//actual.onNext(tuple);
 							if (r != Long.MAX_VALUE) {
 								r--;
 							}
@@ -312,25 +319,21 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 		}
 
 		void cancelStates() {
-			ZipState[] inner = subscribers;
-			if(inner == null){
-				return;
-			}
-			for (int i = 0; i < inner.length; i++) {
-				inner[i].cancel();
+			valueCache = TERMINATED_CACHE;
+			for (int i = 0; i < subscribers.length; i++) {
+				subscribers[i].cancel();
 			}
 		}
 
 		boolean checkImmediateTerminate() {
 			if (cancelled) {
-				super.doCancel();
 				cancelStates();
 				return true;
 			}
 			Throwable e = error;
 			if (e != null) {
 				try {
-					subscriber.onError(error);
+					actual.onError(error);
 				}
 				finally {
 					cancelStates();
@@ -339,22 +342,9 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 			}
 			return false;
 		}
-
-		@Override
-		public boolean isTerminated() {
-			if(subscribers == null) return super.isTerminated();
-			for(int i = 0; i < subscribers.length; i++){
-				if(!subscribers[i].isTerminated()){
-					return false;
-				}
-			}
-			return true;
-		}
 	}
 
-	interface ZipState<V> extends Subscriber<Object>,
-	                              ActiveDownstream,
-	                              Buffering,
+	interface ZipState<V> extends ActiveDownstream, Buffering,
 	                              ActiveUpstream, Inner {
 
 		V readNext();
@@ -399,26 +389,6 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 		}
 
 		@Override
-		public void onSubscribe(Subscription s) {
-			//IGNORE
-		}
-
-		@Override
-		public void onNext(Object o) {
-			//IGNORE
-		}
-
-		@Override
-		public void onError(Throwable t) {
-			//IGNORE
-		}
-
-		@Override
-		public void onComplete() {
-			//IGNORE
-		}
-
-		@Override
 		public void subscribeTo(Publisher<?> o) {
 			//IGNORE
 		}
@@ -452,17 +422,12 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 		}
 	}
 
-	static final class BufferSubscriber<V> extends BaseSubscriber<Object> implements Bounded, ZipState<Object>,
-	                                                                                 Upstream,
-	                                                                                 ActiveUpstream,
-	                                                                                 UpstreamPrefetch,
-	                                                                                 UpstreamDemand,
-	                                                                                 Downstream {
+	static final class BufferSubscriber<V> extends BaseSubscriber<Object>
+			implements Subscriber<Object>, Bounded, ZipState<Object>, Upstream,
+			           ActiveUpstream,
+			           Downstream {
 
-		final ZipBarrier<?, V> parent;
-		final Queue<Object>    queue;
-		final int              limit;
-		final int              bufferSize;
+		final AmbBarrier<V> parent;
 
 		@SuppressWarnings("unused")
 		volatile Subscription subscription;
@@ -472,11 +437,8 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 		volatile boolean done;
 		int outstanding;
 
-		public BufferSubscriber(ZipBarrier<?, V> parent) {
+		public BufferSubscriber(AmbBarrier<V> parent) {
 			this.parent = parent;
-			this.bufferSize = parent.bufferSize;
-			this.limit = bufferSize >> 2;
-			this.queue = RingBuffer.newSequencedQueue(RingBuffer.createSingleProducer(bufferSize));
 		}
 
 		@Override
@@ -489,14 +451,40 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 			return parent.isCancelled();
 		}
 
+
 		@Override
-		public long pending() {
-			return queue.size();
+		public Object downstream() {
+			return parent;
 		}
 
 		@Override
-		public Subscriber<? super Publisher[]> downstream() {
-			return parent;
+		public Object readNext() {
+			return null;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return false;
+		}
+
+		@Override
+		public void requestMore() {
+
+		}
+
+		@Override
+		public boolean isStarted() {
+			return false;
+		}
+
+		@Override
+		public long pending() {
+			return 0;
+		}
+
+		@Override
+		public long getCapacity() {
+			return 0;
 		}
 
 		@Override
@@ -507,68 +495,41 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 		@Override
 		public void onSubscribe(Subscription s) {
 			super.onSubscribe(s);
+
+			if(parent.cancelled){
+				s.cancel();
+				return;
+			}
+
 			if (!SUBSCRIPTION.compareAndSet(this, null, s)) {
 				s.cancel();
 				return;
 			}
-			outstanding = bufferSize;
 			s.request(outstanding);
 		}
 
 		@Override
 		public void onNext(Object x) {
 			super.onNext(x);
-			queue.add(x);
 			try {
 				parent.drain();
 			}
 			catch (Throwable t) {
 				Exceptions.throwIfFatal(t);
-				parent.doOnSubscriberError(t);
+				parent.reportError(t);
 			}
 		}
 
 		@Override
 		public void onError(Throwable t) {
 			super.onError(t);
-			parent.doOnSubscriberError(t);
+			parent.reportError(t);
 		}
 
 		@Override
 		public void onComplete() {
 			done = true;
 			parent.drain();
-		}
-
-		@Override
-		public Object readNext() {
-			return queue.peek();
-		}
-
-		@Override
-		public boolean isTerminated() {
-			return done && queue.isEmpty();
-		}
-
-		@Override
-		public boolean isStarted() {
-			return parent.isStarted();
-		}
-
-		@Override
-		public void requestMore() {
-			queue.poll();
-			int r = outstanding - 1;
-			if (r > limit) {
-				outstanding = r;
-				return;
-			}
-			outstanding = bufferSize;
-			int k = bufferSize - r;
-			if (k > 0) {
-				SUBSCRIPTION.get(this)
-				            .request(k);
-			}
 		}
 
 		@Override
@@ -583,25 +544,8 @@ public final class AmbPublisher<TUPLE extends Tuple, V>
 		}
 
 		@Override
-		public long limit() {
-			return limit;
-		}
-
-		@Override
-		public long expectedFromUpstream() {
-			return outstanding;
-		}
-
-		@Override
-		public long getCapacity() {
-			return bufferSize;
-		}
-
-		@Override
 		public String toString() {
-			return "BufferSubscriber{" +
-					"queue=" + queue +
-					", bufferSize=" + bufferSize +
+			return "AmbSubscriber{" +
 					", done=" + done +
 					", outstanding=" + outstanding +
 					", subscription=" + subscription +

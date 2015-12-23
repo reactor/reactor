@@ -58,19 +58,12 @@ public final class Processors {
 	public static final int DEFAULT_POOL_SIZE = Math.max(Runtime.getRuntime()
 	                                                            .availableProcessors(), 4);
 
-	private static final Supplier<? extends WaitStrategy> DEFAULT_WAIT_STRATEGY = new Supplier<WaitStrategy>() {
-		@Override
-		public WaitStrategy get() {
-			return PhasedBackoffWaitStrategy.withLiteLock(200, 200, TimeUnit.MILLISECONDS);
-		}
-	};
-
-	private static final Supplier<? extends WaitStrategy> SINGLE_WAIT_STRATEGY = new Supplier<WaitStrategy>() {
-		@Override
-		public WaitStrategy get() {
-			return PhasedBackoffWaitStrategy.withLiteLock(500, 50, TimeUnit.MILLISECONDS);
-		}
-	};
+	/**
+	 *
+	 * Non-Blocking "Synchronous" Pub-Sub
+	 *
+	 *
+	 */
 
 	/**
 	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
@@ -173,6 +166,13 @@ public final class Processors {
 	}
 
 	/**
+	 *
+	 * Non-Blocking "Asynchronous" Dedicated Pub-Sub (1 Thread by Sub)
+	 *
+	 *
+	 */
+
+	/**
 	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p> A new Cached ThreadExecutorPool will be implicitely created.
 	 * @param <E> Type of processed signals
@@ -235,6 +235,13 @@ public final class Processors {
 	}
 
 	/**
+	 *
+	 * Non-Blocking "Asynchronous" Work Queue (akin to vanilla Java Executor)
+	 *
+	 *
+	 */
+
+	/**
 	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p> A Shared Processor authorizes concurrent onNext calls and is suited for
 	 * multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be implicitely created.
@@ -295,6 +302,16 @@ public final class Processors {
 	public static <E> ExecutorProcessor<E, E> queue(String name, int bufferSize, boolean autoCancel) {
 		return RingBufferWorkProcessor.create(name, bufferSize, autoCancel);
 	}
+
+	/**
+	 *
+	 * Non-Blocking "Asynchronous" Pooled Processors or "ProcessorGroup" : reuse resources with virtual processor
+	 * references delegating to a pool of asynchronous processors (e.g. Topic).
+	 *
+	 * Dispatching behavior will implicitly or explicitly adapt to the reference method used: dispatchOn()
+	 * or publisherOn().
+	 *
+	 */
 
 	/**
 	 * @param <E>
@@ -629,6 +646,13 @@ public final class Processors {
 	}
 
 	/**
+	 *
+	 *
+	 * Miscellaneous : Processor log/lift, Decoration as queue
+	 *
+	 *
+	 */
+	/**
 	 * @param processor
 	 * @param <IN>
 	 * @param <OUT>
@@ -728,6 +752,7 @@ public final class Processors {
 		return new DelegateProcessor<>(liftTransformation.apply(processor), processor);
 
 	}
+
 	private static class DelegateProcessor<IN, OUT>
 			extends BaseProcessor<IN, OUT> implements ReactiveState.Downstream, ReactiveState.Bounded {
 
@@ -776,5 +801,20 @@ public final class Processors {
 					Long.MAX_VALUE;
 		}
 	}
+
+
+	private static final Supplier<? extends WaitStrategy> DEFAULT_WAIT_STRATEGY = new Supplier<WaitStrategy>() {
+		@Override
+		public WaitStrategy get() {
+			return PhasedBackoffWaitStrategy.withLiteLock(200, 200, TimeUnit.MILLISECONDS);
+		}
+	};
+
+	private static final Supplier<? extends WaitStrategy> SINGLE_WAIT_STRATEGY = new Supplier<WaitStrategy>() {
+		@Override
+		public WaitStrategy get() {
+			return PhasedBackoffWaitStrategy.withLiteLock(500, 50, TimeUnit.MILLISECONDS);
+		}
+	};
 
 }
