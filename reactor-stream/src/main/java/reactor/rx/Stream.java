@@ -130,6 +130,29 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * Select the first emitting Publisher between this and the given publisher. The "loosing" one will be cancelled
+	 * while the winning one will emit normally to the returned Stream.
+	 *
+	 * @return the ambiguous stream
+	 *
+	 * @since 2.1
+	 */
+	public final Stream<O> ambWith(final Publisher<? extends O> publisher) {
+		return new Lift<O, O>(this) {
+			@Override
+			public String getName() {
+				return "ambWith";
+			}
+
+			@Override
+			public void subscribe(Subscriber<? super O> s) {
+				Publishers.amb(Stream.this, publisher).subscribe(s);
+			}
+		};
+	}
+
+
+	/**
 	 * @return {@literal new Stream}
 	 *
 	 * @see reactor.Publishers#after(Publisher)
