@@ -19,20 +19,20 @@ import java.util.List;
 public class RawBus<K, V> extends AbstractBus<K, V> {
 
     private final Processor<Runnable, Runnable> processor;
-    private final ThreadLocal<Boolean> inDispatcherContext;
-    private final FirehoseSubscription firehoseSubscription;
+    private final ThreadLocal<Boolean>          inDispatcherContext;
+    private final FirehoseSubscription          firehoseSubscription;
 
     public RawBus(@Nonnull final Registry<K, BiConsumer<K, ? extends V>> consumerRegistry,
-            @Nullable Processor<Runnable, Runnable> processor,
-            int concurrency,
-            @Nullable final Router router,
-            @Nullable Consumer<Throwable> processorErrorHandler,
-            @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+                  @Nullable Processor<Runnable, Runnable> processor,
+                  int concurrency,
+                  @Nullable final Router router,
+                  @Nullable Consumer<Throwable> processorErrorHandler,
+                  @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
         super(consumerRegistry,
-                concurrency,
-                router,
-                processorErrorHandler,
-                uncaughtErrorHandler);
+              concurrency,
+              router,
+              processorErrorHandler,
+              uncaughtErrorHandler);
         this.processor = processor;
         this.inDispatcherContext = new ThreadLocal<>();
         this.firehoseSubscription = new FirehoseSubscription();
@@ -45,7 +45,7 @@ public class RawBus<K, V> extends AbstractBus<K, V> {
                                                                   runnable.run();
                                                               }
                                                           },
-                        uncaughtErrorHandler));
+                                                          uncaughtErrorHandler));
             }
             processor.onSubscribe(firehoseSubscription);
         }
@@ -73,14 +73,17 @@ public class RawBus<K, V> extends AbstractBus<K, V> {
                 errorHandlerOrThrow(outer);
             }
         } else {
-            processor.onNext(() -> {
-                try {
-                    inDispatcherContext.set(true);
-                    route(key, value);
-                } catch (Throwable outer) {
-                    errorHandlerOrThrow(new RuntimeException("Exception in key: " + key.toString(), outer));
-                } finally {
-                    inDispatcherContext.set(false);
+            processor.onNext(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        inDispatcherContext.set(true);
+                        route(key, value);
+                    } catch (Throwable outer) {
+                        errorHandlerOrThrow(new RuntimeException("Exception in key: " + key.toString(), outer));
+                    } finally {
+                        inDispatcherContext.set(false);
+                    }
                 }
             });
         }

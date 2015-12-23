@@ -23,20 +23,20 @@ import java.util.concurrent.atomic.AtomicReference;
 @SuppressWarnings("unchecked")
 public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
 
-    private final StateProvider<Key> stateProvider;
+    private final StateProvider<Key>      stateProvider;
     private final PVector<StreamSupplier> suppliers;
-    private final LazyVar<Timer> timer;
+    private final LazyVar<Timer>          timer;
 
     protected Pipe() {
-        this(TreePVector.empty(), new DefaultStateProvider<>());
+        this(TreePVector.<StreamSupplier>empty(), new DefaultStateProvider<Key>());
     }
 
     protected Pipe(StateProvider<Key> stateProvider) {
-        this(TreePVector.empty(), stateProvider);
+        this(TreePVector.<StreamSupplier>empty(), stateProvider);
     }
 
-    protected Pipe(PVector<StreamSupplier> suppliers,
-            StateProvider<Key> stateProvider) {
+    protected Pipe(TreePVector<StreamSupplier> suppliers,
+                   StateProvider<Key> stateProvider) {
         this.suppliers = suppliers;
         this.stateProvider = stateProvider;
         this.timer = new LazyVar<>(new Supplier<Timer>() {
@@ -47,82 +47,155 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
         });
     }
 
-    public <NEXT> Pipe<INIT, NEXT> map(Function<CURRENT, NEXT> mapper) {
+    public <NEXT> Pipe<INIT, NEXT> map(final Function<CURRENT, NEXT> mapper) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
-            public BiConsumer<Key, CURRENT> get(Key src,
-                    Key dst,
-                    Bus<Key, Object> firehose) {
-                return (key, value) -> {
-                    firehose.notify(dst.clone(key), mapper.apply(value));
+            public BiConsumer<Key, CURRENT> get(final Key src,
+                                                final Key dst,
+                                                final Bus<Key, Object> firehose) {
+                return new BiConsumer<Key, CURRENT>() {
+                    @Override
+                    public void accept(Key key, CURRENT value) {
+                        firehose.notify(dst.clone(key), mapper.apply(value));
+                    }
                 };
             }
         });
     }
 
-    public <NEXT> Pipe<INIT, NEXT> map(Supplier<Function<CURRENT, NEXT>> supplier) {
+    public <NEXT> Pipe<INIT, NEXT> map(final Supplier<Function<CURRENT, NEXT>> supplier) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                    Key dst,
-                    Bus<Key, Object> firehose) {
-                Function<CURRENT, NEXT> mapper = supplier.get();
-                return (key, value) -> {
-                    firehose.notify(dst.clone(key), mapper.apply(value));
+                                                final Key dst,
+                                                final Bus<Key, Object> firehose) {
+                final Function<CURRENT, NEXT> mapper = supplier.get();
+                return new BiConsumer<Key, CURRENT>() {
+                    @Override
+                    public void accept(Key key, CURRENT value) {
+                        firehose.notify(dst.clone(key), mapper.apply(value));
+                    }
                 };
             }
         });
     }
 
-    public <ST, NEXT> Pipe<INIT, NEXT> map(BiFunction<Atom<ST>, CURRENT, NEXT> mapper,
-            ST init) {
+    public <ST, NEXT> Pipe<INIT, NEXT> map(final BiFunction<Atom<ST>, CURRENT, NEXT> mapper,
+                                           final ST init) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
-            public BiConsumer<Key, CURRENT> get(Key src,
-                    Key dst,
-                    Bus<Key, Object> firehose) {
-                Atom<ST> st = stateProvider.makeAtom(src, init);
+            public BiConsumer<Key, CURRENT> get(final Key src,
+                                                final Key dst,
+                                                final Bus<Key, Object> firehose) {
+                final Atom<ST> st = stateProvider.makeAtom(src, init);
 
-                return (key, value) -> {
-                    firehose.notify(dst.clone(key), mapper.apply(st, value));
+                return new BiConsumer<Key, CURRENT>() {
+                    @Override
+                    public void accept(Key key, CURRENT value) {
+                        firehose.notify(dst.clone(key), mapper.apply(st, value));
+                    }
                 };
             }
         });
     }
 
-    public <ST> Pipe<INIT, ST> scan(BiFunction<ST, CURRENT, ST> mapper,
-            ST init) {
+    public <ST> Pipe<INIT, ST> scan(final BiFunction<ST, CURRENT, ST> mapper,
+                                    final ST init) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                    Key dst,
-                    Bus<Key, Object> firehose) {
-                Atom<ST> st = stateProvider.makeAtom(src, init);
+                                                final Key dst,
+                                                final Bus<Key, Object> firehose) {
+                final Atom<ST> st = stateProvider.makeAtom(src, init);
 
-                return (key, value) -> {
-                    ST newSt = st.update((old) -> mapper.apply(old, value));
-                    firehose.notify(dst.clone(key), newSt);
+                return new BiConsumer<Key, CURRENT>() {
+                    @Override
+                    public void accept(final Key key,
+                                       final CURRENT value) {
+                        ST newSt = st.update(new UnaryOperator<ST>() {
+                            @Override
+                            public ST apply(ST old) {
+                                return mapper.apply(old, value);
+                            }
+                        });
+                        firehose.notify(dst.clone(key), newSt);
+                    }
                 };
             }
         });
     }
 
     @Override
-    public Pipe<INIT, CURRENT> debounce(long period, TimeUnit timeUnit) {
+    public Pipe<INIT, CURRENT> debounce(final long period,
+                                        final TimeUnit timeUnit) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
-            public BiConsumer<Key, CURRENT> get(Key src, Key dst, Bus<Key, Object> firehose) {
+            public BiConsumer<Key, CURRENT> get(Key src, final Key dst, final Bus<Key, Object> firehose) {
                 final Atom<CURRENT> debounced = stateProvider.makeAtom(src, null);
                 final AtomicReference<ReactiveState.Pausable> pausable = new AtomicReference<>(null);
 
-                return (key, value) -> {
-                    debounced.update(current -> value);
+                return new BiConsumer<Key, CURRENT>() {
+                    @Override
+                    public void accept(final Key key,
+                                       final CURRENT value) {
+                        debounced.update(new UnaryOperator<CURRENT>() {
+                            @Override
+                            public CURRENT apply(CURRENT current) {
+                                return value;
+                            }
+                        });
 
-                    if (pausable.get() == null) {
+                        if (pausable.get() == null) {
+                            pausable.set(timer.get().schedule(new Consumer<Long>() {
+                                @Override
+                                public void accept(Long v) {
+                                    firehose.notify(dst, debounced.deref());
+                                    pausable.set(null);
+                                }
+                            }, period, timeUnit, TimeUnit.MILLISECONDS.convert(period, timeUnit)));
+                        }
+                    }
+                };
+            }
+        });
+    }
+
+    @Override
+    public Pipe<INIT, CURRENT> throttle(final long period,
+                                        final TimeUnit timeUnit) {
+        return next(new StreamSupplier<Key, CURRENT>() {
+            @Override
+            public BiConsumer<Key, CURRENT> get(Key src, final Key dst, final Bus<Key, Object> firehose) {
+                final Atom<CURRENT> debouncedValue = stateProvider.makeAtom(src, null);
+                final AtomicReference<ReactiveState.Pausable> pausable = new AtomicReference<>(null);
+
+                return new BiConsumer<Key, CURRENT>() {
+                    @Override
+                    public void accept(final Key key,
+                                       final CURRENT value) {
+                        ReactiveState.Pausable oldScheduled = pausable.getAndUpdate(
+                            new java.util.function.UnaryOperator<ReactiveState.Pausable>() {
+                                @Override
+                                public ReactiveState.Pausable apply(ReactiveState.Pausable pausable) {
+                                    return null;
+                                }
+                            });
+
+                        if (oldScheduled != null) {
+                            oldScheduled.cancel();
+                        }
+
+                        debouncedValue.update(new UnaryOperator<CURRENT>() {
+                            @Override
+                            public CURRENT apply(CURRENT current) {
+                                return value;
+                            }
+                        });
+
                         pausable.set(timer.get().schedule(new Consumer<Long>() {
                             @Override
                             public void accept(Long v) {
-                                firehose.notify(dst, debounced.deref());
+                                firehose.notify(dst, debouncedValue.deref());
                                 pausable.set(null);
                             }
                         }, period, timeUnit, TimeUnit.MILLISECONDS.convert(period, timeUnit)));
@@ -132,77 +205,56 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
         });
     }
 
-    @Override
-    public Pipe<INIT, CURRENT> throttle(long period, TimeUnit timeUnit) {
+    public Pipe<INIT, CURRENT> filter(final Predicate<CURRENT> predicate) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
-            public BiConsumer<Key, CURRENT> get(Key src, Key dst, Bus<Key, Object> firehose) {
-                final Atom<CURRENT> debouncedValue = stateProvider.makeAtom(src, null);
-                final AtomicReference<ReactiveState.Pausable> pausable = new AtomicReference<>(null);
-
-                return (key, value) -> {
-                    ReactiveState.Pausable oldScheduled = pausable.getAndUpdate((p) -> null);
-                    if (oldScheduled != null) {
-                        oldScheduled.cancel();
-                    }
-
-                    debouncedValue.update(current -> value);
-
-                    pausable.set(timer.get().schedule(new Consumer<Long>() {
-                        @Override
-                        public void accept(Long v) {
-                            firehose.notify(dst, debouncedValue.deref());
-                            pausable.set(null);
+            public BiConsumer<Key, CURRENT> get(final Key src,
+                                                final Key dst,
+                                                final Bus<Key, Object> firehose) {
+                return new BiConsumer<Key, CURRENT>() {
+                    @Override
+                    public void accept(Key key, CURRENT value) {
+                        if (predicate.test(value)) {
+                            firehose.notify(dst.clone(key), value);
                         }
-                    }, period, timeUnit, TimeUnit.MILLISECONDS.convert(period, timeUnit)));
-                };
-            }
-        });
-    }
-
-    public Pipe<INIT, CURRENT> filter(Predicate<CURRENT> predicate) {
-        return next(new StreamSupplier<Key, CURRENT>() {
-            @Override
-            public BiConsumer<Key, CURRENT> get(Key src,
-                    Key dst,
-                    Bus<Key, Object> firehose) {
-                return (key, value) -> {
-                    if (predicate.test(value)) {
-                        firehose.notify(dst.clone(key), value);
                     }
                 };
             }
         });
     }
 
-    public Pipe<INIT, List<CURRENT>> slide(UnaryOperator<List<CURRENT>> drop) {
+    public Pipe<INIT, List<CURRENT>> slide(final UnaryOperator<List<CURRENT>> drop) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                    Key dst,
-                    Bus<Key, Object> firehose) {
-                Atom<PVector<CURRENT>> buffer = stateProvider.makeAtom(src, TreePVector.empty());
+                                                Key dst,
+                                                Bus<Key, Object> firehose) {
+                Atom<PVector<CURRENT>> buffer = stateProvider.makeAtom(src,
+                                                                       (PVector<CURRENT>)
+                                                                           TreePVector.<CURRENT>empty());
 
                 return new SlidingWindowOperation<>(firehose,
-                        buffer,
-                        drop,
-                        dst);
+                                                    buffer,
+                                                    drop,
+                                                    dst);
             }
         });
     }
 
-    public Pipe<INIT, List<CURRENT>> partition(Predicate<List<CURRENT>> emit) {
+    public Pipe<INIT, List<CURRENT>> partition(final Predicate<List<CURRENT>> emit) {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
-            public BiConsumer<Key, CURRENT> get(Key src,
-                    Key dst,
-                    Bus<Key, Object> firehose) {
-                Atom<PVector<CURRENT>> buffer = stateProvider.makeAtom(dst, TreePVector.empty());
+            public BiConsumer<Key, CURRENT> get(final Key src,
+                                                final Key dst,
+                                                final Bus<Key, Object> firehose) {
+                Atom<PVector<CURRENT>> buffer = stateProvider.makeAtom(dst,
+                                                                       (PVector<CURRENT>)
+                                                                           TreePVector.<CURRENT>empty());
 
                 return new PartitionOperation<>(firehose,
-                        buffer,
-                        emit,
-                        dst);
+                                                buffer,
+                                                emit,
+                                                dst);
             }
         });
     }
@@ -215,34 +267,39 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
      * STREAM ENDS
      */
 
-    public <SRC extends Key> IPipeEnd consume(BiConsumer<SRC, CURRENT> consumer) {
+    public <SRC extends Key> IPipeEnd consume(final BiConsumer<SRC, CURRENT> consumer) {
         return end(new StreamSupplier<SRC, CURRENT>() {
             @Override
             public BiConsumer<SRC, CURRENT> get(SRC src,
-                    Key dst,
-                    Bus<Key, Object> firehose) {
+                                                Key dst,
+                                                Bus<Key, Object> firehose) {
                 return consumer;
             }
         });
     }
 
-    public IPipeEnd consume(Consumer<CURRENT> consumer) {
+    public IPipeEnd consume(final Consumer<CURRENT> consumer) {
         return end(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src,
-                    Key dst,
-                    Bus<Key, Object> pipe) {
-                return (key, value) -> consumer.accept(value);
+                                                Key dst,
+                                                Bus<Key, Object> pipe) {
+                return new BiConsumer<Key, CURRENT>() {
+                    @Override
+                    public void accept(Key key, CURRENT value) {
+                        consumer.accept(value);
+                    }
+                };
             }
         });
     }
 
-    public <SRC extends Key> IPipeEnd consume(Supplier<BiConsumer<SRC, CURRENT>> supplier) {
+    public <SRC extends Key> IPipeEnd consume(final Supplier<BiConsumer<SRC, CURRENT>> supplier) {
         return end(new StreamSupplier<SRC, CURRENT>() {
             @Override
             public BiConsumer<SRC, CURRENT> get(SRC src,
-                    Key dst,
-                    Bus<Key, Object> pipe) {
+                                                Key dst,
+                                                Bus<Key, Object> pipe) {
                 return supplier.get();
             }
 
@@ -258,8 +315,8 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
     }
 
     protected <NEXT> Pipe<INIT, NEXT> next(StreamSupplier supplier) {
-        return new Pipe<>(suppliers.plus(supplier),
-                stateProvider);
+        return new Pipe<>((TreePVector<StreamSupplier>) suppliers.plus(supplier),
+                          stateProvider);
     }
 
     protected <NEXT> IPipeEnd end(StreamSupplier supplier) {

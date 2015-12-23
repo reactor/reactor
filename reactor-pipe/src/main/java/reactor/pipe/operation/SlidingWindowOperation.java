@@ -28,10 +28,13 @@ public class SlidingWindowOperation<SRC extends Key, DST extends Key, V> impleme
     }
 
     @Override
-    public void accept(SRC src, V value) {
-        PVector<V> newv = buffer.update((old) -> {
-            List<V> dropped = drop.apply(old.plus(value));
-            return TreePVector.from(dropped);
+    public void accept(final SRC src, final V value) {
+        PVector<V> newv = buffer.update(new UnaryOperator<PVector<V>>() {
+            @Override
+            public PVector<V> apply(PVector<V> old) {
+                List<V> dropped = drop.apply(old.plus(value));
+                return TreePVector.from(dropped);
+            }
         });
 
         firehose.notify(destination.clone(src), newv);

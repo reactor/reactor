@@ -39,32 +39,40 @@ public class PipeEnd<INIT, FINAL> implements IPipe.IPipeEnd<INIT, FINAL> {
     }
 
     @Override
-    public void subscribe(Selector<Key> matcher, AbstractBus<Key, Object> firehose) {
+    public void subscribe(Selector<Key> matcher, final AbstractBus<Key, Object> firehose) {
         firehose.on(matcher,
                     new BiConsumer<Key, Object>() {
                         @Override
                         public void accept(Key key, Object o) {
-                            subscribers(firehose).apply(key).forEach((k, consumer) -> {
-                                firehose.onKey(k, consumer);
-                            });
+                            subscribers(firehose).apply(key).forEach(
+                                new java.util.function.BiConsumer<Key, BiConsumer>() {
+                                    @Override
+                                    public void accept(Key key, BiConsumer consumer) {
+                                        firehose.onKey(key, consumer);
+                                    }
+                                });
                         }
                     });
     }
 
     @Override
-    public void subscribe(Predicate<Key> matcher, AbstractBus<Key, Object> firehose) {
+    public void subscribe(Predicate<Key> matcher, final AbstractBus<Key, Object> firehose) {
         firehose.on(new PredicateSelector<Key>(matcher),
                     new BiConsumer<Key, Object>() {
                         @Override
                         public void accept(Key key, Object o) {
-                            subscribers(firehose).apply(key).forEach((k, consumer) -> {
-                                firehose.onKey(k, consumer);
-                            });
+                            subscribers(firehose).apply(key).forEach(
+                                new java.util.function.BiConsumer<Key, BiConsumer>() {
+                                    @Override
+                                    public void accept(Key key, BiConsumer consumer) {
+                                        firehose.onKey(key, consumer);
+                                    }
+                                });
                         }
                     });
     }
 
-    private Function<Key, Map<Key, BiConsumer>> subscribers(Bus<Key, ?> firehose) {
+    private Function<Key, Map<Key, BiConsumer>> subscribers(final Bus<Key, ?> firehose) {
         return new Function<Key, Map<Key, BiConsumer>>() {
             @Override
             public Map<Key, BiConsumer> apply(Key key) {

@@ -5,6 +5,7 @@ import org.pcollections.TreePVector;
 import reactor.bus.Bus;
 import reactor.fn.BiConsumer;
 import reactor.fn.Predicate;
+import reactor.fn.UnaryOperator;
 import reactor.pipe.concurrent.Atom;
 import reactor.pipe.key.Key;
 
@@ -29,11 +30,21 @@ public class PartitionOperation<SRC extends Key, DST extends Key, V> implements 
 
     @Override
     @SuppressWarnings(value = {"unchecked"})
-    public void accept(SRC key, V value) {
-        PVector<V> newv = buffer.update((old) -> old.plus(value));
+    public void accept(final SRC key, final V value) {
+        PVector<V> newv = buffer.update(new UnaryOperator<PVector<V>>() {
+            @Override
+            public PVector<V> apply(PVector<V> old) {
+                return old.plus(value);
+            }
+        });
 
         if (emit.test(newv)) {
-            PVector<V> downstreamValue = buffer.updateAndReturnOld((old) -> TreePVector.empty());
+            PVector<V> downstreamValue = buffer.updateAndReturnOld(new UnaryOperator<PVector<V>>() {
+                @Override
+                public PVector<V> apply(PVector<V> vs) {
+                    return TreePVector.empty();
+                }
+            });
             firehose.notify(destination.clone(key), downstreamValue);
         }
     }

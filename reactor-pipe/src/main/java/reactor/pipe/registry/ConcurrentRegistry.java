@@ -12,9 +12,9 @@ import reactor.fn.UnaryOperator;
 import reactor.pipe.concurrent.Atom;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ConcurrentRegistry<K, V> implements Registry<K, V> {
 
@@ -24,7 +24,8 @@ public class ConcurrentRegistry<K, V> implements Registry<K, V> {
     private final List<Registration<K, V>>                   keyMissMatchers;
 
     public ConcurrentRegistry() {
-        this.exactKeyMatches = new Atom<>(HashTreePMap.empty());
+        this.exactKeyMatches = new Atom<>((PMap<K, PVector<Registration<K, V>>>)
+                                              HashTreePMap.<K, PVector<Registration<K, V>>>empty());
         this.keyMissMatchers = new ArrayList<>();
     }
 
@@ -36,7 +37,7 @@ public class ConcurrentRegistry<K, V> implements Registry<K, V> {
     }
 
     @Override
-    public Registration<K, V> register(K key, V obj) {
+    public Registration<K, V> register(final K key, V obj) {
         final PVector<Registration<K, V>> lookedUpArr = exactKeyMatches.deref().get(key);
         final Registration<K, V> reg = new KeyRegistration<>(obj);
         if (lookedUpArr == null) {
@@ -57,15 +58,22 @@ public class ConcurrentRegistry<K, V> implements Registry<K, V> {
         return reg;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public List<Registration<K, ? extends V>> select(K key) {
         PVector<Registration<K, V>> registrations = exactKeyMatches.deref().get(key);
         if (null == registrations || registrations.isEmpty()) {
-            return keyMissMatchers.stream().filter((reg) -> {
-                return reg.getSelector().matches(key);
-            }).collect(Collectors.toList());
+            List<Registration<K, ? extends V>> result = new ArrayList<>();
+            for (Registration<K, ? extends V> reg : keyMissMatchers) {
+                if (reg.getSelector().matches(key)) {
+                    result.add(reg);
+                }
+            }
+            return result;
         } else {
-            return registrations.stream().collect(Collectors.toList());
+            Registration<K, ? extends V>[] result = new Registration[registrations.size()];
+            registrations.toArray(result);
+            return Arrays.asList(result);
         }
     }
 
