@@ -844,6 +844,24 @@ public class StreamTests extends AbstractReactorTest {
 		assertTrue("Latch is " + latch.getCount(), latch.getCount() == 0);
 	}
 
+
+	@Test
+	public void zipOfNull() {
+		Stream<String> as = Streams.just("x");
+		Stream<String> bs = Streams.<String>just(null);
+		try {
+
+			assertNull(Streams.zip(as, bs)
+			                  .next()
+			                  .get());
+		}
+		catch (NullPointerException npe){
+			return;
+		}
+		assertFalse("Should have failed", true);
+
+	}
+
 	@Test
 	public void shouldCorrectlyDispatchComplexFlow() throws InterruptedException {
 		Broadcaster<Integer> globalFeed = Broadcaster.create();

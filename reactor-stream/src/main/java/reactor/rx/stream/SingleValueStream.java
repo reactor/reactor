@@ -17,6 +17,7 @@ package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
+import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
@@ -61,6 +62,9 @@ public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>
 
 	@Override
 	public T get() {
+		if(this != EMPTY && value == null){
+			throw new SpecificationExceptions.Spec213_ArgumentIsNull();
+		}
 		return value;
 	}
 
