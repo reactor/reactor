@@ -83,7 +83,7 @@ import reactor.rx.action.Signal;
 import reactor.rx.action.SkipOperator;
 import reactor.rx.action.SkipUntilTimeoutOperator;
 import reactor.rx.action.SortOperator;
-import reactor.rx.action.StreamProcessor;
+import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.action.StreamStateCallbackOperator;
 import reactor.rx.action.SwitchOperator;
 import reactor.rx.action.TakeOperator;
@@ -524,7 +524,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<O> cache(int last) {
 		Processor<O, O> emitter = Processors.replay(last);
 		subscribe(emitter);
-		return StreamProcessor.wrap(emitter);
+		return StreamProcessor.from(emitter);
 	}
 
 	/**

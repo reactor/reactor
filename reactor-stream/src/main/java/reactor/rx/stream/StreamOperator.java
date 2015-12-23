@@ -28,7 +28,7 @@ import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Function;
 import reactor.core.timer.Timer;
 import reactor.rx.Stream;
-import reactor.rx.action.StreamProcessor;
+import reactor.rx.broadcast.StreamProcessor;
 
 /**
  * @author Stephane Maldini
@@ -88,13 +88,13 @@ public final class StreamOperator<I, O> extends Stream<O> implements ReactiveSta
 
 		if (oldestReceiver == null){
 			Processor<E, E> root = Processors.emitter();
-			return StreamProcessor.wrap(
+			return StreamProcessor.from(
 					root,
 					Publishers.lift(root, oldestOperator)
 			);
 		}
 		else{
-			return StreamProcessor.wrap(
+			return StreamProcessor.from(
 					(Subscriber<E>)oldestReceiver,
 					this
 			);

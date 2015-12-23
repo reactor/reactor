@@ -26,14 +26,16 @@ import reactor.core.error.CancelException;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.timer.Timer;
-import reactor.rx.action.StreamProcessor;
 import reactor.rx.subscriber.SerializedSubscriber;
 import reactor.rx.subscription.SwapSubscription;
 
 /**
- * A {@code Broadcaster} is a subclass of {@code Stream} which exposes methods for publishing values into the pipeline.
- * It is possible to publish discreet values typed to the generic type of the {@code Stream} as well as error conditions
- * and the Reactive Streams "complete" signal via the {@link #onComplete()} method.
+ * Broadcasters are akin to Reactive Extensions Subject. Extending Stream, they fulfil the
+ * {@link org.reactivestreams.Processor} contract.
+ *
+ * Some broadcasters might be shared and will require serialization as onXXXX handle should not be invoke concurrently.
+ * {@link #serialize} can take care of this specific issue.
+ *
  * @author Stephane Maldini
  */
 public class Broadcaster<O> extends StreamProcessor<O, O> {
@@ -212,6 +214,59 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 	@SuppressWarnings("unchecked")
 	public static <T> Broadcaster<T> from(ProcessorGroup emitter, Timer timer, boolean autoCancel) {
 		return from(emitter.dispatchOn(), timer, autoCancel);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, rfirst broadcasting the most recent signal then starting with the passed value,
+	 * then ready to broadcast values with {@link reactor.rx.action
+	 * .Broadcaster#onNext(Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete
+	 * ()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 * <p>
+	 * A serialized broadcaster will make sure that even in a multhithreaded scenario, only one thread will be able to
+	 * broadcast at a time.
+	 * The synchronization is non blocking for the publisher, using thread-stealing and first-in-first-served patterns.
+	 *
+	 * @param value the value to start with the sequence
+	 * @param <T> the type of values passing through the {@literal action}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> replayLastOrDefault(T value) {
+		return replayLastOrDefault(value, null);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then ready to broadcast values with
+	 * {@link #onNext(Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 *
+	 * @param timer the {@link Timer} to use downstream
+	 * @param <T>        the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> replayLast(Timer timer) {
+		return replayLastOrDefault(null, timer);
+	}
+
+	/**
+	 * Build a {@literal Broadcaster}, first broadcasting the most recent signal then starting with the passed value,
+	 * then  ready to broadcast values with {@link #onNext(Object)},
+	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}.
+	 * Values broadcasted are directly consumable by subscribing to the returned instance.
+	 *
+	 * @param value the value to start with the sequence
+	 * @param timer the {@link Timer} to use downstream
+	 * @param <T>        the type of values passing through the {@literal Broadcaster}
+	 * @return a new {@link Broadcaster}
+	 */
+	public static <T> Broadcaster<T> replayLastOrDefault(T value, Timer timer) {
+		Broadcaster<T> b = new Broadcaster<T>(Processors.<T>replay(1), timer, false);
+		if(value != null){
+			b.onNext(value);
+		}
+		return b;
 	}
 
 	/**

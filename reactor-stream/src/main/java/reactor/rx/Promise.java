@@ -40,7 +40,6 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.core.timer.Timer;
-import reactor.rx.broadcast.BehaviorBroadcaster;
 import reactor.rx.broadcast.Broadcaster;
 
 /**
@@ -616,7 +615,7 @@ public class Promise<O>
 					return Streams.fail(error);
 				}
 				else if (out == null){
-					out = BehaviorBroadcaster.first(value, timer);
+					out = Broadcaster.replayLastOrDefault(value, timer);
 				}
 				else {
 					return out;

@@ -54,7 +54,7 @@ import reactor.fn.tuple.Tuple5;
 import reactor.fn.tuple.Tuple6;
 import reactor.fn.tuple.Tuple7;
 import reactor.rx.action.CombineLatestOperator;
-import reactor.rx.action.StreamProcessor;
+import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.action.SwitchOperator;
 import reactor.rx.stream.DecoratingStream;
 import reactor.rx.stream.DeferredStream;
@@ -259,7 +259,7 @@ public class Streams {
 		if (StreamProcessor.class.isAssignableFrom(processor.getClass())) {
 			return (StreamProcessor<I, O>) processor;
 		}
-		return StreamProcessor.wrap(processor);
+		return StreamProcessor.from(processor);
 	}
 
 	/**
@@ -747,7 +747,7 @@ public class Streams {
 	public static <T> StreamProcessor<Publisher<? extends T>, T> switchOnNext() {
 		Processor<Publisher<? extends T>, Publisher<? extends T>> emitter = Processors.replay();
 		return Subscribers.start(
-				StreamProcessor.wrap(emitter, lift(emitter, SwitchOperator.INSTANCE))
+				StreamProcessor.from(emitter, lift(emitter, SwitchOperator.INSTANCE))
 		);
 	}
 

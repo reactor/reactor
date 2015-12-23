@@ -60,8 +60,7 @@ import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.subscriber.Control;
-import reactor.rx.action.StreamProcessor;
-import reactor.rx.broadcast.BehaviorBroadcaster;
+import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.broadcast.Broadcaster;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -1225,10 +1224,10 @@ public class StreamTests extends AbstractReactorTest {
 
 		Phaser phaser = new Phaser(2);
 
-		Stream<Object> s1 = BehaviorBroadcaster.first(new Object())
-		                                       .dispatchOn(asyncGroup);
-		Stream<Object> s2 = BehaviorBroadcaster.first(new Object())
-		                                       .dispatchOn(asyncGroup);
+		Stream<Object> s1 = Broadcaster.replayLastOrDefault(new Object())
+		                               .dispatchOn(asyncGroup);
+		Stream<Object> s2 = Broadcaster.replayLastOrDefault(new Object())
+		                               .dispatchOn(asyncGroup);
 
 		// The following works:
 		//List<Stream<Object>> list = Arrays.asList(s1);

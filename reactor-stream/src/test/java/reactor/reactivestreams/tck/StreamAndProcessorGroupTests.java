@@ -26,7 +26,7 @@ import reactor.core.processor.ProcessorGroup;
 import reactor.fn.BiFunction;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.StreamProcessor;
+import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.broadcast.Broadcaster;
 
 /**
