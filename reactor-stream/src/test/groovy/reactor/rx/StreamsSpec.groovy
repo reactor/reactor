@@ -248,7 +248,7 @@ class StreamsSpec extends Specification {
 		given:
 			String test = ""
 			'a composable with an initial value'
-			def stream = Streams.<String> generate { test }
+			def stream = Streams.<String> createWith{ n, s -> s.onNext test }
 
 		when:
 			'the value is retrieved'
@@ -261,7 +261,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'nothing is provided'
-			Streams.generate(null)
+			Streams.<String> createWith(null)
 
 		then:
 			"error is thrown"
@@ -1987,8 +1987,8 @@ class StreamsSpec extends Specification {
 		given:
 			'a source and a collected stream'
 			def random = new Random()
-			def source = Streams.generate {
-				random.nextInt()
+			def source = Streams.yield {
+				it.submit random.nextInt()
 			}.dispatchOn(asyncGroup)
 
 			def values = []
