@@ -150,7 +150,7 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
                                 @Override
                                 public void accept(Long v) {
                                     firehose.notify(dst, debounced.deref());
-                                    pausable.set(null);
+                                    pausable.getAndSet(null).cancel();
                                 }
                             }, period, timeUnit, TimeUnit.MILLISECONDS.convert(period, timeUnit)));
                         }
@@ -196,7 +196,7 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
                             @Override
                             public void accept(Long v) {
                                 firehose.notify(dst, debouncedValue.deref());
-                                pausable.set(null);
+                                pausable.getAndSet(null).cancel();
                             }
                         }, period, timeUnit, TimeUnit.MILLISECONDS.convert(period, timeUnit)));
                     }
