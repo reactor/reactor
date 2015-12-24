@@ -737,7 +737,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> defaultIfEmpty(@Nonnull final O defaultValue) {
-		return resumeIfEmpty(Streams.just(defaultValue));
+		return switchIfEmpty(Streams.just(defaultValue));
 	}
 
 	/**
@@ -1547,7 +1547,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.1
 	 */
-	public final Stream<O> resumeIfEmpty(@Nonnull final Publisher<? extends O> fallback) {
+	public final Stream<O> switchIfEmpty(@Nonnull final Publisher<? extends O> fallback) {
 		return lift(new DefaultIfEmptyOperator<O>(fallback));
 	}
 
@@ -1560,7 +1560,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.1
 	 */
-	public final Stream<O> resumeIfEmpty(@Nonnull final Supplier<? extends Publisher<? extends O>> fallback) {
+	public final Stream<O> switchIfEmpty(@Nonnull final Supplier<? extends Publisher<? extends O>> fallback) {
 		return lift(new DefaultIfEmptyOperator<>(fallback));
 	}
 

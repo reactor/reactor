@@ -334,7 +334,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 			}
 			boolean d = done;
 
-			if (d && inner == EMPTY) {
+			if (d && replay == -1 && inner == EMPTY) {
 				return;
 			}
 

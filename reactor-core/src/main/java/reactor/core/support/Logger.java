@@ -30,6 +30,7 @@ package reactor.core.support;
 
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
 
 import reactor.core.support.internal.PlatformDependent;
 
@@ -95,6 +96,24 @@ public abstract class Logger {
 			return true;
 		}
 		return false;
+	}
+
+	/**
+	 *
+	 * @param from
+	 * @param arguments
+	 * @return
+	 */
+	public static String format(String from, Object... arguments){
+		if(from != null) {
+			String computed = from;
+			if (arguments != null && arguments.length != 0) {
+				for (Object argument : arguments) {
+					computed = computed.replaceFirst("\\{\\}", Matcher.quoteReplacement(argument.toString()));
+				}
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -491,7 +510,7 @@ public abstract class Logger {
 		@Override
 		public void trace(String format, Object... arguments) {
 			if (logger.isLoggable(Level.FINEST)) {
-				logger.log(Level.FINEST, format, arguments);
+				logger.log(Level.FINEST, format(format, arguments));
 				LoggerFactory.globalExtension.log(logger.getName(), Level.FINEST, format, arguments);
 			}
 		}
@@ -520,7 +539,7 @@ public abstract class Logger {
 		@Override
 		public void debug(String format, Object... arguments) {
 			if (logger.isLoggable(Level.FINE)) {
-				logger.log(Level.FINE, format, arguments);
+				logger.log(Level.FINE, format(format, arguments));
 				LoggerFactory.globalExtension.log(logger.getName(), Level.FINE, format, arguments);
 			}
 		}
@@ -549,7 +568,7 @@ public abstract class Logger {
 		@Override
 		public void info(String format, Object... arguments) {
 			if (logger.isLoggable(Level.INFO)) {
-				logger.log(Level.INFO, format, arguments);
+				logger.log(Level.INFO, format(format, arguments));
 				LoggerFactory.globalExtension.log(logger.getName(), Level.INFO, format, arguments);
 			}
 		}
@@ -578,7 +597,7 @@ public abstract class Logger {
 		@Override
 		public void warn(String format, Object... arguments) {
 			if (logger.isLoggable(Level.WARNING)) {
-				logger.log(Level.WARNING, format, arguments);
+				logger.log(Level.WARNING, format(format, arguments));
 				LoggerFactory.globalExtension.log(logger.getName(), Level.WARNING, format, arguments);
 			}
 		}
@@ -607,7 +626,7 @@ public abstract class Logger {
 		@Override
 		public void error(String format, Object... arguments) {
 			if (logger.isLoggable(Level.SEVERE)) {
-				logger.log(Level.SEVERE, format, arguments);
+				logger.log(Level.SEVERE, format(format, arguments));
 				LoggerFactory.globalExtension.log(logger.getName(), Level.SEVERE, format, arguments);
 			}
 		}
