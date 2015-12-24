@@ -382,7 +382,7 @@ class EventBusSpec extends Specification {
 	def r = EventBus.config().get()
 	def selector = anonymous()
 	int event = 0
-	def s = Streams.withOverflowSupport(r.on(selector)).map { it.data }.consume { event = it }
+	def s = r.on(selector).onOverflowBuffer().map { it.data }.consume { event = it }
 	println s.debug()
 
 	when: 'accept a value'

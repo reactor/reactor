@@ -1651,7 +1651,7 @@ class StreamsSpec extends Specification {
 	def 'Creating Stream from publisher'() {
 		given:
 			'a source stream with a given publisher'
-			def s = Streams.<String> withOverflowSupport {
+			def s = Streams.<String> yield {
 				it.onNext('test1')
 				it.onNext('test2')
 				it.onNext('test3')
@@ -2207,12 +2207,11 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by complete'
 			def res = []
-			def myStream = Streams.withOverflowSupport { aSubscriber ->
+			def myStream = Streams.yield { aSubscriber ->
 				aSubscriber.onNext(Signal.next(1))
 				aSubscriber.onNext(Signal.next(2))
 				aSubscriber.onNext(Signal.next(3))
 				aSubscriber.onNext(Signal.complete())
-				aSubscriber.onNext(Signal.error(new Exception()))
 			}
 
 		and:
@@ -2232,7 +2231,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.withOverflowSupport { aSubscriber ->
+			def myStream = Streams.yield { aSubscriber ->
 				aSubscriber.onNext('Three')
 				aSubscriber.onNext('Two')
 				aSubscriber.onNext('One')
@@ -2240,7 +2239,7 @@ class StreamsSpec extends Specification {
 
 		and:
 			'Another stream will emit values and complete'
-			def myFallback = Streams.withOverflowSupport { aSubscriber ->
+			def myFallback = Streams.yield { aSubscriber ->
 				aSubscriber.onNext('0')
 				aSubscriber.onNext('1')
 				aSubscriber.onNext('2')
@@ -2264,7 +2263,7 @@ class StreamsSpec extends Specification {
 		when:
 			'A source stream emits next signals followed by an error'
 			def res = []
-			def myStream = Streams.<Integer> withOverflowSupport { aSubscriber ->
+			def myStream = Streams.<Integer> yield { aSubscriber ->
 				aSubscriber.onNext(1)
 				aSubscriber.onNext(2)
 				aSubscriber.onNext(3)

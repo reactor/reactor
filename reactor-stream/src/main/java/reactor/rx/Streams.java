@@ -80,7 +80,7 @@ import reactor.rx.stream.StreamOperator;
  * strean.map(i -> i*2).consume(System.out::println);
  * stream.onNext("hello");
  *
- * Stream.withOverflowSupport( subscriber -> {
+ * Stream.yield( subscriber -> {
  *   subscriber.onNext(1);
  *   subscriber.onNext(2);
  *   subscriber.onNext(3);
@@ -99,35 +99,6 @@ import reactor.rx.stream.StreamOperator;
  */
 public class Streams {
 
-	protected Streams() {
-	}
-
-	/**
-	 * Build a custom sequence {@literal Stream} from the passed {@link org.reactivestreams.Publisher} that will be
-	 * subscribed on the
-	 * first
-	 * request from the new subscriber. It means that the passed {@link org.reactivestreams.Subscription#request(long)}
-	 * manually triggered or automatically consumed by {@link reactor.rx.Stream#consume()} operations. The sequence
-	 * consists
-	 * of a series of calls to the {@link org.reactivestreams.Subscriber} argument:
-	 * onSubscribe?|onNext*|onError?|onComplete.
-	 * Strict application of this protocol is not enforced, e.g. onSubscribe is not required as a buffering
-	 * subscription
-	 * will be created
-	 * anyway.
-	 * For simply decorating a given Publisher with {@link Stream} API, and thus relying on the publisher to honour the
-	 * Reactive Streams protocol,
-	 * use the {@link Streams#wrap(Publisher)}
-	 *
-	 * @param publisher the publisher to accept the Stream subscriber
-	 * @param <T>       the type of values passing through the {@literal Stream}
-	 * @return a new {@link reactor.rx.Stream}
-	 */
-	public static <T> Stream<T> withOverflowSupport(Publisher<T> publisher) {
-		return new PublisherStream<T>(publisher);
-	}
-
-
 	/**
 	 * @see PublisherFactory#yield(Consumer)
 	 * @return a new {@link reactor.rx.Stream}
@@ -135,7 +106,6 @@ public class Streams {
 	public static <T> Stream<T> yield(Consumer<? super ReactiveSession<T>> sessionConsumer) {
 		return wrap(Publishers.yield(sessionConsumer));
 	}
-
 
 	/**
 	 * Create a {@link Stream} reacting on requests with the passed {@link BiConsumer}
@@ -167,7 +137,6 @@ public class Streams {
 	                                          Function<Subscriber<? super T>, C> contextFactory) {
 		return createWith(requestConsumer, contextFactory, null);
 	}
-
 
 	/**
 	 * Create a {@link Stream} reacting on requests with the passed {@link BiConsumer}.
@@ -275,7 +244,6 @@ public class Streams {
 		return new StreamOperator<>(publisher, operator);
 	}
 
-
 	/**
 	 * Supply a {@link Publisher} everytime subscribe is called on the returned stream. The passed {@link reactor.fn
 	 * .Supplier}
@@ -301,7 +269,6 @@ public class Streams {
 		return (Stream<T>) SingleValueStream.EMPTY;
 	}
 
-
 	/**
 	 * Build a {@literal Stream} that will never emit anything.
 	 *
@@ -312,7 +279,6 @@ public class Streams {
 		return (Stream<T>) NEVER;
 	}
 
-
 	/**
 	 * Build a {@literal Stream} that will only emit an error signal to any new subscriber.
 	 *
@@ -321,7 +287,6 @@ public class Streams {
 	public static <O, T extends Throwable> Stream<O> fail(T throwable) {
 		return wrap(Publishers.<O>error(throwable));
 	}
-
 
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription request.
@@ -361,7 +326,6 @@ public class Streams {
 	public static <T> Stream<T> from(T[] values) {
 		return from(Arrays.asList(values));
 	}
-
 
 	/**
 	 * Build a {@literal Stream} that will only emit the result of the future and then complete.
@@ -407,7 +371,6 @@ public class Streams {
 		return timer(Timers.globalOrNew(), delay, TimeUnit.SECONDS);
 	}
 
-
 	/**
 	 * Build a {@literal Stream} that will only emit 0l after the time delay and then complete.
 	 *
@@ -418,7 +381,6 @@ public class Streams {
 	public static Stream<Long> timer(Timer timer, long delay) {
 		return timer(timer, delay, TimeUnit.SECONDS);
 	}
-
 
 	/**
 	 * Build a {@literal Stream} that will only emit 0l after the time delay and then complete.
@@ -455,7 +417,6 @@ public class Streams {
 		return period(Timers.globalOrNew(), -1l, period, TimeUnit.SECONDS);
 	}
 
-
 	/**
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after on each period from the subscribe
 	 * call.
@@ -469,7 +430,6 @@ public class Streams {
 		return period(timer, -1l, period, TimeUnit.SECONDS);
 	}
 
-
 	/**
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the time delay on each period.
 	 * It will never complete until cancelled.
@@ -481,7 +441,6 @@ public class Streams {
 	public static Stream<Long> period(long delay, long period) {
 		return period(Timers.globalOrNew(), delay, period, TimeUnit.SECONDS);
 	}
-
 
 	/**
 	 * Build a {@literal Stream} that will emit ever increasing counter from 0 after the time delay on each period.
@@ -548,7 +507,6 @@ public class Streams {
 		return new PeriodicTimerStream(TimeUnit.MILLISECONDS.convert(delay, unit), period, unit, timer);
 	}
 
-
 	/**
 	 * Build a {@literal Stream} whom data is sourced by the passed element on subscription
 	 * request. After all data is being dispatched, a complete signal will be emitted.
@@ -566,7 +524,6 @@ public class Streams {
 		return new SingleValueStream<T>(value1);
 	}
 
-
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
@@ -580,7 +537,6 @@ public class Streams {
 	public static <T> Stream<T> just(T value1, T value2) {
 		return from(Arrays.asList(value1, value2));
 	}
-
 
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
@@ -596,7 +552,6 @@ public class Streams {
 	public static <T> Stream<T> just(T value1, T value2, T value3) {
 		return from(Arrays.asList(value1, value2, value3));
 	}
-
 
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
@@ -614,7 +569,6 @@ public class Streams {
 		return from(Arrays.asList(value1, value2, value3, value4));
 	}
 
-
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
@@ -631,7 +585,6 @@ public class Streams {
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5) {
 		return from(Arrays.asList(value1, value2, value3, value4, value5));
 	}
-
 
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
@@ -651,7 +604,6 @@ public class Streams {
 		return from(Arrays.asList(value1, value2, value3, value4, value5, value6));
 	}
 
-
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
 	 * request.
@@ -670,7 +622,6 @@ public class Streams {
 	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7) {
 		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
 	}
-
 
 	/**
 	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
@@ -754,7 +705,6 @@ public class Streams {
 	  Publisher<? extends Publisher<? extends T>> mergedPublishers) {
 		return lift(mergedPublishers, SwitchOperator.INSTANCE);
 	}
-
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
@@ -953,7 +903,6 @@ public class Streams {
 		return concat(Arrays.asList(source1, source2));
 	}
 
-
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
 	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
@@ -995,7 +944,6 @@ public class Streams {
 	) {
 		return concat(Arrays.asList(source1, source2, source3, source4));
 	}
-
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
@@ -1237,7 +1185,6 @@ public class Streams {
 		return merge(Arrays.asList(source1, source2, source3, source4, source5,
 		  source6, source7));
 	}
-
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
@@ -1824,11 +1771,9 @@ public class Streams {
 			Subscription s;
 
 			@Override
-			public void onSubscribe(Subscription subscription) {
-				s = subscription;
-				if (request) {
-					subscription.request(Long.MAX_VALUE);
-				}
+			public void onComplete() {
+				s = null;
+				latch.countDown();
 			}
 
 			@Override
@@ -1839,9 +1784,11 @@ public class Streams {
 			}
 
 			@Override
-			public void onComplete() {
-				s = null;
-				latch.countDown();
+			public void onSubscribe(Subscription subscription) {
+				s = subscription;
+				if (request) {
+					subscription.request(Long.MAX_VALUE);
+				}
 			}
 		});
 
@@ -1853,12 +1800,17 @@ public class Streams {
 		}
 	}
 
-	private static final Stream NEVER = wrap(Publishers.never());
 
+
+	private static final Stream NEVER = wrap(Publishers.never());
 	private static final BiFunction T1T2_TO_TUPLE2 = new BiFunction() {
 		@Override
 		public Object apply(Object t1, Object t2) {
 			return Tuple.of(t1,t2);
 		}
 	};
+
+
+	protected Streams() {
+	}
 }

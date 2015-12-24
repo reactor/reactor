@@ -60,7 +60,7 @@ public class FizzBuzzTests extends AbstractReactorTest {
 				}
 			}
 		}).log("oooo")
-		  .flatMap((s) -> Streams.withOverflowSupport((sub) -> timer.schedule(new TimerTask() {
+		  .flatMap((s) -> Streams.yield((sub) -> timer.schedule(new TimerTask() {
 			  @Override
 			  public void run() {
 				  sub.onNext(s);
