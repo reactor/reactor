@@ -251,8 +251,8 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 
 	@Override
 	public void onComplete() {
-		if (autoCancel && done) {
-			throw CancelException.get();
+		if (done) {
+			return;
 		}
 		done = true;
 		drain();
