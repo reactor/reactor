@@ -21,6 +21,9 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
@@ -34,17 +37,19 @@ import reactor.rx.Stream;
  *
  * @author Stephane Maldini
  */
-public class PushSubscription<O> implements Subscription, Consumer<Long>, ReactiveState.Upstream {
+public class PushSubscription<O> implements Subscription, ReactiveState.Upstream,
+                                            ReactiveState.ActiveDownstream, ReactiveState.ActiveUpstream, ReactiveState
+		                                            .DownstreamDemand {
 	protected final Subscriber<? super O> subscriber;
 	protected final Stream<O>             publisher;
 
-	protected volatile int terminated = 0;
+	private volatile int terminated = 0;
 
 	protected static final AtomicIntegerFieldUpdater<PushSubscription> TERMINAL_UPDATER = AtomicIntegerFieldUpdater
 	  .newUpdater(PushSubscription.class, "terminated");
 
 
-	protected volatile long pendingRequestSignals = 0l;
+	private volatile long pendingRequestSignals = 0;
 
 	protected static final AtomicLongFieldUpdater<PushSubscription> PENDING_UPDATER = AtomicLongFieldUpdater
 	  .newUpdater(PushSubscription.class, "pendingRequestSignals");
@@ -58,11 +63,6 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Reacti
 	@Override
 	public Object upstream() {
 		return publisher;
-	}
-
-	@Override
-	public final void accept(Long n) {
-		request(n);
 	}
 
 	@Override
@@ -86,79 +86,56 @@ public class PushSubscription<O> implements Subscription, Consumer<Long>, Reacti
 
 	@Override
 	public void cancel() {
-		TERMINAL_UPDATER.set(this, 1);
-		if (publisher != null) {
-			//publisher.cancelSubscription(this);
-		}
+		TERMINAL_UPDATER.compareAndSet(this, 0, -1);
 	}
 
 	public void onComplete() {
-		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
+		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1)) {
 			subscriber.onComplete();
 		}
 	}
 
 	public void onNext(O ev) {
-		//	if (terminated == 0) {
-		subscriber.onNext(ev);
-		//	}
+		if (TERMINAL_UPDATER.get(this) == 0) {
+			subscriber.onNext(ev);
+		}
+		else {
+			throw CancelException.get();
+		}
 	}
 
 	public void onError(Throwable throwable) {
-		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1) && subscriber != null) {
+		Exceptions.throwIfFatal(throwable);
+		if (TERMINAL_UPDATER.compareAndSet(this, 0, 1)) {
 			subscriber.onError(throwable);
 		}
-	}
-
-	public void start() {
-		if (subscriber != null && TERMINAL_UPDATER.compareAndSet(this, -1, 0)) {
-			subscriber.onSubscribe(this);
-			long toRequest;
-			synchronized (this) {
-				if (!markAsStarted() || (toRequest = pendingRequestSignals) <= 0L) {
-					return;
-				}
-			}
-			onRequest(toRequest);
+		else {
+			throw ReactorFatalException.create(throwable);
 		}
-	}
-
-	public final boolean markAsStarted() {
-		return TERMINAL_UPDATER.compareAndSet(this, -1, 0);
 	}
 
 	protected void onRequest(long n) {
 		//IGNORE, full push
 	}
 
-	public final Subscriber<? super O> getSubscriber() {
-		return subscriber;
+	@Override
+	public boolean isCancelled() {
+		return terminated == -1;
 	}
 
-	public boolean isComplete() {
+	@Override
+	public long requestedFromDownstream() {
+		return pendingRequestSignals;
+	}
+
+	@Override
+	public boolean isTerminated() {
 		return terminated == 1;
 	}
 
 	@Override
-	public int hashCode() {
-		int result = subscriber.hashCode();
-		if (publisher != null) {
-			result = 31 * result + publisher.hashCode();
-		}
-		return result;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		PushSubscription that = (PushSubscription) o;
-
-		if (publisher != null && publisher.hashCode() != that.publisher.hashCode()) return false;
-		if (!subscriber.equals(that.subscriber)) return false;
-
-		return true;
+	public boolean isStarted() {
+		return terminated == 0;
 	}
 
 	@Override

@@ -82,7 +82,7 @@ public final class FutureStream<T> extends Stream<T> {
 
 					try {
 						BackpressureUtils.checkRequest(elements);
-						if (isComplete()) return;
+						if (isTerminated()) return;
 
 						T result = unit == null ? future.get() : future.get(time, unit);
 

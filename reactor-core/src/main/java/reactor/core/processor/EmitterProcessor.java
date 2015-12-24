@@ -58,12 +58,12 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 
 	private volatile boolean done;
 
-	@SuppressWarnings("unused")
-	private volatile Throwable error;
-
 	static final EmitterSubscriber<?>[] EMPTY = new EmitterSubscriber<?>[0];
 
 	static final EmitterSubscriber<?>[] CANCELLED = new EmitterSubscriber<?>[0];
+
+	@SuppressWarnings("unused")
+	private volatile Throwable error;
 
 	@SuppressWarnings("rawtypes")
 	static final AtomicReferenceFieldUpdater<EmitterProcessor, Throwable> ERROR =

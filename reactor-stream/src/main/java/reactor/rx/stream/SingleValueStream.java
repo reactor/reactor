@@ -17,11 +17,11 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Supplier;
 import reactor.rx.Stream;
-import reactor.rx.subscription.PushSubscription;
 
 /**
  * A Stream that emits only one value and then complete.
@@ -53,7 +53,7 @@ public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>
 
 	final public static SingleValueStream<?> EMPTY = new SingleValueStream<>(null);
 
-	final private T value;
+	final T value;
 
 	@SuppressWarnings("unchecked")
 	public SingleValueStream(T value) {
@@ -68,22 +68,7 @@ public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>
 	@Override
 	public void subscribe(final Subscriber<? super T> subscriber) {
 		try {
-			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
-				boolean terminado = false;
-
-				@Override
-				public void request(long elements) {
-					if (terminado) {
-						return;
-					}
-
-					terminado = true;
-					if (value != null) {
-						onNext(value);
-					}
-					onComplete();
-				}
-			});
+			subscriber.onSubscribe(new SingleSubscription<>(value, subscriber));
 		}
 		catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
@@ -104,5 +89,50 @@ public final class SingleValueStream<T> extends Stream<T> implements Supplier<T>
 	@Override
 	public String toString() {
 		return "singleValue=" + value;
+	}
+
+	private static final class SingleSubscription<T> implements Subscription, Upstream, ActiveUpstream {
+
+		boolean terminado;
+		final T                     value;
+		final Subscriber<? super T> subscriber;
+
+		public SingleSubscription(T value, Subscriber<? super T> subscriber) {
+			this.value = value;
+			this.subscriber = subscriber;
+		}
+
+		@Override
+		public void request(long elements) {
+			if (terminado) {
+				return;
+			}
+
+			terminado = true;
+			if (value != null) {
+				subscriber.onNext(value);
+			}
+			subscriber.onComplete();
+		}
+
+		@Override
+		public void cancel() {
+			terminado = true;
+		}
+
+		@Override
+		public boolean isStarted() {
+			return !terminado;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return terminado;
+		}
+
+		@Override
+		public Object upstream() {
+			return value;
+		}
 	}
 }

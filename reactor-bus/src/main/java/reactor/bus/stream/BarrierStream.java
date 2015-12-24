@@ -68,7 +68,7 @@ public class BarrierStream extends Stream<List<Object>> {
 	private PushSubscription<List<Object>> downstream;
 
 	public <I, O> Function<I, O> wrap(final Function<I, O> fn) {
-		if (null != downstream && downstream.isComplete()) {
+		if (null != downstream && downstream.isTerminated()) {
 			throw new IllegalStateException("This BarrierStream is already complete");
 		}
 
@@ -85,7 +85,7 @@ public class BarrierStream extends Stream<List<Object>> {
 	}
 
 	public <I> Consumer<I> wrap(final Consumer<I> consumer) {
-		if (null != downstream && downstream.isComplete()) {
+		if (null != downstream && downstream.isTerminated()) {
 			throw new IllegalStateException("This BarrierStream is already complete");
 		}
 
@@ -144,7 +144,7 @@ public class BarrierStream extends Stream<List<Object>> {
 		}
 		if (resultCnt.incrementAndGet() == wrappedCnt.get()
 		  && null != downstream
-		  && !downstream.isComplete()) {
+		  && !downstream.isTerminated()) {
 			downstream.onNext(values);
 			downstream.onComplete();
 		}
