@@ -16,9 +16,15 @@
 
 package reactor.rx.action;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
+import reactor.core.subscriber.SubscriberWithDemand;
+import reactor.core.support.Assert;
+import reactor.core.support.ReactiveStateUtils;
+import reactor.fn.Supplier;
 
 /**
  * @author Stephane Maldini
@@ -26,41 +32,115 @@ import reactor.core.subscriber.SubscriberBarrier;
  */
 public final class DefaultIfEmptyOperator<T> implements Publishers.Operator<T, T> {
 
-	private final T defaultValue;
+	private final Supplier<? extends Publisher<? extends T>> fallbackSelector;
 
-	public DefaultIfEmptyOperator(T defaultValue) {
-		this.defaultValue = defaultValue;
+	public DefaultIfEmptyOperator(final Publisher<? extends T> fallbackSelector) {
+		this.fallbackSelector = new Supplier<Publisher<? extends T>>() {
+			@Override
+			public Publisher<? extends T> get() {
+				return fallbackSelector;
+			}
+		};
+	}
+
+	public DefaultIfEmptyOperator(Supplier<? extends Publisher<? extends T>> fallbackSelector) {
+		this.fallbackSelector = fallbackSelector;
 	}
 
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new DefaultIfEmptyAction<>(subscriber, defaultValue);
+		return new DefaultIfEmptyAction<>(subscriber, fallbackSelector);
 	}
 
-	static final class DefaultIfEmptyAction<T> extends SubscriberBarrier<T, T> {
+	static final class DefaultIfEmptyAction<T> extends SubscriberWithDemand<T, T> implements Named {
 
-		private final T defaultValue;
-		private boolean hasValues = false;
+		final Supplier<? extends Publisher<? extends T>> fallbackSelector;
 
-		public DefaultIfEmptyAction(Subscriber<? super T> actual, T defaultValue) {
+		private volatile FallbackSubscriber<T> fallback;
+		private          FallbackSubscriber<T> cachedFallback;
+
+		private boolean hasValue;
+
+		public DefaultIfEmptyAction(Subscriber<? super T> actual,
+				Supplier<? extends Publisher<? extends T>> fallbackSelector) {
 			super(actual);
-			this.defaultValue = defaultValue;
+			Assert.notNull(fallbackSelector, "Fallback Selector supplier cannot be null.");
+			this.fallbackSelector = fallbackSelector;
 		}
 
 		@Override
-		protected void doNext(T ev) {
-			hasValues = true;
-			subscriber.onNext(ev);
+		public String getName() {
+			return ReactiveStateUtils.getName(fallbackSelector);
 		}
 
 		@Override
-		protected void doComplete() {
-			if (!hasValues) {
-				subscriber.onNext(defaultValue);
+		protected void doRequest(long n) {
+			if (this.cachedFallback == null) {
+				this.cachedFallback = this.fallback;
+				if (this.cachedFallback != null) {
+					this.cachedFallback.request(n);
+					return;
+				}
 			}
-			subscriber.onComplete();
+			super.doRequest(n);
 		}
 
+		@Override
+		protected void doCancel() {
+			if (this.cachedFallback == null) {
+				this.cachedFallback = this.fallback;
+				if (this.cachedFallback != null) {
+					this.cachedFallback.cancel();
+					return;
+				}
+			}
+			super.doCancel();
+		}
+
+		@Override
+		protected void doNext(T t) {
+			hasValue = true;
+			super.doNext(t);
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		protected void checkedComplete() {
+			if(hasValue){
+				return;
+			}
+			Publisher<? extends T> fallback = fallbackSelector.get();
+			final long r = requestedFromDownstream();
+			if (fallback == null) {
+				super.checkedComplete();
+			}
+			else if (r != 0 && Supplier.class.isAssignableFrom(fallback.getClass())) {
+				subscriber.onNext(((Supplier<T>) fallback).get());
+				subscriber.onComplete();
+			}
+			else {
+				FallbackSubscriber<T> s = new FallbackSubscriber<>(subscriber, r);
+				this.fallback = s;
+				fallback.subscribe(s);
+			}
+		}
+
+		private static class FallbackSubscriber<T> extends SubscriberBarrier<T, T> {
+
+			private final long initRequest;
+
+			public FallbackSubscriber(Subscriber<? super T> subscriber, long r) {
+				super(subscriber);
+				this.initRequest = r;
+			}
+
+			@Override
+			public void doOnSubscribe(Subscription s) {
+				if (initRequest != 0L) {
+					s.request(initRequest);
+				}
+			}
+		}
 	}
 
 }

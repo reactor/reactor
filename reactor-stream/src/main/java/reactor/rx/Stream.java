@@ -130,6 +130,16 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * @return {@literal new Stream}
+	 *
+	 * @see reactor.Publishers#after(Publisher)
+	 */
+	@SuppressWarnings("unchecked")
+	public final Stream<Void> after() {
+		return lift(IgnoreElementsOperator.INSTANCE);
+	}
+
+	/**
 	 * Select the first emitting Publisher between this and the given publisher. The "loosing" one will be cancelled
 	 * while the winning one will emit normally to the returned Stream.
 	 *
@@ -149,17 +159,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 				Publishers.amb(Stream.this, publisher).subscribe(s);
 			}
 		};
-	}
-
-
-	/**
-	 * @return {@literal new Stream}
-	 *
-	 * @see reactor.Publishers#after(Publisher)
-	 */
-	@SuppressWarnings("unchecked")
-	public final Stream<Void> after() {
-		return lift(IgnoreElementsOperator.INSTANCE);
 	}
 
 	/**
@@ -737,8 +736,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.0
 	 */
-	public final Stream<O> defaultIfEmpty(final O defaultValue) {
-		return lift(new DefaultIfEmptyOperator<O>(defaultValue));
+	public final Stream<O> defaultIfEmpty(@Nonnull final O defaultValue) {
+		return resumeIfEmpty(Streams.just(defaultValue));
 	}
 
 	/**
@@ -1537,6 +1536,32 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<O> requestWhen(final Function<? super Stream<? extends Long>, ? extends Publisher<? extends
 			Long>> throttleStream) {
 		return lift(new ThrottleRequestWhenOperator<O>(getTimer(), throttleStream));
+	}
+
+	/**
+	 * Create an operation that returns the passed sequence if the Stream has completed without any emitted signals.
+	 *
+	 * @param fallback an alternate stream if empty
+	 *
+	 * @return {@literal new Stream}
+	 *
+	 * @since 2.1
+	 */
+	public final Stream<O> resumeIfEmpty(@Nonnull final Publisher<? extends O> fallback) {
+		return lift(new DefaultIfEmptyOperator<O>(fallback));
+	}
+
+	/**
+	 * Create an operation that returns the supplied sequence if the Stream has completed without any emitted signals.
+	 *
+	 * @param fallback the supplier to provide an alternate stream if empty
+	 *
+	 * @return {@literal new Stream}
+	 *
+	 * @since 2.1
+	 */
+	public final Stream<O> resumeIfEmpty(@Nonnull final Supplier<? extends Publisher<? extends O>> fallback) {
+		return lift(new DefaultIfEmptyOperator<>(fallback));
 	}
 
 	/**

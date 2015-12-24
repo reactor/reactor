@@ -139,21 +139,6 @@ public final class OnErrorResumeOperator<T>
 					s.request(initRequest);
 				}
 			}
-
-			@Override
-			public void doNext(T t) {
-				subscriber.onNext(t);
-			}
-
-			@Override
-			public void doError(Throwable t) {
-				subscriber.onError(t);
-			}
-
-			@Override
-			public void doComplete() {
-				subscriber.onComplete();
-			}
 		}
 	}
 
