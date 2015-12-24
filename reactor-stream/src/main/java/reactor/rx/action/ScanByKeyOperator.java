@@ -28,7 +28,6 @@ import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.stream.MapStream;
-import reactor.rx.subscription.PushSubscription;
 
 /**
  * @author Stephane Maldini
@@ -90,54 +89,33 @@ public final class ScanByKeyOperator<K, V>
 			if (mapListener != null) {
 				mapListener.subscribe(new Subscriber<MapStream.Signal<K, V>>() {
 					Subscription s;
-					PushSubscription<Tuple2<K, V>> child;
 
 					@Override
 					public void onSubscribe(final Subscription sub) {
 						this.s = sub;
-						child = new PushSubscription<Tuple2<K, V>>(null, subscriber) {
-							@Override
-							protected void onRequest(long elements) {
-								Subscription _s = s;
-								if (_s != null) {
-									_s.request(elements);
-								}
-								doRequest(elements);
-							}
-
-							@Override
-							public void cancel() {
-								super.cancel();
-								Subscription _s = s;
-								if (_s != null) {
-									s = null;
-									_s.cancel();
-								}
-							}
-						};
-						subscriber.onSubscribe(child);
+						subscriber.onSubscribe(s);
 					}
 
 					@Override
 					public void onNext(MapStream.Signal<K, V> kvSignal) {
-						if (child != null && kvSignal.op() == MapStream.Operation.put) {
+						if (s != null && kvSignal.op() == MapStream.Operation.put) {
 							performNext(kvSignal.pair());
 						}
 					}
 
 					@Override
 					public void onError(Throwable t) {
-						s = null;
-						if (child != null) {
-							child.onError(t);
+						if (s != null) {
+							s = null;
+							subscriber.onError(t);
 						}
 					}
 
 					@Override
 					public void onComplete() {
-						s = null;
-						if (child != null) {
-							child.onComplete();
+						if (s != null) {
+							s = null;
+							subscriber.onComplete();
 						}
 					}
 				});

@@ -13,18 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.bus.stream;
 
-import org.reactivestreams.Subscriber;
-import reactor.core.error.Exceptions;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.rx.Stream;
-import reactor.rx.subscription.PushSubscription;
+package reactor.bus.stream;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.rx.Stream;
 
 /**
  * A {@code BarrierStream} provides a type of {@code Stream} into which you can bind {@link reactor.fn.Consumer
@@ -53,22 +55,25 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  * bus.notify("hello", Event.wrap("Hello World!"));
  * </code></pre>
- * <p>
- * NOTE: To get blocking semantics for the calling thread, you only need to call {@link reactor.rx.Stream#next()} to
- * return a
- * {@code Promise}.
- * </p>
+ * <p> NOTE: To get blocking semantics for the calling thread, you only need to call {@link reactor.rx.Stream#next()} to
+ * return a {@code Promise}. </p>
  */
-public class BarrierStream extends Stream<List<Object>> {
+public class BarrierStream extends Stream<List<Object>> implements Subscription {
+
+	@SuppressWarnings("unused")
+	private volatile       int                                      terminated = 0;
+	@SuppressWarnings("rawtypes")
+	protected static final AtomicIntegerFieldUpdater<BarrierStream> TERMINATED =
+			AtomicIntegerFieldUpdater.newUpdater(BarrierStream.class, "terminated");
 
 	private final AtomicInteger wrappedCnt = new AtomicInteger(0);
 	private final AtomicInteger resultCnt  = new AtomicInteger(0);
 	private final List<Object>  values     = new ArrayList<Object>();
 
-	private PushSubscription<List<Object>> downstream;
+	private Subscriber<? super List<Object>> downstream;
 
 	public <I, O> Function<I, O> wrap(final Function<I, O> fn) {
-		if (null != downstream && downstream.isTerminated()) {
+		if (null != downstream && TERMINATED.get(this) == 1) {
 			throw new IllegalStateException("This BarrierStream is already complete");
 		}
 
@@ -85,7 +90,7 @@ public class BarrierStream extends Stream<List<Object>> {
 	}
 
 	public <I> Consumer<I> wrap(final Consumer<I> consumer) {
-		if (null != downstream && downstream.isTerminated()) {
+		if (null != downstream && TERMINATED.get(this) == 1) {
 			throw new IllegalStateException("This BarrierStream is already complete");
 		}
 
@@ -101,29 +106,39 @@ public class BarrierStream extends Stream<List<Object>> {
 	}
 
 	@Override
+	public void request(long n) {
+		Subscriber<? super List<Object>> s = downstream;
+		if(s != null && TERMINATED.get(this) == 0){
+			if (resultCnt.get() == wrappedCnt.get()) {
+				try {
+					s.onNext(values);
+					s.onComplete();
+				}
+				catch (Throwable t) {
+					Exceptions.throwIfFatal(t);
+					s.onError(t);
+				}
+			}
+		}
+	}
+
+	@Override
+	public void cancel() {
+		TERMINATED.set(this, 1);
+	}
+
+	@Override
 	public void subscribe(Subscriber<? super List<Object>> s) {
 		if (null != downstream) {
 			throw new IllegalStateException("This BarrierStream already has a Subscriber");
 		}
 
-		downstream = new PushSubscription<List<Object>>(this, s) {
-			@Override
-			public void request(long n) {
-				super.request(n);
+		downstream = s;
 
-				if (resultCnt.get() == wrappedCnt.get()) {
-					try {
-						onNext(values);
-						onComplete();
-					} catch (Throwable t) {
-						onError(t);
-					}
-				}
-			}
-		};
 		try {
-			s.onSubscribe(downstream);
-		} catch (Throwable throwable) {
+			s.onSubscribe(this);
+		}
+		catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			s.onError(throwable);
 		}
@@ -133,18 +148,18 @@ public class BarrierStream extends Stream<List<Object>> {
 		synchronized (values) {
 			if (values.size() == idx) {
 				values.add(obj);
-			} else if (values.size() < idx) {
+			}
+			else if (values.size() < idx) {
 				for (int i = values.size(); i < idx; i++) {
 					values.add(null);
 				}
 				values.add(obj);
-			} else {
+			}
+			else {
 				values.set(idx, obj);
 			}
 		}
-		if (resultCnt.incrementAndGet() == wrappedCnt.get()
-		  && null != downstream
-		  && !downstream.isTerminated()) {
+		if (resultCnt.incrementAndGet() == wrappedCnt.get() && null != downstream && TERMINATED.get(this) == 0) {
 			downstream.onNext(values);
 			downstream.onComplete();
 		}

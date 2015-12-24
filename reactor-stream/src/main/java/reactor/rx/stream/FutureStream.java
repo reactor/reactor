@@ -18,17 +18,17 @@ package reactor.rx.stream;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import org.reactivestreams.Subscriber;
-import reactor.core.error.Exceptions;
-import reactor.core.support.BackpressureUtils;
+import reactor.core.publisher.PublisherFactory;
+import reactor.core.subscriber.SubscriberWithContext;
+import reactor.fn.Consumer;
 import reactor.rx.Stream;
-import reactor.rx.subscription.PushSubscription;
+import reactor.rx.Streams;
 
 /**
  * A Stream that emits a result of a {@link java.util.concurrent.Future} and then complete.
  * <p>
  * Since the stream retains the future reference in a final field, any
- * {@link this#subscribe(org.reactivestreams.Subscriber)}
+ * {@link org.reactivestreams.Subscriber}
  * will replay the {@link java.util.concurrent.Future#get()}
  * <p>
  * Create such stream with the provided factory, E.g.:
@@ -54,49 +54,47 @@ import reactor.rx.subscription.PushSubscription;
  *
  * @author Stephane Maldini
  */
-public final class FutureStream<T> extends Stream<T> {
+public final class FutureStream<T> {
 
-	private final Future<? extends T> future;
-	private final long                time;
-	private final TimeUnit            unit;
-
-	public FutureStream(Future<? extends T> future) {
-		this(future, 0, null);
+	/**
+	 *
+	 * @param future
+	 * @return
+	 */
+	public static <T> Stream<T> create(Future<? extends T> future){
+		return create(future, 0, null);
 	}
 
-	public FutureStream(Future<? extends T> future,
-	                    long time,
-	                    TimeUnit unit) {
-		this.future = future;
-		this.time = time;
-		this.unit = unit;
-	}
+	/**
+	 *
+	 * @param future
+	 * @param time
+	 * @param unit
+	 * @return
+	 */
+	public static <T> Stream<T> create(final Future<? extends T> future,
+			final long time,
+			final TimeUnit unit){
 
-	@Override
-	public void subscribe(final Subscriber<? super T> subscriber) {
-		try {
-			subscriber.onSubscribe(new PushSubscription<T>(this, subscriber) {
-
-				@Override
-				public void request(long elements) {
-
-					try {
-						BackpressureUtils.checkRequest(elements);
-						if (isTerminated()) return;
-
-						T result = unit == null ? future.get() : future.get(time, unit);
-
-						subscriber.onNext(result);
-						onComplete();
-
-					} catch (Throwable e) {
-						onError(e);
-					}
-				}
-			});
-		} catch (Throwable throwable) {
-			Exceptions.throwIfFatal(throwable);
-			subscriber.onError(throwable);
+		if(time < 0 && unit != null){
+			throw new IllegalArgumentException("Given time is negative : "+time+" "+unit);
 		}
+		else if(future.isCancelled()) {
+			return Streams.empty();
+		}
+
+		return Streams.wrap(PublisherFactory.create(new Consumer<SubscriberWithContext<T, Void>>() {
+			@Override
+			public void accept(SubscriberWithContext<T, Void> s) {
+				try {
+					T result = unit == null ? future.get() : future.get(time, unit);
+					s.onNext(result);
+					s.onComplete();
+				}
+				catch (Exception e) {
+					s.onError(e);
+				}
+			}
+		}));
 	}
 }

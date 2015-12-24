@@ -60,7 +60,6 @@ import reactor.rx.stream.DecoratingStream;
 import reactor.rx.stream.DeferredStream;
 import reactor.rx.stream.FutureStream;
 import reactor.rx.stream.PeriodicTimerStream;
-import reactor.rx.stream.PublisherStream;
 import reactor.rx.stream.RangeStream;
 import reactor.rx.stream.SingleTimerStream;
 import reactor.rx.stream.SingleValueStream;
@@ -335,7 +334,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> from(Future<? extends T> future) {
-		return new FutureStream<T>(future);
+		return FutureStream.create(future);
 	}
 
 	/**
@@ -346,7 +345,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> from(Future<? extends T> future, long time, TimeUnit unit) {
-		return new FutureStream<T>(future, time, unit);
+		return FutureStream.create(future, time, unit);
 	}
 
 	/**
