@@ -112,6 +112,7 @@ public abstract class Logger {
 					computed = computed.replaceFirst("\\{\\}", Matcher.quoteReplacement(argument.toString()));
 				}
 			}
+			return computed;
 		}
 		return null;
 	}
