@@ -32,10 +32,8 @@ import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.publisher.operator.LogOperator;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
-import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Consumer;
 

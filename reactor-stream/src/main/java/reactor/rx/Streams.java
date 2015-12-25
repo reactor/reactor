@@ -53,16 +53,16 @@ import reactor.fn.tuple.Tuple4;
 import reactor.fn.tuple.Tuple5;
 import reactor.fn.tuple.Tuple6;
 import reactor.fn.tuple.Tuple7;
-import reactor.rx.action.CombineLatestOperator;
-import reactor.rx.action.SwitchOperator;
+import reactor.rx.stream.StreamCombineLatest;
+import reactor.rx.stream.StreamSwitch;
 import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.stream.DecoratingStream;
-import reactor.rx.stream.DeferredStream;
-import reactor.rx.stream.FutureStream;
-import reactor.rx.stream.PeriodicTimerStream;
-import reactor.rx.stream.RangeStream;
-import reactor.rx.stream.SingleTimerStream;
-import reactor.rx.stream.SingleValueStream;
+import reactor.rx.stream.StreamDefer;
+import reactor.rx.stream.StreamFuture;
+import reactor.rx.stream.StreamKeyValue;
+import reactor.rx.stream.StreamRange;
+import reactor.rx.stream.StreamSingleTimer;
+import reactor.rx.stream.StreamJust;
 import reactor.rx.stream.StreamOperator;
 
 /**
@@ -255,7 +255,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> defer(Supplier<? extends Publisher<T>> supplier) {
-		return new DeferredStream<>(supplier);
+		return new StreamDefer<>(supplier);
 	}
 
 	/**
@@ -265,7 +265,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> empty() {
-		return (Stream<T>) SingleValueStream.EMPTY;
+		return (Stream<T>) StreamJust.EMPTY;
 	}
 
 	/**
@@ -334,7 +334,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> from(Future<? extends T> future) {
-		return FutureStream.create(future);
+		return StreamFuture.create(future);
 	}
 
 	/**
@@ -345,7 +345,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> from(Future<? extends T> future, long time, TimeUnit unit) {
-		return FutureStream.create(future, time, unit);
+		return StreamFuture.create(future, time, unit);
 	}
 
 	/**
@@ -357,7 +357,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Integer> range(int start, int count) {
-		return RangeStream.create(start, count);
+		return StreamRange.create(start, count);
 	}
 
 	/**
@@ -401,7 +401,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> timer(Timer timer, long delay, TimeUnit unit) {
-		return new SingleTimerStream(delay, unit, timer);
+		return new StreamSingleTimer(delay, unit, timer);
 	}
 
 	/**
@@ -503,7 +503,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(Timer timer, long delay, long period, TimeUnit unit) {
-		return new PeriodicTimerStream(TimeUnit.MILLISECONDS.convert(delay, unit), period, unit, timer);
+		return new StreamKeyValue(TimeUnit.MILLISECONDS.convert(delay, unit), period, unit, timer);
 	}
 
 	/**
@@ -520,7 +520,7 @@ public class Streams {
 			throw new SpecificationExceptions.Spec213_ArgumentIsNull();
 		}
 
-		return new SingleValueStream<T>(value1);
+		return new StreamJust<T>(value1);
 	}
 
 	/**
@@ -686,7 +686,7 @@ public class Streams {
 	public static <T> StreamProcessor<Publisher<? extends T>, T> switchOnNext() {
 		Processor<Publisher<? extends T>, Publisher<? extends T>> emitter = Processors.replay();
 		return Subscribers.start(
-				StreamProcessor.from(emitter, lift(emitter, SwitchOperator.INSTANCE))
+				StreamProcessor.from(emitter, lift(emitter, StreamSwitch.INSTANCE))
 		);
 	}
 
@@ -702,7 +702,7 @@ public class Streams {
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> switchOnNext(
 	  Publisher<? extends Publisher<? extends T>> mergedPublishers) {
-		return lift(mergedPublishers, SwitchOperator.INSTANCE);
+		return lift(mergedPublishers, StreamSwitch.INSTANCE);
 	}
 
 	/**
@@ -1403,7 +1403,7 @@ public class Streams {
 				}
 			});
 		}
-		return lift(just(sources.toArray(new Publisher[sources.size()])), new CombineLatestOperator<>(combinator,
+		return lift(just(sources.toArray(new Publisher[sources.size()])), new StreamCombineLatest<>(combinator,
 				BaseProcessor
 				.SMALL_BUFFER_SIZE	/ 2));
 	}
@@ -1430,7 +1430,7 @@ public class Streams {
 			public Publisher[] apply(List<? extends Publisher<?>> publishers) {
 				return publishers.toArray(new Publisher[publishers.size()]);
 			}
-		}).lift(new CombineLatestOperator<>(combinator, BaseProcessor.SMALL_BUFFER_SIZE / 2));
+		}).lift(new StreamCombineLatest<>(combinator, BaseProcessor.SMALL_BUFFER_SIZE / 2));
 	}
 
 	/**

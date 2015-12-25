@@ -166,7 +166,7 @@ public final class CompletableFutureConverter
 	@Override
 	@SuppressWarnings("unchecked")
 	public Publisher toPublisher(Object future) {
-		return new CompletableFuturePublisher<>((CompletableFuture<?>) future);
+		return new PublisherCompletableFuture<>((CompletableFuture<?>) future);
 	}
 
 	@Override
@@ -174,7 +174,7 @@ public final class CompletableFutureConverter
 		return CompletableFuture.class;
 	}
 
-	private static class CompletableFuturePublisher<T>
+	private static class PublisherCompletableFuture<T>
 			implements Publisher<T>, Consumer<Void>,
 			           BiConsumer<Long, SubscriberWithContext<T, Void>> {
 
@@ -183,11 +183,11 @@ public final class CompletableFutureConverter
 
 		@SuppressWarnings("unused")
 		private volatile long requested;
-		private static final AtomicLongFieldUpdater<CompletableFuturePublisher>
+		private static final AtomicLongFieldUpdater<PublisherCompletableFuture>
 				REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(CompletableFuturePublisher.class, "requested");
+				AtomicLongFieldUpdater.newUpdater(PublisherCompletableFuture.class, "requested");
 
-		public CompletableFuturePublisher(CompletableFuture<? extends T> future) {
+		public PublisherCompletableFuture(CompletableFuture<? extends T> future) {
 			this.future = future;
 			this.futurePublisher = PublisherFactory.createWithDemand(this, null, this);
 		}
@@ -198,7 +198,7 @@ public final class CompletableFutureConverter
 				return;
 			}
 
-			if (BackpressureUtils.getAndAdd(REQUESTED, CompletableFuturePublisher.this, n) > 0) {
+			if (BackpressureUtils.getAndAdd(REQUESTED, PublisherCompletableFuture.this, n) > 0) {
 				return;
 			}
 

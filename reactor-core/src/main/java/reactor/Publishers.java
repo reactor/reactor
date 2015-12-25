@@ -30,19 +30,18 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.publisher.PublisherAmb;
 import reactor.core.publisher.ForEachSequencer;
+import reactor.core.publisher.PublisherAmb;
 import reactor.core.publisher.PublisherFactory;
 import reactor.core.publisher.PublisherJust;
 import reactor.core.publisher.PublisherZip;
 import reactor.core.publisher.convert.DependencyUtils;
-import reactor.core.publisher.operator.FlatMapOperator;
-import reactor.core.publisher.operator.IgnoreElementsOperator;
-import reactor.core.publisher.operator.LogOperator;
-import reactor.core.publisher.operator.MapOperator;
-import reactor.core.publisher.operator.OnErrorResumeOperator;
+import reactor.core.publisher.PublisherFlatMap;
+import reactor.core.publisher.PublisherIgnoreElements;
+import reactor.core.publisher.PublisherLog;
+import reactor.core.publisher.PublisherMap;
+import reactor.core.publisher.PublisherOnErrorResume;
 import reactor.core.subscriber.BlockingQueueSubscriber;
-import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.fn.BiFunction;
 import reactor.fn.Function;
@@ -138,15 +137,6 @@ public final class Publishers extends PublisherFactory {
 	 */
 
 	/**
-	 * A marker interface for components responsible for augmenting subscribers with features like {@link
-	 * Publishers#lift}
-	 */
-	public interface Operator<I, O>
-			extends Function<Subscriber<? super O>, Subscriber<? super I>>, ReactiveState.Factory {
-
-	}
-
-	/**
 	 * @param fallbackValue
 	 * @param <IN>
 	 * @return
@@ -162,7 +152,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <IN> Publisher<IN> onErrorResumeNext(final Publisher<IN> source,
 			final Publisher<? extends IN> fallback) {
-		return lift(source, new OnErrorResumeOperator<>(fallback));
+		return lift(source, new PublisherOnErrorResume<>(fallback));
 	}
 
 	/**
@@ -172,7 +162,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <IN> Publisher<IN> onErrorResumeNext(final Publisher<IN> source,
 			Function<Throwable, ? extends Publisher<? extends IN>> fallbackFunction) {
-		return lift(source, new OnErrorResumeOperator<>(fallbackFunction));
+		return lift(source, new PublisherOnErrorResume<>(fallbackFunction));
 	}
 
 	/**
@@ -184,7 +174,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Publisher<O> map(Publisher<I> source, final Function<? super I, ? extends O> transformer) {
-		return lift(source, new MapOperator<>(transformer));
+		return lift(source, new PublisherMap<>(transformer));
 	}
 
 	/**
@@ -195,7 +185,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Publisher<Tuple2<Long, I>> timestamp(Publisher<I> source) {
-		return lift(source, MapOperator.<I>timestamp());
+		return lift(source, PublisherMap.<I>timestamp());
 	}
 
 	/**
@@ -204,7 +194,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
-		return log(publisher, null, Level.INFO, LogOperator.ALL);
+		return log(publisher, null, Level.INFO, PublisherLog.ALL);
 	}
 
 	/**
@@ -214,7 +204,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
-		return log(publisher, category, Level.INFO, LogOperator.ALL);
+		return log(publisher, category, Level.INFO, PublisherLog.ALL);
 	}
 
 	/**
@@ -225,7 +215,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level) {
-		return log(publisher, category, level, LogOperator.ALL);
+		return log(publisher, category, level, PublisherLog.ALL);
 	}
 
 	/**
@@ -237,7 +227,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level, int options) {
-		return lift(publisher, new LogOperator<IN>(category, level, options));
+		return lift(publisher, new PublisherLog<IN>(category, level, options));
 	}
 
 	/**
@@ -260,7 +250,7 @@ public final class Publishers extends PublisherFactory {
 				return error(e);
 			}
 		}
-		return lift(source, new FlatMapOperator(transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32));
+		return lift(source, new PublisherFlatMap(transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32));
 	}
 
 	/**
@@ -283,7 +273,7 @@ public final class Publishers extends PublisherFactory {
 				return error(e);
 			}
 		}
-		return lift(source, new FlatMapOperator(transformer, 1, 32));
+		return lift(source, new PublisherFlatMap(transformer, 1, 32));
 	}
 
 	/**
@@ -297,7 +287,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static Publisher<Void> after(Publisher<?> source) {
-		return lift(source, IgnoreElementsOperator.INSTANCE);
+		return lift(source, PublisherIgnoreElements.INSTANCE);
 	}
 
 	/**
@@ -311,7 +301,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Publisher<T> ignoreElements(Publisher<T> source) {
-		return lift(source, IgnoreElementsOperator.INSTANCE);
+		return lift(source, PublisherIgnoreElements.INSTANCE);
 	}
 
 	/**

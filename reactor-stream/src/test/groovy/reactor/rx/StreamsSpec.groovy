@@ -25,7 +25,7 @@ import reactor.core.processor.RingBufferProcessor
 import reactor.core.subscriber.SubscriberWithContext
 import reactor.core.support.ReactiveStateUtils
 import reactor.fn.BiFunction
-import reactor.rx.action.Signal
+import reactor.rx.stream.Signal
 import reactor.rx.broadcast.Broadcaster
 import spock.lang.Ignore
 import spock.lang.Shared

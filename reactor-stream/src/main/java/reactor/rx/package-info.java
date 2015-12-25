@@ -16,7 +16,7 @@
 
 /**
  * Streams are reactive components derived from Reactive Extensions and implementing Reactive Streams specification.
- * They provide a composition API for reacting to passing {@link reactor.rx.action.Signal}
+ * They provide a composition API for reacting to passing {@link reactor.rx.stream.Signal}
  * rather than by using {@literal reactor.bus.selector.Selector Selectors}
  * and {@literal reactor.bus.EventBus Reactors} directly.
  */

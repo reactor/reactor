@@ -56,6 +56,15 @@ import reactor.fn.Function;
 public abstract class PublisherFactory implements ReactiveState {
 
 	/**
+	 * A marker interface for components responsible for augmenting subscribers with features like {@link
+	 * #lift}
+	 */
+	public interface Operator<I, O>
+			extends Function<Subscriber<? super O>, Subscriber<? super I>>, ReactiveState.Factory {
+
+	}
+
+	/**
 	 * Create a {@link Publisher} reacting on requests with the passed {@link BiConsumer}
 	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
 	 * @param <T> The type of the data sequence
@@ -346,7 +355,8 @@ public abstract class PublisherFactory implements ReactiveState {
 		}
 	}
 
-	private final static class PublisherOperator<I, O> implements Bounded, Named, Upstream, LiftOperator<I, O> {
+	private static class PublisherOperator<I, O>
+			implements Bounded, Named, Upstream, Operator<I, O>, LiftOperator<I, O> {
 
 		final private Publisher<I>                                           source;
 		final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
@@ -363,6 +373,11 @@ public abstract class PublisherFactory implements ReactiveState {
 				throw SpecificationExceptions.spec_2_13_exception();
 			}
 			source.subscribe(barrierProvider.apply(s));
+		}
+
+		@Override
+		public Subscriber<? super I> apply(Subscriber<? super O> subscriber) {
+			return null;
 		}
 
 		@Override
