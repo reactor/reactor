@@ -43,41 +43,61 @@ then multiply by two.
 ```java
 import reactor.pipe.Pipe;
 
-Firehose firehose = new Firehose();
-
 Pipe.<Integer>build()
-	.map(i -> i + 1)
-	.map(i -> i * 2)
-	.consume((v) -> System.out.println(v)))
-    .subscribe(Key.wrap("key1"), firehose);
+    .map(i -> i + 1)
+    .map(i -> i * 2)
+    .consume((v) -> System.out.println(v))
+    .subscribe(Key.wrap("key1"), bus);
 
 // send a couple of payloads
-firehose.notify(Key.wrap("key1"), 1);
+bus.notify(Key.wrap("key1"), 1);
 // => 4
 
-firehose.notify(Key.wrap("key1"), 2);
+bus.notify(Key.wrap("key1"), 2);
 // => 6
 ```
 
-Pipe could be subscribed to t
-
 ## Built-in operations
 
+Pipe operations are somewhat similar to callbacks. For each item
+within the stream, the operation will be called. __Optionally__,
+operation can construct a new value from the old one and
+pass it to the next operation within the pipe chain.
+
+`map`/`scan` operations are taking items one by one and always
+call the next operation within the chain. `filter` operation would only
+call next operation if predicate is matched, and operations
+such as `slide`, `partition` would aggregate and call
+next operation depending on the partitioning logic.
+
   * `map` takes every incoming item and transforms it to the item of the other type,
-  possibly having some side effects inbetween
-  * `filter`
-  * `reduce`
-  * `slide`
-  * `partition`
-  * `consume`
+  possibly having some side effects inbetween.
+  * `filter` calls the next operation within the chain only for the items for which
+  the predicate returns true.
+  * `scan` "reduces" (aggregates) the stream to some representative value, downstreams
+  the aggregate on the each incoming item.
+  * `slide` "sliding" window that keeps seen items within the stream based on some logic.
+  * `partition` "tumbling" window that fills up and flushes based on the provided
+  logic. Could be used to split stream of `Integer` values into `List<Integer>` of
+  size 5 (partition stream by 5 items).
+  * `consume` registers a consumer callback for each item within the stream.
 
 ## State
 
 Sometimes it's required to store some intermeiate computation
-state during the processing. In order to do that, pipes
-provide
+state for the processing. This might be particularly useful
+for the cases when replaying the whole stream from the very
+beginning is expensive. Instead, you save the intermediate
+state in the `Atom`.
 
-## Custom Operations
+In order to do that, pipes provide `reactor.pipe.state.StateProvider`.
+State provider has to implement the `makeAtom` method, that
+constructs the `reactor.pipe.concurrent.Atom` with the state
+either loaded from database or some initial state provided
+by default.
+
+`Atom` could be constructed with a callback that could be
+used for flushing state back to the database.
 
 ## Order
 
