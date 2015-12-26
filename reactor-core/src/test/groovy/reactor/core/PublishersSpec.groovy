@@ -16,7 +16,6 @@
 
 package reactor.core
 
-import reactor.Publishers
 import reactor.fn.BiConsumer
 import spock.lang.Specification
 
@@ -78,7 +77,7 @@ class PublishersSpec extends Specification {
 	} as BiConsumer)
 
 	when: "read the queue"
-	def q = toReadQueue(onErrorResumeNext(pub, from(9999..10002)))
+	def q = toReadQueue(switchOnError(pub, from(9999..10002)))
 	def res = []
 	q.drainTo(res)
 

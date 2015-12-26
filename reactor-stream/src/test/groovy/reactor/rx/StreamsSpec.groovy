@@ -2127,7 +2127,7 @@ class StreamsSpec extends Specification {
 
 		and:
 			'fallback stream is assigned to source stream on any error'
-			myStream.onErrorResumeNext(myFallback).consume(
+			myStream.switchOnError(myFallback).consume(
 					{ println(it); res << it },                          // onNext
 					{ println("Error: " + it.message) }, // onError
 					{ println("Sequence complete"); res << 'complete' }          // onCompleted

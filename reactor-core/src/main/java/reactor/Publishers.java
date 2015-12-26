@@ -45,7 +45,6 @@ import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.SignalType;
 import reactor.fn.BiFunction;
 import reactor.fn.Function;
-import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 
@@ -142,7 +141,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> onErrorReturn(final Publisher<IN> source, final IN fallbackValue) {
-		return onErrorResumeNext(source, just(fallbackValue));
+		return switchOnError(source, just(fallbackValue));
 	}
 
 	/**
@@ -150,7 +149,7 @@ public final class Publishers extends PublisherFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> onErrorResumeNext(final Publisher<IN> source,
+	public static <IN> Publisher<IN> switchOnError(final Publisher<IN> source,
 			final Publisher<? extends IN> fallback) {
 		return new PublisherOnErrorResume<>(source, fallback);
 	}

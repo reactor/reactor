@@ -206,7 +206,7 @@ public class Streams {
 				return just(t);
 			}
 		}
-		return new StreamBarrier<>(publisher);
+		return new StreamBarrier.Identity<>(publisher);
 	}
 
 	/**

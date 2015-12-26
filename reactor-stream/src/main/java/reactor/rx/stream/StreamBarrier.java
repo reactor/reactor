@@ -124,6 +124,18 @@ public class StreamBarrier<I, O> extends Stream<O>
 				'}';
 	}
 
+	public final static class Identity<I> extends StreamBarrier<I, I> {
+
+		public Identity(Publisher<I> source) {
+			super(source);
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super I> s) {
+			source.subscribe(s);
+		}
+	}
+
 	public final static class Operator<I, O> extends StreamBarrier<I, O> {
 
 		private final Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;

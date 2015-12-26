@@ -136,7 +136,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Void> after() {
-		return lift(new PublisherIgnoreElements<>(this));
+		return new StreamBarrier.Identity<>(new PublisherIgnoreElements<>(this));
 	}
 
 	/**
@@ -1017,7 +1017,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<O> ignoreElements() {
-		return lift(new PublisherIgnoreElements(this));
+		return new StreamBarrier.Identity<>(new PublisherIgnoreElements(this));
 	}
 
 	/**
@@ -1127,7 +1127,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> log(final String category, Level level, int options) {
-		return lift(new PublisherLog<O>(this, category, level, options));
+		return new StreamBarrier.Identity<>(new PublisherLog<O>(this, category, level, options));
 	}
 
 	/**
@@ -1140,7 +1140,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} containing the transformed values
 	 */
 	public final <V> Stream<V> map(@Nonnull final Function<? super O, ? extends V> fn) {
-		return lift(new PublisherMap<O, V>(this, fn));
+		return new StreamBarrier.Identity<>(new PublisherMap<O, V>(this, fn));
 	}
 
 	/**
@@ -1306,8 +1306,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return {@literal new Stream}
 	 */
-	public final Stream<O> onErrorResumeNext(@Nonnull final Publisher<? extends O> fallback) {
-		return lift(new PublisherOnErrorResume<O>(this, fallback));
+	public final Stream<O> switchOnError(@Nonnull final Publisher<? extends O> fallback) {
+		return new StreamBarrier.Identity<>(new PublisherOnErrorResume<O>(this, fallback));
 	}
 
 	/**
@@ -1318,7 +1318,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> onErrorResumeNext(@Nonnull final Function<Throwable, ? extends Publisher<? extends O>> fallback) {
-		return lift(new PublisherOnErrorResume<>(this, fallback));
+		return new StreamBarrier.Identity<>(new PublisherOnErrorResume<>(this, fallback));
 	}
 
 	/**
@@ -1329,7 +1329,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> onErrorReturn(@Nonnull final O fallback) {
-		return onErrorResumeNext(Streams.just(fallback));
+		return switchOnError(Streams.just(fallback));
 	}
 
 	/**
@@ -2157,7 +2157,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Tuple2<Long, O>> timestamp() {
-		return lift(PublisherMap.<O>timestamp(this));
+		return new StreamBarrier.Identity<>(PublisherMap.<O>timestamp(this));
 	}
 
 	/**
