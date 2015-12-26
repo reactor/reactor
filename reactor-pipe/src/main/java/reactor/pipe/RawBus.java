@@ -26,13 +26,11 @@ public class RawBus<K, V> extends AbstractBus<K, V> {
                   @Nullable Processor<Runnable, Runnable> processor,
                   int concurrency,
                   @Nullable final Router router,
-                  @Nullable Consumer<Throwable> processorErrorHandler,
-                  @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+                  @Nullable Consumer<Throwable> processorErrorHandler) {
         super(consumerRegistry,
               concurrency,
               router,
-              processorErrorHandler,
-              uncaughtErrorHandler);
+              processorErrorHandler);
         this.processor = processor;
         this.inDispatcherContext = new ThreadLocal<>();
         this.firehoseSubscription = new FirehoseSubscription();
@@ -44,8 +42,7 @@ public class RawBus<K, V> extends AbstractBus<K, V> {
                                                               public void accept(Runnable runnable, SubscriptionWithContext<Void> voidSubscriptionWithContext) {
                                                                   runnable.run();
                                                               }
-                                                          },
-                                                          uncaughtErrorHandler));
+                                                          }));
             }
             processor.onSubscribe(firehoseSubscription);
         }

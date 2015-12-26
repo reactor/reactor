@@ -47,7 +47,6 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	private Router                                                   router;
 	private Filter                                                   eventFilter;
 	private Consumer<Throwable>                                      dispatchErrorHandler;
-	private Consumer<Throwable>                                      uncaughtErrorHandler;
 	private Registry<Object, BiConsumer<Object, ? extends Event<?>>> consumerRegistry;
 	private boolean traceEventPath = false;
 
@@ -132,19 +131,6 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 	}
 
 	/**
-	 * Configures the component's uncaught error handler for any errors that get reported into this component but
-	 * aren't a
-	 * direct result of dispatching (e.g. errors that originate from another component).
-	 *
-	 * @param uncaughtErrorHandler the error handler for uncaught errors
-	 * @return {@code this}
-	 */
-	public SPEC uncaughtErrorHandler(Consumer<Throwable> uncaughtErrorHandler) {
-		this.uncaughtErrorHandler = uncaughtErrorHandler;
-		return (SPEC) this;
-	}
-
-	/**
 	 * Configures this component to provide event tracing when dispatching and routing an event.
 	 *
 	 * @return {@code this}
@@ -203,8 +189,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 		  processor,
 		  concurrency,
 		  (router != null ? router : createEventRouter()),
-		  dispatchErrorHandler,
-		  uncaughtErrorHandler);
+		  dispatchErrorHandler);
 	}
 
 	private Router createEventRouter() {
