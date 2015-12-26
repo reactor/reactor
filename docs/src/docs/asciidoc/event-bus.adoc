@@ -8,7 +8,7 @@ image::images/bus-overview.png[Stream Overview, width=500, align="center", link=
 == Publish/Subscribe
 Using an `EventBus` to publish and respond to events using Publish/Subscribe.
 
-Reactor's `EventBus` allows you to register a `Consumer` to handle events when the notification key matches a certain condition. This assignment is achieved via the `Selector`. It's similar to subscribing to a topic, though Reactor's `Selector` implementations can match on a variety of critera, from `Class<?>` type to regexes, to `JsonPath` expressions. It is a very flexible and powerful abstraction that provides a wide range of possibilities.
+Reactor's `EventBus` allows you to register a `Consumer` to handle events when the notification key matches a certain condition. This assignment is achieved via the `Selector`. It's similar to subscribing to a topic, though Reactor's `Selector` implementations can match on a variety of criteria, from `Class<?>` type to regexes, to `JsonPath` expressions. It is a very flexible and powerful abstraction that provides a wide range of possibilities.
 
 You can register multiple Consumers using the same `Selector` and multiple `Selectors` can match a given key. This way it's easy to do aggregation and broadcasting: you simply subscribe multiple `Consumers` to the same topic `Selector`.
 
@@ -29,7 +29,7 @@ bus.on($("topic"), (Event<String> ev) -> {
 
 bus.notify("topic", Event.wrap("Hello World!")); // <3>
 ----
-<1> Create an `EventBus` using the default, shared `RingBufferDispatcher` from the static `Environment`. 
+<1> Create an `EventBus` using the default, shared `RingBufferDispatcher` from the static `Environment`.
 <2> Assign a `Consumer` to invoke when the `EventBus` is notified with a key that matches the `Selector`.
 <3> Publish an `Event` into the `EventBus` using the given topic.
 
@@ -108,7 +108,7 @@ bus.notify("topic", Event.wrap("Hello World!")); // <3>
 
 [NOTE]
 ====
-Keep in mind that cancelling a `Registration` involves accessing the internal `Registry` in an atomic way. In a system in which a large number of events are flowing into Consumers, it's likely that your `Consumer` or `Function` might see some values after you've invoked the `.cancel()` method, but before the `Registry` has had a chance to clear the caches and remove the `Registration`. The `.cancel()` method could be described as a "request to cancel as soon as possible".
+Keep in mind that canceling a `Registration` involves accessing the internal `Registry` in an atomic way. In a system in which a large number of events are flowing into Consumers, it's likely that your `Consumer` or `Function` might see some values after you've invoked the `.cancel()` method, but before the `Registry` has had a chance to clear the caches and remove the `Registration`. The `.cancel()` method could be described as a "request to cancel as soon as possible".
 
 You'll notice this behavior right away in test classes where there's no time delay between the `.on()`, `.notify()`, and `.cancel()` invocations.
 ====
