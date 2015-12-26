@@ -16,7 +16,7 @@
 package reactor.core.support.rb.disruptor;
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.support.wait.WaitStrategy;
+import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.locks.LockSupport;

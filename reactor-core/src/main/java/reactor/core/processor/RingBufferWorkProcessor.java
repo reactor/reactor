@@ -46,8 +46,7 @@ import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
-import reactor.core.support.wait.LiteBlockingWaitStrategy;
-import reactor.core.support.wait.WaitStrategy;
+import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
@@ -207,7 +206,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * LiteBlockingWaitStrategy.
+	 * smart blocking wait strategy.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -224,7 +223,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * LiteBlockingWaitStrategy.
+	 * smart blocking wait strategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all
 	 * subscribers ?
 	 * @param <E> Type of processed signals
@@ -244,7 +243,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 * @param executor A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * LiteBlockingWaitStrategy.
+	 * smart blocking wait strategy.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -260,7 +259,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 * @param executor A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * LiteBlockingWaitStrategy.
+	 * smart blocking wait strategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all
 	 * subscribers ?
 	 * @param <E> Type of processed signals
@@ -410,7 +409,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * LiteBlockingWaitStrategy.
+	 * smart blocking wait strategy.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -429,7 +428,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * LiteBlockingWaitStrategy.
+	 * smart blocking wait strategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all
 	 * subscribers ?
 	 * @param <E> Type of processed signals
@@ -450,7 +449,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 * @param executor A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * LiteBlockingWaitStrategy.
+	 * smart blocking wait strategy.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -468,7 +467,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 * @param executor A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * LiteBlockingWaitStrategy.
+	 * smart blocking wait strategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all
 	 * subscribers ?
 	 * @param <E> Type of processed signals
@@ -505,7 +504,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 			RETRY_REF = PlatformDependent
 			.newAtomicReferenceFieldUpdater(RingBufferWorkProcessor.class, "retryBuffer");
 
-	private final WaitStrategy readWait = new LiteBlockingWaitStrategy();
+	private final WaitStrategy readWait = new WaitStrategy.LiteBlocking();
 
 	private volatile int replaying = 0;
 
@@ -531,7 +530,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 		};
 
 		WaitStrategy strategy = waitStrategy == null ?
-				new LiteBlockingWaitStrategy() :
+				new WaitStrategy.LiteBlocking() :
 				waitStrategy;
 
 		if (share) {

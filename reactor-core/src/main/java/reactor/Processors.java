@@ -36,8 +36,7 @@ import reactor.core.publisher.PublisherLog;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.wait.PhasedBackoffWaitStrategy;
-import reactor.core.support.wait.WaitStrategy;
+import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -806,14 +805,14 @@ public final class Processors {
 	private static final Supplier<? extends WaitStrategy> DEFAULT_WAIT_STRATEGY = new Supplier<WaitStrategy>() {
 		@Override
 		public WaitStrategy get() {
-			return PhasedBackoffWaitStrategy.withLiteLock(200, 200, TimeUnit.MILLISECONDS);
+			return WaitStrategy.PhasedOff.withLiteLock(200, 200, TimeUnit.MILLISECONDS);
 		}
 	};
 
 	private static final Supplier<? extends WaitStrategy> SINGLE_WAIT_STRATEGY = new Supplier<WaitStrategy>() {
 		@Override
 		public WaitStrategy get() {
-			return PhasedBackoffWaitStrategy.withLiteLock(500, 50, TimeUnit.MILLISECONDS);
+			return WaitStrategy.PhasedOff.withLiteLock(500, 50, TimeUnit.MILLISECONDS);
 		}
 	};
 

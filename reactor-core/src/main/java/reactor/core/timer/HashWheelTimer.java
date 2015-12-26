@@ -33,8 +33,7 @@ import reactor.core.error.CancelException;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.wait.SleepingWaitStrategy;
-import reactor.core.support.wait.WaitStrategy;
+import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
@@ -66,7 +65,7 @@ public class HashWheelTimer extends Timer {
 	 * @param resolution         the resolution of this timer, in milliseconds
 	 */
 	public HashWheelTimer(int resolution) {
-		this(resolution, DEFAULT_WHEEL_SIZE, new SleepingWaitStrategy());
+		this(resolution, DEFAULT_WHEEL_SIZE, new WaitStrategy.Sleeping());
 	}
 
 	/**

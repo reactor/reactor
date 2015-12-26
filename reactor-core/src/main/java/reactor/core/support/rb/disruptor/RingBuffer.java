@@ -23,9 +23,7 @@ import java.util.Queue;
 
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.support.internal.PlatformDependent;
-import reactor.core.support.wait.BlockingWaitStrategy;
-import reactor.core.support.wait.BusySpinWaitStrategy;
-import reactor.core.support.wait.WaitStrategy;
+import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
@@ -37,7 +35,7 @@ import reactor.fn.Supplier;
  */
 public abstract class RingBuffer<E> implements LongSupplier {
 
-	public static final BusySpinWaitStrategy NO_WAIT = new BusySpinWaitStrategy();
+	public static final WaitStrategy.BusySpin NO_WAIT = new WaitStrategy.BusySpin();
 
 	@SuppressWarnings("raw")
 	public static final Supplier EMITTED = new Supplier() {
@@ -94,7 +92,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <E> RingBuffer<Slot<E>> createMultiProducer(int bufferSize) {
-		return createMultiProducer(EMITTED, bufferSize, new BlockingWaitStrategy());
+		return createMultiProducer(EMITTED, bufferSize, new WaitStrategy.Blocking());
 	}
 
 	/**

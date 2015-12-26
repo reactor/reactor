@@ -15,8 +15,10 @@
  */
 package reactor.core.error;
 
+import reactor.core.support.WaitStrategy;
+
 /**
- * Used to alert consumers waiting with a {@link reactor.core.support.wait.WaitStrategy} for status changes.
+ * Used to alert consumers waiting with a {@link WaitStrategy} for status changes.
  * <P>
  * It does not fill in a stack trace for performance reasons.
  */

@@ -19,7 +19,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import reactor.Timers;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.wait.*;
+import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 
 import java.util.concurrent.*;
@@ -64,23 +64,23 @@ public class TimerTests {
 
     @Test
     public void timeTravelWithBusySpinStrategyTest() throws InterruptedException {
-        timeTravelTest(new BusySpinWaitStrategy(), 1);
-        timeTravelTest(new BusySpinWaitStrategy(), 5);
-        timeTravelTest(new BusySpinWaitStrategy(), 10);
+        timeTravelTest(new WaitStrategy.BusySpin(), 1);
+        timeTravelTest(new WaitStrategy.BusySpin(), 5);
+        timeTravelTest(new WaitStrategy.BusySpin(), 10);
     }
 
     @Test
     public void timeTravelWithYieldingWaitStrategyTest() throws InterruptedException {
-        timeTravelTest(new YieldingWaitStrategy(), 1);
-        timeTravelTest(new YieldingWaitStrategy(), 5);
-        timeTravelTest(new YieldingWaitStrategy(), 10);
+        timeTravelTest(new WaitStrategy.YieldingWaitStrategy(), 1);
+        timeTravelTest(new WaitStrategy.YieldingWaitStrategy(), 5);
+        timeTravelTest(new WaitStrategy.YieldingWaitStrategy(), 10);
     }
 
     @Test
     public void timeTravelWithSleepingWaitStrategyTest() throws InterruptedException {
-        timeTravelTest(new SleepingWaitStrategy(), 1);
-        timeTravelTest(new SleepingWaitStrategy(), 5);
-        timeTravelTest(new SleepingWaitStrategy(), 10);
+        timeTravelTest(new WaitStrategy.Sleeping(), 1);
+        timeTravelTest(new WaitStrategy.Sleeping(), 5);
+        timeTravelTest(new WaitStrategy.Sleeping(), 10);
     }
 
     private void timeTravelTest(WaitStrategy waitStrategy, int iterations) throws InterruptedException {

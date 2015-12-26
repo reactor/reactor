@@ -15,7 +15,7 @@
  */
 package reactor;
 
-import reactor.core.support.wait.SleepingWaitStrategy;
+import reactor.core.support.WaitStrategy;
 import reactor.core.timer.GlobalTimer;
 import reactor.core.timer.HashWheelTimer;
 import reactor.core.timer.Timer;
@@ -107,7 +107,7 @@ public final class Timers {
 	 *                   return a new {@link Timer}
 	 */
 	public static Timer create(String name, int resolution, int bufferSize) {
-		Timer timer = new HashWheelTimer(name, resolution, bufferSize, new SleepingWaitStrategy(), null);
+		Timer timer = new HashWheelTimer(name, resolution, bufferSize, new WaitStrategy.Sleeping(), null);
 		timer.start();
 		return timer;
 	}

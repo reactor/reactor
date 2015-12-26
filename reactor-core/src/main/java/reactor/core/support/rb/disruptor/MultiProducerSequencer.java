@@ -19,7 +19,7 @@ import java.util.concurrent.locks.LockSupport;
 
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.support.internal.PlatformDependent0;
-import reactor.core.support.wait.WaitStrategy;
+import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 import sun.misc.Unsafe;
 

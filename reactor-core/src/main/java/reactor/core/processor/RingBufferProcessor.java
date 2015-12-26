@@ -44,9 +44,7 @@ import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
-import reactor.core.support.wait.LiteBlockingWaitStrategy;
-import reactor.core.support.wait.PhasedBackoffWaitStrategy;
-import reactor.core.support.wait.WaitStrategy;
+import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
@@ -174,7 +172,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service,
 	                                                int bufferSize) {
-		return create(service, bufferSize, new LiteBlockingWaitStrategy(), true);
+		return create(service, bufferSize, new WaitStrategy.LiteBlocking(), true);
 	}
 
 	/**
@@ -190,7 +188,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 */
 	public static <E> RingBufferProcessor<E> create(ExecutorService service,
 	                                                int bufferSize, boolean autoCancel) {
-		return create(service, bufferSize, new LiteBlockingWaitStrategy(), autoCancel);
+		return create(service, bufferSize, new WaitStrategy.LiteBlocking(), autoCancel);
 	}
 
 	/**
@@ -201,7 +199,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * BlockingWaitStrategy.
+	 * blocking wait strategy.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -219,7 +217,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * BlockingWaitStrategy.
+	 * blocking wait strategy.
 	 * @param signalSupplier A supplier of dispatched signals to preallocate in the ring
 	 * buffer
 	 * @param <E> Type of processed signals
@@ -240,7 +238,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * BlockingWaitStrategy.
+	 * blocking wait strategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all
 	 * subscribers ?
 	 * @param <E> Type of processed signals
@@ -260,7 +258,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * @param service A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * BlockingWaitStrategy.
+	 * blocking wait strategy.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -277,7 +275,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * @param service A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * BlockingWaitStrategy.
+	 * blocking wait strategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all
 	 * subscribers ?
 	 * @param <E> Type of processed signals
@@ -429,7 +427,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * BlockingWaitStrategy.
+	 * blocking wait strategy.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -469,7 +467,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param waitStrategy A RingBuffer WaitStrategy to use instead of the default
-	 * BlockingWaitStrategy.
+	 * blocking wait strategy.
 	 * buffer
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
@@ -490,7 +488,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * BlockingWaitStrategy.
+	 * blocking wait strategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all
 	 * subscribers ?
 	 * @param <E> Type of processed signals
@@ -512,7 +510,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * @param service A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * BlockingWaitStrategy.
+	 * blocking wait strategy.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
@@ -531,7 +529,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	 * @param service A provided ExecutorService to manage threading infrastructure
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
 	 * @param strategy A RingBuffer WaitStrategy to use instead of the default
-	 * BlockingWaitStrategy.
+	 * blocking wait strategy.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all
 	 * subscribers ?
 	 * @param <E> Type of processed signals
@@ -550,7 +548,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 
 	private final Sequence minimum;
 
-	private final WaitStrategy readWait = new LiteBlockingWaitStrategy();
+	private final WaitStrategy readWait = new WaitStrategy.LiteBlocking();
 
 	private RingBufferProcessor(String name, ExecutorService executor, int bufferSize,
 	                            WaitStrategy waitStrategy, boolean shared,
@@ -578,7 +576,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		};
 
 		WaitStrategy strategy = waitStrategy == null ?
-				PhasedBackoffWaitStrategy.withLiteLock(200, 100, TimeUnit.MILLISECONDS) :
+				WaitStrategy.PhasedOff.withLiteLock(200, 100, TimeUnit.MILLISECONDS) :
 				waitStrategy;
 		if (shared) {
 			this.ringBuffer = RingBuffer

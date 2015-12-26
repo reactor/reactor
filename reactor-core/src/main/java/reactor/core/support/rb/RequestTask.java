@@ -22,7 +22,7 @@ import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.support.rb.disruptor.RingBuffer;
-import reactor.core.support.wait.WaitStrategy;
+import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 

@@ -15,8 +15,7 @@
  */
 package reactor.core.timer
 
-import reactor.core.support.wait.SleepingWaitStrategy
-import reactor.core.timer.HashWheelTimer
+import reactor.core.support.WaitStrategy
 import reactor.fn.Consumer
 import spock.lang.Specification
 
@@ -35,7 +34,7 @@ class HashWheelTimerSleepWaitStrategy extends Specification {
 
 		given:
 			"a new globalTimer"
-			def timer = new HashWheelTimer(10, 8, new SleepingWaitStrategy())
+			def timer = new HashWheelTimer(10, 8, new WaitStrategy.Sleeping())
 			timer.start()
 			def latch = new CountDownLatch(10)
 
@@ -62,7 +61,7 @@ class HashWheelTimerSleepWaitStrategy extends Specification {
 		given:
 			"a new globalTimer"
 			def delay = 500
-			def timer = new HashWheelTimer(10, 8, new SleepingWaitStrategy())
+			def timer = new HashWheelTimer(10, 8, new WaitStrategy.Sleeping())
 			timer.start()
 			def latch = new CountDownLatch(1)
 			def start = System.currentTimeMillis()

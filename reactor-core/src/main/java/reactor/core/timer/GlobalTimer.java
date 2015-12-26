@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import reactor.core.support.ReactiveState;
 import reactor.core.support.internal.PlatformDependent;
-import reactor.core.support.wait.SleepingWaitStrategy;
+import reactor.core.support.WaitStrategy;
 
 /**
  * A Global Timer
@@ -39,7 +39,7 @@ public class GlobalTimer extends HashWheelTimer implements ReactiveState.Trace {
 	private static final GlobalContext context = new GlobalContext();
 
 	public GlobalTimer() {
-		super("global-timer", 50, DEFAULT_WHEEL_SIZE, new SleepingWaitStrategy(), null);
+		super("global-timer", 50, DEFAULT_WHEEL_SIZE, new WaitStrategy.Sleeping(), null);
 	}
 
 	private void _cancel() {
@@ -117,7 +117,7 @@ public class GlobalTimer extends HashWheelTimer implements ReactiveState.Trace {
 		Timer timer = context.timer;
 
 		if (timer == null) {
-			timer = new HashWheelTimer(50, 64, new SleepingWaitStrategy());
+			timer = new HashWheelTimer(50, 64, new WaitStrategy.Sleeping());
 			timer.start();
 		}
 		return timer;
