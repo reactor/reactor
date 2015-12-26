@@ -130,7 +130,7 @@ public final class Publishers extends PublisherFactory {
 
 	/**
 	 *
-	 *  Liftable Operators
+	 *  Core Operators
 	 *
 	 *
 	 *
@@ -152,7 +152,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <IN> Publisher<IN> onErrorResumeNext(final Publisher<IN> source,
 			final Publisher<? extends IN> fallback) {
-		return lift(source, new PublisherOnErrorResume<>(fallback));
+		return new PublisherOnErrorResume<>(source, fallback);
 	}
 
 	/**
@@ -162,7 +162,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <IN> Publisher<IN> onErrorResumeNext(final Publisher<IN> source,
 			Function<Throwable, ? extends Publisher<? extends IN>> fallbackFunction) {
-		return lift(source, new PublisherOnErrorResume<>(fallbackFunction));
+		return new PublisherOnErrorResume<>(source, fallbackFunction);
 	}
 
 	/**
@@ -174,7 +174,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Publisher<O> map(Publisher<I> source, final Function<? super I, ? extends O> transformer) {
-		return lift(source, new PublisherMap<>(transformer));
+		return new PublisherMap<>(source, transformer);
 	}
 
 	/**
@@ -185,7 +185,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Publisher<Tuple2<Long, I>> timestamp(Publisher<I> source) {
-		return lift(source, PublisherMap.<I>timestamp());
+		return PublisherMap.timestamp(source);
 	}
 
 	/**
@@ -227,7 +227,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level, int options) {
-		return lift(publisher, new PublisherLog<IN>(category, level, options));
+		return new PublisherLog<>(publisher, category, level, options);
 	}
 
 	/**
@@ -239,18 +239,7 @@ public final class Publishers extends PublisherFactory {
 	@SuppressWarnings("unchecked")
 	public static <I, O> Publisher<O> flatMap(Publisher<I> source,
 			final Function<? super I, ? extends Publisher<? extends O>> transformer) {
-		if (source instanceof Supplier) {
-			try {
-				I v = ((Supplier<I>) source).get();
-				if (v != null) {
-					return (Publisher<O>) transformer.apply(v);
-				}
-			}
-			catch (Throwable e) {
-				return error(e);
-			}
-		}
-		return lift(source, new PublisherFlatMap(transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32));
+		return new PublisherFlatMap<>(source, transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32);
 	}
 
 	/**
@@ -262,18 +251,7 @@ public final class Publishers extends PublisherFactory {
 	@SuppressWarnings("unchecked")
 	public static <I, O> Publisher<O> concatMap(Publisher<I> source,
 			final Function<? super I, Publisher<? extends O>> transformer) {
-		if (source instanceof Supplier) {
-			try {
-				I v = ((Supplier<I>) source).get();
-				if (v != null) {
-					return (Publisher<O>) transformer.apply(v);
-				}
-			}
-			catch (Throwable e) {
-				return error(e);
-			}
-		}
-		return lift(source, new PublisherFlatMap(transformer, 1, 32));
+		return new PublisherFlatMap<>(source, transformer, 1, 32);
 	}
 
 	/**
@@ -285,9 +263,8 @@ public final class Publishers extends PublisherFactory {
 	 * @param source the emitted sequence to filter
 	 * @return a new filtered {@link Publisher<Void>}
 	 */
-	@SuppressWarnings("unchecked")
 	public static Publisher<Void> after(Publisher<?> source) {
-		return lift(source, PublisherIgnoreElements.INSTANCE);
+		return new PublisherIgnoreElements<>(source);
 	}
 
 	/**
@@ -301,7 +278,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Publisher<T> ignoreElements(Publisher<T> source) {
-		return lift(source, PublisherIgnoreElements.INSTANCE);
+		return (Publisher<T>)new PublisherIgnoreElements<>(source);
 	}
 
 	/**

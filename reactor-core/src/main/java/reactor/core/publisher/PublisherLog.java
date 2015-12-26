@@ -18,20 +18,18 @@ package reactor.core.publisher;
 
 import java.util.logging.Level;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.Logger;
-import reactor.core.support.ReactiveState;
-import reactor.fn.Function;
 
 /**
  * A logging interceptor that intercepts all reactive calls and trace them
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class PublisherLog<IN> implements ReactiveState.Named, ReactiveState.Factory,
-                                               Function<Subscriber<? super IN>, Subscriber<? super IN>> {
+public final class PublisherLog<IN> extends PublisherFactory.PublisherBarrier<IN, IN> {
 
 	public static final int SUBSCRIBE      = 0b010000000;
 	public static final int ON_SUBSCRIBE   = 0b001000000;
@@ -53,8 +51,8 @@ public final class PublisherLog<IN> implements ReactiveState.Named, ReactiveStat
 
 	private long uniqueId = 1L;
 
-	public PublisherLog(final String category, Level level, int options) {
-
+	public PublisherLog(Publisher<IN> source, final String category, Level level, int options) {
+		super(source);
 		this.log = category != null && !category.isEmpty() ? Logger.getLogger(category) :
 				Logger.getLogger(PublisherLog.class);
 		this.options = options;

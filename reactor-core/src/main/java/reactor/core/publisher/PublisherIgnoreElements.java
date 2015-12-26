@@ -16,6 +16,7 @@
 
 package reactor.core.publisher;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.ReactiveState;
@@ -26,14 +27,10 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class PublisherIgnoreElements<IN>
-		implements Function<Subscriber<? super Void>, Subscriber<? super IN>>,
-		           ReactiveState.Factory {
+public final class PublisherIgnoreElements<IN> extends PublisherFactory.PublisherBarrier<IN, Void> {
 
-	public static final PublisherIgnoreElements INSTANCE = new PublisherIgnoreElements();
-
-	public PublisherIgnoreElements() {
-
+	public PublisherIgnoreElements(Publisher<IN> source) {
+		super(source);
 	}
 
 	@Override

@@ -23,7 +23,9 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
+import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.Sequencer;
@@ -50,18 +52,44 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class PublisherFlatMap<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>>,
-                                                     ReactiveState.Factory {
+public final class PublisherFlatMap<T, V> extends PublisherFactory.PublisherBarrier<T, V> {
 
 	final Function<? super T, ? extends Publisher<? extends V>> mapper;
 	final int                                                   maxConcurrency;
 	final int                                                   bufferSize;
 
 	public PublisherFlatMap(
-			Function<? super T, ? extends Publisher<? extends V>> mapper, int maxConcurrency, int bufferSize) {
+			Publisher<T> source,
+			Function<? super T, ? extends Publisher<? extends V>> mapper,
+			int maxConcurrency,
+			int bufferSize
+	) {
+		super(source);
 		this.mapper = mapper;
 		this.maxConcurrency = maxConcurrency;
 		this.bufferSize = bufferSize;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public void subscribe(Subscriber<? super V> s) {
+		if (s == null) {
+			throw SpecificationExceptions.spec_2_13_exception();
+		}
+		if (source instanceof Supplier) {
+			try {
+				T v = ((Supplier<T>) source).get();
+				if (v != null) {
+					mapper.apply(v).subscribe(s);
+					return;
+				}
+			}
+			catch (Throwable e) {
+				Exceptions.<V>publisher(e).subscribe(s);
+				return;
+			}
+		}
+		source.subscribe(apply(s));
 	}
 
 	@Override

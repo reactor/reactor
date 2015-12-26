@@ -291,6 +291,61 @@ public abstract class PublisherFactory implements ReactiveState {
 		Function<Subscriber<? super O>, Subscriber<? super I>> operator();
 	}
 
+	public static class PublisherBarrier<I, O> implements Publisher<O>, Factory, Bounded, Named, Upstream,
+	                                                      Operator<I, O>, LiftOperator<I, O>{
+
+
+		protected final Publisher<I> source;
+
+		protected PublisherBarrier(Publisher<I> source) {
+			this.source = source;
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super O> s) {
+			if (s == null) {
+				throw SpecificationExceptions.spec_2_13_exception();
+			}
+			source.subscribe(apply(s));
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public Subscriber<? super I> apply(Subscriber<? super O> subscriber) {
+			return (Subscriber<I>)subscriber;
+		}
+
+		@Override
+		public Object upstream() {
+			return source;
+		}
+
+		@Override
+		public String getName() {
+			return getClass()
+			                      .getSimpleName()
+			                      .replaceAll("Publisher|Stream|Operator", "");
+		}
+
+		@Override
+		public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
+			return this;
+		}
+
+		@Override
+		public String toString() {
+			return "{" +
+					" operator : \"" + getName() + "\" " +
+					'}';
+		}
+
+		@Override
+		public long getCapacity() {
+			return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() :
+					Long.MAX_VALUE;
+		}
+	}
+
 	private static class ReactorPublisher<T, C> implements Publisher<T>, Factory {
 
 		protected final Function<Subscriber<? super T>, C>            contextFactory;
@@ -355,59 +410,20 @@ public abstract class PublisherFactory implements ReactiveState {
 		}
 	}
 
-	private static class PublisherOperator<I, O>
-			implements Bounded, Named, Upstream, Operator<I, O>, LiftOperator<I, O> {
+	private static class PublisherOperator<I, O> extends PublisherBarrier<I, O> {
 
-		final private Publisher<I>                                           source;
 		final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
 
 		public PublisherOperator(Publisher<I> source,
 				Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider) {
-			this.source = source;
+			super(source);
 			this.barrierProvider = barrierProvider;
 		}
 
-		@Override
-		public void subscribe(Subscriber<? super O> s) {
-			if (s == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
-			}
-			source.subscribe(barrierProvider.apply(s));
-		}
 
 		@Override
 		public Subscriber<? super I> apply(Subscriber<? super O> subscriber) {
-			return null;
-		}
-
-		@Override
-		public Object upstream() {
-			return source;
-		}
-
-		@Override
-		public String getName() {
-			return barrierProvider.getClass()
-			                      .getSimpleName()
-			                      .replaceAll("Operator", "");
-		}
-
-		@Override
-		public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
-			return barrierProvider;
-		}
-
-		@Override
-		public String toString() {
-			return "{" +
-					" operator : \"" + getName() + "\" " +
-					'}';
-		}
-
-		@Override
-		public long getCapacity() {
-			return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() :
-					Long.MAX_VALUE;
+			return barrierProvider.apply(subscriber);
 		}
 	}
 

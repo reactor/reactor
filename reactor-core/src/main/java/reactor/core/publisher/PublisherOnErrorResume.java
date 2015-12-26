@@ -22,7 +22,6 @@ import org.reactivestreams.Subscription;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
-import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -31,12 +30,12 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class PublisherOnErrorResume<T>
-		implements Function<Subscriber<? super T>, Subscriber<? super T>>, ReactiveState.Factory {
+public final class PublisherOnErrorResume<T> extends PublisherFactory.PublisherBarrier<T, T> {
 
 	private final Function<Throwable, ? extends Publisher<? extends T>> fallbackSelector;
 
-	public PublisherOnErrorResume(final Publisher<? extends T> fallbackSelector) {
+	public PublisherOnErrorResume(Publisher<T> source, final Publisher<? extends T> fallbackSelector) {
+		super(source);
 		this.fallbackSelector = new Function<Throwable, Publisher<? extends T>>() {
 			@Override
 			public Publisher<? extends T> apply(Throwable throwable) {
@@ -45,7 +44,9 @@ public final class PublisherOnErrorResume<T>
 		};
 	}
 
-	public PublisherOnErrorResume(Function<Throwable, ? extends Publisher<? extends T>> fallbackSelector) {
+	public PublisherOnErrorResume(Publisher<T> source, Function<Throwable, ? extends Publisher<? extends T>>
+			fallbackSelector) {
+		super(source);
 		this.fallbackSelector = fallbackSelector;
 	}
 

@@ -16,6 +16,7 @@
 
 package reactor.core.publisher;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.Assert;
@@ -29,28 +30,27 @@ import reactor.fn.tuple.Tuple2;
  * @author Stephane Maldini
  * @since 1.1, 2.0, 2.1
  */
-public final class PublisherMap<T, V> implements Function<Subscriber<? super V>, Subscriber<? super T>>,
-                                                 ReactiveState.Factory {
+public final class PublisherMap<T, V>  extends PublisherFactory.PublisherBarrier<T, V> {
 
 	/**
 	 * A predefined map operator producing timestamp tuples
 	 */
-	private static final PublisherMap TIMESTAMP_OPERATOR =
-			new PublisherMap<>(new Function<Object, Tuple2<Long, ?>>() {
-				@Override
-				public Tuple2<Long, ?> apply(Object o) {
-					return Tuple.of(System.currentTimeMillis(), o);
-				}
-			});
+	private static final Function TIMESTAMP_OPERATOR = new Function<Object, Tuple2<Long, ?>>() {
+		@Override
+		public Tuple2<Long, ?> apply(Object o) {
+			return Tuple.of(System.currentTimeMillis(), o);
+		}
+	};
 
 	@SuppressWarnings("unchecked")
-	public static <T> PublisherMap<T, Tuple2<Long, T>> timestamp(){
-		return (PublisherMap<T, Tuple2<Long, T>>)TIMESTAMP_OPERATOR;
+	public static <T> PublisherMap<T, Tuple2<Long, T>> timestamp(Publisher<T> source){
+		return new PublisherMap<>(source, TIMESTAMP_OPERATOR);
 	}
 
 	private final Function<? super T, ? extends V> fn;
 
-	public PublisherMap(Function<? super T, ? extends V> fn) {
+	public PublisherMap(Publisher<T> source, Function<? super T, ? extends V> fn) {
+		super(source);
 		this.fn = fn;
 	}
 
