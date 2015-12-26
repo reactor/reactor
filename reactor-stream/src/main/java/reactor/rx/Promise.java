@@ -233,7 +233,7 @@ public class Promise<O>
 	 * @param transformation the function to apply on signal to the transformed Promise
 	 * @return {@literal the new Promise}
 	 */
-	public final <V> Promise<V> map(@Nonnull final Function<? super O, V> transformation) {
+	public final <V> Promise<V> map(@Nonnull final Function<? super O, ? extends V> transformation) {
 		lock.lock();
 		try {
 			if (finalState == FinalState.ERROR) {
@@ -250,7 +250,7 @@ public class Promise<O>
 		finally {
 			lock.unlock();
 		}
-		return stream().map(transformation).next();
+		return (Promise<V>) stream().map(transformation).next();
 	}
 
 	/**
@@ -287,7 +287,7 @@ public class Promise<O>
 		finally {
 			lock.unlock();
 		}
-		return stream().flatMap(transformation).next();
+		return (Promise<V>) stream().flatMap(transformation).next();
 
 	}
 
