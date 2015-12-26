@@ -99,7 +99,7 @@ static {
 
 This is where you start if you are the owner of the data-source and want to just make it Reactive with direct access to various _Reactive Extensions_ and _Reactive Streams_ capacities.
 
-Sometimes it's also a case for expanding an existing *Reactive Stream Publisher* with `Stream` API and we fortunately offer one-shot static API to proceed to the conversion.
+Sometimes it's also a case for expanding an existing *Reactive Stream Publisher* with `Stream` API and we, fortunately, offer one-shot static API to proceed to the conversion.
 
 Extending existing Reactor `Stream` like we do with `IterableStream`, `SingleValueStream` etc is also an incentive option to create a `Publisher` ready source (Stream implements it) injected with Reactor API.
 
@@ -118,7 +118,7 @@ Assert.isTrue(transformationStream != stream);
 stream.subscribe(subscriber1); //subscriber1 will see the data A unaltered
 transformedStream.subscribe(subscriber2); //subscriber2 will see the data B after transformation from A.
 
-//Note theat these two subscribers will materialize independant stream pipelines, a process we also call lifting
+//Note that these two subscribers will materialize independent stream pipelines, a process we also call lifting
 ----
 ====
 
@@ -141,7 +141,7 @@ st.dispatchOn(Environment.cachedDispatcher()) // <2>
 <4> Produce demand on the pipeline, which means "start processing now". It's an optimize shortcut for `subscribe(Subscriber)` where the Subscriber just requests Long.MAX_VALUE by default.
 
 [IMPORTANT]
-Cold Data Sources will be replayed from start for every fresh Subscriber passed to `Stream.subscribe(Subscriber)`, and therefore duplicate consuming is possible.
+Cold Data Sources will be replayed from start for every fresh Subscriber passed to `Stream.subscribe(Subscriber)`, and, therefore, duplicate consuming is possible.
 
 .Creating pre-determined Streams and Promises
 [cols="2,1", options="header"]
@@ -206,7 +206,7 @@ Cold Data Sources will be replayed from start for every fresh Subscriber passed 
 
 Existing Reactive Streams `Publishers` can very well be from other implementations, including the user ones, or from Reactor itself.
 
-The use cases incude:
+The use cases include:
 ****
 * <<streams.adoc#streams-combine, Combinatory API>> to coordinate various data sources.
 * Lazy resource access, reading a Data Source on subscribe or on request, e.g. _Remote HTTP calls_.
@@ -249,7 +249,7 @@ h|Factory method
 h|Streams.create(*Publisher<T>*)
 |T
 2+|Only subscribe to the passed `Publisher` when the first `Subscription.request(N)` hits the returned `Stream`.
-Therefore it supports malformed Publishers that do not invoke `Subscriber.onSubscribe(Subscription)` as required per specification.
+Therefore, it supports malformed Publishers that do not invoke `Subscriber.onSubscribe(Subscription)` as required per specification.
 
 h|Streams.wrap(*Publisher<T>*)
 |T
@@ -259,7 +259,7 @@ onSubscribe > onNext\* > (onError \| onComplete)
 
 h|Streams.defer(*Supplier<Publisher<T>>*)
 |T
-2+|A lazy Publisher access using the level of indirection provided by `Supplier.get()` everytime `Stream.subscribe(Subscriber)` is called.
+2+|A lazy Publisher access using the level of indirection provided by `Supplier.get()` every time `Stream.subscribe(Subscriber)` is called.
 
 h|Streams.createWith(*BiConsumer<Long,SubscriberWithContext<T, C>*, _Function<Subscriber<T>,C>, Consumer<C>_)
 |T
@@ -534,7 +534,7 @@ For Asynchronous broadcasting, always consider a <<core-processor.adoc#core-proc
 ****
 * A Broadcaster will trigger a http://projectreactor.io/docs/api/reactor/core/processor/CancelException.html[CancelException] if there are no subscribers. A Core `RingBuffer*Processor` will always deliver buffered data to the first subscriber.
 * Some `Dispatcher` types that can be assigned to a `Broadcaster` might not support concurrent `onNext`. Use `RingBuffer*Processor.share()` for an alternative, thread-safe, concurrent `onNext`.
-* RingBuffer*Processor supports replaying an event cancelled in-flight by a downstream subscriber if it's still running on the processor thread. A Broadcaster won't support replaying.
+* RingBuffer*Processor supports replaying an event canceled in-flight by a downstream subscriber if it's still running on the processor thread. A Broadcaster won't support replaying.
 * RingBuffer*Processor are faster than their alternative Broadcaster with a RingBufferDispatcher
 * RingBufferWorkProcessor supports scaling up with the number of attached subscribers.
 * *Broadcaster might be promoted to a `Processor` in 2.1 anyway, achieving the same thing and removing the need for the Reactor user to struggle picking between `Processor` and `Broadcaster`*.
@@ -621,7 +621,7 @@ h|subscribe(*Subscriber<T>*)
 
 _subscribeOn_
 |void
-2+|Subscribe the passed *Subscriber<T>* and materialize any pending upstream, wired up lazily (the implicit *lift* for non terminal operation). Note a Subscriber must request data if it expects some. The `dispatchOn` and `subscribeOn` alternatives provide for signalling `onSubscribe` using the passed `Dispatcher`.
+2+|Subscribe the passed *Subscriber<T>* and materialize any pending upstream, wired up lazily (the implicit *lift* for non terminal operation). Note a Subscriber must request data if it expects some. The `dispatchOn` and `subscribeOn` alternatives provide for signaling `onSubscribe` using the passed `Dispatcher`.
 
 h|consume(_Consumer<T>,Consumer<T>,Consumer<T>_)
 
@@ -635,7 +635,7 @@ h|consumeLater()
 
 h|tap()
 |TapAndControls
-2+|Similar to `consume` but returns a `TapAndControls` that will be dynamically updated each time a new `onNext(T)` is signalled or cancelled.
+2+|Similar to `consume` but returns a `TapAndControls` that will be dynamically updated each time a new `onNext(T)` is signalled or canceled.
 
 
 h|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*)
@@ -862,7 +862,7 @@ h|Functional API or Factory method
 h|Streams.await(Publisher<?>)
 |Block until the passed Publisher `onComplete()` or `onError(e)`, bubbling up the eventual exception.
 
-h|Stream.next() 
+h|Stream.next()
 
 _with_ Promise.await(), Promise.get()...
 |Capture in a Promise the immediate next signal only and `onComplete()` if the signal was a data. `get()` can be used to touch but not wait on the promise to fulfill.
@@ -885,29 +885,29 @@ h|Wiring up Synchronous Streams
 
 One common purpose for *Reactive Streams* and *Reactive Extensions* is to be unopinionated about threading behavior *thanks to the signal callbacks*.
 Streams are all about *it will be executed at some point between now and some time T*. Non-concurrent signals may also preserve `Subscriber` from concurrency access (share-nothing),
-however signals and requests can run on 2 asymmetric threads.
+however, signals and requests can run on 2 asymmetric threads.
 
 By default the `Stream` is assigned with a `SynchronousDispatcher` and will inform its immediate child `Actions` via `Stream.getDispatcher()`.
 
 [IMPORTANT]
 Various `Stream` factories, the `Broadcaster`, the `Stream.dispatchOn`  and the terminal `xxxOn` methods might alter the default `SynchronousDispatcher`.
 
-.It is fundamental to understand the three major thread switchs available in Reactor Stream:
+.It is fundamental to understand the three major thread switches available in Reactor Stream:
 ****
-* The `Stream.dispatchOn` action is the only one available under `Stream` that will be dispatching *onError*, *onComplete* and *onNext* signals on the given `Dispatcher`. 
+* The `Stream.dispatchOn` action is the only one available under `Stream` that will be dispatching *onError*, *onComplete* and *onNext* signals on the given `Dispatcher`.
 ** Since an action is a `Processor` it doesn't support concurrent `Dispatcher` such as `WorkQueueDispatcher`.
-** `request` and `cancel` will run on the dispatcher as well if in its context already. Otherwise it will execute after the current dispatch ends.
+** `request` and `cancel` will run on the dispatcher as well if in its context already. Otherwise, it will execute after the current dispatch ends.
 * The `Stream.subscribeOn` action will be executing *onSubscribe* only on the passed dispatcher.
 ** Since the only time the passed `Dispatcher` is called is *onSubscribe*, any dispatcher can be used including the concurrent ones such as `WorkQueueDispatcher`.
-** The first `request` might still execute in the *onSubscribe* thread, for instance with `Stream.consume()` actions.
-* Attaching a `Processor` via `Stream.process` for instance can affect the thread too. The `Processor` such as `RingBufferProcessor` will run the `Subscribers` on its managed threads. 
+** The first `request` might still execute in the *onSubscribe* thread, for instance, with `Stream.consume()` actions.
+* Attaching a `Processor` via `Stream.process` for instance can affect the thread too. The `Processor` such as `RingBufferProcessor` will run the `Subscribers` on its managed threads.
 ** `request` and `cancel` will run on the processor as well if in its context already.
-** `RingBufferWorkProcessor` will only dispatch *onNext* signals to one `Subscriber` at most unless it has cancelled in-flight (replay to a new Subscriber).
+** `RingBufferWorkProcessor` will only dispatch *onNext* signals to one `Subscriber` at most unless it has canceled in-flight (replay to a new Subscriber).
 ****
 
-Since the common contract is to start requesting data *onSubscribe*, `subscribeOn` is an efficient tool to scale-up streams, particulary unbounded ones.
+Since the common contract is to start requesting data *onSubscribe*, `subscribeOn` is an efficient tool to scale-up streams, particularly unbounded ones.
 If a `Subscriber` requests *Long.MAX_VALUE* in *onSubscribe*, it will then be the only request executed and it will run on the dispatcher assigned in `subscribeOn`.
-This is the default behaviour for unbounded `Stream.consume` actions.
+This is the default behavior for unbounded `Stream.consume` actions.
 
 .Jumping between threads with an unbounded demand
 [source,java]
@@ -953,9 +953,9 @@ image::images/nThreading.png[Bounded threading, width=600, align="center", link=
 -- Klingon Proverb
 
 After one or two reads of the <<streams.adoc#streams-basics,101 Stream crash intro>>, you courageous hacker are ready for some _quick ROI_.
-In effect dispatching efficiently is far away from the only item to check in the *way of millions messages per sec todo list*.
+In effect dispatching efficiently is far away from the only item to check in the *way of millions of messages per sec todo list*.
 
-A common issue in *Distributed Systems* lies in the latency cost over indivudual vs buffered IO writes.
+A common issue in *Distributed Systems* lies in the latency cost over individual vs buffered IO writes.
 When such situation arises, *MicroBatching* or _small chunk-processing_ is the action to group individual data operations.
 Behind the term `Micro` hides a more concrete behavior named *In Memory*. Since the Speed of Light is still a limitation of systems today, main memory remains cheaper to read than *disk*.
 
@@ -989,7 +989,7 @@ By Jeff Dean:               http://research.google.com/people/jeff/
 Originally by Peter Norvig: http://norvig.com/21-days.html#answers
 ====
 
-`Streams` are sequences of data, so finding boundaries to cut aggregated buffers is an out-of-the box  API.
+`Streams` are sequences of data, so finding boundaries to cut aggregated buffers is an out-of-the-box  API.
 
 .There are two categories for delimitations:
 ****
@@ -1010,7 +1010,7 @@ Collecting grouped sequences of data `T` into lists `List<T>` serves two main pu
 ****
 
 [NOTE]
-Collecting data incurs an overhead in memory and possibly CPU that should be sized appropriately. Small and timed boundaries are advised to avoid any long lasting aggregates.
+Collecting data incurs an overhead in memory and possibly CPU that should be sized appropriately. Small and timed boundaries are advised to avoid any long-lasting aggregates.
 
 [WARNING]
 An `Environment` must be initialized if the timed `buffer()` signatures are used without providing the `Timer` argument.
@@ -1051,19 +1051,19 @@ h|buffer(*Publisher<?>*, _Supplier<? extends Publisher<?>>_)
 |Aggregate until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation. That means overlapping (sliding buffers) and disjointed aggregation can be emitted to the child `Subscriber<List<T>>`.
 
 h|buffer(*Supplier<? extends Publisher<?>>*)
-|Aggregate until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation and start a new one immediately. 
+|Aggregate until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation and start a new one immediately.
 
 h|buffer(*int, int*)
-|Aggregate until `onComplete()` or the given *skip* (the second `int` argument) is reached which starts over a new aggregation. The first *size* `int` argument will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed aggregation can be emitted to the child `Subscriber<List<T>>`.
+|Aggregate until `onComplete()` or the given *skip* (the second `int` argument) is reached which starts over a new aggregation. The first *size* `int` argument will delimit the maximum number of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed aggregation can be emitted to the child `Subscriber<List<T>>`.
 
 h|buffer(*long*, TimeUnit, Timer_)
-|Aggregate until `onComplete()` or the elapsed *period* (the first `long` argument) is reached, which starts over a new aggregation. 
+|Aggregate until `onComplete()` or the elapsed *period* (the first `long` argument) is reached, which starts over a new aggregation.
 
 h|buffer(*long, long*, TimeUnit, Timer_)
-|Aggregate until `onComplete()` or the given *timeshift* (the second `long` argument) is reached. The *timespan* (the first `long` argument) will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed aggregation can be emitted to the child `Subscriber<List<T>>`.
+|Aggregate until `onComplete()` or the given *timeshift* (the second `long` argument) is reached. The *timespan* (the first `long` argument) will delimit the maximum number of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed aggregation can be emitted to the child `Subscriber<List<T>>`.
 
 h|buffer(*int, long*, _TimeUnit, Timer_)
-|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It accumulates until the given *size* has been reached or the *timespan* has elapsed.
+|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditions. It accumulates until the given *size* has been reached or the *timespan* has elapsed.
 
 |===
 
@@ -1132,28 +1132,28 @@ h|window(*Publisher<?>*, _Supplier<? extends Publisher<?>>_)
 |Forward to a generated `Stream<T>` until `onComplete()` or when the first `Publisher<?>` argument emits a signal. The optional `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked aggregation. That means overlapping (sliding buffers) and disjointed aggregations can be emitted to the child `Subscriber<Stream<T>>`.
 
 h|window(*Supplier<? extends Publisher<?>>*)
-|Forward to a generated `Stream<T>`  until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked `Stream<T>` and start a new one immediately. 
+|Forward to a generated `Stream<T>`  until `onComplete()` or in coordination with a provided `Publisher<?>`. The `Supplier<? extends Publisher<?>>` supplies a sequence whose first signal will end the linked `Stream<T>` and start a new one immediately.
 
 h|window(*int, int*)
-|Forward to a generated `Stream<T>`  until `onComplete()` or the given *skip* (the second `int` argument) is reached which starts over a new `Stream<T>`. The *size* (the first `int` argument) will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed sequences can be emitted to the child `Subscriber<Stream<T>>`.
+|Forward to a generated `Stream<T>`  until `onComplete()` or the given *skip* (the second `int` argument) is reached which starts over a new `Stream<T>`. The *size* (the first `int` argument) will delimit the maximum number of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed sequences can be emitted to the child `Subscriber<Stream<T>>`.
 
 h|window(*long*, TimeUnit, Timer_)
-|Forward to a generated `Stream<T>` until `onComplete()` or the elpased *period* (the `long` argument) is reached, which starts over a new `Stream<T>`. 
+|Forward to a generated `Stream<T>` until `onComplete()` or the elapsed *period* (the `long` argument) is reached, which starts over a new `Stream<T>`.
 
 h|window(*long, long*, TimeUnit, Timer_)
-|Forward to a generated `Stream<T>`  until `onComplete()` or the given *timeshift* (the second `long` argument) is reached. The *timespan* (the first `long` argument) will delimit the maximum numger of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed sequenced can be emitted to the child `Subscriber<Stream<T>>`.
+|Forward to a generated `Stream<T>`  until `onComplete()` or the given *timeshift* (the second `long` argument) is reached. The *timespan* (the first `long` argument) will delimit the maximum number of aggregated elements by buffer. That means overlapping (sliding buffers) and disjointed sequenced can be emitted to the child `Subscriber<Stream<T>>`.
 
 h|window(*int, long*, _TimeUnit, Timer_)
-|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditons. It forwards to a generated `Stream<T>` until the given *size* has been reached or the *timespan* has elapsed.
+|A combination of `buffer(int)` *OR* `buffer(long, TimeUnit, Timer)` conditions. It forwards to a generated `Stream<T>` until the given *size* has been reached or the *timespan* has elapsed.
 
 |===
 
 [[streams-backpressure]]
 == Backpressure and Overflow
 
-Backpressure is addressed automatically in many  situations with the *Reactive Streams* contract. If a `Subscriber` doesn't request more than it can actually process (e.g. something other than `Long.MAX_VALUE`), the upstream source can avoid sending too much data. With a "cold" `Publisher` this only works when you can stop reading from source at any time: _How much to read from a socket, How many rows from a SQL query cursor, how many lines from a File, how many elements from an Iterable_...
+Backpressure is addressed automatically in many  situations with the *Reactive Streams* contract. If a `Subscriber` doesn't request more than it can actually process (e.g. something other than `Long.MAX_VALUE`), the upstream source can avoid sending too much data. With a "cold" `Publisher` this only works when you can stop reading from a source at any time: _How much to read from a socket, How many rows from a SQL query cursor, how many lines from a File, how many elements from an Iterable_...
 
-If the source is *hot*, such as a timer or UI events, or the `Subscriber` might request `Long.MAX_VALUE` on a large dataset, a strategy must be explicitely picked by the developer to deal with *backpressure*. 
+If the source is *hot*, such as a timer or UI events, or the `Subscriber` might request `Long.MAX_VALUE` on a large dataset, a strategy must be explicitly picked by the developer to deal with *backpressure*.
 
 .Reactor provides a set of APIs to deal with Hot and Cold sequences:
 ****
@@ -1170,7 +1170,7 @@ A common example used extensively in the *Reactive Extensions* documentation is 
 
 image::images/marble/marble-101.png[Marble Diagrams, width=650, align="center", link="images/marble/marble-101.png"]
 
-*Reactor* will automatically provide for an in-memory overflow buffer when the dispatcher or the capacity differs from one action to another. This will not apply to `Core Processors`, which handle the overflow in their own way. Dispatchers can be re-used and *Reactor* must limit the number of dispatches where it can, hence the in-memory buffer added by `Action` when dispatchers differ. 
+*Reactor* will automatically provide for an in-memory overflow buffer when the dispatcher or the capacity differs from one action to another. This will not apply to `Core Processors`, which handle the overflow in their own way. Dispatchers can be re-used and *Reactor* must limit the number of dispatches where it can, hence, the in-memory buffer added by `Action` when dispatchers differ.
 
 [source,java]
 ----
@@ -1184,8 +1184,8 @@ Streams.just(1,2,3,4,5)
 Streams.just(1,2,3,4,5)
   .dispatchOn(dispatcher1) // <3>
   //onOverflowBuffer()
-  .dispatchOn(dispatcher2) // <4>  
-  .consume()  
+  .dispatchOn(dispatcher2) // <4>
+  .consume()
 ----
 <1> The buffer operation set capacity(3)
 <2> consume() or any downstream action is set with capacity(2), an implicit onOverflowBuffer() is added
@@ -1199,7 +1199,7 @@ Ultimately the `Subscriber` can request data one by one, limiting the in-flight 
 Streams.range(1,1000000)
   .subscribe(new DefaultSubscriber<Long>(){ // <1>
     Subscription sub;
-    
+
     @Override
     void onSubscribe(Subscription sub){
       this.sub = sub;
@@ -1246,16 +1246,16 @@ h|throttle(*long*)
 image::images/marble/marble-throttle.png[throttle(delay), width=500, align="center", link="images/marble/marble-throttle.png"]
 
 h|requestWhen(*Function<Stream<Long>, Publisher<Long>>*)
-^.^a|Pass any downstream `request(long)` to `Stream<Long>` sequence of requests that can be altered and returned using any form of `Publisher<Long>`. The `RequestWhenAction` will subscribe to the produced sequence and immiately forward `onNext(Long)` to the upstream `request(long)`. It behaves similarly to `adaptiveConsume` but can be inserted at any point in the `Stream` pipeline.
+^.^a|Pass any downstream `request(long)` to `Stream<Long>` sequence of requests that can be altered and returned using any form of `Publisher<Long>`. The `RequestWhenAction` will subscribe to the produced sequence and immediately forward `onNext(Long)` to the upstream `request(long)`. It behaves similarly to `adaptiveConsume` but can be inserted at any point in the `Stream` pipeline.
 
 image::images/marble/marble-requestwhen.png[requestWhen(requestMapper), width=500, align="center", link="images/marble/marble-requestwhen.png"]
 
-h|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*) 
+h|batchConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Long,Long>*)
 
 _batchConsumeOn_
 |Similar to `consume` but will request the mapped `Long` demand given the previous demand and starting with the default `Stream.capacity()`. Useful for adapting the demand from various factors.
 
-h|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*), 
+h|adaptiveConsume(*Consumer<T>*, _Consumer<T>, Consumer<T>_, *Function<Stream<Long>,Publisher<Long>>*),
 
 _adaptiveConsumeOn_
 |Similar to `batchConsume` but will request the computed sequence of demand `Long`. It can be used to insert flow-control such as `Streams.timer()` to delay demand.  The `AdaptiveConsumerAction` will subscribe to the produced sequence and immediately forwards `onNext(Long)` to the upstream `request(long)`.
@@ -1288,7 +1288,7 @@ Coordinating in a non-blocking way will free the developer from using `Future.ge
 Merging actions are modeled in `FanInAction` and take care of concurrent signaling with a *thread-stealing* `SerializedSubscriber` proxy to the delegate `Subscriber`. For each signal it will verify if the correct thread is already running the delegate `Subscriber` and rescheduling the signal if not. The signal will then be polled when the busy thread exits `Subscriber` code, possibly running the signal in a different thread than originally produced on.
 
 [WARNING]
-<<streams.adoc#streams-backpressure,Reducing the demand volume>> before using `flatMap` might be a good or a bad idea. In effect it doesn't deserve the merging action to subscribe to many parallel `Publisher` if it can't actually process them all. However it limiting the parallel `Publisher` size might also not give a chance to faster `Publisher` pending a request to be delivered. 
+<<streams.adoc#streams-backpressure,Reducing the demand volume>> before using `flatMap` might be a good or a bad idea. In effect, it doesn't deserve the merging action to subscribe to many parallel `Publisher` if it can't actually process them all. However, it limiting the parallel `Publisher` size might also not give a chance to faster `Publisher` pending a request to be delivered.
 
 .Stream.zipWith(Function)
 [source,java]
@@ -1314,14 +1314,14 @@ h|Functional API or Factory method
 |
 
 h|Stream.flatMap(Function<T, Publisher<V>>)
-|An <<streams.adoc#stream-flatmap,Async transformation>> is a typed shortcut for `map(Function<T, Publisher<V>>).merge()`. 
+|An <<streams.adoc#stream-flatmap,Async transformation>> is a typed shortcut for `map(Function<T, Publisher<V>>).merge()`.
 
-The mapping part produces a `Publisher<V>` eventully using the passed data `T`, a common pattern used in <<streams.adoc#streams-microservice, MicroService architecture>>. 
+The mapping part produces a `Publisher<V>` eventually using the passed data `T`, a common pattern used in <<streams.adoc#streams-microservice, MicroService architecture>>.
 
 The merging part transforms the sequence of produced `Publisher<V>` into a sequence of `V` by _safely_ subscribing in parallel to all of them. There is no ordering guaranteed, it is *interleaved* sequence of `V`. All merged `Publisher<T>` must complete before the `Subscriber<T>` can complete.
 
 h|Streams.switchOnNext(Publisher<Publisher<T>>)
-|A Stream alterning in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
+|A Stream alternating in FIFO order between emitted `onNext(Publisher<T>)` from the passed Publisher. The signals will result in downstream Subscriber<T> receiving the next Publisher sequence of `onNext(T)`.
 It might interrupt a current upstream emission when the `onNext(Publisher<T>)` signal is received.
 All merged `Publisher<T>` must complete before the `Subscriber<T>` can complete.
 
@@ -1353,7 +1353,7 @@ h|Streams.zip(Publisher<T>, _Publisher<T> x7_, Function<Tuple,V>)
 Streams.zip(Publisher<Publisher<T>>, Function<Tuple,V>)
 
 Stream.zipWith(Publisher<T>, Function<Tuple2,V>)
-|Combine the most recent `onNext(T)` signal from each distinct `Publisher<T>`. Each signal combines only once. *Everytime* all `Publisher<T>` have emitted one signal, the given zipper function will receive them and produce the desired zipped object. If any `Publisher<T>` completes, the downstream `Subscriber<T>` will complete.
+|Combine the most recent `onNext(T)` signal from each distinct `Publisher<T>`. Each signal combines only once. *Every time* all `Publisher<T>` have emitted one signal, the given zipper function will receive them and produce the desired zipped object. If any `Publisher<T>` completes, the downstream `Subscriber<T>` will complete.
 
 h|Streams.join(Publisher<T>, _Publisher<T> x7_)
 
@@ -1367,7 +1367,7 @@ Stream.joinWith(Publisher<T>)
 [[streams-microservice]]
 == MicroServices
 
-The notion of http://martinfowler.com/articles/microservices.html[MicroService] has been an increasingly popular term over the last years. Simply put, we code software components with a focused purpose to encourage _isolation_, _adapted scaling_ and _reuse_. In fact it has been over 30 years we use them:
+The notion of http://martinfowler.com/articles/microservices.html[MicroService] has been an increasingly popular term over the last years. Simply put, we code software components with a focused purpose to encourage _isolation_, _adapted scaling_ and _reuse_. In fact, it has been over 30 years we use them:
 
 .An example of microservices in Unix
 ----
@@ -1384,9 +1384,9 @@ User morty = userService.get("Morty");
 List<Mission> assigned = missionService.findAllByUserAndUser(rick, morty);
 ----
 
-Of course the application has been widely popular within distributed systems and http://12factor.net[cloud-ready architectures]. When the function is isolated enough, it will depend on N other ones for : Data access, subroutine calls over network, posting into message bus, querying an HTTP REST endpoint etc. This is where troubles begin: *the execution flow is crossing multiple context boundaries*. Relatively latency and failure will start to scale up as the system grows in volume and access.
+Of course, the application has been widely popular within distributed systems and http://12factor.net[cloud-ready architectures]. When the function is isolated enough, it will depend on N other ones for data access, subroutine calls over the network, posting into message bus, querying an HTTP REST endpoint etc. This is where troubles begin: *the execution flow is crossing multiple context boundaries*. Relatively latency and failure will start to scale up as the system grows in volume and access.
 
-At this point we can decide to _scale-out_, after all platforms such as http://www.cloudfoundry.org[CloudFoundry] allow for elastic scaling of JVM apps and beyond. But looking at our CPU and memory use, it didn't seem particularly under pressure. Of course it was not, each remote call was just blocking the whole service and preventing concurrent user requests to kick in: They are just parked in some thread pool queue. In the meantime the active request was happily seating for a few milliseconds or more waiting for a remote HTTP call socket to actually write, a delay we call *latency* here.
+At this point, we can decide to _scale-out_, after all, platforms such as http://www.cloudfoundry.org[CloudFoundry] allow for elastic scaling of JVM apps and beyond. But looking at our CPU and memory use, it didn't seem particularly under pressure. Of course, it was not, each remote call was just blocking the whole service and preventing concurrent user requests to kick in: They are just parked in some thread pool queue. In the meantime the active request was happily seating for a few milliseconds or more waiting for a remote HTTP call socket to actually write, a delay we call *latency* here.
 
 The same applies to errors, we can make applications more resilient (fallbacks, timeouts, retries...) individually first and not rely on _scaling out_. The classic hope is that a replicate microservice will pick up the requests when a load-balancer will detect the failure:
 
@@ -1402,7 +1402,7 @@ MicroService "I'am alive !"
 [discrete]
 ==== In a Distributed System, coordination pulls a very long string of issues you wish you have never faced.
 
-A `Publisher` like a `Stream` or a `Promise` is ideal to confront *MicroServices* latency and errors. To improve the situation with better error isolation and non-blocking service calls, code has to be designed with these two constraints in mind. To put on your side the best chances for a successful migration story to a Reactive Architecture, you might prefer to work step by step with quick wins and a few adjustements, test and iterate to the next step.
+A `Publisher` like a `Stream` or a `Promise` is ideal to confront *MicroServices* latency and errors. To improve the situation with better error isolation and non-blocking service calls, code has to be designed with these two constraints in mind. To put on your side the best chances for a successful migration story to a Reactive Architecture, you might prefer to work step by step with quick wins and a few adjustments, test and iterate to the next step.
 
 In this section we're going to cover the basics to create a reactive facade gating each costly remote call, build functional services and make them latency-ready.
 
@@ -1437,9 +1437,9 @@ h|Stream.take(_arguments_)
 |Similar to `timeout()`, a need to scope in size an external resource is a common one. It's also useful to fully trigger a pipeline including `onComplete()` processing.
 
 h|Stream.flatMap(Function<T,Publisher<V>)
-|An <<streams.adoc#stream-flatmap,Async transformation>> that produces a `Publisher<V>` eventully using the passed data `T`, the ideal place to hook in a call to another service before resuming the current processing.
+|An <<streams.adoc#stream-flatmap,Async transformation>> that produces a `Publisher<V>` eventually using the passed data `T`, the ideal place to hook in a call to another service before resuming the current processing.
 
-The sequence of produced `Publisher<V>` will flow in the `Subscriber` into a sequence of `V` by _safely_ subscribing in parallel. 
+The sequence of produced `Publisher<V>` will flow in the `Subscriber` into a sequence of `V` by _safely_ subscribing in parallel.
 
 h|Stream.subscribeOn(Dispatcher), Stream.dispatchOn(Dispatcher), _Core Processors_
 a|<<streams.adoc#streams-multithreading,Threading control>> is strategic:
@@ -1454,36 +1454,36 @@ a|<<streams.adoc#streams-multithreading,Threading control>> is strategic:
 [[streams-microservice-start]]
 === Creating Non-Blocking Services
 
-The first step is to isolate the microservice access. Instead of returning a type `T` or `Future<T>`, we will now start using `Publisher<T>` and specifically `Stream<T>` or `Promise<T>`. The immediate benefit is we don't need to worry anymore about error handling and threading (yet): Errors are propagated in `onError` calls (no bubble up), threading might be tuned later for instance using `dispatchOn`. The additional bonus is we get to make our code more _functional_. It also works nice with Java 8 Lambdas! The target will be to reduce control brackets noise (if, for, while...) and limit more the need for sharing context. Ultimately our target design will encourage streaming over polling large datasets : functions will apply to a sequence, result by result, avoiding loop duplication.
+The first step is to isolate the microservice access. Instead of returning a type `T` or `Future<T>`, we will now start using `Publisher<T>` and specifically `Stream<T>` or `Promise<T>`. The immediate benefit is we don't need to worry anymore about error handling and threading (yet): Errors are propagated in `onError` calls (no bubble up), threading might be tuned later, for instance using `dispatchOn`. The additional bonus is we get to make our code more _functional_. It also works nicely with Java 8 Lambdas! The target will be to reduce control brackets noise (if, for, while...) and limit more the need for sharing context. Ultimately our target design will encourage streaming over polling large datasets: functions will apply to a sequence, result by result, avoiding loop duplication.
 
 [IMPORTANT]
-We prefer to use the implementation artefacts and not `Publisher<T>` to get compile-time access to all the *Reactor Stream* API, unless we want to be API agnostic (a possible case for library developers). `Streams.wrap(Publisher<T>)` will do the trick anyway to convert such generic return type into a proper `Stream<T>`.
+We prefer to use the implementation artifacts and not `Publisher<T>` to get compile-time access to all the *Reactor Stream* API unless we want to be API agnostic (a possible case for library developers). `Streams.wrap(Publisher<T>)` will do the trick anyway to convert such generic return type into a proper `Stream<T>`.
 
 .Evolving to reactive microservices, part 1, error isolation and non-blocking in some UserService
 [cols="1,1"]
 |===
 ^.^h|The Not So Much Win
-^.^h|The Win 
+^.^h|The Win
 a|
 
 [source,java]
 ----
 //...
 
-public User get(String name) 
+public User get(String name)
 throws Exception {
   Result r = userDB.findByName(name);
   return convert(r);
 }
 
-public List<User> allFriends(User user) 
-throws Exception {    
+public List<User> allFriends(User user)
+throws Exception {
   ResultSet rs = userDB.findAllFriends(user);
   return convertToList(r);
 }
 
-public Future<List<User>> filteredFind(String name) 
-throws Exception {    
+public Future<List<User>> filteredFind(String name)
+throws Exception {
   User user = get(name);
   if(user == null \|\| !user.isAdmin()){
     return CompletedFuture.completedFuture(null);
@@ -1508,9 +1508,9 @@ public Promise<User> get(final String name) {
     .subscribeOn(workDispatcher());
 }
 
-public Stream<User> allFriends(final User user)  {    
+public Stream<User> allFriends(final User user)  {
   return Streams
-    .defer(() -> 
+    .defer(() ->
       Streams.just(userDB.findAllFriends(user)))
     .timeout(3, TimeUnit.Seconds)
     .map(this::convertToList)
@@ -1522,7 +1522,7 @@ public Stream<User> allFriends(final User user)  {
 public Stream<User> filteredFind(String name){
     return get(name)
       .stream()
-      .filter(User::isAdmin)        
+      .filter(User::isAdmin)
       .flatMap(this::allFriends);
 }
 ----
@@ -1531,7 +1531,7 @@ public Stream<User> filteredFind(String name){
 
 ****
 * In *all query methods*:
-** No more *throws Exception*, its all passed in the pipeline
+** No more *throws Exception*, it's all passed in the pipeline
 ** No more control logic, we use predefined operators such as map or filter
 ** Only return `Publisher` (Stream or Promise)
 ** Limit blocking queries in time with timeout (can be used later for retrying, fallback etc)
@@ -1565,7 +1565,7 @@ There are two issues to address in target: robustness (network partition toleran
 [cols="1,1"]
 |===
 ^.^h|The Not So Much Win
-^.^h|The Win 
+^.^h|The Win
 a|
 
 [source,java]
@@ -1573,22 +1573,22 @@ a|
 int tries = 0;
 while(tries < 3){
   try{
-    Future<List<User>> rickFriends = 
+    Future<List<User>> rickFriends =
       userService.fitleredFind("Rick");
 
-    Future<List<User>> mortyFriends = 
+    Future<List<User>> mortyFriends =
       userService.fitleredFind("Morty");
 
     System.out.println(
       rickFriends.get(3, TimeUnit.SECONDS)
       .addAll(
         mortyFriends.get(3, TimeUnit.SECONDS))
-    );    
+    );
 
-  }catch(Exception e){    
+  }catch(Exception e){
     if(tries++ >= 3) throw e;
     Thread.sleep(tries*1000);
-  }  
+  }
 }
 ----
 
@@ -1601,9 +1601,9 @@ return Streams.merge(
   userService.filteredFind("Morty")
 )
 .buffer()
-.retryWhen( errors -> 
+.retryWhen( errors ->
   errors
-  .zipWith(Streams.range(1,3), t -> t.getT2())  
+  .zipWith(Streams.range(1,3), t -> t.getT2())
   .flatMap( tries -> Streams.timer(tries) )
 )
 .consume(System.out::println);
@@ -1618,7 +1618,7 @@ return Streams.merge(
 ** `zipWith` will combine errors with a number of tries up to 3 times
 ** `zipWith` only return the number of tries from the tuple
 ** `flatMap` + `Streams.timer(long)` convert each try into a delayed signal (seconds by default)
-** Each time a signal is sent by this returned `Publisher`, cancel and subscribe again, until a `onComplete` or `onError` is sent.
+** Each time a signal is sent by this returned `Publisher`, cancel and subscribe again, until an `onComplete` or `onError` is sent.
 ** `flatMap` only completes if the internal timer AND the upstream have completed, so after the range of 3 or after errors sequence itself terminates.
 ****
 
@@ -1634,13 +1634,13 @@ In this last step, we pay a visit to the _UserService.allFriends_ query which is
 [cols="1,1"]
 |===
 ^.^h|The Win
-^.^h|The Epic Win 
+^.^h|The Epic Win
 a|
 
 [source,java]
 ----
 return Streams
-  .defer(() -> 
+  .defer(() ->
     Streams.just(userDB.findAllFriends(user)))
   .timeout(3, TimeUnit.Seconds)
   .map(this::convertToList)
@@ -1648,8 +1648,8 @@ return Streams
   .dispatchOn(cachedDispatcher());
   .subscribeOn(workDispatcher());
 
-//Consuming in RickAndMortyService 
-//looks like  
+//Consuming in RickAndMortyService
+//looks like
 stream
   .buffer()
   .consume(System.out::println);
@@ -1664,11 +1664,11 @@ return Streams
     (demand, sub) -> {
       ResultSet rs = sub.context();
       long cursor = 0l;
-      
-      while(rs.hasNext() 
+
+      while(rs.hasNext()
         && cursor++ < demand
         && !sub.isCancelled()){
-        
+
         sub.onNext(rs.next());
       }
 
@@ -1684,8 +1684,8 @@ return Streams
   .dispatchOn(cachedDispatcher());
   .subscribeOn(workDispatcher());
 
-//Consuming in RickAndMortyService 
-//looks like  
+//Consuming in RickAndMortyService
+//looks like
 stream
   .buffer(5, 200, TimeUnit.MILLISECONDS)
   .consume(System.out::println);
@@ -1695,17 +1695,17 @@ stream
 2+a|
 
 ****
-* Yes it's more verbose...
-* ...But now we stream result by result from the query (could have used pagination with SQL limits as well).
+* Yes it's more verbose…
+* …But now we stream result by result from the query (could have used pagination with SQL limits as well).
 * `Streams.createWith` is a `PublisherFactory` which intercepts requests, start and stop.
 ** The request consumer gives precisely how many elements a subscriber is ready to receive.
 ** The request consumer receives a `SubscriberWithContext` delegating to the real `Subscriber`, it gives access to shared context and cancel status.
 ** We send at most as many individual _Result_ as demanded
 ** We complete when the query read is fully processed
-* Since the data is individual now, convertToList is unecessary, replaced with convert
+* Since the data is individual now, convertToList is unnecessary, replaced with convert
 * The Consuming aspect can start using tools such as `capacity(long)` or `buffer(int)` to batch consume the request 5 by 5.
-** As a result the flow will be perceived faster because we don't print after every rows have been read
-** We add a time limit to the batch since it might not match with the size
+** As a result, the flow will be perceived faster because we don't print after every row has been read
+** We add a time limit to the batch since it might not match the size
 ****
 
 [NOTE]
@@ -1718,19 +1718,19 @@ It's important to balance the use of stateful `Iterable<T>` like `List<T>` vs in
 
 Since error isolation is an important part of the *Reactive* contract, `Stream` API is equipped to build fault tolerant pipelines or service call.
 
-Error isolation comes simply by preventing `onNext`, `onSubscribe` and `onComplete` callbacks to bubble up any exception. Instead they are passed to the `onError` callback and propagated downstream. A few `Action` can react passively or actively on such signal, e.g. `when()` will just observe errors and `onErrorResumeNext()` will switch to a fallback `Publisher`.
+Error isolation comes simply by preventing `onNext`, `onSubscribe` and `onComplete` callbacks to bubble up any exception. Instead, they are passed to the `onError` callback and propagated downstream. A few `Action` can react passively or actively on such signal, e.g. `when()` will just observe errors and `onErrorResumeNext()` will switch to a fallback `Publisher`.
 
 ****
-Inversing the propagation to the consuming side instead of bubbling up to the producer side is the reactive pattern to isolate the data producer from the pipeline errors and keep producers alive and happy.
+Inverting the propagation to the consuming side instead of bubbling up to the producer side is the reactive pattern to isolate the data producer from the pipeline errors and keep producers alive and happy.
 ****
 
-In the end the last `Subscriber` in the chain will be notified with the `onError(t)` callback method. If that `Subscriber` is a `ConsumerAction` for instance, Reactor will re-route an error if no _errorConsumer_ callback has been assigned using `Stream.consume(dataConsumer, errorConsumer)`. The route will trigger the current `Environment` error journal if set, which by default uses SLF4J to log errors.
+In the end, the last `Subscriber` in the chain will be notified with the `onError(t)` callback method. If that `Subscriber` is a `ConsumerAction` for instance, Reactor will re-route an error if no _errorConsumer_ callback has been assigned using `Stream.consume(dataConsumer, errorConsumer)`. The route will trigger the current `Environment` error journal if set, which by default uses SLF4J to log errors.
 
 ****
-*Reactor* also distinguishes *fatal exceptions* from normal ones, specially during `onSubscribe` process. These exceptions will not be isolated nor passed downstream to the subscriber(s) :
+*Reactor* also distinguishes *fatal exceptions* from normal ones, specially during `onSubscribe` process. These exceptions will not be isolated nor passed downstream to the subscriber(s):
 
-* CancelException 
-** Happens if no subscriber is available during `onNext` propagation, e.g. when a subscriber asynchronously cancelled during `onNext` emission
+* CancelException
+** Happens if no subscriber is available during `onNext` propagation, e.g. when a subscriber asynchronously canceled during `onNext` emission
 ** Use the JVM property *-Dreactor.trace.cancel=true* to enable verbose CancelException and logging in Environment default journal. If not set, Environment will not report these exceptions and there won't be any stacktrace associated neither.
 * ReactorFatalException
 ** Happens when Reactor defines an unrecoverable situation like a scheduling on `Timer` not matching the resolution.
@@ -1738,13 +1738,13 @@ In the end the last `Subscriber` in the chain will be notified with the `onError
 ** StackOverflowError
 ** VirtualMachineError
 ** ThreadDeath
-** LinkageError    
+** LinkageError
 ****
 
-A good practice as seen in various sections is to set time limits explicitely, so `timeout()` + `retry()` will be your best mates especially to protect against network partitioning. The more data flows in the `Stream` the better it should be able to auto heal to keep a good service availability. 
+A good practice as seen in various sections is to set time limits explicitly, so `timeout()` + `retry()` will be your best mates especially to protect against network partitioning. The more data flows in the `Stream` the better it should be able to auto-heal to keep a good service availability.
 
 [IMPORTANT]
-In Reactive Streams, at most one error can traverse a pipeline, so you can't really double `onError(e)` a `Subsriber`, in theory. In practice we implemented the _Rx_ operators `retry()` and `retryWhen()` that will cancel/re-subscribe `onError`. That means we still respect the contract as an entire new pipeline will be materialized transparently, with fresh action instances. That also means stateful `Action` like `buffer()` should be used with caution in this scenario since we just de-reference them, their state might be lost. We are working on alternatives, one of them involving external persistence for safe stateful `Actions`. A glimpse of that can be read in the <<streams.adoc#streams-persistent, related section>>.
+In Reactive Streams, at most one error can traverse a pipeline, so you can't really double `onError(e)` a `Subscriber`, in theory. In practice we implemented the _Rx_ operators `retry()` and `retryWhen()` that will cancel/re-subscribe `onError`. That means we still respect the contract as an entirely new pipeline will be materialized transparently, with fresh action instances. That also means stateful `Action` like `buffer()` should be used with caution in this scenario since we just de-reference them, their state might be lost. We are working on alternatives, one of them involving external persistence for safe stateful `Actions`. A glimpse of that can be read in the <<streams.adoc#streams-persistent, related section>>.
 
 .Fallback cascade fun
 [source,java]
@@ -1773,7 +1773,7 @@ assertEquals(promise.get().get(0), "test1");
 assertEquals(promise.get().get(1), "test2");
 assertEquals(promise.get().get(2), "Alternative Message");
 ----
-<1> `TimeoutAction` can fallback when no data is emited for the given time period, but in this case it will just emit another Exception...
+<1> `TimeoutAction` can fallback when no data is emmited for the given time period, but in this case it will just emit another Exception...
 <2> ...However, we are lucky to have `onErrorResumeNext(Publisher)` to catch this exception and actually deliver some String payload
 
 Another classic example of fault-tolerant pipeline can be found in <<recipes.adoc#recipes-circuitbreaker, Recipes Section>>.
@@ -1806,7 +1806,7 @@ h|retry(_int, Predicate<Throwable_)
 |Cancel/Re-Subscribe the parent `Stream` up to the optional _tries_ argument and matching the passed `Predicate` if provided.
 
 h|retryWhen(Function<Stream<Throwable>,Publisher<?>>)
-|Cancel/Re-Subscribe the parent `Stream` when the returned `Publisher` from the passed `Function` emits `onNext(Object)`. The function is called once on subscribe and the generated `Publisher` is subscribed. If the `Publisher` emits `onError(e)` or `onComplete()`, they will be propagated downstream. The `Function` receives a single `Stream` of errors which have occured in any subscribed pipeline. Can be combined with *counting* and *delaying* actions to provide for bounded and exponantial retry strategies.
+|Cancel/Re-Subscribe the parent `Stream` when the returned `Publisher` from the passed `Function` emits `onNext(Object)`. The function is called once on subscribe and the generated `Publisher` is subscribed. If the `Publisher` emits `onError(e)` or `onComplete()`, they will be propagated downstream. The `Function` receives a single `Stream` of errors which have occurred in any subscribed pipeline. Can be combined with *counting* and *delaying* actions to provide for bounded and exponential retry strategies.
 
 h|recover(Class<Throwable>, Subscriber<Object>)
 |A `retryWhen()` shortcut to re-subscribe parent Publisher if the `onError(Throwable)` matches the given type. On recovery success, the passed `Subscriber` argument will receive the `onNext(Object)` that was the root signal associated with the exception, if any.
@@ -1831,9 +1831,9 @@ return Streams.merge(
   userService.filteredFind("Morty")
 )
 .buffer()
-.retryWhen( errors -> 
+.retryWhen( errors ->
   errors
-  .zipWith(Streams.range(1,3), t -> t.getT2())  
+  .zipWith(Streams.range(1,3), t -> t.getT2())
   .flatMap( tries -> Streams.timer(tries) )
 )
 .consume(System.out::println);
@@ -1891,7 +1891,7 @@ source.onComplete();
 <1> Slow down incoming `Subscriber` request to one every ~50 milliseconds, polling waiting data one by one.
 <2> Produce a `Tuple2` of *Time delta* and *payload* between 2 signals or between `onSubscribe` and the first signal.
 <3> Make the current `Stream` available with `onNext` so we can compose it with a `flatMap`.
-<4> Accumulate all data until `onComplete()` in internal `Map` keyed with the `Tuple2.t1` and valued by default with `Tuple2.t2`. Next matching keys will provide the previous value and the incoming new `onNext` in the accumulator `BiFunction`. In this case we only increment the initial payload _1_ by key.
+<4> Accumulate all data until `onComplete()` in internal `Map` keyed with the `Tuple2.t1` and valued by default with `Tuple2.t2`. Next matching keys will provide the previous value and the incoming new `onNext` in the accumulator `BiFunction`. In this case, we only increment the initial payload _1_ by key.
 <5> Accumulate all data until `onComplete()` in internal `PriorityQueue` and sort elapsed time _t1_ using the given comparator. After `onComplete()` all data are emitted in order, then complete.
 <6> Accumulate until `onComplete` a moving time average defaulting to the first received time.
 <7> Take the next and only produced average.
@@ -2038,7 +2038,7 @@ h|_All_ window(_arguments_)
 
 h|process(XXXWorkProcessor)
 |T
-2+|Since a RingBufferWorkProcessor distributes the signals to each subscribe, it is an efficient alternative to `partition()` when its just about scaling-up, not routing.
+2+|Since a RingBufferWorkProcessor distributes the signals to each subscribe, it is an efficient alternative to `partition()` when it's just about scaling-up, not routing.
 
 |===
 
@@ -2062,7 +2062,7 @@ h|Stream<T> API
 h|after()
 |T
 |Void
-3+|Only consume `onComplete()` and `onError(Throwable)` signals. 
+3+|Only consume `onComplete()` and `onError(Throwable)` signals.
 
 h|log(_String_)
 |T
@@ -2084,7 +2084,7 @@ h|combine()
 |O
 3+a|Scan for the most ancient parent or `Action`, from right to left. As a result, it will create a new `Processor` with the input `onXXXX` signals dispatched to the old action and the output `subscribe` delegated to the current action.
 
-Example: 
+Example:
 
 [source,java]
 ----
