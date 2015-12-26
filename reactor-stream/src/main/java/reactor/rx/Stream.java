@@ -34,11 +34,11 @@ import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.publisher.PublisherZip;
 import reactor.core.publisher.PublisherIgnoreElements;
 import reactor.core.publisher.PublisherLog;
 import reactor.core.publisher.PublisherMap;
 import reactor.core.publisher.PublisherOnErrorResume;
+import reactor.core.publisher.PublisherZip;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
@@ -50,6 +50,10 @@ import reactor.fn.Function;
 import reactor.fn.Predicate;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple2;
+import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.broadcast.StreamProcessor;
+import reactor.rx.stream.GroupedStream;
+import reactor.rx.stream.Signal;
 import reactor.rx.stream.StreamBatch;
 import reactor.rx.stream.StreamBuffer;
 import reactor.rx.stream.StreamBufferShift;
@@ -77,7 +81,6 @@ import reactor.rx.stream.StreamRetry;
 import reactor.rx.stream.StreamRetryWhen;
 import reactor.rx.stream.StreamSample;
 import reactor.rx.stream.StreamScan;
-import reactor.rx.stream.Signal;
 import reactor.rx.stream.StreamSkip;
 import reactor.rx.stream.StreamSkipUntilTimeout;
 import reactor.rx.stream.StreamSort;
@@ -94,9 +97,6 @@ import reactor.rx.stream.StreamWindowShift;
 import reactor.rx.stream.StreamWindowShiftWhen;
 import reactor.rx.stream.StreamWindowWhen;
 import reactor.rx.stream.StreamZipWithIterable;
-import reactor.rx.broadcast.Broadcaster;
-import reactor.rx.broadcast.StreamProcessor;
-import reactor.rx.stream.GroupedStream;
 import reactor.rx.subscriber.AdaptiveSubscriber;
 import reactor.rx.subscriber.BoundedSubscriber;
 import reactor.rx.subscriber.Control;
@@ -136,7 +136,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Void> after() {
-		return lift(PublisherIgnoreElements.INSTANCE);
+		return lift(new PublisherIgnoreElements<>(this));
 	}
 
 	/**
@@ -1017,7 +1017,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<O> ignoreElements() {
-		return lift(PublisherIgnoreElements.INSTANCE);
+		return lift(new PublisherIgnoreElements(this));
 	}
 
 	/**
@@ -1128,7 +1128,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> log(final String category, Level level, int options) {
-		return lift(new PublisherLog<O>(category, level, options));
+		return lift(new PublisherLog<O>(this, category, level, options));
 	}
 
 	/**
@@ -1141,7 +1141,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} containing the transformed values
 	 */
 	public final <V> Stream<V> map(@Nonnull final Function<? super O, ? extends V> fn) {
-		return lift(new PublisherMap<O, V>(fn));
+		return lift(new PublisherMap<O, V>(this, fn));
 	}
 
 	/**
@@ -1309,7 +1309,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> onErrorResumeNext(@Nonnull final Publisher<? extends O> fallback) {
-		return lift(new PublisherOnErrorResume<O>(fallback));
+		return lift(new PublisherOnErrorResume<O>(this, fallback));
 	}
 
 	/**
@@ -1320,7 +1320,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> onErrorResumeNext(@Nonnull final Function<Throwable, ? extends Publisher<? extends O>> fallback) {
-		return lift(new PublisherOnErrorResume<>(fallback));
+		return lift(new PublisherOnErrorResume<>(this, fallback));
 	}
 
 	/**
@@ -2160,7 +2160,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Tuple2<Long, O>> timestamp() {
-		return lift(PublisherMap.<O>timestamp());
+		return lift(PublisherMap.<O>timestamp(this));
 	}
 
 	/**
