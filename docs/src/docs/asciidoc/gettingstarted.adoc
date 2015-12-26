@@ -8,7 +8,7 @@ Reactor is a foundational library for building demanding, realtime *Data-Streami
 === What is Reactor ?
 
 So you came to have a look at Reactor. Maybe you typed some keywords into your favorite search engine like _Reactive_,
-_Spring+Reactive_, _Asynchronous+Java_ or just _What the heck is Reactor?_. In a nutshell Reactor is a lightweight, foundational library for the JVM that helps your service or application to _efficiently_ and _asynchronously_ pass messages.
+_Spring+Reactive_, _Asynchronous+Java_ or just _What the heck is Reactor?_. In a nutshell, Reactor is a lightweight, foundational library for the JVM that helps your service or application to _efficiently_ and _asynchronously_ pass messages.
 
 .What do you mean by "efficiently"?
 ****
@@ -19,11 +19,11 @@ _Spring+Reactive_, _Asynchronous+Java_ or just _What the heck is Reactor?_. In a
 
 From empirical studies (mostly _#rage_ and _#drunk_ tweets), we know that asynchronous programming is hard--especially when a platform like the JVM offers so many options. Reactor aims to be truly non-blocking for a majority of use cases and we offer an API that is measurably more efficient than relying on low-level primitives from the JDK's _java.util.concurrent_ library. Reactor provides alternatives to (and discourages the use of):
 
-* Blocking wait : e.g. Future._get()_
-* Unsafe data access : e.g. ReentrantLock._lock()_
-* Exception Bubbles : e.g. try...catch...finally
-* Synchronization blocks : e.g. synchronized{ }
-* Wrapper Allocation (GC Pressure) : e.g. new Wrapper<T>(event)
+* Blocking wait: e.g. Future._get()_
+* Unsafe data access: e.g. ReentrantLock._lock()_
+* Exception Bubbles: e.g. try...catch...finally
+* Synchronization blocks: e.g. synchronized{ }
+* Wrapper Allocation (GC Pressure): e.g. new Wrapper<T>(event)
 
 Being non-blocking matters--especially when scaling message-passing becomes critical (10k msg/s, 100k msg/s 1M...). There is some theory behind this (see http://en.wikipedia.org/wiki/Amdahl%27s_law[Amdahl's Law]), but we get bored and distracted easily, so let's first appeal to common sense.
 
@@ -86,7 +86,7 @@ The project started in 2012, with a long internal incubation time. Reactor 1.x a
 
 Parallel to that work we also decided to re-align some of our Event-Driven and Task Coordination API to the increasingly popular and documented <<gettingstarted.adoc/#rx,Reactive Extensions>>.
 
-Reactor is sponsored by http://pivotal.io[Pivotal] where the two core committers are employed. Since Pivotal is also the home of the Spring Framework and many of our colleagues are core committers to the various Spring efforts, we both provide integration support from Reactor to Spring as well as support some important functionality of the Spring Framework like the STOMP broker relay in _spring-messaging_. That said, we don't force anyone to adopt Spring just to use Reactor. We remain an embeddable toolkit "for the Reactive masses". In fact one of the goals of Reactor is to stay un-opinionated in the ways you solve asynchronous and functional problems.
+Reactor is sponsored by http://pivotal.io[Pivotal] where the two core committers are employed. Since Pivotal is also the home of the Spring Framework and many of our colleagues are core committers to the various Spring efforts, we both provide integration support from Reactor to Spring as well as support some important functionality of the Spring Framework like the STOMP broker relay in _spring-messaging_. That said, we don't force anyone to adopt Spring just to use Reactor. We remain an embeddable toolkit "for the Reactive masses". In fact, one of the goals of Reactor is to stay un-opinionated in the ways you solve asynchronous and functional problems.
 
 Reactor is http://www.apache.org/licenses/LICENSE-2.0.html[Apache 2.0 licensed] and available on https://github.com/reactor/reactor[GitHub].
 
@@ -108,12 +108,12 @@ The Reactor codebase is divided into several submodules to help you pick the one
 
 Following are some examples of how one might mix-and-match reactive technologies and Reactor modules to achieve your asynchronous goals:
 
-* Spring XD + Reactor-Net (Core/Stream) : Use Reactor as a Sink/Source IO driver.
-* Grails | Spring + Reactor-Stream (Core) : Use Stream and Promise for background Processing.
-* Spring Data + Reactor-Bus (Core) : Emit Database Events (Save/Delete/...).
-* Spring Integration Java DSL + Reactor Stream (Core) : Microbatch MessageChannel from Spring Integration.
-* RxJavaReactiveStreams + RxJava + Reactor-Core : Combine rich composition with efficient asynchronous IO Processor
-* RxJavaReactiveStreams + RxJava + Reactor-Net (Core/Stream) : Compose input data with RxJava and gate with Async IO drivers.
+* Spring XD + Reactor-Net (Core/Stream): Use Reactor as a Sink/Source IO driver.
+* Grails | Spring + Reactor-Stream (Core): Use Stream and Promise for background Processing.
+* Spring Data + Reactor-Bus (Core): Emit Database Events (Save/Delete/...).
+* Spring Integration Java DSL + Reactor Stream (Core): Microbatch MessageChannel from Spring Integration.
+* RxJavaReactiveStreams + RxJava + Reactor-Core: Combine rich composition with efficient asynchronous IO Processor
+* RxJavaReactiveStreams + RxJava + Reactor-Net (Core/Stream): Compose input data with RxJava and gate with Async IO drivers.
 
 .A *quick* overview of how Reactor modules depend on one another
 image::images/overview.png[Architecture Overview, width=650, align="center", link="images/overview.png"]
@@ -146,7 +146,7 @@ image::images/signals.png[The Publishing Sequence, width=400, align="center"]
 ****
 * *Unbounded*: On Subscribe, just call _Subscription#request(Long.MAX_VALUE)_.
 * *Bounded*: On Subscribe, keep a reference to Subscription and hit its _request(long)_ method when the Subscriber is ready to process data.
-** Typically, Subscribers will request an initial set of data, or even 1 data on Subscribe
+** Typically, Subscribers will request an initial set of data or even 1 data on Subscribe
 ** Then after onNext has been deemed successful (e.g. after Commit, Flush etc...), request more data
 ** It is encouraged to use a linear number of requests. Try avoiding overlapping requests, e.g. requesting 10 more data every next signal.
 ****
@@ -163,12 +163,12 @@ image::images/signals.png[The Publishing Sequence, width=400, align="center"]
 |Processor
 |reactor-core, reactor-stream
 |reactor.core.processor.\*, reactor.rx.*
-|In Core, we offer backpressure-ready RingBuffer*Processor and more, in Stream we have a full set of Operations and Broadcasters.
+|In Core, we offer backpressure-ready RingBuffer*Processor and more. In Stream, we have a full set of Operations and Broadcasters.
 
 |Publisher
 |reactor-core, reactor-bus, reactor-stream, reactor-net
 |reactor.core.processor.\*, reactor.rx.stream.*, reactor.rx.action.\*, reactor.io.net.*
-|In Core, processors implement Publisher. In Bus we publish an unbounded emission of routed events. In Stream, our Stream extensions directly implement Publisher. In Net, Channels implement Publisher to consume incoming data, we also provide publishers for flush and close callbacks.
+|In Core, processors implement Publisher. In Bus, we publish an unbounded emission of routed events. In Stream, our Stream extensions directly implement Publisher. In Net, Channels implement Publisher to consume incoming data, we also provide publishers for flush and close callbacks.
 
 |Subscriber
 |reactor-core, reactor-bus, reactor-stream, reactor-net
@@ -205,7 +205,7 @@ Reactor 2 provides a <<streams.adoc#streams,specific module>> implementing a sub
 to match our specific behavior. This focused approach around data-centric issues (microbatching, composition...) is depending on
 Reactor <<core.adoc#core-functional,Functional>> units, <<core.adoc#core-dispatchers,Dispatchers>> and the <<gettingstarted.adoc#reactivestreams, Reactive Streams>> contract.
 We encourage users who need the full flavor of Reactive Extensions to try out RxJava and https://github.com/ReactiveX/RxJavaReactiveStreams[bridge with us].
-In the end the user can benefit from powerful asynchronous and IO capacities provided by Reactor while composing with the complete RxJava ecosystem.
+In the end, the user can benefit from powerful asynchronous and IO capacities provided by Reactor while composing with the complete RxJava ecosystem.
 
 NOTE: Some operations, behaviors, and the immediate understanding of Reactive Streams are still unique to Reactor as of now and we will try to flesh out
 the unique features in the <<streams.adoc#streams,appropriate section>>.
