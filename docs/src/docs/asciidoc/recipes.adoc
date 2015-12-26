@@ -1,8 +1,8 @@
 [[recipe-filestream]]
 === Building a simple File Stream
 
-Let's start with a pure `Publisher` implementation, we'll use Reactor API afterwads to simplify the following example.
-As `Publisher` you will have to take care about a lot of small things that should be tested against the *Reactive Streams* TCK module. The purpose is to understand what *Reactor* can do for you in such situation to avoid all this machinery. 
+Let's start with a pure `Publisher` implementation, we'll use Reactor API afterwards to simplify the following example.
+As `Publisher` you will have to take care about a lot of small things that should be tested against the *Reactive Streams* TCK module. The purpose is to understand what *Reactor* can do for you in such situation to avoid all this machinery.
 
 [IMPORTANT]
 In theory, *Reactive Streams* won't buy you much in a scenario of File Read blocking consuming, single threaded, over a simple loop doing that. If the _sink_ endpoint is blocking you already have a form of backpressure since it won't read more than it sends. The point of such Reactive File Stream is when in between it and the consumer there is one or more boundaries to cross, a decoupling that can take the form of a queue or a ring buffer. You could envision this scenario where you want to keep reading while the consumer is sending so the next time it asks for data (after sending its previous one), the data *is already in-memory*. A sort of prefetching in other words.
@@ -85,26 +85,26 @@ Streams.wrap(fileStream)
 <1> Implement a `Publisher`. We'll see in the next example how to be smart about it with core and stream
 <2> Open a `File` cursor and reader by Subscriber to allow for replayability: It's a `Cold Stream`.
 <3> Match the number of read lines with the demand and ignore the demand if special Long.MAX_VALUE escaping number is passed.
-<4> Check before each possible `onNext()` if the Stream is not *cancelled*.
-<5> Call `onComplete()` which set the state of the `Subscription` to *cancelled*, ignoring further terminal signal if any.
-<6> Call `onError(e)` which set the state of the `Subscription` to *cancelled*, ignoring further terminal signal if any. 
-<7> Close the file if the subscriber is not interested any more in the content (error, completion, cancel). 
+<4> Check before each possible `onNext()` if the Stream is not *canceled*.
+<5> Call `onComplete()` which set the state of the `Subscription` to *canceled*, ignoring further terminal signal if any.
+<6> Call `onError(e)` which set the state of the `Subscription` to *canceled*, ignoring further terminal signal if any.
+<7> Close the file if the subscriber is not interested any more in the content (error, completion, cancel).
 <8> Create a failed `Stream` that only `onSubscribe()` the pass subscriber and `onError(e)` it.
 <9> `capacity` will hint downstream operations (`consumeOn` here) to chunk requests 4 by 4.
 <10> `consumeOn` takes an extra argument to run the requests on a dispatcher in addition to the 3 possible `Consumer` reacting to each type of signal.
 
 
-.Obviously there are ways to make that code more efficient, but also do more with less. Let's take a look at Reactor alternative `PublisherFactory` from core module, which is used by `Streams.createWith()` methods from stream module as well.
+.Obviously there are ways to make that code more efficient but also do more with less. Let's take a look at Reactor alternative `PublisherFactory` from core module, which is used by `Streams.createWith()` methods from stream module as well.
 
 
 .Build a lazy file read with Core PublisherFactory§ (from 2.0.2+) and compose with Stream API
 [source, java]
 ----
 final String filename = "settings.gradle";
-Publisher<String> fileStream = PublisherFactory.create( 
+Publisher<String> fileStream = PublisherFactory.create(
 	(n, sub) -> { // <1>
 		String line;
-		final BufferedReader inputStream = sub.context() // <2>		
+		final BufferedReader inputStream = sub.context() // <2>
 		long requestCursor = 0l;
 		while ((requestCursor++ < n || n == Long.MAX_VALUE) && !sub.isCancelled()) { // <3>
 
@@ -121,7 +121,7 @@ Publisher<String> fileStream = PublisherFactory.create(
 				sub.onError(exc);
 			}
 		}
-	}, 
+	},
 	sub -> new BufferedReader(new FileReader(filename)), // <5>
 	inputStream -> inputStream.close() // <6>
 );
@@ -140,8 +140,8 @@ Streams
 <1> Implement a `BiConsumer` to react on every `Subscriber` request `Long` n. Any unchecked exception will trigger the terminal callback and `Subscriber.onError(e)`.
 <2> The `Subscriber` passed in the callback is a `SubscriberWithContext` decorator allowing access to `context()`  populated on start
 <3> Match the number of read lines with the demand and ignore the demand if special Long.MAX_VALUE escaping number is passed. Also use `SubscriberWithContext.isCancelled()` to check asynchronous cancel from `Subscribers` before each read.
-<4> Call `onComplete()` which set the state of the `SubscriberWithContext` to *cancelled*, ignoring further terminal signal if any.
-<5> Define a context once for a new `Subscriber` that will be available later for each request `SubscriberWithContext.context()` 
+<4> Call `onComplete()` which set the state of the `SubscriberWithContext` to *canceled*, ignoring further terminal signal if any.
+<5> Define a context once for a new `Subscriber` that will be available later for each request `SubscriberWithContext.context()`
 <6> Define a terminal callback once intercepting `cancel()`, `onComplete()` or `onError(e)`.
 
 We can use `PublisherFactory`, or <<streams.adoc#streams-basics, Streams factories>> like `Streams.createWith()` to quickly achieve common use cases:
@@ -155,7 +155,7 @@ We can use `PublisherFactory`, or <<streams.adoc#streams-basics, Streams factori
 
 In this other exercise, we will focus more on the composition power in your hands with *Reactor Stream* module. A classic use-case is to build self-healing data pipelines using the http://martinfowler.com/bliki/CircuitBreaker.html[Circuit Breaker Pattern] (maybe soon available in `Stream` API, maybe).
 
-In this scenario, we want to keep alive a `Stream` even if errors might fly in. When a certain number of errors is reached, we want to stop consuming from the main _circuit_, the actual `Stream`. For a short period we will _trip_ the circuit and use a fallback publisher `Stream`. This fallback can actually be any sort of `Publisher`, we will just emit an alternative message. The point is to avoid new access to the failing `Stream` for a while and give it a chance to recover.
+In this scenario, we want to keep alive a `Stream` even if errors might fly in. When a certain number of errors is reached, we want to stop consuming from the main _circuit_, the actual `Stream`. For a short period, we will _trip_ the circuit and use a fallback publisher `Stream`. This fallback can actually be any sort of `Publisher`, we will just emit an alternative message. The point is to avoid new access to the failing `Stream` for a while and give it a chance to recover.
 
 .Quick (and dirty) Circuit Breaker test
 [source,java]
@@ -175,14 +175,14 @@ Promise<List<String>> promise = // <5>
 			.observe(d -> successes.incrementAndGet()) // <7>
 			.when(Throwable.class, error -> failures.incrementAndGet())
 			.observeStart(s -> { // <8>
-				
+
 				System.out.println("failures: " + failures +
 					 " successes:" + successes);
 
-				if (failures.compareAndSet(maxErrors, 0)) { 
+				if (failures.compareAndSet(maxErrors, 0)) {
 					circuitSwitcher.onNext(openCircuit); // <9>
 					successes.set(0);
-					
+
 					Streams
 						.timer(1)  // <10>
 						.consume(ignore -> circuitSwitcher.onNext(closeCircuit));
@@ -248,13 +248,13 @@ A simple sample application that demonstrates Reactor functionality in JUnit tes
 [discrete]
 ==== Non Blocking Konami Code
 
-If you made it that far, here a simple non blocking stream to scale up your Konami codes over websocket. Tell me about a reward... Don't forget to add *Netty* in your classpath along *reactor-net*.
+If you made it that far, here a simple non blocking stream to scale up your Konami codes over WebSocket. Tell me about a reward… Don't forget to add *Netty* to your classpath along *reactor-net*.
 
 [source,java]
 ----
 final Processor<Integer, Integer> keyboardStream = RingBufferProcessor.create();
 
-NetStreams.<String, String>httpServer(spec -> 
+NetStreams.<String, String>httpServer(spec ->
 		spec
 			.codec(StandardCodecs.STRING_CODEC)
 			.listen(3000)
