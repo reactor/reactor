@@ -23,32 +23,32 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.fn.Function;
+import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.timer.Timer;
-import reactor.rx.stream.GroupedStream;
+import reactor.fn.Function;
 
 /**
  * Manage a dynamic registry of substreams for a given key extracted from the incoming data. Each non-existing key will
  * result in a new stream to be signaled
  * @since 2.0, 2.1
  */
-public final class StreamGroupBy<T, K> implements Publishers.Operator<T, GroupedStream<K, T>> {
+public final class StreamGroupBy<T, K> extends StreamBarrier<T, GroupedStream<K, T>> {
 
 	private final Function<? super T, ? extends K> fn;
 	private final Timer                            timer;
 
-	public StreamGroupBy(Function<? super T, ? extends K> fn, Timer timer) {
+	public StreamGroupBy(Publisher<T> source, Function<? super T, ? extends K> fn, Timer timer) {
+		super(source);
 		this.fn = fn;
 		this.timer = timer;
 	}

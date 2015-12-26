@@ -21,12 +21,11 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.fn.Function;
 import reactor.core.timer.Timer;
+import reactor.fn.Function;
 import reactor.rx.Stream;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -34,24 +33,21 @@ import reactor.rx.broadcast.Broadcaster;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamRepeatWhen<T> implements Publishers.Operator<T, T> {
+public final class StreamRepeatWhen<T> extends StreamBarrier<T, T> {
 
 	private final Timer                                                            timer;
-	private final Publisher<? extends T>                                           rootPublisher;
 	private final Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate;
 
-	public StreamRepeatWhen(Timer timer,
-			Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate,
-			Publisher<? extends T> rootPublisher) {
-
-		this.rootPublisher = rootPublisher;
+	public StreamRepeatWhen(Publisher<T> source, Timer timer,
+			Function<? super Stream<? extends Long>, ? extends Publisher<?>> predicate) {
+		super(source);
 		this.predicate = predicate;
 		this.timer = timer;
 	}
 
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new RepeatWhenAction<>(subscriber, timer, predicate, rootPublisher);
+		return new RepeatWhenAction<>(subscriber, timer, predicate, source);
 	}
 
 	static final class RepeatWhenAction<T> extends SubscriberWithDemand<T, T> {

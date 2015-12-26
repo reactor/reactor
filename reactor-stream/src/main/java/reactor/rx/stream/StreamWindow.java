@@ -18,6 +18,7 @@ package reactor.rx.stream;
 
 import java.util.concurrent.TimeUnit;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
@@ -35,13 +36,13 @@ public class StreamWindow<T> extends StreamBatch<T, Stream<T>> {
 
 	protected final Timer timer;
 
-	public StreamWindow(Timer timer, int backlog) {
-		super(backlog, true, true, true);
+	public StreamWindow(Publisher<T> source, Timer timer, int backlog) {
+		super(source, backlog, true, true, true);
 		this.timer = timer;
 	}
 
-	public StreamWindow(int backlog, long timespan, TimeUnit unit, Timer timer) {
-		super(backlog, true, true, true, timespan, unit, timer);
+	public StreamWindow(Publisher<T> source, int backlog, long timespan, TimeUnit unit, Timer timer) {
+		super(source, backlog, true, true, true, timespan, unit, timer);
 		this.timer = timer;
 	}
 

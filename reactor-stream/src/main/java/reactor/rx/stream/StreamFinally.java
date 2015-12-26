@@ -15,6 +15,7 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
@@ -24,11 +25,12 @@ import reactor.fn.Consumer;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final  class StreamFinally<T> implements Publishers.Operator<T, T> {
+public final  class StreamFinally<T> extends StreamBarrier<T, T> {
 
 	private final Consumer<Signal<T>> consumer;
 
-	public StreamFinally(Consumer<Signal<T>> consumer) {
+	public StreamFinally(Publisher<T> source, Consumer<Signal<T>> consumer) {
+		super(source);
 		this.consumer = consumer;
 	}
 

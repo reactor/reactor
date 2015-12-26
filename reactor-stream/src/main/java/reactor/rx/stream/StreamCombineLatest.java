@@ -23,16 +23,15 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
+import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
@@ -42,12 +41,14 @@ import reactor.fn.tuple.Tuple;
  * @author Stephane Maldini
  * @since 2.1
  */
-public final class StreamCombineLatest<TUPLE extends Tuple, V> implements Publishers.Operator<Publisher[], V>{
+public final class StreamCombineLatest<TUPLE extends Tuple, V> extends StreamBarrier<Publisher[], V>{
 
 	final Function<? super TUPLE, ? extends V> combinator;
 	final int                                  bufferSize;
 
-	public StreamCombineLatest(final Function<? super TUPLE, ? extends V> combinator, int bufferSize) {
+	public StreamCombineLatest(Publisher<Publisher[]> source,
+			final Function<? super TUPLE, ? extends V> combinator, int bufferSize) {
+		super(source);
 		this.combinator = combinator;
 		this.bufferSize = bufferSize;
 	}

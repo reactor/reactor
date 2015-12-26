@@ -20,7 +20,6 @@ import java.util.Map;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
@@ -30,15 +29,16 @@ import reactor.fn.tuple.Tuple2;
  * @since 2.0, 2.1
  */
 public final class StreamReduceByKey<K, V>
-		implements Publishers.Operator<Tuple2<K, V>, Tuple2<K, V>> {
+		extends StreamBarrier<Tuple2<K, V>, Tuple2<K, V>> {
 
 	private final BiFunction<? super V, ? super V, V>        fn;
 	private final Map<K, V>                                  store;
 	private final Publisher<? extends StreamKv.Signal<K, V>> mapListener;
 
-	public StreamReduceByKey(BiFunction<? super V, ? super V, V> fn,
+	public StreamReduceByKey(Publisher<Tuple2<K, V>> source, BiFunction<? super V, ? super V, V> fn,
 			Map<K, V> store,
 			Publisher<? extends StreamKv.Signal<K, V>> mapListener) {
+		super(source);
 		this.fn = fn;
 		this.store = store;
 		this.mapListener = mapListener;

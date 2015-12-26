@@ -21,7 +21,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 
@@ -29,19 +28,18 @@ import reactor.core.support.BackpressureUtils;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamRepeat<T> implements Publishers.Operator<T, T> {
+public final class StreamRepeat<T> extends StreamBarrier<T, T> {
 
 	private final int                    numRetries;
-	private final Publisher<? extends T> rootPublisher;
 
-	public StreamRepeat(int numRetries, Publisher<? extends T> parentStream) {
+	public StreamRepeat(Publisher<T> source, int numRetries) {
+		super(source);
 		this.numRetries = numRetries;
-		this.rootPublisher = parentStream;
 	}
 
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new RepeatAction<>(subscriber, numRetries, rootPublisher);
+		return new RepeatAction<>(subscriber, numRetries, source);
 	}
 
 	static final class RepeatAction<T> extends SubscriberWithDemand<T, T> {

@@ -16,17 +16,19 @@
 
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 
 /**
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamMaterialize<T> implements Publishers.Operator<T, Signal<T>> {
+public final class StreamMaterialize<T> extends StreamBarrier<T, Signal<T>> {
 
-	public static final StreamMaterialize INSTANCE = new StreamMaterialize();
+	public StreamMaterialize(Publisher<T> source) {
+		super(source);
+	}
 
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super Signal<T>> subscriber) {

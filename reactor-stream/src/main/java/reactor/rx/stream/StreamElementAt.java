@@ -16,29 +16,30 @@
 
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 
 /**
  * @author Anatoly Kadyshev
  * @since 2.0, 2.1
  */
-public final class StreamElementAt<T> implements Publishers.Operator<T, T> {
+public final class StreamElementAt<T> extends StreamBarrier<T, T> {
 
 	private final int     index;
 	private final T       defaultValue;
 	private final boolean defaultProvided;
 
-	public StreamElementAt(int index) {
-		this(index, null, false);
+	public StreamElementAt(Publisher<T> source, int index) {
+		this(source, index, null, false);
 	}
 
-	public StreamElementAt(int index, T defaultValue) {
-		this(index, defaultValue, true);
+	public StreamElementAt(Publisher<T> source, int index, T defaultValue) {
+		this(source, index, defaultValue, true);
 	}
 
-	public StreamElementAt(int index, T defaultValue, boolean defaultProvided) {
+	public StreamElementAt(Publisher<T> source, int index, T defaultValue, boolean defaultProvided) {
+		super(source);
 		if (index < 0) {
 			throw new IndexOutOfBoundsException("index should be >= 0");
 		}

@@ -23,7 +23,6 @@ import java.util.List;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.fn.Supplier;
 
@@ -31,12 +30,13 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamBufferShiftWhen<T> implements Publishers.Operator<T, List<T>> {
+public final class StreamBufferShiftWhen<T> extends StreamBarrier<T, List<T>> {
 
 	private final Supplier<? extends Publisher<?>> bucketClosing;
 	private final Publisher<?>                     bucketOpening;
 
-	public StreamBufferShiftWhen(Publisher<?> bucketOpenings, Supplier<? extends Publisher<?>> boundarySupplier) {
+	public StreamBufferShiftWhen(Publisher<T> source, Publisher<?> bucketOpenings, Supplier<? extends Publisher<?>> boundarySupplier) {
+		super(source);
 		this.bucketClosing = boundarySupplier;
 		this.bucketOpening = bucketOpenings;
 	}

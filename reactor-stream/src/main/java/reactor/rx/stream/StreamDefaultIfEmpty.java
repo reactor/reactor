@@ -19,7 +19,6 @@ package reactor.rx.stream;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
@@ -30,11 +29,12 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamDefaultIfEmpty<T> implements Publishers.Operator<T, T> {
+public final class StreamDefaultIfEmpty<T> extends StreamBarrier<T, T> {
 
 	private final Supplier<? extends Publisher<? extends T>> fallbackSelector;
 
-	public StreamDefaultIfEmpty(final Publisher<? extends T> fallbackSelector) {
+	public StreamDefaultIfEmpty(Publisher<T> source, final Publisher<? extends T> fallbackSelector) {
+		super(source);
 		this.fallbackSelector = new Supplier<Publisher<? extends T>>() {
 			@Override
 			public Publisher<? extends T> get() {
@@ -43,7 +43,8 @@ public final class StreamDefaultIfEmpty<T> implements Publishers.Operator<T, T> 
 		};
 	}
 
-	public StreamDefaultIfEmpty(Supplier<? extends Publisher<? extends T>> fallbackSelector) {
+	public StreamDefaultIfEmpty(Publisher<T> source, Supplier<? extends Publisher<? extends T>> fallbackSelector) {
+		super(source);
 		this.fallbackSelector = fallbackSelector;
 	}
 

@@ -18,25 +18,26 @@ package reactor.rx.stream;
 
 import java.util.concurrent.TimeUnit;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
-import reactor.fn.Consumer;
 import reactor.core.timer.Timer;
+import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamThrottleRequest<T> implements Publishers.Operator<T, T> {
+public final class StreamThrottleRequest<T> extends StreamBarrier<T, T> {
 
 	private final Timer timer;
 	private final long  period;
 
 	@SuppressWarnings("unchecked")
-	public StreamThrottleRequest(Timer timer, long period) {
+	public StreamThrottleRequest(Publisher<T> source, Timer timer, long period) {
+		super(source);
 		Assert.state(timer != null, "Timer must be supplied");
 		this.timer = timer;
 		this.period = period;

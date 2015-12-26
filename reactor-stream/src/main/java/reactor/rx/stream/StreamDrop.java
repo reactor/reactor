@@ -15,9 +15,9 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 
@@ -25,9 +25,11 @@ import reactor.core.support.BackpressureUtils;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamDrop<O> implements Publishers.Operator<O, O> {
+public final class StreamDrop<O> extends StreamBarrier<O, O> {
 
-	public final static StreamDrop INSTANCE = new StreamDrop();
+	public StreamDrop(Publisher<O> source) {
+		super(source);
+	}
 
 	@Override
 	public Subscriber<? super O> apply(Subscriber<? super O> subscriber) {

@@ -15,8 +15,8 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Predicate;
 
@@ -24,12 +24,13 @@ import reactor.fn.Predicate;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final  class StreamSkip<T> implements Publishers.Operator<T, T> {
+public final  class StreamSkip<T> extends StreamBarrier<T, T> {
 
 	private final Predicate<T> startPredicate;
 	private final long         limit;
 
-	public StreamSkip(Predicate<T> startPredicate, long limit) {
+	public StreamSkip(Publisher<T> source, Predicate<T> startPredicate, long limit) {
+		super(source);
 		this.startPredicate = startPredicate;
 		this.limit = limit;
 	}

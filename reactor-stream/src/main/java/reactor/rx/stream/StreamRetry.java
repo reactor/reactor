@@ -21,7 +21,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.fn.Predicate;
@@ -30,21 +29,20 @@ import reactor.fn.Predicate;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamRetry<T> implements Publishers.Operator<T, T> {
+public final class StreamRetry<T> extends StreamBarrier<T, T> {
 
 	private final int                    numRetries;
 	private final Predicate<Throwable>   retryMatcher;
-	private final Publisher<? extends T> rootPublisher;
 
-	public StreamRetry(int numRetries, Predicate<Throwable> predicate, Publisher<? extends T> parentStream) {
+	public StreamRetry(Publisher<T> source, int numRetries, Predicate<Throwable> predicate) {
+		super(source);
 		this.numRetries = numRetries;
 		this.retryMatcher = predicate;
-		this.rootPublisher = parentStream;
 	}
 
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new RetryAction<>(subscriber, numRetries, retryMatcher, rootPublisher);
+		return new RetryAction<>(subscriber, numRetries, retryMatcher, source);
 	}
 
 	static final class RetryAction<T> extends SubscriberWithDemand<T, T> {

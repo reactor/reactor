@@ -22,20 +22,20 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
-import reactor.fn.Consumer;
 import reactor.core.timer.Timer;
+import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamBufferShift<T> implements Publishers.Operator<T, List<T>> {
+public final class StreamBufferShift<T> extends StreamBarrier<T, List<T>> {
 
 	private final long     timeshift;
 	private final long     timespan;
@@ -44,16 +44,17 @@ public final class StreamBufferShift<T> implements Publishers.Operator<T, List<T
 	private final int      skip;
 	private final int      batchSize;
 
-	public StreamBufferShift(int size, int skip) {
-		this(size, skip, -1L, -1L, null, null);
+	public StreamBufferShift(Publisher<T> source, int size, int skip) {
+		this(source, size, skip, -1L, -1L, null, null);
 	}
 
-	public StreamBufferShift(int size,
+	public StreamBufferShift(Publisher<T> source, int size,
 			int skip,
 			final long timeshift,
 			final long timespan,
 			TimeUnit unit,
 			final Timer timer) {
+		super(source);
 		this.skip = skip;
 		this.batchSize = size;
 		if (timespan > 0 && timeshift > 0) {

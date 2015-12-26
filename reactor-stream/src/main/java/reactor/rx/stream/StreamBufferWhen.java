@@ -21,7 +21,6 @@ import java.util.List;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.fn.Supplier;
 
@@ -29,11 +28,12 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamBufferWhen<T> implements Publishers.Operator<T, List<T>> {
+public final class StreamBufferWhen<T> extends StreamBarrier<T, List<T>> {
 
 	private final Supplier<? extends Publisher<?>> boundarySupplier;
 
-	public StreamBufferWhen(Supplier<? extends Publisher<?>> boundarySupplier) {
+	public StreamBufferWhen(Publisher<T> source, Supplier<? extends Publisher<?>> boundarySupplier) {
+		super(source);
 		this.boundarySupplier = boundarySupplier;
 	}
 

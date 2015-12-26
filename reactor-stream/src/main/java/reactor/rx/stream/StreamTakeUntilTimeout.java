@@ -17,24 +17,25 @@ package reactor.rx.stream;
 
 import java.util.concurrent.TimeUnit;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
-import reactor.fn.Consumer;
 import reactor.core.timer.Timer;
+import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final  class StreamTakeUntilTimeout<T> implements Publishers.Operator<T, T> {
+public final  class StreamTakeUntilTimeout<T> extends StreamBarrier<T, T> {
 
 	private final long             time;
 	private final TimeUnit         unit;
 	private final Timer            timer;
 
-	public StreamTakeUntilTimeout(long time, TimeUnit unit, Timer timer) {
+	public StreamTakeUntilTimeout(Publisher<T> source, long time, TimeUnit unit, Timer timer) {
+		super(source);
 		this.time = time;
 		this.unit = unit;
 		this.timer = timer;

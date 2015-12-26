@@ -17,8 +17,8 @@ package reactor.rx.stream;
 
 import java.util.Iterator;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.core.error.Exceptions;
 import reactor.core.subscriber.SubscriberWithDemand;
@@ -28,13 +28,14 @@ import reactor.fn.BiFunction;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamZipWithIterable<I, IT, V> implements Publishers.Operator<I, V> {
+public final class StreamZipWithIterable<I, IT, V> extends StreamBarrier<I, V> {
 
 	final BiFunction<? super I, ? super IT, ? extends V> combinator;
 	final Iterable<? extends IT> iterable;
 
-	public StreamZipWithIterable(BiFunction<? super I, ? super IT, ? extends V> combinator,
+	public StreamZipWithIterable(Publisher<I> source, BiFunction<? super I, ? super IT, ? extends V> combinator,
 			Iterable<? extends IT> iterable) {
+		super(source);
 		this.combinator = combinator;
 		this.iterable = iterable;
 	}

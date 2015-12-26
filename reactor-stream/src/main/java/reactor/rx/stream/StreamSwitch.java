@@ -18,19 +18,20 @@ package reactor.rx.stream;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
-import reactor.rx.subscriber.SerializedSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
+import reactor.rx.subscriber.SerializedSubscriber;
 
 /**
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamSwitch<T> implements Publishers.Operator<Publisher<? extends T>, T> {
+public final class StreamSwitch<T> extends StreamBarrier<Publisher<? extends T>, T> {
 
-	public final static StreamSwitch INSTANCE = new StreamSwitch();
+	public StreamSwitch(Publisher<Publisher<? extends T>> source) {
+		super(source);
+	}
 
 	@Override
 	public Subscriber<? super Publisher<? extends T>> apply(Subscriber<? super T> subscriber) {
@@ -43,10 +44,6 @@ public final class StreamSwitch<T> implements Publishers.Operator<Publisher<? ex
 
 		public SwitchAction(Subscriber<? super T> subscriber) {
 			super(subscriber);
-		}
-
-		public SwitchSubscriber getSwitchSubscriber() {
-			return switchSubscriber;
 		}
 
 		@Override

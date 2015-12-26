@@ -34,24 +34,21 @@ import reactor.rx.broadcast.Broadcaster;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamRetryWhen<T> implements Publishers.Operator<T, T> {
+public final class StreamRetryWhen<T> extends StreamBarrier<T, T> {
 
 	private final Timer                                                                 timer;
-	private final Publisher<? extends T>                                                rootPublisher;
 	private final Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate;
 
-	public StreamRetryWhen(Timer timer,
-			Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate,
-			Publisher<? extends T> rootPublisher) {
-
-		this.rootPublisher = rootPublisher;
+	public StreamRetryWhen(Publisher<T> source, Timer timer,
+			Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate) {
+		super(source);
 		this.predicate = predicate;
 		this.timer = timer;
 	}
 
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new RetryWhenAction<>(subscriber, timer, predicate, rootPublisher);
+		return new RetryWhenAction<>(subscriber, timer, predicate, source);
 	}
 
 	static final class RetryWhenAction<T> extends SubscriberWithDemand<T, T> implements ReactiveState.FeedbackLoop {

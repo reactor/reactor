@@ -92,7 +92,7 @@ public class BiStreams extends Streams {
 	                                                                    Publisher<? extends StreamKv.Signal<KEY,
 	                                                                      VALUE>> listener,
 	                                                                    BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		return Streams.lift(publisher, new StreamReduceByKey<>(accumulator, store, listener));
+		return new StreamReduceByKey<>(publisher, accumulator, store, listener);
 	}
 
 	//scan
@@ -154,6 +154,6 @@ public class BiStreams extends Streams {
 	                                                                  Publisher<? extends StreamKv.Signal<KEY,
 	                                                                    VALUE>> listener,
 	                                                                  BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		return Streams.lift(publisher, new StreamScanByKey<>(accumulator, listener, store));
+		return new StreamScanByKey<>(publisher, accumulator, listener, store);
 	}
 }

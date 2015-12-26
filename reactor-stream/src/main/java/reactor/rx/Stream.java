@@ -54,6 +54,7 @@ import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.stream.GroupedStream;
 import reactor.rx.stream.Signal;
+import reactor.rx.stream.StreamBarrier;
 import reactor.rx.stream.StreamBatch;
 import reactor.rx.stream.StreamBuffer;
 import reactor.rx.stream.StreamBufferShift;
@@ -114,8 +115,7 @@ import reactor.rx.subscriber.Tap;
  * @param <O> The type of the output values
  *
  * @author Stephane Maldini
- * @author Jon Brisbin
- * @since 1.1, 2.0
+ * @since 1.1, 2.0, 2.1
  */
 public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
@@ -148,7 +148,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.1
 	 */
 	public final Stream<O> ambWith(final Publisher<? extends O> publisher) {
-		return new Lift<O, O>(this) {
+		return new StreamBarrier<O, O>(this) {
 			@Override
 			public String getName() {
 				return "ambWith";
@@ -207,7 +207,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(final int maxSize) {
-		return lift(new StreamBuffer<O>(maxSize));
+		return new StreamBuffer<O>(this, maxSize);
 	}
 
 	/**
@@ -222,7 +222,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<List<O>> buffer(final Publisher<?> bucketOpening,
 			final Supplier<? extends Publisher<?>> boundarySupplier) {
 
-		return lift(new StreamBufferShiftWhen<O>(bucketOpening, boundarySupplier));
+		return new StreamBufferShiftWhen<O>(this, bucketOpening, boundarySupplier);
 	}
 
 	/**
@@ -235,7 +235,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer(final Supplier<? extends Publisher<?>> boundarySupplier) {
-		return lift(new StreamBufferWhen<O>(boundarySupplier));
+		return new StreamBufferWhen<O>(this, boundarySupplier);
 	}
 
 	/**
@@ -251,7 +251,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		if (maxSize == skip) {
 			return buffer(maxSize);
 		}
-		return lift(new StreamBufferShift<O>(maxSize, skip));
+		return new StreamBufferShift<O>(this, maxSize, skip);
 	}
 
 	/**
@@ -311,7 +311,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		if (timespan == timeshift) {
 			return buffer(timespan, unit, timer);
 		}
-		return lift(new StreamBufferShift<O>(Integer.MAX_VALUE, Integer.MAX_VALUE, timeshift, timespan, unit, timer));
+		return new StreamBufferShift<O>(this, Integer.MAX_VALUE, Integer.MAX_VALUE, timeshift, timespan, unit, timer);
 	}
 
 	/**
@@ -343,7 +343,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			final long timespan,
 			final TimeUnit unit,
 			final Timer timer) {
-		return lift(new StreamBuffer<O>(maxSize, timespan, unit, timer));
+		return new StreamBuffer<O>(this, maxSize, timespan, unit, timer);
 	}
 
 	/**
@@ -399,7 +399,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			return this;
 		}
 
-		return new Lift<O, O>(this) {
+		return new StreamBarrier<O, O>(this) {
 			@Override
 			public long getCapacity() {
 				return elements;
@@ -431,7 +431,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * component and the current stream to act as the {@link org.reactivestreams.Publisher}. <p> Useful to share and
 	 * ship a full stream whilst hiding the staging actions in the middle. <p> Default behavior, e.g. a single stream,
 	 * will raise an {@link java.lang.IllegalStateException} as there would not be any Subscriber (Input) side to
-	 * combine. {@link reactor.rx.stream.StreamOperator#combine()} is the usual reference implementation used.
+	 * combine. {@link StreamBarrier#combine()} is the usual reference implementation used.
 	 *
 	 * @param <E> the type of the most ancien action downstream.
 	 *
@@ -453,7 +453,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 1.1, 2.0
 	 */
 	public final <V> Stream<V> concatMap(@Nonnull final Function<? super O, Publisher<? extends V>> fn) {
-		return new Lift<O, V>(this) {
+		return new StreamBarrier<O, V>(this) {
 			@Override
 			public String getName() {
 				return "concatMap";
@@ -476,7 +476,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> concatWith(final Publisher<? extends O> publisher) {
-		return new Lift<O, O>(this) {
+		return new StreamBarrier<O, O>(this) {
 			@Override
 			public String getName() {
 				return "concatWith";
@@ -712,7 +712,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<Long> count(final long i) {
 		Stream<O> thiz = i != Long.MAX_VALUE ? take(i) : this;
 
-		return thiz.lift((StreamScan<O, Long>) StreamScan.COUNTER)
+		return new StreamScan<>(thiz, StreamScan.COUNTER, 0L)
 		           .last();
 	}
 
@@ -750,14 +750,14 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	@SuppressWarnings("unchecked")
 	public final <X> Stream<X> dematerialize() {
 		Stream<Signal<X>> thiz = (Stream<Signal<X>>) this;
-		return thiz.lift(StreamDematerialize.INSTANCE);
+		return new StreamDematerialize<>(thiz);
 	}
 
 	/**
 	 *
 	 */
 	public final Stream<O> dispatchOn(final ProcessorGroup processorProvider) {
-		return new DispatchOnLift<>(this, processorProvider);
+		return new DispatchOn<>(this, processorProvider);
 	}
 
 	/**
@@ -766,7 +766,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} with unique values
 	 */
 	public final Stream<O> distinct() {
-		return lift(new StreamDistinct<O, O>(null));
+		return new StreamDistinct<O, O>(this, null);
 	}
 
 	/**
@@ -777,7 +777,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} with values having distinct keys
 	 */
 	public final <V> Stream<O> distinct(final Function<? super O, ? extends V> keySelector) {
-		return lift(new StreamDistinct<>(keySelector));
+		return new StreamDistinct<>(this, keySelector);
 	}
 
 	/**
@@ -788,7 +788,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> distinctUntilChanged() {
-		return lift(new StreamDistinctUntilChanged<O, O>(null));
+		return new StreamDistinctUntilChanged<O, O>(this, null);
 	}
 
 	/**
@@ -801,7 +801,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final <V> Stream<O> distinctUntilChanged(final Function<? super O, ? extends V> keySelector) {
-		return lift(new StreamDistinctUntilChanged<>(keySelector));
+		return new StreamDistinctUntilChanged<>(this, keySelector);
 	}
 
 	/**
@@ -815,7 +815,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Tuple2<Long, O>> elapsed() {
-		return lift(StreamElapsed.INSTANCE);
+		return new StreamElapsed(this);
 	}
 
 	/**
@@ -826,7 +826,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a source item at a specified index
 	 */
 	public final Stream<O> elementAt(final int index) {
-		return lift(new StreamElementAt<O>(index));
+		return new StreamElementAt<O>(this, index);
 	}
 
 	/**
@@ -838,7 +838,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a source item at a specified index or a default value
 	 */
 	public final Stream<O> elementAtOrDefault(final int index, final O defaultValue) {
-		return lift(new StreamElementAt<O>(index, defaultValue));
+		return new StreamElementAt<O>(this, index, defaultValue);
 	}
 
 	/**
@@ -853,7 +853,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<Boolean> exists(final Predicate<? super O> predicate) {
-		return lift(new StreamExists<O>(predicate));
+		return new StreamExists<O>(this, predicate);
 	}
 
 	/**
@@ -865,7 +865,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} containing only values that pass the predicate test
 	 */
 	public final Stream<O> filter(final Predicate<? super O> p) {
-		return lift(new StreamFilter<>(p));
+		return new StreamFilter<>(this, p);
 	}
 
 	/**
@@ -892,7 +892,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> finallyDo(final Consumer<Signal<O>> consumer) {
-		return lift(new StreamFinally<O>(consumer));
+		return new StreamFinally<O>(this, consumer);
 	}
 
 	/**
@@ -908,7 +908,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final <V> Stream<V> flatMap(@Nonnull final Function<? super O, ? extends Publisher<? extends V>> fn) {
 
-		return new Lift<O, V>(this) {
+		return new StreamBarrier<O, V>(this) {
 			@Override
 			public String getName() {
 				return "flatMap";
@@ -968,7 +968,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 		final Publisher<V> mergedStream = Publishers.merge(Publishers.from(publisherList));
 
-		return new Lift<O, V>(this) {
+		return new StreamBarrier<O, V>(this) {
 			@Override
 			public String getName() {
 				return "forkJoin";
@@ -1007,7 +1007,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final <K> Stream<GroupedStream<K, O>> groupBy(final Function<? super O, ? extends K> keyMapper) {
-		return lift(new StreamGroupBy<>(keyMapper, getTimer()));
+		return new StreamGroupBy<>(this, keyMapper, getTimer());
 	}
 
 	/**
@@ -1040,9 +1040,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.0
 	 */
-	@SuppressWarnings("unchecked")
 	public final Stream<O> last() {
-		return lift(StreamLast.INSTANCE);
+		return new StreamLast<>(this);
 	}
 
 	/**
@@ -1151,9 +1150,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return {@literal new Stream}
 	 */
-	@SuppressWarnings("unchecked")
 	public final Stream<Signal<O>> materialize() {
-		return lift(StreamMaterialize.INSTANCE);
+		return new StreamMaterialize<>(this);
 	}
 
 	/**
@@ -1171,7 +1169,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final <V> Stream<V> merge() {
 		final Stream<? extends Publisher<? extends V>> thiz = (Stream<? extends Publisher<? extends V>>) this;
 
-		return new Lift<O, V>(this) {
+		return new StreamBarrier<O, V>(this) {
 			@Override
 			public String getName() {
 				return "merge";
@@ -1193,7 +1191,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> mergeWith(final Publisher<? extends O> publisher) {
-		return new Lift<O, O>(this) {
+		return new StreamBarrier<O, O>(this) {
 			@Override
 			public String getName() {
 				return "mergeWith";
@@ -1243,7 +1241,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> observe(@Nonnull final Consumer<? super O> consumer) {
-		return lift(new StreamCallback<O>(consumer, null));
+		return new StreamCallback<O>(this, consumer, null);
 	}
 
 	/**
@@ -1256,7 +1254,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> observeCancel(@Nonnull final Consumer<Void> consumer) {
-		return lift(new StreamStateCallback<O>(consumer, null));
+		return new StreamStateCallback<O>(this, consumer, null);
 	}
 
 	/**
@@ -1269,7 +1267,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> observeComplete(@Nonnull final Consumer<Void> consumer) {
-		return lift(new StreamCallback<O>(null, consumer));
+		return new StreamCallback<O>(this, null, consumer);
 	}
 
 	/**
@@ -1285,7 +1283,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	@SuppressWarnings("unchecked")
 	public final <E extends Throwable> Stream<O> observeError(@Nonnull final Class<E> exceptionType,
 			@Nonnull final BiConsumer<Object, ? super E> onError) {
-		return lift(new StreamErrorWithValue<O, E>(exceptionType, onError, null));
+		return new StreamErrorWithValue<O, E>(this, exceptionType, onError, null);
 	}
 
 	/**
@@ -1298,7 +1296,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> observeStart(@Nonnull final Consumer<? super Subscription> consumer) {
-		return lift(new StreamStateCallback<O>(null, consumer));
+		return new StreamStateCallback<O>(this, null, consumer);
 	}
 
 	/**
@@ -1359,7 +1357,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> onOverflowBuffer(final int size) {
-		return new Lift<O, O>(this) {
+		return new StreamBarrier<O, O>(this) {
 			@Override
 			public String getName() {
 				return "onOverflowBuffer";
@@ -1369,7 +1367,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			public void subscribe(Subscriber<? super O> s) {
 				Processor<O, O> emitter = Processors.replay(size);
 				emitter.subscribe(s);
-				Stream.this.subscribe(emitter);
+				source.subscribe(emitter);
 			}
 		};
 	}
@@ -1382,9 +1380,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.0
 	 */
-	@SuppressWarnings("unchecked")
 	public final Stream<O> onOverflowDrop() {
-		return lift(StreamDrop.INSTANCE);
+		return new StreamDrop<>(this);
 	}
 
 	/**
@@ -1434,7 +1431,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			return (Stream<E>) processor;
 		}
 
-		return new Lift<O, E>(this) {
+		return new StreamBarrier<O, E>(this) {
 			@Override
 			public String getName() {
 				return "process";
@@ -1451,7 +1448,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 */
 	public final Stream<O> publishOn(final ProcessorGroup processorProvider) {
-		return new PublishOnLift<>(this, processorProvider);
+		return new PublishOn<>(this, processorProvider);
 	}
 
 	/**
@@ -1503,7 +1500,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> repeat(final int numRepeat) {
-		return lift(new StreamRepeat<O>(numRepeat, this));
+		return new StreamRepeat<O>(this, numRepeat);
 	}
 
 	/**
@@ -1519,7 +1516,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> repeatWhen(final Function<? super Stream<? extends Long>, ? extends Publisher<?>> backOffStream) {
-		return lift(new StreamRepeatWhen<O>(getTimer(), backOffStream, this));
+		return new StreamRepeatWhen<O>(this, getTimer(), backOffStream);
 	}
 
 	/**
@@ -1535,7 +1532,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Stream<O> requestWhen(final Function<? super Stream<? extends Long>, ? extends Publisher<? extends
 			Long>> throttleStream) {
-		return lift(new StreamThrottleRequestWhen<O>(getTimer(), throttleStream));
+		return new StreamThrottleRequestWhen<O>(this, getTimer(), throttleStream);
 	}
 
 	/**
@@ -1548,7 +1545,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.1
 	 */
 	public final Stream<O> switchIfEmpty(@Nonnull final Publisher<? extends O> fallback) {
-		return lift(new StreamDefaultIfEmpty<O>(fallback));
+		return new StreamDefaultIfEmpty<O>(this, fallback);
 	}
 
 	/**
@@ -1561,7 +1558,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.1
 	 */
 	public final Stream<O> switchIfEmpty(@Nonnull final Supplier<? extends Publisher<? extends O>> fallback) {
-		return lift(new StreamDefaultIfEmpty<>(fallback));
+		return new StreamDefaultIfEmpty<>(this, fallback);
 	}
 
 	/**
@@ -1620,7 +1617,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> retry(final int numRetries, final Predicate<Throwable> retryMatcher) {
-		return lift(new StreamRetry<O>(numRetries, retryMatcher, this));
+		return new StreamRetry<O>(this, numRetries, retryMatcher);
 	}
 
 	/**
@@ -1636,7 +1633,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> retryWhen(final Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> backOffStream) {
-		return lift(new StreamRetryWhen<O>(getTimer(), backOffStream, this));
+		return new StreamRetryWhen<O>(this, getTimer(), backOffStream);
 	}
 
 	/**
@@ -1658,7 +1655,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
 	public final Stream<O> sample(final int batchSize) {
-		return lift(new StreamSample<O>(batchSize));
+		return new StreamSample<O>(this, batchSize);
 	}
 
 	/**
@@ -1697,7 +1694,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
 	public final Stream<O> sample(final int maxSize, final long timespan, final TimeUnit unit, final Timer timer) {
-		return lift(new StreamSample<O>(false, maxSize, timespan, unit, timer));
+		return new StreamSample<O>(this, false, maxSize, timespan, unit, timer);
 	}
 
 	/**
@@ -1720,7 +1717,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} whose values are the first value of each batch)
 	 */
 	public final Stream<O> sampleFirst(final int batchSize) {
-		return lift(new StreamSample<O>(batchSize, true));
+		return new StreamSample<O>(this, batchSize, true);
 	}
 
 	/**
@@ -1759,7 +1756,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
 	public final Stream<O> sampleFirst(final int maxSize, final long timespan, final TimeUnit unit, final Timer timer) {
-		return lift(new StreamSample<O>(true, maxSize, timespan, unit, timer));
+		return new StreamSample<O>(this, true, maxSize, timespan, unit, timer);
 	}
 
 	/**
@@ -1790,7 +1787,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 1.1, 2.0
 	 */
 	public final <A> Stream<A> scan(final A initial, final @Nonnull BiFunction<A, ? super O, A> fn) {
-		return lift(new StreamScan<O, A>(fn, initial));
+		return new StreamScan<O, A>(this, fn, initial);
 	}
 
 	/**
@@ -1834,7 +1831,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<O> skip(final long time, final TimeUnit unit, final Timer timer) {
 		if (time > 0) {
 			Assert.isTrue(timer != null, "Timer can't be found, try assigning an environment to the stream");
-			return lift(new StreamSkipUntilTimeout<O>(time, unit, timer));
+			return new StreamSkipUntilTimeout<O>(this, time, unit, timer);
 		}
 		else {
 			return this;
@@ -1867,7 +1864,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Stream<O> skipWhile(final long max, final Predicate<O> limitMatcher) {
 		if (max > 0) {
-			return lift(new StreamSkip<O>(limitMatcher, max));
+			return new StreamSkip<O>(this, limitMatcher, max);
 		}
 		else {
 			return this;
@@ -1930,7 +1927,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> sort(final int maxCapacity, final Comparator<? super O> comparator) {
-		return lift(new StreamSort<O>(maxCapacity, comparator));
+		return new StreamSort<O>(this, maxCapacity, comparator);
 	}
 
 	/**
@@ -1982,7 +1979,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final <V> Stream<V> switchMap(@Nonnull final Function<? super O, Publisher<? extends V>> fn) {
-		return map(fn).lift(StreamSwitch.INSTANCE);
+		return new StreamSwitch<>(map(fn));
 	}
 
 	/**
@@ -1995,7 +1992,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> take(final long max) {
-		return lift(new StreamTake<O>(max));
+		return new StreamTake<O>(this, max);
 	}
 
 	/**
@@ -2026,7 +2023,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<O> take(final long time, final TimeUnit unit, final Timer timer) {
 		if (time > 0) {
 			Assert.isTrue(timer != null, "Timer can't be found, try assigning an environment to the stream");
-			return lift(new StreamTakeUntilTimeout<O>(time, unit, timer));
+			return new StreamTakeUntilTimeout<O>(this, time, unit, timer);
 		}
 		else {
 			return Streams.empty();
@@ -2043,7 +2040,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> takeWhile(final Predicate<O> limitMatcher) {
-		return lift(new StreamTakeWhile<O>(limitMatcher));
+		return new StreamTakeWhile<O>(this, limitMatcher);
 	}
 
 	/**
@@ -2072,7 +2069,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		final Timer timer = getTimer();
 		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " + "Stream");
 
-		return lift(new StreamThrottleRequest<O>(timer, period));
+		return new StreamThrottleRequest<O>(this, timer, period);
 	}
 
 	/**
@@ -2123,9 +2120,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		final Timer timer = getTimer();
 		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " + "Stream");
 
-		return lift(new StreamTimeout<O>(fallback,
+		return new StreamTimeout<O>(this, fallback,
 				timer,
-				unit != null ? TimeUnit.MILLISECONDS.convert(timeout, unit) : timeout));
+				unit != null ? TimeUnit.MILLISECONDS.convert(timeout, unit) : timeout);
 	}
 
 	/**
@@ -2136,7 +2133,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a configured stream
 	 */
 	public Stream<O> timer(final Timer timer) {
-		return new Lift<O, O>(this) {
+		return new StreamBarrier<O, O>(this) {
 			@Override
 			public String getName() {
 				return "timerSetup";
@@ -2228,7 +2225,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	@SuppressWarnings("unchecked")
 	public final <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
 			@Nonnull final Consumer<E> onError) {
-		return lift(new StreamError<O, E>(exceptionType, onError));
+		return new StreamError<O, E>(this, exceptionType, onError);
 	}
 
 	/**
@@ -2254,7 +2251,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<Stream<O>> window(final int backlog) {
-		return lift(new StreamWindow<O>(getTimer(), backlog));
+		return new StreamWindow<O>(this, getTimer(), backlog);
 	}
 
 	/**
@@ -2271,7 +2268,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		if (maxSize == skip) {
 			return window(maxSize);
 		}
-		return lift(new StreamWindowShift<O>(getTimer(), maxSize, skip));
+		return new StreamWindowShift<O>(this, getTimer(), maxSize, skip);
 	}
 
 	/**
@@ -2283,7 +2280,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
 	 */
 	public final Stream<Stream<O>> window(final Supplier<? extends Publisher<?>> boundarySupplier) {
-		return lift(new StreamWindowWhen<O>(getTimer(), boundarySupplier));
+		return new StreamWindowWhen<O>(this, getTimer(), boundarySupplier);
 	}
 
 	/**
@@ -2298,7 +2295,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Stream<Stream<O>> window(final Publisher<?> bucketOpening,
 			final Supplier<? extends Publisher<?>> boundarySupplier) {
-		return lift(new StreamWindowShiftWhen<O>(getTimer(), bucketOpening, boundarySupplier));
+		return new StreamWindowShiftWhen<O>(this, getTimer(), bucketOpening, boundarySupplier);
 	}
 
 	/**
@@ -2329,7 +2326,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<Stream<O>> window(final int maxSize, final long timespan, final TimeUnit unit) {
-		return lift(new StreamWindow<O>(maxSize, timespan, unit, getTimer()));
+		return new StreamWindow<O>(this, maxSize, timespan, unit, getTimer());
 	}
 
 	/**
@@ -2347,12 +2344,12 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		if (timeshift == timespan) {
 			return window(timespan, unit);
 		}
-		return lift(new StreamWindowShift<O>(Integer.MAX_VALUE,
+		return new StreamWindowShift<O>(this, Integer.MAX_VALUE,
 				Integer.MAX_VALUE,
 				timespan,
 				timeshift,
 				unit,
-				getTimer()));
+				getTimer());
 	}
 
 	/**
@@ -2379,7 +2376,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final <T2, V> Stream<V> zipWith(final Publisher<? extends T2> publisher,
 			final @Nonnull BiFunction<? super O, ? super T2, ? extends V> zipper) {
-		return new Lift<O, V>(this) {
+		return new StreamBarrier<O, V>(this) {
 			@Override
 			public String getName() {
 				return "zipWith";
@@ -2387,7 +2384,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				Publishers.<O, T2, V>zip(Stream.this, publisher, zipper).subscribe(s);
+				Publishers.<O, T2, V>zip(source, publisher, zipper).subscribe(s);
 			}
 		};
 	}
@@ -2402,58 +2399,15 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final <T2, V> Stream<V> zipWithIterable(Iterable<? extends T2> iterable,
 			@Nonnull BiFunction<? super O, ? super T2, ? extends V> zipper) {
-		return lift(new StreamZipWithIterable<>(zipper, iterable));
+		return new StreamZipWithIterable<>(this, zipper, iterable);
 	}
 
-	/**
-	 *
-	 * Internal Lift wrapper
-	 *
-	 * @param <E>
-	 * @param <O>
-	 */
-	private static abstract class Lift<E, O> extends Stream<O> implements Upstream, Named {
 
-		protected final Stream<E> origin;
-		private final   long      capacity;
-
-		public Lift(Stream<E> origin) {
-			this.origin = origin;
-			this.capacity = origin.getCapacity();
-		}
-
-		@Override
-		public long getCapacity() {
-			return capacity;
-		}
-
-		@Override
-		public String getName() {
-			return "lift";
-		}
-
-		@Override
-		public Timer getTimer() {
-			return origin.getTimer();
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public void subscribe(Subscriber<? super O> s) {
-			origin.subscribe((Subscriber<? super E>) s);
-		}
-
-		@Override
-		public Object upstream() {
-			return origin;
-		}
-	}
-
-	private static final class DispatchOnLift<O> extends Lift<O, O> implements FeedbackLoop {
+	private static final class DispatchOn<O> extends StreamBarrier<O, O> implements FeedbackLoop {
 
 		private final ProcessorGroup processorProvider;
 
-		public DispatchOnLift(Stream<O> s, ProcessorGroup processorProvider) {
+		public DispatchOn(Stream<O> s, ProcessorGroup processorProvider) {
 			super(s);
 			this.processorProvider = processorProvider;
 		}
@@ -2479,7 +2433,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			try {
 				Processor<O, O> processor = processorProvider.dispatchOn();
 				processor.subscribe(s);
-				origin.subscribe(processor);
+				source.subscribe(processor);
 			}
 			catch (Throwable t) {
 				s.onError(t);
@@ -2487,11 +2441,11 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		}
 	}
 
-	private static final class PublishOnLift<O> extends Lift<O, O> implements ReactiveState.FeedbackLoop {
+	private static final class PublishOn<O> extends StreamBarrier<O, O> implements ReactiveState.FeedbackLoop {
 
 		private final ProcessorGroup processorProvider;
 
-		public PublishOnLift(Stream<O> s, ProcessorGroup processorProvider) {
+		public PublishOn(Stream<O> s, ProcessorGroup processorProvider) {
 			super(s);
 			this.processorProvider = processorProvider;
 		}
@@ -2517,7 +2471,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			try {
 				Processor<O, O> processor = processorProvider.publishOn();
 				processor.subscribe(s);
-				origin.subscribe(processor);
+				source.subscribe(processor);
 			}
 			catch (Throwable t) {
 				s.onError(t);

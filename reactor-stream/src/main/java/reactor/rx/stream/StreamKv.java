@@ -30,8 +30,6 @@ import java.util.Map;
  * will often operate as local proxy cache read in a usual implementation, but it doesn't have to be enforced.
  * E.g. a Pivotal Gemfire™ implementation will delegate map operations to a region and will create listeners on
  * subscribe.
- * A Chronicle implementation as provided in {@link reactor.rx.stream.io} will either allow write or just read off a
- * chronicle backed persistent store.
  *
  * @author Stephane Maldini
  */

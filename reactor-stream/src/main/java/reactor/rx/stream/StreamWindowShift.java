@@ -21,12 +21,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.fn.Consumer;
 import reactor.core.timer.Timer;
+import reactor.fn.Consumer;
 import reactor.rx.Stream;
 
 /**
@@ -35,7 +35,7 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamWindowShift<T> implements Publishers.Operator<T, Stream<T>> {
+public final class StreamWindowShift<T> extends StreamBarrier<T, Stream<T>> {
 
 	private final int      skip;
 	private final int      batchSize;
@@ -44,17 +44,17 @@ public final class StreamWindowShift<T> implements Publishers.Operator<T, Stream
 	private final TimeUnit unit;
 	private final Timer    timer;
 
-	public StreamWindowShift(Timer timer, int size, int skip) {
-		this(size, skip, -1L, -1L, null, timer);
+	public StreamWindowShift(Publisher<T> source, Timer timer, int size, int skip) {
+		this(source, size, skip, -1L, -1L, null, timer);
 	}
 
-	public StreamWindowShift(int size,
+	public StreamWindowShift(Publisher<T> source, int size,
 			int skip,
 			final long timespan,
 			final long timeshift,
 			TimeUnit unit,
 			final Timer timer) {
-
+		super(source);
 		this.skip = skip;
 		this.batchSize = size;
 		if (timespan > 0 && timeshift > 0) {

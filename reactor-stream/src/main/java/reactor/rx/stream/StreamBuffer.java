@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.timer.Timer;
 
@@ -29,12 +30,12 @@ import reactor.core.timer.Timer;
  */
 public final class StreamBuffer<T> extends StreamBatch<T, List<T>> {
 
-	public StreamBuffer(int batchsize) {
-		super(batchsize, true, false, true);
+	public StreamBuffer(Publisher<T> source, int batchsize) {
+		super(source, batchsize, true, false, true);
 	}
 
-	public StreamBuffer(int maxSize, long timespan, TimeUnit unit, Timer timer) {
-		super(maxSize, true, false, true, timespan, unit, timer);
+	public StreamBuffer(Publisher<T> source, int maxSize, long timespan, TimeUnit unit, Timer timer) {
+		super(source, maxSize, true, false, true, timespan, unit, timer);
 	}
 
 	@Override

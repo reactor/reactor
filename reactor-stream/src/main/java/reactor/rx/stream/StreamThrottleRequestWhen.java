@@ -19,11 +19,10 @@ package reactor.rx.stream;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.ReactiveState;
-import reactor.fn.Function;
 import reactor.core.timer.Timer;
+import reactor.fn.Function;
 import reactor.rx.Stream;
 import reactor.rx.broadcast.Broadcaster;
 
@@ -31,14 +30,14 @@ import reactor.rx.broadcast.Broadcaster;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamThrottleRequestWhen<T> implements Publishers.Operator<T, T> {
+public final class StreamThrottleRequestWhen<T> extends StreamBarrier<T, T> {
 
 	private final Timer                                                                         timer;
 	private final Function<? super Stream<? extends Long>, ? extends Publisher<? extends Long>> predicate;
 
-	public StreamThrottleRequestWhen(Timer timer,
+	public StreamThrottleRequestWhen(Publisher<T> source, Timer timer,
 			Function<? super Stream<? extends Long>, ? extends Publisher<? extends Long>> predicate) {
-
+		super(source);
 		this.timer = timer;
 		this.predicate = predicate;
 	}

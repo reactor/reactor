@@ -18,6 +18,7 @@ package reactor.rx.stream;
 
 import java.util.concurrent.TimeUnit;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.timer.Timer;
 
@@ -27,16 +28,16 @@ import reactor.core.timer.Timer;
  */
 public final class StreamSample<T> extends StreamBatch<T, T> {
 
-	public StreamSample(int maxSize) {
-		this(maxSize, false);
+	public StreamSample(Publisher<T> source, int maxSize) {
+		this(source, maxSize, false);
 	}
 
-	public StreamSample(int maxSize, boolean first) {
-		super(maxSize, !first, first, true);
+	public StreamSample(Publisher<T> source, int maxSize, boolean first) {
+		super(source, maxSize, !first, first, true);
 	}
 
-	public StreamSample(boolean first, int maxSize, long timespan, TimeUnit unit, Timer timer) {
-		super(maxSize, !first, first, true, timespan, unit, timer);
+	public StreamSample(Publisher<T> source, boolean first, int maxSize, long timespan, TimeUnit unit, Timer timer) {
+		super(source, maxSize, !first, first, true, timespan, unit, timer);
 	}
 
 	@Override

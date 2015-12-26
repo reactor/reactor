@@ -15,8 +15,8 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Consumer;
 
@@ -24,12 +24,13 @@ import reactor.fn.Consumer;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final  class StreamCallback<T> implements Publishers.Operator<T, T> {
+public final  class StreamCallback<T> extends StreamBarrier<T, T> {
 
 	private final Consumer<? super T> consumer;
 	private final Consumer<Void> completeConsumer;
 
-	public StreamCallback(Consumer<? super T> consumer, Consumer<Void> completeConsumer) {
+	public StreamCallback(Publisher<T> source, Consumer<? super T> consumer, Consumer<Void> completeConsumer) {
+		super(source);
 		this.consumer = consumer;
 		this.completeConsumer = completeConsumer;
 	}

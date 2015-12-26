@@ -17,8 +17,8 @@ package reactor.rx.stream;
 
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 
@@ -26,9 +26,11 @@ import reactor.core.support.BackpressureUtils;
  * @author Stephane Maldini
  * @since 1.1
  */
-public final class StreamLast<T> implements Publishers.Operator<T, T> {
+public final class StreamLast<T> extends StreamBarrier<T, T> {
 
-	public static final StreamLast INSTANCE = new StreamLast();
+	public StreamLast(Publisher<T> source) {
+		super(source);
+	}
 
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {

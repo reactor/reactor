@@ -16,9 +16,9 @@
 
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
@@ -27,9 +27,11 @@ import reactor.fn.tuple.Tuple2;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamElapsed<T> implements Publishers.Operator<T, Tuple2<Long, T>> {
+public final class StreamElapsed<T> extends StreamBarrier<T, Tuple2<Long, T>> {
 
-	public static final StreamElapsed INSTANCE = new StreamElapsed();
+	public StreamElapsed(Publisher<T> source) {
+		super(source);
+	}
 
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super Tuple2<Long, T>> subscriber) {

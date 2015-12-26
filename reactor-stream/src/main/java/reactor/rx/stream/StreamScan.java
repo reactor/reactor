@@ -16,8 +16,8 @@
 
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.BiFunction;
 
@@ -25,19 +25,20 @@ import reactor.fn.BiFunction;
  * @author Stephane Maldini
  * @since 1.1, 2.0, 2.1
  */
-public final class StreamScan<T, A> implements Publishers.Operator<T, A> {
+public final class StreamScan<T, A> extends StreamBarrier<T, A> {
 
-	public static StreamScan<?, Long> COUNTER = new StreamScan<>(new BiFunction<Long, Object, Long>() {
+	public static BiFunction COUNTER = new BiFunction<Long, Object, Long>() {
 		@Override
 		public Long apply(Long prev, Object o) {
 			return prev + 1L;
 		}
-	}, 0L);
+	};
 
 	private final BiFunction<A, ? super T, A> fn;
 	private final A                           initialValue;
 
-	public StreamScan(BiFunction<A, ? super T, A> fn, A initialValue) {
+	public StreamScan(Publisher<T> source, BiFunction<A, ? super T, A> fn, A initialValue) {
+		super(source);
 		this.fn = fn;
 		this.initialValue = initialValue;
 	}

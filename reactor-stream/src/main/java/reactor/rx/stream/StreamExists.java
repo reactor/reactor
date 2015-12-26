@@ -15,8 +15,8 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Predicate;
 
@@ -26,11 +26,12 @@ import reactor.fn.Predicate;
  *
  * @since 2.0, 2.1
  */
-public final class StreamExists<T> implements Publishers.Operator<T, Boolean> {
+public final class StreamExists<T> extends StreamBarrier<T, Boolean> {
 
 	private final Predicate<? super T> p;
 
-	public StreamExists(Predicate<? super T> predicate) {
+	public StreamExists(Publisher<T> source, Predicate<? super T> predicate) {
+		super(source);
 		this.p = predicate;
 	}
 

@@ -15,8 +15,8 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Function;
 
@@ -25,11 +25,12 @@ import reactor.fn.Function;
  * @since 2.0, 2.1
  */
 
-public class StreamDistinctUntilChanged<T, V> implements Publishers.Operator<T, T> {
+public class StreamDistinctUntilChanged<T, V> extends StreamBarrier<T, T> {
 
 	private final Function<? super T, ? extends V> keySelector;
 
-	public StreamDistinctUntilChanged(Function<? super T, ? extends V> keySelector) {
+	public StreamDistinctUntilChanged(Publisher<T> source, Function<? super T, ? extends V> keySelector) {
+		super(source);
 		this.keySelector = keySelector;
 	}
 

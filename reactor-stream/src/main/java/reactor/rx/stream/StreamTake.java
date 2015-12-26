@@ -16,19 +16,20 @@
 
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 
 /**
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamTake<T> implements Publishers.Operator<T, T> {
+public final class StreamTake<T> extends StreamBarrier<T, T> {
 
 	private final long limit;
 
-	public StreamTake(long limit) {
+	public StreamTake(Publisher<T> source, long limit) {
+		super(source);
 		this.limit = limit;
 	}
 

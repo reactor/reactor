@@ -18,8 +18,8 @@ package reactor.rx.stream;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Function;
 
@@ -28,11 +28,12 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamDistinct<T, V> implements Publishers.Operator<T, T> {
+public final class StreamDistinct<T, V> extends StreamBarrier<T, T> {
 
 	private final Function<? super T, ? extends V> keySelector;
 
-	public StreamDistinct(Function<? super T, ? extends V> keySelector) {
+	public StreamDistinct(Publisher<T> source, Function<? super T, ? extends V> keySelector) {
+		super(source);
 		this.keySelector = keySelector;
 	}
 

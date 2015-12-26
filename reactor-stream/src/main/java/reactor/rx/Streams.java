@@ -53,17 +53,16 @@ import reactor.fn.tuple.Tuple4;
 import reactor.fn.tuple.Tuple5;
 import reactor.fn.tuple.Tuple6;
 import reactor.fn.tuple.Tuple7;
-import reactor.rx.stream.StreamCombineLatest;
-import reactor.rx.stream.StreamSwitch;
 import reactor.rx.broadcast.StreamProcessor;
-import reactor.rx.stream.DecoratingStream;
+import reactor.rx.stream.StreamBarrier;
+import reactor.rx.stream.StreamCombineLatest;
 import reactor.rx.stream.StreamDefer;
 import reactor.rx.stream.StreamFuture;
+import reactor.rx.stream.StreamJust;
 import reactor.rx.stream.StreamKeyValue;
 import reactor.rx.stream.StreamRange;
 import reactor.rx.stream.StreamSingleTimer;
-import reactor.rx.stream.StreamJust;
-import reactor.rx.stream.StreamOperator;
+import reactor.rx.stream.StreamSwitch;
 
 /**
  * A public factory to build {@link Stream}, Streams provide for common transformations from a few structures such as
@@ -207,7 +206,7 @@ public class Streams {
 				return just(t);
 			}
 		}
-		return new DecoratingStream<>(publisher);
+		return new StreamBarrier<>(publisher);
 	}
 
 	/**
@@ -240,7 +239,7 @@ public class Streams {
 	 */
 	public static <I, O> Stream<O> lift(final Publisher<I> publisher,
 			Function<Subscriber<? super O>, Subscriber<? super I>> operator) {
-		return new StreamOperator<>(publisher, operator);
+		return new StreamBarrier.Operator<>(publisher, operator);
 	}
 
 	/**
@@ -682,11 +681,10 @@ public class Streams {
 	 * @return a {@link StreamProcessor} accepting publishers and producing inner data T
 	 * @since 2.0
 	 */
-	@SuppressWarnings("unchecked")
 	public static <T> StreamProcessor<Publisher<? extends T>, T> switchOnNext() {
 		Processor<Publisher<? extends T>, Publisher<? extends T>> emitter = Processors.replay();
 		return Subscribers.start(
-				StreamProcessor.from(emitter, lift(emitter, StreamSwitch.INSTANCE))
+				StreamProcessor.from(emitter, new StreamSwitch<>(emitter))
 		);
 	}
 
@@ -699,10 +697,9 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> switchOnNext(
-	  Publisher<? extends Publisher<? extends T>> mergedPublishers) {
-		return lift(mergedPublishers, StreamSwitch.INSTANCE);
+	  Publisher<Publisher<? extends T>> mergedPublishers) {
+		return new StreamSwitch<>(mergedPublishers);
 	}
 
 	/**
@@ -1403,9 +1400,12 @@ public class Streams {
 				}
 			});
 		}
-		return lift(just(sources.toArray(new Publisher[sources.size()])), new StreamCombineLatest<>(combinator,
+		return new StreamCombineLatest<>(
+				just(sources.toArray(new Publisher[sources.size()])),
+				combinator,
 				BaseProcessor
-				.SMALL_BUFFER_SIZE	/ 2));
+				.SMALL_BUFFER_SIZE	/ 2
+		);
 	}
 
 	/**
@@ -1425,12 +1425,16 @@ public class Streams {
 	public static <TUPLE extends Tuple, V> Stream<V> combineLatest(
 	  Publisher<? extends Publisher<?>> sources,
 	  Function<? super TUPLE, ? extends V> combinator) {
-		return wrap(sources).buffer().map(new Function<List<? extends Publisher<?>>, Publisher[]>() {
-			@Override
-			public Publisher[] apply(List<? extends Publisher<?>> publishers) {
-				return publishers.toArray(new Publisher[publishers.size()]);
-			}
-		}).lift(new StreamCombineLatest<>(combinator, BaseProcessor.SMALL_BUFFER_SIZE / 2));
+		return new StreamCombineLatest<>(
+				wrap(sources).buffer().map(new Function<List<? extends Publisher<?>>, Publisher[]>() {
+					@Override
+					public Publisher[] apply(List<? extends Publisher<?>> publishers) {
+						return publishers.toArray(new Publisher[publishers.size()]);
+					}
+				}),
+				combinator,
+				BaseProcessor.SMALL_BUFFER_SIZE / 2
+		);
 	}
 
 	/**

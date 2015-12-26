@@ -18,19 +18,19 @@ package reactor.rx.stream;
 
 import java.util.concurrent.TimeUnit;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
-import reactor.rx.subscriber.SerializedSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
-import reactor.fn.Consumer;
 import reactor.core.timer.Timer;
+import reactor.fn.Consumer;
+import reactor.rx.subscriber.SerializedSubscriber;
 
 /**
  * @author Stephane Maldini
  * @since 1.1, 2.0, 2.1
  */
-public abstract class StreamBatch<T, V> implements Publishers.Operator<T, V> {
+public abstract class StreamBatch<T, V> extends StreamBarrier<T, V> {
 
 	protected final boolean  next;
 	protected final boolean  flush;
@@ -40,18 +40,19 @@ public abstract class StreamBatch<T, V> implements Publishers.Operator<T, V> {
 	protected final TimeUnit unit;
 	protected final Timer    timer;
 
-	public StreamBatch(int batchSize, boolean next, boolean first, boolean flush) {
-		this(batchSize, next, first, flush, -1L, null, null);
+	public StreamBatch(Publisher<T> source, int batchSize, boolean next, boolean first, boolean flush) {
+		this(source, batchSize, next, first, flush, -1L, null, null);
 	}
 
-	public StreamBatch(int batchSize,
+	public StreamBatch(Publisher<T> source,
+			int batchSize,
 			boolean next,
 			boolean first,
 			boolean flush,
 			long timespan,
 			TimeUnit unit,
 			final Timer timer) {
-
+		super(source);
 		if (timespan > 0) {
 			this.unit = unit != null ? unit : TimeUnit.SECONDS;
 			this.timespan = timespan;
@@ -69,11 +70,11 @@ public abstract class StreamBatch<T, V> implements Publishers.Operator<T, V> {
 		this.batchSize = batchSize;
 	}
 
-	protected final Subscriber<? super V> prepareSub(Subscriber<? super V> actual){
-		if(timer != null){
+	protected final Subscriber<? super V> prepareSub(Subscriber<? super V> actual) {
+		if (timer != null) {
 			return SerializedSubscriber.create(actual);
 		}
-		else{
+		else {
 			return actual;
 		}
 	}
@@ -142,11 +143,13 @@ public abstract class StreamBatch<T, V> implements Publishers.Operator<T, V> {
 
 		@Override
 		protected void doRequested(long before, long n) {
-			if(isTerminated()) return;
-			if(batchSize == Integer.MAX_VALUE || n == Long.MAX_VALUE){
+			if (isTerminated()) {
+				return;
+			}
+			if (batchSize == Integer.MAX_VALUE || n == Long.MAX_VALUE) {
 				requestMore(Long.MAX_VALUE);
 			}
-			else{
+			else {
 				requestMore(BackpressureUtils.multiplyOrLongMax(n, batchSize));
 			}
 		}

@@ -15,8 +15,8 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Predicate;
 
@@ -24,7 +24,7 @@ import reactor.fn.Predicate;
  * @author Stephane Maldini
  * @since 1.1, 2.1
  */
-public final class StreamFilter<T> implements Publishers.Operator<T, T> {
+public final class StreamFilter<T> extends StreamBarrier<T, T> {
 
 	public static final Predicate<Boolean> simplePredicate = new Predicate<Boolean>() {
 		@Override
@@ -35,7 +35,8 @@ public final class StreamFilter<T> implements Publishers.Operator<T, T> {
 
 	private final Predicate<? super T> p;
 
-	public StreamFilter(Predicate<? super T> p) {
+	public StreamFilter(Publisher<T> source, Predicate<? super T> p) {
+		super(source);
 		this.p = p;
 	}
 

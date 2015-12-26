@@ -16,8 +16,8 @@
 
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Predicate;
 
@@ -25,11 +25,12 @@ import reactor.fn.Predicate;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamTakeWhile<T> implements Publishers.Operator<T, T> {
+public final class StreamTakeWhile<T> extends StreamBarrier<T, T> {
 
 	private final Predicate<T> endPredicate;
 
-	public StreamTakeWhile(Predicate<T> endPredicate) {
+	public StreamTakeWhile(Publisher<T> source, Predicate<T> endPredicate) {
+		super(source);
 		this.endPredicate = endPredicate;
 	}
 

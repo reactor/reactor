@@ -22,7 +22,6 @@ import java.util.Map;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple;
@@ -33,15 +32,16 @@ import reactor.fn.tuple.Tuple2;
  * @since 2.0, 2.1
  */
 public final class StreamScanByKey<K, V>
-		implements Publishers.Operator<Tuple2<K, V>, Tuple2<K, V>> {
+		extends StreamBarrier<Tuple2<K, V>, Tuple2<K, V>> {
 
 	protected final BiFunction<? super V, ? super V, V>        fn;
 	protected final Publisher<? extends StreamKv.Signal<K, V>> mapListener;
 	protected final Map<K, V>                                  store;
 
-	public StreamScanByKey(BiFunction<? super V, ? super V, V> fn,
+	public StreamScanByKey(Publisher<Tuple2<K, V>> source, BiFunction<? super V, ? super V, V> fn,
 			Publisher<? extends StreamKv.Signal<K, V>> mapListener,
 			Map<K, V> store) {
+		super(source);
 		this.fn = fn;
 		this.mapListener = mapListener;
 		this.store = store;

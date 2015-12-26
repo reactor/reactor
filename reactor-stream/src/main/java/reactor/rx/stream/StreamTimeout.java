@@ -15,14 +15,14 @@
  */
 package reactor.rx.stream;
 
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.support.Assert;
-import reactor.fn.Consumer;
 import reactor.core.timer.Timer;
-
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
@@ -33,8 +33,8 @@ public final class StreamTimeout<T> extends StreamFallback<T> {
 	private final Timer timer;
 	private final long  timeout;
 
-	public StreamTimeout(Publisher<? extends T> fallback, Timer timer, long timeout) {
-		super(fallback);
+	public StreamTimeout(Publisher<T> source, Publisher<? extends T> fallback, Timer timer, long timeout) {
+		super(source, fallback);
 		this.timer = timer;
 		this.timeout = timeout;
 	}

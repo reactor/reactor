@@ -23,10 +23,9 @@ import java.util.List;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.fn.Supplier;
 import reactor.core.timer.Timer;
+import reactor.fn.Supplier;
 import reactor.rx.Stream;
 
 /**
@@ -35,15 +34,16 @@ import reactor.rx.Stream;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamWindowShiftWhen<T> implements Publishers.Operator<T, Stream<T>> {
+public final class StreamWindowShiftWhen<T> extends StreamBarrier<T, Stream<T>> {
 
 	private final Supplier<? extends Publisher<?>> bucketClosing;
 	private final Publisher<?>                     bucketOpening;
 	private final Timer                            timer;
 
-	public StreamWindowShiftWhen(Timer timer,
+	public StreamWindowShiftWhen(Publisher<T> source, Timer timer,
 			Publisher<?> bucketOpenings,
 			Supplier<? extends Publisher<?>> boundarySupplier) {
+		super(source);
 		this.bucketClosing = boundarySupplier;
 		this.bucketOpening = bucketOpenings;
 		this.timer = timer;

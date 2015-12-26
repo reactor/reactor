@@ -19,6 +19,7 @@ package reactor.rx.stream;
 import java.util.Comparator;
 import java.util.PriorityQueue;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.processor.BaseProcessor;
 
@@ -30,8 +31,8 @@ public final class StreamSort<T> extends StreamBatch<T, T> {
 
 	final private Comparator<? super T> comparator;
 
-	public StreamSort(int batchsize, Comparator<? super T> comparator) {
-		super(batchsize, true, false, batchsize > 0);
+	public StreamSort(Publisher<T> source, int batchsize, Comparator<? super T> comparator) {
+		super(source, batchsize, true, false, batchsize > 0);
 		this.comparator = comparator;
 	}
 

@@ -15,8 +15,8 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.fn.Consumer;
@@ -25,12 +25,13 @@ import reactor.fn.Consumer;
  * @author Stephane Maldini
  * @since 1.1, 2.0, 2.1
  */
-final public class StreamError<T, E extends Throwable> implements Publishers.Operator<T, T> {
+final public class StreamError<T, E extends Throwable> extends StreamBarrier<T, T> {
 
 	private final Consumer<? super E> consumer;
 	private final Class<E>            selector;
 
-	public StreamError(Class<E> selector, Consumer<? super E> consumer) {
+	public StreamError(Publisher<T> source, Class<E> selector, Consumer<? super E> consumer) {
+		super(source);
 		this.consumer = consumer;
 		this.selector = selector;
 	}

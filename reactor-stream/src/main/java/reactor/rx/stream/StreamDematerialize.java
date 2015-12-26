@@ -15,17 +15,19 @@
  */
 package reactor.rx.stream;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberBarrier;
 
 /**
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public final class StreamDematerialize<T> implements Publishers.Operator<Signal<T>, T> {
+public final class StreamDematerialize<T> extends StreamBarrier<Signal<T>, T> {
 
-	public static final StreamDematerialize INSTANCE = new StreamDematerialize();
+	public StreamDematerialize(Publisher<Signal<T>> source) {
+		super(source);
+	}
 
 	@Override
 	public Subscriber<? super Signal<T>> apply(Subscriber<? super T> subscriber) {

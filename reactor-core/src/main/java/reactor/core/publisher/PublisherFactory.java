@@ -316,14 +316,14 @@ public abstract class PublisherFactory implements ReactiveState {
 		}
 
 		@Override
-		public Object upstream() {
+		public final Publisher<I> upstream() {
 			return source;
 		}
 
 		@Override
 		public String getName() {
-			return getClass()
-			                      .getSimpleName()
+			Function operator = operator();
+			return ReactiveStateUtils.getName(this == operator ? getClass().getSimpleName() : operator)
 			                      .replaceAll("Publisher|Stream|Operator", "");
 		}
 
@@ -424,6 +424,11 @@ public abstract class PublisherFactory implements ReactiveState {
 		@Override
 		public Subscriber<? super I> apply(Subscriber<? super O> subscriber) {
 			return barrierProvider.apply(subscriber);
+		}
+
+		@Override
+		public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
+			return barrierProvider;
 		}
 	}
 

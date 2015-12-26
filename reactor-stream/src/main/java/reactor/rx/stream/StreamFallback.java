@@ -28,11 +28,12 @@ import reactor.core.support.BackpressureUtils;
  * @author Stephane Maldini
  * @since 2.0, 2.1
  */
-public abstract class StreamFallback<T> implements Publishers.Operator<T, T> {
+public abstract class StreamFallback<T> extends StreamBarrier<T, T> {
 
 	protected final Publisher<? extends T> fallback;
 
-	public StreamFallback(Publisher<? extends T> fallback) {
+	public StreamFallback(Publisher<T> source, Publisher<? extends T> fallback) {
+		super(source);
 		this.fallback = fallback;
 	}
 

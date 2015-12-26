@@ -30,10 +30,10 @@ final public class StreamErrorWithValue<T, E extends Throwable> extends StreamFa
 	private final BiConsumer<Object, ? super E> consumer;
 	private final Class<E>                      selector;
 
-	public StreamErrorWithValue(Class<E> selector, BiConsumer<Object, ? super E> consumer, Publisher<?
+	public StreamErrorWithValue(Publisher<T> source, Class<E> selector, BiConsumer<Object, ? super E> consumer, Publisher<?
 			extends
 			T> fallback) {
-		super(fallback);
+		super(source, fallback);
 		this.consumer = consumer;
 		this.selector = selector;
 	}
