@@ -25,7 +25,7 @@ import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.Function;
 import reactor.rx.Streams;
 import reactor.rx.subscriber.Tap;
-import reactor.bus.stream.BarrierStream;
+import reactor.bus.stream.StreamCoordinator;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -42,10 +42,10 @@ public class StreamBusTests {
 		CountDownLatch latch2 = new CountDownLatch(1);
 		CountDownLatch latch3 = new CountDownLatch(1);
 
-		BarrierStream barrierStream = new BarrierStream();
+		StreamCoordinator streamCoordinator = new StreamCoordinator();
 
 		EventBus bus = EventBus.create(RingBufferProcessor.create());
-		bus.on($("hello"), barrierStream.wrap((Event<String> ev) -> {
+		bus.on($("hello"), streamCoordinator.wrap((Event<String> ev) -> {
 			try {
 				Thread.sleep(500);
 			}
@@ -55,12 +55,12 @@ public class StreamBusTests {
 		}));
 
 		Streams.just("Hello World!")
-		       .map(barrierStream.wrap((Function<String, String>) String::toUpperCase))
+		       .map(streamCoordinator.wrap((Function<String, String>) String::toUpperCase))
 		       .consume(s -> {
 			       latch2.countDown();
 		       });
 
-		barrierStream.consume(vals -> {
+		streamCoordinator.consume(vals -> {
 			try {
 				Thread.sleep(500);
 			}

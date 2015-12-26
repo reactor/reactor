@@ -29,27 +29,27 @@ import reactor.fn.Function;
 import reactor.rx.Stream;
 
 /**
- * A {@code BarrierStream} provides a type of {@code Stream} into which you can bind {@link reactor.fn.Consumer
+ * A {@code StreamCoordinator} provides a type of {@code Stream} into which you can bind {@link reactor.fn.Consumer
  * Consumers} and {@link reactor.fn.Function Functions} from arbitrary components. This allows you to create a {@code
  * Stream} that will be triggered when all bound callbacks have been invoked. The {@code List&lt;Object&gt;} passed
  * downstream will be the accumulation of all the values either passed into a {@code Consumer} or the return value from
  * a bound {@code Function}. This provides a way for the user to cleanly create a dependency chain of arbitrary
  * callbacks and aggregate the results into a single value.
  * <pre><code>
- * BarrierStream barrierStream = new BarrierStream();
+ * StreamCoordinator coordinator = new StreamCoordinator();
  * <p>
  * EventBus bus = EventBus.create(Environment.get());
- * bus.on($("hello"), barrierStream.wrap((Event<String> ev) -> {
+ * bus.on($("hello"), StreamCoordinator.wrap((Event<String> ev) -> {
  *   System.out.println("got in bus: " + ev.getData());
  * }));
  * <p>
  * Streams.just("Hello World!")
- *        .map(barrierStream.wrap((Function<String, String>) String::toUpperCase))
+ *        .map(coordinator.wrap((Function<String, String>) String::toUpperCase))
  *        .consume(s -> {
  *          System.out.println("got in stream: " + s);
  *        });
  * <p>
- * barrierStream.consume(vals -> {
+ * coordinator.consume(vals -> {
  *   System.out.println("got vals: " + vals);
  * });
  * <p>
@@ -58,13 +58,13 @@ import reactor.rx.Stream;
  * <p> NOTE: To get blocking semantics for the calling thread, you only need to call {@link reactor.rx.Stream#next()} to
  * return a {@code Promise}. </p>
  */
-public class BarrierStream extends Stream<List<Object>> implements Subscription {
+public class StreamCoordinator extends Stream<List<Object>> implements Subscription {
 
 	@SuppressWarnings("unused")
-	private volatile       int                                      terminated = 0;
+	private volatile       int                                          terminated = 0;
 	@SuppressWarnings("rawtypes")
-	protected static final AtomicIntegerFieldUpdater<BarrierStream> TERMINATED =
-			AtomicIntegerFieldUpdater.newUpdater(BarrierStream.class, "terminated");
+	protected static final AtomicIntegerFieldUpdater<StreamCoordinator> TERMINATED =
+			AtomicIntegerFieldUpdater.newUpdater(StreamCoordinator.class, "terminated");
 
 	private final AtomicInteger wrappedCnt = new AtomicInteger(0);
 	private final AtomicInteger resultCnt  = new AtomicInteger(0);
@@ -74,7 +74,7 @@ public class BarrierStream extends Stream<List<Object>> implements Subscription 
 
 	public <I, O> Function<I, O> wrap(final Function<I, O> fn) {
 		if (null != downstream && TERMINATED.get(this) == 1) {
-			throw new IllegalStateException("This BarrierStream is already complete");
+			throw new IllegalStateException("This StreamCoordinator is already complete");
 		}
 
 		final int valIdx = wrappedCnt.getAndIncrement();
@@ -91,7 +91,7 @@ public class BarrierStream extends Stream<List<Object>> implements Subscription 
 
 	public <I> Consumer<I> wrap(final Consumer<I> consumer) {
 		if (null != downstream && TERMINATED.get(this) == 1) {
-			throw new IllegalStateException("This BarrierStream is already complete");
+			throw new IllegalStateException("This StreamCoordinator is already complete");
 		}
 
 		final int valIdx = wrappedCnt.getAndIncrement();
@@ -130,7 +130,7 @@ public class BarrierStream extends Stream<List<Object>> implements Subscription 
 	@Override
 	public void subscribe(Subscriber<? super List<Object>> s) {
 		if (null != downstream) {
-			throw new IllegalStateException("This BarrierStream already has a Subscriber");
+			throw new IllegalStateException("This StreamCoordinator already has a Subscriber");
 		}
 
 		downstream = s;
