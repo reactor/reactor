@@ -91,6 +91,10 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 	int  lastIndex;
 	boolean firstDrain = true;
 
+	public EmitterProcessor(){
+		this(true, Integer.MAX_VALUE, SMALL_BUFFER_SIZE, -1);
+	}
+
 	public EmitterProcessor(boolean autoCancel, int maxConcurrency, int bufferSize, int replayLastN) {
 		super(autoCancel);
 		this.maxConcurrency = maxConcurrency;
