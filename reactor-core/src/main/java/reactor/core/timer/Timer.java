@@ -82,7 +82,7 @@ public class Timer implements ReactiveState.Timed {
 	 *
 	 * @param consumer the {@code Consumer} to invoke
 	 * @param delay    the amount of time that should elapse before invocations of the given {@code Consumer}
-	 * @param timeUnit the unit of time the {@code period} is to be measured in
+	 * @param timeUnit the unit of time the {@code delay} is to be measured in
 	 * @return a {@link Pausable} that can be used to {@link
 	 * Pausable#cancel() cancel}, {@link Pausable#pause() pause} or
 	 * {@link Pausable#resume() resume} the given task.
@@ -104,7 +104,7 @@ public class Timer implements ReactiveState.Timed {
 	}
 
 	/**
-	 * Start the Timer, may throw an IllegalStateException if already started
+	 * Start the Timer, may throw an IllegalStateException if already started.
 	 */
 	public void start(){
 
@@ -119,7 +119,7 @@ public class Timer implements ReactiveState.Timed {
 	}
 
 	/**
-	 * Is this timer cancelled ?
+	 * Is this timer cancelled?
 	 */
 	public boolean isCancelled(){
 		return false;
