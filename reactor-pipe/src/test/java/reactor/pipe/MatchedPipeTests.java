@@ -32,7 +32,7 @@ public class MatchedPipeTests extends AbstractPipeTests {
         AVar<Integer> res2 = new AVar<>(1);
 
         for (AVar<Integer> avar : new AVar[]{res1, res2}) {
-            Pipe.<Integer>build()
+            integerPipe
                     .consume((i) -> {
                         System.out.println(i);
                         avar.set(i);

@@ -2,11 +2,18 @@ package reactor.pipe;
 
 import org.junit.After;
 import org.junit.Before;
+import org.pcollections.TreePVector;
+
+import reactor.Timers;
 import reactor.bus.AbstractBus;
 import reactor.core.processor.RingBufferWorkProcessor;
+import reactor.core.timer.Timer;
+import reactor.fn.Supplier;
 import reactor.pipe.key.Key;
 import reactor.pipe.registry.ConcurrentRegistry;
 import reactor.pipe.router.NoOpRouter;
+import reactor.pipe.state.DefaultStateProvider;
+import reactor.pipe.stream.StreamSupplier;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -18,6 +25,7 @@ public class AbstractRawBusTests {
 
     protected AbstractBus<Key, Object>          firehose;
     protected RingBufferWorkProcessor<Runnable> processor;
+    protected Pipe<Integer, Integer> integerPipe;
 
     @Before
     public void setup() {
@@ -29,6 +37,13 @@ public class AbstractRawBusTests {
                                                 new NoOpRouter<>(),
                                                 null,
                                                 null);
+        this.integerPipe = new Pipe<Integer, Integer>(TreePVector.<StreamSupplier>empty(), new DefaultStateProvider<Key>(), new Supplier<Timer>() {
+            @Override
+            public Timer get() {
+                // for tests we use a higher resolution timer
+                return Timers.create("pipe-timer", 1, 512);
+            }
+      });
     }
 
     @After

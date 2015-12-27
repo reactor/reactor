@@ -4,7 +4,7 @@ import org.pcollections.PVector;
 import org.pcollections.TreePVector;
 import reactor.Timers;
 import reactor.bus.Bus;
-import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveState.Pausable;
 import reactor.core.timer.Timer;
 import reactor.fn.*;
 import reactor.pipe.concurrent.Atom;
@@ -37,14 +37,20 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
 
     protected Pipe(TreePVector<StreamSupplier> suppliers,
                    StateProvider<Key> stateProvider) {
-        this.suppliers = suppliers;
-        this.stateProvider = stateProvider;
-        this.timer = new LazyVar<>(new Supplier<Timer>() {
+        this(suppliers, stateProvider, new Supplier<Timer>() {
             @Override
             public Timer get() {
                 return Timers.create("pipe-timer", 10, 512);
             }
         });
+    }
+
+    protected Pipe(TreePVector<StreamSupplier> suppliers,
+                   StateProvider<Key> stateProvider,
+                   Supplier<Timer> timerSupplier) {
+      this.suppliers = suppliers;
+      this.stateProvider = stateProvider;
+      this.timer = new LazyVar<>(timerSupplier);
     }
 
     public <NEXT> Pipe<INIT, NEXT> map(final Function<CURRENT, NEXT> mapper) {
@@ -132,27 +138,27 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src, final Key dst, final Bus<Key, Object> firehose) {
                 final Atom<CURRENT> debounced = stateProvider.makeAtom(src, null);
-                final AtomicReference<ReactiveState.Pausable> pausable = new AtomicReference<>(null);
+                final AtomicReference<Pausable> pausable = new AtomicReference<>(null);
+
+                final Consumer<Long> consumer = new Consumer<Long>() {
+                    @Override
+                    public void accept(Long v) {
+                      firehose.notify(dst, debounced.deref());
+                    }
+                };
 
                 return new BiConsumer<Key, CURRENT>() {
                     @Override
                     public void accept(final Key key,
                                        final CURRENT value) {
-                        debounced.update(new UnaryOperator<CURRENT>() {
-                            @Override
-                            public CURRENT apply(CURRENT current) {
-                                return value;
-                            }
-                        });
+                        debounced.reset(value);
 
-                        if (pausable.get() == null) {
-                            pausable.set(timer.get().schedule(new Consumer<Long>() {
-                                @Override
-                                public void accept(Long v) {
-                                    firehose.notify(dst, debounced.deref());
-                                    pausable.getAndSet(null).cancel();
-                                }
-                            }, period, timeUnit, TimeUnit.MILLISECONDS.convert(period, timeUnit)));
+                        Pausable schedule = timer.get().submit(consumer, period, timeUnit);
+                        // In the meantime something might have set the pausable.
+                        Pausable prev = pausable.getAndSet(schedule);
+                        if (prev != null) {
+                          // Debounce semantics: old pausable will be cancelled, new timer started.
+                          prev.cancel();
                         }
                     }
                 };
@@ -166,39 +172,33 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
         return next(new StreamSupplier<Key, CURRENT>() {
             @Override
             public BiConsumer<Key, CURRENT> get(Key src, final Key dst, final Bus<Key, Object> firehose) {
-                final Atom<CURRENT> debouncedValue = stateProvider.makeAtom(src, null);
-                final AtomicReference<ReactiveState.Pausable> pausable = new AtomicReference<>(null);
+                final Atom<CURRENT> throttled = stateProvider.makeAtom(src, null);
+                final AtomicReference<Pausable> pausable = new AtomicReference<>(null);
+
+                final Consumer<Long> consumer = new Consumer<Long>() {
+                  @Override
+                  public void accept(Long v) {
+                    firehose.notify(dst, throttled.deref());
+                    pausable.set(null);
+                  }
+                };
 
                 return new BiConsumer<Key, CURRENT>() {
                     @Override
                     public void accept(final Key key,
                                        final CURRENT value) {
-                        ReactiveState.Pausable oldScheduled = pausable.getAndUpdate(
-                            new java.util.function.UnaryOperator<ReactiveState.Pausable>() {
-                                @Override
-                                public ReactiveState.Pausable apply(ReactiveState.Pausable pausable) {
-                                    return null;
-                                }
-                            });
+                        throttled.reset(value);
 
-                        if (oldScheduled != null) {
-                            oldScheduled.cancel();
+                        // Only schedule throttled event if none scheduled already
+                        if (pausable.get() == null) {
+                            Pausable schedule = timer.get().submit(consumer, period, timeUnit);
+                            // In the meantime something might have set the pausable.
+                            Pausable prev = pausable.getAndSet(schedule);
+                            if (prev != null) {
+                                // Throttle semantics: First schedule wins.
+                                schedule.cancel();
+                            }
                         }
-
-                        debouncedValue.update(new UnaryOperator<CURRENT>() {
-                            @Override
-                            public CURRENT apply(CURRENT current) {
-                                return value;
-                            }
-                        });
-
-                        pausable.set(timer.get().schedule(new Consumer<Long>() {
-                            @Override
-                            public void accept(Long v) {
-                                firehose.notify(dst, debouncedValue.deref());
-                                pausable.getAndSet(null).cancel();
-                            }
-                        }, period, timeUnit, TimeUnit.MILLISECONDS.convert(period, timeUnit)));
                     }
                 };
             }

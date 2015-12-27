@@ -16,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertTrue;
@@ -30,7 +31,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         AVar<String> res = new AVar<>();
 
         subscribeAndDispatch(
-            Pipe.<Integer>build()
+            integerPipe
                 .map(i -> {
                     return i + 1;
                 })
@@ -48,7 +49,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         AVar<Integer> res = new AVar<>();
 
         subscribeAndDispatch(
-            Pipe.<Integer>build()
+            integerPipe
                 .map(i -> i + 1)
                 .map(i -> i * 2)
                 .consume(() -> (k, v) -> res.set(v)),
@@ -64,7 +65,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         AVar<Integer> res = new AVar<>(3);
 
         subscribeAndDispatch(
-            Pipe.<Integer>build().map((i) -> i + 1)
+            integerPipe.map((i) -> i + 1)
                 .map((Atom<Integer> state, Integer i) -> {
                          return state.update(old -> old + i);
                      },
@@ -80,7 +81,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         AVar<Integer> res = new AVar<>(3);
 
         subscribeAndDispatch(
-            Pipe.<Integer>build().scan((acc, i) -> acc + i,
+            integerPipe.scan((acc, i) -> acc + i,
                                        0)
                 .consume(res::set),
             Arrays.asList(1, 2, 3));
@@ -93,7 +94,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         AVar<Integer> res = new AVar<>();
 
         subscribeAndDispatch(
-            Pipe.<Integer>build()
+            integerPipe
                 .map(i -> i + 1)
                 .filter(i -> i % 2 != 0)
                 .map(i -> i * 2)
@@ -108,7 +109,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         AVar<List<Integer>> res = new AVar<>();
 
         subscribeAndDispatch(
-            Pipe.<Integer>build()
+            integerPipe
                 .partition((i) -> {
                     return i.size() == 5;
                 })
@@ -123,7 +124,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         AVar<List<Integer>> res = new AVar<>(6);
 
         subscribeAndDispatch(
-            Pipe.<Integer>build()
+            integerPipe
                 .slide(i -> i.subList(i.size() > 5 ? i.size() - 5 : 0,
                                       i.size()))
                 .consume(res::set),
@@ -138,7 +139,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         AVar<Key> resKey = new AVar<>();
 
         subscribeAndDispatch(
-            Pipe.<Integer>build()
+            integerPipe
                 .map((i) -> i + 1)
                 .map(i -> i * 2)
                 .consume((k, v) -> {
@@ -152,55 +153,59 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
     }
 
     @Test
-    public void debounceTest() throws InterruptedException {
-        // With Debounce, we'd like to verify that consequent calls
+    public void testThrottle() throws InterruptedException {
+        // With Throttle, we'd like to verify that consequent calls
         // forced the scheduling of the execution a `timeout value`
         // after the __first__ call.
         AVar<Integer> res = new AVar<>(1);
 
-        long start = System.currentTimeMillis();
+        long start = System.nanoTime();
         AtomicLong end = new AtomicLong();
         subscribeAndDispatch(
-            Pipe.<Integer>build().debounce(1, TimeUnit.SECONDS)
+            integerPipe.throttle(1, TimeUnit.SECONDS)
                 .consume((v) -> {
                     res.set(v);
-                    end.set(System.currentTimeMillis());
+                    end.set(System.nanoTime());
                 }),
             Arrays.asList(1, 2));
 
-        Thread.sleep(500);
+        Thread.sleep(200);
         firehose.notify(Key.wrap("source", "first"),
                         3);
 
+        // ensure that the last event processed is "3"
         assertThat(res.get(LATCH_TIMEOUT, LATCH_TIME_UNIT), is(3));
-        assertTrue(end.get() - start > 1000);
+        // The end time should be close to 1 second after the first.
+        // It should be exactly 1, but to timer inaccuracies >1, never <1.
+        assertTrue(TimeUnit.SECONDS.convert(end.get() - start, NANOSECONDS) >= 1);
     }
 
     @Test
-    public void throttleTest() throws InterruptedException {
-        // With Throttle, we'd like to verify that consequent calls
+    public void testDebounce() throws InterruptedException {
+        // With Debounce, we'd like to verify that consequent calls
         // forced scheduling of the execution a `timeout value` after
         // the __last__ call.
         AVar<Integer> res = new AVar<>(1);
 
         AtomicLong end = new AtomicLong();
         subscribeAndDispatch(
-            Pipe.<Integer>build().throttle(1, TimeUnit.SECONDS)
+            integerPipe.debounce(1, TimeUnit.SECONDS)
                 .consume((v) -> {
                     res.set(v);
-                    end.set(System.currentTimeMillis());
+                    end.set(System.nanoTime());
                 }),
             Arrays.asList(1, 2));
 
-        Thread.sleep(500);
-        long start = System.currentTimeMillis();
+        Thread.sleep(200);
+        long start = System.nanoTime();
         firehose.notify(Key.wrap("source", "first"),
                         3);
 
+        // ensure that the last event processed is "3"
         assertThat(res.get(LATCH_TIMEOUT, LATCH_TIME_UNIT), is(3));
-        System.out.println(end.get() - start);
-
-        assertTrue(end.get() - start >= 1000);
+        // The end time should be close to 1 second after sending the last item "3".
+        // It should be exactly 1, but to timer inaccuracies >1, never <1.
+        assertTrue(TimeUnit.SECONDS.convert(end.get() - start, NANOSECONDS) >= 1);
     }
 
 
@@ -220,7 +225,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         int iterations = 2000;
         CountDownLatch latch = new CountDownLatch(iterations);
 
-        Pipe.<Integer>build()
+        integerPipe
                 .map((i) -> i + 1)
                 .map(i -> {
                     try {
