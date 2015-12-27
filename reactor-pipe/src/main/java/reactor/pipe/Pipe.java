@@ -37,14 +37,20 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
 
     protected Pipe(TreePVector<StreamSupplier> suppliers,
                    StateProvider<Key> stateProvider) {
-        this.suppliers = suppliers;
-        this.stateProvider = stateProvider;
-        this.timer = new LazyVar<>(new Supplier<Timer>() {
+        this(suppliers, stateProvider, new Supplier<Timer>() {
             @Override
             public Timer get() {
                 return Timers.create("pipe-timer", 10, 512);
             }
         });
+    }
+
+    protected Pipe(TreePVector<StreamSupplier> suppliers,
+                   StateProvider<Key> stateProvider,
+                   Supplier<Timer> timerSupplier) {
+      this.suppliers = suppliers;
+      this.stateProvider = stateProvider;
+      this.timer = new LazyVar<>(timerSupplier);
     }
 
     public <NEXT> Pipe<INIT, NEXT> map(final Function<CURRENT, NEXT> mapper) {
