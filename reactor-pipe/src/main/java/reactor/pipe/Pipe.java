@@ -182,15 +182,14 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
                     @Override
                     public void accept(final Key key,
                                        final CURRENT value) {
-                        Pausable oldScheduled = pausable.getAndSet(null);
+                        debouncedValue.reset(value);
+
+                        Pausable oldScheduled = pausable.getAndSet(timer.get().submit(notifyConsumer, period, timeUnit));
 
                         if (oldScheduled != null) {
                             oldScheduled.cancel();
                         }
 
-                        debouncedValue.reset(value);
-
-                        pausable.set(timer.get().submit(notifyConsumer, period, timeUnit));
                     }
                 };
             }
