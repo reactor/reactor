@@ -76,7 +76,8 @@ public interface IPipe<COVARIANT extends IPipe, INIT, CURRENT> {
     /**
      * Debounces the stream, which postpones calling the next step within current pipe
      * until after wait time specified by {@code period} and {@code timeUnit} elapsed since
-     * the first time it was called.
+     * the last time it was called. Useful for implementing behaviours like when
+     * the action should occur only in case the data stopped arriving.
      *
      * @param period time period
      * @param timeUnit time period unit
@@ -87,7 +88,8 @@ public interface IPipe<COVARIANT extends IPipe, INIT, CURRENT> {
     /**
      * Throttles the stream, which postpones calling the next step within current pipe
      * until after wait time specified by {@code period} and {@code timeUnit} elapsed since
-     * the last time it was called.
+     * the first time it was called. The function will be executed at most once per
+     * {@code period} / {@code timeUnit}.
      *
      * @param period time period
      * @param timeUnit time period unit
