@@ -312,7 +312,7 @@ public abstract class SubscriberFactory {
 						public void request(long n) {
 							if (subscriptionWithContext == null && proxyRequest.get() != Long.MIN_VALUE) {
 								BackpressureUtils.addAndGet(proxyRequest, n);
-							} else {
+							} else if (subscriptionWithContext != null) {
 								subscriptionWithContext.request(n);
 							}
 						}
