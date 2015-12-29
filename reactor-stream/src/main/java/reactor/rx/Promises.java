@@ -42,6 +42,9 @@ public final class Promises {
 
 	private final static Promise COMPLETE = success(null);
 
+	private Promises() {
+	}
+
 	/**
 	 * Take the next value from a Publisher on subscribe.
 	 *

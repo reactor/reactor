@@ -21,6 +21,9 @@ package reactor.core.error;
  */
 public final class SpecificationExceptions {
 
+	private SpecificationExceptions() {
+	}
+
 	public static IllegalStateException spec_2_12_exception() {
 		return new Spec212_DuplicateOnSubscribe();
 	}

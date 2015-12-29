@@ -37,6 +37,9 @@ public final class Exceptions {
 
 	private static final int MAX_DEPTH = 25;
 
+	private Exceptions() {
+	}
+
 	/**
 	 * Adds a {@code Throwable} to a causality-chain of Throwables, as an additional cause (if it does not
 	 * already appear in the chain among the causes).

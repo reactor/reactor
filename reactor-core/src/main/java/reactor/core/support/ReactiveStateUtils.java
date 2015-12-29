@@ -30,6 +30,9 @@ import java.util.WeakHashMap;
  */
 public final class ReactiveStateUtils implements ReactiveState {
 
+	private ReactiveStateUtils() {
+	}
+
 	/**
 	 * Create an empty graph
 	 * @return a Graph

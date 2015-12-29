@@ -45,6 +45,9 @@ public class DurableLogUtility {
 
 	private static Options OPTS = new Options();
 
+	private DurableLogUtility() {
+	}
+
 	static {
 		Option path = new Option("p", "path", true, "Base path to a durable log file to interpret");
 		path.setRequired(true);

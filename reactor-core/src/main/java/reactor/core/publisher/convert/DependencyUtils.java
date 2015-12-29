@@ -36,6 +36,9 @@ public final class DependencyUtils {
 	static private final RxJava1Converter           RX_JAVA_1_CONVERTER;
 	static private final RxJava1SingleConverter     RX_JAVA_1_SINGLE_CONVERTER;
 
+	private DependencyUtils() {
+	}
+
 	static {
 		final int RXJAVA_1_OBSERVABLE = 0b000001;
 		final int RXJAVA_1_SINGLE = 0b000010;

@@ -56,6 +56,9 @@ import reactor.rx.Streams;
  */
 public final class StreamFuture<T> {
 
+	private StreamFuture() {
+	}
+
 	/**
 	 *
 	 * @param future
