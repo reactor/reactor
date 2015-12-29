@@ -171,7 +171,7 @@ public final class StreamBufferShift<T> extends StreamBarrier<T, List<T>> {
 				requestMore(Long.MAX_VALUE);
 			}
 			else{
-				requestMore(BackpressureUtils.multiplyOrLongMax(n, skip + batchSize));
+				requestMore(BackpressureUtils.multiplyCap(n, skip + batchSize));
 			}
 		}
 

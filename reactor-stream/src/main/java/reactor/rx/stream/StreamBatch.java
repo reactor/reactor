@@ -150,7 +150,7 @@ public abstract class StreamBatch<T, V> extends StreamBarrier<T, V> {
 				requestMore(Long.MAX_VALUE);
 			}
 			else {
-				requestMore(BackpressureUtils.multiplyOrLongMax(n, batchSize));
+				requestMore(BackpressureUtils.multiplyCap(n, batchSize));
 			}
 		}
 

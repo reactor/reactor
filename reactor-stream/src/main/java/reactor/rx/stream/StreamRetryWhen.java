@@ -21,7 +21,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
@@ -91,7 +90,7 @@ public final class StreamRetryWhen<T> extends StreamBarrier<T, T> {
 		@Override
 		protected void doOnSubscribe(Subscription subscription) {
 			if(TERMINATED.compareAndSet(this, TERMINATED_WITH_ERROR, NOT_TERMINATED)) {
-				requestMore(BackpressureUtils.addOrLongMax(requestedFromDownstream(), 1L));
+				requestMore(BackpressureUtils.addCap(requestedFromDownstream(), 1L));
 			}
 			else {
 				subscriber.onSubscribe(this);

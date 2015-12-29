@@ -68,7 +68,7 @@ public final class StreamRetry<T> extends StreamBarrier<T, T> {
 		protected void doOnSubscribe(Subscription subscription) {
 			if(TERMINATED.compareAndSet(this, TERMINATED_WITH_ERROR, NOT_TERMINATED)) {
 				currentNumRetries = 0;
-				requestMore(BackpressureUtils.addOrLongMax(requestedFromDownstream(), 1L));
+				requestMore(BackpressureUtils.addCap(requestedFromDownstream(), 1L));
 			}
 			else {
 				subscriber.onSubscribe(this);

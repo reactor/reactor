@@ -15,13 +15,11 @@
  */
 package reactor.core.subscriber;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscription.SubscriptionWithContext;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
@@ -313,7 +311,7 @@ public abstract class SubscriberFactory {
 						@Override
 						public void request(long n) {
 							if (subscriptionWithContext == null && proxyRequest.get() != Long.MIN_VALUE) {
-								BackpressureUtils.getAndAdd(proxyRequest, n);
+								BackpressureUtils.addAndGet(proxyRequest, n);
 							} else {
 								subscriptionWithContext.request(n);
 							}

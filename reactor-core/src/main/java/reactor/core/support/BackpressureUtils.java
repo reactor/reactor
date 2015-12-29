@@ -30,10 +30,16 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * .MAX_VALUE_LONG,
  * which is generic to {@link org.reactivestreams.Subscription#request(long)} handling.
  *
+ * Combine utils available to operator implementations, @see http://github.com/reactor/reactive-streams-commons
+ *
  * @author Stephane Maldini
  * @since 2.1
  */
 public abstract class BackpressureUtils {
+
+
+	static final long COMPLETED_MASK = 0x8000_0000_0000_0000L;
+	static final long REQUESTED_MASK = 0x7FFF_FFFF_FFFF_FFFFL;
 
 	/**
 	 * Check Subscription current state and cancel new Subscription if different null, returning true if
@@ -96,7 +102,7 @@ public abstract class BackpressureUtils {
 	 * @param b right operand
 	 * @return Product result or Long.MAX_VALUE if overflow
 	 */
-	public static long multiplyOrLongMax(long a, long b) {
+	public static long multiplyCap(long a, long b) {
 		long u = a * b;
 		if (((a | b) >>> 31) != 0) {
 			if (u / a != b) {
@@ -113,7 +119,7 @@ public abstract class BackpressureUtils {
 	 * @param b right operand
 	 * @return Addition result or Long.MAX_VALUE if overflow
 	 */
-	public static long addOrLongMax(long a, long b) {
+	public static long addCap(long a, long b) {
 		long res = a + b;
 		if (res < 0L) {
 			return Long.MAX_VALUE;
@@ -161,17 +167,38 @@ public abstract class BackpressureUtils {
 	 * @param toAdd   delta to add
 	 * @return Addition result or Long.MAX_VALUE
 	 */
-	public static long getAndAdd(AtomicLong current, long toAdd) {
+	public static long addAndGet(AtomicLong current, long toAdd) {
 		long u, r;
 		do {
 			r = current.get();
 			if (r == Long.MAX_VALUE) {
 				return Long.MAX_VALUE;
 			}
-			u = addOrLongMax(r, toAdd);
+			u = addCap(r, toAdd);
 		} while (!current.compareAndSet(r, u));
 
-		return r;
+		return u;
+	}
+
+	/**
+	 *
+	 * @param updater
+	 * @param instance
+	 * @param n
+	 * @param <T>
+	 * @return
+	 */
+	public static <T> long addAndGet(AtomicLongFieldUpdater<T> updater, T instance, long n) {
+		for (;;) {
+			long r = updater.get(instance);
+			if (r == Long.MAX_VALUE) {
+				return Long.MAX_VALUE;
+			}
+			long u = addCap(r, n);
+			if (updater.compareAndSet(instance, r, u)) {
+				return r;
+			}
+		}
 	}
 
 	/**
@@ -190,7 +217,7 @@ public abstract class BackpressureUtils {
 			if (r == Long.MAX_VALUE) {
 				return Long.MAX_VALUE;
 			}
-			u = addOrLongMax(r, toAdd);
+			u = addCap(r, toAdd);
 		} while (!updater.compareAndSet(instance, r, u));
 
 		return r;
@@ -211,11 +238,10 @@ public abstract class BackpressureUtils {
 			if (r == Long.MAX_VALUE) {
 				return Long.MAX_VALUE;
 			}
-			u = addOrLongMax(r, toAdd);
+			u = addCap(r, toAdd);
 		} while (!sequence.compareAndSet(r, u));
 		return r;
 	}
-
 	/**
 	 * Concurrent substraction bound to 0.
 	 * Any concurrent write will "happen" before this operation.
@@ -237,6 +263,7 @@ public abstract class BackpressureUtils {
 
 		return r;
 	}
+
 	/**
 	 * Concurrent substraction bound to 0.
 	 * Any concurrent write will "happen" before this operation.
