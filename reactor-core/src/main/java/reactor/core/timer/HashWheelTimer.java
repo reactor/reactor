@@ -292,9 +292,9 @@ public class HashWheelTimer extends Timer {
 	 */
 	public static class TimedSubscription<T extends Consumer<Long>> implements Runnable, Comparable, Pausable {
 
-		public static int STATUS_PAUSED    = 1;
-		public static int STATUS_CANCELLED = -1;
-		public static int STATUS_READY     = 0;
+		public static final int STATUS_PAUSED    = 1;
+		public static final int STATUS_CANCELLED = -1;
+		public static final int STATUS_READY     = 0;
 
 		private final T             delegate;
 		private final long          rescheduleRounds;
