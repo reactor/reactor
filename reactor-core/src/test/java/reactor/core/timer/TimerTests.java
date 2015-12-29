@@ -71,9 +71,9 @@ public class TimerTests {
 
     @Test
     public void timeTravelWithYieldingWaitStrategyTest() throws InterruptedException {
-        timeTravelTest(new WaitStrategy.YieldingWaitStrategy(), 1);
-        timeTravelTest(new WaitStrategy.YieldingWaitStrategy(), 5);
-        timeTravelTest(new WaitStrategy.YieldingWaitStrategy(), 10);
+        timeTravelTest(new WaitStrategy.Yielding(), 1);
+        timeTravelTest(new WaitStrategy.Yielding(), 5);
+        timeTravelTest(new WaitStrategy.Yielding(), 10);
     }
 
     @Test

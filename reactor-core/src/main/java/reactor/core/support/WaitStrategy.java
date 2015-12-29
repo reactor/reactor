@@ -384,7 +384,7 @@ public interface WaitStrategy
      *
      * This strategy is a good compromise between performance and CPU resource without incurring significant latency spikes.
      */
-    final class YieldingWaitStrategy implements WaitStrategy
+    final class Yielding implements WaitStrategy
     {
         private static final int SPIN_TRIES = 100;
 
