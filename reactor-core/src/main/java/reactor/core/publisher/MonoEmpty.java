@@ -22,7 +22,7 @@ import reactor.core.support.SignalType;
 /**
  * @author Stephane Maldini
  */
-public class MonoEmpty<IN> extends Mono<IN> {
+public final class MonoEmpty<IN> extends Mono<IN> {
 
 	@Override
 	public void subscribe(Subscriber<? super IN> s) {

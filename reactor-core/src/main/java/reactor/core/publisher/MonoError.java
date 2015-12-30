@@ -26,7 +26,7 @@ import reactor.core.support.SignalType;
 /**
  * @author Stephane Maldini
  */
-public class MonoError<IN> extends Mono<IN> implements ReactiveState.FailState {
+public final class MonoError<IN> extends Mono<IN> implements ReactiveState.FailState {
 
 	/**
 	 * Return a failed {@link Publisher} if the given error is not fatal

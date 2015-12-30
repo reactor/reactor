@@ -16,9 +16,15 @@
 
 package reactor;
 
+import java.util.Arrays;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.publisher.FluxFlatMap;
+import reactor.core.publisher.FluxJust;
+import reactor.core.publisher.FluxLift;
+import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxNever;
 import reactor.core.publisher.FluxSession;
 import reactor.core.publisher.FluxZip;
@@ -55,6 +61,11 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	private static final Flux<?> NEVER = new FluxNever();
 
+	/**
+	 *
+	 *  Static Generators
+	 *
+	 */
 
 	/**
 	 * Create a {@link Flux} that completes without emitting any item.
@@ -125,7 +136,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 * Create a new {@link Flux} that emits the specified item.
 	 */
 	public static <T> Flux<T> just(T data) {
-		throw new UnsupportedOperationException(); // TODO
+		return new FluxJust<>(data);
 	}
 
 	/**
@@ -137,16 +148,23 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	}
 
 	/**
-	 * Return a {@code Mono<Void>} that completes when this {@link Flux} completes.
+	 *
+	 *  Instance Operators
+	 *
+	 *
 	 */
-	public Mono<Void> after() {
-		throw new UnsupportedOperationException(); // TODO
-	}
 
 	/**
 	 *
 	 */
 	protected Flux() {
+	}
+
+	/**
+	 * Return a {@code Mono<Void>} that completes when this {@link Flux} completes.
+	 */
+	public Mono<Void> after() {
+		throw new UnsupportedOperationException(); // TODO
 	}
 
 	/**
@@ -226,7 +244,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 * merging them into a single {@link Flux}, so that they may interleave.
 	 */
 	public <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
-		throw new UnsupportedOperationException(); // TODO
+		return new FluxFlatMap<>(this, mapper, BaseProcessor.SMALL_BUFFER_SIZE, 32);
 	}
 
 	/**
@@ -234,22 +252,23 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 * alone to the provided Subscriber (given to the returned {@code subscribe(Subscriber)}.
 	 */
 	public <R> Flux<R> lift(Function<Subscriber<? super R>, Subscriber<? super T>> operator) {
-		throw new UnsupportedOperationException(); // TODO
+		return new FluxLift<>(this, operator);
 	}
 
 	/**
 	 * Transform the items emitted by this {@link Flux} by applying a function to each item.
 	 */
 	public <R> Flux<R> map(Function<? super T, ? extends R> mapper) {
-		throw new UnsupportedOperationException(); // TODO
+		return new FluxMap<>(this, mapper);
 	}
 
 	/**
-	 * Merge emissions of this {@link Flux} with the provided {@link Publisher}, so that they may interleave. TODO
-	 * Varargs ?
+	 * Merge emissions of this {@link Flux} with the provided {@link Publisher}, so that they may interleave.
 	 */
+	@SuppressWarnings("unchecked")
 	public Flux<T> mergeWith(Publisher<? extends T> source) {
-		throw new UnsupportedOperationException(); // TODO
+		return from(Arrays.asList(this,source)).flatMap((Publishers.PublisherToPublisherFunction<T>) Publishers
+				.P2P_FUNCTION);
 	}
 
 	/**

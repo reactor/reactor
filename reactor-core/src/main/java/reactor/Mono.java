@@ -20,6 +20,7 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.FluxNever;
 import reactor.core.publisher.MonoEmpty;
 import reactor.core.publisher.MonoError;
+import reactor.core.publisher.MonoJust;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 
@@ -32,17 +33,15 @@ import reactor.fn.Function;
  * <p>It is intended to be used in implementation and return types, input parameters
  * should keep using raw {@link Publisher} as much as possible.
  *
- * TODO Implement methods with reactive-streams-commons, without using Publishers
- * TODO check the publisher emits only one element with {@code PublisherSingle} from reactive-streams-commons
- *
  * @author Sebastien Deleuze
+ * @author Stephane Maldini
+ *
  * @since 2.5
  * @see Flux
  */
 public abstract class Mono<T> implements Publisher<T> {
 
 	private static final Mono<?> EMPTY = new MonoEmpty(); // TODO
-
 
 
 	/**
@@ -72,14 +71,14 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * Create a new {@link Mono} that emits the specified item.
 	 */
 	public static <T> Mono<T> just(T data) {
-		throw new UnsupportedOperationException(); // TODO
+		return new MonoJust<>(data);
 	}
 
 
 	/**
 	 * Return a {@code Mono<Void>} that completes when this {@link Mono} completes.
 	 */
-	public Mono<Void> after() {
+	public final Mono<Void> after() {
 		return flux().after();
 	}
 
@@ -131,7 +130,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	/**
 	 * Convert this {@link Mono} to a {@link Flux}
 	 */
-	public Flux<T> flux() {
+	public final Flux<T> flux() {
 		return new Flux.FluxBarrier<T, T>(this);
 	}
 
@@ -144,7 +143,6 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Merge emissions of this {@link Mono} with the provided {@link Publisher}.
-	 * TODO Varargs ?
 	 */
 	public Flux<T> mergeWith(Publisher<? extends T> source) {
 		return flux().mergeWith(source);
@@ -153,7 +151,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	/**
 	 * Convert the value of {@link Mono} to another {@link Mono} possibly with another value type.
 	 */
-	public <R> Mono<R> then(Function<? super T, ? extends Mono<? extends R>> transformer) {
+	public final <R> Mono<R> then(Function<? super T, ? extends Mono<? extends R>> transformer) {
 		return flux().flatMap(transformer).first();
 	}
 
