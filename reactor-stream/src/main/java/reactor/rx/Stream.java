@@ -2159,7 +2159,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Tuple2<Long, O>> timestamp() {
-		return new StreamBarrier.Identity<>(FluxMap.<O>timestamp(this));
+		return map(TIMESTAMP_OPERATOR);
 	}
 
 	/**
@@ -2533,6 +2533,16 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		@Override
 		public Tuple2 apply(Object t1, Object t2) {
 			return Tuple.of(t1, t2);
+		}
+	};
+
+	/**
+	 * A predefined map operator producing timestamp tuples
+	 */
+	private static final Function TIMESTAMP_OPERATOR = new Function<Object, Tuple2<Long, ?>>() {
+		@Override
+		public Tuple2<Long, ?> apply(Object o) {
+			return Tuple.of(System.currentTimeMillis(), o);
 		}
 	};
 

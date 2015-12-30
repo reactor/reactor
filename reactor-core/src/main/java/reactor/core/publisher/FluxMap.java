@@ -33,21 +33,6 @@ import reactor.fn.tuple.Tuple2;
  */
 public final class FluxMap<T, V> extends Flux.FluxBarrier<T, V> {
 
-	/**
-	 * A predefined map operator producing timestamp tuples
-	 */
-	private static final Function TIMESTAMP_OPERATOR = new Function<Object, Tuple2<Long, ?>>() {
-		@Override
-		public Tuple2<Long, ?> apply(Object o) {
-			return Tuple.of(System.currentTimeMillis(), o);
-		}
-	};
-
-	@SuppressWarnings("unchecked")
-	public static <T> FluxMap<T, Tuple2<Long, T>> timestamp(Publisher<T> source){
-		return new FluxMap<>(source, TIMESTAMP_OPERATOR);
-	}
-
 	private final Function<? super T, ? extends V> fn;
 
 	public FluxMap(Publisher<T> source, Function<? super T, ? extends V> fn) {

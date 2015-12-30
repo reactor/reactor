@@ -178,17 +178,6 @@ public final class Publishers extends FluxFactory {
 	}
 
 	/**
-	 * Intercept a source {@link Publisher} onNext signal to eventually timestamp to the right operand {@link
-	 * Subscriber}.
-	 * @param <I> The source type of the data sequence
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
-	 */
-	@SuppressWarnings("unchecked")
-	public static <I> Publisher<Tuple2<Long, I>> timestamp(Publisher<I> source) {
-		return FluxMap.timestamp(source);
-	}
-
-	/**
 	 * @param publisher
 	 * @param <IN>
 	 * @return
