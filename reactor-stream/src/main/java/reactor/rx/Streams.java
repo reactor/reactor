@@ -28,6 +28,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
@@ -98,11 +99,11 @@ import reactor.rx.stream.StreamSwitch;
 public class Streams {
 
 	/**
-	 * @see FluxFactory#yield(Consumer)
+	 * @see Flux#yield(Consumer)
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> yield(Consumer<? super ReactiveSession<T>> sessionConsumer) {
-		return wrap(Publishers.yield(sessionConsumer));
+		return wrap(Flux.yield(sessionConsumer));
 	}
 
 	/**

@@ -36,8 +36,7 @@ import reactor.rx.broadcast.StreamProcessor;
  * @since 2.5
  */
 public class StreamBarrier<I, O> extends Stream<O>
-		implements ReactiveState.Named, ReactiveState.Upstream, Flux.Operator<I, O>,
-		           Publishers.LiftOperator<I, O> {
+		implements ReactiveState.Named, ReactiveState.Upstream, Flux.Operator<I, O> {
 
 	final protected Publisher<I> source;
 
@@ -74,7 +73,7 @@ public class StreamBarrier<I, O> extends Stream<O>
 	@SuppressWarnings("unchecked")
 	public <E> StreamProcessor<E, O> combine() {
 		Subscriber<?> oldestReceiver = null;
-		Function oldestOperator = operator();
+		Function oldestOperator = Flux.Operator.class.isAssignableFrom(getClass()) ? (Flux.Operator)this : null;
 
 		Object oldestSender = this;
 
@@ -84,9 +83,9 @@ public class StreamBarrier<I, O> extends Stream<O>
 				if (Subscriber.class.isAssignableFrom(oldestSender.getClass())) {
 					oldestReceiver = (Subscriber) oldestSender;
 				}
-				if (FluxFactory.LiftOperator.class.isAssignableFrom(oldestSender.getClass())) {
+				if (Flux.Operator.class.isAssignableFrom(oldestSender.getClass())) {
 					oldestOperator =
-							Publishers.<Object, Object, Object>opFusion(((FluxFactory.LiftOperator<Object, Object>) oldestSender).operator(),
+							Publishers.<Object, Object, Object>opFusion(((Flux.Operator<Object, Object>) oldestSender),
 									oldestOperator);
 				}
 			}
@@ -103,19 +102,13 @@ public class StreamBarrier<I, O> extends Stream<O>
 
 	@Override
 	public String getName() {
-		Function operator = operator();
-		return ReactiveStateUtils.getName(this == operator ? getClass().getSimpleName() : operator)
+		return ReactiveStateUtils.getName(getClass().getSimpleName())
 		                 .replaceAll("Stream|Publisher|Operator", "");
 	}
 
 	@Override
 	public final Publisher<I> upstream() {
 		return source;
-	}
-
-	@Override
-	public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
-		return this;
 	}
 
 	@Override
@@ -147,10 +140,10 @@ public class StreamBarrier<I, O> extends Stream<O>
 		}
 
 		@Override
-		public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
-			return barrierProvider;
+		public String getName() {
+			return ReactiveStateUtils.getName(barrierProvider)
+			                         .replaceAll("Stream|Publisher|Operator", "");
 		}
-
 		@Override
 		public Subscriber<? super I> apply(Subscriber<? super O> subscriber) {
 			return barrierProvider.apply(subscriber);

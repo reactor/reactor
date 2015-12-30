@@ -43,7 +43,6 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	private static final Mono<?> EMPTY = new MonoEmpty(); // TODO
 
-	private static final Mono<?> NEVER = Flux.never().first(); // TODO
 
 
 	/**
@@ -64,11 +63,9 @@ public abstract class Mono<T> implements Publisher<T> {
 	/**
 	 * Expose the specified {@link Publisher} with the {@link Mono} API, and ensure it
 	 * will emit 0 or 1 item.
-	 * TODO Optimize when the Publisher is a Mono
-	 * TODO Varargs ?
 	 */
 	public static <T> Mono<T> wrap(Publisher<T> source) {
-		throw new UnsupportedOperationException(); // TODO
+		return Flux.wrap(source).first();
 	}
 
 	/**
@@ -76,14 +73,6 @@ public abstract class Mono<T> implements Publisher<T> {
 	 */
 	public static <T> Mono<T> just(T data) {
 		throw new UnsupportedOperationException(); // TODO
-	}
-
-	/**
-	 * Create a {@link Mono} that never completes.
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Mono<T> never() {
-		return (Mono<T>)NEVER;
 	}
 
 
@@ -143,7 +132,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * Convert this {@link Mono} to a {@link Flux}
 	 */
 	public Flux<T> flux() {
-		throw new UnsupportedOperationException(); // TODO
+		return new Flux.FluxBarrier<T, T>(this);
 	}
 
 	/**

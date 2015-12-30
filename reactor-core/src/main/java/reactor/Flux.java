@@ -20,12 +20,15 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.FluxNever;
+import reactor.core.publisher.FluxSession;
 import reactor.core.publisher.FluxZip;
+import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple2;
 
 /**
@@ -51,6 +54,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	                                         .flux();
 
 	private static final Flux<?> NEVER = new FluxNever();
+
 
 	/**
 	 * Create a {@link Flux} that completes without emitting any item.
@@ -79,10 +83,21 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	}
 
 	/**
-	 * Expose the specified {@link Publisher} with the {@link Flux} API. TODO Optimize when the Publisher is a Flux
+	 * Expose the specified {@link Publisher} with the {@link Flux} API.
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> Flux<T> wrap(Publisher<T> source) {
-		throw new UnsupportedOperationException(); // TODO
+		if (Flux.class.isAssignableFrom(source.getClass())) {
+			return (Flux<T>) source;
+		}
+
+		if (Supplier.class.isAssignableFrom(source.getClass())) {
+			T t = ((Supplier<T>)source).get();
+			if(t != null){
+				return just(t);
+			}
+		}
+		return new FluxBarrier<>(source);
 	}
 
 	/**
@@ -92,13 +107,19 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 		throw new UnsupportedOperationException(); // TODO
 	}
 
+
 	/**
-	 * Create a {@link Flux} reacting on each available {@link Subscriber} read derived with the passed {@link
-	 * Consumer}. If a previous request is still running, avoid recursion and extend the previous request iterations.
+	 * Create a {@link Flux} reacting on subscribe with the passed {@link Consumer}. The argument {@code
+	 * sessionConsumer} is executed once by new subscriber to generate a {@link ReactiveSession} context ready to accept
+	 * signals.
+	 * @param sessionConsumer A {@link Consumer} called once everytime a subscriber subscribes
+	 * @param <T> The type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <T> Flux<T> yield(Consumer<Subscriber<? super T>> requestConsumer) {
-		throw new UnsupportedOperationException(); // TODO
+	public static <T> Flux<T> yield(Consumer<? super ReactiveSession<T>> sessionConsumer) {
+		return new FluxSession<>(sessionConsumer);
 	}
+
 
 	/**
 	 * Create a new {@link Flux} that emits the specified item.
@@ -120,6 +141,12 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 */
 	public Mono<Void> after() {
 		throw new UnsupportedOperationException(); // TODO
+	}
+
+	/**
+	 *
+	 */
+	protected Flux() {
 	}
 
 	/**
@@ -264,12 +291,22 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 * @param <I>
 	 * @param <O>
 	 */
-	public static abstract class FluxBarrier<I, O> extends Flux<O> implements Factory, Bounded, Named, Upstream {
+	public static class FluxBarrier<I, O> extends Flux<O> implements Factory, Bounded, Named, Upstream {
 
 		protected final Publisher<I> source;
 
 		public FluxBarrier(Publisher<I> source) {
 			this.source = source;
+		}
+
+		/**
+		 * Default is delegating and decorating with Flux API
+		 * @param s
+		 */
+		@Override
+		@SuppressWarnings("unchecked")
+		public void subscribe(Subscriber<? super O> s) {
+			source.subscribe((Subscriber<? super I>)s);
 		}
 
 		@Override
