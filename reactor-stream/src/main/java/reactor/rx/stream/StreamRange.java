@@ -57,6 +57,8 @@ import reactor.rx.Streams;
  */
 public final class StreamRange {
 
+	private StreamRange() {
+	}
 
 	/**
 	 * Create a Range Stream Publisher

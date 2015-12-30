@@ -50,6 +50,9 @@ import reactor.fn.Supplier;
  */
 public final class Processors {
 
+	private Processors() {
+	}
+
 	/**
 	 * Default number of processors available to the runtime on init (min 4)
 	 * @see Runtime#availableProcessors()
