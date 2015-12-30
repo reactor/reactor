@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.*;
-import reactor.core.publisher.PublisherFactory;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;

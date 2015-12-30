@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
@@ -41,12 +42,12 @@ import reactor.core.support.internal.PlatformDependent;
  *
  * @since 2.5
  */
-public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factory, ReactiveState.Named, ReactiveState
+public final class FluxAmb<T> extends Flux<T> implements ReactiveState.Factory, ReactiveState.Named, ReactiveState
 		.LinkedUpstreams {
 
 	final Publisher[] sources;
 
-	public PublisherAmb(final Publisher[] sources) {
+	public FluxAmb(final Publisher[] sources) {
 		this.sources = sources;
 	}
 

@@ -21,6 +21,7 @@ import java.util.logging.Level;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.Logger;
 
@@ -29,7 +30,7 @@ import reactor.core.support.Logger;
  * @author Stephane Maldini
  * @since 2.5
  */
-public final class PublisherLog<IN> extends PublisherFactory.PublisherBarrier<IN, IN> {
+public final class FluxLog<IN> extends Flux.FluxBarrier<IN, IN> {
 
 	public static final int SUBSCRIBE      = 0b010000000;
 	public static final int ON_SUBSCRIBE   = 0b001000000;
@@ -51,10 +52,10 @@ public final class PublisherLog<IN> extends PublisherFactory.PublisherBarrier<IN
 
 	private long uniqueId = 1L;
 
-	public PublisherLog(Publisher<IN> source, final String category, Level level, int options) {
+	public FluxLog(Publisher<IN> source, final String category, Level level, int options) {
 		super(source);
 		this.log = category != null && !category.isEmpty() ? Logger.getLogger(category) :
-				Logger.getLogger(PublisherLog.class);
+				Logger.getLogger(FluxLog.class);
 		this.options = options;
 		this.level = level;
 	}
@@ -62,11 +63,11 @@ public final class PublisherLog<IN> extends PublisherFactory.PublisherBarrier<IN
 	@Override
 	public String getName() {
 		return "/loggers/" + (log.getName()
-		                         .equalsIgnoreCase(PublisherLog.class.getName()) ? "default" : log.getName());
+		                         .equalsIgnoreCase(FluxLog.class.getName()) ? "default" : log.getName());
 	}
 
 	@Override
-	public Subscriber<? super IN> apply(Subscriber<? super IN> subscriber) {
+	public void subscribe(Subscriber<? super IN> subscriber) {
 		long newId = uniqueId++;
 		if ((options & SUBSCRIBE) == SUBSCRIBE) {
 			if(log.isTraceEnabled()) {
@@ -74,7 +75,7 @@ public final class PublisherLog<IN> extends PublisherFactory.PublisherBarrier<IN
 				                                                    .getSimpleName(), this);
 			}
 		}
-		return new LoggerBarrier<>(this, newId, subscriber);
+		source.subscribe(new LoggerBarrier<>(this, newId, subscriber));
 	}
 
 	private final static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> implements Named, Logging {
@@ -84,9 +85,9 @@ public final class PublisherLog<IN> extends PublisherFactory.PublisherBarrier<IN
 		private final long     uniqueId;
 		final private Level    level;
 
-		private final PublisherLog parent;
+		private final FluxLog parent;
 
-		public LoggerBarrier(PublisherLog<IN> parent, long uniqueId, Subscriber<? super IN> subscriber) {
+		public LoggerBarrier(FluxLog<IN> parent, long uniqueId, Subscriber<? super IN> subscriber) {
 			super(subscriber);
 			this.parent = parent;
 			this.level = parent.level;
@@ -184,7 +185,7 @@ public final class PublisherLog<IN> extends PublisherFactory.PublisherBarrier<IN
 		@Override
 		public String getName() {
 			return "/loggers/" + (log.getName()
-			                         .equalsIgnoreCase(PublisherLog.class.getName()) ? "default" :
+			                         .equalsIgnoreCase(FluxLog.class.getName()) ? "default" :
 					log.getName()) + "/" + uniqueId;
 		}
 	}

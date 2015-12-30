@@ -15,9 +15,9 @@
  */
 package reactor.core.publisher;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Mono;
 import reactor.Publishers;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
@@ -26,11 +26,11 @@ import reactor.fn.Supplier;
 /**
  * @author Stephane Maldini
  */
-public class PublisherJust<IN> implements Publisher<IN>, Supplier<IN>, ReactiveState.FeedbackLoop {
+public class MonoJust<IN> extends Mono<IN> implements Supplier<IN>, ReactiveState.FeedbackLoop {
 
 	private final IN data;
 
-	public PublisherJust(IN data) {
+	public MonoJust(IN data) {
 		this.data = data;
 	}
 

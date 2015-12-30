@@ -18,6 +18,7 @@ package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.Flux;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
@@ -30,7 +31,7 @@ import reactor.fn.tuple.Tuple2;
  * @author Stephane Maldini
  * @since 1.1, 2.0, 2.5
  */
-public final class PublisherMap<T, V>  extends PublisherFactory.PublisherBarrier<T, V> {
+public final class FluxMap<T, V> extends Flux.FluxBarrier<T, V> {
 
 	/**
 	 * A predefined map operator producing timestamp tuples
@@ -43,20 +44,20 @@ public final class PublisherMap<T, V>  extends PublisherFactory.PublisherBarrier
 	};
 
 	@SuppressWarnings("unchecked")
-	public static <T> PublisherMap<T, Tuple2<Long, T>> timestamp(Publisher<T> source){
-		return new PublisherMap<>(source, TIMESTAMP_OPERATOR);
+	public static <T> FluxMap<T, Tuple2<Long, T>> timestamp(Publisher<T> source){
+		return new FluxMap<>(source, TIMESTAMP_OPERATOR);
 	}
 
 	private final Function<? super T, ? extends V> fn;
 
-	public PublisherMap(Publisher<T> source, Function<? super T, ? extends V> fn) {
+	public FluxMap(Publisher<T> source, Function<? super T, ? extends V> fn) {
 		super(source);
 		this.fn = fn;
 	}
 
 	@Override
-	public Subscriber<? super T> apply(Subscriber<? super V> subscriber) {
-		return new MapBarrier<>(subscriber, fn);
+	public void subscribe(Subscriber<? super V> subscriber) {
+		source.subscribe(new MapBarrier<>(subscriber, fn));
 	}
 
 	static final class MapBarrier<T, V> extends SubscriberBarrier<T, V> implements ReactiveState.Named {

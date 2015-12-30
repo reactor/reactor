@@ -26,9 +26,9 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
-import reactor.core.error.Exceptions;
-import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.PublisherJust;
+import reactor.core.publisher.FluxFactory;
+import reactor.core.publisher.MonoError;
+import reactor.core.publisher.MonoJust;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.BackpressureUtils;
 import reactor.fn.BiConsumer;
@@ -189,7 +189,7 @@ public final class CompletableFutureConverter
 
 		public PublisherCompletableFuture(CompletableFuture<? extends T> future) {
 			this.future = future;
-			this.futurePublisher = PublisherFactory.createWithDemand(this, null, this);
+			this.futurePublisher = FluxFactory.createWithDemand(this, null, this);
 		}
 
 		@Override
@@ -227,17 +227,17 @@ public final class CompletableFutureConverter
 		public void subscribe(final Subscriber<? super T> subscriber) {
 			try {
 				if (future.isDone()) {
-					new PublisherJust<>(future.get()).subscribe(subscriber);
+					new MonoJust<>(future.get()).subscribe(subscriber);
 				}
 				else if (future.isCancelled()) {
-					Exceptions.publisher(CancelException.get());
+					MonoError.create(CancelException.get());
 				}
 				else {
 					futurePublisher.subscribe(subscriber);
 				}
 			}
 			catch (Throwable throwable) {
-				Exceptions.<T>publisher(throwable)
+				MonoError.<T>create(throwable)
 				          .subscribe(subscriber);
 			}
 		}

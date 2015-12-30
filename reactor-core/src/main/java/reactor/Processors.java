@@ -32,7 +32,7 @@ import reactor.core.processor.ExecutorProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.processor.RingBufferWorkProcessor;
-import reactor.core.publisher.PublisherLog;
+import reactor.core.publisher.FluxLog;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
@@ -661,7 +661,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <IN, OUT> Processor<IN, OUT> log(Processor<IN, OUT> processor) {
-		return log(processor, null, PublisherLog.ALL);
+		return log(processor, null, FluxLog.ALL);
 	}
 
 	/**
@@ -671,7 +671,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <IN, OUT> Processor<IN, OUT> log(Processor<IN, OUT> processor, String category) {
-		return log(processor, category, PublisherLog.ALL);
+		return log(processor, category, FluxLog.ALL);
 	}
 
 	/**

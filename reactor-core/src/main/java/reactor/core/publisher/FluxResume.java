@@ -19,6 +19,7 @@ package reactor.core.publisher;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
@@ -30,11 +31,11 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.0, 2.5
  */
-public final class PublisherOnErrorResume<T> extends PublisherFactory.PublisherBarrier<T, T> {
+public final class FluxResume<T> extends Flux.FluxBarrier<T, T> {
 
 	private final Function<Throwable, ? extends Publisher<? extends T>> fallbackSelector;
 
-	public PublisherOnErrorResume(Publisher<T> source, final Publisher<? extends T> fallbackSelector) {
+	public FluxResume(Publisher<T> source, final Publisher<? extends T> fallbackSelector) {
 		super(source);
 		this.fallbackSelector = new Function<Throwable, Publisher<? extends T>>() {
 			@Override
@@ -44,15 +45,15 @@ public final class PublisherOnErrorResume<T> extends PublisherFactory.PublisherB
 		};
 	}
 
-	public PublisherOnErrorResume(Publisher<T> source, Function<Throwable, ? extends Publisher<? extends T>>
+	public FluxResume(Publisher<T> source, Function<Throwable, ? extends Publisher<? extends T>>
 			fallbackSelector) {
 		super(source);
 		this.fallbackSelector = fallbackSelector;
 	}
 
 	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new ErrorSelectBarrier<>(subscriber, fallbackSelector);
+	public void subscribe(Subscriber<? super T> subscriber) {
+		source.subscribe(new ErrorSelectBarrier<>(subscriber, fallbackSelector));
 	}
 
 	static final class ErrorSelectBarrier<T> extends SubscriberWithDemand<T, T> implements Named {

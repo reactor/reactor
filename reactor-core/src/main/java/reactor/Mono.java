@@ -17,6 +17,9 @@
 package reactor;
 
 import org.reactivestreams.Publisher;
+import reactor.core.publisher.FluxNever;
+import reactor.core.publisher.MonoEmpty;
+import reactor.core.publisher.MonoError;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 
@@ -38,9 +41,9 @@ import reactor.fn.Function;
  */
 public abstract class Mono<T> implements Publisher<T> {
 
-	private static final Mono<?> EMPTY = null; // TODO
+	private static final Mono<?> EMPTY = new MonoEmpty(); // TODO
 
-	private static final Mono<?> NEVER = null; // TODO
+	private static final Mono<?> NEVER = Flux.never().first(); // TODO
 
 
 	/**
@@ -55,7 +58,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * Create a {@link Mono} that completes with the specified error.
 	 */
 	public static <T> Mono<T> error(Throwable error) {
-		throw new UnsupportedOperationException(); // TODO
+		return MonoError.<T>create(error);
 	}
 
 	/**

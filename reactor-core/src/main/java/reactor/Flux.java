@@ -18,35 +18,46 @@ package reactor;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.core.processor.BaseProcessor;
+import reactor.core.publisher.FluxNever;
+import reactor.core.publisher.FluxZip;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
+import reactor.fn.tuple.Tuple2;
 
 /**
- * A Reactive Streams {@link Publisher} with basic rx operators that emits 0 to N elements,
- * and then complete (successfully or with an error).
- *
- * <p>It is intended to be used in Reactive Spring projects implementation and return types.
- * Input parameters should keep using raw {@link Publisher} as much as possible.
- *
- * <p>If it is known that the underlying {@link Publisher} will emit 0 or 1 element,
- * {@link Mono} should be used instead.
- *
+ * A Reactive Streams {@link Publisher} with basic rx operators that emits 0 to N elements, and then complete
+ * (successfully or with an error).
+ * <p>
+ * <p>It is intended to be used in Reactive Spring projects implementation and return types. Input parameters should
+ * keep using raw {@link Publisher} as much as possible.
+ * <p>
+ * <p>If it is known that the underlying {@link Publisher} will emit 0 or 1 element, {@link Mono} should be used
+ * instead.
+ * <p>
  * TODO Implement methods with reactive-streams-commons, without using Publishers
  *
  * @author Sebastien Deleuze
- * @since 2.5
+ * @author Stephane Maldini
  * @see Mono
+ * @since 2.5
  */
-public abstract class Flux<T> implements Publisher<T> {
+public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
+	private static final Flux<?> EMPTY = Mono.empty()
+	                                         .flux();
+
+	private static final Flux<?> NEVER = new FluxNever();
 
 	/**
 	 * Create a {@link Flux} that completes without emitting any item.
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Flux<T> empty() {
-		return Mono.<T>empty().flux();
+		return (Flux<T>) EMPTY;
 	}
 
 	/**
@@ -57,8 +68,18 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Expose the specified {@link Publisher} with the {@link Flux} API.
-	 * TODO Optimize when the Publisher is a Flux
+	 *
+	 * @param source
+	 * @param <T>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Flux<T> merge(Publisher<? extends Publisher<? extends T>> source) {
+		return wrap(source).flatMap((Publishers.PublisherToPublisherFunction<T>) Publishers.P2P_FUNCTION);
+	}
+
+	/**
+	 * Expose the specified {@link Publisher} with the {@link Flux} API. TODO Optimize when the Publisher is a Flux
 	 */
 	public static <T> Flux<T> wrap(Publisher<T> source) {
 		throw new UnsupportedOperationException(); // TODO
@@ -72,11 +93,10 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Create a {@link Flux} reacting on each available {@link Subscriber} read derived with the
-	 * passed {@link Consumer}. If a previous request is still running, avoid recursion and extend
-	 * the previous request iterations.
+	 * Create a {@link Flux} reacting on each available {@link Subscriber} read derived with the passed {@link
+	 * Consumer}. If a previous request is still running, avoid recursion and extend the previous request iterations.
 	 */
-	public static <T> Flux<T> generate(Consumer<Subscriber<? super T>> requestConsumer) {
+	public static <T> Flux<T> yield(Consumer<Subscriber<? super T>> requestConsumer) {
 		throw new UnsupportedOperationException(); // TODO
 	}
 
@@ -84,7 +104,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * Create a new {@link Flux} that emits the specified item.
 	 */
 	public static <T> Flux<T> just(T data) {
-		return Mono.<T>just(data).flux();
+		throw new UnsupportedOperationException(); // TODO
 	}
 
 	/**
@@ -92,9 +112,8 @@ public abstract class Flux<T> implements Publisher<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Flux<T> never() {
-		return Mono.<T>never().flux();
+		return (Flux<T>) NEVER;
 	}
-
 
 	/**
 	 * Return a {@code Mono<Void>} that completes when this {@link Flux} completes.
@@ -104,19 +123,25 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Concatenate emissions of this {@link Flux} with the provided {@link Publisher}
-	 * (no interleave).
-	 * TODO Varargs ?
+	 *
+	 * @param capacity
+	 * @return
 	 */
-	public Flux<T> concatWith(Publisher<? extends T> source) {
+	public  Flux<T> capacity(long capacity) {
+		return new Flux.FluxBounded<>(this, capacity);
+	}
+
+	/**
+	 * Like {@link #flatMap(Function)}, but concatenate emissions instead of merging (no interleave).
+	 */
+	public <R> Flux<R> concatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
 		throw new UnsupportedOperationException(); // TODO
 	}
 
 	/**
-	 * Like {@link #flatMap(Function)}, but concatenate emissions instead of merging
-	 * (no interleave).
+	 * Concatenate emissions of this {@link Flux} with the provided {@link Publisher} (no interleave). TODO Varargs ?
 	 */
-	public <R> Flux<R> concatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
+	public Flux<T> concatWith(Publisher<? extends T> source) {
 		throw new UnsupportedOperationException(); // TODO
 	}
 
@@ -156,8 +181,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Triggered when the {@link Flux} terminates, either by completing successfully or
-	 * with an error.
+	 * Triggered when the {@link Flux} terminates, either by completing successfully or with an error.
 	 */
 	public Flux<T> doOnTerminate(Runnable action) {
 		throw new UnsupportedOperationException(); // TODO
@@ -171,17 +195,16 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Transform the items emitted by this {@link Flux} into Publishers, then
-	 * flatten the emissions from those by merging them into a single {@link Flux},
-	 * so that they may interleave.
+	 * Transform the items emitted by this {@link Flux} into Publishers, then flatten the emissions from those by
+	 * merging them into a single {@link Flux}, so that they may interleave.
 	 */
 	public <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
 		throw new UnsupportedOperationException(); // TODO
 	}
 
 	/**
-	 * Create a {@link Flux} intercepting all source signals with the returned Subscriber that might choose to pass
-	 * them alone to the provided Subscriber (given to the returned {@code subscribe(Subscriber)}.
+	 * Create a {@link Flux} intercepting all source signals with the returned Subscriber that might choose to pass them
+	 * alone to the provided Subscriber (given to the returned {@code subscribe(Subscriber)}.
 	 */
 	public <R> Flux<R> lift(Function<Subscriber<? super R>, Subscriber<? super T>> operator) {
 		throw new UnsupportedOperationException(); // TODO
@@ -195,25 +218,53 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Merge emissions of this {@link Flux} with the provided {@link Publisher}, so that
-	 * they may interleave.
-	 * TODO Varargs ?
+	 * Merge emissions of this {@link Flux} with the provided {@link Publisher}, so that they may interleave. TODO
+	 * Varargs ?
 	 */
 	public Flux<T> mergeWith(Publisher<? extends T> source) {
 		throw new UnsupportedOperationException(); // TODO
 	}
 
 	/**
-	 * Combine the emissions of multiple Publishers together via a specified function and
-	 * emit single items for each combination based on the results of this function.
+	 *
+	 * @return
 	 */
-	public <R, V> Flux<V> zip(Publisher<? extends R> source, BiFunction<? super T, ? super R, ? extends V> zipper) {
-		throw new UnsupportedOperationException(); // TODO
+	public Flux<T> unbounded() {
+		return capacity(Long.MAX_VALUE);
 	}
 
+	/**
+	 * Combine the emissions of multiple Publishers together via a specified function and emit single items for each
+	 * combination based on the results of this function.
+	 */
+	public <R, V> Flux<V> zipWith(Publisher<? extends R> source2,
+			final BiFunction<? super T, ? super R, ? extends V> zipper) {
 
-	// TODO Use FluxBarrier to make the bridge with reactive-streams-commons
-	public static abstract class FluxBarrier<I, O> extends Flux<O> {
+		return new FluxZip<>(new Publisher[]{this, source2}, new Function<Tuple2<T, R>, V>() {
+			@Override
+			public V apply(Tuple2<T, R> tuple) {
+				return zipper.apply(tuple.getT1(), tuple.getT2());
+			}
+		}, BaseProcessor.XS_BUFFER_SIZE);
+
+	}
+
+	/**
+	 * A marker interface for components responsible for augmenting subscribers with features like {@link
+	 * #lift}
+	 */
+	public interface Operator<I, O>
+			extends Function<Subscriber<? super O>, Subscriber<? super I>>, Factory {
+
+	}
+
+	/**
+	 * A connecting Flux Publisher (right-to-left from a composition chain perspective)
+	 *
+	 * @param <I>
+	 * @param <O>
+	 */
+	public static abstract class FluxBarrier<I, O> extends Flux<O> implements Factory, Bounded, Named, Upstream {
 
 		protected final Publisher<I> source;
 
@@ -221,6 +272,58 @@ public abstract class Flux<T> implements Publisher<T> {
 			this.source = source;
 		}
 
+		@Override
+		public long getCapacity() {
+			return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() :
+					Long.MAX_VALUE;
+		}
+
+		@Override
+		public String getName() {
+			return ReactiveStateUtils.getName(getClass().getSimpleName())
+			                         .replaceAll("Flux|Stream|Operator", "");
+		}
+
+		@Override
+		public String toString() {
+			return "{" +
+					" operator : \"" + getName() + "\" " +
+					'}';
+		}
+
+		@Override
+		public final Publisher<I> upstream() {
+			return source;
+		}
 	}
 
+	/**
+	 * Decorate a Flux with a capacity for downstream accessors
+	 *
+	 * @param <I>
+	 */
+	private final static class FluxBounded<I> extends FluxBarrier<I, I> {
+
+		final private long         capacity;
+
+		public FluxBounded(Publisher<I> source, long capacity) {
+			super(source);
+			this.capacity = capacity;
+		}
+
+		@Override
+		public long getCapacity() {
+			return capacity;
+		}
+
+		@Override
+		public String getName() {
+			return "Bounded";
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super I> s) {
+			source.subscribe(s);
+		}
+	}
 }

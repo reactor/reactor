@@ -16,9 +16,8 @@
 package reactor.rx.stream;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.publisher.PublisherFactory;
+import reactor.core.publisher.FluxFactory;
 import reactor.core.subscriber.SubscriberWithContext;
-import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -84,7 +83,7 @@ public final class StreamRange {
 		}
 
 
-		return Streams.wrap(PublisherFactory.create(RangeSequence.INSTANCE, new Function<Subscriber<? super Integer>, Range>() {
+		return Streams.wrap(FluxFactory.create(RangeSequence.INSTANCE, new Function<Subscriber<? super Integer>, Range>() {
 			  @Override
 			  public Range apply(Subscriber<? super Integer> subscriber) {
 				  return new Range(min, count);

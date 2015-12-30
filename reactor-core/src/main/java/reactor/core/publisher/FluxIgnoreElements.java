@@ -27,15 +27,15 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 2.5
  */
-public final class PublisherIgnoreElements<IN> extends PublisherFactory.PublisherBarrier<IN, Void> {
+public final class FluxIgnoreElements<IN> extends FluxLog.FluxBarrier<IN, Void> {
 
-	public PublisherIgnoreElements(Publisher<IN> source) {
+	public FluxIgnoreElements(Publisher<IN> source) {
 		super(source);
 	}
 
 	@Override
-	public Subscriber<? super IN> apply(Subscriber<? super Void> subscriber) {
-		return new CompletableBarrier<>(subscriber);
+	public void subscribe(Subscriber<? super Void> subscriber) {
+		source.subscribe(new CompletableBarrier<>(subscriber));
 	}
 
 	private static class CompletableBarrier<IN> extends SubscriberBarrier<IN, Void> {

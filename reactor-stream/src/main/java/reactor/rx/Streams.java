@@ -35,8 +35,8 @@ import reactor.Timers;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.PublisherZip;
+import reactor.core.publisher.FluxFactory;
+import reactor.core.publisher.FluxZip;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
@@ -98,7 +98,7 @@ import reactor.rx.stream.StreamSwitch;
 public class Streams {
 
 	/**
-	 * @see PublisherFactory#yield(Consumer)
+	 * @see FluxFactory#yield(Consumer)
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> yield(Consumer<? super ReactiveSession<T>> sessionConsumer) {
@@ -156,7 +156,7 @@ public class Streams {
 	public static <T, C> Stream<T> createWith(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 	                                          Function<Subscriber<? super T>, C> contextFactory,
 	                                          Consumer<C> shutdownConsumer) {
-		return Streams.wrap(PublisherFactory.createWithDemand(requestConsumer, contextFactory, shutdownConsumer));
+		return Streams.wrap(FluxFactory.createWithDemand(requestConsumer, contextFactory, shutdownConsumer));
 	}
 
 	/**
@@ -1820,7 +1820,7 @@ public class Streams {
 		return wrap(sources).buffer().flatMap(new Function<List<? extends Publisher<?>>, Publisher<V>>() {
 			@Override
 			public Publisher<V> apply(List<? extends Publisher<?>> publishers) {
-				return new PublisherZip<>(publishers.toArray(
+				return new FluxZip<>(publishers.toArray(
 						new Publisher[publishers.size()]),
 						combinator,
 						BaseProcessor.XS_BUFFER_SIZE);
@@ -1881,7 +1881,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<List<T>> join(List<? extends Publisher<?>> sources) {
-		return zip(sources, (Function<Tuple, List<T>>) PublisherZip.JOIN_FUNCTION);
+		return zip(sources, (Function<Tuple, List<T>>) FluxZip.JOIN_FUNCTION);
 	}
 
 	/**

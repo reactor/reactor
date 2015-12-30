@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.publisher.MonoError;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.SignalType;
 import reactor.core.support.SingleUseExecutor;
@@ -207,7 +208,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 			return true;
 		}
 		catch (Throwable t) {
-			Exceptions.<OUT>publisher(t)
+			MonoError.<OUT>create(t)
 					.subscribe(subscriber);
 			return false;
 		}

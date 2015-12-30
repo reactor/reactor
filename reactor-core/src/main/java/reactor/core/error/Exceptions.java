@@ -16,11 +16,7 @@
 package reactor.core.error;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
-import reactor.fn.Supplier;
+import reactor.core.publisher.MonoError;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -160,17 +156,6 @@ public final class Exceptions {
 	}
 
 	/**
-	 * Return a failed {@link Publisher} if the given error is not fatal
-	 * @param error the error to {link Subscriber#onError}
-	 * @param <IN> the nominal type flowing through
-	 * @return a failed {@link Publisher}
-	 */
-	public static <IN> Publisher<IN> publisher(final Throwable error) {
-		throwIfFatal(error);
-		return new ErrorPublisher<>(error);
-	}
-
-	/**
 	 * Represents an error that was encountered while trying to emit an item from an Observable, and
 	 * tries to preserve that item for future use and/or reporting.
 	 */
@@ -223,26 +208,4 @@ public final class Exceptions {
 		}
 	}
 
-	private static class ErrorPublisher<IN> implements Publisher<IN>, ReactiveState.FailState {
-
-		private final Throwable error;
-
-		public ErrorPublisher(Throwable error) {
-			this.error = error;
-		}
-
-		@Override
-		public void subscribe(Subscriber<? super IN> s) {
-			if(s == null){
-				throw SpecificationExceptions.spec_2_13_exception();
-			}
-			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-			s.onError(error);
-		}
-
-		@Override
-		public Throwable getError() {
-			return error;
-		}
-	}
 }

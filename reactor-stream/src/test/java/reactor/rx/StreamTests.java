@@ -54,7 +54,7 @@ import reactor.Processors;
 import reactor.core.error.CancelException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.processor.RingBufferProcessor;
-import reactor.core.publisher.PublisherFactory;
+import reactor.core.publisher.FluxFactory;
 import reactor.core.support.Logger;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
@@ -983,8 +983,8 @@ public class StreamTests extends AbstractReactorTest {
 	public void testDiamond() throws InterruptedException, IOException {
 		ExecutorService pool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("tee", null, null, true));
 
-		Stream<Point> points = Streams.wrap(PublisherFactory.<Double, Random>create(sub -> sub.onNext(sub.context()
-		                                                                                                 .nextDouble()),
+		Stream<Point> points = Streams.wrap(FluxFactory.<Double, Random>create(sub -> sub.onNext(sub.context()
+		                                                                                            .nextDouble()),
 				sub -> new Random()))
 		                              .log("points")
 		                              //.requestWhen(requests -> requests.dispatchOn(Environment.cachedDispatcher()))

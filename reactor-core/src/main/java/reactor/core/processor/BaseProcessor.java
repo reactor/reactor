@@ -22,7 +22,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.publisher.PublisherFactory;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;

@@ -23,7 +23,8 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.publisher.PublisherJust;
+import reactor.core.publisher.MonoError;
+import reactor.core.publisher.MonoJust;
 import reactor.core.support.BackpressureUtils;
 import rx.Observable;
 import rx.Producer;
@@ -67,7 +68,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 	public Publisher toPublisher(Object o) {
 		final Observable<Object> obs = (Observable<Object>) o;
 		if (ScalarSynchronousObservable.class.isAssignableFrom(obs.getClass())) {
-			return new PublisherJust<>(((ScalarSynchronousObservable) obs).get());
+			return new MonoJust<>(((ScalarSynchronousObservable) obs).get());
 		}
 		return new Publisher<Object>() {
 			@Override
@@ -76,8 +77,8 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 					obs.unsafeSubscribe(new RxSubscriberToRS(s));
 				}
 				catch (Throwable t) {
-					Exceptions.publisher(t)
-					          .subscribe(s);
+					MonoError.create(t)
+					         .subscribe(s);
 				}
 			}
 		};

@@ -19,10 +19,11 @@ package reactor.rx.stream;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.Flux;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.publisher.PublisherFactory;
+import reactor.core.publisher.FluxFactory;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.core.timer.Timer;
@@ -35,7 +36,7 @@ import reactor.rx.broadcast.StreamProcessor;
  * @since 2.5
  */
 public class StreamBarrier<I, O> extends Stream<O>
-		implements ReactiveState.Named, ReactiveState.Upstream, Publishers.Operator<I, O>,
+		implements ReactiveState.Named, ReactiveState.Upstream, Flux.Operator<I, O>,
 		           Publishers.LiftOperator<I, O> {
 
 	final protected Publisher<I> source;
@@ -83,9 +84,9 @@ public class StreamBarrier<I, O> extends Stream<O>
 				if (Subscriber.class.isAssignableFrom(oldestSender.getClass())) {
 					oldestReceiver = (Subscriber) oldestSender;
 				}
-				if (PublisherFactory.LiftOperator.class.isAssignableFrom(oldestSender.getClass())) {
+				if (FluxFactory.LiftOperator.class.isAssignableFrom(oldestSender.getClass())) {
 					oldestOperator =
-							Publishers.<Object, Object, Object>opFusion(((PublisherFactory.LiftOperator<Object, Object>) oldestSender).operator(),
+							Publishers.<Object, Object, Object>opFusion(((FluxFactory.LiftOperator<Object, Object>) oldestSender).operator(),
 									oldestOperator);
 				}
 			}

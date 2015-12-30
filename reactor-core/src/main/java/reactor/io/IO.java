@@ -18,7 +18,7 @@ package reactor.io;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Publishers;
-import reactor.core.publisher.PublisherFactory;
+import reactor.core.publisher.FluxFactory;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.support.ReactiveState;
@@ -87,7 +87,7 @@ public final class IO {
 	 * @return a Publisher of Buffer values
 	 */
 	public static Publisher<Buffer> read(final ReadableByteChannel channel, int chunkSize) {
-		return PublisherFactory.create(
+		return FluxFactory.create(
 		  chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
 		  new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {
 			  @Override
@@ -147,7 +147,7 @@ public final class IO {
 	 * @return a Publisher of Buffer values read from file sequentially
 	 */
 	public static Publisher<Buffer> readFile(final String path, int chunkSize) {
-		return PublisherFactory.create(
+		return FluxFactory.create(
 		  chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
 		  new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {
 			  @Override

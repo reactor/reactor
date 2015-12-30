@@ -28,9 +28,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * @author Stephane Maldini
  */
 @Test
-public class PublisherFactoryTests extends PublisherVerification<Long> {
+public class FluxVerification extends PublisherVerification<Long> {
 
-	public PublisherFactoryTests() {
+	public FluxVerification() {
 		super(new TestEnvironment(500, true), 1000);
 	}
 

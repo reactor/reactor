@@ -28,21 +28,22 @@ import java.util.logging.Level;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.publisher.MonoEmpty;
+import reactor.core.publisher.FluxNever;
 import reactor.core.publisher.ForEachSequencer;
-import reactor.core.publisher.PublisherAmb;
-import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.PublisherJust;
-import reactor.core.publisher.PublisherZip;
+import reactor.core.publisher.FluxAmb;
+import reactor.core.publisher.FluxFactory;
+import reactor.core.publisher.MonoError;
+import reactor.core.publisher.MonoJust;
+import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.convert.DependencyUtils;
-import reactor.core.publisher.PublisherFlatMap;
-import reactor.core.publisher.PublisherIgnoreElements;
-import reactor.core.publisher.PublisherLog;
-import reactor.core.publisher.PublisherMap;
-import reactor.core.publisher.PublisherOnErrorResume;
+import reactor.core.publisher.FluxFlatMap;
+import reactor.core.publisher.FluxIgnoreElements;
+import reactor.core.publisher.FluxLog;
+import reactor.core.publisher.FluxMap;
+import reactor.core.publisher.FluxResume;
 import reactor.core.subscriber.BlockingQueueSubscriber;
-import reactor.core.support.SignalType;
 import reactor.fn.BiFunction;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
@@ -54,7 +55,7 @@ import reactor.fn.tuple.Tuple2;
  * @author Stephane Maldini
  * @since 2.5
  */
-public final class Publishers extends PublisherFactory {
+public final class Publishers extends FluxFactory {
 
 	/**
 	 *
@@ -70,7 +71,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> just(final IN data) {
-		return new PublisherJust<>(data);
+		return new MonoJust<>(data);
 	}
 
 	/**
@@ -106,7 +107,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <IN> Publisher<IN> empty() {
-		return (EmptyPublisher<IN>) EMPTY;
+		return (MonoEmpty<IN>) EMPTY;
 	}
 
 	/**
@@ -115,7 +116,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <IN> Publisher<IN> never() {
-		return (NeverPublisher<IN>) NEVER;
+		return (FluxNever<IN>) NEVER;
 	}
 
 	/**
@@ -124,7 +125,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> error(final Throwable error) {
-		return Exceptions.publisher(error);
+		return MonoError.create(error);
 	}
 
 	/**
@@ -151,7 +152,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <IN> Publisher<IN> switchOnError(final Publisher<IN> source,
 			final Publisher<? extends IN> fallback) {
-		return new PublisherOnErrorResume<>(source, fallback);
+		return new FluxResume<>(source, fallback);
 	}
 
 	/**
@@ -161,7 +162,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	public static <IN> Publisher<IN> onErrorResumeNext(final Publisher<IN> source,
 			Function<Throwable, ? extends Publisher<? extends IN>> fallbackFunction) {
-		return new PublisherOnErrorResume<>(source, fallbackFunction);
+		return new FluxResume<>(source, fallbackFunction);
 	}
 
 	/**
@@ -173,7 +174,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Publisher<O> map(Publisher<I> source, final Function<? super I, ? extends O> transformer) {
-		return new PublisherMap<>(source, transformer);
+		return new FluxMap<>(source, transformer);
 	}
 
 	/**
@@ -184,7 +185,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Publisher<Tuple2<Long, I>> timestamp(Publisher<I> source) {
-		return PublisherMap.timestamp(source);
+		return FluxMap.timestamp(source);
 	}
 
 	/**
@@ -193,7 +194,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
-		return log(publisher, null, Level.INFO, PublisherLog.ALL);
+		return log(publisher, null, Level.INFO, FluxLog.ALL);
 	}
 
 	/**
@@ -203,7 +204,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
-		return log(publisher, category, Level.INFO, PublisherLog.ALL);
+		return log(publisher, category, Level.INFO, FluxLog.ALL);
 	}
 
 	/**
@@ -214,7 +215,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level) {
-		return log(publisher, category, level, PublisherLog.ALL);
+		return log(publisher, category, level, FluxLog.ALL);
 	}
 
 	/**
@@ -226,7 +227,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return
 	 */
 	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level, int options) {
-		return new PublisherLog<>(publisher, category, level, options);
+		return new FluxLog<>(publisher, category, level, options);
 	}
 
 	/**
@@ -238,7 +239,7 @@ public final class Publishers extends PublisherFactory {
 	@SuppressWarnings("unchecked")
 	public static <I, O> Publisher<O> flatMap(Publisher<I> source,
 			final Function<? super I, ? extends Publisher<? extends O>> transformer) {
-		return new PublisherFlatMap<>(source, transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32);
+		return new FluxFlatMap<>(source, transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32);
 	}
 
 	/**
@@ -250,7 +251,7 @@ public final class Publishers extends PublisherFactory {
 	@SuppressWarnings("unchecked")
 	public static <I, O> Publisher<O> concatMap(Publisher<I> source,
 			final Function<? super I, Publisher<? extends O>> transformer) {
-		return new PublisherFlatMap<>(source, transformer, 1, 32);
+		return new FluxFlatMap<>(source, transformer, 1, 32);
 	}
 
 	/**
@@ -263,7 +264,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a new filtered {@link Publisher<Void>}
 	 */
 	public static Publisher<Void> after(Publisher<?> source) {
-		return new PublisherIgnoreElements<>(source);
+		return new FluxIgnoreElements<>(source);
 	}
 
 	/**
@@ -277,7 +278,7 @@ public final class Publishers extends PublisherFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Publisher<T> ignoreElements(Publisher<T> source) {
-		return (Publisher<T>)new PublisherIgnoreElements<>(source);
+		return (Publisher<T>)new FluxIgnoreElements<>(source);
 	}
 
 	/**
@@ -292,7 +293,7 @@ public final class Publishers extends PublisherFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I> Publisher<I> amb(Publisher<? extends I> source1, Publisher<? extends I> source2) {
-		return new PublisherAmb<>(new Publisher[]{source1, source2});
+		return new FluxAmb<>(new Publisher[]{source1, source2});
 	}
 
 	/**
@@ -326,7 +327,7 @@ public final class Publishers extends PublisherFactory {
 		}
 		while (it.hasNext());
 
-		return new PublisherAmb<>(list.toArray(new Publisher[list.size()]));
+		return new FluxAmb<>(list.toArray(new Publisher[list.size()]));
 	}
 
 	/**
@@ -395,7 +396,7 @@ public final class Publishers extends PublisherFactory {
 	public static <T1, T2> Publisher<Tuple2<T1, T2>> zip(Publisher<? extends T1> source1,
 			Publisher<? extends T2> source2) {
 
-		return new PublisherZip<>(new Publisher[]{source1, source2},
+		return new FluxZip<>(new Publisher[]{source1, source2},
 				(Function<Tuple2<T1, T2>, Tuple2<T1, T2>>) IDENTITY_FUNCTION,
 				BaseProcessor.XS_BUFFER_SIZE);
 	}
@@ -414,7 +415,7 @@ public final class Publishers extends PublisherFactory {
 			Publisher<? extends T2> source2,
 			final BiFunction<? super T1, ? super T2, ? extends O> combinator) {
 
-		return new PublisherZip<>(new Publisher[]{source1, source2}, new Function<Tuple2<T1, T2>, O>() {
+		return new FluxZip<>(new Publisher[]{source1, source2}, new Function<Tuple2<T1, T2>, O>() {
 			@Override
 			public O apply(Tuple2<T1, T2> tuple) {
 				return combinator.apply(tuple.getT1(), tuple.getT2());
@@ -472,7 +473,7 @@ public final class Publishers extends PublisherFactory {
 		}
 		while (it.hasNext());
 
-		return new PublisherZip<>(list.toArray(new Publisher[list.size()]), combinator, BaseProcessor.XS_BUFFER_SIZE);
+		return new FluxZip<>(list.toArray(new Publisher[list.size()]), combinator, BaseProcessor.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -568,30 +569,13 @@ public final class Publishers extends PublisherFactory {
 	 * Internals
 	 */
 
-	private static final NeverPublisher<?> NEVER = new NeverPublisher<>();
+	private static final FluxNever<?> NEVER = new FluxNever<>();
 
-	private static class NeverPublisher<IN> implements Publisher<IN> {
+	private static final MonoEmpty<?> EMPTY = new MonoEmpty<>();
 
-		@Override
-		public void subscribe(Subscriber<? super IN> s) {
-			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-		}
-	}
+	static final PublisherToPublisherFunction<?> P2P_FUNCTION = new PublisherToPublisherFunction<>();
 
-	private static final EmptyPublisher<?> EMPTY = new EmptyPublisher<>();
-
-	private static class EmptyPublisher<IN> implements Publisher<IN> {
-
-		@Override
-		public void subscribe(Subscriber<? super IN> s) {
-			s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-			s.onComplete();
-		}
-	}
-
-	private static final PublisherToPublisherFunction<?> P2P_FUNCTION = new PublisherToPublisherFunction<>();
-
-	private static class PublisherToPublisherFunction<I>
+	static final class PublisherToPublisherFunction<I>
 			implements Function<Publisher<? extends I>, Publisher<? extends I>> {
 
 		@Override
@@ -600,9 +584,9 @@ public final class Publishers extends PublisherFactory {
 		}
 	}
 
-	private static final IdentityFunction IDENTITY_FUNCTION = new IdentityFunction();
+	static final IdentityFunction IDENTITY_FUNCTION = new IdentityFunction();
 
-	private static class IdentityFunction implements Function {
+	static final class IdentityFunction implements Function {
 
 		@Override
 		public Object apply(Object o) {

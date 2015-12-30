@@ -22,9 +22,9 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
@@ -51,18 +51,9 @@ import reactor.fn.Function;
  * }
  * </pre>
  * @author Stephane Maldini
- * @since 2.0.2
+ * @since 2.0.2, 2.5
  */
-public abstract class PublisherFactory implements ReactiveState {
-
-	/**
-	 * A marker interface for components responsible for augmenting subscribers with features like {@link
-	 * #lift}
-	 */
-	public interface Operator<I, O>
-			extends Function<Subscriber<? super O>, Subscriber<? super I>>, ReactiveState.Factory {
-
-	}
+public abstract class FluxFactory implements ReactiveState {
 
 	/**
 	 * Create a {@link Publisher} reacting on requests with the passed {@link BiConsumer}
@@ -107,7 +98,7 @@ public abstract class PublisherFactory implements ReactiveState {
 			Function<Subscriber<? super T>, C> contextFactory,
 			Consumer<C> shutdownConsumer) {
 
-		return new ReactorPublisher<T, C>(new RecursiveConsumer<>(requestConsumer), contextFactory, shutdownConsumer);
+		return new FluxGenerate<T, C>(new RecursiveConsumer<>(requestConsumer), contextFactory, shutdownConsumer);
 	}
 
 	/**
@@ -120,7 +111,7 @@ public abstract class PublisherFactory implements ReactiveState {
 	 */
 	public static <T> Publisher<T> yield(Consumer<? super ReactiveSession<T>> sessionConsumer) {
 
-		return new SessionPublisher<>(sessionConsumer);
+		return new FluxSession<>(sessionConsumer);
 	}
 
 	/**
@@ -170,7 +161,7 @@ public abstract class PublisherFactory implements ReactiveState {
 			Function<Subscriber<? super T>, C> contextFactory,
 			Consumer<C> shutdownConsumer) {
 		Assert.notNull(requestConsumer, "A data producer must be provided");
-		return new ForEachPublisher<T, C>(requestConsumer, contextFactory, shutdownConsumer);
+		return new FluxForEach<T, C>(requestConsumer, contextFactory, shutdownConsumer);
 	}
 
 	/**
@@ -236,33 +227,9 @@ public abstract class PublisherFactory implements ReactiveState {
 	 */
 	public static <I, O> Publisher<O> lift(Publisher<I> source,
 			Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider) {
-		Assert.notNull(source, "A data source must be provided");
-		Assert.notNull(barrierProvider, "A lift interceptor must be provided");
-		return new PublisherOperator<>(source, barrierProvider);
+		return new FluxLift<>(source, barrierProvider);
 	}
 
-	/**
-	 *
-	 * @param source
-	 * @param <I>
-	 * @return
-	 */
-	public static <I> Publisher<I> unbounded(Publisher<I> source) {
-		Assert.notNull(source, "A data source must be provided");
-		return capacity(source, Long.MAX_VALUE);
-	}
-
-	/**
-	 *
-	 * @param source
-	 * @param capacity
-	 * @param <I>
-	 * @return
-	 */
-	public static <I> Publisher<I> capacity(Publisher<I> source, long capacity) {
-		Assert.notNull(source, "A data source must be provided");
-		return new BoundedPublisher<>(source, capacity);
-	}
 
 	/**
 	 *
@@ -283,76 +250,38 @@ public abstract class PublisherFactory implements ReactiveState {
 		};
 	}
 
-	/**
-	 * Marker interface for publishers refering to an operator {@link Function} used to augment {@link Subscriber}
-	 */
-	public interface LiftOperator<I, O> extends Publisher<O>, Factory {
+	private static class FluxSession<T> extends Flux<T> implements Factory {
 
-		Function<Subscriber<? super O>, Subscriber<? super I>> operator();
-	}
+		final Consumer<? super ReactiveSession<T>> onSubscribe;
 
-	public static class PublisherBarrier<I, O> implements Publisher<O>, Factory, Bounded, Named, Upstream,
-	                                                      Operator<I, O>, LiftOperator<I, O>{
-
-
-		protected final Publisher<I> source;
-
-		protected PublisherBarrier(Publisher<I> source) {
-			this.source = source;
+		public FluxSession(Consumer<? super ReactiveSession<T>> onSubscribe) {
+			this.onSubscribe = onSubscribe;
 		}
 
 		@Override
-		public void subscribe(Subscriber<? super O> s) {
-			if (s == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+		public void subscribe(Subscriber<? super T> subscriber) {
+			try {
+				ReactiveSession<T> session = new YieldingReactiveSession<>(onSubscribe, subscriber);
+				session.start();
+
 			}
-			source.subscribe(apply(s));
-		}
-
-		@Override
-		@SuppressWarnings("unchecked")
-		public Subscriber<? super I> apply(Subscriber<? super O> subscriber) {
-			return (Subscriber<I>)subscriber;
-		}
-
-		@Override
-		public final Publisher<I> upstream() {
-			return source;
-		}
-
-		@Override
-		public String getName() {
-			Function operator = operator();
-			return ReactiveStateUtils.getName(this == operator ? getClass().getSimpleName() : operator)
-			                      .replaceAll("Publisher|Stream|Operator", "");
-		}
-
-		@Override
-		public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
-			return this;
-		}
-
-		@Override
-		public String toString() {
-			return "{" +
-					" operator : \"" + getName() + "\" " +
-					'}';
-		}
-
-		@Override
-		public long getCapacity() {
-			return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() :
-					Long.MAX_VALUE;
+			catch (PrematureCompleteException pce) {
+				subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				subscriber.onComplete();
+			}
+			catch (Throwable throwable) {
+				MonoError.<T>create(throwable).subscribe(subscriber);
+			}
 		}
 	}
 
-	private static class ReactorPublisher<T, C> implements Publisher<T>, Factory {
+	private static class FluxGenerate<T, C> extends Flux<T> implements Factory {
 
 		protected final Function<Subscriber<? super T>, C>            contextFactory;
 		protected final BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer;
 		protected final Consumer<C>                                   shutdownConsumer;
 
-		protected ReactorPublisher(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+		protected FluxGenerate(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 				Function<Subscriber<? super T>, C> contextFactory,
 				Consumer<C> shutdownConsumer) {
 			this.requestConsumer = requestConsumer;
@@ -371,7 +300,7 @@ public abstract class PublisherFactory implements ReactiveState {
 				subscriber.onComplete();
 			}
 			catch (Throwable throwable) {
-				Exceptions.<T>publisher(throwable).subscribe(subscriber);
+				MonoError.<T>create(throwable).subscribe(subscriber);
 			}
 		}
 
@@ -380,11 +309,11 @@ public abstract class PublisherFactory implements ReactiveState {
 		}
 	}
 
-	private static final class ForEachPublisher<T, C> extends ReactorPublisher<T, C> implements Upstream {
+	private static final class FluxForEach<T, C> extends FluxGenerate<T, C> implements Upstream {
 
 		final Consumer<SubscriberWithContext<T, C>> forEachConsumer;
 
-		public ForEachPublisher(Consumer<SubscriberWithContext<T, C>> forEachConsumer, Function<Subscriber<? super
+		public FluxForEach(Consumer<SubscriberWithContext<T, C>> forEachConsumer, Function<Subscriber<? super
 				T>, C> contextFactory, Consumer<C> shutdownConsumer) {
 			super(null, contextFactory, shutdownConsumer);
 			this.forEachConsumer = forEachConsumer;
@@ -407,59 +336,6 @@ public abstract class PublisherFactory implements ReactiveState {
 		@Override
 		public String toString() {
 			return forEachConsumer.toString();
-		}
-	}
-
-	private static class PublisherOperator<I, O> extends PublisherBarrier<I, O> {
-
-		final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
-
-		public PublisherOperator(Publisher<I> source,
-				Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider) {
-			super(source);
-			this.barrierProvider = barrierProvider;
-		}
-
-
-		@Override
-		public Subscriber<? super I> apply(Subscriber<? super O> subscriber) {
-			return barrierProvider.apply(subscriber);
-		}
-
-		@Override
-		public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
-			return barrierProvider;
-		}
-	}
-
-	private final static class BoundedPublisher<I> implements Publisher<I>, Bounded, Named, Upstream {
-
-		final private Publisher<I> source;
-		final private long         capacity;
-
-		public BoundedPublisher(Publisher<I> source, long capacity) {
-			this.source = source;
-			this.capacity = capacity;
-		}
-
-		@Override
-		public void subscribe(Subscriber<? super I> s) {
-			source.subscribe(s);
-		}
-
-		@Override
-		public long getCapacity() {
-			return capacity;
-		}
-
-		@Override
-		public Object upstream() {
-			return source;
-		}
-
-		@Override
-		public String getName() {
-			return "Bounded";
 		}
 	}
 
@@ -720,31 +596,6 @@ public abstract class PublisherFactory implements ReactiveState {
 					", errorConsumer=" + errorConsumer +
 					", completeConsumer=" + completeConsumer +
 					'}';
-		}
-	}
-
-	private static class SessionPublisher<T> implements Publisher<T>, Factory {
-
-		final Consumer<? super ReactiveSession<T>> onSubscribe;
-
-		public SessionPublisher(Consumer<? super ReactiveSession<T>> onSubscribe) {
-			this.onSubscribe = onSubscribe;
-		}
-
-		@Override
-		public void subscribe(Subscriber<? super T> subscriber) {
-			try {
-				ReactiveSession<T> session = new YieldingReactiveSession<>(onSubscribe, subscriber);
-				session.start();
-
-			}
-			catch (PrematureCompleteException pce) {
-				subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
-				subscriber.onComplete();
-			}
-			catch (Throwable throwable) {
-				Exceptions.<T>publisher(throwable).subscribe(subscriber);
-			}
 		}
 	}
 

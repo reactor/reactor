@@ -29,16 +29,17 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.publisher.PublisherIgnoreElements;
-import reactor.core.publisher.PublisherLog;
-import reactor.core.publisher.PublisherMap;
-import reactor.core.publisher.PublisherOnErrorResume;
-import reactor.core.publisher.PublisherZip;
+import reactor.core.publisher.FluxIgnoreElements;
+import reactor.core.publisher.FluxLog;
+import reactor.core.publisher.FluxMap;
+import reactor.core.publisher.FluxResume;
+import reactor.core.publisher.FluxZip;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
@@ -137,7 +138,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Void> after() {
-		return new StreamBarrier.Identity<>(new PublisherIgnoreElements<>(this));
+		return new StreamBarrier.Identity<>(new FluxIgnoreElements<>(this));
 	}
 
 	/**
@@ -1018,7 +1019,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<O> ignoreElements() {
-		return new StreamBarrier.Identity<>(new PublisherIgnoreElements(this));
+		return new StreamBarrier.Identity<>(new FluxIgnoreElements(this));
 	}
 
 	/**
@@ -1031,7 +1032,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final <T> Stream<List<T>> joinWith(Publisher<T> publisher) {
-		return zipWith(publisher, (BiFunction<Object, Object, List<T>>) PublisherZip.JOIN_BIFUNCTION);
+		return zipWith(publisher, (BiFunction<Object, Object, List<T>>) FluxZip.JOIN_BIFUNCTION);
 	}
 
 	/**
@@ -1068,7 +1069,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public <V> Stream<V> liftProcessor(@Nonnull final Supplier<? extends Processor<O, V>> processorSupplier) {
-		return lift(new Publishers.Operator<O, V>() {
+		return lift(new Flux.Operator<O, V>() {
 			@Override
 			public Subscriber<? super O> apply(Subscriber<? super V> subscriber) {
 				Processor<O, V> processor = processorSupplier.get();
@@ -1086,7 +1087,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> log() {
-		return log(null, PublisherLog.ALL);
+		return log(null, FluxLog.ALL);
 	}
 
 	/**
@@ -1099,7 +1100,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> log(String category) {
-		return log(category, PublisherLog.ALL);
+		return log(category, FluxLog.ALL);
 	}
 
 	/**
@@ -1128,7 +1129,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> log(final String category, Level level, int options) {
-		return new StreamBarrier.Identity<>(new PublisherLog<O>(this, category, level, options));
+		return new StreamBarrier.Identity<>(new FluxLog<O>(this, category, level, options));
 	}
 
 	/**
@@ -1141,7 +1142,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} containing the transformed values
 	 */
 	public final <V> Stream<V> map(@Nonnull final Function<? super O, ? extends V> fn) {
-		return new StreamBarrier.Identity<>(new PublisherMap<O, V>(this, fn));
+		return new StreamBarrier.Identity<>(new FluxMap<O, V>(this, fn));
 	}
 
 	/**
@@ -1308,7 +1309,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> switchOnError(@Nonnull final Publisher<? extends O> fallback) {
-		return new StreamBarrier.Identity<>(new PublisherOnErrorResume<O>(this, fallback));
+		return new StreamBarrier.Identity<>(new FluxResume<O>(this, fallback));
 	}
 
 	/**
@@ -1319,7 +1320,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> onErrorResumeNext(@Nonnull final Function<Throwable, ? extends Publisher<? extends O>> fallback) {
-		return new StreamBarrier.Identity<>(new PublisherOnErrorResume<>(this, fallback));
+		return new StreamBarrier.Identity<>(new FluxResume<>(this, fallback));
 	}
 
 	/**
@@ -2158,7 +2159,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Tuple2<Long, O>> timestamp() {
-		return new StreamBarrier.Identity<>(PublisherMap.<O>timestamp(this));
+		return new StreamBarrier.Identity<>(FluxMap.<O>timestamp(this));
 	}
 
 	/**

@@ -31,6 +31,7 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.publisher.MonoError;
 import reactor.core.support.Logger;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
@@ -641,7 +642,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			}
 
 			if (!set) {
-				Exceptions.<V>publisher(new IllegalStateException("Shared Processors do not support multi-subscribe")).subscribe(
+				MonoError.<V>create(new IllegalStateException("Shared Processors do not support multi-subscribe")).subscribe(
 						s);
 			}
 			else if (subscribed) {

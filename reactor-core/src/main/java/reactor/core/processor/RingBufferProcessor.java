@@ -31,6 +31,7 @@ import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
+import reactor.core.publisher.MonoError;
 import reactor.core.support.rb.MutableSignal;
 import reactor.core.support.rb.RequestTask;
 import reactor.core.support.rb.RingBufferSequencer;
@@ -39,7 +40,7 @@ import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.SequenceBarrier;
 import reactor.core.support.rb.disruptor.Sequencer;
-import reactor.core.publisher.PublisherFactory;
+import reactor.core.publisher.FluxFactory;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.ReactiveState;
@@ -597,7 +598,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 
 		if (!alive()) {
 			RingBufferSequencer<E> sequencer = coldSource();
-			PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
+			FluxFactory.create(sequencer, sequencer).subscribe(subscriber);
 			return;
 		}
 
@@ -634,10 +635,10 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 			decrementSubscribers();
 			if (!alive() && RejectedExecutionException.class.isAssignableFrom(t.getClass())){
 				RingBufferSequencer<E> sequencer = coldSource();
-				PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
+				FluxFactory.create(sequencer, sequencer).subscribe(subscriber);
 			}
 			else{
-				Exceptions.<E>publisher(t).subscribe(subscriber);
+				MonoError.<E>create(t).subscribe(subscriber);
 			}
 		}
 	}
@@ -828,7 +829,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		public void run() {
 			try {
 				if (!running.compareAndSet(false, true)) {
-					Exceptions.<T>publisher(
+					MonoError.<T>create(
 							new IllegalStateException("Thread is already running"))
 					          .subscribe(subscriber);
 					return;

@@ -19,7 +19,7 @@ import org.reactivestreams.Subscriber;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.Sequencer;
-import reactor.core.publisher.PublisherFactory;
+import reactor.core.publisher.FluxFactory;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -56,7 +56,7 @@ public final class RingBufferSequencer<T>
 	@Override
 	public Sequence apply(Subscriber<? super T> subscriber) {
 		if (ringBuffer == null) {
-			throw PublisherFactory.PrematureCompleteException.INSTANCE;
+			throw FluxFactory.PrematureCompleteException.INSTANCE;
 		}
 		return Sequencer.newSequence(startSequence);
 	}

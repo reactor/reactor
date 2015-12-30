@@ -401,7 +401,8 @@ Where to go from here? There are plenty of use cases that can benefit from a cus
 Reactor offers some reusable components to avoid the boilerplate checking you would have to do without extending exsiting Stream or `PushSubscription`
 
 * Extending `PushSubscription` instead of implementing `Subscription` directly to benefit from terminal state (PushSubscription.isComplete())
-* Using `PublisherFactory.create(args)` or `Streams.createWith(args)` to use Functional consumers for every lifecycle step (requested, stopped, started).
+* Using `FluxFactory.create(args)` or `Streams.createWith(args)` to use Functional consumers for every lifecycle step
+(requested, stopped, started).
 * Extending `Stream` instead of implementing `Publisher` directly to benefit from composition API
 
 .Streams.createWith, an alternative to create() minus some boilerplate
@@ -1697,7 +1698,7 @@ stream
 ****
 * Yes it's more verbose…
 * …But now we stream result by result from the query (could have used pagination with SQL limits as well).
-* `Streams.createWith` is a `PublisherFactory` which intercepts requests, start and stop.
+* `Streams.createWith` is a `FluxFactory` which intercepts requests, start and stop.
 ** The request consumer gives precisely how many elements a subscriber is ready to receive.
 ** The request consumer receives a `SubscriberWithContext` delegating to the real `Subscriber`, it gives access to shared context and cancel status.
 ** We send at most as many individual _Result_ as demanded

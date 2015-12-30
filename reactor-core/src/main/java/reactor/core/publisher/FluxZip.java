@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
@@ -46,8 +47,8 @@ import reactor.fn.tuple.Tuple;
  * @author Stephane Maldini
  * @since 2.5
  */
-public final class PublisherZip<TUPLE extends Tuple, V>
-		implements Publisher<V>, ReactiveState.Factory, ReactiveState.LinkedUpstreams {
+public final class FluxZip<TUPLE extends Tuple, V>
+		extends Flux<V> implements ReactiveState.Factory, ReactiveState.LinkedUpstreams {
 
 	/**
 	 *
@@ -73,9 +74,9 @@ public final class PublisherZip<TUPLE extends Tuple, V>
 	final int                                  bufferSize;
 	final Publisher[]                          sources;
 
-	public PublisherZip(final Publisher[] sources,
-			final Function<? super TUPLE, ? extends V> combinator,
-			int bufferSize) {
+	public FluxZip(final Publisher[] sources,
+	               final Function<? super TUPLE, ? extends V> combinator,
+	               int bufferSize) {
 		this.combinator = combinator;
 		this.bufferSize = bufferSize;
 		this.sources = sources;
@@ -123,10 +124,10 @@ public final class PublisherZip<TUPLE extends Tuple, V>
 			           ReactiveState.DownstreamDemand,
 			           ReactiveState.FailState {
 
-		final PublisherZip<TUPLE, V> parent;
-		final int                    limit;
-		final ZipState<?>[]          subscribers;
-		final Subscriber<? super V>  actual;
+		final FluxZip<TUPLE, V>     parent;
+		final int                   limit;
+		final ZipState<?>[]         subscribers;
+		final Subscriber<? super V> actual;
 
 		@SuppressWarnings("unused")
 		private volatile Throwable error;
@@ -153,7 +154,7 @@ public final class PublisherZip<TUPLE extends Tuple, V>
 
 		final static Object[] TERMINATED_CACHE = new Object[0];
 
-		public ZipBarrier(Subscriber<? super V> actual, PublisherZip<TUPLE, V> parent) {
+		public ZipBarrier(Subscriber<? super V> actual, FluxZip<TUPLE, V> parent) {
 			this.actual = actual;
 			this.parent = parent;
 			this.subscribers = new ZipState[parent.sources.length];

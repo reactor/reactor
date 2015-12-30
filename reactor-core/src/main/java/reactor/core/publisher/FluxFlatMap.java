@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.Exceptions;
+import reactor.Flux;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.rb.disruptor.RingBuffer;
@@ -52,13 +52,13 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  * @since 2.5
  */
-public final class PublisherFlatMap<T, V> extends PublisherFactory.PublisherBarrier<T, V> {
+public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 
 	final Function<? super T, ? extends Publisher<? extends V>> mapper;
 	final int                                                   maxConcurrency;
 	final int                                                   bufferSize;
 
-	public PublisherFlatMap(
+	public FluxFlatMap(
 			Publisher<T> source,
 			Function<? super T, ? extends Publisher<? extends V>> mapper,
 			int maxConcurrency,
@@ -85,16 +85,11 @@ public final class PublisherFlatMap<T, V> extends PublisherFactory.PublisherBarr
 				}
 			}
 			catch (Throwable e) {
-				Exceptions.<V>publisher(e).subscribe(s);
+				MonoError.<V>create(e).subscribe(s);
 				return;
 			}
 		}
-		source.subscribe(apply(s));
-	}
-
-	@Override
-	public Subscriber<? super T> apply(Subscriber<? super V> t) {
-		return new MergeBarrier<>(t, mapper, maxConcurrency, bufferSize);
+		source.subscribe(new MergeBarrier<>(s, mapper, maxConcurrency, bufferSize));
 	}
 
 	static final class MergeBarrier<T, V> extends SubscriberWithDemand<T, V> implements ReactiveState.LinkedUpstreams,

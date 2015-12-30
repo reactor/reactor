@@ -24,7 +24,7 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 
 /**
- * Simple iterating consumer for {@link PublisherFactory#create(Consumer, Function)} and its alias
+ * Simple iterating consumer for {@link FluxFactory#create(Consumer, Function)} and its alias
  * @param <T>
  * @since 2.5
  *
@@ -64,11 +64,11 @@ public abstract class ForEachSequencer<T>
 		@Override
 		public Iterator<? extends T> apply(Subscriber<? super T> subscriber) {
 			if (defaultValues == null) {
-				throw PublisherFactory.PrematureCompleteException.INSTANCE;
+				throw FluxFactory.PrematureCompleteException.INSTANCE;
 			}
 			Iterator<? extends T> it = defaultValues.iterator();
 			if (!it.hasNext()) {
-				throw PublisherFactory.PrematureCompleteException.INSTANCE;
+				throw FluxFactory.PrematureCompleteException.INSTANCE;
 			}
 			return it;
 		}
@@ -100,11 +100,11 @@ public abstract class ForEachSequencer<T>
 		@Override
 		public Iterator<? extends T> apply(Subscriber<? super T> subscriber) {
 			if (defaultValues == null) {
-				throw PublisherFactory.PrematureCompleteException.INSTANCE;
+				throw FluxFactory.PrematureCompleteException.INSTANCE;
 			}
 			Iterator<? extends T> it = defaultValues;
 			if (!it.hasNext()) {
-				throw PublisherFactory.PrematureCompleteException.INSTANCE;
+				throw FluxFactory.PrematureCompleteException.INSTANCE;
 			}
 			return it;
 		}
