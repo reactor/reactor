@@ -49,6 +49,7 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Predicate;
 import reactor.fn.Supplier;
+import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.broadcast.StreamProcessor;
@@ -2367,6 +2368,18 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The result will
+	 * be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
+	 *
+	 * @return the zipped stream
+	 *
+	 * @since 2.5
+	 */
+	public final <T2> Stream<Tuple2<O, T2>> zipWith(Iterable<? extends T2> iterable) {
+		return zipWithIterable(iterable);
+	}
+
+	/**
 	 * Pass with the passed {@link Publisher} values to a new {@link Stream} until one of them complete. The result will
 	 * be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
 	 *
@@ -2390,6 +2403,28 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * Pass with the passed {@link Publisher} values to a new {@link Stream} until one of them complete. The result will
+	 * be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
+	 *
+	 * @return the zipped stream
+	 *
+	 * @since 2.5
+	 */
+	public final <T2, V> Stream<V> zipWith(final Publisher<? extends T2> publisher) {
+		return new StreamBarrier<O, V>(this) {
+			@Override
+			public String getName() {
+				return "zipWith";
+			}
+
+			@Override
+			public void subscribe(Subscriber<? super V> s) {
+				Publishers.<O, T2, V>zip(source, publisher, IDENTITY_FUNCTION).subscribe(s);
+			}
+		};
+	}
+
+	/**
 	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The result will
 	 * be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
 	 *
@@ -2400,6 +2435,19 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final <T2, V> Stream<V> zipWithIterable(Iterable<? extends T2> iterable,
 			@Nonnull BiFunction<? super O, ? super T2, ? extends V> zipper) {
 		return new StreamZipWithIterable<>(this, zipper, iterable);
+	}
+
+	/**
+	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The result will
+	 * be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
+	 *
+	 * @return the zipped stream
+	 *
+	 * @since 2.5
+	 */
+	@SuppressWarnings("unchecked")
+	public final <T2> Stream<Tuple2<O, T2>> zipWithIterable(Iterable<? extends T2> iterable) {
+		return new StreamZipWithIterable<>(this, (BiFunction<O, T2, Tuple2<O, T2>>) IDENTITY_FUNCTION, iterable);
 	}
 
 
@@ -2478,4 +2526,12 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			}
 		}
 	}
+
+	private static final BiFunction IDENTITY_FUNCTION = new BiFunction() {
+		@Override
+		public Tuple2 apply(Object t1, Object t2) {
+			return Tuple.of(t1, t2);
+		}
+	};
+
 }
