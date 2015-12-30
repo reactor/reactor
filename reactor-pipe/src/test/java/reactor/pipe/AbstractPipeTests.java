@@ -180,7 +180,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         assertTrue(TimeUnit.SECONDS.convert(end.get() - start, NANOSECONDS) >= 1);
     }
 
-    @Test
+    /*@Test
     public void testDebounce() throws InterruptedException {
         // With Debounce, we'd like to verify that consequent calls
         // forced scheduling of the execution a `timeout value` after
@@ -206,7 +206,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
         // The end time should be close to 1 second after sending the last item "3".
         // It should be exactly 1, but to timer inaccuracies >1, never <1.
         assertTrue(TimeUnit.SECONDS.convert(end.get() - start, NANOSECONDS) >= 1);
-    }
+    }*/
 
 
     @Test
