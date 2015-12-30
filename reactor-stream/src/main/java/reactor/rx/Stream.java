@@ -2410,16 +2410,17 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.5
 	 */
-	public final <T2, V> Stream<V> zipWith(final Publisher<? extends T2> publisher) {
-		return new StreamBarrier<O, V>(this) {
+	public final <T2> Stream<Tuple2<O, T2>> zipWith(final Publisher<? extends T2> publisher) {
+		return new StreamBarrier<O, Tuple2<O, T2>>(this) {
 			@Override
 			public String getName() {
 				return "zipWith";
 			}
 
+			@SuppressWarnings("unchecked")
 			@Override
-			public void subscribe(Subscriber<? super V> s) {
-				Publishers.<O, T2, V>zip(source, publisher, IDENTITY_FUNCTION).subscribe(s);
+			public void subscribe(Subscriber<? super Tuple2<O, T2>> s) {
+				Publishers.<O, T2, Tuple2<O, T2>>zip(source, publisher, IDENTITY_FUNCTION).subscribe(s);
 			}
 		};
 	}
