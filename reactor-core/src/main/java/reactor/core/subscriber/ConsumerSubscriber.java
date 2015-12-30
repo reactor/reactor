@@ -25,7 +25,7 @@ import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public class ConsumerSubscriber<T> extends BaseSubscriber<T>
 		implements ReactiveState.Upstream, ReactiveState.ActiveUpstream, ReactiveState.Bounded {

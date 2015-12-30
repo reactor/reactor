@@ -23,7 +23,7 @@ import reactor.fn.BiFunction;
 
 /**
  * @author Stephane Maldini
- * @since 1.1, 2.0, 2.1
+ * @since 1.1, 2.0, 2.5
  */
 public final class StreamScan<T, A> extends StreamBarrier<T, A> {
 

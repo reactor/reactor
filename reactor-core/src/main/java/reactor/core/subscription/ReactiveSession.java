@@ -38,7 +38,7 @@ import reactor.core.timer.TimeUtils;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<E>, Subscription,
                                            ReactiveState.Bounded,

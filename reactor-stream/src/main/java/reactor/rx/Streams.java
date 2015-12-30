@@ -666,7 +666,7 @@ public class Streams {
 
 	/**
 	 * @see Publishers#convert(Object)
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	public static <T> Stream<T> convert(Object source) {
 		return Streams.wrap(Publishers.<T>convert(source));

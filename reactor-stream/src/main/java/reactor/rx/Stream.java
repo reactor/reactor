@@ -115,7 +115,7 @@ import reactor.rx.subscriber.Tap;
  * @param <O> The type of the output values
  *
  * @author Stephane Maldini
- * @since 1.1, 2.0, 2.1
+ * @since 1.1, 2.0, 2.5
  */
 public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
@@ -145,7 +145,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return the ambiguous stream
 	 *
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	public final Stream<O> ambWith(final Publisher<? extends O> publisher) {
 		return new StreamBarrier<O, O>(this) {
@@ -366,7 +366,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return {@literal new Stream}
 	 *
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	public final Stream<O> cache(int last) {
 		Processor<O, O> emitter = Processors.replay(last);
@@ -572,7 +572,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return the promise of all data from this Stream
 	 *
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	public final Promise<List<O>> consumeAsList() {
 		return buffer(Integer.MAX_VALUE).consumeNext();
@@ -644,7 +644,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new {@link Promise}
 	 *
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	public final Promise<O> consumeNext() {
 		Promise<O> d = new Promise<O>(getTimer());
@@ -931,7 +931,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new {@link Stream} containing the transformed values
 	 *
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	public final <V> Stream<V> forkJoin(final int concurrency,
 			@Nonnull final Function<GroupedStream<Integer, O>, Publisher<V>> fn) {
@@ -1046,7 +1046,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 	/**
 	 * @see {@link Publishers#lift(Publisher, Function)}
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	public <V> Stream<V> lift(@Nonnull final Function<Subscriber<? super V>, Subscriber<? super O>> operator) {
 		return Streams.lift(this, operator);
@@ -1542,7 +1542,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return {@literal new Stream}
 	 *
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	public final Stream<O> switchIfEmpty(@Nonnull final Publisher<? extends O> fallback) {
 		return new StreamDefaultIfEmpty<O>(this, fallback);
@@ -1555,7 +1555,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return {@literal new Stream}
 	 *
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	public final Stream<O> switchIfEmpty(@Nonnull final Supplier<? extends Publisher<? extends O>> fallback) {
 		return new StreamDefaultIfEmpty<>(this, fallback);
@@ -2395,7 +2395,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return the zipped stream
 	 *
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	public final <T2, V> Stream<V> zipWithIterable(Iterable<? extends T2> iterable,
 			@Nonnull BiFunction<? super O, ? super T2, ? extends V> zipper) {

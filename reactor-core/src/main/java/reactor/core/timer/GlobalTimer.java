@@ -25,7 +25,7 @@ import reactor.core.support.WaitStrategy;
  * A Global Timer
  *
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public class GlobalTimer extends HashWheelTimer implements ReactiveState.Trace {
 

@@ -49,7 +49,7 @@ import reactor.io.net.http.routing.ChannelMappings;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> {
 

@@ -537,7 +537,7 @@ For Asynchronous broadcasting, always consider a <<core-processor.adoc#core-proc
 * RingBuffer*Processor supports replaying an event canceled in-flight by a downstream subscriber if it's still running on the processor thread. A Broadcaster won't support replaying.
 * RingBuffer*Processor are faster than their alternative Broadcaster with a RingBufferDispatcher
 * RingBufferWorkProcessor supports scaling up with the number of attached subscribers.
-* *Broadcaster might be promoted to a `Processor` in 2.1 anyway, achieving the same thing and removing the need for the Reactor user to struggle picking between `Processor` and `Broadcaster`*.
+* *Broadcaster might be promoted to a `Processor` in 2.5 anyway, achieving the same thing and removing the need for the Reactor user to struggle picking between `Processor` and `Broadcaster`*.
 ****
 ====
 

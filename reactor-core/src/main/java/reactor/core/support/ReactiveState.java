@@ -25,7 +25,7 @@ import org.reactivestreams.Subscriber;
  * A components that supports extra state control and access for reactive components: buffers, capacity, names,
  * upstream...
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public interface ReactiveState {
 

@@ -50,7 +50,7 @@ import reactor.fn.Supplier;
  *
  * @author David Karnok
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class PublisherFlatMap<T, V> extends PublisherFactory.PublisherBarrier<T, V> {
 

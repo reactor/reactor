@@ -39,7 +39,7 @@ import reactor.core.support.internal.PlatformDependent;
  * <p>
  * {@see http://github.com/reactor/reactive-streams-commons}
  *
- * @since 2.1
+ * @since 2.5
  */
 public final class PublisherAmb<T> implements Publisher<T>, ReactiveState.Factory, ReactiveState.Named, ReactiveState
 		.LinkedUpstreams {

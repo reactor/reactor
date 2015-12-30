@@ -26,7 +26,7 @@ import reactor.core.support.ReactiveState;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public class SubscriberWithDemand<I, O> extends SubscriberBarrier<I, O>
 		implements ReactiveState.DownstreamDemand, ReactiveState.FailState {

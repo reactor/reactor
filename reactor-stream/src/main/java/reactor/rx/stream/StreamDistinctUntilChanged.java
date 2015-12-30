@@ -22,7 +22,7 @@ import reactor.fn.Function;
 
 /**
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 
 public class StreamDistinctUntilChanged<T, V> extends StreamBarrier<T, T> {

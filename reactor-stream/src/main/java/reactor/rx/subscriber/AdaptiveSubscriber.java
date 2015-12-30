@@ -32,7 +32,7 @@ import reactor.rx.broadcast.Broadcaster;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class AdaptiveSubscriber<T> extends InterruptableSubscriber<T> implements ReactiveState.Bounded {
 

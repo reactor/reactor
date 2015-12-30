@@ -26,7 +26,7 @@ import reactor.fn.tuple.Tuple2;
 
 /**
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public final class StreamReduceByKey<K, V>
 		extends StreamBarrier<Tuple2<K, V>, Tuple2<K, V>> {

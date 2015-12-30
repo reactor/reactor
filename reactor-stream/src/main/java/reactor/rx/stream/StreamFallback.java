@@ -26,7 +26,7 @@ import reactor.core.support.BackpressureUtils;
 
 /**
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public abstract class StreamFallback<T> extends StreamBarrier<T, T> {
 

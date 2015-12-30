@@ -26,7 +26,7 @@ import reactor.core.timer.Timer;
 
 /**
  * @author Stephane Maldini
- * @since 1.1, 2.1
+ * @since 1.1, 2.5
  */
 public final class StreamBuffer<T> extends StreamBatch<T, List<T>> {
 

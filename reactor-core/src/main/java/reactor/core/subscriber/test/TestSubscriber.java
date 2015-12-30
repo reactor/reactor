@@ -29,7 +29,7 @@ import reactor.fn.Supplier;
 /**
  * @author Anatoly Kadyshev
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public class TestSubscriber<T> extends SubscriberWithDemand<T, T> {
 

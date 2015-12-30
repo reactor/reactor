@@ -52,7 +52,7 @@ import reactor.fn.tuple.Tuple2;
  * Create Reactive Streams Publishers from existing data, from custom callbacks (PublisherFactory) or from existing
  * Publishers (lift or combinatory operators).
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class Publishers extends PublisherFactory {
 

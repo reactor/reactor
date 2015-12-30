@@ -22,7 +22,7 @@ import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public final  class StreamCallback<T> extends StreamBarrier<T, T> {
 

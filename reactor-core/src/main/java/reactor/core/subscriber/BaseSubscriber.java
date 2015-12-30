@@ -28,7 +28,7 @@ import reactor.fn.Supplier;
  * Convenience subscriber base class that checks for input errors and provide a self-subscription operation.
  *
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public class BaseSubscriber<T> implements Subscriber<T> {
 

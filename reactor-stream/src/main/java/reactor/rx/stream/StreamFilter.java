@@ -22,7 +22,7 @@ import reactor.fn.Predicate;
 
 /**
  * @author Stephane Maldini
- * @since 1.1, 2.1
+ * @since 1.1, 2.5
  */
 public final class StreamFilter<T> extends StreamBarrier<T, T> {
 

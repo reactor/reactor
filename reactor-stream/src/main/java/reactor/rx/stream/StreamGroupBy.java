@@ -40,7 +40,7 @@ import reactor.fn.Function;
 /**
  * Manage a dynamic registry of substreams for a given key extracted from the incoming data. Each non-existing key will
  * result in a new stream to be signaled
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public final class StreamGroupBy<T, K> extends StreamBarrier<T, GroupedStream<K, T>> {
 

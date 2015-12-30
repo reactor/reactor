@@ -26,7 +26,7 @@ import reactor.fn.Function;
 /**
  * Simple iterating consumer for {@link PublisherFactory#create(Consumer, Function)} and its alias
  * @param <T>
- * @since 2.1
+ * @since 2.5
  *
  * @author Ben Hale
  * @author Stephane Maldini

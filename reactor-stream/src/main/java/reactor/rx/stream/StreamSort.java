@@ -25,7 +25,7 @@ import reactor.core.processor.BaseProcessor;
 
 /**
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public final class StreamSort<T> extends StreamBatch<T, T> {
 

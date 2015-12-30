@@ -1,5 +1,5 @@
 ---
 applications:
 - name: reactor-pylon
-  path: ./build/libs/reactor-pylon-2.1.0.BUILD-SNAPSHOT-all.jar
+  path: ./build/libs/reactor-pylon-2.5.0.BUILD-SNAPSHOT-all.jar
   domain: projectreactor.io

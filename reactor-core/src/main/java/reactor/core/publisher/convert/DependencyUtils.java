@@ -20,11 +20,11 @@ import org.reactivestreams.Publisher;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class DependencyUtils {
 
-	static private final String VERSION = "2.1.0.BUILD-SNAPSHOT";
+	static private final String VERSION = "2.5.0.BUILD-SNAPSHOT";
 
 	static private final boolean HAS_REACTOR_STREAM;
 	static private final boolean HAS_REACTOR_CODEC;

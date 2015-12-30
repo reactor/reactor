@@ -28,7 +28,7 @@ import reactor.rx.subscriber.SerializedSubscriber;
 
 /**
  * @author Stephane Maldini
- * @since 1.1, 2.0, 2.1
+ * @since 1.1, 2.0, 2.5
  */
 public abstract class StreamBatch<T, V> extends StreamBarrier<T, V> {
 

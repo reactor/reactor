@@ -27,7 +27,7 @@ import reactor.core.support.Logger;
 /**
  * A logging interceptor that intercepts all reactive calls and trace them
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class PublisherLog<IN> extends PublisherFactory.PublisherBarrier<IN, IN> {
 

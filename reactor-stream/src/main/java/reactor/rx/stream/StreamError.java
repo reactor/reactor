@@ -23,7 +23,7 @@ import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
- * @since 1.1, 2.0, 2.1
+ * @since 1.1, 2.0, 2.5
  */
 final public class StreamError<T, E extends Throwable> extends StreamBarrier<T, T> {
 

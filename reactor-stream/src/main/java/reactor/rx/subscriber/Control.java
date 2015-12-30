@@ -50,7 +50,7 @@ public interface Control {
 	 * {@link reactor.rx.Stream#consume(reactor.fn.Consumer)}
 	 *
 	 * @author Stephane Maldini
-	 * @since 2.1
+	 * @since 2.5
 	 */
 	interface Demand extends Subscription, Control {
 

@@ -21,7 +21,7 @@ import reactor.core.subscriber.SubscriberBarrier;
 
 /**
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public final class StreamDematerialize<T> extends StreamBarrier<Signal<T>, T> {
 

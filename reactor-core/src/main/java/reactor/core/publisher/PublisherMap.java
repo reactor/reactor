@@ -28,7 +28,7 @@ import reactor.fn.tuple.Tuple2;
 
 /**
  * @author Stephane Maldini
- * @since 1.1, 2.0, 2.1
+ * @since 1.1, 2.0, 2.5
  */
 public final class PublisherMap<T, V>  extends PublisherFactory.PublisherBarrier<T, V> {
 

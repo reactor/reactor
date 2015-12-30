@@ -26,7 +26,7 @@ import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements Control {
 

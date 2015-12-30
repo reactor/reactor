@@ -26,7 +26,7 @@ import reactor.fn.Consumer;
 
 /**
  * @author Stephane Maldini
- * @since 1.1, 2.1
+ * @since 1.1, 2.5
  */
 public final class StreamTimeout<T> extends StreamFallback<T> {
 

@@ -44,7 +44,7 @@ import reactor.fn.tuple.Tuple;
 /**
  * A zip operator to combine 1 by 1 each upstream in parallel given the combinator function.
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class PublisherZip<TUPLE extends Tuple, V>
 		implements Publisher<V>, ReactiveState.Factory, ReactiveState.LinkedUpstreams {

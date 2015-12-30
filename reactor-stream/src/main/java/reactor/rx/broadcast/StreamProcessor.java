@@ -27,7 +27,7 @@ import reactor.rx.Stream;
  * Create a Processor decorated with Stream API
  *
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public class StreamProcessor<E, O> extends Stream<O> implements Processor<E, O>, ReactiveState.FeedbackLoop{
 

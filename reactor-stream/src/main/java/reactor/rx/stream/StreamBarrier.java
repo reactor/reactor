@@ -32,7 +32,7 @@ import reactor.rx.broadcast.StreamProcessor;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public class StreamBarrier<I, O> extends Stream<O>
 		implements ReactiveState.Named, ReactiveState.Upstream, Publishers.Operator<I, O>,

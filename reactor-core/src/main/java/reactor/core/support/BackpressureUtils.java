@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * Combine utils available to operator implementations, @see http://github.com/reactor/reactive-streams-commons
  *
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public abstract class BackpressureUtils {
 

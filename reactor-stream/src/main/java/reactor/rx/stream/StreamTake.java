@@ -22,7 +22,7 @@ import reactor.core.subscriber.SubscriberWithDemand;
 
 /**
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public final class StreamTake<T> extends StreamBarrier<T, T> {
 

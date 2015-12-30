@@ -22,7 +22,7 @@ import reactor.core.subscriber.SubscriberBarrier;
 
 /**
  * @author Anatoly Kadyshev
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public final class StreamElementAt<T> extends StreamBarrier<T, T> {
 

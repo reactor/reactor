@@ -29,7 +29,7 @@ import reactor.core.support.SignalType;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class Subscribers extends SubscriberFactory {
 

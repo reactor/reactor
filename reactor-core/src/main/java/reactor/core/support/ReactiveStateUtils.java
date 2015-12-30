@@ -26,7 +26,7 @@ import java.util.WeakHashMap;
 
 /**
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class ReactiveStateUtils implements ReactiveState {
 

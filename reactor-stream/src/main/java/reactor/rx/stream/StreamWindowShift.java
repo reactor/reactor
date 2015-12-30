@@ -33,7 +33,7 @@ import reactor.rx.Stream;
  * WindowAction is forwarding events on a steam until {@param backlog} is reached, after that streams collected events
  * further, complete it and create a fresh new stream.
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public final class StreamWindowShift<T> extends StreamBarrier<T, Stream<T>> {
 

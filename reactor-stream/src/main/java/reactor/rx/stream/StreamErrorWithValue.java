@@ -23,7 +23,7 @@ import reactor.fn.BiConsumer;
 
 /**
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 final public class StreamErrorWithValue<T, E extends Throwable> extends StreamFallback<T> {
 

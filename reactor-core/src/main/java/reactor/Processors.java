@@ -46,7 +46,7 @@ import reactor.fn.Supplier;
  * offers a few management API via the subclassed {@link BaseProcessor} for the underlying {@link
  * java.util.concurrent.Executor} in use.
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class Processors {
 

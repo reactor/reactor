@@ -26,7 +26,7 @@ import reactor.fn.Supplier;
 
 /**
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public final class StreamBufferWhen<T> extends StreamBarrier<T, List<T>> {
 

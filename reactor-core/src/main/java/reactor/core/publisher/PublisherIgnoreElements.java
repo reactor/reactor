@@ -25,7 +25,7 @@ import reactor.fn.Function;
 /**
  * Ignore onNext signals and therefore only pass request, cancel upstream and complete, error downstream
  * @author Stephane Maldini
- * @since 2.1
+ * @since 2.5
  */
 public final class PublisherIgnoreElements<IN> extends PublisherFactory.PublisherBarrier<IN, Void> {
 

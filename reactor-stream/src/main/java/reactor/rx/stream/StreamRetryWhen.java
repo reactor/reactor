@@ -31,7 +31,7 @@ import reactor.rx.broadcast.Broadcaster;
 
 /**
  * @author Stephane Maldini
- * @since 2.0, 2.1
+ * @since 2.0, 2.5
  */
 public final class StreamRetryWhen<T> extends StreamBarrier<T, T> {
 
