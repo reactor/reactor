@@ -73,7 +73,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 			@Override
 			public void subscribe(final Subscriber<? super Object> s) {
 				try {
-					obs.subscribe(new RxSubscriberToRS(s));
+					obs.unsafeSubscribe(new RxSubscriberToRS(s));
 				}
 				catch (Throwable t) {
 					Exceptions.publisher(t)
