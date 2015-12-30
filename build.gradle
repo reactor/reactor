@@ -119,6 +119,8 @@ configure(subprojects) { project ->
 		}
 	}
 
+  	[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+
 	sourceSets.test.resources.srcDirs = ["src/test/resources", "src/test/java"]
 
 	configurations.all {
