@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.Flux;
 import reactor.core.support.Logger;
 import reactor.Processors;
 import reactor.Publishers;

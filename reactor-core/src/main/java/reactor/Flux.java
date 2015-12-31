@@ -21,6 +21,7 @@ import java.util.Arrays;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.publisher.FluxArray;
 import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxJust;
 import reactor.core.publisher.FluxLift;
@@ -121,6 +122,14 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 
 	/**
+	 * Create a {@link Flux} that emits the items contained in the provided {@link Iterable}.
+	 */
+	public static <T> Flux<T> from(T[] array) {
+		return new FluxArray<>(array);
+	}
+
+
+	/**
 	 * Create a {@link Flux} reacting on subscribe with the passed {@link Consumer}. The argument {@code
 	 * sessionConsumer} is executed once by new subscriber to generate a {@link ReactiveSession} context ready to accept
 	 * signals.
@@ -136,6 +145,11 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	/**
 	 * Create a new {@link Flux} that emits the specified item.
 	 */
+	@SafeVarargs
+	public static <T> Flux<T> just(T... data) {
+		return from(data);
+	}
+
 	public static <T> Flux<T> just(T data) {
 		return new FluxJust<>(data);
 	}

@@ -305,7 +305,7 @@ public abstract class SubscriberFactory {
 		@Override
 		public void onSubscribe(Subscription s) {
 			try {
-				if(BackpressureUtils.checkSubscription(subscriptionWithContext, s)) {
+				if(BackpressureUtils.validate(subscriptionWithContext, s)) {
 					final AtomicLong proxyRequest = new AtomicLong();
 					final C context = subscriptionHandler.apply(new Subscription() {
 						@Override

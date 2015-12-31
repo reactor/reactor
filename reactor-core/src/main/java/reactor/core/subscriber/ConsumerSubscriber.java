@@ -67,7 +67,7 @@ public class ConsumerSubscriber<T> extends BaseSubscriber<T>
 
 	@Override
 	public final void onSubscribe(Subscription s) {
-		if (BackpressureUtils.checkSubscription(subscription, s)) {
+		if (BackpressureUtils.validate(subscription, s)) {
 			this.subscription = s;
 			try {
 				doSubscribe(s);

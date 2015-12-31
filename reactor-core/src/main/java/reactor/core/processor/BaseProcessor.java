@@ -91,7 +91,7 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
 
 	@Override
 	public void onSubscribe(final Subscription s) {
-		if (BackpressureUtils.checkSubscription(upstreamSubscription, s)) {
+		if (BackpressureUtils.validate(upstreamSubscription, s)) {
 			this.upstreamSubscription = s;
 			try {
 				doOnSubscribe(s);

@@ -644,7 +644,7 @@ public class Promise<O>
 
 	@Override
 	public void onSubscribe(Subscription subscription) {
-		if (BackpressureUtils.checkSubscription(this.subscription, subscription)) {
+		if (BackpressureUtils.validate(this.subscription, subscription)) {
 			this.subscription = subscription;
 			if (requested == 1) {
 				subscription.request(1L);

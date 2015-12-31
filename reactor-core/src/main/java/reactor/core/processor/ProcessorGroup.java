@@ -657,7 +657,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			Subscriber<? super V> subscriber = null;
 
 			synchronized (this) {
-				if (BackpressureUtils.checkSubscription(upstreamSubscription, s)) {
+				if (BackpressureUtils.validate(upstreamSubscription, s)) {
 					upstreamSubscription = s;
 					subscriber = this.subscriber;
 				}

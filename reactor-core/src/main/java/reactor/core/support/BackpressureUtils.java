@@ -18,9 +18,11 @@ package reactor.core.support;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.rb.disruptor.Sequence;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -35,7 +37,8 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * @author Stephane Maldini
  * @since 2.5
  */
-public abstract class BackpressureUtils {
+public enum BackpressureUtils {
+	;
 
 
 	static final long COMPLETED_MASK = 0x8000_0000_0000_0000L;
@@ -45,18 +48,18 @@ public abstract class BackpressureUtils {
 	 * Check Subscription current state and cancel new Subscription if different null, returning true if
 	 * ready to subscribe.
 	 *
-	 * @param oldSub current Subscription, expected to be null
-	 * @param newSub new Subscription
+	 * @param current current Subscription, expected to be null
+	 * @param next new Subscription
 	 * @return true if Subscription can be used
 	 */
-	public static boolean checkSubscription(Subscription oldSub, Subscription newSub) {
-		if (newSub == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
-		}
-		if (oldSub != null) {
-			newSub.cancel();
+	public static boolean validate(Subscription current, Subscription next) {
+		Objects.requireNonNull(next, "Subscription cannot be null");
+		if (current != null) {
+			next.cancel();
+			reportSubscriptionSet();
 			return false;
 		}
+
 		return true;
 	}
 
@@ -326,5 +329,25 @@ public abstract class BackpressureUtils {
 		} while (!sequence.compareAndSet(r, u));
 
 		return r;
+	}
+
+	public static void reportSubscriptionSet() {
+		throw SpecificationExceptions.spec_2_13_exception();
+	}
+
+	public static void reportBadRequest(long n) {
+		throw SpecificationExceptions.spec_3_09_exception(n);
+	}
+
+	public static void reportMoreProduced() {
+		throw InsufficientCapacityException.get();
+	}
+
+	public static boolean validate(long n) {
+		if (n < 0) {
+			reportBadRequest(n);
+			return false;
+		}
+		return true;
 	}
 }

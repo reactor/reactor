@@ -146,7 +146,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 
 		@Override
 		public void onSubscribe(final Subscription s) {
-			if (BackpressureUtils.checkSubscription(subscription, s)) {
+			if (BackpressureUtils.validate(subscription, s)) {
 				this.subscription = s;
 				subscriber.add(this);
 				subscriber.onStart();

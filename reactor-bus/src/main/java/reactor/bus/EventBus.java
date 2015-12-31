@@ -704,7 +704,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 
 		@Override
 		public void onSubscribe(Subscription s) {
-			if(BackpressureUtils.checkSubscription(this.s, s)) {
+			if(BackpressureUtils.validate(this.s, s)) {
 				this.s = s;
 				s.request(Long.MAX_VALUE);
 			}

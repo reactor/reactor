@@ -69,7 +69,7 @@ public final class CompletableFutureConverter
 
 			@Override
 			public void onSubscribe(Subscription s) {
-				if (BackpressureUtils.checkSubscription(ref.getAndSet(s), s)) {
+				if (BackpressureUtils.validate(ref.getAndSet(s), s)) {
 					s.request(Long.MAX_VALUE);
 				}
 				else {
@@ -127,7 +127,7 @@ public final class CompletableFutureConverter
 		pub.subscribe(new Subscriber<Object>() {
 			@Override
 			public void onSubscribe(Subscription s) {
-				if (BackpressureUtils.checkSubscription(ref.getAndSet(s), s)) {
+				if (BackpressureUtils.validate(ref.getAndSet(s), s)) {
 					s.request(Long.MAX_VALUE);
 				}
 				else {

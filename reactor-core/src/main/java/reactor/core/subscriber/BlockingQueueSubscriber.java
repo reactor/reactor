@@ -123,7 +123,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements R
 
 	@Override
 	public void onSubscribe(Subscription s) {
-		if (BackpressureUtils.checkSubscription(subscription, s)) {
+		if (BackpressureUtils.validate(subscription, s)) {
 			this.subscription = s;
 			if (source == null && target != null) {
 				target.onSubscribe(this);
