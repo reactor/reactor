@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Mono;
 import reactor.core.error.Exceptions;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.ReactiveState;
 
@@ -48,7 +47,7 @@ public final class MonoError<IN> extends Mono<IN> implements ReactiveState.FailS
 	@Override
 	public void subscribe(Subscriber<? super IN> s) {
 		if (s == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
+			throw Exceptions.spec_2_13_exception();
 		}
 		s.onSubscribe(EmptySubscription.INSTANCE);
 		s.onError(error);

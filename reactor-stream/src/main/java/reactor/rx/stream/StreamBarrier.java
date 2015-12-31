@@ -21,7 +21,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Flux;
 import reactor.Processors;
-import reactor.core.error.SpecificationExceptions;
+import reactor.core.error.Exceptions;
 import reactor.core.publisher.FluxLift;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
@@ -46,7 +46,7 @@ public class StreamBarrier<I, O> extends Stream<O>
 	@Override
 	public void subscribe(Subscriber<? super O> s) {
 		if (s == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
+			throw Exceptions.spec_2_13_exception();
 		}
 		source.subscribe(apply(s));
 	}

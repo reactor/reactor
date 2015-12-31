@@ -30,7 +30,6 @@ import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
@@ -85,7 +84,7 @@ public final class FluxZip<TUPLE extends Tuple, V>
 	@Override
 	public void subscribe(Subscriber<? super V> s) {
 		if (s == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
+			throw Exceptions.spec_2_13_exception();
 		}
 		try {
 			if (sources == null || sources.length == 0) {

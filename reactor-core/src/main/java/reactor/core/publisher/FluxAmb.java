@@ -28,7 +28,6 @@ import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
@@ -55,7 +54,7 @@ public final class FluxAmb<T> extends Flux<T> implements ReactiveState.Factory, 
 	@SuppressWarnings("unchecked")
 	public void subscribe(Subscriber<? super T> s) {
 		if (s == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
+			throw Exceptions.spec_2_13_exception();
 		}
 		try {
 			if (sources == null || sources.length == 0) {

@@ -30,7 +30,6 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.MonoError;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.Logger;
@@ -604,7 +603,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		@Override
 		public final void accept(V data, Consumer<? super V> consumer) {
 			if (consumer == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			dispatch(new ConsumerRunnable<>(data, consumer));
 		}
@@ -612,7 +611,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		@Override
 		public final void accept(Consumer<Void> consumer) {
 			if (consumer == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			dispatch(new ConsumerRunnable<>(null, consumer));
 		}
@@ -620,7 +619,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		@Override
 		public final void execute(Runnable command) {
 			if (command == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			dispatch(command);
 		}
@@ -628,7 +627,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		@Override
 		public final void subscribe(Subscriber<? super V> s) {
 			if (s == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			final boolean set, subscribed;
 			synchronized (this) {

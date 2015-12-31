@@ -18,8 +18,8 @@ package reactor.core.support;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.support.rb.disruptor.Sequence;
 
 import java.util.Objects;
@@ -71,7 +71,7 @@ public enum BackpressureUtils {
 	 */
 	public static void checkRequest(long n) throws IllegalArgumentException {
 		if (n <= 0L) {
-			throw SpecificationExceptions.spec_3_09_exception(n);
+			throw Exceptions.spec_3_09_exception(n);
 		}
 	}
 
@@ -89,9 +89,9 @@ public enum BackpressureUtils {
 	public static boolean checkRequest(long n, Subscriber<?> subscriber) {
 		if (n <= 0L) {
 			if (null != subscriber) {
-				subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
+				subscriber.onError(Exceptions.spec_3_09_exception(n));
 			} else {
-				throw SpecificationExceptions.spec_3_09_exception(n);
+				throw Exceptions.spec_3_09_exception(n);
 			}
 			return false;
 		}
@@ -332,11 +332,11 @@ public enum BackpressureUtils {
 	}
 
 	public static void reportSubscriptionSet() {
-		throw SpecificationExceptions.spec_2_13_exception();
+		throw Exceptions.spec_2_13_exception();
 	}
 
 	public static void reportBadRequest(long n) {
-		throw SpecificationExceptions.spec_3_09_exception(n);
+		throw Exceptions.spec_3_09_exception(n);
 	}
 
 	public static void reportMoreProduced() {

@@ -21,7 +21,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
@@ -116,7 +115,7 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
 	@Override
 	public void subscribe(Subscriber<? super OUT> s) {
 		if (s == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
+			throw Exceptions.spec_2_13_exception();
 		}
 	}
 

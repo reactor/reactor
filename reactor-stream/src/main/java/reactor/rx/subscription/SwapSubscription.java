@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.reactivestreams.Subscription;
+import reactor.core.subscription.CancelledSubscription;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
@@ -49,18 +50,6 @@ public final class SwapSubscription<T> implements Subscription, ReactiveState.Up
 	SwapSubscription() {
 		SUBSCRIPTION.lazySet(this, EmptySubscription.INSTANCE);
 	}
-
-	static private final Subscription CANCELLED = new Subscription() {
-		@Override
-		public void request(long n) {
-			//IGNORE;
-		}
-
-		@Override
-		public void cancel() {
-			//IGNORE;
-		}
-	};
 
 	/**
 	 *
@@ -108,7 +97,7 @@ public final class SwapSubscription<T> implements Subscription, ReactiveState.Up
 	 * @return
 	 */
 	public boolean isCancelled(){
-		return subscription == CANCELLED;
+		return subscription == CancelledSubscription.INSTANCE;
 	}
 
 	@Override
@@ -123,11 +112,11 @@ public final class SwapSubscription<T> implements Subscription, ReactiveState.Up
 		Subscription s;
 		for(;;) {
 			s = subscription;
-			if(s == CANCELLED || s == EmptySubscription.INSTANCE){
+			if(s == CancelledSubscription.INSTANCE || s == EmptySubscription.INSTANCE){
 				return;
 			}
 
-			if(SUBSCRIPTION.compareAndSet(this, s, CANCELLED)){
+			if(SUBSCRIPTION.compareAndSet(this, s, CancelledSubscription.INSTANCE)){
 				s.cancel();
 				break;
 			}

@@ -23,7 +23,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.core.error.Exceptions;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.FluxJust;
 import reactor.core.publisher.MonoError;
 import reactor.core.support.BackpressureUtils;
@@ -113,7 +112,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 			try {
 				BackpressureUtils.checkRequest(n);
 			}
-			catch (SpecificationExceptions.Spec309_NullOrNegativeRequest c) {
+			catch (Exceptions.Spec309_NullOrNegativeRequest c) {
 				subscriber.onError(c);
 			}
 
@@ -214,7 +213,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 		@Override
 		public void onError(Throwable e) {
 			if (e == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			s.onError(e);
 		}
@@ -222,7 +221,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 		@Override
 		public void onNext(Object o) {
 			if (o == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			s.onNext(o);
 		}

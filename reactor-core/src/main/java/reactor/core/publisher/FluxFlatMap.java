@@ -24,8 +24,8 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
+import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.subscription.EmptySubscription;
@@ -99,7 +99,7 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 	@SuppressWarnings("unchecked")
 	public void subscribe(Subscriber<? super V> s) {
 		if (s == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
+			throw Exceptions.spec_2_13_exception();
 		}
 		if (source instanceof Supplier) {
 			try {
