@@ -32,6 +32,7 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.publisher.MonoError;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.rb.MutableSignal;
 import reactor.core.support.rb.RequestTask;
 import reactor.core.support.rb.RingBufferSequencer;
@@ -885,7 +886,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 							}
 						}
 						sequence.set(availableSequence);
-						if (SignalType.NOOP_SUBSCRIPTION !=
+						if (EmptySubscription.INSTANCE !=
 								processor.upstreamSubscription) {
 							processor.readWait.signalAllWhenBlocking();
 						}

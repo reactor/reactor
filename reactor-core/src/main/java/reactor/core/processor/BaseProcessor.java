@@ -23,9 +23,9 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 
 /**
  * A base processor with an async boundary trait to manage active subscribers (Threads), upstream subscription and
@@ -128,7 +128,7 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
 	}
 
 	protected void cancel(Subscription subscription) {
-		if (subscription != SignalType.NOOP_SUBSCRIPTION) {
+		if (subscription != EmptySubscription.INSTANCE) {
 			subscription.cancel();
 		}
 	}

@@ -28,6 +28,7 @@ import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxNever;
 import reactor.core.publisher.FluxSession;
 import reactor.core.publisher.FluxZip;
+import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
@@ -90,7 +91,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Flux<T> merge(Publisher<? extends Publisher<? extends T>> source) {
-		return wrap(source).flatMap((Publishers.PublisherToPublisherFunction<T>) Publishers.P2P_FUNCTION);
+		return new FluxFlatMap<>(source, BaseProcessor.XS_BUFFER_SIZE, Integer.MAX_VALUE);
 	}
 
 	/**
@@ -148,13 +149,21 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	}
 
 	/**
+	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
+	 * or not the right operand {@link Subscriber}.
+	 * @param transformer A {@link Function} that transforms each emitting sequence item
+	 * @param <I> The source type of the data sequence
+	 * @param <O> The target type of the data sequence
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <I, O> Flux<O> map(Publisher<I> source, final Function<? super I, ? extends O> transformer) {
+		return new FluxMap<>(source, transformer);
+	}
+
+	/**
 	 *
 	 *  Instance Operators
 	 *
-	 *
-	 */
-
-	/**
 	 *
 	 */
 	protected Flux() {
@@ -267,8 +276,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 */
 	@SuppressWarnings("unchecked")
 	public Flux<T> mergeWith(Publisher<? extends T> source) {
-		return from(Arrays.asList(this,source)).flatMap((Publishers.PublisherToPublisherFunction<T>) Publishers
-				.P2P_FUNCTION);
+		return merge(from(Arrays.asList(this,source)));
 	}
 
 	/**
@@ -318,16 +326,6 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 			this.source = source;
 		}
 
-		/**
-		 * Default is delegating and decorating with Flux API
-		 * @param s
-		 */
-		@Override
-		@SuppressWarnings("unchecked")
-		public void subscribe(Subscriber<? super O> s) {
-			source.subscribe((Subscriber<? super I>)s);
-		}
-
 		@Override
 		public long getCapacity() {
 			return Bounded.class.isAssignableFrom(source.getClass()) ? ((Bounded) source).getCapacity() :
@@ -340,16 +338,26 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 			                         .replaceAll("Flux|Stream|Operator", "");
 		}
 
+		/**
+		 * Default is delegating and decorating with Flux API
+		 * @param s
+		 */
 		@Override
-		public String toString() {
-			return "{" +
-					" operator : \"" + getName() + "\" " +
-					'}';
+		@SuppressWarnings("unchecked")
+		public void subscribe(Subscriber<? super O> s) {
+			source.subscribe((Subscriber<? super I>)s);
 		}
 
 		@Override
 		public final Publisher<I> upstream() {
 			return source;
+		}
+
+		@Override
+		public String toString() {
+			return "{" +
+					" operator : \"" + getName() + "\" " +
+					'}';
 		}
 	}
 

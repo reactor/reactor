@@ -41,7 +41,7 @@ import reactor.fn.Function;
  */
 public abstract class Mono<T> implements Publisher<T> {
 
-	private static final Mono<?> EMPTY = new MonoEmpty(); // TODO
+	private static final Mono<?> EMPTY = new MonoEmpty();
 
 
 	/**

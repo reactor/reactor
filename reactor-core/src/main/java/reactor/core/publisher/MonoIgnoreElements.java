@@ -18,19 +18,27 @@ package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.Flux;
+import reactor.Mono;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.ReactiveState;
-import reactor.fn.Function;
 
 /**
  * Ignore onNext signals and therefore only pass request, cancel upstream and complete, error downstream
  * @author Stephane Maldini
  * @since 2.5
  */
-public final class FluxIgnoreElements<IN> extends FluxLog.FluxBarrier<IN, Void> {
+public final class MonoIgnoreElements<IN> extends Mono<Void> implements ReactiveState.Upstream {
 
-	public FluxIgnoreElements(Publisher<IN> source) {
-		super(source);
+	private final Publisher<IN> source;
+
+	public MonoIgnoreElements(Publisher<IN> source) {
+		this.source = source;
+	}
+
+	@Override
+	public Object upstream() {
+		return source;
 	}
 
 	@Override

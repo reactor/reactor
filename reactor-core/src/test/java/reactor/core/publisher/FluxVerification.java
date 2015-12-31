@@ -16,7 +16,6 @@
 package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
@@ -43,7 +42,7 @@ public class FluxVerification extends PublisherVerification<Long> {
 	public Publisher<Long> createPublisher(long elements) {
 		return
 			Publishers.log(
-			  Publishers.lift(
+			  FluxLift.lift(
 			    Publishers.<Long, AtomicLong>create(
 				  (s) -> {
 					  long cursor = s.context().getAndIncrement();

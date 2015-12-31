@@ -24,16 +24,17 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 
 /**
@@ -159,7 +160,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 			long seq = -1L;
 
 			int outstanding;
-			if (upstreamSubscription != SignalType.NOOP_SUBSCRIPTION) {
+			if (upstreamSubscription != EmptySubscription.INSTANCE) {
 
 				outstanding = this.outstanding;
 				if (outstanding != 0) {
@@ -480,7 +481,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 		for (; ; ) {
 			EmitterSubscriber<?>[] a = subscribers;
 			if (a == CANCELLED) {
-				Publishers.<T>empty().subscribe(inner.actual);
+				Flux.<T>empty().subscribe(inner.actual);
 			}
 			int n = a.length;
 			if (n + 1 > maxConcurrency) {
@@ -557,7 +558,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 
 	final void requestMore(int buffered) {
 		Subscription subscription = upstreamSubscription;
-		if (subscription == SignalType.NOOP_SUBSCRIPTION) {
+		if (subscription == EmptySubscription.INSTANCE) {
 			return;
 		}
 

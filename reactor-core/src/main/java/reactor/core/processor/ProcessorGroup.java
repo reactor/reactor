@@ -32,6 +32,7 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.publisher.MonoError;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.Logger;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
@@ -436,7 +437,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			}
 
 			for (int i = 0; i < concurrency; i++) {
-				this.processor.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				this.processor.onSubscribe(EmptySubscription.INSTANCE);
 				this.processor.subscribe(new TaskSubscriber(tailRecurser, autoShutdown, uncaughtExceptionHandler,
 						shutdownHandler));
 			}

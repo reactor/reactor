@@ -17,6 +17,7 @@
 package reactor.core.publisher.convert;
 
 import org.reactivestreams.Publisher;
+import reactor.Flux;
 import rx.Observable;
 import rx.Single;
 
@@ -48,7 +49,7 @@ public final class RxJava1SingleConverter extends PublisherConverter<Single> {
 	}
 
 	@Override
-	public Publisher toPublisher(Object o) {
+	public Flux toPublisher(Object o) {
 		Single<?> single = (Single<?>) o;
 		return DependencyUtils.convertToPublisher(single.toObservable());
 	}

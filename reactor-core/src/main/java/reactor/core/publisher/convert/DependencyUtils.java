@@ -17,6 +17,7 @@
 package reactor.core.publisher.convert;
 
 import org.reactivestreams.Publisher;
+import reactor.Flux;
 
 /**
  * @author Stephane Maldini
@@ -169,7 +170,7 @@ public final class DependencyUtils {
 		return HAS_REACTOR_NET;
 	}
 
-	public static Publisher<?> convertToPublisher(Object source) {
+	public static Flux<?> convertToPublisher(Object source) {
 		if (source == null) {
 			throw new IllegalArgumentException("Cannot convert null sources");
 		}

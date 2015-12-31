@@ -20,8 +20,8 @@ import org.reactivestreams.Subscriber;
 import reactor.Mono;
 import reactor.core.error.Exceptions;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 
 /**
  * @author Stephane Maldini
@@ -50,7 +50,7 @@ public final class MonoError<IN> extends Mono<IN> implements ReactiveState.FailS
 		if (s == null) {
 			throw SpecificationExceptions.spec_2_13_exception();
 		}
-		s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+		s.onSubscribe(EmptySubscription.INSTANCE);
 		s.onError(error);
 	}
 

@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.core.error.CancelException;
 import reactor.core.publisher.FluxFactory;
 import reactor.core.publisher.MonoError;
@@ -165,8 +166,8 @@ public final class CompletableFutureConverter
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Publisher toPublisher(Object future) {
-		return new PublisherCompletableFuture<>((CompletableFuture<?>) future);
+	public Flux toPublisher(Object future) {
+		return new FluxCompletableFuture<>((CompletableFuture<?>) future);
 	}
 
 	@Override
@@ -174,20 +175,20 @@ public final class CompletableFutureConverter
 		return CompletableFuture.class;
 	}
 
-	private static class PublisherCompletableFuture<T>
-			implements Publisher<T>, Consumer<Void>,
-			           BiConsumer<Long, SubscriberWithContext<T, Void>> {
+	private static class FluxCompletableFuture<T>
+			extends Flux<T> implements Consumer<Void>,
+			                           BiConsumer<Long, SubscriberWithContext<T, Void>> {
 
 		private final CompletableFuture<? extends T> future;
 		private final Publisher<? extends T>         futurePublisher;
 
 		@SuppressWarnings("unused")
 		private volatile long requested;
-		private static final AtomicLongFieldUpdater<PublisherCompletableFuture>
+		private static final AtomicLongFieldUpdater<FluxCompletableFuture>
 				REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(PublisherCompletableFuture.class, "requested");
+				AtomicLongFieldUpdater.newUpdater(FluxCompletableFuture.class, "requested");
 
-		public PublisherCompletableFuture(CompletableFuture<? extends T> future) {
+		public FluxCompletableFuture(CompletableFuture<? extends T> future) {
 			this.future = future;
 			this.futurePublisher = FluxFactory.createWithDemand(this, null, this);
 		}
@@ -198,7 +199,7 @@ public final class CompletableFutureConverter
 				return;
 			}
 
-			if (BackpressureUtils.getAndAdd(REQUESTED, PublisherCompletableFuture.this, n) > 0) {
+			if (BackpressureUtils.getAndAdd(REQUESTED, FluxCompletableFuture.this, n) > 0) {
 				return;
 			}
 

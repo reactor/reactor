@@ -21,9 +21,8 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Flux;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.core.error.SpecificationExceptions;
-import reactor.core.publisher.FluxFactory;
+import reactor.core.publisher.FluxLift;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.core.timer.Timer;
@@ -85,7 +84,7 @@ public class StreamBarrier<I, O> extends Stream<O>
 				}
 				if (Flux.Operator.class.isAssignableFrom(oldestSender.getClass())) {
 					oldestOperator =
-							Publishers.<Object, Object, Object>opFusion(((Flux.Operator<Object, Object>) oldestSender),
+							FluxLift.<Object, Object, Object>opFusion(((Flux.Operator<Object, Object>) oldestSender),
 									oldestOperator);
 				}
 			}
@@ -93,7 +92,7 @@ public class StreamBarrier<I, O> extends Stream<O>
 
 		if (oldestReceiver == null) {
 			Processor<E, E> root = Processors.emitter();
-			return StreamProcessor.from(root, Publishers.lift(root, oldestOperator));
+			return StreamProcessor.from(root, FluxLift.lift(root, oldestOperator));
 		}
 		else {
 			return StreamProcessor.from((Subscriber<E>) oldestReceiver, this);

@@ -16,6 +16,7 @@
 
 package reactor.core
 
+import reactor.core.publisher.FluxLift
 import reactor.fn.BiConsumer
 import spock.lang.Specification
 
@@ -50,7 +51,7 @@ class PublishersSpec extends Specification {
   def "Error handling with onErrorReturn"() {
 
 	given: "Iterable publisher of 1000 to read queue"
-	def pub = lift(from(1..1000), { d, s ->
+	def pub = FluxLift.lift(from(1..1000), { d, s ->
 	  if (d == 3) {
 		throw new Exception('test')
 	  }
@@ -69,7 +70,7 @@ class PublishersSpec extends Specification {
   def "Error handling with onErrorResume"() {
 
 	given: "Iterable publisher of 1000 to read queue"
-	def pub = lift(from(1..1000), { d, s ->
+	def pub = FluxLift.lift(from(1..1000), { d, s ->
 	  if (d == 3) {
 		throw new Exception('test')
 	  }

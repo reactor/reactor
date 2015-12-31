@@ -1974,14 +1974,14 @@ public class Streams {
 
 
 
+	private static final Stream NEVER = wrap(Flux.never());
+
 	private static final Function IDENTITY_FUNCTION = new Function() {
 		@Override
 		public Object apply(Object o) {
 			return o;
 		}
 	};
-	private static final Stream NEVER = wrap(Publishers.never());
-
 
 	protected Streams() {
 	}

@@ -26,14 +26,14 @@ import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
+import reactor.core.subscriber.BaseSubscriber;
+import reactor.core.subscriber.SubscriberWithDemand;
+import reactor.core.subscription.EmptySubscription;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.Sequencer;
-import reactor.core.subscriber.BaseSubscriber;
-import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
-import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
 
@@ -54,9 +54,34 @@ import reactor.fn.Supplier;
  */
 public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 
+	/**
+	 *
+	 * @param <T>
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Function<Publisher<? extends T>, Publisher<? extends T>> identity(){
+		return (Function<Publisher<? extends T>, Publisher<? extends T>>)P2P_FUNCTION;
+	}
+
+	/**
+	 * Internals
+	 */
+
+	private static final PublisherToPublisherFunction<?> P2P_FUNCTION = new PublisherToPublisherFunction<>();
+
 	final Function<? super T, ? extends Publisher<? extends V>> mapper;
 	final int                                                   maxConcurrency;
 	final int                                                   bufferSize;
+
+	@SuppressWarnings("unchecked")
+	public FluxFlatMap(
+			Publisher<T> source,
+			int maxConcurrency,
+			int bufferSize
+	) {
+		this(source, (Function<? super T, ? extends Publisher<? extends V>>) P2P_FUNCTION, maxConcurrency, bufferSize);
+	}
 
 	public FluxFlatMap(
 			Publisher<T> source,
@@ -690,9 +715,9 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 
 		public void cancel() {
 			Subscription s = SUBSCRIPTION.get(this);
-			if (s != SignalType.NOOP_SUBSCRIPTION) {
-				s = SUBSCRIPTION.getAndSet(this, SignalType.NOOP_SUBSCRIPTION);
-				if (s != SignalType.NOOP_SUBSCRIPTION && s != null) {
+			if (s != EmptySubscription.INSTANCE) {
+				s = SUBSCRIPTION.getAndSet(this, EmptySubscription.INSTANCE);
+				if (s != EmptySubscription.INSTANCE && s != null) {
 					s.cancel();
 				}
 			}
@@ -739,4 +764,12 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 		}
 	}
 
+	static final class PublisherToPublisherFunction<I>
+			implements Function<Publisher<? extends I>, Publisher<? extends I>> {
+
+		@Override
+		public Publisher<? extends I> apply(Publisher<? extends I> publisher) {
+			return publisher;
+		}
+	}
 }

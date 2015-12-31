@@ -27,9 +27,9 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.fn.Function;
@@ -446,9 +446,9 @@ public final class StreamCombineLatest<TUPLE extends Tuple, V> extends StreamBar
 
 		void cancel() {
 			Subscription s = SUBSCRIPTION.get(this);
-			if (s != SignalType.NOOP_SUBSCRIPTION) {
-				s = SUBSCRIPTION.getAndSet(this, SignalType.NOOP_SUBSCRIPTION);
-				if (s != SignalType.NOOP_SUBSCRIPTION && s != null) {
+			if (s != EmptySubscription.INSTANCE) {
+				s = SUBSCRIPTION.getAndSet(this, EmptySubscription.INSTANCE);
+				if (s != EmptySubscription.INSTANCE && s != null) {
 					s.cancel();
 				}
 			}

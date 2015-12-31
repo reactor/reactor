@@ -27,22 +27,19 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.publisher.MonoEmpty;
-import reactor.core.publisher.FluxNever;
-import reactor.core.publisher.ForEachSequencer;
 import reactor.core.publisher.FluxAmb;
 import reactor.core.publisher.FluxFactory;
-import reactor.core.publisher.MonoError;
-import reactor.core.publisher.MonoJust;
-import reactor.core.publisher.FluxZip;
-import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.publisher.FluxFlatMap;
-import reactor.core.publisher.FluxIgnoreElements;
 import reactor.core.publisher.FluxLog;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxResume;
+import reactor.core.publisher.FluxZip;
+import reactor.core.publisher.ForEachSequencer;
+import reactor.core.publisher.MonoError;
+import reactor.core.publisher.MonoIgnoreElements;
+import reactor.core.publisher.MonoJust;
+import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.fn.BiFunction;
 import reactor.fn.Function;
@@ -70,7 +67,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> just(final IN data) {
+	public static <IN> Mono<IN> just(final IN data) {
 		return new MonoJust<>(data);
 	}
 
@@ -80,7 +77,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <T>
 	 * @return
 	 */
-	public static <T> Publisher<T> from(final Iterable<? extends T> defaultValues) {
+	public static <T> Flux<T> from(final Iterable<? extends T> defaultValues) {
 		ForEachSequencer.IterableSequencer<T> iterablePublisher =
 				new ForEachSequencer.IterableSequencer<>(defaultValues);
 		return create(iterablePublisher, iterablePublisher);
@@ -92,9 +89,9 @@ public final class Publishers extends FluxFactory {
 	 * @param <T>
 	 * @return
 	 */
-	public static <T> Publisher<T> from(final Iterator<? extends T> defaultValues) {
+	public static <T> Flux<T> from(final Iterator<? extends T> defaultValues) {
 		if (defaultValues == null || !defaultValues.hasNext()) {
-			return empty();
+			return Flux.empty();
 		}
 		ForEachSequencer.IteratorSequencer<T> iteratorPublisher =
 				new ForEachSequencer.IteratorSequencer<>(defaultValues);
@@ -106,8 +103,8 @@ public final class Publishers extends FluxFactory {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <IN> Publisher<IN> empty() {
-		return (MonoEmpty<IN>) EMPTY;
+	public static <IN> Flux<IN> empty() {
+		return Flux.empty();
 	}
 
 	/**
@@ -115,8 +112,8 @@ public final class Publishers extends FluxFactory {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <IN> Publisher<IN> never() {
-		return (FluxNever<IN>) NEVER;
+	public static <IN> Flux<IN> never() {
+		return Flux.never();
 	}
 
 	/**
@@ -124,7 +121,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> error(final Throwable error) {
+	public static <IN> Mono<IN> error(final Throwable error) {
 		return MonoError.create(error);
 	}
 
@@ -141,7 +138,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> onErrorReturn(final Publisher<IN> source, final IN fallbackValue) {
+	public static <IN> Flux<IN> onErrorReturn(final Publisher<IN> source, final IN fallbackValue) {
 		return switchOnError(source, just(fallbackValue));
 	}
 
@@ -150,7 +147,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> switchOnError(final Publisher<IN> source,
+	public static <IN> Flux<IN> switchOnError(final Publisher<IN> source,
 			final Publisher<? extends IN> fallback) {
 		return new FluxResume<>(source, fallback);
 	}
@@ -160,14 +157,14 @@ public final class Publishers extends FluxFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> onErrorResumeNext(final Publisher<IN> source,
+	public static <IN> Flux<IN> onErrorResumeNext(final Publisher<IN> source,
 			Function<Throwable, ? extends Publisher<? extends IN>> fallbackFunction) {
 		return new FluxResume<>(source, fallbackFunction);
 	}
 
 	/**
 	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
-	 * or not the right operand {@link Subscriber}.
+	 * or not the right operand {@link org.reactivestreams.Subscriber}.
 	 * @param transformer A {@link Function} that transforms each emitting sequence item
 	 * @param <I> The source type of the data sequence
 	 * @param <O> The target type of the data sequence
@@ -182,7 +179,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher) {
+	public static <IN> Flux<IN> log(Publisher<IN> publisher) {
 		return log(publisher, null, Level.INFO, FluxLog.ALL);
 	}
 
@@ -192,7 +189,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category) {
+	public static <IN> Flux<IN> log(Publisher<IN> publisher, String category) {
 		return log(publisher, category, Level.INFO, FluxLog.ALL);
 	}
 
@@ -203,7 +200,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level) {
+	public static <IN> Flux<IN> log(Publisher<IN> publisher, String category, Level level) {
 		return log(publisher, category, level, FluxLog.ALL);
 	}
 
@@ -215,7 +212,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <IN>
 	 * @return
 	 */
-	public static <IN> Publisher<IN> log(Publisher<IN> publisher, String category, Level level, int options) {
+	public static <IN> Flux<IN> log(Publisher<IN> publisher, String category, Level level, int options) {
 		return new FluxLog<>(publisher, category, level, options);
 	}
 
@@ -226,7 +223,7 @@ public final class Publishers extends FluxFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I, O> Publisher<O> flatMap(Publisher<I> source,
+	public static <I, O> Flux<O> flatMap(Publisher<I> source,
 			final Function<? super I, ? extends Publisher<? extends O>> transformer) {
 		return new FluxFlatMap<>(source, transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32);
 	}
@@ -238,8 +235,8 @@ public final class Publishers extends FluxFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I, O> Publisher<O> concatMap(Publisher<I> source,
-			final Function<? super I, Publisher<? extends O>> transformer) {
+	public static <I, O> Flux<O> concatMap(Publisher<I> source,
+			final Function<? super I, ? extends Publisher<? extends O>> transformer) {
 		return new FluxFlatMap<>(source, transformer, 1, 32);
 	}
 
@@ -252,8 +249,8 @@ public final class Publishers extends FluxFactory {
 	 * @param source the emitted sequence to filter
 	 * @return a new filtered {@link Publisher<Void>}
 	 */
-	public static Publisher<Void> after(Publisher<?> source) {
-		return new FluxIgnoreElements<>(source);
+	public static Mono<Void> after(Publisher<?> source) {
+		return new MonoIgnoreElements<>(source);
 	}
 
 	/**
@@ -266,8 +263,8 @@ public final class Publishers extends FluxFactory {
 	 * @return a new filtered {@link Publisher<Void>}
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Publisher<T> ignoreElements(Publisher<T> source) {
-		return (Publisher<T>)new FluxIgnoreElements<>(source);
+	public static <T> Mono<T> ignoreElements(Publisher<T> source) {
+		return (Mono<T>)new MonoIgnoreElements<>(source);
 	}
 
 	/**
@@ -281,7 +278,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <I> The source type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I> Publisher<I> amb(Publisher<? extends I> source1, Publisher<? extends I> source2) {
+	public static <I> Flux<I> amb(Publisher<? extends I> source1, Publisher<? extends I> source2) {
 		return new FluxAmb<>(new Publisher[]{source1, source2});
 	}
 
@@ -290,9 +287,9 @@ public final class Publishers extends FluxFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> amb(Iterable<? extends Publisher<? extends I>> sources) {
+	public static <I> Flux<I> amb(Iterable<? extends Publisher<? extends I>> sources) {
 		if (sources == null) {
-			return empty();
+			return Flux.empty();
 		}
 
 		Iterator<? extends Publisher<? extends I>> it = sources.iterator();
@@ -309,7 +306,7 @@ public final class Publishers extends FluxFactory {
 					list = new ArrayList<>();
 				}
 				else {
-					return (Publisher<I>) p;
+					return Flux.wrap((Publisher<I>) p);
 				}
 			}
 			list.add(p);
@@ -324,8 +321,8 @@ public final class Publishers extends FluxFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> concat(Publisher<? extends Publisher<? extends I>> source) {
-		return concatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	public static <I> Flux<I> concat(Publisher<? extends Publisher<? extends I>> source) {
+		return concatMap(source, FluxFlatMap.identity());
 	}
 
 	/**
@@ -333,8 +330,8 @@ public final class Publishers extends FluxFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> concat(Iterable<? extends Publisher<? extends I>> source) {
-		return concatMap(from(source), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	public static <I> Flux<I> concat(Iterable<? extends Publisher<? extends I>> source) {
+		return concatMap(from(source), FluxFlatMap.identity());
 	}
 
 	/**
@@ -342,8 +339,8 @@ public final class Publishers extends FluxFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> concat(Publisher<? extends I> source1, Publisher<? extends I> source2) {
-		return concatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	public static <I> Flux<I> concat(Publisher<? extends I> source1, Publisher<? extends I> source2) {
+		return concatMap(from(Arrays.asList(source1, source2)),FluxFlatMap.identity());
 	}
 
 	/**
@@ -351,8 +348,8 @@ public final class Publishers extends FluxFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> merge(Publisher<? extends Publisher<? extends I>> source) {
-		return flatMap(source, (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	public static <I> Flux<I> merge(Publisher<? extends Publisher<? extends I>> source) {
+		return flatMap(source, FluxFlatMap.identity());
 	}
 
 	/**
@@ -360,8 +357,8 @@ public final class Publishers extends FluxFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> merge(Iterable<? extends Publisher<? extends I>> source) {
-		return flatMap(from(source), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	public static <I> Flux<I> merge(Iterable<? extends Publisher<? extends I>> source) {
+		return flatMap(from(source), FluxFlatMap.identity());
 	}
 
 	/**
@@ -369,8 +366,8 @@ public final class Publishers extends FluxFactory {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I> Publisher<I> merge(Publisher<? extends I> source1, Publisher<? extends I> source2) {
-		return flatMap(from(Arrays.asList(source1, source2)), (PublisherToPublisherFunction<I>) P2P_FUNCTION);
+	public static <I> Flux<I> merge(Publisher<? extends I> source1, Publisher<? extends I> source2) {
+		return flatMap(from(Arrays.asList(source1, source2)), FluxFlatMap.identity());
 	}
 
 	/**
@@ -382,7 +379,7 @@ public final class Publishers extends FluxFactory {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T1, T2> Publisher<Tuple2<T1, T2>> zip(Publisher<? extends T1> source1,
+	public static <T1, T2> Flux<Tuple2<T1, T2>> zip(Publisher<? extends T1> source1,
 			Publisher<? extends T2> source2) {
 
 		return new FluxZip<>(new Publisher[]{source1, source2},
@@ -433,12 +430,12 @@ public final class Publishers extends FluxFactory {
 			final Function<? super Tuple, ? extends O> combinator) {
 
 		if (sources == null) {
-			return empty();
+			return Flux.empty();
 		}
 
 		Iterator<? extends Publisher<?>> it = sources.iterator();
 		if (!it.hasNext()) {
-			return empty();
+			return Flux.empty();
 		}
 
 		List<Publisher<?>> list = null;
@@ -552,25 +549,6 @@ public final class Publishers extends FluxFactory {
 			boolean cancelAfterFirstRequestComplete,
 			Queue<IN> store) {
 		return new BlockingQueueSubscriber<>(source, null, store, cancelAfterFirstRequestComplete, size);
-	}
-
-	/**
-	 * Internals
-	 */
-
-	private static final FluxNever<?> NEVER = new FluxNever<>();
-
-	private static final MonoEmpty<?> EMPTY = new MonoEmpty<>();
-
-	static final PublisherToPublisherFunction<?> P2P_FUNCTION = new PublisherToPublisherFunction<>();
-
-	static final class PublisherToPublisherFunction<I>
-			implements Function<Publisher<? extends I>, Publisher<? extends I>> {
-
-		@Override
-		public Publisher<? extends I> apply(Publisher<? extends I> publisher) {
-			return publisher;
-		}
 	}
 
 	static final IdentityFunction IDENTITY_FUNCTION = new IdentityFunction();

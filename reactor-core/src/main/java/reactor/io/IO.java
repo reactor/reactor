@@ -15,24 +15,25 @@
  */
 package reactor.io;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import reactor.Publishers;
-import reactor.core.publisher.FluxFactory;
-import reactor.core.subscriber.SubscriberWithContext;
-import reactor.core.error.ReactorFatalException;
-import reactor.core.support.ReactiveState;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.io.buffer.Buffer;
-import reactor.io.buffer.StringBuffer;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Path;
+
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import reactor.Flux;
+import reactor.core.error.ReactorFatalException;
+import reactor.core.publisher.FluxFactory;
+import reactor.core.publisher.FluxMap;
+import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.support.ReactiveState;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.io.buffer.Buffer;
+import reactor.io.buffer.StringBuffer;
 
 /**
  * A factory for Reactive basic IO operations such as File read/write, Byte read and Codec decoding.
@@ -53,16 +54,16 @@ public final class IO {
 	 * @param channel
 	 * @return
 	 */
-	public static Publisher<String> bufferToString(final Publisher<Buffer> channel) {
-		return Publishers.map(channel, BUFFER_TO_STRING);
+	public static Flux<String> bufferToString(final Publisher<Buffer> channel) {
+		return new FluxMap<>(channel, BUFFER_TO_STRING);
 	}
 	/**
 	 *
 	 * @param channel
 	 * @return
 	 */
-	public static Publisher<Buffer> stringToBuffer(final Publisher<String> channel) {
-		return Publishers.map(channel, STRING_TO_BUFFER);
+	public static Flux<Buffer> stringToBuffer(final Publisher<String> channel) {
+		return new FluxMap<>(channel, STRING_TO_BUFFER);
 	}
 
 	/**
@@ -74,7 +75,7 @@ public final class IO {
 	 * @param channel The Readable Channel to publish
 	 * @return a Publisher of Buffer values
 	 */
-	public static Publisher<Buffer> read(final ReadableByteChannel channel) {
+	public static Flux<Buffer> read(final ReadableByteChannel channel) {
 		return read(channel, -1);
 	}
 
@@ -86,7 +87,7 @@ public final class IO {
 	 * @param channel The Readable Channel to publish
 	 * @return a Publisher of Buffer values
 	 */
-	public static Publisher<Buffer> read(final ReadableByteChannel channel, int chunkSize) {
+	public static Flux<Buffer> read(final ReadableByteChannel channel, int chunkSize) {
 		return FluxFactory.create(
 		  chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
 		  new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {
@@ -108,7 +109,7 @@ public final class IO {
 	 * @param path the {@link Path} locating the file to read
 	 * @return a Publisher of Buffer values read from file sequentially
 	 */
-	public static Publisher<Buffer> readFile(Path path) {
+	public static Flux<Buffer> readFile(Path path) {
 		return readFile(path.toAbsolutePath().toString(), -1);
 	}
 
@@ -121,7 +122,7 @@ public final class IO {
 	 * @param path the {@link Path} locating the file to read
 	 * @return a Publisher of Buffer values read from file sequentially
 	 */
-	public static Publisher<Buffer> readFile(Path path, int chunkSize) {
+	public static Flux<Buffer> readFile(Path path, int chunkSize) {
 		return readFile(path.toAbsolutePath().toString(), chunkSize);
 	}
 
@@ -134,7 +135,7 @@ public final class IO {
 	 * @param path the absolute String path to the read file
 	 * @return a Publisher of Buffer values read from file sequentially
 	 */
-	public static Publisher<Buffer> readFile(final String path) {
+	public static Flux<Buffer> readFile(final String path) {
 		return readFile(path, -1);
 	}
 
@@ -146,7 +147,7 @@ public final class IO {
 	 * @param path the absolute String path to the read file
 	 * @return a Publisher of Buffer values read from file sequentially
 	 */
-	public static Publisher<Buffer> readFile(final String path, int chunkSize) {
+	public static Flux<Buffer> readFile(final String path, int chunkSize) {
 		return FluxFactory.create(
 		  chunkSize < 0 ? defaultChannelReadConsumer : new ChannelReadConsumer(chunkSize),
 		  new Function<Subscriber<? super Buffer>, ReadableByteChannel>() {

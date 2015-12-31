@@ -17,7 +17,7 @@ package reactor.core.publisher;
 
 import org.reactivestreams.Subscriber;
 import reactor.Mono;
-import reactor.core.support.SignalType;
+import reactor.core.subscription.EmptySubscription;
 
 /**
  * @author Stephane Maldini
@@ -26,7 +26,7 @@ public final class MonoEmpty<IN> extends Mono<IN> {
 
 	@Override
 	public void subscribe(Subscriber<? super IN> s) {
-		s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+		s.onSubscribe(EmptySubscription.INSTANCE);
 		s.onComplete();
 	}
 }

@@ -19,12 +19,10 @@ package reactor.rx.subscription;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 
 /**
@@ -49,7 +47,7 @@ public final class SwapSubscription<T> implements Subscription, ReactiveState.Up
 	}
 
 	SwapSubscription() {
-		SUBSCRIPTION.lazySet(this, SignalType.NOOP_SUBSCRIPTION);
+		SUBSCRIPTION.lazySet(this, EmptySubscription.INSTANCE);
 	}
 
 	static private final Subscription CANCELLED = new Subscription() {
@@ -70,7 +68,7 @@ public final class SwapSubscription<T> implements Subscription, ReactiveState.Up
 	 */
 	public void swapTo(Subscription subscription) {
 		Subscription old = SUBSCRIPTION.getAndSet(this, subscription);
-		if(old != SignalType.NOOP_SUBSCRIPTION){
+		if(old != EmptySubscription.INSTANCE){
 			subscription.cancel();
 			return;
 		}
@@ -85,7 +83,7 @@ public final class SwapSubscription<T> implements Subscription, ReactiveState.Up
 	 * @return
 	 */
 	public boolean isUnsubscribed(){
-		return subscription == SignalType.NOOP_SUBSCRIPTION;
+		return subscription == EmptySubscription.INSTANCE;
 	}
 
 	/**
@@ -125,7 +123,7 @@ public final class SwapSubscription<T> implements Subscription, ReactiveState.Up
 		Subscription s;
 		for(;;) {
 			s = subscription;
-			if(s == CANCELLED || s == SignalType.NOOP_SUBSCRIPTION){
+			if(s == CANCELLED || s == EmptySubscription.INSTANCE){
 				return;
 			}
 

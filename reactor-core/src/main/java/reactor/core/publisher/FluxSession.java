@@ -19,9 +19,9 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.reactivestreams.Subscriber;
 import reactor.Flux;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.fn.Consumer;
 
 /**
@@ -44,7 +44,7 @@ public final class FluxSession<T> extends Flux<T> implements ReactiveState.Facto
 
 		}
 		catch (FluxFactory.PrematureCompleteException pce) {
-			subscriber.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+			subscriber.onSubscribe(EmptySubscription.INSTANCE);
 			subscriber.onComplete();
 		}
 		catch (Throwable throwable) {

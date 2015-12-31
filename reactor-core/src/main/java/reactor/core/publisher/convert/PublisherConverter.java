@@ -17,6 +17,7 @@
 package reactor.core.publisher.convert;
 
 import org.reactivestreams.Publisher;
+import reactor.Flux;
 import reactor.fn.BiFunction;
 import reactor.fn.Function;
 import reactor.fn.Predicate;
@@ -26,10 +27,10 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  */
 public abstract class PublisherConverter<TYPE>
-		implements Function<Object, Publisher<?>>, BiFunction<Publisher<?>, Class<?>, TYPE>,
+		implements Function<Object, Flux<?>>, BiFunction<Publisher<?>, Class<?>, TYPE>,
 		        Predicate<Object>, Supplier<Class<TYPE>> {
 
-	abstract protected Publisher<?> toPublisher(Object o);
+	abstract protected Flux<?> toPublisher(Object o);
 	abstract protected TYPE fromPublisher(Publisher<?> source);
 
 	@Override
@@ -46,8 +47,8 @@ public abstract class PublisherConverter<TYPE>
 	}
 
 	@Override
-	public Publisher<?> apply(Object o) {
-		Publisher<?> p = toPublisher(o);
+	public Flux<?> apply(Object o) {
+		Flux<?> p = toPublisher(o);
 		if(p == null){
 			throw new IllegalArgumentException("Cannot convert " + o + " source to Publisher type");
 		}

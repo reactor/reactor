@@ -21,6 +21,7 @@ import java.util.concurrent.Flow;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 
 /**
  * @author Stephane Maldini
@@ -52,10 +53,10 @@ public final class Jdk9FlowConverter extends PublisherConverter<Flow.Publisher> 
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Publisher toPublisher(Object o) {
+	public Flux toPublisher(Object o) {
 		final Flow.Publisher<?> pub = (Flow.Publisher<?>) o;
 		if (Flow.Publisher.class.isAssignableFrom(o.getClass())) {
-			return new Publisher<Object>() {
+			return new Flux<Object>() {
 				@Override
 				public void subscribe(final Subscriber<? super Object> s) {
 					pub.subscribe(new SubscriberToRS(s));

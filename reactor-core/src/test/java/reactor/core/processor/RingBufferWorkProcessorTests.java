@@ -22,8 +22,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.reactivestreams.Processor;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.Subscribers;
+import reactor.core.publisher.FluxLift;
 import reactor.core.support.Assert;
 
 /**
@@ -61,7 +61,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 			sub.abort();
 		}));
 
-		Publishers.lift(processor, (d, sub) -> {
+		FluxLift.lift(processor, (d, sub) -> {
 			count.incrementAndGet();
 			sub.onNext(d);
 		}).subscribe(Subscribers.unbounded((d, sub) -> {

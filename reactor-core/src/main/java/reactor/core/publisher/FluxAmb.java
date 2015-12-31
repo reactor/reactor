@@ -30,9 +30,9 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 
 /**
@@ -59,7 +59,7 @@ public final class FluxAmb<T> extends Flux<T> implements ReactiveState.Factory, 
 		}
 		try {
 			if (sources == null || sources.length == 0) {
-				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				s.onSubscribe(EmptySubscription.INSTANCE);
 				s.onComplete();
 				return;
 			}

@@ -32,9 +32,9 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.error.SpecificationExceptions;
 import reactor.core.subscriber.BaseSubscriber;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.fn.BiFunction;
@@ -89,7 +89,7 @@ public final class FluxZip<TUPLE extends Tuple, V>
 		}
 		try {
 			if (sources == null || sources.length == 0) {
-				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				s.onSubscribe(EmptySubscription.INSTANCE);
 				s.onComplete();
 				return;
 			}
@@ -601,9 +601,9 @@ public final class FluxZip<TUPLE extends Tuple, V>
 		@Override
 		public void cancel() {
 			Subscription s = SUBSCRIPTION.get(this);
-			if (s != SignalType.NOOP_SUBSCRIPTION) {
-				s = SUBSCRIPTION.getAndSet(this, SignalType.NOOP_SUBSCRIPTION);
-				if (s != SignalType.NOOP_SUBSCRIPTION && s != null) {
+			if (s != EmptySubscription.INSTANCE) {
+				s = SUBSCRIPTION.getAndSet(this, EmptySubscription.INSTANCE);
+				if (s != EmptySubscription.INSTANCE && s != null) {
 					s.cancel();
 				}
 			}

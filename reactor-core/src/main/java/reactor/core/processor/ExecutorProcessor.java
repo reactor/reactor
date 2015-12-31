@@ -23,8 +23,8 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.MonoError;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.core.support.SingleUseExecutor;
 
 /**
@@ -69,7 +69,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 
 	@Override
 	protected void doOnSubscribe(Subscription s) {
-		if (s != SignalType.NOOP_SUBSCRIPTION) {
+		if (s != EmptySubscription.INSTANCE) {
 			requestTask(s);
 		}
 	}

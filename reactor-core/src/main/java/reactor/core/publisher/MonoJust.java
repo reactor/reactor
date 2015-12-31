@@ -19,8 +19,8 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Mono;
 import reactor.Publishers;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.fn.Supplier;
 
 /**
@@ -38,7 +38,7 @@ public final class MonoJust<IN> extends Mono<IN> implements Supplier<IN>, Reacti
 	public void subscribe(final Subscriber<? super IN> s) {
 		try {
 			if(data == null){
-				s.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				s.onSubscribe(EmptySubscription.INSTANCE);
 				s.onComplete();
 				return;
 			}

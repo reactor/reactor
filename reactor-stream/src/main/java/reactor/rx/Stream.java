@@ -35,7 +35,8 @@ import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.publisher.FluxIgnoreElements;
+import reactor.core.publisher.FluxLift;
+import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.FluxLog;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxResume;
@@ -134,11 +135,11 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	/**
 	 * @return {@literal new Stream}
 	 *
-	 * @see reactor.Publishers#after(Publisher)
+	 * @see Flux#after)
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<Void> after() {
-		return new StreamBarrier.Identity<>(new FluxIgnoreElements<>(this));
+		return new StreamBarrier.Identity<>(new MonoIgnoreElements<>(this));
 	}
 
 	/**
@@ -1015,11 +1016,11 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	/**
 	 * @return {@literal new Stream}
 	 *
-	 * @see reactor.Publishers#ignoreElements(Publisher)
+	 * @see Flux#ignoreElements)
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<O> ignoreElements() {
-		return new StreamBarrier.Identity<>(new FluxIgnoreElements(this));
+		return new StreamBarrier.Identity<>(new MonoIgnoreElements(this));
 	}
 
 	/**
@@ -1047,7 +1048,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * @see {@link Publishers#lift(Publisher, Function)}
+	 * @see {@link FluxLift#lift(Publisher, Function)}
 	 * @since 2.5
 	 */
 	public <V> Stream<V> lift(@Nonnull final Function<Subscriber<? super V>, Subscriber<? super O>> operator) {

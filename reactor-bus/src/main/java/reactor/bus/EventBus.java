@@ -27,6 +27,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.Logger;
 import reactor.Subscribers;
 import reactor.bus.stream.BusStream;
@@ -44,7 +45,6 @@ import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
-import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
@@ -211,7 +211,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 			for (int i = 0; i < concurrency; i++) {
 				processor.subscribe(Subscribers.unbounded(new DispatchEventSubscriber(), getProcessorErrorHandler()));
 			}
-			processor.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+			processor.onSubscribe(EmptySubscription.INSTANCE);
 		}
 
 		this.on(new ClassSelector(Throwable.class), new BusErrorConsumer(uncaughtErrorHandler));
