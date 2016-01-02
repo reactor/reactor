@@ -1048,7 +1048,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * @see {@link FluxLift#lift(Publisher, Function)}
+	 * @see {@link Flux#lift(Function)}
 	 * @since 2.5
 	 */
 	public <V> Stream<V> lift(@Nonnull final Function<Subscriber<? super V>, Subscriber<? super O>> operator) {

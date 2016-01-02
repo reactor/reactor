@@ -92,7 +92,7 @@ public class StreamBarrier<I, O> extends Stream<O>
 
 		if (oldestReceiver == null) {
 			Processor<E, E> root = Processors.emitter();
-			return StreamProcessor.from(root, FluxLift.lift(root, oldestOperator));
+			return StreamProcessor.from(root, Flux.wrap(root).lift(oldestOperator));
 		}
 		else {
 			return StreamProcessor.from((Subscriber<E>) oldestReceiver, this);

@@ -40,11 +40,11 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	 * @param <I> The source type of the data sequence
 	 * @param <O> The target type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh lifting function
 	 */
-	public static <I, O> Flux<O> lift(Publisher<I> source,
+	public static <I, O> Function<Subscriber<? super O>, Subscriber<? super I>> create(
 			BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer) {
-		return lift(source, dataConsumer, null, null);
+		return create(dataConsumer, null, null);
 	}
 
 	/**
@@ -56,12 +56,12 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	 * @param <I> The source type of the data sequence
 	 * @param <O> The target type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh lifting function
 	 */
-	public static <I, O> Flux<O> lift(Publisher<I> source,
+	public static <I, O> Function<Subscriber<? super O>, Subscriber<? super I>> create(
 			BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer,
 			BiConsumer<Throwable, Subscriber<? super O>> errorConsumer) {
-		return lift(source, dataConsumer, errorConsumer, null);
+		return create(dataConsumer, errorConsumer, null);
 	}
 
 	/**
@@ -75,35 +75,18 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	 * @param <I> The source type of the data sequence
 	 * @param <O> The target type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh lifting function
 	 */
-	public static <I, O> Flux<O> lift(Publisher<I> source,
+	public static <I, O> Function<Subscriber<? super O>, Subscriber<? super I>> create(
 			final BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer,
 			final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer,
 			final Consumer<Subscriber<? super O>> completeConsumer) {
-		return lift(source, new Function<Subscriber<? super O>, Subscriber<? super I>>() {
+		return new Function<Subscriber<? super O>, Subscriber<? super I>>() {
 			@Override
 			public SubscriberBarrier<I, O> apply(final Subscriber<? super O> subscriber) {
 				return new ConsumerSubscriberBarrier<>(subscriber, dataConsumer, errorConsumer, completeConsumer);
 			}
-		});
-	}
-
-	/**
-	 * Create a {@link Publisher} intercepting all source signals with the returned Subscriber that might choose to pass
-	 * them alone to the provided Subscriber (given to the returned {@link Publisher#subscribe(Subscriber)}.
-	 *
-	 * @param source A {@link Publisher} source delegate
-	 * @param barrierProvider A {@link Function} called once for every new subscriber returning a unique {@link
-	 * Subscriber} to intercept upstream signals
-	 * @param <I> The type of the data sequence
-	 * @param <O> The type of contextual information to be read by the requestConsumer
-	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
-	 */
-	public static <I, O> Flux<O> lift(Publisher<I> source,
-			Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider) {
-		return new FluxLift<>(source, barrierProvider);
+		};
 	}
 
 	/**

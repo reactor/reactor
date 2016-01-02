@@ -51,12 +51,12 @@ class PublishersSpec extends Specification {
   def "Error handling with onErrorReturn"() {
 
 	given: "Iterable publisher of 1000 to read queue"
-	def pub = FluxLift.lift(from(1..1000), { d, s ->
+	def pub = from(1..1000).lift( FluxLift.create { d, s ->
 	  if (d == 3) {
 		throw new Exception('test')
 	  }
 	  s.onNext(d)
-	} as BiConsumer)
+	})
 
 	when: "read the queue"
 	def q = toReadQueue(onErrorReturn(pub, 100000))
@@ -70,12 +70,12 @@ class PublishersSpec extends Specification {
   def "Error handling with onErrorResume"() {
 
 	given: "Iterable publisher of 1000 to read queue"
-	def pub = FluxLift.lift(from(1..1000), { d, s ->
+	def pub = from(1..1000).lift( FluxLift.create{ d, s ->
 	  if (d == 3) {
 		throw new Exception('test')
 	  }
 	  s.onNext(d)
-	} as BiConsumer)
+	})
 
 	when: "read the queue"
 	def q = toReadQueue(switchOnError(pub, from(9999..10002)))

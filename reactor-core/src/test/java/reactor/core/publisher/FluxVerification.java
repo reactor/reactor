@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.publisher;
+
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
 import reactor.Publishers;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author Stephane Maldini
@@ -34,30 +35,23 @@ public class FluxVerification extends PublisherVerification<Long> {
 	}
 
 	@org.junit.Test
-	public void simpleTest(){
+	public void simpleTest() {
 
 	}
 
 	@Override
 	public Publisher<Long> createPublisher(long elements) {
-		return
-			Publishers.log(
-			  FluxLift.lift(
-			    Publishers.<Long, AtomicLong>create(
-				  (s) -> {
-					  long cursor = s.context().getAndIncrement();
-					  if (cursor < elements) {
-						  s.onNext(cursor);
-					  } else {
-						  s.onComplete();
-					  }
-				  },
-				  s -> new AtomicLong(0L)
-			    ),
-			    (data, sub) -> sub.onNext(data * 10)
-			  ),
-			  "log-test"
-		  );
+		return FluxFactory.<Long, AtomicLong>create((s) -> {
+			long cursor = s.context()
+			               .getAndIncrement();
+			if (cursor < elements) {
+				s.onNext(cursor);
+			}
+			else {
+				s.onComplete();
+			}
+		}, s -> new AtomicLong(0L)).lift(FluxLift.<Long, Long>create((data, sub) -> sub.onNext(data * 10)))
+		                           .log("log-test");
 	}
 
 	@Override
