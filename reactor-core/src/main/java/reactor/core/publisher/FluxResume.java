@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.publisher;
 
 import java.util.Objects;
@@ -31,6 +32,7 @@ import reactor.fn.Function;
 
 /**
  * {@see https://github.com/reactor/reactive-streams-commons}
+ *
  * @since 2.5
  */
 public final class FluxResume<T> extends reactor.Flux.FluxBarrier<T, T> {

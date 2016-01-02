@@ -752,7 +752,6 @@ public final class Processors {
 	public static <IN, OUT, NOUT> FluxProcessor<IN, NOUT> lift(final Processor<IN, OUT> processor,
 			final Function<? super Processor<IN, OUT>, ? extends Publisher<NOUT>> liftTransformation) {
 		return new DelegateProcessor<>(liftTransformation.apply(processor), processor);
-
 	}
 
 	private static class DelegateProcessor<IN, OUT>

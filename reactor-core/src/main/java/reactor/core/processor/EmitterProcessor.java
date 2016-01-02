@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
-import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
@@ -125,7 +124,7 @@ public final class EmitterProcessor<T> extends FluxProcessor<T, T>
 		}
 		catch (Throwable t) {
 			removeInner(inner, EMPTY);
-			Publishers.<T>error(t).subscribe(s);
+			EmptySubscription.error(s, t);
 		}
 	}
 

@@ -17,7 +17,6 @@
 package reactor;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
@@ -66,7 +65,6 @@ import reactor.fn.tuple.Tuple2;
  * <p>If it is known that the underlying {@link Publisher} will emit 0 or 1 element, {@link Mono} should be used
  * instead.
  * <p>
- * TODO Implement methods with reactive-streams-commons, without using Publishers
  *
  * @author Sebastien Deleuze
  * @author Stephane Maldini
@@ -76,7 +74,13 @@ import reactor.fn.tuple.Tuple2;
 public abstract class Flux<T> implements Publisher<T> {
 
 	/**
+	 * ==============================================================================================================
+	 * ==============================================================================================================
+	 * <p>
 	 * Static Generators
+	 * <p>
+	 * ==============================================================================================================
+	 * ==============================================================================================================
 	 */
 
 	private static final IdentityFunction IDENTITY_FUNCTION = new IdentityFunction();
@@ -132,9 +136,8 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	@SuppressWarnings("unchecked")
 	public static <I> Flux<I> concat(Publisher<? extends Publisher<? extends I>> source) {
-		return Publishers.concatMap(source, FluxFlatMap.<I>identity());
+		return new FluxFlatMap<>(source, 1, 32);
 	}
 
 	/**
@@ -142,9 +145,8 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	@SuppressWarnings("unchecked")
 	public static <I> Flux<I> concat(Iterable<? extends Publisher<? extends I>> source) {
-		return Publishers.concatMap(from(source), FluxFlatMap.<I>identity());
+		return concat(from(source));
 	}
 
 	/**
@@ -152,9 +154,9 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	@SuppressWarnings("unchecked")
-	public static <I> Flux<I> concat(Publisher<? extends I> source1, Publisher<? extends I> source2) {
-		return Publishers.concatMap(from(Arrays.asList(source1, source2)), FluxFlatMap.<I>identity());
+	@SafeVarargs
+	public static <I> Flux<I> concat(Publisher<? extends I>... sources) {
+		return concat(from(sources));
 	}
 
 	/**
@@ -522,7 +524,13 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
+	 * ==============================================================================================================
+	 * ==============================================================================================================
+	 * <p>
 	 * Instance Operators
+	 * <p>
+	 * ==============================================================================================================
+	 * ==============================================================================================================
 	 */
 	protected Flux() {
 	}
@@ -594,7 +602,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public Flux<T> dispatchOn(ProcessorGroup group) {
+	public final Flux<T> dispatchOn(ProcessorGroup group) {
 		FluxProcessor<T, T> processor = ((ProcessorGroup<T>) group).dispatchOn();
 		subscribe(processor);
 		return processor;
@@ -704,7 +712,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	/**
 	 * @return
 	 */
-	public Flux<T> log() {
+	public final Flux<T> log() {
 		return log(null, Level.INFO, FluxLog.ALL);
 	}
 
@@ -789,7 +797,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * @return
 	 */
-	public <E extends Subscriber<? super T>> E process(E s) {
+	public final <E extends Subscriber<? super T>> E process(E s) {
 		subscribe(s);
 		return s;
 	}
@@ -804,7 +812,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public Flux<T> publishOn(ProcessorGroup group) {
+	public final Flux<T> publishOn(ProcessorGroup group) {
 		FluxProcessor<T, T> processor = ((ProcessorGroup<T>) group).publishOn();
 		subscribe(processor);
 		return processor;
@@ -848,7 +856,20 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
+	 * ==============================================================================================================
+	 * ==============================================================================================================
+	 *
+	 * Containers
+	 *
+	 * ==============================================================================================================
+	 * ==============================================================================================================
+	 */
+
+	/**
 	 * A marker interface for components responsible for augmenting subscribers with features like {@link #lift}
+	 *
+	 * @param <I>
+	 * @param <O>
 	 */
 	public interface Operator<I, O>
 			extends Function<Subscriber<? super O>, Subscriber<? super I>>, ReactiveState.Factory {
@@ -911,7 +932,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * @param <I>
 	 */
-	private final static class FluxBounded<I> extends FluxBarrier<I, I> {
+	final static class FluxBounded<I> extends FluxBarrier<I, I> {
 
 		final private long capacity;
 
@@ -936,6 +957,9 @@ public abstract class Flux<T> implements Publisher<T> {
 		}
 	}
 
+	/**
+	 * i -> i
+	 */
 	static final class IdentityFunction implements Function {
 
 		@Override

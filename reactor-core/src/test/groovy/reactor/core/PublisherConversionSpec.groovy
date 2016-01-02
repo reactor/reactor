@@ -121,7 +121,7 @@ class PublisherConversionSpec extends Specification {
 	vList[999] == 1000
 
 	when: "Iterable publisher of 1 to completable future"
-	def newPub = Publishers.just(1)
+	def newPub = Flux.just(1)
 	obs = CompletableFutureConverter.fromSingle(newPub)
 	v = obs.get()
 

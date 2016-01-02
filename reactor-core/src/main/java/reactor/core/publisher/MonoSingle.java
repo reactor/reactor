@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.publisher;
 
 import java.util.NoSuchElementException;
@@ -34,6 +35,7 @@ import reactor.fn.Supplier;
 
 /**
  * {@see https://github.com/reactor/reactive-streams-commons}
+ *
  * @since 2.5
  */
 public final class MonoSingle<T> extends reactor.Mono.MonoBarrier<T, T> {

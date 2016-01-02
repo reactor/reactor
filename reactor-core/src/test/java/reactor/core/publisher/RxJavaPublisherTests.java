@@ -20,7 +20,6 @@ import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
 import reactor.Flux;
-import reactor.Publishers;
 import rx.Observable;
 
 /**
@@ -45,9 +44,7 @@ public class RxJavaPublisherTests extends PublisherVerification<Long> {
 
 	@Override
 	public Publisher<Long> createPublisher(long elements) {
-		return Publishers.log(
-				Flux.convert(Observable.range(0, (int)Math.min(Integer.MAX_VALUE, elements)))
-		);
+		return  Flux.<Long>convert(Observable.range(0, (int)Math.min(Integer.MAX_VALUE, elements))).log();
 	}
 
 	@Override

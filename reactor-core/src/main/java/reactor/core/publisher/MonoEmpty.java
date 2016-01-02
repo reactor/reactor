@@ -29,6 +29,7 @@ import reactor.core.subscription.EmptySubscription;
 
 /**
  * {@see https://github.com/reactor/reactive-streams-commons}
+ *
  * @since 2.5
  */
 public final class MonoEmpty extends reactor.Mono<Object> {

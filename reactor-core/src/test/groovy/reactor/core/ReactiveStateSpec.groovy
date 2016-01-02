@@ -16,7 +16,6 @@
 
 package reactor.core
 
-import reactor.Publishers
 import reactor.core.support.ReactiveStateUtils
 import spock.lang.Specification
 
@@ -69,10 +68,10 @@ class ReactiveStateSpec extends Specification {
 	def sub2 = unbounded()
 	def sub3 = unbounded()
 	def group = singleGroup().get()
-	Publishers.log(proc1," test").subscribe(sub1)
+	proc1.log(" test").subscribe(sub1)
 	group.subscribe(sub2)
-	Publishers.log(proc1," test").subscribe(sub3)
-	Publishers.log(proc1," test").subscribe(group)
+	proc1.log(" test").subscribe(sub3)
+	proc1.log(" test").subscribe(group)
 	def zip = zip(pub3, proc2)
 
 	t = ReactiveStateUtils.scan(zip)

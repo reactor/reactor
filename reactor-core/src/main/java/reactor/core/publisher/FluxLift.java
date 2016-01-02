@@ -42,8 +42,7 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	 *
 	 * @return a fresh lifting function
 	 */
-	public static <I, O> Function<Subscriber<? super O>, Subscriber<? super I>> lifter(
-			BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer) {
+	public static <I, O> Function<Subscriber<? super O>, Subscriber<? super I>> lifter(BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer) {
 		return lifter(dataConsumer, null, null);
 	}
 
@@ -58,8 +57,7 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	 *
 	 * @return a fresh lifting function
 	 */
-	public static <I, O> Function<Subscriber<? super O>, Subscriber<? super I>> lifter(
-			BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer,
+	public static <I, O> Function<Subscriber<? super O>, Subscriber<? super I>> lifter(BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer,
 			BiConsumer<Throwable, Subscriber<? super O>> errorConsumer) {
 		return lifter(dataConsumer, errorConsumer, null);
 	}
@@ -77,8 +75,7 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	 *
 	 * @return a fresh lifting function
 	 */
-	public static <I, O> Function<Subscriber<? super O>, Subscriber<? super I>> lifter(
-			final BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer,
+	public static <I, O> Function<Subscriber<? super O>, Subscriber<? super I>> lifter(final BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer,
 			final BiConsumer<Throwable, Subscriber<? super O>> errorConsumer,
 			final Consumer<Subscriber<? super O>> completeConsumer) {
 		return new Function<Subscriber<? super O>, Subscriber<? super I>>() {

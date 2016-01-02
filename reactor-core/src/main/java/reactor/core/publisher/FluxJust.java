@@ -16,90 +16,34 @@
 
 package reactor.core.publisher;
 
+import java.util.Objects;
+
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 import reactor.Flux;
-import reactor.Publishers;
-import reactor.core.subscription.EmptySubscription;
-import reactor.core.support.ReactiveState;
+import reactor.core.subscription.ScalarSubscription;
 import reactor.fn.Supplier;
 
 /**
- * @author Stephane Maldini
+ * {@see https://github.com/reactor/reactive-streams-commons}
+ *
+ * @since 2.5
  */
-public final class FluxJust<IN> extends Flux<IN> implements Supplier<IN>, ReactiveState.FeedbackLoop {
+public final class FluxJust<T> extends Flux<T> implements Supplier<T> {
 
-	private final IN data;
+	final T value;
 
-	public FluxJust(IN data) {
-		this.data = data;
+	public FluxJust(T value) {
+		this.value = Objects.requireNonNull(value, "value");
 	}
 
 	@Override
-	public void subscribe(final Subscriber<? super IN> s) {
-		try {
-			if (data == null) {
-				s.onSubscribe(EmptySubscription.INSTANCE);
-				s.onComplete();
-				return;
-			}
-			s.onSubscribe(new SingleSubscription<>(data, s));
-		}
-		catch (Throwable throwable) {
-			Publishers.<IN>error(throwable).subscribe(s);
-		}
+	public T get() {
+		return value;
 	}
 
 	@Override
-	public Object delegateInput() {
-		return null;
+	public void subscribe(Subscriber<? super T> s) {
+		s.onSubscribe(new ScalarSubscription<>(s, value));
 	}
 
-	@Override
-	public Object delegateOutput() {
-		return data;
-	}
-
-	@Override
-	public IN get() {
-		return data;
-	}
-
-	@Override
-	public String toString() {
-		return "{ singleValue: \"" + data + "\" }";
-	}
-
-	private static class SingleSubscription<IN> implements Subscription, Upstream {
-
-		private final Subscriber<? super IN> s;
-		private final IN                     data;
-		boolean terminado;
-
-		public SingleSubscription(IN data, Subscriber<? super IN> s) {
-			this.s = s;
-			this.data = data;
-		}
-
-		@Override
-		public void request(long elements) {
-			if (terminado) {
-				return;
-			}
-
-			terminado = true;
-			s.onNext(data);
-			s.onComplete();
-		}
-
-		@Override
-		public void cancel() {
-			terminado = true;
-		}
-
-		@Override
-		public Object upstream() {
-			return data;
-		}
-	}
 }

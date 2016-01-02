@@ -22,7 +22,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
-import reactor.Publishers;
+import reactor.Flux;
 
 /**
  * @author Stephane Maldini
@@ -56,6 +56,6 @@ public class FluxVerification extends PublisherVerification<Long> {
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
-		return Publishers.error(new Exception("test"));
+		return Flux.error(new Exception("test"));
 	}
 }

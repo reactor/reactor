@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.processor;
 
 import java.util.ArrayList;
@@ -29,22 +30,23 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.core.subscriber.test.DataTestSubscriber;
 import reactor.core.subscriber.test.TestSubscriber;
 import reactor.core.support.BackpressureUtils;
 
-/**?
+/**
+ * ?
+ *
  * @author Anatoly Kadyshev
  */
 public class EmitterProcessorDemandTests {
 
-	static final List<String> DATA = new ArrayList<>();
-	static final int MAX_SIZE = 100;
+	static final List<String> DATA     = new ArrayList<>();
+	static final int          MAX_SIZE = 100;
 
 	static {
-		for(int i = 1; i < MAX_SIZE; i++){
-			DATA.add(""+i);
+		for (int i = 1; i < MAX_SIZE; i++) {
+			DATA.add("" + i);
 		}
 	}
 
@@ -62,7 +64,7 @@ public class EmitterProcessorDemandTests {
 		Publisher<String> publisher = s -> s.onSubscribe(new Subscription() {
 			@Override
 			public void request(long n) {
-				System.out.println("request: " + n+" "+ s);
+				System.out.println("request: " + n + " " + s);
 				demand.addAndGet(n);
 				requestReceived.countDown();
 			}
@@ -85,11 +87,12 @@ public class EmitterProcessorDemandTests {
 		}
 
 		int i = 0;
-		for ( ; ; ) {
+		for (; ; ) {
 			if (BackpressureUtils.getAndSub(demand, 1) != 0) {
-				publishOn.onNext(""+(i++));
-			} else {
-				System.out.println("NO REQUESTED: "+ publishOn+ " "+ emitter);
+				publishOn.onNext("" + (i++));
+			}
+			else {
+				System.out.println("NO REQUESTED: " + publishOn + " " + emitter);
 				LockSupport.parkNanos(100_000_000);
 			}
 		}
@@ -146,13 +149,13 @@ public class EmitterProcessorDemandTests {
 
 		String buffer = "Hello";
 		int i = 0;
-		for ( ; ; ) {
+		for (; ; ) {
 			if (BackpressureUtils.getAndSub(demand, 1) > 0) {
 				emitter.onNext(buffer);
 			}
 
 			if (i++ % 1000000 == 0) {
-				System.out.println("maxDelay: " + TimeUnit.MICROSECONDS.toMillis(maxDelay.get())+ " µs");
+				System.out.println("maxDelay: " + TimeUnit.MICROSECONDS.toMillis(maxDelay.get()) + " µs");
 			}
 		}
 	}
@@ -163,9 +166,10 @@ public class EmitterProcessorDemandTests {
 		DataTestSubscriber<String> subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
-
 		subscriber.request(1);
-		Publishers.log(Flux.from(DATA)).subscribe(processor);
+		Flux.from(DATA)
+		    .log()
+		    .subscribe(processor);
 
 		subscriber.assertNextSignals("1");
 	}
@@ -176,7 +180,9 @@ public class EmitterProcessorDemandTests {
 		DataTestSubscriber<String> subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
-		Publishers.log(Flux.from(DATA)).subscribe(processor);
+		Flux.from(DATA)
+		    .log()
+		    .subscribe(processor);
 
 		subscriber.request(1);
 
@@ -186,13 +192,17 @@ public class EmitterProcessorDemandTests {
 	@Test
 	public void testHanging() throws InterruptedException {
 		FluxProcessor<String, String> processor = Processors.emitter(2);
-		Publishers.log(Flux.from(DATA)).subscribe(processor);
+		Flux.from(DATA)
+		    .log()
+		    .subscribe(processor);
 
 		DataTestSubscriber<String> first = DataTestSubscriber.createWithTimeoutSecs(1);
-		Publishers.log(processor, "after-1").subscribe(first);
+		processor.log("after-1")
+		         .subscribe(first);
 
 		DataTestSubscriber<String> second = DataTestSubscriber.createWithTimeoutSecs(1);
-		Publishers.log(processor, "after-2").subscribe(second);
+		processor.log("after-2")
+		         .subscribe(second);
 
 		second.request(1);
 		second.assertNextSignals("1");
@@ -204,7 +214,9 @@ public class EmitterProcessorDemandTests {
 	@Test
 	public void testNPE() throws InterruptedException {
 		FluxProcessor<String, String> processor = Processors.emitter(8);
-		Publishers.log(Flux.from(DATA)).subscribe(processor);
+		Flux.from(DATA)
+		    .log()
+		    .subscribe(processor);
 
 		DataTestSubscriber<String> first = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(first);
