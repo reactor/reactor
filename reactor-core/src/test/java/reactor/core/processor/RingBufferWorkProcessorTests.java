@@ -36,7 +36,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
 		System.out.println("new processor");
-		return Processors.log(Processors.<Long>queue("rb-work", bufferSize));
+		return Processors.blackbox(Processors.<Long>queue("rb-work", bufferSize), Flux::log);
 	}
 
 	@Override

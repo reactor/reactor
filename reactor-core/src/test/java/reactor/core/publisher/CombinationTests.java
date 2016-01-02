@@ -155,7 +155,7 @@ public class CombinationTests {
 	public Publisher<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
-			this.sensorOdd = Processors.log(Processors.topic("odd"), "odd");
+			this.sensorOdd = Processors.blackbox(Processors.topic("odd"), p -> p.log("odd"));
 
 			// add substream to "master" list
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
@@ -167,7 +167,7 @@ public class CombinationTests {
 	public Publisher<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
-			this.sensorEven = Processors.log(Processors.topic("even"), "even");
+			this.sensorEven = Processors.blackbox(Processors.topic("even"), p -> p.log("even"));
 
 			// add substream to "master" list
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));

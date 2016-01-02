@@ -29,7 +29,7 @@ public class EmitterProcessorTests extends AbstractProcessorVerification {
 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
-		Processor<Long, Long> p = Processors.<Long>emitter(bufferSize);
+		FluxProcessor<Long, Long> p = Processors.<Long>emitter(bufferSize);
 
 		/*Processor<Long, Long> p2 = Processors.queue();
 		Processor<Long, Long> p3 = Processors.topic();
@@ -39,7 +39,7 @@ public class EmitterProcessorTests extends AbstractProcessorVerification {
 
 		return Processors.create(p2, Processors.log(p3, "topic"));*/
 
-		return Processors.log(p, "emitter");
+		return Processors.blackbox(p, x -> x.log("emitter"));
 	}
 
 	@AfterClass
