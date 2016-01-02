@@ -19,6 +19,8 @@ package reactor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.processor.BaseProcessor;
+import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxPeek;
 import reactor.core.publisher.MonoEmpty;
@@ -32,40 +34,46 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 
 /**
- * A Reactive Streams {@link Publisher} with basic rx operators that completes successfully
- * by emitting an element, or with an error.
- *
+ * A Reactive Streams {@link Publisher} with basic rx operators that completes successfully by emitting an element, or
+ * with an error.
+ * <p>
  * <p>{@code Mono<Void>} should be used for {Publisher} that just completes without any value.
- *
- * <p>It is intended to be used in implementation and return types, input parameters
- * should keep using raw {@link Publisher} as much as possible.
+ * <p>
+ * <p>It is intended to be used in implementation and return types, input parameters should keep using raw {@link
+ * Publisher} as much as possible.
  *
  * @author Sebastien Deleuze
  * @author Stephane Maldini
- *
- * @since 2.5
  * @see Flux
+ * @since 2.5
  */
 public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Create a {@link Mono} that completes without emitting any item.
+	 * @param <T>
+	 * @return
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Mono<T> empty() {
-		return (Mono<T>)MonoEmpty.instance();
+		return (Mono<T>) MonoEmpty.instance();
 	}
 
 	/**
 	 * Create a {@link Mono} that completes with the specified error.
+	 * @param error
+	 * @param <T>
+	 * @return
 	 */
 	public static <T> Mono<T> error(Throwable error) {
 		return MonoError.<T>create(error);
 	}
 
 	/**
-	 * Expose the specified {@link Publisher} with the {@link Mono} API, and ensure it
-	 * will emit 0 or 1 item.
+	 * Expose the specified {@link Publisher} with the {@link Mono} API, and ensure it will emit 0 or 1 item.
+	 * @param source
+	 * @param <T>
+	 * @return
 	 */
 	public static <T> Mono<T> wrap(Publisher<T> source) {
 		return new MonoSingle<>(source);
@@ -73,21 +81,26 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Create a new {@link Mono} that emits the specified item.
+	 * @param data
+	 * @param <T>
+	 * @return
 	 */
 	public static <T> Mono<T> just(T data) {
 		return new MonoJust<>(data);
 	}
 
-
 	/**
 	 * Return a {@code Mono<Void>} that completes when this {@link Mono} completes.
+	 * @return
 	 */
 	public final Mono<Void> after() {
 		return new MonoIgnoreElements<>(this);
 	}
 
 	/**
-	 * Triggered when the {@link Mono} is unsubscribed.
+	 * Triggered when the {@link Mono} is cancelled.
+	 * @param onCancel
+	 * @return
 	 */
 	public Mono<T> doOnCancel(Runnable onCancel) {
 		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, null, null, null, onCancel));
@@ -95,6 +108,8 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Triggered when the {@link Mono} completes successfully.
+	 * @param onComplete
+	 * @return
 	 */
 	public Mono<T> doOnComplete(Runnable onComplete) {
 		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, onComplete, null, null, null));
@@ -102,6 +117,8 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Triggered when the {@link Mono} completes with an error.
+	 * @param onError
+	 * @return
 	 */
 	public Mono<T> doOnError(Consumer<? super Throwable> onError) {
 		return new MonoBarrier<>(new FluxPeek<>(this, null, null, onError, null, null, null, null));
@@ -109,30 +126,36 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Triggered when the {@link Mono} is subscribed.
+	 * @param onSubscribe
+	 * @return
 	 */
 	public Mono<T> doOnSubscribe(Consumer<? super Subscription> onSubscribe) {
 		return new MonoBarrier<>(new FluxPeek<>(this, onSubscribe, null, null, null, null, null, null));
 	}
 
 	/**
-	 * Triggered when the {@link Mono} terminates, either by completing successfully or
-	 * with an error.
+	 * Triggered when the {@link Mono} terminates, either by completing successfully or with an error.
+	 * @param onTerminate
+	 * @return
 	 */
 	public Mono<T> doOnTerminate(Runnable onTerminate) {
 		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, null, onTerminate, null, null));
 	}
 
 	/**
-	 * Transform the items emitted by a {@link Publisher} into Publishers, then
-	 * flatten the emissions from those by merging them into a single {@link Flux},
-	 * so that they may interleave.
+	 * Transform the items emitted by a {@link Publisher} into Publishers, then flatten the emissions from those by
+	 * merging them into a single {@link Flux}, so that they may interleave.
+	 * @param mapper
+	 * @param <R>
+	 * @return
 	 */
 	public <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
-		return flux().flatMap(mapper);
+		return new FluxFlatMap<>(this, mapper, BaseProcessor.SMALL_BUFFER_SIZE, Integer.MAX_VALUE);
 	}
 
 	/**
 	 * Convert this {@link Mono} to a {@link Flux}
+	 * @return
 	 */
 	public final Flux<T> flux() {
 		return new Flux.FluxBarrier<T, T>(this);
@@ -140,6 +163,9 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Transform the item emitted by this {@link Mono} by applying a function to item emitted.
+	 * @param mapper
+	 * @param <R>
+	 * @return
 	 */
 	public <R> Mono<R> map(Function<? super T, ? extends R> mapper) {
 		return new MonoBarrier<>(new FluxMap<>(this, mapper));
@@ -147,6 +173,8 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Merge emissions of this {@link Mono} with the provided {@link Publisher}.
+	 * @param source
+	 * @return
 	 */
 	@SuppressWarnings("unchecked")
 	public Flux<T> mergeWith(Publisher<? extends T> source) {
@@ -155,6 +183,9 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Convert the value of {@link Mono} to another {@link Mono} possibly with another value type.
+	 * @param transformer
+	 * @param <R>
+	 * @return
 	 */
 	public final <R> Mono<R> then(Function<? super T, ? extends Mono<? extends R>> transformer) {
 		return new MonoBarrier<>(flatMap(transformer));
@@ -166,8 +197,8 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * @param <I>
 	 * @param <O>
 	 */
-	public static class MonoBarrier<I, O> extends Mono<O> implements ReactiveState.Factory, ReactiveState.Bounded,
-	                                                                 ReactiveState.Named, ReactiveState.Upstream {
+	public static class MonoBarrier<I, O> extends Mono<O>
+			implements ReactiveState.Factory, ReactiveState.Bounded, ReactiveState.Named, ReactiveState.Upstream {
 
 		protected final Publisher<? extends I> source;
 
@@ -188,17 +219,13 @@ public abstract class Mono<T> implements Publisher<T> {
 
 		/**
 		 * Default is delegating and decorating with Mono API
+		 *
 		 * @param s
 		 */
 		@Override
 		@SuppressWarnings("unchecked")
 		public void subscribe(Subscriber<? super O> s) {
-			source.subscribe((Subscriber<? super I>)s);
-		}
-
-		@Override
-		public final Publisher<? extends I> upstream() {
-			return source;
+			source.subscribe((Subscriber<? super I>) s);
 		}
 
 		@Override
@@ -206,6 +233,11 @@ public abstract class Mono<T> implements Publisher<T> {
 			return "{" +
 					" operator : \"" + getName() + "\" " +
 					'}';
+		}
+
+		@Override
+		public final Publisher<? extends I> upstream() {
+			return source;
 		}
 	}
 }

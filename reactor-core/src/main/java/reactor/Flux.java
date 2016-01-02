@@ -70,6 +70,8 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Create a {@link Flux} that completes without emitting any item.
+	 * @param <T>
+	 * @return
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Flux<T> empty() {
@@ -78,6 +80,9 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Create a {@link Flux} that completes with the specified error.
+	 * @param error
+	 * @param <T>
+	 * @return
 	 */
 	public static <T> Flux<T> error(Throwable error) {
 		return Mono.<T>error(error).flux();
@@ -96,6 +101,9 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Expose the specified {@link Publisher} with the {@link Flux} API.
+	 * @param source
+	 * @param <T>
+	 * @return
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Flux<T> wrap(Publisher<T> source) {
@@ -114,14 +122,19 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Create a {@link Flux} that emits the items contained in the provided {@link Iterable}.
+	 * @param it
+	 * @param <T>
+	 * @return
 	 */
 	public static <T> Flux<T> from(Iterable<? extends T> it) {
 		throw new UnsupportedOperationException(); // TODO
 	}
 
-
 	/**
 	 * Create a {@link Flux} that emits the items contained in the provided {@link Iterable}.
+	 * @param array
+	 * @param <T>
+	 * @return
 	 */
 	public static <T> Flux<T> from(T[] array) {
 		return new FluxArray<>(array);
@@ -140,9 +153,11 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 		return new FluxSession<>(sessionConsumer);
 	}
 
-
 	/**
 	 * Create a new {@link Flux} that emits the specified item.
+	 * @param data
+	 * @param <T>
+	 * @return
 	 */
 	@SafeVarargs
 	public static <T> Flux<T> just(T... data) {
@@ -155,6 +170,8 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Create a {@link Flux} that never completes.
+	 * @param <T>
+	 * @return
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Flux<T> never() {
@@ -184,6 +201,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Return a {@code Mono<Void>} that completes when this {@link Flux} completes.
+	 * @return
 	 */
 	public Mono<Void> after() {
 		return new MonoIgnoreElements<>(this);
@@ -200,6 +218,9 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Like {@link #flatMap(Function)}, but concatenate emissions instead of merging (no interleave).
+	 * @param mapper
+	 * @param <R>
+	 * @return
 	 */
 	public <R> Flux<R> concatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
 		throw new UnsupportedOperationException(); // TODO
@@ -207,13 +228,17 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Concatenate emissions of this {@link Flux} with the provided {@link Publisher} (no interleave). TODO Varargs ?
+	 * @param source
+	 * @return
 	 */
 	public Flux<T> concatWith(Publisher<? extends T> source) {
 		throw new UnsupportedOperationException(); // TODO
 	}
 
 	/**
-	 * Triggered when the {@link Flux} is unsubscribed.
+	 * Triggered when the {@link Flux} is cancelled.
+	 * @param onCancel
+	 * @return
 	 */
 	public Flux<T> doOnCancel(Runnable onCancel) {
 		return new FluxPeek<>(this, null, null, null, null, null, null, onCancel);
@@ -221,6 +246,8 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Triggered when the {@link Flux} completes successfully.
+	 * @param onComplete
+	 * @return
 	 */
 	public Flux<T> doOnComplete(Runnable onComplete) {
 		return new FluxPeek<>(this, null, null, null, onComplete, null, null, null);
@@ -228,6 +255,8 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Triggered when the {@link Flux} completes with an error.
+	 * @param onError
+	 * @return
 	 */
 	public Flux<T> doOnError(Consumer<? super Throwable> onError) {
 		return new FluxPeek<>(this, null, null, onError, null, null, null, null);
@@ -235,6 +264,8 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Triggered when the {@link Flux} emits an item.
+	 * @param onNext
+	 * @return
 	 */
 	public Flux<T> doOnNext(Consumer<? super T> onNext) {
 		return new FluxPeek<>(this, null, onNext, null, null, null, null, null);
@@ -242,6 +273,8 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Triggered when the {@link Flux} is subscribed.
+	 * @param onSubscribe
+	 * @return
 	 */
 	public Flux<T> doOnSubscribe(Consumer<? super Subscription> onSubscribe) {
 		return new FluxPeek<>(this, onSubscribe, null, null, null, null, null, null);
@@ -249,6 +282,8 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Triggered when the {@link Flux} terminates, either by completing successfully or with an error.
+	 * @param onTerminate
+	 * @return
 	 */
 	public Flux<T> doOnTerminate(Runnable onTerminate) {
 		return new FluxPeek<>(this, null, null, null, null, onTerminate, null, null);
@@ -256,6 +291,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Emit only the first item emitted by this {@link Flux}.
+	 * @return
 	 */
 	public Mono<T> first() {
 		return new MonoSingle<>(this);
@@ -264,6 +300,9 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	/**
 	 * Transform the items emitted by this {@link Flux} into Publishers, then flatten the emissions from those by
 	 * merging them into a single {@link Flux}, so that they may interleave.
+	 * @param mapper
+	 * @param <R>
+	 * @return
 	 */
 	public <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
 		return new FluxFlatMap<>(this, mapper, BaseProcessor.SMALL_BUFFER_SIZE, 32);
@@ -272,6 +311,9 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	/**
 	 * Create a {@link Flux} intercepting all source signals with the returned Subscriber that might choose to pass them
 	 * alone to the provided Subscriber (given to the returned {@code subscribe(Subscriber)}.
+	 * @param operator
+	 * @param <R>
+	 * @return
 	 */
 	public <R> Flux<R> lift(Function<Subscriber<? super R>, Subscriber<? super T>> operator) {
 		return new FluxLift<>(this, operator);
@@ -279,6 +321,9 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Transform the items emitted by this {@link Flux} by applying a function to each item.
+	 * @param mapper
+	 * @param <R>
+	 * @return
 	 */
 	public <R> Flux<R> map(Function<? super T, ? extends R> mapper) {
 		return new FluxMap<>(this, mapper);
@@ -286,6 +331,8 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	/**
 	 * Merge emissions of this {@link Flux} with the provided {@link Publisher}, so that they may interleave.
+	 * @param source
+	 * @return
 	 */
 	public Flux<T> mergeWith(Publisher<? extends T> source) {
 		return merge(just(this, source));
