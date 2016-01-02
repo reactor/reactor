@@ -35,7 +35,6 @@ import reactor.Subscribers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
 import reactor.core.processor.BaseProcessor;
-import reactor.core.publisher.FluxFactory;
 import reactor.core.publisher.FluxZip;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
@@ -156,14 +155,14 @@ public class Streams {
 	public static <T, C> Stream<T> createWith(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 	                                          Function<Subscriber<? super T>, C> contextFactory,
 	                                          Consumer<C> shutdownConsumer) {
-		return Streams.wrap(FluxFactory.createWithDemand(requestConsumer, contextFactory, shutdownConsumer));
+		return Streams.wrap(Flux.createWithDemand(requestConsumer, contextFactory, shutdownConsumer));
 	}
 
 	/**
-	 * @see Publishers#create(Consumer)
+	 * @see Flux#create(Consumer)
 	 */
 	public static <T> Stream<T> create(Consumer<SubscriberWithContext<T, Void>> request) {
-		return wrap(Publishers.create(request));
+		return wrap(Flux.create(request));
 	}
 
 	/**

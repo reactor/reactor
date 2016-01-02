@@ -16,21 +16,29 @@
 
 package reactor.rx;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
+import reactor.Flux;
 import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.support.Assert;
+import reactor.core.timer.Timer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
-import reactor.core.timer.Timer;
-import reactor.fn.tuple.*;
-
-import java.util.Arrays;
-import java.util.List;
+import reactor.fn.tuple.Tuple;
+import reactor.fn.tuple.Tuple2;
+import reactor.fn.tuple.Tuple3;
+import reactor.fn.tuple.Tuple4;
+import reactor.fn.tuple.Tuple5;
+import reactor.fn.tuple.Tuple6;
+import reactor.fn.tuple.Tuple7;
+import reactor.fn.tuple.Tuple8;
 
 /**
  * Helper methods for creating {@link reactor.rx.Promise} instances.
@@ -150,7 +158,7 @@ public final class Promises {
 	 * @return A {@link Promise}.
 	 */
 	public static <T> Promise<T> task(Processor<T, T> processor, Timer timer, final Supplier<T> supplier) {
-		Publisher<T> p = Publishers.create(new Consumer<SubscriberWithContext<T, Void>>() {
+		Flux<T> p = Flux.create(new Consumer<SubscriberWithContext<T, Void>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Void> sub) {
 				sub.onNext(supplier.get());

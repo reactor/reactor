@@ -27,7 +27,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.core.error.CancelException;
-import reactor.core.publisher.FluxFactory;
 import reactor.core.publisher.MonoError;
 import reactor.core.publisher.MonoJust;
 import reactor.core.subscriber.SubscriberWithContext;
@@ -187,7 +186,7 @@ public final class CompletableFutureConverter extends PublisherConverter<Complet
 
 		public FluxCompletableFuture(CompletableFuture<? extends T> future) {
 			this.future = future;
-			this.futurePublisher = FluxFactory.createWithDemand(this, null, this);
+			this.futurePublisher = Flux.createWithDemand(this, null, this);
 		}
 
 		@Override

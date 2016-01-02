@@ -23,6 +23,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.FluxArray;
+import reactor.core.publisher.FluxFactory;
 import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxJust;
 import reactor.core.publisher.FluxLift;
@@ -61,7 +62,7 @@ import reactor.fn.tuple.Tuple2;
  * @see Mono
  * @since 2.5
  */
-public abstract class Flux<T> implements Publisher<T>, ReactiveState {
+public abstract class Flux<T> extends FluxFactory implements Publisher<T>, ReactiveState {
 
 	private static final Flux<?> EMPTY = Mono.empty()
 	                                         .flux();
@@ -231,7 +232,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> capacity(long capacity) {
+	public final Flux<T> capacity(long capacity) {
 		return new Flux.FluxBounded<>(this, capacity);
 	}
 
@@ -243,7 +244,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public <R> Flux<R> concatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
+	public final <R> Flux<R> concatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
 		return new FluxFlatMap<>(this, mapper, 1, 32);
 	}
 
@@ -254,7 +255,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> concatWith(Publisher<? extends T> source) {
+	public final Flux<T> concatWith(Publisher<? extends T> source) {
 		throw new UnsupportedOperationException(); // TODO
 	}
 
@@ -265,7 +266,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> doOnCancel(Runnable onCancel) {
+	public final Flux<T> doOnCancel(Runnable onCancel) {
 		return new FluxPeek<>(this, null, null, null, null, null, null, onCancel);
 	}
 
@@ -276,7 +277,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> doOnComplete(Runnable onComplete) {
+	public final Flux<T> doOnComplete(Runnable onComplete) {
 		return new FluxPeek<>(this, null, null, null, onComplete, null, null, null);
 	}
 
@@ -287,7 +288,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> doOnError(Consumer<? super Throwable> onError) {
+	public final Flux<T> doOnError(Consumer<? super Throwable> onError) {
 		return new FluxPeek<>(this, null, null, onError, null, null, null, null);
 	}
 
@@ -298,7 +299,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> doOnNext(Consumer<? super T> onNext) {
+	public final Flux<T> doOnNext(Consumer<? super T> onNext) {
 		return new FluxPeek<>(this, null, onNext, null, null, null, null, null);
 	}
 
@@ -309,7 +310,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> doOnSubscribe(Consumer<? super Subscription> onSubscribe) {
+	public final Flux<T> doOnSubscribe(Consumer<? super Subscription> onSubscribe) {
 		return new FluxPeek<>(this, onSubscribe, null, null, null, null, null, null);
 	}
 
@@ -320,7 +321,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> doOnTerminate(Runnable onTerminate) {
+	public final Flux<T> doOnTerminate(Runnable onTerminate) {
 		return new FluxPeek<>(this, null, null, null, null, onTerminate, null, null);
 	}
 
@@ -329,7 +330,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Mono<T> first() {
+	public final Mono<T> first() {
 		return new MonoSingle<>(this);
 	}
 
@@ -342,7 +343,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
+	public final <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
 		return new FluxFlatMap<>(this, mapper, BaseProcessor.SMALL_BUFFER_SIZE, 32);
 	}
 
@@ -355,7 +356,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public <R> Flux<R> lift(Function<Subscriber<? super R>, Subscriber<? super T>> operator) {
+	public final <R> Flux<R> lift(Function<Subscriber<? super R>, Subscriber<? super T>> operator) {
 		return new FluxLift<>(this, operator);
 	}
 
@@ -371,7 +372,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> log(String category) {
+	public final Flux<T> log(String category) {
 		return log(category, Level.INFO, FluxLog.ALL);
 	}
 
@@ -381,7 +382,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> log(String category, Level level) {
+	public final Flux<T> log(String category, Level level) {
 		return log(category, level, FluxLog.ALL);
 	}
 
@@ -392,7 +393,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> log(String category, Level level, int options) {
+	public final Flux<T> log(String category, Level level, int options) {
 		return new FluxLog<>(this, category, level, options);
 	}
 
@@ -404,7 +405,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public <R> Flux<R> map(Function<? super T, ? extends R> mapper) {
+	public final <R> Flux<R> map(Function<? super T, ? extends R> mapper) {
 		return new FluxMap<>(this, mapper);
 	}
 
@@ -415,7 +416,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> mergeWith(Publisher<? extends T> source) {
+	public final Flux<T> mergeWith(Publisher<? extends T> source) {
 		return merge(just(this, source));
 	}
 
@@ -424,7 +425,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> onErrorResumeNext(Function<Throwable, ? extends Publisher<? extends T>> fallbackFunction) {
+	public final Flux<T> onErrorResumeNext(Function<Throwable, ? extends Publisher<? extends T>> fallbackFunction) {
 		return new FluxResume<>(this, fallbackFunction);
 	}
 
@@ -433,7 +434,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> onErrorReturn(final T fallbackValue) {
+	public final Flux<T> onErrorReturn(final T fallbackValue) {
 		return switchOnError(just(fallbackValue));
 	}
 
@@ -442,7 +443,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Flux<T> switchOnError(final Publisher<? extends T> fallback) {
+	public final Flux<T> switchOnError(final Publisher<? extends T> fallback) {
 		return onErrorResumeNext(new Function<Throwable, Publisher<? extends T>>() {
 			@Override
 			public Publisher<? extends T> apply(Throwable throwable) {
@@ -454,7 +455,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	/**
 	 * @return
 	 */
-	public Flux<T> unbounded() {
+	public final Flux<T> unbounded() {
 		return capacity(Long.MAX_VALUE);
 	}
 
@@ -462,7 +463,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 * Combine the emissions of multiple Publishers together via a specified function and emit single items for each
 	 * combination based on the results of this function.
 	 */
-	public <R, V> Flux<V> zipWith(Publisher<? extends R> source2,
+	public final <R, V> Flux<V> zipWith(Publisher<? extends R> source2,
 			final BiFunction<? super T, ? super R, ? extends V> zipper) {
 
 		return new FluxZip<>(new Publisher[]{this, source2}, new Function<Tuple2<T, R>, V>() {

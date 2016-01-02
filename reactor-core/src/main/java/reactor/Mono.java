@@ -113,7 +113,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 *
 	 * @return
 	 */
-	public Mono<T> doOnCancel(Runnable onCancel) {
+	public final Mono<T> doOnCancel(Runnable onCancel) {
 		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, null, null, null, onCancel));
 	}
 
@@ -124,7 +124,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 *
 	 * @return
 	 */
-	public Mono<T> doOnComplete(Runnable onComplete) {
+	public final Mono<T> doOnComplete(Runnable onComplete) {
 		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, onComplete, null, null, null));
 	}
 
@@ -135,7 +135,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 *
 	 * @return
 	 */
-	public Mono<T> doOnError(Consumer<? super Throwable> onError) {
+	public final Mono<T> doOnError(Consumer<? super Throwable> onError) {
 		return new MonoBarrier<>(new FluxPeek<>(this, null, null, onError, null, null, null, null));
 	}
 
@@ -146,7 +146,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 *
 	 * @return
 	 */
-	public Mono<T> doOnSubscribe(Consumer<? super Subscription> onSubscribe) {
+	public final Mono<T> doOnSubscribe(Consumer<? super Subscription> onSubscribe) {
 		return new MonoBarrier<>(new FluxPeek<>(this, onSubscribe, null, null, null, null, null, null));
 	}
 
@@ -157,7 +157,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 *
 	 * @return
 	 */
-	public Mono<T> doOnTerminate(Runnable onTerminate) {
+	public final Mono<T> doOnTerminate(Runnable onTerminate) {
 		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, null, onTerminate, null, null));
 	}
 
@@ -170,7 +170,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 *
 	 * @return
 	 */
-	public <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
+	public final <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
 		return new FluxFlatMap<>(this, mapper, BaseProcessor.SMALL_BUFFER_SIZE, Integer.MAX_VALUE);
 	}
 
@@ -191,7 +191,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 *
 	 * @return
 	 */
-	public <R> Mono<R> map(Function<? super T, ? extends R> mapper) {
+	public final <R> Mono<R> map(Function<? super T, ? extends R> mapper) {
 		return new MonoBarrier<>(new FluxMap<>(this, mapper));
 	}
 
@@ -203,7 +203,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public Flux<T> mergeWith(Publisher<? extends T> source) {
+	public final Flux<T> mergeWith(Publisher<? extends T> source) {
 		return Flux.merge(Flux.just(this, source));
 	}
 
