@@ -1843,7 +1843,7 @@ public class Streams {
 			@SuppressWarnings("unchecked")
 			@Override
 			public Publisher<TUPLE> apply(List<? extends Publisher<?>> publishers) {
-				return new PublisherZip<>(publishers.toArray(
+				return new FluxZip<>(publishers.toArray(
 						new Publisher[publishers.size()]),
 						IDENTITY_FUNCTION,
 						BaseProcessor.XS_BUFFER_SIZE);
