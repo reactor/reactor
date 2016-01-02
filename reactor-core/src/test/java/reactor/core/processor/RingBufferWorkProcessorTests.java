@@ -62,7 +62,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 			sub.abort();
 		}));
 
-		Flux.wrap(processor).lift(FluxLift.create((d, sub) -> {
+		Flux.wrap(processor).lift(FluxLift.lifter((d, sub) -> {
 			count.incrementAndGet();
 			sub.onNext(d);
 		})).subscribe(Subscribers.unbounded((d, sub) -> {

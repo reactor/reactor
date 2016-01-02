@@ -16,11 +16,11 @@
 
 package reactor.core
 
+import reactor.Publishers
 import reactor.core.publisher.FluxLift
-import reactor.fn.BiConsumer
 import spock.lang.Specification
 
-import static reactor.Publishers.*
+import static reactor.Flux.from
 
 /**
  * @author Stephane Maldini
@@ -31,7 +31,7 @@ class PublishersSpec extends Specification {
 
 	given: "Iterable publisher of 1000 to read queue"
 	def pub = from(1..1000)
-	def queue = toReadQueue(pub)
+	def queue = Publishers.toReadQueue(pub)
 
 	when: "read the queue"
 	def v = queue.take()
@@ -51,7 +51,7 @@ class PublishersSpec extends Specification {
   def "Error handling with onErrorReturn"() {
 
 	given: "Iterable publisher of 1000 to read queue"
-	def pub = from(1..1000).lift( FluxLift.create { d, s ->
+	def pub = from(1..1000).lift( FluxLift.lifter { d, s ->
 	  if (d == 3) {
 		throw new Exception('test')
 	  }
@@ -59,7 +59,7 @@ class PublishersSpec extends Specification {
 	})
 
 	when: "read the queue"
-	def q = toReadQueue(onErrorReturn(pub, 100000))
+	def q = Publishers.toReadQueue(pub.onErrorReturn(100000))
 	def res = []
 	q.drainTo(res)
 
@@ -70,7 +70,7 @@ class PublishersSpec extends Specification {
   def "Error handling with onErrorResume"() {
 
 	given: "Iterable publisher of 1000 to read queue"
-	def pub = from(1..1000).lift( FluxLift.create{ d, s ->
+	def pub = from(1..1000).lift( FluxLift.lifter{ d, s ->
 	  if (d == 3) {
 		throw new Exception('test')
 	  }
@@ -78,7 +78,7 @@ class PublishersSpec extends Specification {
 	})
 
 	when: "read the queue"
-	def q = toReadQueue(switchOnError(pub, from(9999..10002)))
+	def q = Publishers.toReadQueue(pub.switchOnError(from(9999..10002)))
 	def res = []
 	q.drainTo(res)
 

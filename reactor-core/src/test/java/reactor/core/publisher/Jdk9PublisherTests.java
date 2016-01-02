@@ -24,7 +24,7 @@ import org.reactivestreams.tck.TestEnvironment;
 import org.testng.SkipException;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
-import reactor.Publishers;
+import reactor.Flux;
 import reactor.Timers;
 import reactor.core.publisher.convert.DependencyUtils;
 
@@ -61,7 +61,7 @@ public class Jdk9PublisherTests extends PublisherVerification<Long> {
 
 		SubmissionPublisher<Long> pub = new SubmissionPublisher<>();
 		Timers.global().schedule(pub::submit, 50, TimeUnit.MILLISECONDS);
-		return Publishers.convert(pub);
+		return Flux.convert(pub);
 	}
 
 	@Override
@@ -72,6 +72,6 @@ public class Jdk9PublisherTests extends PublisherVerification<Long> {
 
 		SubmissionPublisher<Long> pub = new SubmissionPublisher<>();
 		pub.closeExceptionally(new Exception("jdk9-test"));
-		return Publishers.convert(pub);
+		return Flux.convert(pub);
 	}
 }

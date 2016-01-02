@@ -50,7 +50,7 @@ public class FluxVerification extends PublisherVerification<Long> {
 			else {
 				s.onComplete();
 			}
-		}, s -> new AtomicLong(0L)).lift(FluxLift.<Long, Long>create((data, sub) -> sub.onNext(data * 10)))
+		}, s -> new AtomicLong(0L)).lift(FluxLift.<Long, Long>lifter((data, sub) -> sub.onNext(data * 10)))
 		                           .log("log-test");
 	}
 

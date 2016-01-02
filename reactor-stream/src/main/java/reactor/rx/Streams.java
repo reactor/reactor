@@ -155,7 +155,7 @@ public class Streams {
 	public static <T, C> Stream<T> createWith(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 	                                          Function<Subscriber<? super T>, C> contextFactory,
 	                                          Consumer<C> shutdownConsumer) {
-		return Streams.wrap(Flux.createWithDemand(requestConsumer, contextFactory, shutdownConsumer));
+		return Streams.wrap(Flux.generate(requestConsumer, contextFactory, shutdownConsumer));
 	}
 
 	/**
@@ -295,7 +295,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> from(Iterable<? extends T> values) {
-		return Streams.wrap(Publishers.from(values));
+		return Streams.wrap(Flux.from(values));
 	}
 
 	/**
@@ -308,7 +308,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> from(Iterator<? extends T> values) {
-		return Streams.wrap(Publishers.from(values));
+		return Streams.wrap(Flux.from(values));
 	}
 
 	/**
@@ -664,11 +664,11 @@ public class Streams {
 	}
 
 	/**
-	 * @see Publishers#convert(Object)
+	 * @see Flux#convert(Object)
 	 * @since 2.5
 	 */
 	public static <T> Stream<T> convert(Object source) {
-		return Streams.wrap(Publishers.<T>convert(source));
+		return Streams.wrap(Flux.<T>convert(source));
 	}
 
 	/**
@@ -713,7 +713,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> amb(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		return wrap(Publishers.amb(mergedPublishers));
+		return wrap(Flux.amb(mergedPublishers));
 	}
 
 	/**
@@ -862,7 +862,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> concat(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		return Streams.wrap(Publishers.concat(mergedPublishers));
+		return Streams.wrap(Flux.concat(mergedPublishers));
 	}
 
 	/**
@@ -877,7 +877,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends Publisher<? extends T>> concatdPublishers) {
-		return wrap(Publishers.concat(concatdPublishers));
+		return wrap(Flux.concat(concatdPublishers));
 	}
 
 	/**
@@ -1031,7 +1031,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> merge(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		return wrap(Publishers.merge(mergedPublishers));
+		return wrap(Flux.merge(mergedPublishers));
 	}
 
 	/**
@@ -1045,7 +1045,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T, E extends T> Stream<E> merge(Publisher<? extends Publisher<E>> mergedPublishers) {
-		return wrap(Publishers.merge(mergedPublishers));
+		return wrap(Flux.merge(mergedPublishers));
 	}
 
 	/**
@@ -1454,7 +1454,7 @@ public class Streams {
 	public static <T1, T2, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                        Publisher<? extends T2> source2,
 	                                        BiFunction<? super T1, ? super T2, ? extends V> combinator) {
-		return wrap(Publishers.zip(source1, source2, combinator));
+		return wrap(Flux.zip(source1, source2, combinator));
 	}
 
 	/**
@@ -1473,7 +1473,7 @@ public class Streams {
 	@SuppressWarnings("unchecked")
 	public static <T1, T2> Stream<Tuple2<T1, T2>> zip(Publisher<? extends T1> source1,
 	                                                  Publisher<? extends T2> source2) {
-		return wrap(Publishers.zip(source1, source2));
+		return wrap(Flux.zip(source1, source2));
 	}
 
 	/**
@@ -1776,7 +1776,7 @@ public class Streams {
 	 */
 	public static <TUPLE extends Tuple, V> Stream<V> zip(List<? extends Publisher<?>> sources,
 	                                                    final Function<? super TUPLE, ? extends V> combinator) {
-		return wrap(Publishers.zip(sources, new Function<Tuple, V>() {
+		return wrap(Flux.zip(sources, new Function<Tuple, V>() {
 			@Override
 			@SuppressWarnings("unchecked")
 			public V apply(Tuple tuple) {
@@ -1797,7 +1797,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <TUPLE extends Tuple> Stream<TUPLE> zip(List<? extends Publisher<?>> sources) {
-		return wrap((Publisher<TUPLE>)Publishers.zip(sources));
+		return wrap((Publisher<TUPLE>) Flux.zip(sources));
 	}
 
 	/**

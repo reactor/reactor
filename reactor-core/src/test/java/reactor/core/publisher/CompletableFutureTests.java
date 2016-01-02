@@ -16,14 +16,12 @@
 package reactor.core.publisher;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscription;
 import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
-import reactor.Publishers;
+import reactor.Flux;
 
 /**
  * @author Stephane Maldini
@@ -47,7 +45,7 @@ public class CompletableFutureTests extends PublisherVerification<Long> {
 
 	@Override
 	public Publisher<Long> createPublisher(long elements) {
-		return Publishers.convert(CompletableFuture.completedFuture(1));
+		return Flux.convert(CompletableFuture.completedFuture(1));
 
 	}
 
@@ -55,6 +53,6 @@ public class CompletableFutureTests extends PublisherVerification<Long> {
 	public Publisher<Long> createFailedPublisher() {
 		CompletableFuture<Long> c = new CompletableFuture<>();
 		c.completeExceptionally(new Exception("cf-test"));
-		return Publishers.convert(c);
+		return Flux.convert(c);
 	}
 }

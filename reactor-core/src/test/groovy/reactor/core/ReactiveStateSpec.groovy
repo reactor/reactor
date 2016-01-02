@@ -16,13 +16,13 @@
 
 package reactor.core
 
-import reactor.Flux
+import reactor.Publishers
 import reactor.core.support.ReactiveStateUtils
 import spock.lang.Specification
 
+import static reactor.Flux.*
 import static reactor.Processors.emitter
 import static reactor.Processors.singleGroup
-import static reactor.Publishers.*
 import static reactor.core.subscriber.SubscriberFactory.unbounded
 
 /**
@@ -34,8 +34,8 @@ class ReactiveStateSpec extends Specification {
 
 	when: "Iterable publisher of 1000 to read queue"
 
-	def pub1 = Flux.map(from(1..1000), { d -> d })
-	def pub2 = Flux.map(from(1..123), { d -> d })
+	def pub1 = from(1..1000).map { d -> d }
+	def pub2 = from(1..123).map { d -> d }
 
 	def t = ReactiveStateUtils.scan(pub1)
 	println t
@@ -69,10 +69,10 @@ class ReactiveStateSpec extends Specification {
 	def sub2 = unbounded()
 	def sub3 = unbounded()
 	def group = singleGroup().get()
-	log(proc1," test").subscribe(sub1)
+	Publishers.log(proc1," test").subscribe(sub1)
 	group.subscribe(sub2)
-	log(proc1," test").subscribe(sub3)
-	log(proc1," test").subscribe(group)
+	Publishers.log(proc1," test").subscribe(sub3)
+	Publishers.log(proc1," test").subscribe(group)
 	def zip = zip(pub3, proc2)
 
 	t = ReactiveStateUtils.scan(zip)

@@ -34,7 +34,7 @@ import spock.lang.Specification
 import java.util.concurrent.*
 import java.util.concurrent.atomic.AtomicInteger
 
-import static reactor.Publishers.error
+import static reactor.Flux.error
 
 class StreamsSpec extends Specification {
 

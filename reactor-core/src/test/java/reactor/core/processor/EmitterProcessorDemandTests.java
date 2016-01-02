@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.core.subscriber.test.DataTestSubscriber;
@@ -164,7 +165,7 @@ public class EmitterProcessorDemandTests {
 
 
 		subscriber.request(1);
-		Publishers.log(Publishers.from(DATA)).subscribe(processor);
+		Publishers.log(Flux.from(DATA)).subscribe(processor);
 
 		subscriber.assertNextSignals("1");
 	}
@@ -175,7 +176,7 @@ public class EmitterProcessorDemandTests {
 		DataTestSubscriber<String> subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
-		Publishers.log(Publishers.from(DATA)).subscribe(processor);
+		Publishers.log(Flux.from(DATA)).subscribe(processor);
 
 		subscriber.request(1);
 
@@ -185,7 +186,7 @@ public class EmitterProcessorDemandTests {
 	@Test
 	public void testHanging() throws InterruptedException {
 		BaseProcessor<String, String> processor = Processors.emitter(2);
-		Publishers.log(Publishers.from(DATA)).subscribe(processor);
+		Publishers.log(Flux.from(DATA)).subscribe(processor);
 
 		DataTestSubscriber<String> first = DataTestSubscriber.createWithTimeoutSecs(1);
 		Publishers.log(processor, "after-1").subscribe(first);
@@ -203,7 +204,7 @@ public class EmitterProcessorDemandTests {
 	@Test
 	public void testNPE() throws InterruptedException {
 		BaseProcessor<String, String> processor = Processors.emitter(8);
-		Publishers.log(Publishers.from(DATA)).subscribe(processor);
+		Publishers.log(Flux.from(DATA)).subscribe(processor);
 
 		DataTestSubscriber<String> first = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(first);

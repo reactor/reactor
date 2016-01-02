@@ -19,6 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.PublisherVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
+import reactor.Flux;
 import reactor.Publishers;
 import rx.Observable;
 
@@ -45,12 +46,12 @@ public class RxJavaPublisherTests extends PublisherVerification<Long> {
 	@Override
 	public Publisher<Long> createPublisher(long elements) {
 		return Publishers.log(
-				Publishers.convert(Observable.range(0, (int)Math.min(Integer.MAX_VALUE, elements)))
+				Flux.convert(Observable.range(0, (int)Math.min(Integer.MAX_VALUE, elements)))
 		);
 	}
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
-		return Publishers.convert(Observable.error(new Exception("obs-test")));
+		return Flux.convert(Observable.error(new Exception("obs-test")));
 	}
 }

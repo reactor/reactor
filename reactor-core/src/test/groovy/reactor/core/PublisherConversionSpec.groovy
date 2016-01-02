@@ -16,6 +16,7 @@
 
 package reactor.core
 
+import reactor.Flux
 import reactor.Publishers
 import reactor.core.publisher.convert.CompletableFutureConverter
 import rx.Observable
@@ -24,8 +25,7 @@ import spock.lang.Specification
 
 import java.util.concurrent.CompletableFuture
 
-import static reactor.Publishers.from
-import static reactor.Publishers.toReadQueue
+import static reactor.Flux.from
 
 /**
  * @author Stephane Maldini
@@ -36,8 +36,8 @@ class PublisherConversionSpec extends Specification {
 
 	given: "Iterable publisher of 1000 to read queue"
 	def obs = Observable.range(1, 1000)
-	def pub = Publishers.convert(obs)
-	def queue = toReadQueue(pub)
+	def pub = Flux.convert(obs)
+	def queue = Publishers.toReadQueue(pub)
 
 	when: "read the queue"
 	def v = queue.take()
@@ -56,7 +56,7 @@ class PublisherConversionSpec extends Specification {
 
 	when: "Iterable publisher of 1000 to observable"
 	pub = from(1..1000)
-	obs = Publishers.convert(pub, Observable.class)
+	obs = pub.convert(Observable.class)
 	def blocking = obs.toList()
 
 	v = blocking.toBlocking().single()
@@ -71,8 +71,8 @@ class PublisherConversionSpec extends Specification {
 
 	given: "Iterable publisher of 1000 to read queue"
 	def obs = Single.just(1)
-	def pub = Publishers.convert(obs)
-	def queue = toReadQueue(pub)
+	def pub = Flux.convert(obs)
+	def queue = Publishers.toReadQueue(pub)
 
 	when: "read the queue"
 	def v = queue.take()
@@ -84,8 +84,8 @@ class PublisherConversionSpec extends Specification {
 
 
 	when: "Iterable publisher of 1000 to observable"
-	pub = Publishers.just(1)
-	def single = Publishers.convert(pub, Single.class)
+	pub = Flux.just(1)
+	def single = pub.convert(Single.class)
 	def blocking = single.toObservable().toBlocking()
 
 	v = blocking.single()
@@ -98,8 +98,8 @@ class PublisherConversionSpec extends Specification {
 
 	given: "Iterable publisher of 1 to read queue"
 	def obs = CompletableFuture.completedFuture([1])
-	def pub = Publishers.<List<Integer>>convert(obs)
-	def queue = toReadQueue(pub)
+	def pub = Flux.<List<Integer>>convert(obs)
+	def queue = Publishers.toReadQueue(pub)
 
 	when: "read the queue"
 	def v = queue.take()
@@ -112,7 +112,7 @@ class PublisherConversionSpec extends Specification {
 
 	when: "Iterable publisher of 1000 to completable future"
 	pub = from(1..1000)
-	obs = Publishers.<CompletableFuture<List<Integer>>>convert(pub, CompletableFuture.class)
+	obs = pub.<CompletableFuture<List<Integer>>>convert(CompletableFuture.class)
 	def vList = obs.get()
 
 	then: "queues values correct"

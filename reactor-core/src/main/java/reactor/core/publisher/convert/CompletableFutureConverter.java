@@ -186,7 +186,7 @@ public final class CompletableFutureConverter extends PublisherConverter<Complet
 
 		public FluxCompletableFuture(CompletableFuture<? extends T> future) {
 			this.future = future;
-			this.futurePublisher = Flux.createWithDemand(this, null, this);
+			this.futurePublisher = Flux.generate(this, null, this);
 		}
 
 		@Override

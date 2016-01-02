@@ -74,18 +74,6 @@ public abstract class Mono<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Expose the specified {@link Publisher} with the {@link Mono} API, and ensure it will emit 0 or 1 item.
-	 *
-	 * @param source
-	 * @param <T>
-	 *
-	 * @return
-	 */
-	public static <T> Mono<T> wrap(Publisher<T> source) {
-		return new MonoSingle<>(source);
-	}
-
-	/**
 	 * Create a new {@link Mono} that emits the specified item.
 	 *
 	 * @param data
@@ -95,6 +83,18 @@ public abstract class Mono<T> implements Publisher<T> {
 	 */
 	public static <T> Mono<T> just(T data) {
 		return new MonoJust<>(data);
+	}
+
+	/**
+	 * Expose the specified {@link Publisher} with the {@link Mono} API, and ensure it will emit 0 or 1 item.
+	 *
+	 * @param source
+	 * @param <T>
+	 *
+	 * @return
+	 */
+	public static <T> Mono<T> wrap(Publisher<T> source) {
+		return new MonoSingle<>(source);
 	}
 
 	/**

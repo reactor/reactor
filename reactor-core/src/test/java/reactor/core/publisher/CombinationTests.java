@@ -181,7 +181,7 @@ public class CombinationTests {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Publisher<SensorData> p = Publishers.log(Publishers.merge(sensorOdd(), sensorEven()), "merge");
+		Publisher<SensorData> p = Publishers.log(Flux.merge(sensorOdd(), sensorEven()), "merge");
 
 		generateData(elements);
 
@@ -193,7 +193,7 @@ public class CombinationTests {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements/2 + 1);
 
-		Publisher<SensorData> p = Publishers.log(Publishers.amb(sensorOdd(), sensorEven()), "amb");
+		Publisher<SensorData> p = Publishers.log(Flux.amb(sensorOdd(), sensorEven()), "amb");
 
 		System.out.println(ReactiveStateUtils.scan(p).toString());
 
@@ -220,7 +220,7 @@ public class CombinationTests {
 
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Publisher<SensorData> p = Publishers.log(Publishers.concat(sensorEven(), sensorOdd()), "concat");
+		Publisher<SensorData> p = Publishers.log(Flux.concat(sensorEven(), sensorOdd()), "concat");
 
 		//System.out.println(tail.debug());
 		generateData(elements);
@@ -233,7 +233,7 @@ public class CombinationTests {
 		int elements = 69;
 		CountDownLatch latch = new CountDownLatch((elements / 2) + 1);
 
-		Publisher<SensorData> p = Publishers.log(Publishers.zip(sensorEven(), sensorOdd(), this::computeMin), "zip");
+		Publisher<SensorData> p = Publishers.log(Flux.zip(sensorEven(), sensorOdd(), this::computeMin), "zip");
 
 		generateData(elements);
 
@@ -245,7 +245,7 @@ public class CombinationTests {
 		int elements = 1;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Publisher<SensorData> p = Publishers.log(Publishers.zip(sensorEven(),
+		Publisher<SensorData> p = Publishers.log(Flux.zip(sensorEven(),
 				Publishers.just(new SensorData(1L, 14.0f)),
 				this::computeMin), "zip2");
 
@@ -262,7 +262,7 @@ public class CombinationTests {
 
 		sensorDataProcessor.subscribe(Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch.countDown()));
 
-		Publishers.log(Publishers.zip(Publishers.just(new SensorData(2L, 12.0f)),
+		Publishers.log(Flux.zip(Publishers.just(new SensorData(2L, 12.0f)),
 				Publishers.just(new SensorData(1L, 14.0f)),
 				this::computeMin), "zip3")
 		          .subscribe(sensorDataProcessor);

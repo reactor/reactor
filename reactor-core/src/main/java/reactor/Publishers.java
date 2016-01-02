@@ -175,7 +175,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <O> The target type of the data sequence
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I, O> Publisher<O> map(Publisher<I> source, final Function<? super I, ? extends O> transformer) {
+	public static <I, O> Flux<O> map(Publisher<I> source, final Function<? super I, ? extends O> transformer) {
 		return new FluxMap<>(source, transformer);
 	}
 
@@ -389,7 +389,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <T2>
 	 * @return
 	 */
-	public static <T1, T2, O> Publisher<O> zip(Publisher<? extends T1> source1,
+	public static <T1, T2, O> Flux<O> zip(Publisher<? extends T1> source1,
 			Publisher<? extends T2> source2,
 			final BiFunction<? super T1, ? super T2, ? extends O> combinator) {
 
@@ -407,7 +407,7 @@ public final class Publishers extends FluxFactory {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static Publisher<Tuple> zip(Iterable<? extends Publisher<?>> sources) {
+	public static Flux<Tuple> zip(Iterable<? extends Publisher<?>> sources) {
 		return zip(sources, IDENTITY_FUNCTION);
 	}
 
@@ -418,7 +418,7 @@ public final class Publishers extends FluxFactory {
 	 * @param <O>
 	 * @return
 	 */
-	public static <O> Publisher<O> zip(Iterable<? extends Publisher<?>> sources,
+	public static <O> Flux<O> zip(Iterable<? extends Publisher<?>> sources,
 			final Function<? super Tuple, ? extends O> combinator) {
 
 		if (sources == null) {
@@ -470,10 +470,10 @@ public final class Publishers extends FluxFactory {
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <IN> Publisher<IN> convert(Object source) {
+	public static <IN> Flux<IN> convert(Object source) {
 
 		if (Publisher.class.isAssignableFrom(source.getClass())) {
-			return (Publisher<IN>) source;
+			return Flux.wrap((Publisher<IN>) source);
 		}
 		else if (Iterable.class.isAssignableFrom(source.getClass())) {
 			return from((Iterable<IN>) source);
@@ -482,7 +482,7 @@ public final class Publishers extends FluxFactory {
 			return from((Iterator<IN>) source);
 		}
 		else {
-			return (Publisher<IN>) DependencyUtils.convertToPublisher(source);
+			return (Flux<IN>)DependencyUtils.convertToPublisher(source);
 		}
 	}
 

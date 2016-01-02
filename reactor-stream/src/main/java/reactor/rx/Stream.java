@@ -35,7 +35,6 @@ import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.publisher.FluxLift;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.FluxLog;
 import reactor.core.publisher.FluxMap;
@@ -159,7 +158,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Publishers.amb(Stream.this, publisher).subscribe(s);
+				Flux.amb(Stream.this, publisher).subscribe(s);
 			}
 		};
 	}
@@ -487,8 +486,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Publishers.concat(Publishers.from(Arrays.asList(Stream.this, publisher)))
-				          .subscribe(s);
+				Flux.concat(Flux.from(Arrays.asList(Stream.this, publisher)))
+				    .subscribe(s);
 			}
 		};
 	}
@@ -969,7 +968,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			}
 		}
 
-		final Publisher<V> mergedStream = Publishers.merge(Publishers.from(publisherList));
+		final Publisher<V> mergedStream = Flux.merge(Flux.from(publisherList));
 
 		return new StreamBarrier<O, V>(this) {
 			@Override
@@ -1180,8 +1179,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				Publishers.merge(thiz)
-				          .subscribe(s);
+				Flux.merge(thiz)
+				    .subscribe(s);
 			}
 		};
 	}
@@ -1202,8 +1201,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Publishers.merge(Publishers.from(Arrays.asList(Stream.this, publisher)))
-				          .subscribe(s);
+				Flux.merge(Flux.from(Arrays.asList(Stream.this, publisher)))
+				    .subscribe(s);
 			}
 		};
 	}
@@ -2404,7 +2403,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				Publishers.<O, T2, V>zip(source, publisher, zipper).subscribe(s);
+				Flux.<O, T2, V>zip(source, publisher, zipper).subscribe(s);
 			}
 		};
 	}
@@ -2427,7 +2426,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			@SuppressWarnings("unchecked")
 			@Override
 			public void subscribe(Subscriber<? super Tuple2<O, T2>> s) {
-				Publishers.<O, T2, Tuple2<O, T2>>zip(source, publisher, IDENTITY_FUNCTION).subscribe(s);
+				Flux.<O, T2, Tuple2<O, T2>>zip(source, publisher, IDENTITY_FUNCTION).subscribe(s);
 			}
 		};
 	}

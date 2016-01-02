@@ -22,7 +22,6 @@ import java.util.List;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import reactor.Flux;
-import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
 import reactor.core.subscriber.SubscriberWithContext;
@@ -451,7 +450,7 @@ public final class Promises {
 
 		Promise<T> d = new Promise<T>();
 
-		Publishers.<T>merge(Publishers.from(promises))
+		Flux.<T>merge(Flux.from(promises))
 				.subscribe(d);
 
 		return d;

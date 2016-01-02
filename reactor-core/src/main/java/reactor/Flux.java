@@ -16,12 +16,17 @@
 
 package reactor;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 import java.util.logging.Level;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.processor.BaseProcessor;
+import reactor.core.publisher.FluxAmb;
 import reactor.core.publisher.FluxArray;
 import reactor.core.publisher.FluxFactory;
 import reactor.core.publisher.FluxFlatMap;
@@ -34,15 +39,20 @@ import reactor.core.publisher.FluxPeek;
 import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxSession;
 import reactor.core.publisher.FluxZip;
+import reactor.core.publisher.ForEachSequencer;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoSingle;
+import reactor.core.publisher.convert.DependencyUtils;
+import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
+import reactor.fn.BiConsumer;
 import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
+import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 
 /**
@@ -62,16 +72,170 @@ import reactor.fn.tuple.Tuple2;
  * @see Mono
  * @since 2.5
  */
-public abstract class Flux<T> extends FluxFactory implements Publisher<T>, ReactiveState {
+public abstract class Flux<T> implements Publisher<T> {
 
-	private static final Flux<?> EMPTY = Mono.empty()
-	                                         .flux();
 
 	/**
 	 *
 	 *  Static Generators
 	 *
 	 */
+
+	private static final IdentityFunction IDENTITY_FUNCTION = new IdentityFunction();
+	private static final Flux<?>          EMPTY             = Mono.empty()
+	                                                              .flux();
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <I> Flux<I> amb(Publisher<? extends I> source1, Publisher<? extends I> source2) {
+		return new FluxAmb<>(new Publisher[]{source1, source2});
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Flux<I> amb(Iterable<? extends Publisher<? extends I>> sources) {
+		if (sources == null) {
+			return empty();
+		}
+
+		Iterator<? extends Publisher<? extends I>> it = sources.iterator();
+		if (!it.hasNext()) {
+			return empty();
+		}
+
+		List<Publisher<? extends I>> list = null;
+		Publisher<? extends I> p;
+		do {
+			p = it.next();
+			if (list == null) {
+				if (it.hasNext()) {
+					list = new ArrayList<>();
+				}
+				else {
+					return wrap((Publisher<I>) p);
+				}
+			}
+			list.add(p);
+		}
+		while (it.hasNext());
+
+		return new FluxAmb<>(list.toArray(new Publisher[list.size()]));
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Flux<I> concat(Publisher<? extends Publisher<? extends I>> source) {
+		return Publishers.concatMap(source, FluxFlatMap.<I>identity());
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Flux<I> concat(Iterable<? extends Publisher<? extends I>> source) {
+		return Publishers.concatMap(from(source), FluxFlatMap.<I>identity());
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SuppressWarnings("unchecked")
+	public static <I> Flux<I> concat(Publisher<? extends I> source1, Publisher<? extends I> source2) {
+		return Publishers.concatMap(from(Arrays.asList(source1, source2)), FluxFlatMap.<I>identity());
+	}
+
+	/**
+	 * @param source
+	 * @param <IN>
+	 *
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <IN> Flux<IN> convert(Object source) {
+
+		if (Publisher.class.isAssignableFrom(source.getClass())) {
+			return wrap((Publisher<IN>) source);
+		}
+		else if (Iterable.class.isAssignableFrom(source.getClass())) {
+			return from((Iterable<IN>) source);
+		}
+		else if (Iterator.class.isAssignableFrom(source.getClass())) {
+			return from((Iterator<IN>) source);
+		}
+		else {
+			return (Flux<IN>) DependencyUtils.convertToPublisher(source);
+		}
+	}
+
+	/**
+	 * Create a {@link Publisher} reacting on each available {@link Subscriber} read derived with the passed {@link
+	 * Consumer}. If a previous request is still running, avoid recursion and extend the previous request iterations.
+	 *
+	 * @param requestConsumer A {@link Consumer} invoked when available read with the target subscriber
+	 * @param <T> The type of the data sequence
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <T> Flux<T> create(Consumer<SubscriberWithContext<T, Void>> requestConsumer) {
+		return create(requestConsumer, null, null);
+	}
+
+	/**
+	 * Create a {@link Publisher} reacting on each available {@link Subscriber} read derived with the passed {@link
+	 * Consumer}. If a previous request is still running, avoid recursion and extend the previous request iterations.
+	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every
+	 * request calls.
+	 *
+	 * @param requestConsumer A {@link Consumer} invoked when available read with the target subscriber
+	 * @param contextFactory A {@link Function} called for every new subscriber returning an immutable context (IO
+	 * connection...)
+	 * @param <T> The type of the data sequence
+	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <T, C> Flux<T> create(Consumer<SubscriberWithContext<T, C>> requestConsumer,
+			Function<Subscriber<? super T>, C> contextFactory) {
+		return create(requestConsumer, contextFactory, null);
+	}
+
+	/**
+	 * Create a {@link Publisher} reacting on each available {@link Subscriber} read derived with the passed {@link
+	 * Consumer}. If a previous request is still running, avoid recursion and extend the previous request iterations.
+	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every
+	 * request calls. The argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel,
+	 * onComplete, onError).
+	 *
+	 * @param requestConsumer A {@link Consumer} invoked when available read with the target subscriber
+	 * @param contextFactory A {@link Function} called once for every new subscriber returning an immutable context (IO
+	 * connection...)
+	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(),
+	 * onError()
+	 * @param <T> The type of the data sequence
+	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <T, C> Flux<T> create(final Consumer<SubscriberWithContext<T, C>> requestConsumer,
+			Function<Subscriber<? super T>, C> contextFactory,
+			Consumer<C> shutdownConsumer) {
+		return FluxFactory.create(requestConsumer, contextFactory, shutdownConsumer);
+	}
 
 	/**
 	 * Create a {@link Flux} that completes without emitting any item.
@@ -98,14 +262,137 @@ public abstract class Flux<T> extends FluxFactory implements Publisher<T>, React
 	}
 
 	/**
+	 * Create a {@link Flux} that emits the items contained in the provided {@link Iterable}.
+	 *
+	 * @param it
+	 * @param <T>
+	 *
+	 * @return
+	 */
+	public static <T> Flux<T> from(Iterable<? extends T> it) {
+		ForEachSequencer.IterableSequencer<T> iterablePublisher = new ForEachSequencer.IterableSequencer<>(it);
+		return create(iterablePublisher, iterablePublisher);
+	}
+
+	/**
+	 * Create a {@link Flux} that emits the items contained in the provided {@link Iterable}.
+	 *
+	 * @param array
+	 * @param <T>
+	 *
+	 * @return
+	 */
+	public static <T> Flux<T> from(T[] array) {
+		return new FluxArray<>(array);
+	}
+
+	/**
+	 * @param defaultValues
+	 * @param <T>
+	 *
+	 * @return
+	 */
+	public static <T> Flux<T> from(final Iterator<? extends T> defaultValues) {
+		if (defaultValues == null || !defaultValues.hasNext()) {
+			return empty();
+		}
+		ForEachSequencer.IteratorSequencer<T> iteratorPublisher =
+				new ForEachSequencer.IteratorSequencer<>(defaultValues);
+		return create(iteratorPublisher, iteratorPublisher);
+	}
+
+	/**
+	 * Create a {@link Publisher} reacting on requests with the passed {@link BiConsumer}. The argument {@code
+	 * contextFactory} is executed once by new subscriber to generate a context shared by every request calls. The
+	 * argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel, onComplete,
+	 * onError).
+	 *
+	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
+	 * @param contextFactory A {@link Function} called once for every new subscriber returning an immutable context (IO
+	 * connection...)
+	 * @param shutdownConsumer A {@link Consumer} called once everytime a subscriber terminates: cancel, onComplete(),
+	 * onError()
+	 * @param <T> The type of the data sequence
+	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <T, C> Flux<T> generate(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+			Function<Subscriber<? super T>, C> contextFactory,
+			Consumer<C> shutdownConsumer) {
+
+		return FluxFactory.generate(requestConsumer, contextFactory, shutdownConsumer);
+	}
+
+	/**
+	 * Create a new {@link Flux} that emits the specified item.
+	 *
+	 * @param data
+	 * @param <T>
+	 *
+	 * @return
+	 */
+	@SafeVarargs
+	public static <T> Flux<T> just(T... data) {
+		return from(data);
+	}
+
+	/**
+	 * @param data
+	 * @param <T>
+	 *
+	 * @return
+	 */
+	public static <T> Flux<T> just(T data) {
+		return new FluxJust<>(data);
+	}
+
+	/**
 	 * @param source
 	 * @param <T>
 	 *
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
 	public static <T> Flux<T> merge(Publisher<? extends Publisher<? extends T>> source) {
 		return new FluxFlatMap<>(source, BaseProcessor.SMALL_BUFFER_SIZE, 32);
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	public static <I> Flux<I> merge(Iterable<? extends Publisher<? extends I>> sources) {
+		return merge(from(sources));
+	}
+
+	/**
+	 * @param <I> The source type of the data sequence
+	 *
+	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 */
+	@SafeVarargs
+	@SuppressWarnings("unchecked")
+	public static <I> Flux<I> merge(Publisher<? extends I>... sources) {
+		if (sources == null || sources.length == 0) {
+			return empty();
+		}
+		if (sources.length == 1) {
+			return (Flux<I>) wrap(sources[0]);
+		}
+		return merge(from(sources));
+	}
+
+	/**
+	 * Create a {@link Flux} that never completes.
+	 *
+	 * @param <T>
+	 *
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Flux<T> never() {
+		return FluxNever.instance();
 	}
 
 	/**
@@ -132,30 +419,6 @@ public abstract class Flux<T> extends FluxFactory implements Publisher<T>, React
 	}
 
 	/**
-	 * Create a {@link Flux} that emits the items contained in the provided {@link Iterable}.
-	 *
-	 * @param it
-	 * @param <T>
-	 *
-	 * @return
-	 */
-	public static <T> Flux<T> from(Iterable<? extends T> it) {
-		throw new UnsupportedOperationException(); // TODO
-	}
-
-	/**
-	 * Create a {@link Flux} that emits the items contained in the provided {@link Iterable}.
-	 *
-	 * @param array
-	 * @param <T>
-	 *
-	 * @return
-	 */
-	public static <T> Flux<T> from(T[] array) {
-		return new FluxArray<>(array);
-	}
-
-	/**
 	 * Create a {@link Flux} reacting on subscribe with the passed {@link Consumer}. The argument {@code
 	 * sessionConsumer} is executed once by new subscriber to generate a {@link ReactiveSession} context ready to accept
 	 * signals.
@@ -170,46 +433,94 @@ public abstract class Flux<T> extends FluxFactory implements Publisher<T>, React
 	}
 
 	/**
-	 * Create a new {@link Flux} that emits the specified item.
-	 *
-	 * @param data
-	 * @param <T>
-	 *
-	 * @return
-	 */
-	@SafeVarargs
-	public static <T> Flux<T> just(T... data) {
-		return from(data);
-	}
-
-	public static <T> Flux<T> just(T data) {
-		return new FluxJust<>(data);
-	}
-
-	/**
-	 * Create a {@link Flux} that never completes.
-	 *
-	 * @param <T>
+	 * @param source1
+	 * @param source2
+	 * @param <T1>
+	 * @param <T2>
 	 *
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Flux<T> never() {
-		return FluxNever.instance();
+	public static <T1, T2> Flux<Tuple2<T1, T2>> zip(Publisher<? extends T1> source1, Publisher<? extends T2> source2) {
+
+		return new FluxZip<>(new Publisher[]{source1, source2},
+				(Function<Tuple2<T1, T2>, Tuple2<T1, T2>>) IDENTITY_FUNCTION,
+				BaseProcessor.XS_BUFFER_SIZE);
 	}
 
 	/**
-	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
-	 * or not the right operand {@link Subscriber}.
+	 * @param source1
+	 * @param source2
+	 * @param combinator
+	 * @param <O>
+	 * @param <T1>
+	 * @param <T2>
 	 *
-	 * @param transformer A {@link Function} that transforms each emitting sequence item
-	 * @param <I> The source type of the data sequence
-	 * @param <O> The target type of the data sequence
-	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return
 	 */
-	public static <I, O> Flux<O> map(Publisher<I> source, final Function<? super I, ? extends O> transformer) {
-		return new FluxMap<>(source, transformer);
+	public static <T1, T2, O> Flux<O> zip(Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
+			final BiFunction<? super T1, ? super T2, ? extends O> combinator) {
+
+		return new FluxZip<>(new Publisher[]{source1, source2}, new Function<Tuple2<T1, T2>, O>() {
+			@Override
+			public O apply(Tuple2<T1, T2> tuple) {
+				return combinator.apply(tuple.getT1(), tuple.getT2());
+			}
+		}, BaseProcessor.XS_BUFFER_SIZE);
+	}
+
+	/**
+	 * @param sources
+	 *
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static Flux<Tuple> zip(Iterable<? extends Publisher<?>> sources) {
+		return zip(sources, IDENTITY_FUNCTION);
+	}
+
+	/**
+	 * @param sources
+	 * @param combinator
+	 * @param <O>
+	 *
+	 * @return
+	 */
+	public static <O> Flux<O> zip(Iterable<? extends Publisher<?>> sources,
+			final Function<? super Tuple, ? extends O> combinator) {
+
+		if (sources == null) {
+			return empty();
+		}
+
+		Iterator<? extends Publisher<?>> it = sources.iterator();
+		if (!it.hasNext()) {
+			return empty();
+		}
+
+		List<Publisher<?>> list = null;
+		Publisher<?> p;
+		do {
+			p = it.next();
+			if (list == null) {
+				if (it.hasNext()) {
+					list = new ArrayList<>();
+				}
+				else {
+					return new FluxMap<>(p, new Function<Object, O>() {
+						@Override
+						public O apply(Object o) {
+							return combinator.apply(Tuple.of(o));
+						}
+					});
+				}
+			}
+			list.add(p);
+		}
+		while (it.hasNext());
+
+		return new FluxZip<>(list.toArray(new Publisher[list.size()]), combinator, BaseProcessor.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -257,6 +568,22 @@ public abstract class Flux<T> extends FluxFactory implements Publisher<T>, React
 	 */
 	public final Flux<T> concatWith(Publisher<? extends T> source) {
 		throw new UnsupportedOperationException(); // TODO
+	}
+
+	/**
+	 * @param to
+	 * @param <TO>
+	 *
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public <TO> TO convert(Class<TO> to) {
+		if (Publisher.class.isAssignableFrom(to.getClass())) {
+			return (TO) this;
+		}
+		else {
+			return DependencyUtils.convertFromPublisher(this, to);
+		}
 	}
 
 	/**
@@ -478,7 +805,7 @@ public abstract class Flux<T> extends FluxFactory implements Publisher<T>, React
 	/**
 	 * A marker interface for components responsible for augmenting subscribers with features like {@link #lift}
 	 */
-	public interface Operator<I, O> extends Function<Subscriber<? super O>, Subscriber<? super I>>, Factory {
+	public interface Operator<I, O> extends Function<Subscriber<? super O>, Subscriber<? super I>>, ReactiveState.Factory {
 
 	}
 
@@ -488,7 +815,8 @@ public abstract class Flux<T> extends FluxFactory implements Publisher<T>, React
 	 * @param <I>
 	 * @param <O>
 	 */
-	public static class FluxBarrier<I, O> extends Flux<O> implements Factory, Bounded, Named, Upstream {
+	public static class FluxBarrier<I, O> extends Flux<O>
+			implements ReactiveState.Factory, ReactiveState.Bounded, ReactiveState.Named, ReactiveState.Upstream {
 
 		protected final Publisher<? extends I> source;
 
@@ -559,6 +887,14 @@ public abstract class Flux<T> extends FluxFactory implements Publisher<T>, React
 		@Override
 		public void subscribe(Subscriber<? super I> s) {
 			source.subscribe(s);
+		}
+	}
+
+	static final class IdentityFunction implements Function {
+
+		@Override
+		public Object apply(Object o) {
+			return o;
 		}
 	}
 }

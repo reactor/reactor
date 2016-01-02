@@ -41,7 +41,7 @@ import reactor.fn.Function;
  * <p> Create such publisher with the provided factory, E.g.:
  * <pre>
  * {@code
- * PublisherFactory.createWithDemand((n, sub) -> {
+ * PublisherFactory.generate((n, sub) -> {
  *  for(int i = 0; i < n; i++){
  *    sub.onNext(i);
  *  }
@@ -62,8 +62,8 @@ public abstract class FluxFactory implements ReactiveState {
 	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <T> Flux<T> createWithDemand(BiConsumer<Long, SubscriberWithContext<T, Void>> requestConsumer) {
-		return createWithDemand(requestConsumer, null, null);
+	public static <T> Flux<T> generate(BiConsumer<Long, SubscriberWithContext<T, Void>> requestConsumer) {
+		return generate(requestConsumer, null, null);
 	}
 
 	/**
@@ -78,9 +78,9 @@ public abstract class FluxFactory implements ReactiveState {
 	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <T, C> Flux<T> createWithDemand(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+	public static <T, C> Flux<T> generate(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 			Function<Subscriber<? super T>, C> contextFactory) {
-		return createWithDemand(requestConsumer, contextFactory, null);
+		return generate(requestConsumer, contextFactory, null);
 	}
 
 	/**
@@ -99,7 +99,7 @@ public abstract class FluxFactory implements ReactiveState {
 	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <T, C> Flux<T> createWithDemand(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
+	public static <T, C> Flux<T> generate(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 			Function<Subscriber<? super T>, C> contextFactory,
 			Consumer<C> shutdownConsumer) {
 
