@@ -222,7 +222,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 *
 	 * @return
 	 */
-	public Mono<Void> after() {
+	public final Mono<Void> after() {
 		return new MonoIgnoreElements<>(this);
 	}
 

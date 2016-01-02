@@ -92,7 +92,7 @@ class ReactiveStateSpec extends Specification {
 	t.nodes
 
 	cleanup:
-	group.onComplete()
+	group?.onComplete()
   }
 
 }
