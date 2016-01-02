@@ -430,21 +430,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Combine the most ancient upstream action to act as the {@link org.reactivestreams.Subscriber} downstream
-	 * component and the current stream to act as the {@link org.reactivestreams.Publisher}. <p> Useful to share and
-	 * ship a full stream whilst hiding the staging actions in the middle. <p> Default behavior, e.g. a single stream,
-	 * will raise an {@link java.lang.IllegalStateException} as there would not be any Subscriber (Input) side to
-	 * combine. {@link StreamBarrier#combine()} is the usual reference implementation used.
-	 *
-	 * @param <E> the type of the most ancien action downstream.
-	 *
-	 * @return new Combined Action
-	 */
-	public <E> StreamProcessor<E, O> combine() {
-		throw new IllegalStateException("Cannot combine a single Stream");
-	}
-
-	/**
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass
 	 * it into another {@code Stream}. The produced stream will emit the data from all transformed streams in order.
 	 *

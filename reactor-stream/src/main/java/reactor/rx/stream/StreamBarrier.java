@@ -69,37 +69,6 @@ public class StreamBarrier<I, O> extends Stream<O>
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public <E> StreamProcessor<E, O> combine() {
-		Subscriber<?> oldestReceiver = null;
-		Function oldestOperator = Flux.Operator.class.isAssignableFrom(getClass()) ? (Flux.Operator)this : null;
-
-		Object oldestSender = this;
-
-		while (oldestSender != null && Upstream.class.isAssignableFrom(oldestSender.getClass())) {
-			oldestSender = ((Upstream) oldestSender).upstream();
-			if (oldestSender != null) {
-				if (Subscriber.class.isAssignableFrom(oldestSender.getClass())) {
-					oldestReceiver = (Subscriber) oldestSender;
-				}
-				if (Flux.Operator.class.isAssignableFrom(oldestSender.getClass())) {
-					oldestOperator =
-							FluxLift.<Object, Object, Object>opFusion(((Flux.Operator<Object, Object>) oldestSender),
-									oldestOperator);
-				}
-			}
-		}
-
-		if (oldestReceiver == null) {
-			Processor<E, E> root = Processors.emitter();
-			return StreamProcessor.from(root, Flux.wrap(root).lift(oldestOperator));
-		}
-		else {
-			return StreamProcessor.from((Subscriber<E>) oldestReceiver, this);
-		}
-	}
-
-	@Override
 	public String getName() {
 		return ReactiveStateUtils.getName(getClass().getSimpleName())
 		                 .replaceAll("Stream|Publisher|Operator", "");
