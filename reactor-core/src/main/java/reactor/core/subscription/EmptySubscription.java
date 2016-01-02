@@ -13,48 +13,52 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.subscription;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 
 /**
  * A singleton enumeration that represents a no-op Subscription instance that can be freely given out to clients.
+ * <p>
+ * {@see https//github.com/reactor/reactive-streams-commons}
+ *
+ * @since 2.5
  */
-public enum EmptySubscription implements Subscription , ReactiveState.Trace {
-    INSTANCE;
+public enum EmptySubscription implements Subscription, ReactiveState.Trace {
+	INSTANCE;
 
-    @Override
-    public void request(long n) {
-        // deliberately no op
-    }
+	@Override
+	public void request(long n) {
+		// deliberately no op
+	}
 
-    @Override
-    public void cancel() {
-        // deliberately no op
-    }
+	@Override
+	public void cancel() {
+		// deliberately no op
+	}
 
-    /**
-     * Calls onSubscribe on the target Subscriber with the empty instance followed by a call to onError with the
-     * supplied error.
-     *
-     * @param s
-     * @param e
-     */
-    public static void error(Subscriber<?> s, Throwable e) {
-        s.onSubscribe(INSTANCE);
-        s.onError(e);
-    }
+	/**
+	 * Calls onSubscribe on the target Subscriber with the empty instance followed by a call to onError with the
+	 * supplied error.
+	 *
+	 * @param s
+	 * @param e
+	 */
+	public static void error(Subscriber<?> s, Throwable e) {
+		s.onSubscribe(INSTANCE);
+		s.onError(e);
+	}
 
-    /**
-     * Calls onSubscribe on the target Subscriber with the empty instance followed by a call to onComplete.
-     *
-     * @param s
-     */
-    public static void complete(Subscriber<?> s) {
-        s.onSubscribe(INSTANCE);
-        s.onComplete();
-    }
+	/**
+	 * Calls onSubscribe on the target Subscriber with the empty instance followed by a call to onComplete.
+	 *
+	 * @param s
+	 */
+	public static void complete(Subscriber<?> s) {
+		s.onSubscribe(INSTANCE);
+		s.onComplete();
+	}
 }

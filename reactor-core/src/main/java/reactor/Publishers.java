@@ -322,7 +322,7 @@ public final class Publishers extends FluxFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Flux<I> concat(Publisher<? extends Publisher<? extends I>> source) {
-		return concatMap(source, FluxFlatMap.identity());
+		return concatMap(source, FluxFlatMap.<I>identity());
 	}
 
 	/**
@@ -331,7 +331,7 @@ public final class Publishers extends FluxFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Flux<I> concat(Iterable<? extends Publisher<? extends I>> source) {
-		return concatMap(from(source), FluxFlatMap.identity());
+		return concatMap(from(source), FluxFlatMap.<I>identity());
 	}
 
 	/**
@@ -340,7 +340,7 @@ public final class Publishers extends FluxFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Flux<I> concat(Publisher<? extends I> source1, Publisher<? extends I> source2) {
-		return concatMap(from(Arrays.asList(source1, source2)),FluxFlatMap.identity());
+		return concatMap(from(Arrays.asList(source1, source2)),FluxFlatMap.<I>identity());
 	}
 
 	/**
@@ -349,7 +349,7 @@ public final class Publishers extends FluxFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Flux<I> merge(Publisher<? extends Publisher<? extends I>> source) {
-		return flatMap(source, FluxFlatMap.identity());
+		return flatMap(source, FluxFlatMap.<I>identity());
 	}
 
 	/**
@@ -358,7 +358,7 @@ public final class Publishers extends FluxFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Flux<I> merge(Iterable<? extends Publisher<? extends I>> source) {
-		return flatMap(from(source), FluxFlatMap.identity());
+		return flatMap(from(source), FluxFlatMap.<I>identity());
 	}
 
 	/**
@@ -367,7 +367,7 @@ public final class Publishers extends FluxFactory {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Flux<I> merge(Publisher<? extends I> source1, Publisher<? extends I> source2) {
-		return flatMap(from(Arrays.asList(source1, source2)), FluxFlatMap.identity());
+		return flatMap(from(Arrays.asList(source1, source2)), FluxFlatMap.<I>identity());
 	}
 
 	/**

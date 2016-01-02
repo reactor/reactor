@@ -17,10 +17,17 @@
 package reactor;
 
 import org.reactivestreams.Publisher;
-import reactor.core.publisher.FluxNever;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.publisher.FluxMap;
+import reactor.core.publisher.FluxPeek;
 import reactor.core.publisher.MonoEmpty;
 import reactor.core.publisher.MonoError;
+import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoJust;
+import reactor.core.publisher.MonoSingle;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 
@@ -41,15 +48,12 @@ import reactor.fn.Function;
  */
 public abstract class Mono<T> implements Publisher<T> {
 
-	private static final Mono<?> EMPTY = new MonoEmpty();
-
-
 	/**
 	 * Create a {@link Mono} that completes without emitting any item.
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Mono<T> empty() {
-		return (Mono<T>)EMPTY;
+		return (Mono<T>)MonoEmpty.instance();
 	}
 
 	/**
@@ -64,7 +68,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * will emit 0 or 1 item.
 	 */
 	public static <T> Mono<T> wrap(Publisher<T> source) {
-		return Flux.wrap(source).first();
+		return new MonoSingle<>(source);
 	}
 
 	/**
@@ -79,43 +83,43 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * Return a {@code Mono<Void>} that completes when this {@link Mono} completes.
 	 */
 	public final Mono<Void> after() {
-		return flux().after();
+		return new MonoIgnoreElements<>(this);
 	}
 
 	/**
 	 * Triggered when the {@link Mono} is unsubscribed.
 	 */
-	public Mono<T> doOnCancel(Runnable action) {
-		return flux().doOnCancel(action).first();
+	public Mono<T> doOnCancel(Runnable onCancel) {
+		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, null, null, null, onCancel));
 	}
 
 	/**
 	 * Triggered when the {@link Mono} completes successfully.
 	 */
-	public Mono<T> doOnComplete(Consumer<? super T> action) {
-		return flux().doOnNext(action).first();
+	public Mono<T> doOnComplete(Runnable onComplete) {
+		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, onComplete, null, null, null));
 	}
 
 	/**
 	 * Triggered when the {@link Mono} completes with an error.
 	 */
-	public Mono<T> doOnError(Consumer<Throwable> action) {
-		return flux().doOnError(action).first();
+	public Mono<T> doOnError(Consumer<? super Throwable> onError) {
+		return new MonoBarrier<>(new FluxPeek<>(this, null, null, onError, null, null, null, null));
 	}
 
 	/**
 	 * Triggered when the {@link Mono} is subscribed.
 	 */
-	public Mono<T> doOnSubscribe(Runnable action) {
-		return flux().doOnSubscribe(action).first();
+	public Mono<T> doOnSubscribe(Consumer<? super Subscription> onSubscribe) {
+		return new MonoBarrier<>(new FluxPeek<>(this, onSubscribe, null, null, null, null, null, null));
 	}
 
 	/**
 	 * Triggered when the {@link Mono} terminates, either by completing successfully or
 	 * with an error.
 	 */
-	public Mono<T> doOnTerminate(Runnable action) {
-		return flux().doOnTerminate(action).first();
+	public Mono<T> doOnTerminate(Runnable onTerminate) {
+		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, null, onTerminate, null, null));
 	}
 
 	/**
@@ -138,21 +142,70 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * Transform the item emitted by this {@link Mono} by applying a function to item emitted.
 	 */
 	public <R> Mono<R> map(Function<? super T, ? extends R> mapper) {
-		return flux().map(mapper).first();
+		return new MonoBarrier<>(new FluxMap<>(this, mapper));
 	}
 
 	/**
 	 * Merge emissions of this {@link Mono} with the provided {@link Publisher}.
 	 */
+	@SuppressWarnings("unchecked")
 	public Flux<T> mergeWith(Publisher<? extends T> source) {
-		return flux().mergeWith(source);
+		return Flux.merge(Flux.just(this, source));
 	}
 
 	/**
 	 * Convert the value of {@link Mono} to another {@link Mono} possibly with another value type.
 	 */
 	public final <R> Mono<R> then(Function<? super T, ? extends Mono<? extends R>> transformer) {
-		return flux().flatMap(transformer).first();
+		return new MonoBarrier<>(flatMap(transformer));
 	}
 
+	/**
+	 * A connecting Mono Publisher (right-to-left from a composition chain perspective)
+	 *
+	 * @param <I>
+	 * @param <O>
+	 */
+	public static class MonoBarrier<I, O> extends Mono<O> implements ReactiveState.Factory, ReactiveState.Bounded,
+	                                                                 ReactiveState.Named, ReactiveState.Upstream {
+
+		protected final Publisher<? extends I> source;
+
+		public MonoBarrier(Publisher<? extends I> source) {
+			this.source = source;
+		}
+
+		@Override
+		public long getCapacity() {
+			return 1L;
+		}
+
+		@Override
+		public String getName() {
+			return ReactiveStateUtils.getName(getClass().getSimpleName())
+			                         .replaceAll("Mono|Stream|Operator", "");
+		}
+
+		/**
+		 * Default is delegating and decorating with Mono API
+		 * @param s
+		 */
+		@Override
+		@SuppressWarnings("unchecked")
+		public void subscribe(Subscriber<? super O> s) {
+			source.subscribe((Subscriber<? super I>)s);
+		}
+
+		@Override
+		public final Publisher<? extends I> upstream() {
+			return source;
+		}
+
+		@Override
+		public String toString() {
+			return "{" +
+					" operator : \"" + getName() + "\" " +
+					'}';
+		}
+	}
 }

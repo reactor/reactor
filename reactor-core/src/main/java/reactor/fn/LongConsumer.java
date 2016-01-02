@@ -14,41 +14,21 @@
  * limitations under the License.
  */
 
-package reactor.core.subscriber;
-
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
+package reactor.fn;
 
 /**
- * {@see https//github.com/reactor/reactive-streams-commons}
+ * Implementations accept a given value and perform work on the argument.
+ *
+ * @author Stephane Maldini
  * @since 2.5
  */
-public enum EmptySubscriber implements Subscriber<Object> {
-	INSTANCE;
+public interface LongConsumer {
 
-	@SuppressWarnings("unchecked")
-	public static <T> Subscriber<T> instance() {
-		return (Subscriber<T>) INSTANCE;
-	}
-
-	@Override
-	public void onSubscribe(Subscription s) {
-		// deliberately no op
-	}
-
-	@Override
-	public void onNext(Object t) {
-		// deliberately no op
-	}
-
-	@Override
-	public void onError(Throwable t) {
-		// deliberately no op
-	}
-
-	@Override
-	public void onComplete() {
-		// deliberately no op
-	}
+	/**
+	 * Execute the logic of the action, accepting the given parameter.
+	 *
+	 * @param n The long parameter to pass to the consumer.
+	 */
+	void accept(long n);
 
 }

@@ -56,7 +56,7 @@ public enum BackpressureUtils {
 		Objects.requireNonNull(next, "Subscription cannot be null");
 		if (current != null) {
 			next.cancel();
-			reportSubscriptionSet();
+			//reportSubscriptionSet();
 			return false;
 		}
 

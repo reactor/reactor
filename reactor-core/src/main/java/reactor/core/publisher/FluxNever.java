@@ -15,17 +15,42 @@
  */
 package reactor.core.publisher;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Flux;
 import reactor.core.subscription.EmptySubscription;
 
 /**
- * @author Stephane Maldini
+ * Represents an never publisher which only calls onSubscribe.
+ * <p>
+ * This Publisher is effectively stateless and only a single instance exists.
+ * Use the {@link #instance()} method to obtain a properly type-parametrized view of it.
  */
-public class FluxNever<IN> extends Flux<IN> {
 
-	@Override
-	public void subscribe(Subscriber<? super IN> s) {
-		s.onSubscribe(EmptySubscription.INSTANCE);
-	}
+/**
+ * {@see https://github.com/reactor/reactive-streams-commons}
+ * @since 2.5
+ */
+public final class FluxNever extends reactor.Flux<Object> {
+
+    private static final Publisher<Object> INSTANCE = new FluxNever();
+
+    private FluxNever() {
+        // deliberately no op
+    }
+
+    @Override
+    public void subscribe(Subscriber<? super Object> s) {
+        s.onSubscribe(EmptySubscription.INSTANCE);
+    }
+
+    /**
+     * Returns a properly parametrized instance of this never Publisher.
+     *
+     * @return a properly parametrized instance of this never Publisher
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> Flux<T> instance() {
+        return (Flux<T>) INSTANCE;
+    }
 }

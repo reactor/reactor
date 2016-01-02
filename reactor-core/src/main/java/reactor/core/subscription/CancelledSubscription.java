@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.subscription;
 
 import org.reactivestreams.Subscription;
@@ -23,18 +24,22 @@ import reactor.core.support.ReactiveState;
  * represents a terminal state. <br> If algorithms need to hand out a subscription, replace this with {@link
  * EmptySubscription#INSTANCE} because there is no standard way to tell if a Subscription is cancelled or not
  * otherwise.
+ * <p>
+ * {@see https//github.com/reactor/reactive-streams-commons}
+ *
+ * @since 2.5
  */
-public enum CancelledSubscription implements Subscription, ReactiveState.Trace  {
-    INSTANCE;
+public enum CancelledSubscription implements Subscription, ReactiveState.Trace {
+	INSTANCE;
 
-    @Override
-    public void request(long n) {
-        // deliberately no op
-    }
+	@Override
+	public void request(long n) {
+		// deliberately no op
+	}
 
-    @Override
-    public void cancel() {
-        // deliberately no op
-    }
+	@Override
+	public void cancel() {
+		// deliberately no op
+	}
 
 }

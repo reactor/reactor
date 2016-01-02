@@ -16,10 +16,9 @@
 
 package reactor;
 
-import java.util.Arrays;
-
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.FluxArray;
 import reactor.core.publisher.FluxFlatMap;
@@ -27,9 +26,11 @@ import reactor.core.publisher.FluxJust;
 import reactor.core.publisher.FluxLift;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxNever;
+import reactor.core.publisher.FluxPeek;
 import reactor.core.publisher.FluxSession;
 import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.MonoIgnoreElements;
+import reactor.core.publisher.MonoSingle;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
@@ -60,8 +61,6 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 
 	private static final Flux<?> EMPTY = Mono.empty()
 	                                         .flux();
-
-	private static final Flux<?> NEVER = new FluxNever();
 
 	/**
 	 *
@@ -159,7 +158,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Flux<T> never() {
-		return (Flux<T>) NEVER;
+		return FluxNever.instance();
 	}
 
 	/**
@@ -187,7 +186,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 * Return a {@code Mono<Void>} that completes when this {@link Flux} completes.
 	 */
 	public Mono<Void> after() {
-		throw new UnsupportedOperationException(); // TODO
+		return new MonoIgnoreElements<>(this);
 	}
 
 	/**
@@ -216,50 +215,50 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	/**
 	 * Triggered when the {@link Flux} is unsubscribed.
 	 */
-	public Flux<T> doOnCancel(Runnable action) {
-		throw new UnsupportedOperationException(); // TODO
+	public Flux<T> doOnCancel(Runnable onCancel) {
+		return new FluxPeek<>(this, null, null, null, null, null, null, onCancel);
 	}
 
 	/**
 	 * Triggered when the {@link Flux} completes successfully.
 	 */
-	public Flux<T> doOnComplete(Runnable action) {
-		throw new UnsupportedOperationException(); // TODO
+	public Flux<T> doOnComplete(Runnable onComplete) {
+		return new FluxPeek<>(this, null, null, null, onComplete, null, null, null);
 	}
 
 	/**
 	 * Triggered when the {@link Flux} completes with an error.
 	 */
-	public Flux<T> doOnError(Consumer<Throwable> action) {
-		throw new UnsupportedOperationException(); // TODO
+	public Flux<T> doOnError(Consumer<? super Throwable> onError) {
+		return new FluxPeek<>(this, null, null, onError, null, null, null, null);
 	}
 
 	/**
 	 * Triggered when the {@link Flux} emits an item.
 	 */
-	public Flux<T> doOnNext(Consumer<? super T> action) {
-		throw new UnsupportedOperationException();
+	public Flux<T> doOnNext(Consumer<? super T> onNext) {
+		return new FluxPeek<>(this, null, onNext, null, null, null, null, null);
 	}
 
 	/**
 	 * Triggered when the {@link Flux} is subscribed.
 	 */
-	public Flux<T> doOnSubscribe(Runnable action) {
-		throw new UnsupportedOperationException(); // TODO
+	public Flux<T> doOnSubscribe(Consumer<? super Subscription> onSubscribe) {
+		return new FluxPeek<>(this, onSubscribe, null, null, null, null, null, null);
 	}
 
 	/**
 	 * Triggered when the {@link Flux} terminates, either by completing successfully or with an error.
 	 */
-	public Flux<T> doOnTerminate(Runnable action) {
-		throw new UnsupportedOperationException(); // TODO
+	public Flux<T> doOnTerminate(Runnable onTerminate) {
+		return new FluxPeek<>(this, null, null, null, null, onTerminate, null, null);
 	}
 
 	/**
 	 * Emit only the first item emitted by this {@link Flux}.
 	 */
 	public Mono<T> first() {
-		return Mono.wrap(this);
+		return new MonoSingle<>(this);
 	}
 
 	/**
@@ -288,9 +287,8 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	/**
 	 * Merge emissions of this {@link Flux} with the provided {@link Publisher}, so that they may interleave.
 	 */
-	@SuppressWarnings("unchecked")
 	public Flux<T> mergeWith(Publisher<? extends T> source) {
-		return merge(from(Arrays.asList(this,source)));
+		return merge(just(this, source));
 	}
 
 	/**
@@ -334,9 +332,9 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 	 */
 	public static class FluxBarrier<I, O> extends Flux<O> implements Factory, Bounded, Named, Upstream {
 
-		protected final Publisher<I> source;
+		protected final Publisher<? extends I> source;
 
-		public FluxBarrier(Publisher<I> source) {
+		public FluxBarrier(Publisher<? extends I> source) {
 			this.source = source;
 		}
 
@@ -363,7 +361,7 @@ public abstract class Flux<T> implements Publisher<T>, ReactiveState {
 		}
 
 		@Override
-		public final Publisher<I> upstream() {
+		public final Publisher<? extends I> upstream() {
 			return source;
 		}
 
