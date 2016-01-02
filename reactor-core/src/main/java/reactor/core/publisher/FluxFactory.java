@@ -25,7 +25,6 @@ import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
-import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.Assert;
@@ -49,6 +48,7 @@ import reactor.fn.Function;
  * }
  * }
  * </pre>
+ *
  * @author Stephane Maldini
  * @since 2.0.2, 2.5
  */
@@ -56,8 +56,10 @@ public abstract class FluxFactory implements ReactiveState {
 
 	/**
 	 * Create a {@link Publisher} reacting on requests with the passed {@link BiConsumer}
+	 *
 	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
 	 * @param <T> The type of the data sequence
+	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <T> Flux<T> createWithDemand(BiConsumer<Long, SubscriberWithContext<T, Void>> requestConsumer) {
@@ -67,11 +69,13 @@ public abstract class FluxFactory implements ReactiveState {
 	/**
 	 * Create a {@link Publisher} reacting on requests with the passed {@link BiConsumer} The argument {@code
 	 * contextFactory} is executed once by new subscriber to generate a context shared by every request calls.
+	 *
 	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
 	 * @param contextFactory A {@link Function} called for every new subscriber returning an immutable context (IO
 	 * connection...)
 	 * @param <T> The type of the data sequence
 	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <T, C> Flux<T> createWithDemand(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
@@ -84,6 +88,7 @@ public abstract class FluxFactory implements ReactiveState {
 	 * contextFactory} is executed once by new subscriber to generate a context shared by every request calls. The
 	 * argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel, onComplete,
 	 * onError).
+	 *
 	 * @param requestConsumer A {@link BiConsumer} with left argument request and right argument target subscriber
 	 * @param contextFactory A {@link Function} called once for every new subscriber returning an immutable context (IO
 	 * connection...)
@@ -91,6 +96,7 @@ public abstract class FluxFactory implements ReactiveState {
 	 * onError()
 	 * @param <T> The type of the data sequence
 	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <T, C> Flux<T> createWithDemand(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
@@ -103,8 +109,10 @@ public abstract class FluxFactory implements ReactiveState {
 	/**
 	 * Create a {@link Publisher} reacting on each available {@link Subscriber} read derived with the passed {@link
 	 * Consumer}. If a previous request is still running, avoid recursion and extend the previous request iterations.
+	 *
 	 * @param requestConsumer A {@link Consumer} invoked when available read with the target subscriber
 	 * @param <T> The type of the data sequence
+	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <T> Flux<T> create(Consumer<SubscriberWithContext<T, Void>> requestConsumer) {
@@ -116,11 +124,13 @@ public abstract class FluxFactory implements ReactiveState {
 	 * Consumer}. If a previous request is still running, avoid recursion and extend the previous request iterations.
 	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every
 	 * request calls.
+	 *
 	 * @param requestConsumer A {@link Consumer} invoked when available read with the target subscriber
 	 * @param contextFactory A {@link Function} called for every new subscriber returning an immutable context (IO
 	 * connection...)
 	 * @param <T> The type of the data sequence
 	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <T, C> Flux<T> create(Consumer<SubscriberWithContext<T, C>> requestConsumer,
@@ -134,6 +144,7 @@ public abstract class FluxFactory implements ReactiveState {
 	 * The argument {@code contextFactory} is executed once by new subscriber to generate a context shared by every
 	 * request calls. The argument {@code shutdownConsumer} is executed once by subscriber termination event (cancel,
 	 * onComplete, onError).
+	 *
 	 * @param requestConsumer A {@link Consumer} invoked when available read with the target subscriber
 	 * @param contextFactory A {@link Function} called once for every new subscriber returning an immutable context (IO
 	 * connection...)
@@ -141,6 +152,7 @@ public abstract class FluxFactory implements ReactiveState {
 	 * onError()
 	 * @param <T> The type of the data sequence
 	 * @param <C> The type of contextual information to be read by the requestConsumer
+	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <T, C> Flux<T> create(final Consumer<SubscriberWithContext<T, C>> requestConsumer,

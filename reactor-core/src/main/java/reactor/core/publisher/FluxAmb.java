@@ -41,8 +41,8 @@ import reactor.core.support.internal.PlatformDependent;
  *
  * @since 2.5
  */
-public final class FluxAmb<T> extends Flux<T> implements ReactiveState.Factory, ReactiveState.Named, ReactiveState
-		.LinkedUpstreams {
+public final class FluxAmb<T> extends Flux<T>
+		implements ReactiveState.Factory, ReactiveState.Named, ReactiveState.LinkedUpstreams {
 
 	final Publisher[] sources;
 
@@ -93,8 +93,7 @@ public final class FluxAmb<T> extends Flux<T> implements ReactiveState.Factory, 
 		return sources != null ? sources.length : 0;
 	}
 
-	static final class AmbBarrier<T>
-			implements Subscription, Downstream, LinkedUpstreams, ActiveDownstream {
+	static final class AmbBarrier<T> implements Subscription, Downstream, LinkedUpstreams, ActiveDownstream {
 
 		final Subscriber<? super T>   actual;
 		final AmbInnerSubscriber<T>[] subscribers;

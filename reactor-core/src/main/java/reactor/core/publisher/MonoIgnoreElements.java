@@ -18,13 +18,13 @@ package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Flux;
 import reactor.Mono;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.ReactiveState;
 
 /**
  * Ignore onNext signals and therefore only pass request, cancel upstream and complete, error downstream
+ *
  * @author Stephane Maldini
  * @since 2.5
  */

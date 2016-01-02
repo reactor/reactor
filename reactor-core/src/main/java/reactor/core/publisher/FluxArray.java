@@ -31,135 +31,138 @@ import reactor.core.support.BackpressureUtils;
 
 /**
  * {@see https://github.com/reactor/reactive-streams-commons}
+ *
  * @since 2.5
  */
 public final class FluxArray<T> extends reactor.Flux<T> {
-    final T[] array;
 
-    @SafeVarargs
-    public FluxArray(T... array) {
-        this.array = Objects.requireNonNull(array, "array");
-    }
+	final T[] array;
 
-    @Override
-    public void subscribe(Subscriber<? super T> s) {
-        if (array.length == 0) {
-            EmptySubscription.complete(s);
-            return;
-        }
-        s.onSubscribe(new PublisherArraySubscription<>(s, array));
-    }
+	@SafeVarargs
+	public FluxArray(T... array) {
+		this.array = Objects.requireNonNull(array, "array");
+	}
 
-    static final class PublisherArraySubscription<T>
-      implements Subscription {
-        final Subscriber<? super T> actual;
+	@Override
+	public void subscribe(Subscriber<? super T> s) {
+		if (array.length == 0) {
+			EmptySubscription.complete(s);
+			return;
+		}
+		s.onSubscribe(new FluxArraySubscription<>(s, array));
+	}
 
-        final T[] array;
+	static final class FluxArraySubscription<T> implements Subscription {
 
-        int index;
+		final Subscriber<? super T> actual;
 
-        volatile boolean cancelled;
+		final T[] array;
 
-        volatile long requested;
-        @SuppressWarnings("rawtypes")
-        static final AtomicLongFieldUpdater<PublisherArraySubscription> REQUESTED =
-          AtomicLongFieldUpdater.newUpdater(PublisherArraySubscription.class, "requested");
+		int index;
 
-        public PublisherArraySubscription(Subscriber<? super T> actual, T[] array) {
-            this.actual = actual;
-            this.array = array;
-        }
+		volatile boolean cancelled;
 
-        @Override
-        public void request(long n) {
-            if (BackpressureUtils.validate(n)) {
-                if (BackpressureUtils.addAndGet(REQUESTED, this, n) == 0) {
-                    if (n == Long.MAX_VALUE) {
-                        fastPath();
-                    } else {
-                        slowPath(n);
-                    }
-                }
-            }
-        }
+		volatile long requested;
+		@SuppressWarnings("rawtypes")
+		static final AtomicLongFieldUpdater<FluxArraySubscription> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(FluxArraySubscription.class, "requested");
 
-        void slowPath(long n) {
-            final T[] a = array;
-            final int len = a.length;
-            final Subscriber<? super T> s = actual;
+		public FluxArraySubscription(Subscriber<? super T> actual, T[] array) {
+			this.actual = actual;
+			this.array = array;
+		}
 
-            int i = index;
-            int e = 0;
+		@Override
+		public void request(long n) {
+			if (BackpressureUtils.validate(n)) {
+				if (BackpressureUtils.addAndGet(REQUESTED, this, n) == 0) {
+					if (n == Long.MAX_VALUE) {
+						fastPath();
+					}
+					else {
+						slowPath(n);
+					}
+				}
+			}
+		}
 
-            for (; ; ) {
-                if (cancelled) {
-                    return;
-                }
+		void slowPath(long n) {
+			final T[] a = array;
+			final int len = a.length;
+			final Subscriber<? super T> s = actual;
 
-                while (i != len && e != n) {
-                    T t = a[i];
+			int i = index;
+			int e = 0;
 
-                    if (t == null) {
-                        s.onError(new NullPointerException("The " + i + "th array element was null"));
-                        return;
-                    }
+			for (; ; ) {
+				if (cancelled) {
+					return;
+				}
 
-                    s.onNext(t);
+				while (i != len && e != n) {
+					T t = a[i];
 
-                    if (cancelled) {
-                        return;
-                    }
+					if (t == null) {
+						s.onError(new NullPointerException("The " + i + "th array element was null"));
+						return;
+					}
 
-                    i++;
-                    e++;
-                }
+					s.onNext(t);
 
-                if (i == len) {
-                    s.onComplete();
-                    return;
-                }
+					if (cancelled) {
+						return;
+					}
 
-                n = requested;
+					i++;
+					e++;
+				}
 
-                if (n == e) {
-                    index = i;
-                    n = REQUESTED.addAndGet(this, -e);
-                    if (n == 0) {
-                        return;
-                    }
-                    e = 0;
-                }
-            }
-        }
+				if (i == len) {
+					s.onComplete();
+					return;
+				}
 
-        void fastPath() {
-            final T[] a = array;
-            final int len = a.length;
-            final Subscriber<? super T> s = actual;
+				n = requested;
 
-            for (int i = index; i != len; i++) {
-                if (cancelled) {
-                    return;
-                }
+				if (n == e) {
+					index = i;
+					n = REQUESTED.addAndGet(this, -e);
+					if (n == 0) {
+						return;
+					}
+					e = 0;
+				}
+			}
+		}
 
-                T t = a[i];
+		void fastPath() {
+			final T[] a = array;
+			final int len = a.length;
+			final Subscriber<? super T> s = actual;
 
-                if (t == null) {
-                    s.onError(new NullPointerException("The " + i + "th array element was null"));
-                    return;
-                }
+			for (int i = index; i != len; i++) {
+				if (cancelled) {
+					return;
+				}
 
-                s.onNext(t);
-            }
-            if (cancelled) {
-                return;
-            }
-            s.onComplete();
-        }
+				T t = a[i];
 
-        @Override
-        public void cancel() {
-            cancelled = true;
-        }
-    }
+				if (t == null) {
+					s.onError(new NullPointerException("The " + i + "th array element was null"));
+					return;
+				}
+
+				s.onNext(t);
+			}
+			if (cancelled) {
+				return;
+			}
+			s.onComplete();
+		}
+
+		@Override
+		public void cancel() {
+			cancelled = true;
+		}
+	}
 }

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.publisher;
 
 import java.util.Iterator;
@@ -25,14 +26,16 @@ import reactor.fn.Function;
 
 /**
  * Simple iterating consumer for {@link FluxFactory#create(Consumer, Function)} and its alias
+ *
  * @param <T>
- * @since 2.5
  *
  * @author Ben Hale
  * @author Stephane Maldini
+ * @since 2.5
  */
 public abstract class ForEachSequencer<T>
-		implements Consumer<SubscriberWithContext<T, Iterator<? extends T>>>, ReactiveState.Trace, ReactiveState.Upstream{
+		implements Consumer<SubscriberWithContext<T, Iterator<? extends T>>>, ReactiveState.Trace,
+		           ReactiveState.Upstream {
 
 	@Override
 	public final void accept(SubscriberWithContext<T, Iterator<? extends T>> subscriber) {
@@ -40,7 +43,7 @@ public abstract class ForEachSequencer<T>
 		if (iterator.hasNext()) {
 			subscriber.onNext(iterator.next());
 			//peek next
-			if(!iterator.hasNext()){
+			if (!iterator.hasNext()) {
 				subscriber.onComplete();
 			}
 		}
@@ -73,7 +76,6 @@ public abstract class ForEachSequencer<T>
 			return it;
 		}
 
-
 		@Override
 		public Object upstream() {
 			return defaultValues;
@@ -81,7 +83,7 @@ public abstract class ForEachSequencer<T>
 
 		@Override
 		public String toString() {
-			return "{iterable : " + defaultValues+" }";
+			return "{iterable : " + defaultValues + " }";
 		}
 	}
 

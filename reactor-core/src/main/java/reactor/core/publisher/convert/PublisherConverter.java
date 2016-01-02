@@ -27,15 +27,16 @@ import reactor.fn.Supplier;
  * @author Stephane Maldini
  */
 public abstract class PublisherConverter<TYPE>
-		implements Function<Object, Flux<?>>, BiFunction<Publisher<?>, Class<?>, TYPE>,
-		        Predicate<Object>, Supplier<Class<TYPE>> {
+		implements Function<Object, Flux<?>>, BiFunction<Publisher<?>, Class<?>, TYPE>, Predicate<Object>,
+		           Supplier<Class<TYPE>> {
 
 	abstract protected Flux<?> toPublisher(Object o);
+
 	abstract protected TYPE fromPublisher(Publisher<?> source);
 
 	@Override
 	public final TYPE apply(Publisher<?> source, Class<?> to) {
-		if(get().isAssignableFrom(to)) {
+		if (get().isAssignableFrom(to)) {
 			TYPE t = fromPublisher(source);
 
 			if (t == null) {
@@ -49,7 +50,7 @@ public abstract class PublisherConverter<TYPE>
 	@Override
 	public Flux<?> apply(Object o) {
 		Flux<?> p = toPublisher(o);
-		if(p == null){
+		if (p == null) {
 			throw new IllegalArgumentException("Cannot convert " + o + " source to Publisher type");
 		}
 		return p;

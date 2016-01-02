@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
@@ -23,8 +24,8 @@ import reactor.core.subscription.EmptySubscription;
 /**
  * Represents an never publisher which only calls onSubscribe.
  * <p>
- * This Publisher is effectively stateless and only a single instance exists.
- * Use the {@link #instance()} method to obtain a properly type-parametrized view of it.
+ * This Publisher is effectively stateless and only a single instance exists. Use the {@link #instance()} method to
+ * obtain a properly type-parametrized view of it.
  */
 
 /**
@@ -33,24 +34,24 @@ import reactor.core.subscription.EmptySubscription;
  */
 public final class FluxNever extends reactor.Flux<Object> {
 
-    private static final Publisher<Object> INSTANCE = new FluxNever();
+	private static final Publisher<Object> INSTANCE = new FluxNever();
 
-    private FluxNever() {
-        // deliberately no op
-    }
+	private FluxNever() {
+		// deliberately no op
+	}
 
-    @Override
-    public void subscribe(Subscriber<? super Object> s) {
-        s.onSubscribe(EmptySubscription.INSTANCE);
-    }
+	@Override
+	public void subscribe(Subscriber<? super Object> s) {
+		s.onSubscribe(EmptySubscription.INSTANCE);
+	}
 
-    /**
-     * Returns a properly parametrized instance of this never Publisher.
-     *
-     * @return a properly parametrized instance of this never Publisher
-     */
-    @SuppressWarnings("unchecked")
-    public static <T> Flux<T> instance() {
-        return (Flux<T>) INSTANCE;
-    }
+	/**
+	 * Returns a properly parametrized instance of this never Publisher.
+	 *
+	 * @return a properly parametrized instance of this never Publisher
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Flux<T> instance() {
+		return (Flux<T>) INSTANCE;
+	}
 }

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
@@ -29,8 +30,10 @@ public final class MonoError<IN> extends Mono<IN> implements ReactiveState.FailS
 
 	/**
 	 * Return a failed {@link Publisher} if the given error is not fatal
+	 *
 	 * @param error the error to {link Subscriber#onError}
 	 * @param <IN> the nominal type flowing through
+	 *
 	 * @return a failed {@link Publisher}
 	 */
 	public static <IN> Mono<IN> create(final Throwable error) {

@@ -38,12 +38,12 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 	static final RxJava1Converter INSTANCE = new RxJava1Converter();
 
 	@SuppressWarnings("unchecked")
-	static public <T> Observable<T> from(Publisher<T> o){
+	static public <T> Observable<T> from(Publisher<T> o) {
 		return INSTANCE.fromPublisher(o);
 	}
 
 	@SuppressWarnings("unchecked")
-	static public <T> Flux<T> from(Observable<T> o){
+	static public <T> Flux<T> from(Observable<T> o) {
 		return INSTANCE.toPublisher(o);
 	}
 
@@ -89,8 +89,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 		return Observable.class;
 	}
 
-	private static class SubscriberToRx
-			implements Subscriber<Object>, Producer, Subscription, rx.Subscription {
+	private static class SubscriberToRx implements Subscriber<Object>, Producer, Subscription, rx.Subscription {
 
 		private final    rx.Subscriber<? super Object> subscriber;
 		private volatile int                           terminated;

@@ -51,7 +51,9 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Create a {@link Mono} that completes without emitting any item.
+	 *
 	 * @param <T>
+	 *
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -61,8 +63,10 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Create a {@link Mono} that completes with the specified error.
+	 *
 	 * @param error
 	 * @param <T>
+	 *
 	 * @return
 	 */
 	public static <T> Mono<T> error(Throwable error) {
@@ -71,8 +75,10 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Expose the specified {@link Publisher} with the {@link Mono} API, and ensure it will emit 0 or 1 item.
+	 *
 	 * @param source
 	 * @param <T>
+	 *
 	 * @return
 	 */
 	public static <T> Mono<T> wrap(Publisher<T> source) {
@@ -81,8 +87,10 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Create a new {@link Mono} that emits the specified item.
+	 *
 	 * @param data
 	 * @param <T>
+	 *
 	 * @return
 	 */
 	public static <T> Mono<T> just(T data) {
@@ -91,6 +99,7 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Return a {@code Mono<Void>} that completes when this {@link Mono} completes.
+	 *
 	 * @return
 	 */
 	public final Mono<Void> after() {
@@ -99,7 +108,9 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Triggered when the {@link Mono} is cancelled.
+	 *
 	 * @param onCancel
+	 *
 	 * @return
 	 */
 	public Mono<T> doOnCancel(Runnable onCancel) {
@@ -108,7 +119,9 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Triggered when the {@link Mono} completes successfully.
+	 *
 	 * @param onComplete
+	 *
 	 * @return
 	 */
 	public Mono<T> doOnComplete(Runnable onComplete) {
@@ -117,7 +130,9 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Triggered when the {@link Mono} completes with an error.
+	 *
 	 * @param onError
+	 *
 	 * @return
 	 */
 	public Mono<T> doOnError(Consumer<? super Throwable> onError) {
@@ -126,7 +141,9 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Triggered when the {@link Mono} is subscribed.
+	 *
 	 * @param onSubscribe
+	 *
 	 * @return
 	 */
 	public Mono<T> doOnSubscribe(Consumer<? super Subscription> onSubscribe) {
@@ -135,7 +152,9 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Triggered when the {@link Mono} terminates, either by completing successfully or with an error.
+	 *
 	 * @param onTerminate
+	 *
 	 * @return
 	 */
 	public Mono<T> doOnTerminate(Runnable onTerminate) {
@@ -145,8 +164,10 @@ public abstract class Mono<T> implements Publisher<T> {
 	/**
 	 * Transform the items emitted by a {@link Publisher} into Publishers, then flatten the emissions from those by
 	 * merging them into a single {@link Flux}, so that they may interleave.
+	 *
 	 * @param mapper
 	 * @param <R>
+	 *
 	 * @return
 	 */
 	public <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
@@ -155,6 +176,7 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Convert this {@link Mono} to a {@link Flux}
+	 *
 	 * @return
 	 */
 	public final Flux<T> flux() {
@@ -163,8 +185,10 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Transform the item emitted by this {@link Mono} by applying a function to item emitted.
+	 *
 	 * @param mapper
 	 * @param <R>
+	 *
 	 * @return
 	 */
 	public <R> Mono<R> map(Function<? super T, ? extends R> mapper) {
@@ -173,7 +197,9 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Merge emissions of this {@link Mono} with the provided {@link Publisher}.
+	 *
 	 * @param source
+	 *
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -183,8 +209,10 @@ public abstract class Mono<T> implements Publisher<T> {
 
 	/**
 	 * Convert the value of {@link Mono} to another {@link Mono} possibly with another value type.
+	 *
 	 * @param transformer
 	 * @param <R>
+	 *
 	 * @return
 	 */
 	public final <R> Mono<R> then(Function<? super T, ? extends Mono<? extends R>> transformer) {

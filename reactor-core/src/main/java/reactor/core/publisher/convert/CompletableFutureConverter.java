@@ -39,8 +39,7 @@ import reactor.fn.Consumer;
  * @author Sebastien Deleuze
  * @author Stephane Maldini
  */
-public final class CompletableFutureConverter
-		extends PublisherConverter<CompletableFuture> {
+public final class CompletableFutureConverter extends PublisherConverter<CompletableFuture> {
 
 	static final CompletableFutureConverter INSTANCE = new CompletableFutureConverter();
 
@@ -103,8 +102,7 @@ public final class CompletableFutureConverter
 		return future;
 	}
 
-	private <T> CompletableFuture<T> completableFuture(
-			final AtomicReference<Subscription> ref){
+	private <T> CompletableFuture<T> completableFuture(final AtomicReference<Subscription> ref) {
 		return new CompletableFuture<T>() {
 			@Override
 			public boolean cancel(boolean mayInterruptIfRunning) {
@@ -138,10 +136,11 @@ public final class CompletableFutureConverter
 			@Override
 			public void onNext(Object t) {
 				Subscription s = ref.getAndSet(null);
-				if( s != null ){
+				if (s != null) {
 					future.complete(t);
 					s.cancel();
-				} else {
+				}
+				else {
 					throw CancelException.get();
 				}
 			}
@@ -175,17 +174,15 @@ public final class CompletableFutureConverter
 		return CompletableFuture.class;
 	}
 
-	private static class FluxCompletableFuture<T>
-			extends Flux<T> implements Consumer<Void>,
-			                           BiConsumer<Long, SubscriberWithContext<T, Void>> {
+	private static class FluxCompletableFuture<T> extends Flux<T>
+			implements Consumer<Void>, BiConsumer<Long, SubscriberWithContext<T, Void>> {
 
 		private final CompletableFuture<? extends T> future;
 		private final Publisher<? extends T>         futurePublisher;
 
 		@SuppressWarnings("unused")
 		private volatile long requested;
-		private static final AtomicLongFieldUpdater<FluxCompletableFuture>
-				REQUESTED =
+		private static final AtomicLongFieldUpdater<FluxCompletableFuture> REQUESTED =
 				AtomicLongFieldUpdater.newUpdater(FluxCompletableFuture.class, "requested");
 
 		public FluxCompletableFuture(CompletableFuture<? extends T> future) {
@@ -238,8 +235,7 @@ public final class CompletableFutureConverter
 				}
 			}
 			catch (Throwable throwable) {
-				MonoError.<T>create(throwable)
-				          .subscribe(subscriber);
+				MonoError.<T>create(throwable).subscribe(subscriber);
 			}
 		}
 	}

@@ -31,24 +31,23 @@ public final class Jdk9FlowConverter extends PublisherConverter<Flow.Publisher> 
 	static final Jdk9FlowConverter INSTANCE = new Jdk9FlowConverter();
 
 	@SuppressWarnings("unchecked")
-	static public <T> Flow.Publisher<T> from(Publisher<T> o){
+	static public <T> Flow.Publisher<T> from(Publisher<T> o) {
 		return INSTANCE.fromPublisher(o);
 	}
 
 	@SuppressWarnings("unchecked")
-	static public <T> Publisher<T> from(Flow.Publisher<T> o){
+	static public <T> Publisher<T> from(Flow.Publisher<T> o) {
 		return INSTANCE.toPublisher(o);
 	}
 
-
 	@Override
 	public Flow.Publisher fromPublisher(final Publisher<?> pub) {
-			return new Flow.Publisher<Object>() {
-				@Override
-				public void subscribe(Flow.Subscriber<? super Object> subscriber) {
-					pub.subscribe(new FlowSubscriber(subscriber));
-				}
-			};
+		return new Flow.Publisher<Object>() {
+			@Override
+			public void subscribe(Flow.Subscriber<? super Object> subscriber) {
+				pub.subscribe(new FlowSubscriber(subscriber));
+			}
+		};
 	}
 
 	@Override

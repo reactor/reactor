@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.publisher;
 
 import org.reactivestreams.Subscriber;
@@ -37,7 +38,7 @@ public final class MonoJust<IN> extends Mono<IN> implements Supplier<IN>, Reacti
 	@Override
 	public void subscribe(final Subscriber<? super IN> s) {
 		try {
-			if(data == null){
+			if (data == null) {
 				s.onSubscribe(EmptySubscription.INSTANCE);
 				s.onComplete();
 				return;
@@ -66,13 +67,13 @@ public final class MonoJust<IN> extends Mono<IN> implements Supplier<IN>, Reacti
 
 	@Override
 	public String toString() {
-		return "{ singleValue: \"" + data +"\" }";
+		return "{ singleValue: \"" + data + "\" }";
 	}
 
 	private static class SingleSubscription<IN> implements Subscription, Upstream {
 
 		private final Subscriber<? super IN> s;
-		private final IN data;
+		private final IN                     data;
 		boolean terminado;
 
 		public SingleSubscription(IN data, Subscriber<? super IN> s) {

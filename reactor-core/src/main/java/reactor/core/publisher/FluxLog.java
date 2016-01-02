@@ -27,23 +27,24 @@ import reactor.core.support.Logger;
 
 /**
  * A logging interceptor that intercepts all reactive calls and trace them
+ *
  * @author Stephane Maldini
  * @since 2.5
  */
 public final class FluxLog<IN> extends Flux.FluxBarrier<IN, IN> {
 
-	public static final int SUBSCRIBE      = 0b010000000;
-	public static final int ON_SUBSCRIBE   = 0b001000000;
-	public static final int ON_NEXT        = 0b000100000;
-	public static final int ON_ERROR       = 0b000010000;
-	public static final int ON_COMPLETE    = 0b000001000;
-	public static final int REQUEST        = 0b000000100;
-	public static final int CANCEL         = 0b000000010;
-	public static final int TERMINAL       = CANCEL | ON_COMPLETE | ON_ERROR;
+	public static final int SUBSCRIBE    = 0b010000000;
+	public static final int ON_SUBSCRIBE = 0b001000000;
+	public static final int ON_NEXT      = 0b000100000;
+	public static final int ON_ERROR     = 0b000010000;
+	public static final int ON_COMPLETE  = 0b000001000;
+	public static final int REQUEST      = 0b000000100;
+	public static final int CANCEL       = 0b000000010;
+	public static final int TERMINAL     = CANCEL | ON_COMPLETE | ON_ERROR;
 
 	public static final int ALL = TERMINAL | REQUEST | ON_SUBSCRIBE | ON_NEXT | SUBSCRIBE;
 
-	public enum SignalKind { request, onSubscribe, onNext, onError, onComplete, cancel, graph }
+	public enum SignalKind {request, onSubscribe, onNext, onError, onComplete, cancel, graph}
 
 	private final Logger log;
 	private final Level  level;
@@ -54,8 +55,8 @@ public final class FluxLog<IN> extends Flux.FluxBarrier<IN, IN> {
 
 	public FluxLog(Publisher<IN> source, final String category, Level level, int options) {
 		super(source);
-		this.log = category != null && !category.isEmpty() ? Logger.getLogger(category) :
-				Logger.getLogger(FluxLog.class);
+		this.log =
+				category != null && !category.isEmpty() ? Logger.getLogger(category) : Logger.getLogger(FluxLog.class);
 		this.options = options;
 		this.level = level;
 	}
@@ -70,7 +71,7 @@ public final class FluxLog<IN> extends Flux.FluxBarrier<IN, IN> {
 	public void subscribe(Subscriber<? super IN> subscriber) {
 		long newId = uniqueId++;
 		if ((options & SUBSCRIBE) == SUBSCRIBE) {
-			if(log.isTraceEnabled()) {
+			if (log.isTraceEnabled()) {
 				log.trace("subscribe: [" + newId + "] " + subscriber.getClass()
 				                                                    .getSimpleName(), this);
 			}
@@ -80,10 +81,10 @@ public final class FluxLog<IN> extends Flux.FluxBarrier<IN, IN> {
 
 	private final static class LoggerBarrier<IN> extends SubscriberBarrier<IN, IN> implements Named, Logging {
 
-		private final int      options;
-		private final Logger   log;
-		private final long     uniqueId;
-		final private Level    level;
+		private final int    options;
+		private final Logger log;
+		private final long   uniqueId;
+		final private Level  level;
 
 		private final FluxLog parent;
 
@@ -107,21 +108,21 @@ public final class FluxLog<IN> extends Flux.FluxBarrier<IN, IN> {
 
 		static private final String LOG_TEMPLATE = "{}({})";
 
-		private void log(Object... args){
-			if(level == Level.FINEST){
-				log.trace(concatId() +" "+LOG_TEMPLATE, args);
+		private void log(Object... args) {
+			if (level == Level.FINEST) {
+				log.trace(concatId() + " " + LOG_TEMPLATE, args);
 			}
-			else if (level == Level.FINE){
-				log.debug(concatId() +" "+LOG_TEMPLATE, args);
+			else if (level == Level.FINE) {
+				log.debug(concatId() + " " + LOG_TEMPLATE, args);
 			}
 			else if (level == Level.INFO) {
-				log.info(concatId() +" "+LOG_TEMPLATE, args);
+				log.info(concatId() + " " + LOG_TEMPLATE, args);
 			}
 			else if (level == Level.WARNING) {
-				log.warn(concatId() +" "+LOG_TEMPLATE, args);
+				log.warn(concatId() + " " + LOG_TEMPLATE, args);
 			}
-			else if(level == Level.SEVERE) {
-				log.error(concatId() +" "+LOG_TEMPLATE, args);
+			else if (level == Level.SEVERE) {
+				log.error(concatId() + " " + LOG_TEMPLATE, args);
 			}
 		}
 
@@ -144,10 +145,7 @@ public final class FluxLog<IN> extends Flux.FluxBarrier<IN, IN> {
 		@Override
 		protected void doError(Throwable throwable) {
 			if ((options & ON_ERROR) == ON_ERROR && log.isErrorEnabled()) {
-				log.error(concatId() + " "+LOG_TEMPLATE,
-						SignalKind.onError,
-						throwable,
-						this);
+				log.error(concatId() + " " + LOG_TEMPLATE, SignalKind.onError, throwable, this);
 				log.error(concatId(), throwable);
 			}
 			subscriber.onError(throwable);

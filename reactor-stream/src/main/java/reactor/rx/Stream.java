@@ -744,7 +744,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.action
+	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.stream
 	 * .Signal}. Since the error is materialized as a {@code Signal}, the propagation will be stopped. Complete signal
 	 * will first emit a {@code Signal.complete()} and then effectively complete the stream.
 	 *
@@ -1016,7 +1016,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	/**
 	 * @return {@literal new Stream}
 	 *
-	 * @see Flux#ignoreElements)
+	 * @see Flux#after)
 	 */
 	@SuppressWarnings("unchecked")
 	public final Stream<O> ignoreElements() {
@@ -1147,7 +1147,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.action
+	 * Transform the incoming onSubscribe, onNext, onError and onComplete signals into {@link reactor.rx.stream
 	 * .Signal}. Since the error is materialized as a {@code Signal}, the propagation will be stopped. Complete signal
 	 * will first emit a {@code Signal.complete()} and then effectively complete the stream.
 	 *
@@ -1310,7 +1310,12 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return {@literal new Stream}
 	 */
 	public final Stream<O> switchOnError(@Nonnull final Publisher<? extends O> fallback) {
-		return new StreamBarrier.Identity<>(new FluxResume<O>(this, fallback));
+		return new StreamBarrier.Identity<>(new FluxResume<O>(this, new Function<Throwable, Publisher<? extends O>>() {
+			@Override
+			public Publisher<? extends O> apply(Throwable throwable) {
+				return fallback;
+			}
+		}));
 	}
 
 	/**

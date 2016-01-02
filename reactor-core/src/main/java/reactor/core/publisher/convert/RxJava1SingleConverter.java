@@ -29,19 +29,18 @@ public final class RxJava1SingleConverter extends PublisherConverter<Single> {
 	static final RxJava1SingleConverter INSTANCE = new RxJava1SingleConverter();
 
 	@SuppressWarnings("unchecked")
-	static public <T> Single<T> from(Publisher<T> o){
+	static public <T> Single<T> from(Publisher<T> o) {
 		return INSTANCE.fromPublisher(o);
 	}
 
 	@SuppressWarnings("unchecked")
-	static public <T> Publisher<T> from(Single<T> o){
+	static public <T> Publisher<T> from(Single<T> o) {
 		return INSTANCE.toPublisher(o);
 	}
 
 	@Override
 	public Single fromPublisher(Publisher<?> o) {
-		Observable obs =
-				DependencyUtils.convertFromPublisher(o, Observable.class);
+		Observable obs = DependencyUtils.convertFromPublisher(o, Observable.class);
 		if (obs != null) {
 			return obs.toSingle();
 		}

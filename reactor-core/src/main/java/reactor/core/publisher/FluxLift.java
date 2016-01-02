@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
@@ -34,9 +35,11 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	/**
 	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
 	 * or not the right operand {@link Subscriber}.
+	 *
 	 * @param dataConsumer A {@link BiConsumer} with left argument onNext data and right argument output subscriber
 	 * @param <I> The source type of the data sequence
 	 * @param <O> The target type of the data sequence
+	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Flux<O> lift(Publisher<I> source,
@@ -47,10 +50,12 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	/**
 	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
 	 * or not the right operand {@link Subscriber}.
+	 *
 	 * @param dataConsumer A {@link BiConsumer} with left argument onNext data and right argument output subscriber
 	 * @param errorConsumer A {@link BiConsumer} with left argument onError throwable and right argument output sub
 	 * @param <I> The source type of the data sequence
 	 * @param <O> The target type of the data sequence
+	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Flux<O> lift(Publisher<I> source,
@@ -63,11 +68,13 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
 	 * or not the right operand {@link Subscriber}. <p> The argument {@code subscriptionHandler} is executed once by new
 	 * subscriber to generate a context shared by every request calls.
+	 *
 	 * @param dataConsumer A {@link BiConsumer} with left argument onNext data and right argument output subscriber
 	 * @param errorConsumer A {@link BiConsumer} with left argument onError throwable and right argument output sub
 	 * @param completeConsumer A {@link Consumer} called onComplete with the actual output subscriber
 	 * @param <I> The source type of the data sequence
 	 * @param <O> The target type of the data sequence
+	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Flux<O> lift(Publisher<I> source,
@@ -85,11 +92,13 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	/**
 	 * Create a {@link Publisher} intercepting all source signals with the returned Subscriber that might choose to pass
 	 * them alone to the provided Subscriber (given to the returned {@link Publisher#subscribe(Subscriber)}.
+	 *
 	 * @param source A {@link Publisher} source delegate
 	 * @param barrierProvider A {@link Function} called once for every new subscriber returning a unique {@link
 	 * Subscriber} to intercept upstream signals
 	 * @param <I> The type of the data sequence
 	 * @param <O> The type of contextual information to be read by the requestConsumer
+	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	public static <I, O> Flux<O> lift(Publisher<I> source,
@@ -98,12 +107,12 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 	}
 
 	/**
-	 *
 	 * @param left
 	 * @param right
 	 * @param <I>
 	 * @param <O>
 	 * @param <E>
+	 *
 	 * @return
 	 */
 	public static <I, O, E> Function<Subscriber<? super I>, Subscriber<? super O>> opFusion(final Function<Subscriber<? super I>, Subscriber<? super E>> left,
@@ -118,8 +127,7 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 
 	final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
 
-	public FluxLift(Publisher<I> source,
-			Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider) {
+	public FluxLift(Publisher<I> source, Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider) {
 		super(source);
 		this.barrierProvider = barrierProvider;
 	}
@@ -140,7 +148,7 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 		private final BiConsumer<Throwable, Subscriber<? super O>>                  errorConsumer;
 		private final Consumer<Subscriber<? super O>>                               completeConsumer;
 
-		private SubscriberWithContext<? super O, Subscription>                subscriberWithContext;
+		private SubscriberWithContext<? super O, Subscription> subscriberWithContext;
 
 		public ConsumerSubscriberBarrier(Subscriber<? super O> subscriber,
 				BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer,

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.core.publisher;
 
 import java.util.Arrays;
@@ -38,14 +39,12 @@ import reactor.fn.Function;
 import reactor.fn.Supplier;
 
 /**
- * A merge operator that transforms input T to Publisher of V using the assigned map function.
- * Once transformed, publishers are then subscribed and requested with the following demand rules:
- * - request eagerly up to bufferSize
- * - downstream consume buffer once all inner subscribers have read
- * - when more than half of the demand has been fulfilled, request more
- * - request to upstream represent the maximum concurrent merge possible
+ * A merge operator that transforms input T to Publisher of V using the assigned map function. Once transformed,
+ * publishers are then subscribed and requested with the following demand rules: - request eagerly up to bufferSize -
+ * downstream consume buffer once all inner subscribers have read - when more than half of the demand has been
+ * fulfilled, request more - request to upstream represent the maximum concurrent merge possible
  * <p>
- *
+ * <p>
  * https://github.com/reactor/reactive-streams-commons
  *
  * @author David Karnok
@@ -55,13 +54,13 @@ import reactor.fn.Supplier;
 public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 
 	/**
-	 *
 	 * @param <T>
+	 *
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Function<Publisher<? extends T>, Publisher<? extends T>> identity(){
-		return (Function<Publisher<? extends T>, Publisher<? extends T>>)P2P_FUNCTION;
+	public static <T> Function<Publisher<? extends T>, Publisher<? extends T>> identity() {
+		return (Function<Publisher<? extends T>, Publisher<? extends T>>) P2P_FUNCTION;
 	}
 
 	/**
@@ -75,20 +74,14 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 	final int                                                   bufferSize;
 
 	@SuppressWarnings("unchecked")
-	public FluxFlatMap(
-			Publisher<T> source,
-			int maxConcurrency,
-			int bufferSize
-	) {
+	public FluxFlatMap(Publisher<T> source, int maxConcurrency, int bufferSize) {
 		this(source, (Function<? super T, ? extends Publisher<? extends V>>) P2P_FUNCTION, maxConcurrency, bufferSize);
 	}
 
-	public FluxFlatMap(
-			Publisher<T> source,
+	public FluxFlatMap(Publisher<T> source,
 			Function<? super T, ? extends Publisher<? extends V>> mapper,
 			int maxConcurrency,
-			int bufferSize
-	) {
+			int bufferSize) {
 		super(source);
 		this.mapper = mapper;
 		this.maxConcurrency = maxConcurrency;
@@ -105,7 +98,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 			try {
 				T v = ((Supplier<T>) source).get();
 				if (v != null) {
-					mapper.apply(v).subscribe(s);
+					mapper.apply(v)
+					      .subscribe(s);
 					return;
 				}
 			}
@@ -117,17 +111,16 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 		source.subscribe(new MergeBarrier<>(s, mapper, maxConcurrency, bufferSize));
 	}
 
-	static final class MergeBarrier<T, V> extends SubscriberWithDemand<T, V> implements ReactiveState.LinkedUpstreams,
-	                                                                                    ReactiveState.ActiveDownstream,
-	                                                                                    ReactiveState.Buffering,
-	                                                                                    ReactiveState.FailState {
+	static final class MergeBarrier<T, V> extends SubscriberWithDemand<T, V>
+			implements ReactiveState.LinkedUpstreams, ReactiveState.ActiveDownstream, ReactiveState.Buffering,
+			           ReactiveState.FailState {
 
 		final Function<? super T, ? extends Publisher<? extends V>> mapper;
 		final int                                                   maxConcurrency;
 		final int                                                   bufferSize;
 		final int                                                   limit;
 
-		private Sequence pollCursor;
+		private          Sequence                       pollCursor;
 		private volatile RingBuffer<RingBuffer.Slot<V>> emitBuffer;
 
 		private volatile Throwable error;
@@ -151,14 +144,15 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 
 		static final BufferSubscriber<?, ?>[] CANCELLED = new BufferSubscriber<?, ?>[0];
 
-
 		long lastRequest;
 		long uniqueId;
 		long lastId;
 		int  lastIndex;
 
-		public MergeBarrier(Subscriber<? super V> actual, Function<? super T, ? extends Publisher<? extends V>>
-				mapper, int maxConcurrency, int bufferSize) {
+		public MergeBarrier(Subscriber<? super V> actual,
+				Function<? super T, ? extends Publisher<? extends V>> mapper,
+				int maxConcurrency,
+				int bufferSize) {
 			super(actual);
 			this.mapper = mapper;
 			this.maxConcurrency = maxConcurrency;
@@ -173,7 +167,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 			if (!isCancelled()) {
 				if (maxConcurrency == Integer.MAX_VALUE) {
 					subscription.request(Long.MAX_VALUE);
-				} else {
+				}
+				else {
 					subscription.request(maxConcurrency);
 				}
 			}
@@ -192,7 +187,6 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 					return;
 				}
 			}
-
 
 			BufferSubscriber<T, V> inner = new BufferSubscriber<>(this, uniqueId++);
 			addInner(inner);
@@ -246,7 +240,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 				BufferSubscriber<?, ?>[] b;
 				if (n == 1) {
 					b = EMPTY;
-				} else {
+				}
+				else {
 					b = new BufferSubscriber<?, ?>[n - 1];
 					System.arraycopy(a, 0, b, 0, j);
 					System.arraycopy(a, j + 1, b, j, n - j - 1);
@@ -260,9 +255,7 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 		RingBuffer<RingBuffer.Slot<V>> getMainQueue() {
 			RingBuffer<RingBuffer.Slot<V>> q = emitBuffer;
 			if (q == null) {
-				q = RingBuffer.createSingleProducer(
-						maxConcurrency == Integer.MAX_VALUE ? bufferSize : maxConcurrency
-				);
+				q = RingBuffer.createSingleProducer(maxConcurrency == Integer.MAX_VALUE ? bufferSize : maxConcurrency);
 				q.addGatingSequence(pollCursor = Sequencer.newSequence(-1L));
 				emitBuffer = q;
 			}
@@ -279,12 +272,12 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 					if (r != Long.MAX_VALUE) {
 						REQUESTED.decrementAndGet(this);
 					}
-					if (maxConcurrency != Integer.MAX_VALUE && !isCancelled()
-							&& ++lastRequest == limit) {
+					if (maxConcurrency != Integer.MAX_VALUE && !isCancelled() && ++lastRequest == limit) {
 						lastRequest = 0;
 						subscription.request(limit);
 					}
-				} else {
+				}
+				else {
 					RingBuffer<RingBuffer.Slot<V>> q = getMainQueue();
 					long seq = q.tryNext();
 					q.get(seq).value = value;
@@ -294,7 +287,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 				if (RUNNING.decrementAndGet(this) == 0) {
 					return;
 				}
-			} else {
+			}
+			else {
 				RingBuffer<RingBuffer.Slot<V>> q = getMainQueue();
 				long seq = q.tryNext();
 				q.get(seq).value = value;
@@ -325,7 +319,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 						REQUESTED.decrementAndGet(this);
 					}
 					inner.requestMore(1);
-				} else {
+				}
+				else {
 					RingBuffer<RingBuffer.Slot<V>> q = getInnerQueue(inner);
 					long seq = q.tryNext();
 					q.get(seq).value = value;
@@ -334,7 +329,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 				if (RUNNING.decrementAndGet(this) == 0) {
 					return;
 				}
-			} else {
+			}
+			else {
 				RingBuffer<RingBuffer.Slot<V>> q = getInnerQueue(inner);
 				long seq = q.tryNext();
 				q.get(seq).value = value;
@@ -365,7 +361,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 		@Override
 		protected void doCancel() {
 			int terminated = TERMINATED.get(this);
-			if (terminated != TERMINATED_WITH_CANCEL && TERMINATED.compareAndSet(this, terminated,
+			if (terminated != TERMINATED_WITH_CANCEL && TERMINATED.compareAndSet(this,
+					terminated,
 					TERMINATED_WITH_CANCEL)) {
 				if (RUNNING.getAndIncrement(this) == 0) {
 					subscription.cancel();
@@ -376,7 +373,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 
 		@Override
 		public Iterator<?> upstreams() {
-			return Arrays.asList(subscribers).iterator();
+			return Arrays.asList(subscribers)
+			             .iterator();
 		}
 
 		@Override
@@ -395,7 +393,7 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 		}
 
 		void reportError(Throwable t) {
-			if(!ERROR.compareAndSet(this, null, t)){
+			if (!ERROR.compareAndSet(this, null, t)) {
 				throw ReactorFatalException.create(t);
 			}
 		}
@@ -431,7 +429,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 							if (svq.getCursor() >= cursor) {
 								o = svq.get(cursor);
 								oo = o.value;
-							} else {
+							}
+							else {
 								o = null;
 								oo = null;
 							}
@@ -454,7 +453,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 						if (scalarEmission != 0L) {
 							if (unbounded) {
 								r = Long.MAX_VALUE;
-							} else {
+							}
+							else {
 								r = REQUESTED.addAndGet(this, -scalarEmission);
 							}
 						}
@@ -473,7 +473,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 					Throwable e = error;
 					if (e == null) {
 						child.onComplete();
-					} else {
+					}
+					else {
 						subscriber.onError(e);
 					}
 					return;
@@ -527,7 +528,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 								if (q.getCursor() >= cursor) {
 									o = q.get(cursor);
 									oo = o.value;
-								} else {
+								}
+								else {
 									o = null;
 									oo = null;
 								}
@@ -546,7 +548,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 							if (produced != 0L) {
 								if (!unbounded) {
 									r = REQUESTED.addAndGet(this, -produced);
-								} else {
+								}
+								else {
 									r = Long.MAX_VALUE;
 								}
 								is.requestMore(produced);
@@ -601,7 +604,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 			if (e != null) {
 				try {
 					subscriber.onError(error);
-				} finally {
+				}
+				finally {
 					unsubscribe();
 				}
 				return true;
@@ -623,17 +627,11 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 
 	}
 
-	static final class BufferSubscriber<T, V>
-			extends BaseSubscriber<V>
-			implements ReactiveState.Bounded,
-			           ReactiveState.Upstream,
-			           ReactiveState.Downstream,
-			           ReactiveState.Buffering,
-			           ReactiveState.ActiveDownstream,
-			           ReactiveState.ActiveUpstream,
-			           ReactiveState.UpstreamDemand,
-			           ReactiveState.UpstreamPrefetch,
-			           ReactiveState.Inner {
+	static final class BufferSubscriber<T, V> extends BaseSubscriber<V>
+			implements ReactiveState.Bounded, ReactiveState.Upstream, ReactiveState.Downstream, ReactiveState.Buffering,
+			           ReactiveState.ActiveDownstream, ReactiveState.ActiveUpstream, ReactiveState.UpstreamDemand,
+			           ReactiveState.UpstreamPrefetch, ReactiveState.Inner {
+
 		final long               id;
 		final MergeBarrier<T, V> parent;
 		final int                limit;
@@ -646,7 +644,7 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 
 		Sequence pollCursor;
 
-		volatile boolean                done;
+		volatile boolean                        done;
 		volatile RingBuffer<RingBuffer.Slot<V>> queue;
 		int outstanding;
 
@@ -704,7 +702,8 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 			outstanding = bufferSize;
 			int k = bufferSize - r;
 			if (k > 0) {
-				SUBSCRIPTION.get(this).request(k);
+				SUBSCRIPTION.get(this)
+				            .request(k);
 			}
 		}
 

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
@@ -63,7 +62,6 @@ public final class FluxPeek<T> extends reactor.Flux.FluxBarrier<T, T> {
 			Runnable onAfterTerminateCall,
 			LongConsumer onRequestCall,
 			Runnable onCancelCall) {
-
 		super(source);
 		this.onSubscribeCall = onSubscribeCall;
 		this.onNextCall = onNextCall;
@@ -76,10 +74,10 @@ public final class FluxPeek<T> extends reactor.Flux.FluxBarrier<T, T> {
 
 	@Override
 	public void subscribe(Subscriber<? super T> s) {
-		source.subscribe(new PublisherPeekSubscriber<>(s, this));
+		source.subscribe(new FluxPeekSubscriber<>(s, this));
 	}
 
-	static final class PublisherPeekSubscriber<T> implements Subscriber<T>, Subscription {
+	static final class FluxPeekSubscriber<T> implements Subscriber<T>, Subscription {
 
 		final Subscriber<? super T> actual;
 
@@ -87,7 +85,7 @@ public final class FluxPeek<T> extends reactor.Flux.FluxBarrier<T, T> {
 
 		Subscription s;
 
-		public PublisherPeekSubscriber(Subscriber<? super T> actual, FluxPeek<T> parent) {
+		public FluxPeekSubscriber(Subscriber<? super T> actual, FluxPeek<T> parent) {
 			this.actual = actual;
 			this.parent = parent;
 		}

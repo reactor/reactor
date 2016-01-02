@@ -149,7 +149,12 @@ public final class Publishers extends FluxFactory {
 	 */
 	public static <IN> Flux<IN> switchOnError(final Publisher<IN> source,
 			final Publisher<? extends IN> fallback) {
-		return new FluxResume<>(source, fallback);
+		return new FluxResume<>(source, new Function<Throwable, Publisher<? extends IN>>() {
+			@Override
+			public Publisher<? extends IN> apply(Throwable throwable) {
+				return fallback;
+			}
+		});
 	}
 
 	/**
@@ -253,19 +258,6 @@ public final class Publishers extends FluxFactory {
 		return new MonoIgnoreElements<>(source);
 	}
 
-	/**
-	 * Ignore sequence data (onNext) but bridge all other events: - downstream: onSubscribe, onComplete, onError -
-	 * upstream: request, cancel.
-	 *
-	 * This useful to acknowledge the completion of a data sequence and trigger further processing using for instance
-	 * {@link #concat(Publisher)}.
-	 * @param source the emitted sequence to filter
-	 * @return a new filtered {@link Publisher<Void>}
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Mono<T> ignoreElements(Publisher<T> source) {
-		return (Mono<T>)new MonoIgnoreElements<>(source);
-	}
 
 	/**
 	 *

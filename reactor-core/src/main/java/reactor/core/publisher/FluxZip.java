@@ -43,11 +43,12 @@ import reactor.fn.tuple.Tuple;
 
 /**
  * A zip operator to combine 1 by 1 each upstream in parallel given the combinator function.
+ *
  * @author Stephane Maldini
  * @since 2.5
  */
-public final class FluxZip<TUPLE extends Tuple, V>
-		extends Flux<V> implements ReactiveState.Factory, ReactiveState.LinkedUpstreams {
+public final class FluxZip<TUPLE extends Tuple, V> extends Flux<V>
+		implements ReactiveState.Factory, ReactiveState.LinkedUpstreams {
 
 	/**
 	 *
@@ -73,9 +74,7 @@ public final class FluxZip<TUPLE extends Tuple, V>
 	final int                                  bufferSize;
 	final Publisher[]                          sources;
 
-	public FluxZip(final Publisher[] sources,
-	               final Function<? super TUPLE, ? extends V> combinator,
-	               int bufferSize) {
+	public FluxZip(final Publisher[] sources, final Function<? super TUPLE, ? extends V> combinator, int bufferSize) {
 		this.combinator = combinator;
 		this.bufferSize = bufferSize;
 		this.sources = sources;
@@ -115,12 +114,8 @@ public final class FluxZip<TUPLE extends Tuple, V>
 	}
 
 	static final class ZipBarrier<TUPLE extends Tuple, V>
-			implements Subscription,
-			           ReactiveState.LinkedUpstreams,
-			           ReactiveState.ActiveDownstream,
-			           ReactiveState.Buffering,
-			           ReactiveState.ActiveUpstream,
-			           ReactiveState.DownstreamDemand,
+			implements Subscription, ReactiveState.LinkedUpstreams, ReactiveState.ActiveDownstream,
+			           ReactiveState.Buffering, ReactiveState.ActiveUpstream, ReactiveState.DownstreamDemand,
 			           ReactiveState.FailState {
 
 		final FluxZip<TUPLE, V>     parent;
@@ -249,8 +244,8 @@ public final class FluxZip<TUPLE extends Tuple, V>
 		public long pending() {
 			Object[] values = valueCache;
 			int count = 0;
-			for(int i = 0; i < values.length; i++){
-				if(values[i] != null){
+			for (int i = 0; i < values.length; i++) {
+				if (values[i] != null) {
 					count++;
 				}
 			}
@@ -296,7 +291,9 @@ public final class FluxZip<TUPLE extends Tuple, V>
 				for (; ; ) {
 
 					final Object[] tuple = valueCache;
-					if(TERMINATED_CACHE == tuple) return;
+					if (TERMINATED_CACHE == tuple) {
+						return;
+					}
 					boolean completeTuple = true;
 					int i;
 					for (i = 0; i < n; i++) {
@@ -396,8 +393,8 @@ public final class FluxZip<TUPLE extends Tuple, V>
 		}
 	}
 
-	interface ZipState<V> extends ReactiveState.ActiveDownstream, ReactiveState.Buffering,
-	                              ReactiveState.ActiveUpstream, ReactiveState.Inner {
+	interface ZipState<V> extends ReactiveState.ActiveDownstream, ReactiveState.Buffering, ReactiveState.ActiveUpstream,
+	                              ReactiveState.Inner {
 
 		V readNext();
 
@@ -528,7 +525,7 @@ public final class FluxZip<TUPLE extends Tuple, V>
 		public void onSubscribe(Subscription s) {
 			super.onSubscribe(s);
 
-			if(parent.cancelled){
+			if (parent.cancelled) {
 				s.cancel();
 				return;
 			}
