@@ -52,8 +52,8 @@ public class EmitterProcessorDemandTests {
 	@Ignore
 	public void test() throws InterruptedException {
 		ProcessorGroup<String> asyncGroup = Processors.asyncGroup("async", 128, 1);
-		BaseProcessor<String, String> publishOn = asyncGroup.publishOn();
-		BaseProcessor<String, String> emitter = Processors.emitter();
+		FluxProcessor<String, String> publishOn = asyncGroup.publishOn();
+		FluxProcessor<String, String> emitter = Processors.emitter();
 
 		publishOn.subscribe(emitter);
 
@@ -98,7 +98,7 @@ public class EmitterProcessorDemandTests {
 	@Test
 	@Ignore
 	public void testPerformance() throws InterruptedException {
-		BaseProcessor<String, String> emitter = Processors.emitter();
+		FluxProcessor<String, String> emitter = Processors.emitter();
 
 		CountDownLatch requestReceived = new CountDownLatch(1);
 
@@ -159,7 +159,7 @@ public class EmitterProcessorDemandTests {
 
 	@Test
 	public void testRed() throws InterruptedException {
-		BaseProcessor<String, String> processor = Processors.emitter();
+		FluxProcessor<String, String> processor = Processors.emitter();
 		DataTestSubscriber<String> subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
@@ -172,7 +172,7 @@ public class EmitterProcessorDemandTests {
 
 	@Test
 	public void testGreen() throws InterruptedException {
-		BaseProcessor<String, String> processor = Processors.emitter();
+		FluxProcessor<String, String> processor = Processors.emitter();
 		DataTestSubscriber<String> subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
@@ -185,7 +185,7 @@ public class EmitterProcessorDemandTests {
 
 	@Test
 	public void testHanging() throws InterruptedException {
-		BaseProcessor<String, String> processor = Processors.emitter(2);
+		FluxProcessor<String, String> processor = Processors.emitter(2);
 		Publishers.log(Flux.from(DATA)).subscribe(processor);
 
 		DataTestSubscriber<String> first = DataTestSubscriber.createWithTimeoutSecs(1);
@@ -203,7 +203,7 @@ public class EmitterProcessorDemandTests {
 
 	@Test
 	public void testNPE() throws InterruptedException {
-		BaseProcessor<String, String> processor = Processors.emitter(8);
+		FluxProcessor<String, String> processor = Processors.emitter(8);
 		Publishers.log(Flux.from(DATA)).subscribe(processor);
 
 		DataTestSubscriber<String> first = DataTestSubscriber.createWithTimeoutSecs(1);

@@ -30,18 +30,18 @@ import reactor.core.error.CancelException;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.subscription.EmptySubscription;
-import reactor.core.support.rb.disruptor.RingBuffer;
-import reactor.core.support.rb.disruptor.Sequence;
-import reactor.core.support.rb.disruptor.Sequencer;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.internal.PlatformDependent;
+import reactor.core.support.rb.disruptor.RingBuffer;
+import reactor.core.support.rb.disruptor.Sequence;
+import reactor.core.support.rb.disruptor.Sequencer;
 
 /**
  * @author Stephane Maldini
  * @since 2.5
  */
-public final class EmitterProcessor<T> extends BaseProcessor<T, T>
+public final class EmitterProcessor<T> extends FluxProcessor<T, T>
 		implements ReactiveState.LinkedDownstreams,
 		           ReactiveState.ActiveUpstream,
 		           ReactiveState.ActiveDownstream,
@@ -54,6 +54,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 	final int bufferSize;
 	final int limit;
 	final int replay;
+	final boolean autoCancel;
 
 	private volatile RingBuffer<RingBuffer.Slot<T>> emitBuffer;
 
@@ -97,7 +98,7 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 	}
 
 	public EmitterProcessor(boolean autoCancel, int maxConcurrency, int bufferSize, int replayLastN) {
-		super(autoCancel);
+		this.autoCancel = autoCancel;
 		this.maxConcurrency = maxConcurrency;
 		this.bufferSize = bufferSize;
 		this.limit = Math.max(1, bufferSize / 2);
@@ -271,11 +272,6 @@ public final class EmitterProcessor<T> extends BaseProcessor<T, T>
 	@Override
 	public boolean isCancelled() {
 		return autoCancel && subscribers == CANCELLED;
-	}
-
-	@Override
-	final public long getAvailableCapacity() {
-		return emitBuffer == null ? bufferSize : emitBuffer.remainingCapacity();
 	}
 
 	@Override

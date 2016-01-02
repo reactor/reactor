@@ -219,7 +219,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			AtomicIntegerFieldUpdater.newUpdater(ProcessorGroup.class, "refCount");
 
 	@Override
-	public BaseProcessor<T, T> get() {
+	public FluxProcessor<T, T> get() {
 		return dispatchOn();
 	}
 
@@ -229,14 +229,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <V> BaseProcessor<V, V> dispatchOn(Class<V> clazz) {
-		return (BaseProcessor<V, V>) dispatchOn();
+	public <V> FluxProcessor<V, V> dispatchOn(Class<V> clazz) {
+		return (FluxProcessor<V, V>) dispatchOn();
 	}
 
 	/**
 	 * @return
 	 */
-	public BaseProcessor<T, T> dispatchOn() {
+	public FluxProcessor<T, T> dispatchOn() {
 		return createBarrier(false);
 	}
 
@@ -246,14 +246,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
-	public <V> BaseProcessor<V, V> publishOn(Class<V> clazz) {
-		return (BaseProcessor<V, V>) publishOn();
+	public <V> FluxProcessor<V, V> publishOn(Class<V> clazz) {
+		return (FluxProcessor<V, V>) publishOn();
 	}
 
 	/**
 	 * @return
 	 */
-	public BaseProcessor<T, T> publishOn() {
+	public FluxProcessor<T, T> publishOn() {
 		return createBarrier(true);
 	}
 
@@ -394,7 +394,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 	};
 
-	private final static int LIMIT_BUFFER_SIZE = BaseProcessor.SMALL_BUFFER_SIZE / 2;
+	private final static int LIMIT_BUFFER_SIZE = ReactiveState.SMALL_BUFFER_SIZE / 2;
 
 	@SuppressWarnings("unchecked")
 	protected ProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
@@ -541,7 +541,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 	}
 
-	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
+	private static class ProcessorBarrier<V> extends FluxProcessor<V, V>
 			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
 			           Bounded, Upstream, FeedbackLoop, Downstream, Buffering, ActiveDownstream, ActiveUpstream,
 			           Named, UpstreamDemand, UpstreamPrefetch, DownstreamDemand, FailState,
@@ -576,7 +576,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		protected Subscriber<? super V> subscriber;
 
 		public ProcessorBarrier(boolean buffer, final ProcessorGroup service) {
-			super(true);
 			this.service = service;
 			if (!buffer) {
 				emitBuffer = null;
@@ -781,7 +780,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 		@Override
 		public long limit() {
-			return BaseProcessor.SMALL_BUFFER_SIZE;
+			return ReactiveState.SMALL_BUFFER_SIZE;
 		}
 
 		@Override
@@ -967,11 +966,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return service.tailRecurser != null &&
 					service.executorProcessor != null &&
 					service.executorProcessor.isInContext();
-		}
-
-		@Override
-		public long getAvailableCapacity() {
-			return emitBuffer != null ? emitBuffer.pending() : getCapacity();
 		}
 
 		@Override
@@ -1297,12 +1291,12 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
-		public BaseProcessor<T, T> dispatchOn() {
+		public FluxProcessor<T, T> dispatchOn() {
 			return next().dispatchOn();
 		}
 
 		@Override
-		public BaseProcessor<T, T> publishOn() {
+		public FluxProcessor<T, T> publishOn() {
 			return next().publishOn();
 		}
 
@@ -1312,7 +1306,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
-		public BaseProcessor<T, T> get() {
+		public FluxProcessor<T, T> get() {
 			return next().get();
 		}
 

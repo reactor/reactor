@@ -26,7 +26,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.processor.BaseProcessor;
+import reactor.core.processor.FluxProcessor;
 import reactor.core.processor.EmitterProcessor;
 import reactor.core.processor.ExecutorProcessor;
 import reactor.core.processor.ProcessorGroup;
@@ -43,7 +43,7 @@ import reactor.fn.Supplier;
 
 /**
  * Main gateway to build various asynchronous {@link Processor} or "pool" services that allow their reuse. Reactor
- * offers a few management API via the subclassed {@link BaseProcessor} for the underlying {@link
+ * offers a few management API via the subclassed {@link FluxProcessor} for the underlying {@link
  * java.util.concurrent.Executor} in use.
  * @author Stephane Maldini
  * @since 2.5
@@ -68,102 +68,102 @@ public final class Processors {
 	 */
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link Processor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> emitter() {
+	public static <E> FluxProcessor<E, E> emitter() {
 		return emitter(true);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> emitter(boolean autoCancel) {
-		return emitter(BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
+	public static <E> FluxProcessor<E, E> emitter(boolean autoCancel) {
+		return emitter(ReactiveState.SMALL_BUFFER_SIZE, autoCancel);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> emitter(int bufferSize) {
+	public static <E> FluxProcessor<E, E> emitter(int bufferSize) {
 		return emitter(bufferSize, Integer.MAX_VALUE);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> emitter(int bufferSize, int concurrency) {
+	public static <E> FluxProcessor<E, E> emitter(int bufferSize, int concurrency) {
 		return emitter(bufferSize, concurrency, true);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> emitter(int bufferSize, boolean autoCancel) {
+	public static <E> FluxProcessor<E, E> emitter(int bufferSize, boolean autoCancel) {
 		return emitter(bufferSize, Integer.MAX_VALUE, autoCancel);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> emitter(int bufferSize, int concurrency, boolean autoCancel) {
+	public static <E> FluxProcessor<E, E> emitter(int bufferSize, int concurrency, boolean autoCancel) {
 		return new EmitterProcessor<>(autoCancel, concurrency, bufferSize, -1);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> replay() {
-		return replay(BaseProcessor.SMALL_BUFFER_SIZE);
+	public static <E> FluxProcessor<E, E> replay() {
+		return replay(ReactiveState.SMALL_BUFFER_SIZE);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> replay(int historySize) {
+	public static <E> FluxProcessor<E, E> replay(int historySize) {
 		return replay(historySize, Integer.MAX_VALUE);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> replay(int historySize, int concurrency) {
+	public static <E> FluxProcessor<E, E> replay(int historySize, int concurrency) {
 		return replay(historySize, concurrency, false);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p>
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
-	public static <E> BaseProcessor<E, E> replay(int historySize, int concurrency, boolean autoCancel) {
+	public static <E> FluxProcessor<E, E> replay(int historySize, int concurrency, boolean autoCancel) {
 		return new EmitterProcessor<>(autoCancel, concurrency, historySize, historySize);
 	}
 
@@ -175,27 +175,27 @@ public final class Processors {
 	 */
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p> A new Cached ThreadExecutorPool will be implicitely created.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> topic() {
-		return topic("async", BaseProcessor.SMALL_BUFFER_SIZE, true);
+		return topic("async", ReactiveState.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p> A new Cached ThreadExecutorPool will be implicitely created.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> topic(String name) {
-		return topic(name, BaseProcessor.SMALL_BUFFER_SIZE, true);
+		return topic(name, ReactiveState.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and the passed auto-cancel setting. <p> A Shared Processor authorizes concurrent onNext calls and is
 	 * suited for multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be
 	 * implicitely created.
@@ -204,11 +204,11 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> topic(boolean autoCancel) {
-		return topic(Processors.class.getSimpleName(), BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
+		return topic(Processors.class.getSimpleName(), ReactiveState.SMALL_BUFFER_SIZE, autoCancel);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and the passed auto-cancel setting. <p> A Shared Processor authorizes concurrent onNext calls and is
 	 * suited for multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be
 	 * implicitely created and will use the passed name to qualify the created threads.
@@ -222,7 +222,7 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using the blockingWait Strategy, passed backlog size, and auto-cancel
+	 * Create a new {@link FluxProcessor} using the blockingWait Strategy, passed backlog size, and auto-cancel
 	 * settings. <p> A Shared Processor authorizes concurrent onNext calls and is suited for multi-threaded publisher
 	 * that will fan-in data. <p> The passed {@link java.util.concurrent.ExecutorService} will execute as many
 	 * event-loop consuming the ringbuffer as subscribers.
@@ -244,29 +244,29 @@ public final class Processors {
 	 */
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p> A Shared Processor authorizes concurrent onNext calls and is suited for
 	 * multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be implicitely created.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> queue() {
-		return queue("worker", BaseProcessor.SMALL_BUFFER_SIZE, true);
+		return queue("worker", ReactiveState.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and auto-cancel. <p> A Shared Processor authorizes concurrent onNext calls and is suited for
 	 * multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be implicitely created.
 	 * @param <E> Type of processed signals
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> queue(String name) {
-		return queue(name, BaseProcessor.SMALL_BUFFER_SIZE, true);
+		return queue(name, ReactiveState.SMALL_BUFFER_SIZE, true);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and the passed auto-cancel setting. <p> A Shared Processor authorizes concurrent onNext calls and is
 	 * suited for multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be
 	 * implicitely created.
@@ -275,11 +275,11 @@ public final class Processors {
 	 * @return a fresh processor
 	 */
 	public static <E> ExecutorProcessor<E, E> queue(boolean autoCancel) {
-		return queue(Processors.class.getSimpleName(), BaseProcessor.SMALL_BUFFER_SIZE, autoCancel);
+		return queue(Processors.class.getSimpleName(), ReactiveState.SMALL_BUFFER_SIZE, autoCancel);
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using {@link BaseProcessor#SMALL_BUFFER_SIZE} backlog size, blockingWait
+	 * Create a new {@link FluxProcessor} using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size, blockingWait
 	 * Strategy and the passed auto-cancel setting. <p> A Shared Processor authorizes concurrent onNext calls and is
 	 * suited for multi-threaded publisher that will fan-in data. <p> A new Cached ThreadExecutorPool will be
 	 * implicitely created and will use the passed name to qualify the created threads.
@@ -293,7 +293,7 @@ public final class Processors {
 	}
 
 	/**
-	 * Create a new {@link BaseProcessor} using the passed buffer size and auto-cancel settings. <p> A new Cached
+	 * Create a new {@link FluxProcessor} using the passed buffer size and auto-cancel settings. <p> A new Cached
 	 * ThreadExecutorPool will be implicitely created and will use the passed name to qualify the created threads.
 	 * @param name Use a new Cached ExecutorService and assign this name to the created threads
 	 * @param bufferSize A Backlog Size to mitigate slow subscribers
@@ -320,7 +320,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> singleGroup() {
-		return singleGroup("single", BaseProcessor.MEDIUM_BUFFER_SIZE);
+		return singleGroup("single", ReactiveState.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -329,7 +329,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> singleGroup(String name) {
-		return singleGroup(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
+		return singleGroup(name, ReactiveState.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -380,7 +380,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> asyncGroup() {
-		return asyncGroup("async", BaseProcessor.MEDIUM_BUFFER_SIZE);
+		return asyncGroup("async", ReactiveState.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -389,7 +389,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> asyncGroup(String name) {
-		return asyncGroup(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
+		return asyncGroup(name, ReactiveState.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -539,7 +539,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> ioGroup() {
-		return ioGroup("io", BaseProcessor.MEDIUM_BUFFER_SIZE);
+		return ioGroup("io", ReactiveState.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -548,7 +548,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> ioGroup(String name) {
-		return ioGroup(name, BaseProcessor.MEDIUM_BUFFER_SIZE);
+		return ioGroup(name, ReactiveState.MEDIUM_BUFFER_SIZE);
 	}
 
 	/**
@@ -711,7 +711,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <IN> BlockingQueue<IN> toQueue(Processor<IN, IN> source) {
-		return toQueue(source, BaseProcessor.SMALL_BUFFER_SIZE);
+		return toQueue(source, ReactiveState.SMALL_BUFFER_SIZE);
 	}
 
 	/**
@@ -735,7 +735,7 @@ public final class Processors {
 	 * @param <OUT>
 	 * @return
 	 */
-	public static <IN, OUT> BaseProcessor<IN, OUT> create(final Subscriber<IN> upstream, final Publisher<OUT> downstream) {
+	public static <IN, OUT> FluxProcessor<IN, OUT> create(final Subscriber<IN> upstream, final Publisher<OUT> downstream) {
 		Assert.notNull(upstream, "Upstream must not be null");
 		Assert.notNull(downstream, "Downstream must not be null");
 		return new DelegateProcessor<>(downstream, upstream);
@@ -749,20 +749,19 @@ public final class Processors {
 	 * @param <NOUT>
 	 * @return
 	 */
-	public static <IN, OUT, NOUT> BaseProcessor<IN, NOUT> lift(final Processor<IN, OUT> processor,
+	public static <IN, OUT, NOUT> FluxProcessor<IN, NOUT> lift(final Processor<IN, OUT> processor,
 			final Function<? super Processor<IN, OUT>, ? extends Publisher<NOUT>> liftTransformation) {
 		return new DelegateProcessor<>(liftTransformation.apply(processor), processor);
 
 	}
 
 	private static class DelegateProcessor<IN, OUT>
-			extends BaseProcessor<IN, OUT> implements ReactiveState.Downstream, ReactiveState.Bounded {
+			extends FluxProcessor<IN, OUT> implements ReactiveState.Downstream, ReactiveState.Bounded {
 
 		private final Publisher<OUT> downstream;
 		private final Subscriber<IN> upstream;
 
 		public DelegateProcessor(Publisher<OUT> downstream, Subscriber<IN> upstream) {
-			super(false);
 			this.downstream = downstream;
 			this.upstream = upstream;
 		}

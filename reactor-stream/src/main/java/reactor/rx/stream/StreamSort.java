@@ -21,7 +21,7 @@ import java.util.PriorityQueue;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.processor.BaseProcessor;
+import reactor.core.support.ReactiveState;
 
 /**
  * @author Stephane Maldini
@@ -52,7 +52,7 @@ public final class StreamSort<T> extends StreamBatch<T, T> {
 			}
 			else {
 				values = new PriorityQueue<T>(
-						batchsize > 0 && batchsize < Integer.MAX_VALUE ? batchsize : BaseProcessor.SMALL_BUFFER_SIZE,
+						batchsize > 0 && batchsize < Integer.MAX_VALUE ? batchsize : ReactiveState.SMALL_BUFFER_SIZE,
 						comparator);
 			}
 		}

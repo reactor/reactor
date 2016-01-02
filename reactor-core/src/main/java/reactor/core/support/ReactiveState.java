@@ -353,6 +353,24 @@ public interface ReactiveState {
 	boolean TRACE_NOCAPACITY = Boolean.parseBoolean(System.getProperty("reactor.trace.nocapacity", "false"));
 
 	/**
+	 * An allocation friendly default of available slots in a given container, e.g. slow publishers and or fast/few
+	 * subscribers
+	 */
+	int XS_BUFFER_SIZE     = 32;
+
+	/**
+	 * A small default of available slots in a given container, compromise between intensive pipelines, small
+	 * subscribers numbers and memory use.
+	 */
+	int SMALL_BUFFER_SIZE  = 256;
+
+	/**
+	 * A larger default of available slots in a given container, e.g. mutualized processors, intensive pipelines or
+	 * larger subscribers number
+	 */
+	int MEDIUM_BUFFER_SIZE = 8192;
+
+	/**
 	 * The size, in bytes, of a small buffer. Can be configured using the {@code reactor.io.defaultBufferSize} system
 	 * property. Default to 16384 bytes.
 	 */

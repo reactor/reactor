@@ -20,9 +20,11 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.core.error.Exceptions;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscription.EmptySubscription;
+import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 
@@ -30,63 +32,44 @@ import reactor.core.support.ReactiveState;
  * A base processor with an async boundary trait to manage active subscribers (Threads), upstream subscription and
  * shutdown options.
  * @author Stephane Maldini
+ * @since 2.0.2, 2.5
  */
-public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
+public abstract class FluxProcessor<IN, OUT> extends Flux<OUT>
 		implements Processor<IN, OUT>, ReactiveState.Bounded, ReactiveState.Upstream {
 
 	//protected static final int DEFAULT_BUFFER_SIZE = 1024;
 
-	public static final int XS_BUFFER_SIZE     = 32;
-	public static final int SMALL_BUFFER_SIZE  = 256;
-	public static final int MEDIUM_BUFFER_SIZE = 8192;
-
-	protected final boolean autoCancel;
 
 	protected Subscription upstreamSubscription;
 
-	protected BaseProcessor(boolean autoCancel) {
-		this.autoCancel = autoCancel;
+	protected FluxProcessor() {
 	}
 
-	@Override
-	public BaseProcessor<IN, OUT> start() {
-		super.start();
+	/**
+	 *
+	 * @return
+	 */
+	public FluxProcessor<IN, OUT> start() {
+		onSubscribe(EmptySubscription.INSTANCE);
 		return this;
 	}
 
 	/**
-	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
 	 *
-	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 * @return
 	 */
-	public <E extends Subscriber<? super OUT>> E process(E s) {
-		subscribe(s);
-		return s;
+	public ReactiveSession<IN> startSession() {
+		return bindSession(true);
 	}
 
 	/**
-	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
 	 *
-	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public Publisher<OUT> dispatchOn(ProcessorGroup group) {
-		Processor<OUT, OUT> processor = ((ProcessorGroup<OUT>)group).dispatchOn();
-		subscribe(processor);
-		return processor;
+	public ReactiveSession<IN> bindSession(boolean autostart) {
+		return ReactiveSession.create(this, autostart);
 	}
 
-	/**
-	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
-	 *
-	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
-	 */
-	@SuppressWarnings("unchecked")
-	public Publisher<OUT> publishOn(ProcessorGroup group) {
-		Processor<OUT, OUT> processor = ((ProcessorGroup<OUT>)group).publishOn();
-		subscribe(processor);
-		return processor;
-	}
 
 	@Override
 	public void onSubscribe(final Subscription s) {
@@ -103,6 +86,22 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
 		}
 	}
 
+	@Override
+	public void onNext(IN t) {
+		if (t == null) {
+			throw Exceptions.spec_2_13_exception();
+		}
+
+	}
+
+	@Override
+	public void onError(Throwable t) {
+		if (t == null) {
+			throw Exceptions.spec_2_13_exception();
+		}
+		Exceptions.throwIfFatal(t);
+	}
+
 	protected void doOnSubscribe(Subscription s) {
 		//IGNORE
 	}
@@ -117,13 +116,6 @@ public abstract class BaseProcessor<IN, OUT> extends BaseSubscriber<IN>
 		if (s == null) {
 			throw Exceptions.spec_2_13_exception();
 		}
-	}
-
-	/**
-	 * @return a snapshot number of available onNext before starving the resource
-	 */
-	public long getAvailableCapacity() {
-		return getCapacity();
 	}
 
 	protected void cancel(Subscription subscription) {

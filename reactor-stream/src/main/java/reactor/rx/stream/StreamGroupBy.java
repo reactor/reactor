@@ -28,7 +28,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
 import reactor.core.error.CancelException;
-import reactor.core.processor.BaseProcessor;
+import reactor.core.processor.FluxProcessor;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
@@ -68,7 +68,7 @@ public final class StreamGroupBy<T, K> extends StreamBarrier<T, GroupedStream<K,
 			           ReactiveState.Inner {
 
 		private final GroupByAction<T, K> parent;
-		private final BaseProcessor<T, T> processor;
+		private final FluxProcessor<T, T> processor;
 		//private  Subscriber<? super T> processor;
 
 		@SuppressWarnings("unused")
@@ -98,14 +98,14 @@ public final class StreamGroupBy<T, K> extends StreamBarrier<T, GroupedStream<K,
 		public GroupedEmitter(K key, GroupByAction<T, K> parent) {
 			super(key);
 			this.parent = parent;
-			this.processor = Processors.replay(BaseProcessor.SMALL_BUFFER_SIZE, Integer.MAX_VALUE, true);
+			this.processor = Processors.replay(ReactiveState.SMALL_BUFFER_SIZE, Integer.MAX_VALUE, true);
 		}
 
 
 		Queue<T> getBuffer() {
 		Queue<T> q = buffer;
 			if (q == null) {
-				q = RingBuffer.newSequencedQueue(RingBuffer.<T>createSingleProducer(BaseProcessor
+				q = RingBuffer.newSequencedQueue(RingBuffer.<T>createSingleProducer(ReactiveState
 						.SMALL_BUFFER_SIZE));
 				buffer = q;
 			}
@@ -183,7 +183,7 @@ public final class StreamGroupBy<T, K> extends StreamBarrier<T, GroupedStream<K,
 
 		@Override
 		public long getCapacity() {
-			return BaseProcessor.SMALL_BUFFER_SIZE;
+			return ReactiveState.SMALL_BUFFER_SIZE;
 		}
 
 		@Override
@@ -344,7 +344,7 @@ public final class StreamGroupBy<T, K> extends StreamBarrier<T, GroupedStream<K,
 			Assert.notNull(fn, "Key mapping function cannot be null.");
 			this.fn = fn;
 			this.timer = timer;
-			this.limit = BaseProcessor.SMALL_BUFFER_SIZE / 2;
+			this.limit = ReactiveState.SMALL_BUFFER_SIZE / 2;
 		}
 
 		public Map<K, GroupedEmitter<T, K>> groupByMap() {
@@ -390,7 +390,7 @@ public final class StreamGroupBy<T, K> extends StreamBarrier<T, GroupedStream<K,
 			long remaining = REQUESTED.addAndGet(this, -n);
 			long buffered = BUFFERED.get(this);
 			if (remaining < limit) {
-				long toRequest = BaseProcessor.SMALL_BUFFER_SIZE - buffered;
+				long toRequest = ReactiveState.SMALL_BUFFER_SIZE - buffered;
 				if (toRequest > 0 && REQUESTED.compareAndSet(this, remaining, remaining + toRequest)) {
 					requestMore(toRequest);
 				}

@@ -34,11 +34,11 @@ import reactor.Publishers;
 import reactor.Subscribers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
-import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.FluxZip;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
+import reactor.core.support.ReactiveState;
 import reactor.core.timer.Timer;
 import reactor.fn.BiConsumer;
 import reactor.fn.BiFunction;
@@ -1402,7 +1402,7 @@ public class Streams {
 		return new StreamCombineLatest<>(
 				just(sources.toArray(new Publisher[sources.size()])),
 				combinator,
-				BaseProcessor
+				ReactiveState
 				.SMALL_BUFFER_SIZE	/ 2
 		);
 	}
@@ -1432,7 +1432,7 @@ public class Streams {
 					}
 				}),
 				combinator,
-				BaseProcessor.SMALL_BUFFER_SIZE / 2
+				ReactiveState.SMALL_BUFFER_SIZE / 2
 		);
 	}
 
@@ -1822,7 +1822,7 @@ public class Streams {
 				return new FluxZip<>(publishers.toArray(
 						new Publisher[publishers.size()]),
 						combinator,
-						BaseProcessor.XS_BUFFER_SIZE);
+						ReactiveState.XS_BUFFER_SIZE);
 			}
 		});
 	}
@@ -1845,7 +1845,7 @@ public class Streams {
 				return new FluxZip<>(publishers.toArray(
 						new Publisher[publishers.size()]),
 						IDENTITY_FUNCTION,
-						BaseProcessor.XS_BUFFER_SIZE);
+						ReactiveState.XS_BUFFER_SIZE);
 			}
 		});
 	}

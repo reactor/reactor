@@ -68,7 +68,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 		implements ReactiveState.Buffering, ReactiveState.LinkedDownstreams {
 
 	/**
-	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferWorkProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and auto-cancel. <p> A new Cached ThreadExecutorPool will be
 	 * implicitely created.
 	 * @param <E> Type of processed signals
@@ -80,7 +80,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferWorkProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and the passed auto-cancel setting. <p> A new Cached
 	 * ThreadExecutorPool will be implicitely created.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all
@@ -94,7 +94,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferWorkProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and auto-cancel. The passed {@link
 	 * java.util.concurrent.ExecutorService} will execute as many event-loop consuming the
 	 * ringbuffer as subscribers.
@@ -107,7 +107,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferWorkProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and the passed auto-cancel setting. <p> The passed {@link
 	 * java.util.concurrent.ExecutorService} will execute as many event-loop consuming the
 	 * ringbuffer as subscribers.
@@ -272,7 +272,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferWorkProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and auto-cancel. <p> A Shared Processor authorizes concurrent
 	 * onNext calls and is suited for multi-threaded publisher that will fan-in data. <p>
 	 * A new Cached ThreadExecutorPool will be implicitely created.
@@ -285,7 +285,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferWorkProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and the passed auto-cancel setting. <p> A Shared Processor
 	 * authorizes concurrent onNext calls and is suited for multi-threaded publisher that
 	 * will fan-in data. <p> A new Cached ThreadExecutorPool will be implicitely created.
@@ -300,7 +300,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferWorkProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and auto-cancel. The passed {@link
 	 * java.util.concurrent.ExecutorService} will execute as many event-loop consuming the
 	 * ringbuffer as subscribers.
@@ -313,7 +313,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferWorkProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferWorkProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and the passed auto-cancel setting. <p> A Shared Processor
 	 * authorizes concurrent onNext calls and is suited for multi-threaded publisher that
 	 * will fan-in data. <p> The passed {@link java.util.concurrent.ExecutorService} will

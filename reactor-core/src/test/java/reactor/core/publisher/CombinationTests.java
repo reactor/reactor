@@ -32,7 +32,7 @@ import reactor.core.support.Logger;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
-import reactor.core.processor.BaseProcessor;
+import reactor.core.processor.FluxProcessor;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveStateUtils;
@@ -82,7 +82,7 @@ public class CombinationTests {
 
 	@Test
 	public void tesSubmitSession() throws Exception {
-		BaseProcessor<Integer, Integer> processor = Processors.emitter();
+		FluxProcessor<Integer, Integer> processor = Processors.emitter();
 		AtomicInteger count = new AtomicInteger();
 		processor.process(Processors.ioGroup()
 		                            .get())
@@ -115,7 +115,7 @@ public class CombinationTests {
 
 	@Test
 	public void testEmitter() throws Throwable {
-		BaseProcessor<Integer, Integer> processor = Processors.emitter();
+		FluxProcessor<Integer, Integer> processor = Processors.emitter();
 
 		int n = 100_000;
 		int subs = 4;

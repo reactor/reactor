@@ -33,7 +33,6 @@ import reactor.Flux;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Timers;
-import reactor.core.processor.BaseProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.FluxLog;
@@ -349,7 +348,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Cache last {@link BaseProcessor#SMALL_BUFFER_SIZE} signal to this {@code Stream} and release them on request that
+	 * Cache last {@link ReactiveState#SMALL_BUFFER_SIZE} signal to this {@code Stream} and release them on request that
 	 * will observe any values accepted by this {@code Stream}.
 	 *
 	 * @return {@literal new Stream}
@@ -357,7 +356,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> cache() {
-		return cache(BaseProcessor.SMALL_BUFFER_SIZE);
+		return cache(ReactiveState.SMALL_BUFFER_SIZE);
 	}
 
 	/**
@@ -1349,7 +1348,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> onOverflowBuffer() {
-		return onOverflowBuffer(BaseProcessor.SMALL_BUFFER_SIZE);
+		return onOverflowBuffer(ReactiveState.SMALL_BUFFER_SIZE);
 	}
 
 	/**
@@ -2175,7 +2174,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final BlockingQueue<O> toBlockingQueue() {
-		return toBlockingQueue(BaseProcessor.SMALL_BUFFER_SIZE);
+		return toBlockingQueue(ReactiveState.SMALL_BUFFER_SIZE);
 	}
 
 	/**

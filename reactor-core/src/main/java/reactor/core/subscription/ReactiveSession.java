@@ -24,6 +24,7 @@ import java.util.concurrent.locks.LockSupport;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
@@ -127,7 +128,7 @@ public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<
 		}
 		catch (Throwable t) {
 			uncaughtException = t;
-			Publishers.<E>error(t).subscribe(actual);
+			EmptySubscription.error(actual, t);
 		}
 	}
 

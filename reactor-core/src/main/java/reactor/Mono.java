@@ -19,7 +19,6 @@ package reactor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxPeek;
@@ -171,7 +170,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * @return
 	 */
 	public final <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
-		return new FluxFlatMap<>(this, mapper, BaseProcessor.SMALL_BUFFER_SIZE, Integer.MAX_VALUE);
+		return new FluxFlatMap<>(this, mapper, ReactiveState.SMALL_BUFFER_SIZE, Integer.MAX_VALUE);
 	}
 
 	/**

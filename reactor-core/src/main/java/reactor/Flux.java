@@ -25,7 +25,8 @@ import java.util.logging.Level;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.processor.BaseProcessor;
+import reactor.core.processor.FluxProcessor;
+import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.FluxAmb;
 import reactor.core.publisher.FluxArray;
 import reactor.core.publisher.FluxFactory;
@@ -74,11 +75,8 @@ import reactor.fn.tuple.Tuple2;
  */
 public abstract class Flux<T> implements Publisher<T> {
 
-
 	/**
-	 *
-	 *  Static Generators
-	 *
+	 * Static Generators
 	 */
 
 	private static final IdentityFunction IDENTITY_FUNCTION = new IdentityFunction();
@@ -354,7 +352,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	public static <T> Flux<T> merge(Publisher<? extends Publisher<? extends T>> source) {
-		return new FluxFlatMap<>(source, BaseProcessor.SMALL_BUFFER_SIZE, 32);
+		return new FluxFlatMap<>(source, ReactiveState.SMALL_BUFFER_SIZE, 32);
 	}
 
 	/**
@@ -445,7 +443,7 @@ public abstract class Flux<T> implements Publisher<T> {
 
 		return new FluxZip<>(new Publisher[]{source1, source2},
 				(Function<Tuple2<T1, T2>, Tuple2<T1, T2>>) IDENTITY_FUNCTION,
-				BaseProcessor.XS_BUFFER_SIZE);
+				ReactiveState.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -467,7 +465,7 @@ public abstract class Flux<T> implements Publisher<T> {
 			public O apply(Tuple2<T1, T2> tuple) {
 				return combinator.apply(tuple.getT1(), tuple.getT2());
 			}
-		}, BaseProcessor.XS_BUFFER_SIZE);
+		}, ReactiveState.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -520,7 +518,7 @@ public abstract class Flux<T> implements Publisher<T> {
 		}
 		while (it.hasNext());
 
-		return new FluxZip<>(list.toArray(new Publisher[list.size()]), combinator, BaseProcessor.XS_BUFFER_SIZE);
+		return new FluxZip<>(list.toArray(new Publisher[list.size()]), combinator, ReactiveState.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -584,6 +582,22 @@ public abstract class Flux<T> implements Publisher<T> {
 		else {
 			return DependencyUtils.convertFromPublisher(this, to);
 		}
+	}
+
+	/**
+	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
+	 * <p>
+	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 *
+	 * @param group
+	 *
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public Flux<T> dispatchOn(ProcessorGroup group) {
+		FluxProcessor<T, T> processor = ((ProcessorGroup<T>) group).dispatchOn();
+		subscribe(processor);
+		return processor;
 	}
 
 	/**
@@ -671,7 +685,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	public final <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
-		return new FluxFlatMap<>(this, mapper, BaseProcessor.SMALL_BUFFER_SIZE, 32);
+		return new FluxFlatMap<>(this, mapper, ReactiveState.SMALL_BUFFER_SIZE, 32);
 	}
 
 	/**
@@ -766,6 +780,37 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
+	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
+	 * <p>
+	 * {@code flux.process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 *
+	 * @param s
+	 * @param <E>
+	 *
+	 * @return
+	 */
+	public <E extends Subscriber<? super T>> E process(E s) {
+		subscribe(s);
+		return s;
+	}
+
+	/**
+	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
+	 * <p>
+	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 *
+	 * @param group
+	 *
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public Flux<T> publishOn(ProcessorGroup group) {
+		FluxProcessor<T, T> processor = ((ProcessorGroup<T>) group).publishOn();
+		subscribe(processor);
+		return processor;
+	}
+
+	/**
 	 * @param fallback
 	 *
 	 * @return
@@ -798,14 +843,15 @@ public abstract class Flux<T> implements Publisher<T> {
 			public V apply(Tuple2<T, R> tuple) {
 				return zipper.apply(tuple.getT1(), tuple.getT2());
 			}
-		}, BaseProcessor.XS_BUFFER_SIZE);
+		}, ReactiveState.XS_BUFFER_SIZE);
 
 	}
 
 	/**
 	 * A marker interface for components responsible for augmenting subscribers with features like {@link #lift}
 	 */
-	public interface Operator<I, O> extends Function<Subscriber<? super O>, Subscriber<? super I>>, ReactiveState.Factory {
+	public interface Operator<I, O>
+			extends Function<Subscriber<? super O>, Subscriber<? super I>>, ReactiveState.Factory {
 
 	}
 

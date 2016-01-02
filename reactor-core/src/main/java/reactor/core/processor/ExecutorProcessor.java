@@ -32,7 +32,7 @@ import reactor.core.support.SingleUseExecutor;
  *
  * @author Stephane Maldini
  */
-public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
+public abstract class ExecutorProcessor<IN, OUT> extends FluxProcessor<IN, OUT>
 		implements ReactiveState.ActiveUpstream, ReactiveState.ActiveDownstream, ReactiveState.Named, ReactiveState.Identified{
 
 	protected final ExecutorService executor;
@@ -42,6 +42,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 
 	protected final ClassLoader contextClassLoader;
 	protected final String name;
+	protected final boolean autoCancel;
 
 	@SuppressWarnings("unused")
 	private volatile       int                                      subscriberCount  = 0;
@@ -54,7 +55,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 
 	protected ExecutorProcessor(String name, ExecutorService executor,
 			boolean autoCancel) {
-		super(autoCancel);
+		this.autoCancel = autoCancel;
 		contextClassLoader = new ClassLoader(Thread.currentThread()
 		                                           .getContextClassLoader()) {
 		};
@@ -65,6 +66,27 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 		else {
 			this.executor = executor;
 		}
+	}
+
+	@Override
+	public String getId() {
+		return contextClassLoader.hashCode()+"";
+	}
+
+	@Override
+	public String getName() {
+		return "/Processors/"+name;
+	}
+
+	/**
+	 * @return a snapshot number of available onNext before starving the resource
+	 */
+	public long getAvailableCapacity() {
+		return getCapacity();
+	}
+
+	protected boolean incrementSubscribers() {
+		return SUBSCRIBER_COUNT.getAndIncrement(this) == 0;
 	}
 
 	@Override
@@ -212,20 +234,6 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 					.subscribe(subscriber);
 			return false;
 		}
-	}
-
-	@Override
-	public String getId() {
-		return contextClassLoader.hashCode()+"";
-	}
-
-	@Override
-	public String getName() {
-		return "/Processors/"+name;
-	}
-
-	protected boolean incrementSubscribers() {
-		return SUBSCRIBER_COUNT.getAndIncrement(this) == 0;
 	}
 
 	protected int decrementSubscribers() {

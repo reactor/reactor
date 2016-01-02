@@ -20,11 +20,11 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.processor.BaseProcessor;
 import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.subscriber.EmptySubscriber;
 import reactor.core.subscriber.SubscriberFactory;
 import reactor.core.subscription.EmptySubscription;
+import reactor.core.support.ReactiveState;
 
 /**
  * @author Stephane Maldini
@@ -48,7 +48,7 @@ public final class Subscribers extends SubscriberFactory {
 	 * @return
 	 */
 	public static <IN> BlockingQueue<IN> toWriteQueue(Subscriber<IN> target) {
-		return toWriteQueue(target, BaseProcessor.SMALL_BUFFER_SIZE);
+		return toWriteQueue(target, ReactiveState.SMALL_BUFFER_SIZE);
 	}
 
 	/**

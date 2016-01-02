@@ -27,7 +27,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
 import org.reactivestreams.Publisher;
-import reactor.core.processor.BaseProcessor;
 import reactor.core.publisher.FluxAmb;
 import reactor.core.publisher.FluxFactory;
 import reactor.core.publisher.FluxFlatMap;
@@ -41,6 +40,7 @@ import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoJust;
 import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.subscriber.BlockingQueueSubscriber;
+import reactor.core.support.ReactiveState;
 import reactor.fn.BiFunction;
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
@@ -128,7 +128,6 @@ public final class Publishers extends FluxFactory {
 	/**
 	 *
 	 *  Core Operators
-	 *
 	 *
 	 *
 	 */
@@ -230,7 +229,7 @@ public final class Publishers extends FluxFactory {
 	@SuppressWarnings("unchecked")
 	public static <I, O> Flux<O> flatMap(Publisher<I> source,
 			final Function<? super I, ? extends Publisher<? extends O>> transformer) {
-		return new FluxFlatMap<>(source, transformer, BaseProcessor.SMALL_BUFFER_SIZE, 32);
+		return new FluxFlatMap<>(source, transformer, ReactiveState.SMALL_BUFFER_SIZE, 32);
 	}
 
 	/**
@@ -376,7 +375,7 @@ public final class Publishers extends FluxFactory {
 
 		return new FluxZip<>(new Publisher[]{source1, source2},
 				(Function<Tuple2<T1, T2>, Tuple2<T1, T2>>) IDENTITY_FUNCTION,
-				BaseProcessor.XS_BUFFER_SIZE);
+				ReactiveState.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -398,7 +397,7 @@ public final class Publishers extends FluxFactory {
 			public O apply(Tuple2<T1, T2> tuple) {
 				return combinator.apply(tuple.getT1(), tuple.getT2());
 			}
-		}, BaseProcessor.XS_BUFFER_SIZE);
+		}, ReactiveState.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -451,7 +450,7 @@ public final class Publishers extends FluxFactory {
 		}
 		while (it.hasNext());
 
-		return new FluxZip<>(list.toArray(new Publisher[list.size()]), combinator, BaseProcessor.XS_BUFFER_SIZE);
+		return new FluxZip<>(list.toArray(new Publisher[list.size()]), combinator, ReactiveState.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -508,7 +507,7 @@ public final class Publishers extends FluxFactory {
 	 * @return
 	 */
 	public static <IN> BlockingQueue<IN> toReadQueue(Publisher<IN> source) {
-		return toReadQueue(source, BaseProcessor.SMALL_BUFFER_SIZE);
+		return toReadQueue(source, ReactiveState.SMALL_BUFFER_SIZE);
 	}
 
 	/**
