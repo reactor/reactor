@@ -31,7 +31,14 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.InsufficientCapacityException;
+import reactor.core.publisher.FluxFactory;
 import reactor.core.publisher.MonoError;
+import reactor.core.support.BackpressureUtils;
+import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.SignalType;
+import reactor.core.support.WaitStrategy;
+import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.rb.MutableSignal;
 import reactor.core.support.rb.RequestTask;
 import reactor.core.support.rb.RingBufferSequencer;
@@ -40,13 +47,6 @@ import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.SequenceBarrier;
 import reactor.core.support.rb.disruptor.Sequencer;
-import reactor.core.publisher.FluxFactory;
-import reactor.core.support.BackpressureUtils;
-import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
-import reactor.core.support.internal.PlatformDependent;
-import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
@@ -520,9 +520,9 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 
 		Supplier<MutableSignal<E>> factory = (Supplier<MutableSignal<E>>) FACTORY;
 
-		Consumer<Void> spinObserver = new Consumer<Void>() {
+		Runnable spinObserver = new Runnable() {
 			@Override
-			public void accept(Void aVoid) {
+			public void run() {
 				if (!alive()) {
 					throw CancelException.get();
 				}
@@ -629,9 +629,9 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 
 	@Override
 	protected void requestTask(Subscription s) {
-		new NamedDaemonThreadFactory(name+"[request-task]", null, null, false).newThread(new RequestTask(s, new Consumer<Void>() {
+		new NamedDaemonThreadFactory(name+"[request-task]", null, null, false).newThread(new RequestTask(s, new Runnable() {
 			@Override
-			public void accept(Void aVoid) {
+			public void run() {
 				if (!alive()) {
 					if (cancelled) {
 						throw CancelException.INSTANCE;
@@ -723,7 +723,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 	 * parallel coordination of an event.
 	 */
 	private final static class QueueSubscriber<T>
-			implements Runnable, Consumer<Void>, Downstream, Buffering, ActiveUpstream,
+			implements Runnable, Downstream, Buffering, ActiveUpstream,
 			ActiveDownstream, Inner, DownstreamDemand, Subscription, Upstream {
 
 		private final AtomicBoolean running = new AtomicBoolean(false);
@@ -738,6 +738,16 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 		private final RingBufferWorkProcessor<T> processor;
 
 		private final Subscriber<? super T> subscriber;
+
+		private final Runnable waiter = new Runnable() {
+			@Override
+			public void run() {
+				if (barrier.isAlerted() || !isRunning() ||
+						replay(pendingRequest.get() == Long.MAX_VALUE)) {
+					throw AlertException.INSTANCE;
+				}
+			}
+		};
 
 		/**
 		 * Construct a ringbuffer consumer that will automatically track the progress by
@@ -764,13 +774,6 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 			return running.get();
 		}
 
-		@Override
-		public void accept(Void aVoid) {
-			if (barrier.isAlerted() || !isRunning() ||
-					replay(pendingRequest.get() == Long.MAX_VALUE)) {
-				throw AlertException.INSTANCE;
-			}
-		}
 
 		/**
 		 * It is ok to have another thread rerun this method after a halt().
@@ -848,7 +851,7 @@ public final class RingBufferWorkProcessor<E> extends ExecutorProcessor<E, E>
 							processor.readWait.signalAllWhenBlocking();
 							try {
 								cachedAvailableSequence =
-										barrier.waitFor(nextSequence, this);
+										barrier.waitFor(nextSequence, waiter);
 							}
 							catch (AlertException ce) {
 								barrier.clearAlert();

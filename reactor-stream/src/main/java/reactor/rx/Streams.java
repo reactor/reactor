@@ -29,6 +29,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
+import reactor.Mono;
 import reactor.Processors;
 import reactor.Publishers;
 import reactor.Subscribers;
@@ -282,7 +283,7 @@ public class Streams {
 	 * @return a new {@link Stream}
 	 */
 	public static <O, T extends Throwable> Stream<O> fail(T throwable) {
-		return wrap(Publishers.<O>error(throwable));
+		return wrap(Mono.<O>error(throwable));
 	}
 
 	/**

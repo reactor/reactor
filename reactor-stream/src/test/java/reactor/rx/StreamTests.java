@@ -909,22 +909,24 @@ public class StreamTests extends AbstractReactorTest {
 
 		CountDownLatch latch = new CountDownLatch(numOps);
 
-		Stream<String> operationStream = Streams.defer(Broadcaster::<String>create)
-		                                        .dispatchOn(asyncGroup)
-		                                        .throttle(100)
-		                                        .map(s -> s + " MODIFIED")
-		                                        .map(s -> {
-			                                        latch.countDown();
-			                                        return s;
-		                                        })
-				//.log();
-				;
+
 
 		for (int i = 0; i < numOps; i++) {
 			final String source = "ASYNC_TEST " + i;
 
 			Streams.just(source)
-			       .broadcastTo(operationStream.combine())
+			       .liftProcessor( () ->
+					    Processors.blackbox(Broadcaster.<String>create(),
+							       operationStream ->
+							       operationStream .dispatchOn(asyncGroup)
+							                       .throttle(100)
+							                       .map(s -> s + " MODIFIED")
+							                       .map(s -> {
+								                       latch.countDown();
+								                       return s;
+							                       })
+					    )
+			       )
 			       .take(2, TimeUnit.SECONDS)
 			       .log("parallelStream")
 			       .consume(System.out::println);
@@ -1416,7 +1418,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		// Method chaining doesn't compile.
 		joinStream.log("log-final")
-		          .consume(list -> println("Joined: ", list), t -> println("Join failed: ", t.getMessage()), Ø -> {
+		          .consume(list -> println("Joined: ", list), t -> println("Join failed: ", t.getMessage()), () -> {
 			          println("Join complete.");
 			          doneSemaphore.release();
 		          });

@@ -36,7 +36,7 @@ public final class BoundedSubscriber<T> extends InterruptableSubscriber<T> imple
 	public BoundedSubscriber(int capacity,
 			Consumer<? super T> consumer,
 			Consumer<? super Throwable> errorConsumer,
-			Consumer<Void> completeConsumer) {
+			Runnable completeConsumer) {
 		this(capacity, capacity / 4, consumer, errorConsumer, completeConsumer);
 	}
 
@@ -44,7 +44,7 @@ public final class BoundedSubscriber<T> extends InterruptableSubscriber<T> imple
 			int limit,
 			Consumer<? super T> consumer,
 			Consumer<? super Throwable> errorConsumer,
-			Consumer<Void> completeConsumer) {
+			Runnable completeConsumer) {
 		super(consumer, errorConsumer, completeConsumer);
 		this.limit = limit;
 		this.capacity = capacity;

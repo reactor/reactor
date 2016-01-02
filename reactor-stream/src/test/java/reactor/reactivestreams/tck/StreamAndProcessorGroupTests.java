@@ -19,6 +19,7 @@ package reactor.reactivestreams.tck;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
+import org.reactivestreams.Processor;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import reactor.Processors;
@@ -26,7 +27,6 @@ import reactor.core.processor.ProcessorGroup;
 import reactor.fn.BiFunction;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.broadcast.Broadcaster;
 
 /**
@@ -39,7 +39,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 
 
 	@Override
-	public StreamProcessor<Integer, Integer> createProcessor(int bufferSize) {
+	public Processor<Integer, Integer> createProcessor(int bufferSize) {
 
 		Stream<String> otherStream = Streams.just("test", "test2", "test3");
 		System.out.println("Providing new downstream");
@@ -49,8 +49,9 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 						Throwable::printStackTrace);
 
 		BiFunction<Integer, String, Integer> combinator = (t1, t2) -> t1;
-		return Broadcaster.<Integer>create(true)
-				.dispatchOn(sharedGroup)
+		return Processors.blackbox(Broadcaster.<Integer>create(true), p ->
+
+				p.dispatchOn(sharedGroup)
 		                  .partition(2)
 		                  .flatMap(stream -> stream.dispatchOn(asyncGroup)
 		                                           .observe(this::monitorThreadUse)
@@ -65,7 +66,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 
 				.dispatchOn(sharedGroup))
 				.when(Throwable.class, Throwable::printStackTrace)
-				.combine();
+		);
 	}
 
 	@Override

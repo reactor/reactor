@@ -31,8 +31,14 @@ import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
+import reactor.core.publisher.FluxFactory;
 import reactor.core.publisher.MonoError;
 import reactor.core.subscription.EmptySubscription;
+import reactor.core.support.BackpressureUtils;
+import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.SignalType;
+import reactor.core.support.WaitStrategy;
 import reactor.core.support.rb.MutableSignal;
 import reactor.core.support.rb.RequestTask;
 import reactor.core.support.rb.RingBufferSequencer;
@@ -41,12 +47,6 @@ import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.SequenceBarrier;
 import reactor.core.support.rb.disruptor.Sequencer;
-import reactor.core.publisher.FluxFactory;
-import reactor.core.support.BackpressureUtils;
-import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
-import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
@@ -568,9 +568,9 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 			}
 		};
 
-		Consumer<Void> spinObserver = new Consumer<Void>() {
+		Runnable spinObserver = new Runnable() {
 			@Override
-			public void accept(Void aVoid) {
+			public void run() {
 				if (!alive() && SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0) {
 					throw AlertException.INSTANCE;
 				}
@@ -702,9 +702,9 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		minimum.set(ringBuffer.getCursor());
 		ringBuffer.addGatingSequence(minimum);
 		new NamedDaemonThreadFactory(name+"[request-task]", null, null, false)
-				.newThread(new RequestTask(s, new Consumer<Void>() {
+				.newThread(new RequestTask(s, new Runnable() {
 					@Override
-					public void accept(Void aVoid) {
+					public void run() {
 						if (!alive()) {
 							if(cancelled){
 								throw CancelException.INSTANCE;

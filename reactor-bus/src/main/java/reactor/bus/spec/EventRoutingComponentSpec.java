@@ -16,10 +16,17 @@
 package reactor.bus.spec;
 
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
+import reactor.Flux;
 import reactor.Processors;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
-import reactor.bus.filter.*;
+import reactor.bus.filter.Filter;
+import reactor.bus.filter.FirstFilter;
+import reactor.bus.filter.PassThroughFilter;
+import reactor.bus.filter.RandomFilter;
+import reactor.bus.filter.RoundRobinFilter;
+import reactor.bus.filter.TraceableDelegatingFilter;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.routing.ConsumerFilteringRouter;
@@ -28,7 +35,7 @@ import reactor.bus.routing.TraceableDelegatingRouter;
 import reactor.core.support.Assert;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
-
+import reactor.fn.Function;
 
 /**
  * A generic processor-aware class for specifying components that need to be configured with a
@@ -197,7 +204,12 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 
 	private EventBus createReactor(Processor<Event<?>, Event<?>> processor, int concurrency) {
 		if (traceEventPath) {
-			processor = Processors.log(processor, "reactor.bus.log");
+			processor = Processors.blackbox(processor, new Function<Processor<Event<?>, Event<?>>, Publisher<Event<?>>>() {
+						@Override
+						public Publisher<Event<?>> apply(Processor<Event<?>, Event<?>> p) {
+							return Flux.wrap(p).log("reactor.bus.log");
+						}
+					});
 		}
 		return new EventBus((consumerRegistry != null ? consumerRegistry : createRegistry()),
 		  processor,

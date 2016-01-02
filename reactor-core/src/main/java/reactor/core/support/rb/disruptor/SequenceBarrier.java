@@ -15,17 +15,15 @@
  */
 package reactor.core.support.rb.disruptor;
 
-
 import reactor.core.error.AlertException;
 import reactor.core.support.WaitStrategy;
-import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 
 /**
  * Used for Gating ringbuffer consumers on a cursor sequence and optional dependent ringbuffer consumer(s),
  * using the given WaitStrategy.
  */
-public final class SequenceBarrier implements Consumer<Void>, LongSupplier
+public final class SequenceBarrier implements Runnable, LongSupplier
 {
     private final WaitStrategy waitStrategy;
     private volatile boolean alerted = false;
@@ -70,7 +68,7 @@ public final class SequenceBarrier implements Consumer<Void>, LongSupplier
      * @throws AlertException if a status change has occurred for the Disruptor
      * @throws InterruptedException if the thread needs awaking on a condition variable.
      */
-    public long waitFor(final long sequence, Consumer<Void> consumer)
+    public long waitFor(final long sequence, Runnable consumer)
       throws AlertException, InterruptedException {
         checkAlert();
 
@@ -139,7 +137,7 @@ public final class SequenceBarrier implements Consumer<Void>, LongSupplier
     }
 
     @Override
-    public void accept(Void aVoid) {
+    public void run() {
         checkAlert();
     }
 }

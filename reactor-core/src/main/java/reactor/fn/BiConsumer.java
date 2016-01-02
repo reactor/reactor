@@ -25,5 +25,5 @@ package reactor.fn;
  */
 public interface BiConsumer<LEFT, RIGHT> {
 
-	public void accept(LEFT left, RIGHT right);
+	void accept(LEFT left, RIGHT right);
 }

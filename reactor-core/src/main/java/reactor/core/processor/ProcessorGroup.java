@@ -32,14 +32,14 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.publisher.MonoError;
 import reactor.core.subscription.EmptySubscription;
+import reactor.core.support.Assert;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Logger;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.SignalType;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.Sequencer;
-import reactor.core.support.Assert;
-import reactor.core.support.BackpressureUtils;
-import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -134,7 +134,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	 */
 	public static <E> ProcessorGroup<E> create(final Processor<Runnable, Runnable> p,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 		return create(p, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
@@ -152,7 +152,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	public static <E> ProcessorGroup<E> create(Supplier<? extends Processor<Runnable, Runnable>> p,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 		if (p != null && concurrency > 1) {
 			return new PooledProcessorGroup<>(p, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
@@ -175,7 +175,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	public static <E> ProcessorGroup<E> create(final Processor<Runnable, Runnable> p,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 		return new SingleProcessorGroup<E>(new Supplier<Processor<Runnable, Runnable>>() {
 			@Override
@@ -260,7 +260,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	/**
 	 * @return
 	 */
-	public Consumer<Consumer<Void>> dispatcher() {
+	public Consumer<Runnable> dispatcher() {
 		if (processor == null) {
 			return SYNC_DISPATCHER;
 		}
@@ -377,10 +377,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	/**
 	 * Singleton delegating consumer for synchronous dispatchers
 	 */
-	private final static Consumer<Consumer<Void>> SYNC_DISPATCHER = new Consumer<Consumer<Void>>() {
+	private final static Consumer<Runnable> SYNC_DISPATCHER = new Consumer<Runnable>() {
 		@Override
-		public void accept(Consumer<Void> callback) {
-			callback.accept(null);
+		public void accept(Runnable callback) {
+			callback.run();
 		}
 	};
 
@@ -400,7 +400,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	protected ProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 		this.autoShutdown = autoShutdown;
 		this.concurrency = concurrency;
@@ -542,7 +542,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	}
 
 	private static class ProcessorBarrier<V> extends FluxProcessor<V, V>
-			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
+			implements Consumer<Runnable>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
 			           Bounded, Upstream, FeedbackLoop, Downstream, Buffering, ActiveDownstream, ActiveUpstream,
 			           Named, UpstreamDemand, UpstreamPrefetch, DownstreamDemand, FailState,
 			           Runnable {
@@ -608,11 +608,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
-		public final void accept(Consumer<Void> consumer) {
+		public final void accept(Runnable consumer) {
 			if (consumer == null) {
 				throw Exceptions.spec_2_13_exception();
 			}
-			dispatch(new ConsumerRunnable<>(null, consumer));
+			dispatch(consumer);
 		}
 
 		@Override
@@ -1133,14 +1133,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	private static class TaskSubscriber implements Subscriber<Runnable>, Trace {
 
 		private final Consumer<Throwable> uncaughtExceptionHandler;
-		private final Consumer<Void>      shutdownHandler;
+		private final Runnable      shutdownHandler;
 		private final TailRecurser        tailRecurser;
 		private final boolean        autoShutdown;
 
 		public TaskSubscriber(TailRecurser tailRecurser,
 				boolean autoShutdown,
 				Consumer<Throwable> uncaughtExceptionHandler,
-				Consumer<Void> shutdownHandler) {
+				Runnable shutdownHandler) {
 			this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 			this.shutdownHandler = shutdownHandler;
 			this.tailRecurser = tailRecurser;
@@ -1184,7 +1184,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		@Override
 		public void onComplete() {
 			if (shutdownHandler != null) {
-				shutdownHandler.accept(null);
+				shutdownHandler.run();
 			}
 		}
 
@@ -1195,7 +1195,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		public SingleProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 				int concurrency,
 				Consumer<Throwable> uncaughtExceptionHandler,
-				Consumer<Void> shutdownHandler,
+				Runnable shutdownHandler,
 				boolean autoShutdown) {
 			super(processor, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 		}
@@ -1210,7 +1210,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		public PooledProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 				int concurrency,
 				Consumer<Throwable> uncaughtExceptionHandler,
-				Consumer<Void> shutdownHandler,
+				Runnable shutdownHandler,
 				boolean autoShutdown) {
 			super(null, concurrency, null, null, autoShutdown);
 
@@ -1301,7 +1301,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
-		public Consumer<Consumer<Void>> dispatcher() {
+		public Consumer<Runnable> dispatcher() {
 			return next().dispatcher();
 		}
 
@@ -1314,7 +1314,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 			public InnerProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 					Consumer<Throwable> uncaughtExceptionHandler,
-					Consumer<Void> shutdownHandler,
+					Runnable shutdownHandler,
 					boolean autoShutdown) {
 				super(processor, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 			}

@@ -21,8 +21,8 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
-import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.WaitStrategy;
+import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 
@@ -38,7 +38,7 @@ public final class RequestTask implements Runnable {
 
 	final Subscription upstream;
 
-	final Consumer<Void> spinObserver;
+	final Runnable spinObserver;
 
 	final Consumer<Long> postWaitCallback;
 
@@ -46,7 +46,7 @@ public final class RequestTask implements Runnable {
 
 	final RingBuffer<?> ringBuffer;
 
-	public RequestTask(Subscription upstream, Consumer<Void> stopCondition,
+	public RequestTask(Subscription upstream, Runnable stopCondition,
 			Consumer<Long> postWaitCallback, LongSupplier readCount,
 			WaitStrategy waitStrategy, Subscriber<?> errorSubscriber, RingBuffer r) {
 		this.waitStrategy = waitStrategy;
@@ -64,7 +64,7 @@ public final class RequestTask implements Runnable {
 		final long limit = bufferSize - Math.max(bufferSize >> 2, 1);
 		long cursor = -1;
 		try {
-			spinObserver.accept(null);
+			spinObserver.run();
 			upstream.request(bufferSize - 1);
 
 			for (; ; ) {

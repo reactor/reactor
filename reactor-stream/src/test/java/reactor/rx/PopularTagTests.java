@@ -70,7 +70,7 @@ public class PopularTagTests extends AbstractReactorTest {
 			.consume(
 			  entry -> LOG.info(entry.t1 + ": " + entry.t2),
 			  error -> LOG.error("", error),
-			  nil -> latch.countDown()
+			  () -> latch.countDown()
 			);
 
 		awaitLatch(top10every1second, latch);

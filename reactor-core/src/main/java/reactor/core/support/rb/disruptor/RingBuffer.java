@@ -22,9 +22,8 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.WaitStrategy;
-import reactor.fn.Consumer;
+import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
 
@@ -122,7 +121,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	 * @see MultiProducerSequencer
 	 */
 	@SuppressWarnings("unchecked")
-	public static <E> RingBuffer<Slot<E>> createSingleProducer(int bufferSize, Consumer<Void> spinObserver) {
+	public static <E> RingBuffer<Slot<E>> createSingleProducer(int bufferSize, Runnable spinObserver) {
 		return createSingleProducer(EMITTED, bufferSize, NO_WAIT, spinObserver);
 	}
 
@@ -161,7 +160,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	public static <E> RingBuffer<E> createMultiProducer(Supplier<E> factory,
 			int bufferSize,
 			WaitStrategy waitStrategy,
-			Consumer<Void> spinObserver) {
+			Runnable spinObserver) {
 
 		if (PlatformDependent.hasUnsafe() && Sequencer.isPowerOfTwo(bufferSize)) {
 			MultiProducerSequencer sequencer = new MultiProducerSequencer(bufferSize, waitStrategy, spinObserver);
@@ -202,7 +201,7 @@ public abstract class RingBuffer<E> implements LongSupplier {
 	public static <E> RingBuffer<E> createSingleProducer(Supplier<E> factory,
 			int bufferSize,
 			WaitStrategy waitStrategy,
-			Consumer<Void> spinObserver) {
+			Runnable spinObserver) {
 		SingleProducerSequencer sequencer = new SingleProducerSequencer(bufferSize, waitStrategy, spinObserver);
 
 		if (PlatformDependent.hasUnsafe() && Sequencer.isPowerOfTwo(bufferSize)) {

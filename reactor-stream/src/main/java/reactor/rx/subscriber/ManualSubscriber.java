@@ -48,7 +48,7 @@ public final class ManualSubscriber<T> extends InterruptableSubscriber<T> implem
 
 	public ManualSubscriber(Consumer<? super T> consumer,
 			Consumer<? super Throwable> errorConsumer,
-			Consumer<Void> completeConsumer) {
+			Runnable completeConsumer) {
 		super(consumer, errorConsumer, completeConsumer);
 	}
 

@@ -32,7 +32,7 @@ public class ConsumerSubscriber<T> extends BaseSubscriber<T>
 
 	private final Consumer<? super T>         consumer;
 	private final Consumer<? super Throwable> errorConsumer;
-	private final Consumer<Void>              completeConsumer;
+	private final Runnable              completeConsumer;
 
 	private Subscription subscription;
 
@@ -51,7 +51,7 @@ public class ConsumerSubscriber<T> extends BaseSubscriber<T>
 	 */
 	public ConsumerSubscriber(Consumer<? super T> consumer,
 			Consumer<? super Throwable> errorConsumer,
-			Consumer<Void> completeConsumer) {
+			Runnable completeConsumer) {
 		this.consumer = consumer;
 		this.errorConsumer = errorConsumer;
 		this.completeConsumer = completeConsumer;
@@ -105,7 +105,7 @@ public class ConsumerSubscriber<T> extends BaseSubscriber<T>
 	 */
 	protected void doComplete() {
 		if (completeConsumer != null) {
-			completeConsumer.accept(null);
+			completeConsumer.run();
 		}
 	}
 

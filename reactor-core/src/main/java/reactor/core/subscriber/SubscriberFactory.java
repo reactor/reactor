@@ -15,6 +15,8 @@
  */
 package reactor.core.subscriber;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
@@ -27,8 +29,6 @@ import reactor.core.support.ReactiveState;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * A Reactive Streams {@link Subscriber} factory which callbacks on start, onNext, onError and shutdown
@@ -224,13 +224,13 @@ public abstract class SubscriberFactory {
 	 *
 	 * @param dataConsumer     A {@link Consumer} with argument onNext data
 	 * @param errorConsumer    A {@link Consumer} called onError
-	 * @param completeConsumer A {@link Consumer} called onComplete with the actual context if any
+	 * @param completeConsumer A {@link Runnable} called onComplete with the actual context if any
 	 * @param <T>              The type of the data sequence
 	 * @return a fresh Reactive Streams subscriber ready to be subscribed
 	 */
 	public static <T> Subscriber<T> consumer(Consumer<T> dataConsumer,
 			final Consumer<Throwable> errorConsumer,
-			Consumer<Void> completeConsumer) {
+			Runnable completeConsumer) {
 		return new ConsumerSubscriber<>(
 				dataConsumer,
 				errorConsumer,

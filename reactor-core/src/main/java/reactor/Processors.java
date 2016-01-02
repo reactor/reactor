@@ -125,7 +125,7 @@ public final class Processors {
 	public static <E> ProcessorGroup<E> asyncGroup(String name,
 			int bufferSize,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler) {
+			Runnable shutdownHandler) {
 		return asyncGroup(name, bufferSize, uncaughtExceptionHandler, shutdownHandler, true);
 	}
 
@@ -141,7 +141,7 @@ public final class Processors {
 			int bufferSize,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler) {
+			Runnable shutdownHandler) {
 		return asyncGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
 	}
 
@@ -157,7 +157,7 @@ public final class Processors {
 	public static <E> ProcessorGroup<E> asyncGroup(String name,
 			int bufferSize,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 		return asyncGroup(name, bufferSize, DEFAULT_POOL_SIZE, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
@@ -182,7 +182,7 @@ public final class Processors {
 			final int bufferSize,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 
 		return asyncGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown, DEFAULT_WAIT_STRATEGY);
@@ -202,7 +202,7 @@ public final class Processors {
 			final int bufferSize,
 			final int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown,
 			final Supplier<? extends WaitStrategy> waitprovider) {
 
@@ -379,7 +379,7 @@ public final class Processors {
 			int bufferSize,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler) {
+			Runnable shutdownHandler) {
 		return ioGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, true);
 	}
 
@@ -397,7 +397,7 @@ public final class Processors {
 			final int bufferSize,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 		return ioGroup(name, bufferSize, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown,
 				DEFAULT_WAIT_STRATEGY.get());
@@ -418,26 +418,13 @@ public final class Processors {
 			final int bufferSize,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown,
 			WaitStrategy waitStrategy) {
 
 		return ProcessorGroup.create(RingBufferWorkProcessor.<Runnable>share(name, bufferSize,
 				waitStrategy, false),
 				concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
-	}
-
-	/**
-	 * @param processor
-	 * @param liftTransformation
-	 * @param <IN>
-	 * @param <OUT>
-	 * @param <NOUT>
-	 * @return
-	 */
-	public static <IN, OUT, NOUT> FluxProcessor<IN, NOUT> lift(final Processor<IN, OUT> processor,
-			final Function<? super Processor<IN, OUT>, ? extends Publisher<NOUT>> liftTransformation) {
-		return new DelegateProcessor<>(liftTransformation.apply(processor), processor);
 	}
 
 	/**
@@ -586,7 +573,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> singleGroup(String name, int bufferSize, Consumer<Throwable> errorC,
-			Consumer<Void> shutdownC) {
+			Runnable shutdownC) {
 		return singleGroup(name, bufferSize, errorC, shutdownC, SINGLE_WAIT_STRATEGY);
 	}
 
@@ -597,7 +584,7 @@ public final class Processors {
 	 * @return
 	 */
 	public static <E> ProcessorGroup<E> singleGroup(String name, int bufferSize, Consumer<Throwable> errorC,
-			Consumer<Void> shutdownC, Supplier<? extends WaitStrategy> waitStrategy) {
+			Runnable shutdownC, Supplier<? extends WaitStrategy> waitStrategy) {
 		return asyncGroup(name, bufferSize, 1, errorC, shutdownC, true, waitStrategy);
 	}
 

@@ -34,11 +34,12 @@ import reactor.Processors;
 import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.processor.ProcessorGroup;
-import reactor.core.publisher.MonoIgnoreElements;
+import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxLog;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxZip;
+import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
@@ -157,7 +158,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Flux.amb(Stream.this, publisher).subscribe(s);
+				Flux.amb(Stream.this, publisher)
+				    .subscribe(s);
 			}
 		};
 	}
@@ -462,8 +464,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				Publishers.concatMap(Stream.this, fn)
-				          .subscribe(s);
+				new FluxFlatMap<>(Stream.this, fn, ReactiveState.SMALL_BUFFER_SIZE, 1)
+				    .subscribe(s);
 			}
 		};
 	}
@@ -552,7 +554,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Control consume(final Consumer<? super O> consumer,
 			Consumer<? super Throwable> errorConsumer,
-			Consumer<Void> completeConsumer) {
+			Runnable completeConsumer) {
 
 		long c = Math.min(Integer.MAX_VALUE, getCapacity());
 
@@ -630,7 +632,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Control.Demand consumeLater(final Consumer<? super O> consumer,
 			Consumer<? super Throwable> errorConsumer,
-			Consumer<Void> completeConsumer) {
+			Runnable completeConsumer) {
 		ManualSubscriber<O> consumerAction = new ManualSubscriber<>(consumer, errorConsumer, completeConsumer);
 		subscribe(consumerAction);
 		return consumerAction;
@@ -713,8 +715,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<Long> count(final long i) {
 		Stream<O> thiz = i != Long.MAX_VALUE ? take(i) : this;
 
-		return new StreamScan<>(thiz, StreamScan.COUNTER, 0L)
-		           .last();
+		return new StreamScan<>(thiz, StreamScan.COUNTER, 0L).last();
 	}
 
 	/**
@@ -917,7 +918,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				Publishers.flatMap(Stream.this, fn)
+				new FluxFlatMap<>(Stream.this, fn, ReactiveState.SMALL_BUFFER_SIZE, ReactiveState.XS_BUFFER_SIZE)
 				          .subscribe(s);
 			}
 		};
@@ -2126,7 +2127,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		final Timer timer = getTimer();
 		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " + "Stream");
 
-		return new StreamTimeout<O>(this, fallback,
+		return new StreamTimeout<O>(this,
+				fallback,
 				timer,
 				unit != null ? TimeUnit.MILLISECONDS.convert(timeout, unit) : timeout);
 	}
@@ -2350,7 +2352,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		if (timeshift == timespan) {
 			return window(timespan, unit);
 		}
-		return new StreamWindowShift<O>(this, Integer.MAX_VALUE,
+		return new StreamWindowShift<O>(this,
+				Integer.MAX_VALUE,
 				Integer.MAX_VALUE,
 				timespan,
 				timeshift,
@@ -2455,7 +2458,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final <T2> Stream<Tuple2<O, T2>> zipWithIterable(Iterable<? extends T2> iterable) {
 		return new StreamZipWithIterable<>(this, (BiFunction<O, T2, Tuple2<O, T2>>) IDENTITY_FUNCTION, iterable);
 	}
-
 
 	private static final class DispatchOn<O> extends StreamBarrier<O, O> implements FeedbackLoop {
 

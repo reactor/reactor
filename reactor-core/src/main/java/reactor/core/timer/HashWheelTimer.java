@@ -139,9 +139,9 @@ public class HashWheelTimer extends Timer {
 			public void run() {
 				long deadline = timeMillisResolver.get();
 
-				Consumer<Void> noop = new Consumer<Void>() {
+				Runnable noop = new Runnable() {
 					@Override
-					public void accept(Void noop) {
+					public void run() {
 						if (loop.isInterrupted()) {
 							throw AlertException.INSTANCE;
 						}

@@ -39,7 +39,7 @@ public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements
 			PlatformDependent.newAtomicReferenceFieldUpdater(InterruptableSubscriber.class, "subscription");
 
 	public InterruptableSubscriber(Consumer<? super T> consumer, Consumer<? super Throwable> errorConsumer,
-			Consumer<Void> completeConsumer) {
+			Runnable completeConsumer) {
 		super(consumer, errorConsumer, completeConsumer);
 		SUBSCRIPTION.lazySet(this, EmptySubscription.INSTANCE);
 	}
