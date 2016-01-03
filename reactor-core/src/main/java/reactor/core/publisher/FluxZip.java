@@ -16,6 +16,7 @@
 
 package reactor.core.publisher;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -73,11 +74,22 @@ public final class FluxZip<TUPLE extends Tuple, V> extends Flux<V>
 	final Function<? super TUPLE, ? extends V> combinator;
 	final int                                  bufferSize;
 	final Publisher[]                          sources;
+	final Iterable<? extends Publisher<?>>     iterableSources;
+
+	public FluxZip(final Iterable<? extends Publisher<?>> sources,
+			final Function<? super TUPLE, ? extends V> combinator,
+			int bufferSize) {
+		this.combinator = combinator;
+		this.bufferSize = bufferSize;
+		this.iterableSources = sources;
+		this.sources = null;
+	}
 
 	public FluxZip(final Publisher[] sources, final Function<? super TUPLE, ? extends V> combinator, int bufferSize) {
 		this.combinator = combinator;
 		this.bufferSize = bufferSize;
 		this.sources = sources;
+		this.iterableSources = null;
 	}
 
 	@Override
@@ -86,13 +98,49 @@ public final class FluxZip<TUPLE extends Tuple, V> extends Flux<V>
 			throw Exceptions.spec_2_13_exception();
 		}
 		try {
-			if (sources == null || sources.length == 0) {
+
+			final ZipBarrier<TUPLE, V> barrier;
+			if (iterableSources != null) {
+				Iterator<? extends Publisher<?>> it = iterableSources.iterator();
+				if (!it.hasNext()) {
+					EmptySubscription.complete(s);
+					return;
+				}
+
+				List<Publisher<?>> list = null;
+				Publisher<?> p;
+				do {
+					p = it.next();
+					if (list == null) {
+						if (it.hasNext()) {
+							list = new ArrayList<>();
+						}
+						else {
+							new FluxMap<>(p, new Function<Object, V>() {
+								@Override
+								@SuppressWarnings("unchecked")
+								public V apply(Object o) {
+									return combinator.apply((TUPLE) Tuple.of(o));
+								}
+							}).subscribe(s);
+							return;
+						}
+					}
+					list.add(p);
+				}
+				while (it.hasNext());
+
+				barrier = new ZipBarrier<>(s, list.toArray(new Publisher[list.size()]), this);
+			}
+			else if (sources == null || sources.length == 0) {
 				s.onSubscribe(EmptySubscription.INSTANCE);
 				s.onComplete();
 				return;
 			}
+			else {
+				barrier = new ZipBarrier<>(s, sources, this);
+			}
 
-			ZipBarrier<TUPLE, V> barrier = new ZipBarrier<>(s, this);
 			barrier.start();
 			s.onSubscribe(barrier);
 		}
@@ -104,13 +152,13 @@ public final class FluxZip<TUPLE extends Tuple, V> extends Flux<V>
 
 	@Override
 	public Iterator<?> upstreams() {
-		return Arrays.asList(sources)
-		             .iterator();
+		return iterableSources != null ? iterableSources.iterator() : Arrays.asList(sources)
+		                                                                    .iterator();
 	}
 
 	@Override
 	public long upstreamsCount() {
-		return sources != null ? sources.length : 0;
+		return iterableSources != null ? -1L : (sources != null ? sources.length : 0);
 	}
 
 	static final class ZipBarrier<TUPLE extends Tuple, V>
@@ -121,6 +169,7 @@ public final class FluxZip<TUPLE extends Tuple, V> extends Flux<V>
 		final FluxZip<TUPLE, V>     parent;
 		final int                   limit;
 		final ZipState<?>[]         subscribers;
+		final Publisher[]         sources;
 		final Subscriber<? super V> actual;
 
 		@SuppressWarnings("unused")
@@ -148,10 +197,11 @@ public final class FluxZip<TUPLE extends Tuple, V> extends Flux<V>
 
 		final static Object[] TERMINATED_CACHE = new Object[0];
 
-		public ZipBarrier(Subscriber<? super V> actual, FluxZip<TUPLE, V> parent) {
+		public ZipBarrier(Subscriber<? super V> actual, Publisher[] sources, FluxZip<TUPLE, V> parent) {
 			this.actual = actual;
 			this.parent = parent;
-			this.subscribers = new ZipState[parent.sources.length];
+			this.sources = sources;
+			this.subscribers = new ZipState[sources.length];
 			this.limit = Math.max(1, parent.bufferSize / 2);
 		}
 
@@ -168,7 +218,7 @@ public final class FluxZip<TUPLE extends Tuple, V> extends Flux<V>
 			ZipState<?> inner;
 			Publisher pub;
 			for (i = 0; i < subscribers.length; i++) {
-				pub = parent.sources[i];
+				pub = sources[i];
 				if (pub instanceof Supplier) {
 					inner = new ScalarState(((Supplier<?>) pub).get());
 					subscribers[i] = inner;
@@ -180,7 +230,7 @@ public final class FluxZip<TUPLE extends Tuple, V> extends Flux<V>
 			}
 
 			for (i = 0; i < subscribers.length; i++) {
-				subscribers[i].subscribeTo(parent.sources[i]);
+				subscribers[i].subscribeTo(sources[i]);
 			}
 
 			drain();

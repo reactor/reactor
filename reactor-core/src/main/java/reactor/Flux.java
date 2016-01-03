@@ -16,15 +16,12 @@
 
 package reactor;
 
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.logging.Level;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.processor.FluxProcessor;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.FluxAmb;
 import reactor.core.publisher.FluxArray;
@@ -54,6 +51,7 @@ import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * A Reactive Streams {@link Publisher} with basic rx operators that emits 0 to N elements, and then complete
@@ -92,14 +90,17 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
-	public static <I> Flux<I> amb(Publisher<? extends I> source1, Publisher<? extends I> source2) {
-		return new FluxAmb<>(new Publisher[]{source1, source2});
+	@SuppressWarnings({"unchecked", "varargs"})
+	@SafeVarargs
+	public static <I> Flux<I> amb(Publisher<? extends I>... sources) {
+		return new FluxAmb<>(sources);
 	}
 
 	/**
-	 * @param <I> The source type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @param sources
+	 * @param <I>
+	 * @return
 	 */
 	@SuppressWarnings("unchecked")
 	public static <I> Flux<I> amb(Iterable<? extends Publisher<? extends I>> sources) {
@@ -107,28 +108,8 @@ public abstract class Flux<T> implements Publisher<T> {
 			return empty();
 		}
 
-		Iterator<? extends Publisher<? extends I>> it = sources.iterator();
-		if (!it.hasNext()) {
-			return empty();
-		}
-
-		List<Publisher<? extends I>> list = null;
-		Publisher<? extends I> p;
-		do {
-			p = it.next();
-			if (list == null) {
-				if (it.hasNext()) {
-					list = new ArrayList<>();
-				}
-				else {
-					return wrap((Publisher<I>) p);
-				}
-			}
-			list.add(p);
-		}
-		while (it.hasNext());
-
-		return new FluxAmb<>(list.toArray(new Publisher[list.size()]));
+		throw new NotImplementedException();
+		//return new FluxAmb<>(sources);
 	}
 
 	/**
@@ -155,7 +136,14 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SafeVarargs
+	@SuppressWarnings({"unchecked","varargs"})
 	public static <I> Flux<I> concat(Publisher<? extends I>... sources) {
+		if(sources == null || sources.length == 0){
+			return empty();
+		}
+		if(sources.length == 1){
+			return wrap((Publisher<I>)sources[0]);
+		}
 		return concat(from(sources));
 	}
 
@@ -283,6 +271,12 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	public static <T> Flux<T> from(T[] array) {
+		if(array == null || array.length == 0){
+			return empty();
+		}
+		if(array.length == 1){
+			return just(array[0]);
+		}
 		return new FluxArray<>(array);
 	}
 
@@ -333,6 +327,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	@SafeVarargs
+	@SuppressWarnings("varargs")
 	public static <T> Flux<T> just(T... data) {
 		return from(data);
 	}
@@ -372,7 +367,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return a fresh Reactive Streams publisher ready to be subscribed
 	 */
 	@SafeVarargs
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "varargs"})
 	public static <I> Flux<I> merge(Publisher<? extends I>... sources) {
 		if (sources == null || sources.length == 0) {
 			return empty();
@@ -494,33 +489,7 @@ public abstract class Flux<T> implements Publisher<T> {
 			return empty();
 		}
 
-		Iterator<? extends Publisher<?>> it = sources.iterator();
-		if (!it.hasNext()) {
-			return empty();
-		}
-
-		List<Publisher<?>> list = null;
-		Publisher<?> p;
-		do {
-			p = it.next();
-			if (list == null) {
-				if (it.hasNext()) {
-					list = new ArrayList<>();
-				}
-				else {
-					return new FluxMap<>(p, new Function<Object, O>() {
-						@Override
-						public O apply(Object o) {
-							return combinator.apply(Tuple.of(o));
-						}
-					});
-				}
-			}
-			list.add(p);
-		}
-		while (it.hasNext());
-
-		return new FluxZip<>(list.toArray(new Publisher[list.size()]), combinator, ReactiveState.XS_BUFFER_SIZE);
+		return new FluxZip<>(sources, combinator, ReactiveState.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -573,7 +542,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	public final Flux<T> concatWith(Publisher<? extends T> source) {
-		throw new UnsupportedOperationException(); // TODO
+		return concat(this, source);
 	}
 
 	/**
@@ -603,9 +572,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Flux<T> dispatchOn(ProcessorGroup group) {
-		FluxProcessor<T, T> processor = ((ProcessorGroup<T>) group).dispatchOn();
-		subscribe(processor);
-		return processor;
+		return new FluxBarrier<>(((ProcessorGroup<T>) group).dispatchOn());
 	}
 
 	/**
@@ -792,14 +759,14 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * <p>
 	 * {@code flux.process(Processors.queue()).subscribe(Subscribers.unbounded()) }
 	 *
-	 * @param s
+	 * @param subscriber
 	 * @param <E>
 	 *
 	 * @return
 	 */
-	public final <E extends Subscriber<? super T>> E process(E s) {
-		subscribe(s);
-		return s;
+	public final <E extends Subscriber<? super T>> E process(E subscriber) {
+		subscribe(subscriber);
+		return subscriber;
 	}
 
 	/**
@@ -813,9 +780,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Flux<T> publishOn(ProcessorGroup group) {
-		FluxProcessor<T, T> processor = ((ProcessorGroup<T>) group).publishOn();
-		subscribe(processor);
-		return processor;
+		return new FluxBarrier<>(((ProcessorGroup<T>) group).publishOn());
 	}
 
 	/**
@@ -835,6 +800,13 @@ public abstract class Flux<T> implements Publisher<T> {
 	/**
 	 * Combine the emissions of multiple Publishers together via a specified function and emit single items for each
 	 * combination based on the results of this function.
+	 *
+	 * @param source2
+	 * @param zipper
+	 * @param <R>
+	 * @param <V>
+	 *
+	 * @return
 	 */
 	public final <R, V> Flux<V> zipWith(Publisher<? extends R> source2,
 			final BiFunction<? super T, ? super R, ? extends V> zipper) {
