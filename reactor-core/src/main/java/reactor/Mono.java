@@ -24,9 +24,9 @@ import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxPeek;
 import reactor.core.publisher.MonoEmpty;
 import reactor.core.publisher.MonoError;
+import reactor.core.publisher.MonoFirst;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoJust;
-import reactor.core.publisher.MonoSingle;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Consumer;
@@ -103,7 +103,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * @return
 	 */
 	public static <T> Mono<T> wrap(Publisher<T> source) {
-		return new MonoSingle<>(source);
+		return new MonoFirst<>(source);
 	}
 
 	/**

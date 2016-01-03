@@ -28,6 +28,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Flux;
+import reactor.Mono;
 import reactor.Processors;
 import reactor.Subscribers;
 import reactor.core.processor.FluxProcessor;
@@ -245,6 +246,16 @@ public class CombinationTests {
 	}
 
 	@Test
+	public void sampleMergeMonoTest() throws Exception {
+		CountDownLatch latch = new CountDownLatch(2);
+
+		Flux<Integer> p = Flux.merge(Flux.<Integer>empty().first(), Mono.just(1))
+		                              .log("mono");
+
+		awaitLatch(p, latch);
+	}
+
+	@Test
 	public void sampleZipTest2() throws Exception {
 		int elements = 1;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
@@ -278,7 +289,7 @@ public class CombinationTests {
 	}
 
 	@SuppressWarnings("unchecked")
-	private void awaitLatch(Publisher<SensorData> tail, CountDownLatch latch) throws Exception {
+	private void awaitLatch(Publisher<?> tail, CountDownLatch latch) throws Exception {
 		if (tail != null) {
 			tail.subscribe(Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch.countDown()));
 		}

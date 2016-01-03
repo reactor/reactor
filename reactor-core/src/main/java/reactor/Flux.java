@@ -40,6 +40,7 @@ import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxSession;
 import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.ForEachSequencer;
+import reactor.core.publisher.MonoFirst;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoSingle;
 import reactor.core.publisher.convert.DependencyUtils;
@@ -680,7 +681,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	public final Mono<T> first() {
-		return new MonoSingle<>(this);
+		return new MonoFirst<>(this);
 	}
 
 	/**

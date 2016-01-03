@@ -15,20 +15,19 @@
  */
 package reactor.core.publisher;
 
+import java.util.NoSuchElementException;
+import java.util.Objects;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.subscriber.SubscriberDeferScalar;
 import reactor.core.support.BackpressureUtils;
-
-import java.util.NoSuchElementException;
-import java.util.Objects;
 import reactor.fn.Supplier;
 
 /**
- * Expects and emits a single item from the source or signals
- * NoSuchElementException (or a default generated value) for empty source,
- * IndexOutOfBoundsException for a multi-item source.
+ * Expects and emits a single item from the source or signals NoSuchElementException(or a default generated value) for
+ * empty source, IndexOutOfBoundsException for a multi-item source.
  *
  * @param <T> the value type
  */
@@ -39,129 +38,145 @@ import reactor.fn.Supplier;
  */
 public final class MonoSingle<T> extends reactor.Mono.MonoBarrier<T, T> {
 
-    final Supplier<? extends T> defaultSupplier;
+	static final Supplier COMPLETE_ON_EMPTY_SEQUENCE = new Supplier() {
+		@Override
+		public Object get() {
+			return null; // Purposedly leave noop
+		}
+	};
 
-    public MonoSingle(Publisher<? extends T> source) {
-        super(source);
-        this.defaultSupplier = null;
-    }
+	final Supplier<? extends T> defaultSupplier;
 
-    public MonoSingle(Publisher<? extends T> source, Supplier<? extends T> defaultSupplier) {
-        super(source);
-        this.defaultSupplier = Objects.requireNonNull(defaultSupplier, "defaultSupplier");
-    }
+	public MonoSingle(Publisher<? extends T> source) {
+		super(source);
+		this.defaultSupplier = null;
+	}
 
-    @Override
-    public void subscribe(Subscriber<? super T> s) {
-        source.subscribe(new MonoSingleSubscriber<>(s, defaultSupplier));
-    }
+	public MonoSingle(Publisher<? extends T> source, Supplier<? extends T> defaultSupplier) {
+		super(source);
+		this.defaultSupplier = Objects.requireNonNull(defaultSupplier, "defaultSupplier");
+	}
 
-    static final class MonoSingleSubscriber<T> extends SubscriberDeferScalar<T, T> {
+	@Override
+	public void subscribe(Subscriber<? super T> s) {
+		source.subscribe(new MonoSingleSubscriber<>(s, defaultSupplier));
+	}
 
-        final Supplier<? extends T> defaultSupplier;
+	static final class MonoSingleSubscriber<T> extends SubscriberDeferScalar<T, T> {
 
-        Subscription s;
+		final Supplier<? extends T> defaultSupplier;
 
-        int count;
+		Subscription s;
 
-        boolean done;
+		int count;
 
-        public MonoSingleSubscriber(Subscriber<? super T> actual, Supplier<? extends T> defaultSupplier) {
-            super(actual);
-            this.defaultSupplier = defaultSupplier;
-        }
+		boolean done;
 
-        @Override
-        public void request(long n) {
-            super.request(n);
-            if (n > 0L) {
-                s.request(Long.MAX_VALUE);
-            }
-        }
+		public MonoSingleSubscriber(Subscriber<? super T> actual, Supplier<? extends T> defaultSupplier) {
+			super(actual);
+			this.defaultSupplier = defaultSupplier;
+		}
 
-        @Override
-        public void cancel() {
-            super.cancel();
-            s.cancel();
-        }
+		@Override
+		public void request(long n) {
+			super.request(n);
+			if (n > 0L) {
+				s.request(Long.MAX_VALUE);
+			}
+		}
 
-        public T get() {
-            return value;
-        }
+		@Override
+		public void cancel() {
+			super.cancel();
+			s.cancel();
+		}
 
-        @Override
-        public void setValue(T value) {
-            this.value = value;
-        }
+		public T get() {
+			return value;
+		}
 
-        @Override
-        public void onSubscribe(Subscription s) {
-            if (BackpressureUtils.validate(this.s, s)) {
-                this.s = s;
+		@Override
+		public void setValue(T value) {
+			this.value = value;
+		}
 
-                subscriber.onSubscribe(this);
-            }
-        }
+		@Override
+		public void onSubscribe(Subscription s) {
+			if (BackpressureUtils.validate(this.s, s)) {
+				this.s = s;
 
-        @Override
-        public void onNext(T t) {
-            if (done) {
-                return;
-            }
-            value = t;
+				subscriber.onSubscribe(this);
+			}
+		}
 
-            if (++count > 1) {
-                cancel();
+		@Override
+		public void onNext(T t) {
+			if (done) {
+				return;
+			}
+			value = t;
 
-                onError(new IndexOutOfBoundsException("Source emitted more than one item"));
-            }
-        }
+			if (++count > 1) {
+				cancel();
 
-        @Override
-        public void onError(Throwable t) {
-            if (done) {
-                return;
-            }
-            done = true;
+				onError(new IndexOutOfBoundsException("Source emitted more than one item"));
+			}
+		}
 
-            subscriber.onError(t);
-        }
+		@Override
+		public void onError(Throwable t) {
+			if (done) {
+				return;
+			}
+			done = true;
 
-        @Override
-        public void onComplete() {
-            if (done) {
-                return;
-            }
-            done = true;
+			subscriber.onError(t);
+		}
 
-            int c = count;
-            if (c == 0) {
-                Supplier<? extends T> ds = defaultSupplier;
-                if (ds != null) {
-                    T t;
+		@Override
+		public void onComplete() {
+			if (done) {
+				return;
+			}
+			done = true;
 
-                    try {
-                        t = ds.get();
-                    } catch (Throwable e) {
-                        subscriber.onError(e);
-                        return;
-                    }
+			int c = count;
+			if (c == 0) {
+				Supplier<? extends T> ds = defaultSupplier;
+				if (ds != null) {
 
-                    if (t == null) {
-                        subscriber.onError(new NullPointerException("The defaultSupplier returned a null value"));
-                        return;
-                    }
+					if (ds == COMPLETE_ON_EMPTY_SEQUENCE) {
+						subscriber.onComplete();
+						return;
+					}
 
-                    set(t);
-                } else {
-                    subscriber.onError(new NoSuchElementException("Source was empty"));
-                }
-            } else if (c == 1) {
-                subscriber.onNext(value);
-                subscriber.onComplete();
-            }
-        }
+					T t;
+
+					try {
+						t = ds.get();
+					}
+					catch (Throwable e) {
+						subscriber.onError(e);
+						return;
+					}
+
+					if (t == null) {
+						subscriber.onError(new NullPointerException("The defaultSupplier returned a null value"));
+						return;
+					}
+
+					set(t);
+				}
+				else {
+					subscriber.onError(new NoSuchElementException("Source was empty"));
+				}
+			}
+			else if (c == 1) {
+				subscriber.onNext(value);
+				subscriber.onComplete();
+			}
+		}
 
 
-    }
+	}
 }
