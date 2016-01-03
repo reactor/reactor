@@ -21,6 +21,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Subscribers;
 import reactor.core.error.Exceptions;
+import reactor.core.subscriber.EmptySubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.fn.BiFunction;
 
@@ -46,7 +47,7 @@ public final class StreamZipWithIterable<I, IT, V> extends StreamBarrier<I, V> {
 		try {
 			if (!iterator.hasNext()) {
 				subscriber.onComplete();
-				return Subscribers.empty();
+				return EmptySubscriber.instance();
 			}
 		} catch (Throwable e) {
 			Exceptions.throwIfFatal(e);

@@ -47,8 +47,8 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 
 	@Override
 	public void simpleTest() throws Exception {
-		final Processor<Integer, Integer> sink = Processors.topic("topic");
-		final Processor<Integer, Integer> processor = Processors.queue("queue");
+		final FluxProcessor<Integer, Integer> sink = Processors.topic("topic");
+		final FluxProcessor<Integer, Integer> processor = Processors.queue("queue");
 
 		int elems = 1_000_000;
 		CountDownLatch latch = new CountDownLatch(elems);
@@ -71,7 +71,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 		}));
 
 		sink.subscribe(processor);
-		Subscribers.start(sink);
+		sink.start();
 		for(int i = 0; i < elems; i++){
 
 			sink.onNext(i);
@@ -138,6 +138,6 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 
 		processor
 		  .writeWith(pub)
-		  .subscribe(SubscriberFactory.unbounded());
+		  .subscribe(Subscribers.unbounded());
 	}*/
 }

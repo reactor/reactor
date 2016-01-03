@@ -42,7 +42,6 @@ import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.ForEachSequencer;
 import reactor.core.publisher.MonoFirst;
 import reactor.core.publisher.MonoIgnoreElements;
-import reactor.core.publisher.MonoSingle;
 import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
@@ -831,13 +830,6 @@ public abstract class Flux<T> implements Publisher<T> {
 				return fallback;
 			}
 		});
-	}
-
-	/**
-	 * @return
-	 */
-	public final Flux<T> unbounded() {
-		return capacity(Long.MAX_VALUE);
 	}
 
 	/**

@@ -32,12 +32,12 @@ import reactor.Flux;
 import reactor.Mono;
 import reactor.Processors;
 import reactor.Publishers;
-import reactor.Subscribers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.FluxZip;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.ReactiveState;
 import reactor.core.timer.Timer;
@@ -683,9 +683,9 @@ public class Streams {
 	 */
 	public static <T> StreamProcessor<Publisher<? extends T>, T> switchOnNext() {
 		Processor<Publisher<? extends T>, Publisher<? extends T>> emitter = Processors.replay();
-		return Subscribers.start(
-				StreamProcessor.from(emitter, new StreamSwitch<>(emitter))
-		);
+		StreamProcessor<Publisher<? extends T>, T> p = StreamProcessor.from(emitter, new StreamSwitch<>(emitter));
+		p.onSubscribe(EmptySubscription.INSTANCE);
+		return p;
 	}
 
 	/**

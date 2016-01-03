@@ -16,6 +16,7 @@
 
 package reactor.core.subscriber;
 
+import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
@@ -37,17 +38,24 @@ public class ConsumerSubscriber<T> extends BaseSubscriber<T>
 	private Subscription subscription;
 
 	/**
-	 *
+	 * Create a {@link Subscriber} to request  Long.MAX_VALUE onSubscribe.
 	 */
 	public ConsumerSubscriber(){
 		this(null, null, null);
 	}
 
 	/**
+	 * Create a {@link Subscriber} reacting onNext, onError and onComplete. The subscriber will automatically
+	 * request Long.MAX_VALUE onSubscribe.
+	 * <p>
+	 * The argument {@code subscriptionHandler} is executed once by new subscriber to generate a context shared by
+	 * every
+	 * request calls.
 	 *
-	 * @param consumer
-	 * @param errorConsumer
-	 * @param completeConsumer
+	 * @param consumer     A {@link Consumer} with argument onNext data
+	 * @param errorConsumer    A {@link Consumer} called onError
+	 * @param completeConsumer A {@link Runnable} called onComplete with the actual context if any
+	 * @return a fresh Reactive Streams subscriber ready to be subscribed
 	 */
 	public ConsumerSubscriber(Consumer<? super T> consumer,
 			Consumer<? super Throwable> errorConsumer,

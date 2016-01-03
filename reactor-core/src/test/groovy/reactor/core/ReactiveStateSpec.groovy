@@ -22,7 +22,7 @@ import spock.lang.Specification
 import static reactor.Flux.*
 import static reactor.Processors.emitter
 import static reactor.Processors.singleGroup
-import static reactor.core.subscriber.SubscriberFactory.unbounded
+import static reactor.Subscribers.unbounded
 
 /**
  * @author Stephane Maldini

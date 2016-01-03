@@ -32,17 +32,8 @@ import reactor.core.support.ReactiveState;
  * @author Stephane Maldini
  * @since 2.5
  */
+@Deprecated
 public final class Publishers extends FluxFactory {
-
-	/**
-	 *
-	 *
-	 * Miscellaneous :  Blocking Queue conversion
-	 *
-	 *
-	 *
-	 */
-
 
 	/**
 	 * @param <IN>
