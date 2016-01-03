@@ -71,6 +71,17 @@ public final class FluxZip<TUPLE extends Tuple, V> extends Flux<V>
 		}
 	};
 
+	/**
+	 *
+	 */
+	public static final Function TUPLE_TO_LIST_FUNCTION = new Function<Tuple, List>() {
+
+		@Override
+		public List apply(Tuple o) {
+			return o.toList();
+		}
+	};
+
 	final Function<? super TUPLE, ? extends V> combinator;
 	final int                                  bufferSize;
 	final Publisher[]                          sources;

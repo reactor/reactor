@@ -20,7 +20,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import javax.annotation.Nonnull;
@@ -31,7 +34,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.FluxFlatMap;
@@ -40,6 +42,7 @@ import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.MonoIgnoreElements;
+import reactor.core.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
@@ -106,6 +109,7 @@ import reactor.rx.subscriber.Control;
 import reactor.rx.subscriber.InterruptableSubscriber;
 import reactor.rx.subscriber.ManualSubscriber;
 import reactor.rx.subscriber.Tap;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * Base class for components designed to provide a succinct API for working with future values. Provides base
@@ -140,6 +144,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<Void> after() {
 		return new StreamBarrier.Identity<>(new MonoIgnoreElements<>(this));
 	}
+
 
 	/**
 	 * Select the first emitting Publisher between this and the given publisher. The "loosing" one will be cancelled
@@ -2175,7 +2180,22 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final BlockingQueue<O> toBlockingQueue(int maximum) {
-		return Publishers.toReadQueue(this, maximum);
+		return toBlockingQueue(maximum,
+				maximum == Integer.MAX_VALUE ? new ConcurrentLinkedQueue<O>() : new ArrayBlockingQueue<O>(maximum));
+	}
+
+	/**
+	 * Blocking call to eagerly fetch values from this stream
+	 *
+	 * @param maximum queue getCapacity(), a full queue might block the stream producer.
+	 *
+	 * @return the buffered queue
+	 *
+	 * @since 2.0
+	 */
+	@SuppressWarnings("unchecked")
+	public final BlockingQueue<O> toBlockingQueue(int maximum, Queue<O> store) {
+		return new BlockingQueueSubscriber<>(this, null, store, false, maximum);
 	}
 
 	/**
@@ -2443,6 +2463,80 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final <T2> Stream<Tuple2<O, T2>> zipWithIterable(Iterable<? extends T2> iterable) {
 		return new StreamZipWithIterable<>(this, (BiFunction<O, T2, Tuple2<O, T2>>) IDENTITY_FUNCTION, iterable);
 	}
+
+	/**
+	 *
+	 * @param predicate
+	 * @return
+	 */
+	public final Stream<Boolean> all(Predicate<? super O> predicate){
+		throw new NotImplementedException(); //FIXME
+	}
+
+	/**
+	 *
+	 * @param predicate
+	 * @return
+	 */
+	public final Stream<Boolean> any(Predicate<? super O> predicate){
+		throw new NotImplementedException(); //FIXME
+	}
+
+	/**
+	 *
+	 * @param subscriptionDelay
+	 * @param <U>
+	 * @return
+	 */
+	public final <U> Stream<O> delaySubscription(Publisher<U> subscriptionDelay){
+		throw new NotImplementedException(); //FIXME
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public final Stream<O> single(){
+		throw new NotImplementedException(); //FIXME
+	}
+
+	/**
+	 *
+	 * @param defaultSupplier
+	 * @return
+	 */
+	public final Stream<O> singleOrDefault(Supplier<? extends O> defaultSupplier){
+		throw new NotImplementedException(); //FIXME
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public final Stream<Boolean> isEmpty(){
+		throw new NotImplementedException(); //FIXME
+	}
+
+	/**
+	 *
+	 * @return
+	 */
+	public final Stream<O> latest(){
+		throw new NotImplementedException(); //FIXME
+	}
+
+	/**
+	 *
+	 * @param other
+	 * @param
+	 * @param <U>
+	 * @return
+	 */
+	public final <U, R> Stream<O> withLatestFrom(Publisher<? extends U> other, BiFunction<? super O, ? super U, ?
+			extends R > resultSelector){
+		throw new NotImplementedException(); //FIXME
+	}
+
 
 	private static final class DispatchOn<O> extends StreamBarrier<O, O> implements FeedbackLoop {
 

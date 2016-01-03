@@ -22,8 +22,12 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 
 /**
- * A components that supports extra state control and access for reactive components: buffers, capacity, names,
- * upstream...
+ * A component that supports extra state peeking and access for reactive components: buffers, capacity, names,
+ * connected upstream/downstreams...
+ *
+ * The state read accuracy (volatility) is implementation-dependant and implementors MAY return cached value for a
+ * given state.
+ *
  * @author Stephane Maldini
  * @since 2.5
  */
@@ -49,7 +53,7 @@ public interface ReactiveState {
 	}
 
 	/**
-	 * A capacity aware component
+	 * A storing component
 	 */
 	interface Buffering extends Bounded {
 

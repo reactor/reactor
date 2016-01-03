@@ -50,6 +50,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.AbstractReactorTest;
+import reactor.Mono;
 import reactor.Processors;
 import reactor.core.error.CancelException;
 import reactor.core.processor.ProcessorGroup;
@@ -237,7 +238,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void promiseAcceptCountCannotExceedOne() {
-		Promise<Object> deferred = Promises.<Object>ready();
+		Promise<Object> deferred = Promise.<Object>ready();
 		deferred.onNext("alpha");
 		try {
 			deferred.onNext("bravo");
@@ -250,7 +251,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void promiseErrorCountCannotExceedOne() {
-		Promise<Object> deferred = Promises.ready();
+		Promise<Object> deferred = Promise.ready();
 		Throwable error = new Exception();
 		deferred.onError(error);
 		try {
@@ -264,7 +265,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void promiseAcceptCountAndErrorCountCannotExceedOneInTotal() {
-		Promise<Object> deferred = Promises.ready();
+		Promise<Object> deferred = Promise.ready();
 		Throwable error = new Exception();
 		deferred.onError(error);
 		try {
@@ -1316,14 +1317,12 @@ public class StreamTests extends AbstractReactorTest {
 		CountDownLatch latch1 = new CountDownLatch(1);
 		CountDownLatch latch2 = new CountDownLatch(1);
 
-		Promises.task(() -> {
+		Mono.from(() -> {
 			throw new RuntimeException("Some Exception");
 		})
-		        .stream()
-		        .dispatchOn(ioGroup)
-		        .next()
-		        .onError(t -> latch1.countDown())
-		        .onSuccess(s -> latch2.countDown());
+		    .dispatchOn(ioGroup)
+		    .doOnError(t -> latch1.countDown())
+		    .doOnComplete(() -> latch2.countDown());
 
 		assertThat("Error latch was counted down", latch1.await(1, TimeUnit.SECONDS), is(true));
 		assertThat("Complete latch was not counted down", latch2.getCount(), is(1L));

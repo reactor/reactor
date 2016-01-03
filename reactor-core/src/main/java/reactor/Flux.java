@@ -51,10 +51,14 @@ import reactor.fn.Function;
 import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
+import reactor.fn.tuple.Tuple3;
+import reactor.fn.tuple.Tuple4;
+import reactor.fn.tuple.Tuple5;
+import reactor.fn.tuple.Tuple6;
 import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
- * A Reactive Streams {@link Publisher} with basic rx operators that emits 0 to N elements, and then complete
+ * A Reactive Fluxs {@link Publisher} with basic rx operators that emits 0 to N elements, and then complete
  * (successfully or with an error).
  * <p>
  * <p>It is intended to be used in Reactive Spring projects implementation and return types. Input parameters should
@@ -81,14 +85,14 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * ==============================================================================================================
 	 */
 
-	private static final IdentityFunction IDENTITY_FUNCTION = new IdentityFunction();
-	private static final Flux<?>          EMPTY             = Mono.empty()
-	                                                              .flux();
+	static final IdentityFunction IDENTITY_FUNCTION = new IdentityFunction();
+	static final Flux<?>          EMPTY             = Mono.empty()
+	                                                      .flux();
 
 	/**
 	 * @param <I> The source type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	@SuppressWarnings({"unchecked", "varargs"})
 	@SafeVarargs
@@ -97,9 +101,9 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 *
 	 * @param sources
 	 * @param <I>
+	 *
 	 * @return
 	 */
 	@SuppressWarnings("unchecked")
@@ -115,7 +119,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	/**
 	 * @param <I> The source type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	public static <I> Flux<I> concat(Publisher<? extends Publisher<? extends I>> source) {
 		return new FluxFlatMap<>(source, 1, 32);
@@ -124,7 +128,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	/**
 	 * @param <I> The source type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	public static <I> Flux<I> concat(Iterable<? extends Publisher<? extends I>> source) {
 		return concat(from(source));
@@ -133,16 +137,16 @@ public abstract class Flux<T> implements Publisher<T> {
 	/**
 	 * @param <I> The source type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	@SafeVarargs
-	@SuppressWarnings({"unchecked","varargs"})
+	@SuppressWarnings({"unchecked", "varargs"})
 	public static <I> Flux<I> concat(Publisher<? extends I>... sources) {
-		if(sources == null || sources.length == 0){
+		if (sources == null || sources.length == 0) {
 			return empty();
 		}
-		if(sources.length == 1){
-			return wrap((Publisher<I>)sources[0]);
+		if (sources.length == 1) {
+			return wrap((Publisher<I>) sources[0]);
 		}
 		return concat(from(sources));
 	}
@@ -177,7 +181,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @param requestConsumer A {@link Consumer} invoked when available read with the target subscriber
 	 * @param <T> The type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	public static <T> Flux<T> create(Consumer<SubscriberWithContext<T, Void>> requestConsumer) {
 		return create(requestConsumer, null, null);
@@ -195,7 +199,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @param <T> The type of the data sequence
 	 * @param <C> The type of contextual information to be read by the requestConsumer
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	public static <T, C> Flux<T> create(Consumer<SubscriberWithContext<T, C>> requestConsumer,
 			Function<Subscriber<? super T>, C> contextFactory) {
@@ -217,7 +221,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @param <T> The type of the data sequence
 	 * @param <C> The type of contextual information to be read by the requestConsumer
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	public static <T, C> Flux<T> create(final Consumer<SubscriberWithContext<T, C>> requestConsumer,
 			Function<Subscriber<? super T>, C> contextFactory,
@@ -271,10 +275,10 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	public static <T> Flux<T> from(T[] array) {
-		if(array == null || array.length == 0){
+		if (array == null || array.length == 0) {
 			return empty();
 		}
-		if(array.length == 1){
+		if (array.length == 1) {
 			return just(array[0]);
 		}
 		return new FluxArray<>(array);
@@ -309,7 +313,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @param <T> The type of the data sequence
 	 * @param <C> The type of contextual information to be read by the requestConsumer
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	public static <T, C> Flux<T> generate(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 			Function<Subscriber<? super T>, C> contextFactory,
@@ -355,7 +359,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	/**
 	 * @param <I> The source type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	public static <I> Flux<I> merge(Iterable<? extends Publisher<? extends I>> sources) {
 		return merge(from(sources));
@@ -364,7 +368,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	/**
 	 * @param <I> The source type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	@SafeVarargs
 	@SuppressWarnings({"unchecked", "varargs"})
@@ -421,7 +425,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @param sessionConsumer A {@link Consumer} called once everytime a subscriber subscribes
 	 * @param <T> The type of the data sequence
 	 *
-	 * @return a fresh Reactive Streams publisher ready to be subscribed
+	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	public static <T> Flux<T> yield(Consumer<? super ReactiveSession<T>> sessionConsumer) {
 		return new FluxSession<>(sessionConsumer);
@@ -463,6 +467,202 @@ public abstract class Flux<T> implements Publisher<T> {
 				return combinator.apply(tuple.getT1(), tuple.getT2());
 			}
 		}, ReactiveState.XS_BUFFER_SIZE);
+	}
+
+	/**
+	 * Build a {@literal Flux} whose data are generated by the passed publishers.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the value
+	 * to signal downstream
+	 * @param <T1> type of the value from source1
+	 * @param <T2> type of the value from source2
+	 * @param <T3> type of the value from source3
+	 * @param <V> The produced output after transformation by {@param combinator}
+	 *
+	 * @return a {@link Flux} based on the produced value
+	 */
+	public static <T1, T2, T3, V> Flux<V> zip(Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
+			Publisher<? extends T3> source3,
+			Function<Tuple3<T1, T2, T3>, ? extends V> combinator) {
+		return new FluxZip<>(new Publisher[]{source1, source2, source3}, combinator, ReactiveState.XS_BUFFER_SIZE);
+	}
+
+	/**
+	 * Build a {@literal Flux} whose data are generated by the passed publishers.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T1> type of the value from source1
+	 * @param <T2> type of the value from source2
+	 * @param <T3> type of the value from source3
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T1, T2, T3> Flux<Tuple3<T1, T2, T3>> zip(Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
+			Publisher<? extends T3> source3) {
+		return new FluxZip<>(new Publisher[]{source1, source2, source3}, IDENTITY_FUNCTION, ReactiveState.XS_BUFFER_SIZE);
+	}
+
+	/**
+	 * Build a {@literal Flux} whose data are generated by the passed publishers.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the value
+	 * to signal downstream
+	 * @param <T1> type of the value from source1
+	 * @param <T2> type of the value from source2
+	 * @param <T3> type of the value from source3
+	 * @param <T4> type of the value from source4
+	 * @param <V> The produced output after transformation by {@param combinator}
+	 *
+	 * @return a {@link Flux} based on the produced value
+	 */
+	public static <T1, T2, T3, T4, V> Flux<V> zip(Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
+			Publisher<? extends T3> source3,
+			Publisher<? extends T4> source4,
+			Function<Tuple4<T1, T2, T3, T4>, V> combinator) {
+		return new FluxZip<>(new Publisher[]{source1, source2, source3, source4}, combinator, ReactiveState.XS_BUFFER_SIZE);
+	}
+
+	/**
+	 * Build a {@literal Flux} whose data are generated by the passed publishers.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T1> type of the value from source1
+	 * @param <T2> type of the value from source2
+	 * @param <T3> type of the value from source3
+	 * @param <T4> type of the value from source4
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T1, T2, T3, T4> Flux<Tuple4<T1, T2, T3, T4>> zip(Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
+			Publisher<? extends T3> source3,
+			Publisher<? extends T4> source4) {
+		return new FluxZip<>(new Publisher[]{source1, source2, source3, source4}, IDENTITY_FUNCTION, ReactiveState.XS_BUFFER_SIZE);
+	}
+
+	/**
+	 * Build a {@literal Flux} whose data are generated by the passed publishers.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the value
+	 * to signal downstream
+	 * @param <T1> type of the value from source1
+	 * @param <T2> type of the value from source2
+	 * @param <T3> type of the value from source3
+	 * @param <T4> type of the value from source4
+	 * @param <T5> type of the value from source5
+	 * @param <V> The produced output after transformation by {@param combinator}
+	 *
+	 * @return a {@link Flux} based on the produced value
+	 */
+	public static <T1, T2, T3, T4, T5, V> Flux<V> zip(Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
+			Publisher<? extends T3> source3,
+			Publisher<? extends T4> source4,
+			Publisher<? extends T5> source5,
+			Function<Tuple5<T1, T2, T3, T4, T5>, V> combinator) {
+		return new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5}, combinator, ReactiveState
+				.XS_BUFFER_SIZE);
+	}
+
+	/**
+	 * Build a {@literal Flux} whose data are generated by the passed publishers.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T1> type of the value from source1
+	 * @param <T2> type of the value from source2
+	 * @param <T3> type of the value from source3
+	 * @param <T4> type of the value from source4
+	 * @param <T5> type of the value from source5
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T1, T2, T3, T4, T5> Flux<Tuple5<T1, T2, T3, T4, T5>> zip(Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
+			Publisher<? extends T3> source3,
+			Publisher<? extends T4> source4,
+			Publisher<? extends T5> source5) {
+		return new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5}, IDENTITY_FUNCTION, ReactiveState
+				.XS_BUFFER_SIZE);
+	}
+
+	/**
+	 * Build a {@literal Flux} whose data are generated by the passed publishers.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the value
+	 * to signal downstream
+	 * @param <T1> type of the value from source1
+	 * @param <T2> type of the value from source2
+	 * @param <T3> type of the value from source3
+	 * @param <T4> type of the value from source4
+	 * @param <T5> type of the value from source5
+	 * @param <T6> type of the value from source6
+	 * @param <V> The produced output after transformation by {@param combinator}
+	 *
+	 * @return a {@link Flux} based on the produced value
+	 */
+	public static <T1, T2, T3, T4, T5, T6, V> Flux<V> zip(Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
+			Publisher<? extends T3> source3,
+			Publisher<? extends T4> source4,
+			Publisher<? extends T5> source5,
+			Publisher<? extends T6> source6,
+			Function<Tuple6<T1, T2, T3, T4, T5, T6>, V> combinator) {
+		return new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5, source6}, combinator,
+				ReactiveState
+						.XS_BUFFER_SIZE);
+	}
+
+	/**
+	 * Build a {@literal Flux} whose data are generated by the passed publishers.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param <T1> type of the value from source1
+	 * @param <T2> type of the value from source2
+	 * @param <T3> type of the value from source3
+	 * @param <T4> type of the value from source4
+	 * @param <T5> type of the value from source5
+	 * @param <T6> type of the value from source6
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T1, T2, T3, T4, T5, T6> Flux<Tuple6<T1, T2, T3, T4, T5, T6>> zip(Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
+			Publisher<? extends T3> source3,
+			Publisher<? extends T4> source4,
+			Publisher<? extends T5> source5,
+			Publisher<? extends T6> source6) {
+		return new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5, source6}, IDENTITY_FUNCTION,
+				ReactiveState
+				.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -865,7 +1065,7 @@ public abstract class Flux<T> implements Publisher<T> {
 		@Override
 		public String getName() {
 			return ReactiveStateUtils.getName(getClass().getSimpleName())
-			                         .replaceAll("Flux|Stream|Operator", "");
+			                         .replaceAll("Flux|Flux|Operator", "");
 		}
 
 		/**

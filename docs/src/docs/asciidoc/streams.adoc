@@ -521,7 +521,7 @@ onSubscribe > onNext\* > (onError \| onComplete)
 
 h|Promises.<T>prepare(*Environment, Dispatcher*)
 
-Promises.ready()
+Promise.ready()
 |T
 |T
 3+|Prepare a `Promise` ready to be called *exactly once* by any external context through `onNext`. Since it's a stateful container holding the result of the fulfilled promise, new subscribers will immediately run on the current thread.

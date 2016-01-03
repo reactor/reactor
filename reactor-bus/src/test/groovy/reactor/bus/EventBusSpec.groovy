@@ -22,7 +22,7 @@ import reactor.bus.filter.RoundRobinFilter
 import reactor.bus.routing.ConsumerFilteringRouter
 import reactor.bus.selector.Selectors
 import reactor.fn.Consumer
-import reactor.rx.Promises
+import reactor.rx.Promise
 import reactor.rx.Streams
 import spock.lang.Specification
 
@@ -413,8 +413,8 @@ class EventBusSpec extends Specification {
   def "An Observable can be used to consume a promise's value when it's fulfilled"() {
 	given:
 	"a promise with a consuming Observable"
-	def promise = Promises.<Object> ready()
-	def promise2 = Promises.<Object> ready()
+	def promise = Promise.<Object> ready()
+	def promise2 = Promise.<Object> ready()
 	def bus = EventBus.create()
 
 	bus.on(Selectors.$('key'), promise2)
@@ -432,8 +432,8 @@ class EventBusSpec extends Specification {
   def "An Observable can be used to consume the value of an already-fulfilled promise"() {
 	given:
 	"a fulfilled promise"
-	def promise = Promises.success('test')
-	def promise2 = Promises.<Object> ready()
+	def promise = Promise.success('test')
+	def promise2 = Promise.<Object> ready()
 	def bus = EventBus.create()
 
 	when:

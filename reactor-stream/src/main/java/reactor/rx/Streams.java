@@ -31,7 +31,6 @@ import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.Mono;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.Timers;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.FluxZip;
@@ -167,20 +166,20 @@ public class Streams {
 	}
 
 	/**
-	 * @see Publishers#create(Consumer, Function)
+	 * @see Flux#create(Consumer, Function)
 	 */
 	public static <T, C> Stream<T> create(Consumer<SubscriberWithContext<T, C>> request,
 			Function<Subscriber<? super T>, C> onSubscribe) {
-		return wrap(Publishers.create(request, onSubscribe));
+		return wrap(Flux.create(request, onSubscribe));
 	}
 
 	/**
-	 * @see Publishers#create(Consumer, Function, Consumer)
+	 * @see Flux#create(Consumer, Function, Consumer)
 	 */
 	public static <T, C> Stream<T> create(Consumer<SubscriberWithContext<T, C>> request,
 			Function<Subscriber<? super T>, C> onSubscribe,
 			Consumer<C> onTerminate) {
-		return wrap(Publishers.create(request, onSubscribe, onTerminate));
+		return wrap(Flux.create(request, onSubscribe, onTerminate));
 	}
 
 	/**

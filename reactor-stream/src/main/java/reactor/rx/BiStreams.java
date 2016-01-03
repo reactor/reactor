@@ -58,7 +58,7 @@ public class BiStreams extends Streams {
 	public static <KEY, VALUE> Stream<Tuple2<KEY, VALUE>> reduceByKey(Publisher<Tuple2<KEY, VALUE>> publisher,
 	                                                                  StreamKv<KEY, VALUE> mapStream,
 	                                                                  BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		return reduceByKey(publisher, mapStream, mapStream, accumulator);
+		return reduceByKey(publisher, mapStream.getStore(), mapStream, accumulator);
 	}
 
 	/**
@@ -120,7 +120,7 @@ public class BiStreams extends Streams {
 	public static <KEY, VALUE> Stream<Tuple2<KEY, VALUE>> scanByKey(Publisher<Tuple2<KEY, VALUE>> publisher,
 	                                                                StreamKv<KEY, VALUE> mapStream,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		return scanByKey(publisher, mapStream, mapStream, accumulator);
+		return scanByKey(publisher, mapStream.getStore(), mapStream, accumulator);
 	}
 
 	/**

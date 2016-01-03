@@ -24,7 +24,6 @@ import reactor.bus.selector.Selectors;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.Consumer;
 import reactor.rx.Promise;
-import reactor.rx.Promises;
 import reactor.rx.broadcast.Broadcaster;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -42,7 +41,7 @@ public class AwaitTests extends AbstractReactorTest {
 		  64)).get();
 
 		for (int i = 0; i < 10000; i++) {
-			final Promise<String> deferred = Promises.<String>ready(timer);
+			final Promise<String> deferred = Promise.<String>ready(timer);
 
 			innerReactor.schedule(new Consumer() {
 
