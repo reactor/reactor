@@ -17,7 +17,6 @@
 package reactor.rx;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Queue;
@@ -42,7 +41,7 @@ import reactor.core.publisher.FluxLog;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxZip;
-import reactor.core.publisher.MonoFirst;
+import reactor.core.publisher.MonoNext;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
@@ -897,7 +896,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.5
 	 */
 	public final Mono<O> first() {
-		return new MonoFirst<>(this);
+		return new MonoNext<>(this);
 	}
 
 	/**
@@ -2617,9 +2616,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		@SuppressWarnings("unchecked")
 		public void subscribe(Subscriber s) {
 			try {
-				Processor<O, O> processor = processorProvider.publishOn();
+				Processor<O, O> processor = processorProvider.publishOn(source);
 				processor.subscribe(s);
-				source.subscribe(processor);
 			}
 			catch (Throwable t) {
 				s.onError(t);

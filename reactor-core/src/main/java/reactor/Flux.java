@@ -19,7 +19,6 @@ package reactor;
 import java.util.Iterator;
 import java.util.logging.Level;
 
-import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -38,7 +37,7 @@ import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxSession;
 import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.ForEachSequencer;
-import reactor.core.publisher.MonoFirst;
+import reactor.core.publisher.MonoNext;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoSingle;
 import reactor.core.publisher.convert.DependencyUtils;
@@ -770,7 +769,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Flux<T> dispatchOn(ProcessorGroup group) {
-		return new FluxDeferProcessor<>(this, ((ProcessorGroup<T>) group).dispatchOn());
+		return new FluxProcessorGroup<>(this, false, ((ProcessorGroup<T>) group));
 	}
 
 	/**
@@ -948,7 +947,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	public final Mono<T> next() {
-		return new MonoFirst<>(this);
+		return new MonoNext<>(this);
 	}
 
 	/**
@@ -993,7 +992,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Flux<T> publishOn(ProcessorGroup group) {
-		return new FluxDeferProcessor<>(this, ((ProcessorGroup<T>) group).publishOn());
+		return new FluxProcessorGroup<>(this, true, ((ProcessorGroup<T>) group));
 	}
 
 	/**
@@ -1135,19 +1134,27 @@ public abstract class Flux<T> implements Publisher<T> {
 		}
 	}
 
-	static final class FluxDeferProcessor<I, O> extends FluxBarrier<I, O> implements ReactiveState.FeedbackLoop{
+	static final class FluxProcessorGroup<I> extends FluxBarrier<I, I> implements ReactiveState.FeedbackLoop{
 
-		private final Processor<? super I, ? extends O> processor;
+		private final ProcessorGroup<I> processor;
+		private final boolean publishOn;
 
-		public FluxDeferProcessor(Publisher<? extends I> source, Processor<? super I, ? extends O> processor) {
+		public FluxProcessorGroup(Publisher<? extends I> source, boolean publishOn, ProcessorGroup<I> processor) {
 			super(source);
 			this.processor = processor;
+			this.publishOn = publishOn;
 		}
 
 		@Override
-		public void subscribe(Subscriber<? super O> s) {
-			processor.subscribe(s);
-			source.subscribe(processor);
+		public void subscribe(Subscriber<? super I> s) {
+			if(publishOn) {
+				processor.publishOn(source)
+				         .subscribe(s);
+			}
+			else{
+				processor.dispatchOn(source)
+				         .subscribe(s);
+			}
 		}
 
 		@Override

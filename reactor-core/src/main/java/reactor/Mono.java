@@ -20,14 +20,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.concurrent.locks.LockSupport;
 
-import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.ProcessorGroup;
@@ -38,7 +37,7 @@ import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.MonoCallable;
 import reactor.core.publisher.MonoEmpty;
 import reactor.core.publisher.MonoError;
-import reactor.core.publisher.MonoFirst;
+import reactor.core.publisher.MonoNext;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoJust;
 import reactor.core.subscriber.SubscriberBarrier;
@@ -151,7 +150,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 		if (Mono.class.isAssignableFrom(source.getClass())) {
 			return (Mono<T>) source;
 		}
-		return new MonoFirst<>(source);
+		return new MonoNext<>(source);
 	}
 
 	/**
@@ -350,7 +349,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Mono<T> dispatchOn(ProcessorGroup group) {
-		return new MonoDeferProcessor<>(this, ((ProcessorGroup<T>) group).dispatchOn());
+		return new MonoProcessorGroup<>(this, false, ((ProcessorGroup<T>) group));
 	}
 
 	/**
@@ -433,7 +432,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	/**
 	 * Block until a next signal is received, will return null if onComplete, T if onNext, throw a
 	 * ReactorFatalException if checked error or origin RuntimeException if unchecked.
-	 * If the default timeout {@link #DEFAULT_TIMEOUT} has elapsed, a TimeoutException will be thrown.
+	 * If the default timeout {@link #DEFAULT_TIMEOUT} has elapsed, a CancelException will be thrown.
 	 *
 	 * @return T the result
 	 */
@@ -444,7 +443,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	/**
 	 * Block until a next signal is received, will return null if onComplete, T if onNext, throw a
 	 * ReactorFatalException if checked error or origin RuntimeException if unchecked.
-	 * If the default timeout {@link #DEFAULT_TIMEOUT} has elapsed, a TimeoutException will be thrown.
+	 * If the default timeout {@link #DEFAULT_TIMEOUT} has elapsed, a CancelException will be thrown.
 	 *
 	 * Note that each get() will subscribe a new single (MonoResult) subscriber, in other words, the result might
 	 * miss signal from hot publishers.
@@ -496,7 +495,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Mono<T> publishOn(ProcessorGroup group) {
-		return new MonoDeferProcessor<>(this, ((ProcessorGroup<T>) group).publishOn());
+		return new MonoProcessorGroup<>(this, true, ((ProcessorGroup<T>) group));
 	}
 
 	/**
@@ -583,19 +582,27 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 		}
 	}
 
-	static final class MonoDeferProcessor<I, O> extends MonoBarrier<I, O> implements FeedbackLoop {
+	static final class MonoProcessorGroup<I> extends MonoBarrier<I, I> implements FeedbackLoop {
 
-		private final Processor<? super I, ? extends O> processor;
+		private final ProcessorGroup<I> processor;
+		private final boolean publishOn;
 
-		public MonoDeferProcessor(Publisher<? extends I> source, Processor<? super I, ? extends O> processor) {
+		public MonoProcessorGroup(Publisher<? extends I> source, boolean publishOn, ProcessorGroup<I> processor) {
 			super(source);
+			this.publishOn = publishOn;
 			this.processor = processor;
 		}
 
 		@Override
-		public void subscribe(Subscriber<? super O> s) {
-			processor.subscribe(s);
-			source.subscribe(processor);
+		public void subscribe(Subscriber<? super I> s) {
+			if(publishOn) {
+				processor.publishOn(source)
+				         .subscribe(s);
+			}
+			else{
+				processor.dispatchOn(source)
+				         .subscribe(s);
+			}
 		}
 
 		@Override
@@ -694,7 +701,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 						}
 					}
 					if(delay < System.currentTimeMillis()){
-						throw ReactorFatalException.create(new TimeoutException());
+						throw CancelException.get();
 					}
 					LockSupport.parkNanos(1L);
 				}

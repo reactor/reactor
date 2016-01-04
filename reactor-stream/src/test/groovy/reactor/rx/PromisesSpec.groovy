@@ -24,6 +24,7 @@ import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 /**
  * @author Stephane Maldini
@@ -470,17 +471,15 @@ class PromisesSpec extends Specification {
   def "A combined promise through 'any' is fulfilled with the first component result when using asynchronously"() {
 	given: "two fulfilled promises"
 	def ioGroup = Processors.ioGroup("promise-task", 8, 2)
-	def promise1 = Promise.prepare()
-	def promise2 = Mono.fromCallable { sleep(250); 2 }.publishOn(ioGroup)
-	Mono.fromCallable { sleep(10000); 1 }.publishOn(ioGroup)
+	def promise1 = Mono.fromCallable { sleep(10000); 1 }.publishOn(ioGroup)
+	def promise2 = Mono.fromCallable { sleep(325); 2 }.publishOn(ioGroup)
+
 
 	when: "a combined promise is first created"
-	def combined = Promise.prepare()
-	Mono.any(promise1, promise2).subscribe(combined)
+	def combined =  Mono.any(promise1, promise2).to(Promise.prepare())
 
 	then: "it is fulfilled"
-	combined.awaitSuccess(325, TimeUnit.MILLISECONDS)
-	!promise1.complete
+	combined.awaitSuccess(3205, TimeUnit.MILLISECONDS)
 	combined.get() == 2
   }
 
@@ -636,13 +635,13 @@ class PromisesSpec extends Specification {
 	and: "setting a value"
 	p1.onNext '1'
 	println "emitted"
-	def v = p2.get(1, TimeUnit.SECONDS)
+	 p2.get(1, TimeUnit.SECONDS)
 
 	then: 'No value'
-	!v
+	thrown CancelException
 
 	when: 'polling undefinitely'
-	v = p2.get()
+	def v = p2.get()
 
 	then: 'Value!'
 	v

@@ -28,9 +28,9 @@ import org.reactivestreams.Subscriber;
  * {@see https://github.com/reactor/reactive-streams-commons}
  * @since 2.5
  */
-public final class MonoFirst<T> extends reactor.Mono.MonoBarrier<T, T> {
+public final class MonoNext<T> extends reactor.Mono.MonoBarrier<T, T> {
 
-	public MonoFirst(Publisher<? extends T> source) {
+	public MonoNext(Publisher<? extends T> source) {
 		super(source);
 	}
 

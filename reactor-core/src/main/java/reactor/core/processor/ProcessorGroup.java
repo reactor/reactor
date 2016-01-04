@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
@@ -223,37 +224,32 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	}
 
 	/**
-	 * @param clazz
-	 * @param <V>
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public <V> FluxProcessor<V, V> dispatchOn(Class<V> clazz) {
-		return (FluxProcessor<V, V>) dispatchOn();
+	public final FluxProcessor<T, T> dispatchOn() {
+		return dispatchOn(null);
+	}
+	/**
+	 * @return
+	 */
+	public FluxProcessor<T, T> dispatchOn(Publisher<? extends T> source) {
+		return createBarrier(false, source);
 	}
 
 	/**
 	 * @return
 	 */
-	public FluxProcessor<T, T> dispatchOn() {
-		return createBarrier(false);
+	public final FluxProcessor<T, T> publishOn() {
+		return publishOn(null);
 	}
 
 	/**
-	 * @param clazz
-	 * @param <V>
+	 *
+	 * @param source
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public <V> FluxProcessor<V, V> publishOn(Class<V> clazz) {
-		return (FluxProcessor<V, V>) publishOn();
-	}
-
-	/**
-	 * @return
-	 */
-	public FluxProcessor<T, T> publishOn() {
-		return createBarrier(true);
+	public FluxProcessor<T, T> publishOn(Publisher<? extends T> source) {
+		return createBarrier(true, source);
 	}
 
 	/**
@@ -264,7 +260,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return SYNC_DISPATCHER;
 		}
 
-		return createBarrier(false);
+		return createBarrier(false, null);
 	}
 
 	/**
@@ -278,7 +274,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return (BiConsumer<V, Consumer<? super V>>) SYNC_DATA_DISPATCHER;
 		}
 
-		return createBarrier(false);
+		return createBarrier(false, null);
 	}
 
 	/**
@@ -290,7 +286,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return (BiConsumer<T, Consumer<? super T>>) SYNC_DATA_DISPATCHER;
 		}
 
-		return createBarrier(false);
+		return createBarrier(false, null);
 	}
 
 	/**
@@ -301,7 +297,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return SYNC_EXECUTOR;
 		}
 
-		return createBarrier(false);
+		return createBarrier(false, null);
 	}
 
 	public boolean awaitAndShutdown() {
@@ -468,7 +464,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		REF_COUNT.incrementAndGet(this);
 	}
 
-	private <Y> ProcessorBarrier<Y> createBarrier(boolean forceWork) {
+	private <Y> ProcessorBarrier<Y> createBarrier(boolean forceWork, Publisher<? extends Y> source) {
 
 		if (processor == null) {
 			return new SyncProcessorBarrier<>(this);
@@ -481,10 +477,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		incrementReference();
 
 		if (forceWork || concurrency > 1) {
-			return new WorkProcessorBarrier<>(this);
+			return new WorkProcessorBarrier<>(this, source);
 		}
 
-		return new ProcessorBarrier<>(true, this);
+		return new ProcessorBarrier<>(true, this, source);
 	}
 
 	/**
@@ -547,6 +543,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			           Runnable {
 
 		protected final ProcessorGroup service;
+		protected final Publisher<? extends V> source;
 
 		private final RingBuffer<RingBuffer.Slot<V>> emitBuffer;
 		private final Sequence                       pollCursor;
@@ -574,8 +571,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 		protected Subscriber<? super V> subscriber;
 
-		public ProcessorBarrier(boolean buffer, final ProcessorGroup service) {
+		public ProcessorBarrier(boolean buffer, final ProcessorGroup service,
+				 final Publisher<? extends V> source ) {
 			this.service = service;
+			this.source = source;
 			if (!buffer) {
 				emitBuffer = null;
 				pollCursor = null;
@@ -636,7 +635,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 				else {
 					set = false;
 				}
-				subscribed = this.upstreamSubscription != null;
+				subscribed = source != null || this.upstreamSubscription != null;
 			}
 
 			if (!set) {
@@ -659,7 +658,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 				}
 			}
 
-			if (subscriber != null) {
+			if (subscriber != null && source == null) {
 				doStart(subscriber);
 			}
 		}
@@ -712,6 +711,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			RUNNING.incrementAndGet(this);
 
 			subscriber.onSubscribe(this);
+			if(source != null){
+				source.subscribe(this);
+			}
 			service.processor.onNext(new Runnable() {
 				@Override
 				public void run() {
@@ -984,8 +986,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 	private static final class WorkProcessorBarrier<V> extends ProcessorBarrier<V> {
 
-		public WorkProcessorBarrier(ProcessorGroup service) {
-			super(false, service);
+		public WorkProcessorBarrier(ProcessorGroup service, Publisher<? extends V> source) {
+			super(false, service, source);
 		}
 
 		@Override
@@ -994,6 +996,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 				@Override
 				public void run() {
 					Subscriber subscriber = WorkProcessorBarrier.this.subscriber;
+					if(source != null) {
+						source.subscribe(WorkProcessorBarrier.this);
+					}
+
 					if(subscriber != null) {
 						subscriber.onSubscribe(WorkProcessorBarrier.this);
 					}
@@ -1066,7 +1072,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V>{
 
 		public SyncProcessorBarrier(ProcessorGroup service) {
-			super(false, service);
+			super(false, service, null);
 		}
 
 		@Override
@@ -1289,13 +1295,13 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
-		public FluxProcessor<T, T> dispatchOn() {
-			return next().dispatchOn();
+		public FluxProcessor<T, T> dispatchOn(Publisher<? extends T> source) {
+			return next().dispatchOn(source);
 		}
 
 		@Override
-		public FluxProcessor<T, T> publishOn() {
-			return next().publishOn();
+		public FluxProcessor<T, T> publishOn(Publisher<? extends T> source) {
+			return next().publishOn(source);
 		}
 
 		@Override
