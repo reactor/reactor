@@ -17,6 +17,7 @@
 package reactor;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -370,18 +371,8 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 *
 	 * @return
 	 */
-	public final Mono<T> doOnSuccess(Runnable onSuccess) {
-		return new MonoSuccess<>(this, onSuccess, null);
-	}
-	/**
-	 * Triggered when the {@link Mono} completes successfully.
-	 *
-	 * @param onSuccess
-	 *
-	 * @return
-	 */
 	public final Mono<T> doOnSuccess(Consumer<? super T> onSuccess) {
-		return new MonoSuccess<>(this, null, onSuccess);
+		return new MonoSuccess<>(this, onSuccess);
 	}
 
 	/**
@@ -520,6 +511,19 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 		return new MonoBarrier<>(flatMap(transformer));
 	}
 
+	/**
+	 * Subscribe the {@link Mono} with the givne {@link Subscriber} and return it.
+	 *
+	 * @param subscriber
+	 * @param <E>
+	 *
+	 * @return
+	 */
+	public final <E extends Subscriber<? super T>> E to(E subscriber) {
+		subscribe(subscriber);
+		return subscriber;
+	}
+
 	@Override
 	public final long getCapacity() {
 		return 1L;
@@ -607,18 +611,16 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 
 	static final class MonoSuccess<I> extends MonoBarrier<I, I> implements FeedbackLoop{
 
-		private final Runnable onComplete;
 		private final Consumer<? super I> onSuccess;
 
-		public MonoSuccess(Publisher<? extends I> source, Runnable onComplete, Consumer<? super I> onSuccess) {
+		public MonoSuccess(Publisher<? extends I> source, Consumer<? super I> onSuccess) {
 			super(source);
-			this.onComplete = onComplete;
-			this.onSuccess = onSuccess;
+			this.onSuccess = Objects.requireNonNull(onSuccess);
 		}
 
 		@Override
 		public void subscribe(Subscriber<? super I> s) {
-			source.subscribe(new MonoSuccessBarrier<>(s, onComplete, onSuccess));
+			source.subscribe(new MonoSuccessBarrier<>(s, onSuccess));
 		}
 
 		@Override
@@ -628,27 +630,24 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 
 		@Override
 		public Object delegateOutput() {
-			return onComplete;
+			return null;
 		}
 
 		private static final class MonoSuccessBarrier<I> extends SubscriberBarrier<I, I> {
-			private final Runnable onComplete;
 			private final Consumer<? super I> onSuccess;
 
-			public MonoSuccessBarrier(Subscriber<? super I> s, Runnable onComplete, Consumer<? super I> onSuccess) {
+			public MonoSuccessBarrier(Subscriber<? super I> s, Consumer<? super I> onSuccess) {
 				super(s);
-				this.onComplete = onComplete;
 				this.onSuccess = onSuccess;
 			}
 
 			@Override
 			protected void doComplete() {
-				if(onComplete != null){
-					onComplete.run();
+				if(upstream() == null){
+					return;
 				}
-				if(onSuccess != null){
-					onSuccess.accept(null);
-				}
+				onSuccess.accept(null);
+				subscriber.onComplete();
 			}
 
 			@Override
@@ -658,12 +657,9 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 					return;
 				}
 				cancel();
-				if(onComplete != null){
-					onComplete.run();
-				}
-				if(onSuccess != null){
-					onSuccess.accept(t);
-				}
+				onSuccess.accept(t);
+				subscriber.onNext(t);
+				subscriber.onComplete();
 			}
 		}
 	}

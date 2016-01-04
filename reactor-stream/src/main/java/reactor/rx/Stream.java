@@ -477,7 +477,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Flux.concat(Flux.fromIterable(Arrays.asList(Stream.this, publisher)))
+				Flux.concat(Stream.this, publisher)
 				    .subscribe(s);
 			}
 		};
@@ -958,7 +958,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			}
 		}
 
-		final Publisher<V> mergedStream = Flux.merge(Flux.fromIterable(publisherList));
+		final Publisher<V> mergedStream = Flux.merge(publisherList);
 
 		return new StreamBarrier<O, V>(this) {
 			@Override
@@ -1191,7 +1191,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Flux.merge(Flux.fromIterable(Arrays.asList(Stream.this, publisher)))
+				Flux.merge(Stream.this, publisher)
 				    .subscribe(s);
 			}
 		};

@@ -44,7 +44,7 @@ public class MonoTests {
 			})
 			    .publishOn(Processors.ioGroup())
 			    .doOnError(t -> latch1.countDown())
-			    .doOnSuccess(latch2::countDown)
+			    .doOnSuccess(v -> latch2.countDown())
 			    .get();
 		}
 		catch (RuntimeException re){

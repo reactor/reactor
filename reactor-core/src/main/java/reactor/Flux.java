@@ -954,15 +954,16 @@ public abstract class Flux<T> implements Publisher<T> {
 
 	/**
 	 *
-	 * {@code flux.process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 * {@code flux.to(Processors.queue()).subscribe(Subscribers.unbounded()) }
 	 *
 	 * @param processor
 	 * @param <V>
 	 *
 	 * @return
 	 */
-	public final <V> Flux<V> process(Processor<? super T, ? extends V> processor) {
-		return new FluxDeferProcessor<>(this, processor);
+	public final <E extends Subscriber<? super T>> E to(E subscriber) {
+		subscribe(subscriber);
+		return subscriber;
 	}
 
 	/**
