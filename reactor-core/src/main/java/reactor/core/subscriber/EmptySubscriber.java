@@ -13,16 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.core.subscriber;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-/**
- * {@see https//github.com/reactor/reactive-streams-commons}
- * @since 2.5
- */
 public enum EmptySubscriber implements Subscriber<Object> {
 	INSTANCE;
 

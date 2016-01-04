@@ -145,7 +145,7 @@ public abstract class FluxFactory implements ReactiveState {
 				subscriber.onComplete();
 			}
 			catch (Throwable throwable) {
-				MonoError.<T>create(throwable).subscribe(subscriber);
+				EmptySubscription.error(subscriber, throwable);
 			}
 		}
 

@@ -32,7 +32,6 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.publisher.FluxFactory;
-import reactor.core.publisher.MonoError;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.NamedDaemonThreadFactory;
@@ -639,7 +638,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 				FluxFactory.create(sequencer, sequencer).subscribe(subscriber);
 			}
 			else{
-				MonoError.<E>create(t).subscribe(subscriber);
+				EmptySubscription.error(subscriber, t);
 			}
 		}
 	}
@@ -830,9 +829,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		public void run() {
 			try {
 				if (!running.compareAndSet(false, true)) {
-					MonoError.<T>create(
-							new IllegalStateException("Thread is already running"))
-					          .subscribe(subscriber);
+					EmptySubscription.error(subscriber, new IllegalStateException("Thread is already running"));
 					return;
 				}
 

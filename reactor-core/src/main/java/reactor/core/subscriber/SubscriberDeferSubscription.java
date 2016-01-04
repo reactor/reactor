@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.core.subscriber;
 
 import java.util.Objects;
@@ -24,17 +23,16 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.subscription.CancelledSubscription;
 import reactor.core.support.BackpressureUtils;
+import reactor.core.support.ReactiveState;
 
 /**
  * Arbitrates the requests and cancellation for a Subscription that may be set onSubscribe once only.
  * <p>
  * Note that {@link #request(long)} doesn't validate the amount.
- * <p>
- * {@see https//github.com/reactor/reactive-streams-commons}
- *
- * @since 2.5
  */
-public class SubscriberDeferSubscription<I, O> implements Subscription, Subscriber<I> {
+public class SubscriberDeferSubscription<I, O>
+		implements Subscription, Subscriber<I>, ReactiveState.DownstreamDemand, ReactiveState.ActiveUpstream,
+		           ReactiveState.ActiveDownstream, ReactiveState.Downstream, ReactiveState.Upstream {
 
 	protected final Subscriber<? super O> subscriber;
 
@@ -146,6 +144,7 @@ public class SubscriberDeferSubscription<I, O> implements Subscription, Subscrib
 	 *
 	 * @return true if this arbiter has been cancelled
 	 */
+	@Override
 	public final boolean isCancelled() {
 		return s == CancelledSubscription.INSTANCE;
 	}
@@ -157,8 +156,29 @@ public class SubscriberDeferSubscription<I, O> implements Subscription, Subscrib
 	 *
 	 * @return true if a subscription has been set or the arbiter has been cancelled
 	 */
-	public final boolean hasSubscription() {
+	@Override
+	public final boolean isStarted() {
 		return s != null;
+	}
+
+	@Override
+	public final boolean isTerminated() {
+		return isCancelled();
+	}
+
+	@Override
+	public final Subscriber<? super O> downstream() {
+		return subscriber;
+	}
+
+	@Override
+	public long requestedFromDownstream() {
+		return requested;
+	}
+
+	@Override
+	public Subscription upstream() {
+		return s;
 	}
 
 	@Override

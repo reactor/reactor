@@ -13,16 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.core.publisher;
 
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
+import reactor.core.support.ReactiveState;
 
 /**
  * Emits the contents of a wrapped (shared) array.
@@ -31,11 +34,11 @@ import reactor.core.support.BackpressureUtils;
  */
 
 /**
- * {@see https://github.com/reactor/reactive-streams-commons}
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
  *
  * @since 2.5
  */
-public final class FluxArray<T> extends reactor.Flux<T> {
+public final class FluxArray<T> extends reactor.Flux<T> implements ReactiveState.Factory {
 
 	final T[] array;
 
@@ -53,7 +56,8 @@ public final class FluxArray<T> extends reactor.Flux<T> {
 		s.onSubscribe(new FluxArraySubscription<>(s, array));
 	}
 
-	static final class FluxArraySubscription<T> implements Subscription {
+	static final class FluxArraySubscription<T>
+			implements Subscription, Downstream, DownstreamDemand, ActiveDownstream, LinkedUpstreams {
 
 		final Subscriber<? super T> actual;
 
@@ -164,6 +168,32 @@ public final class FluxArray<T> extends reactor.Flux<T> {
 		@Override
 		public void cancel() {
 			cancelled = true;
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return cancelled;
+		}
+
+		@Override
+		public Object downstream() {
+			return actual;
+		}
+
+		@Override
+		public long requestedFromDownstream() {
+			return requested;
+		}
+
+		@Override
+		public Iterator<?> upstreams() {
+			return array instanceof Publisher[] ? Arrays.asList(array)
+			                                            .iterator() : null;
+		}
+
+		@Override
+		public long upstreamsCount() {
+			return array instanceof Publisher[] ? array.length : -1;
 		}
 	}
 }

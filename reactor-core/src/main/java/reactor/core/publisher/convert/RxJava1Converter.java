@@ -24,7 +24,7 @@ import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.FluxJust;
-import reactor.core.publisher.MonoError;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import rx.Observable;
 import rx.Producer;
@@ -77,8 +77,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 					obs.unsafeSubscribe(new RxSubscriberToRS(s));
 				}
 				catch (Throwable t) {
-					MonoError.create(t)
-					         .subscribe(s);
+					EmptySubscription.error(s, t);
 				}
 			}
 		};

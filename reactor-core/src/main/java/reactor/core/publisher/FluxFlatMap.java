@@ -104,7 +104,7 @@ public final class FluxFlatMap<T, V> extends Flux.FluxBarrier<T, V> {
 				}
 			}
 			catch (Throwable e) {
-				MonoError.<V>create(e).subscribe(s);
+				EmptySubscription.error(s, e);
 				return;
 			}
 		}

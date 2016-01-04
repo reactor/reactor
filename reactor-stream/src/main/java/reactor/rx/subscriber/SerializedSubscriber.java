@@ -13,263 +13,362 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.rx.subscriber;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 
 /**
- * Enforces single-threaded, serialized, ordered execution of {@link #onNext}, {@link #onComplete},
- * {@link #onError}, {@link #request} and {@link #cancel}.
+ * Subscriber that makes sure signals are delivered sequentially in case the onNext, onError or onComplete methods are
+ * called concurrently.
  * <p>
- * When multiple threads are emitting and/or notifying they will be serialized by:
- * </p><ul>
- * <li>Allowing only one thread at a time to emit</li>
- * <li>Adding notifications to a queue if another thread is already emitting</li>
- * <li>Not holding any locks or blocking any threads while emitting</li>
- * </ul>
+ * <p>
+ * The implementation uses {@code synchronized (this)} to ensure mutual exclusion.
+ * <p>
+ * <p>
+ * Note that the class implements Subscription to save on allocation.
  *
- * @param <T> the type of items expected to be observed by the {@code Observer}
- *            <p>
- *            Port from RxJava's SerializedObserver applied to Reactive Stream
+ * @param <T> the value type
  */
-public class SerializedSubscriber<T> implements Subscriber<T>, Subscription, ReactiveState.Bounded,
-                                                ReactiveState.Upstream, ReactiveState.Downstream {
-	private final Subscriber<? super T> delegate;
+public final class SerializedSubscriber<T>
+		implements Subscriber<T>, Subscription, ReactiveState.ActiveUpstream, ReactiveState.Downstream,
+		           ReactiveState.ActiveDownstream, ReactiveState.Upstream, ReactiveState.Trace, ReactiveState.Buffering,
+		           ReactiveState.FailState {
 
-	private boolean emitting   = false;
-	private boolean terminated = false;
-	private FastList     queue;
-	private Subscription subscription;
+	final Subscriber<? super T> actual;
 
-	private static final int    MAX_DRAIN_ITERATION = Integer.MAX_VALUE;
-	private static final Object NULL_SENTINEL       = new Object();
-	private static final Object COMPLETE_SENTINEL   = new Object();
+	boolean emitting;
 
-	static final class FastList {
-		Object[] array;
-		int      size;
+	boolean missed;
 
-		public void add(Object o) {
-			int s = size;
-			Object[] a = array;
-			if (a == null) {
-				a = new Object[16];
-				array = a;
-			} else if (s == a.length) {
-				Object[] array2 = new Object[s + (s >> 2)];
-				System.arraycopy(a, 0, array2, 0, s);
-				a = array2;
-				array = a;
-			}
-			a[s] = o;
-			size = s + 1;
-		}
+	volatile boolean done;
+
+	volatile boolean cancelled;
+
+	LinkedArrayNode<T> head;
+
+	LinkedArrayNode<T> tail;
+
+	Throwable error;
+
+	Subscription s;
+
+	/**
+	 * Safely gate a subscriber subject concurrent Reactive Stream signals, thus serializing as a single sequence. Note
+	 * that serialization uses Thread Stealing and is vulnerable to cpu starving issues.
+	 *
+	 * @param actual the subscriber to gate
+	 * @param <T>
+	 *
+	 * @return a safe subscriber
+	 */
+	public static <T> Subscriber<T> create(Subscriber<T> actual) {
+		return new SerializedSubscriber<>(actual);
+	}
+
+	public SerializedSubscriber(Subscriber<? super T> actual) {
+		this.actual = actual;
 	}
 
 	@Override
-	public Subscriber<? super T> downstream() {
-		return delegate;
-	}
+	public void onSubscribe(Subscription s) {
+		if (BackpressureUtils.validate(this.s, s)) {
+			this.s = s;
 
-	@Override
-	public Object upstream() {
-		return subscription;
-	}
-
-	private static final class ErrorSentinel {
-		final Throwable e;
-
-		ErrorSentinel(Throwable e) {
-			this.e = e;
-		}
-	}
-
-	public static <T> SerializedSubscriber<T> create(Subscriber<? super T> s) {
-		return new SerializedSubscriber<>(s);
-	}
-
-	private SerializedSubscriber(Subscriber<? super T> s) {
-		this.delegate = s;
-	}
-
-	@Override
-	public void onSubscribe(final Subscription s) {
-		this.subscription = s;
-		delegate.onSubscribe(this);
-	}
-
-	@Override
-	public void onComplete() {
-		FastList list;
-		synchronized (this) {
-			if (terminated) {
-				return;
-			}
-			terminated = true;
-			if (emitting) {
-				if (queue == null) {
-					queue = new FastList();
-				}
-				queue.add(COMPLETE_SENTINEL);
-				return;
-			}
-			emitting = true;
-			list = queue;
-			queue = null;
-		}
-		drainQueue(list);
-		delegate.onComplete();
-	}
-
-	@Override
-	public void onError(final Throwable e) {
-		//TODO throw if fatal ?;
-		FastList list;
-		synchronized (this) {
-			if (terminated) {
-				return;
-			}
-			if (emitting) {
-				if (queue == null) {
-					queue = new FastList();
-				}
-				queue.add(new ErrorSentinel(e));
-				return;
-			}
-			emitting = true;
-			list = queue;
-			queue = null;
-		}
-		drainQueue(list);
-		delegate.onError(e);
-		synchronized (this) {
-			emitting = false;
+			actual.onSubscribe(this);
 		}
 	}
 
 	@Override
 	public void onNext(T t) {
-		FastList list;
+		serOnNext(t);
+	}
 
-		synchronized (this) {
-			if (terminated) {
-				return;
-			}
-			if (emitting) {
-				if (queue == null) {
-					queue = new FastList();
-				}
-				queue.add(t != null ? t : NULL_SENTINEL);
-				// another thread is emitting so we add to the queue and return
-				return;
-			}
-			// we can emit
-			emitting = true;
-			// reference to the list to drain before emitting our value
-			list = queue;
-			queue = null;
-		}
+	@Override
+	public void onError(Throwable t) {
+		serOnError(t);
+	}
 
-		// we only get here if we won the right to emit, otherwise we returned in the if(emitting) block above
-		boolean skipFinal = false;
-		try {
-			int iter = MAX_DRAIN_ITERATION;
-			do {
-				drainQueue(list);
-				if (iter == MAX_DRAIN_ITERATION) {
-					// after the first draining we emit our own value
-					delegate.onNext(t);
-				}
-				--iter;
-				if (iter > 0) {
-					synchronized (this) {
-						list = queue;
-						queue = null;
-						if (list == null) {
-							emitting = false;
-							skipFinal = true;
-							return;
-						}
-					}
-				}
-			} while (iter > 0);
-		} finally {
-			if (!skipFinal) {
-				synchronized (this) {
-					if (terminated) {
-						list = queue;
-						queue = null;
-					} else {
-						emitting = false;
-						list = null;
-					}
-				}
-			}
-		}
-
-		// this will only drain if terminated (done here outside of synchronized block)
-		drainQueue(list);
+	@Override
+	public void onComplete() {
+		serOnComplete();
 	}
 
 	@Override
 	public void request(long n) {
-		if (subscription != null) {
-			subscription.request(n);
-		}
+		s.request(n);
 	}
 
 	@Override
 	public void cancel() {
-		if (subscription != null) {
-			subscription.cancel();
+		cancelled = true;
+		s.cancel();
+	}
+
+	public void serAdd(T value) {
+		LinkedArrayNode<T> t = serGetTail();
+
+		if (t == null) {
+			t = new LinkedArrayNode<>(value);
+
+			serSetHead(t);
+			serSetTail(t);
+		}
+		else {
+			if (t.count == LinkedArrayNode.DEFAULT_CAPACITY) {
+				LinkedArrayNode<T> n = new LinkedArrayNode<>(value);
+
+				t.next = n;
+				serSetTail(n);
+			}
+			else {
+				t.array[t.count++] = value;
+			}
 		}
 	}
 
-	void drainQueue(FastList list) {
-		if (list == null || list.size == 0) {
-			return;
-		}
-		Object v;
-		for (int i = 0; i < list.size; i++) {
-			v = list.array[i];
-			if (v == null) {
-				break;
-			}
-			if (v == NULL_SENTINEL) {
-				delegate.onNext(null);
-			} else if (v == COMPLETE_SENTINEL) {
-				delegate.onComplete();
+	public void serDrainLoop(Subscriber<? super T> actual) {
+		for (; ; ) {
+
+			if (isCancelled()) {
 				return;
-			} else if (v.getClass() == ErrorSentinel.class) {
-				delegate.onError(((ErrorSentinel) v).e);
-			} else {
-				@SuppressWarnings("unchecked")
-				T t = (T) v;
-				delegate.onNext(t);
+			}
+
+			boolean d;
+			Throwable e;
+			LinkedArrayNode<T> n;
+
+			synchronized (serGuard()) {
+				if (isCancelled()) {
+					return;
+				}
+
+				if (!serIsMissed()) {
+					serSetEmitting(false);
+					return;
+				}
+
+				serSetMissed(false);
+
+				d = isTerminated();
+				e = getError();
+				n = serGetHead();
+
+				serSetHead(null);
+				serSetTail(null);
+			}
+
+			while (n != null) {
+
+				T[] arr = n.array;
+				int c = n.count;
+
+				for (int i = 0; i < c; i++) {
+
+					if (isCancelled()) {
+						return;
+					}
+
+					actual.onNext(arr[i]);
+				}
+
+				n = n.next;
+			}
+
+			if (isCancelled()) {
+				return;
+			}
+
+			if (e != null) {
+				actual.onError(e);
+				return;
+			}
+			else if (d) {
+				actual.onComplete();
+				return;
 			}
 		}
 	}
 
 	@Override
-	public String toString() {
-		FastList queue;
+	public Subscriber<? super T> downstream() {
+		return actual;
+	}
+
+	public Object serGuard() {
+		return this;
+	}
+
+	public boolean serIsEmitting() {
+		return emitting;
+	}
+
+	public void serOnComplete() {
+		if (isCancelled() || isTerminated()) {
+			return;
+		}
+
 		synchronized (this) {
-			queue = this.queue;
-			if (queue == null) return "";
-		}
-		String res = "{";
+			if (isCancelled() || isTerminated()) {
+				return;
+			}
 
-		for (Object o : queue.array) {
-			res += o + " ";
+			serSetDone(true);
+
+			if (serIsEmitting()) {
+				serSetMissed(true);
+				return;
+			}
 		}
 
-		return res + "}";
+		downstream().onComplete();
+	}
+
+	public void serOnError(Throwable e) {
+		if (isCancelled() || isTerminated()) {
+			return;
+		}
+
+		synchronized (serGuard()) {
+			if (isCancelled() || isTerminated()) {
+				return;
+			}
+
+			serSetDone(true);
+			serSetError(e);
+
+			if (serIsEmitting()) {
+				serSetMissed(true);
+				return;
+			}
+		}
+
+		downstream().onError(e);
+	}
+
+	public void serOnNext(T t) {
+		if (isCancelled() || isTerminated()) {
+			return;
+		}
+
+		synchronized (serGuard()) {
+			if (isCancelled() || isTerminated()) {
+				return;
+			}
+
+			if (serIsEmitting()) {
+				serAdd(t);
+				serSetMissed(true);
+				return;
+			}
+
+			serSetEmitting(true);
+		}
+
+		Subscriber<? super T> actual = downstream();
+
+		actual.onNext(t);
+
+		serDrainLoop(actual);
+	}
+
+	public void serSetEmitting(boolean emitting) {
+		this.emitting = emitting;
+	}
+
+	public boolean serIsMissed() {
+		return missed;
+	}
+
+	public void serSetMissed(boolean missed) {
+		this.missed = missed;
+	}
+
+	@Override
+	public boolean isCancelled() {
+		return cancelled;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return done;
+	}
+
+	public void serSetDone(boolean done) {
+		this.done = done;
+	}
+
+	@Override
+	public Throwable getError() {
+		return error;
+	}
+
+	public void serSetError(Throwable error) {
+		this.error = error;
+	}
+
+	public LinkedArrayNode<T> serGetHead() {
+		return head;
+	}
+
+	public void serSetHead(LinkedArrayNode<T> node) {
+		head = node;
+	}
+
+	public LinkedArrayNode<T> serGetTail() {
+		return tail;
+	}
+
+	public void serSetTail(LinkedArrayNode<T> node) {
+		tail = node;
+	}
+
+	@Override
+	public boolean isStarted() {
+		return s != null || !cancelled;
+	}
+
+	@Override
+	public Subscription upstream() {
+		return s;
+	}
+
+	@Override
+	public long pending() {
+		LinkedArrayNode<T> node = serGetTail();
+		if (node != null) {
+			return node.count;
+		}
+		return 0;
 	}
 
 	@Override
 	public long getCapacity() {
-		return Long.MAX_VALUE;
+		return LinkedArrayNode.DEFAULT_CAPACITY;
+	}
+
+	/**
+	 * Node in a linked array list that is only appended.
+	 *
+	 * @param <T> the value type
+	 */
+	static final class LinkedArrayNode<T> {
+
+		static final int DEFAULT_CAPACITY = 16;
+
+		final T[] array;
+		int count;
+
+		LinkedArrayNode<T> next;
+
+		@SuppressWarnings("unchecked")
+		public LinkedArrayNode(T value) {
+			array = (T[]) new Object[DEFAULT_CAPACITY];
+			array[0] = value;
+			count = 1;
+		}
 	}
 }

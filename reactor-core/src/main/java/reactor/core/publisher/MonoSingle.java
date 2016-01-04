@@ -62,7 +62,7 @@ public final class MonoSingle<T> extends reactor.Mono.MonoBarrier<T, T> {
 		source.subscribe(new MonoSingleSubscriber<>(s, defaultSupplier));
 	}
 
-	static final class MonoSingleSubscriber<T> extends SubscriberDeferScalar<T, T> {
+	static final class MonoSingleSubscriber<T> extends SubscriberDeferScalar<T, T> implements Upstream {
 
 		final Supplier<? extends T> defaultSupplier;
 
@@ -177,6 +177,20 @@ public final class MonoSingle<T> extends reactor.Mono.MonoBarrier<T, T> {
 			}
 		}
 
+		@Override
+		public boolean isTerminated() {
+			return done;
+		}
+
+		@Override
+		public Object upstream() {
+			return s;
+		}
+
+		@Override
+		public Object delegateInput() {
+			return defaultSupplier != COMPLETE_ON_EMPTY_SEQUENCE ? defaultSupplier : null;
+		}
 
 	}
 }

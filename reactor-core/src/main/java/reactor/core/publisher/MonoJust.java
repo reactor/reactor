@@ -13,14 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.core.publisher;
 
 import java.util.Objects;
 
 import org.reactivestreams.Subscriber;
-import reactor.Mono;
 import reactor.core.subscription.ScalarSubscription;
+import reactor.core.support.ReactiveState;
 import reactor.fn.Supplier;
 
 /**
@@ -28,7 +27,8 @@ import reactor.fn.Supplier;
  *
  * @since 2.5
  */
-public final class MonoJust<T> extends Mono<T> implements Supplier<T> {
+public final class MonoJust<T> extends reactor.Mono<T>
+		implements Supplier<T>, ReactiveState.Factory, ReactiveState.Upstream {
 
 	final T value;
 
@@ -46,4 +46,8 @@ public final class MonoJust<T> extends Mono<T> implements Supplier<T> {
 		s.onSubscribe(new ScalarSubscription<>(s, value));
 	}
 
+	@Override
+	public Object upstream() {
+		return value;
+	}
 }

@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.core.publisher;
 
 import java.util.Objects;
@@ -31,8 +30,7 @@ import reactor.fn.Function;
  */
 
 /**
- * {@see https://github.com/reactor/reactive-streams-commons}
- *
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
  * @since 2.5
  */
 public final class FluxResume<T> extends reactor.Flux.FluxBarrier<T, T> {
@@ -50,7 +48,7 @@ public final class FluxResume<T> extends reactor.Flux.FluxBarrier<T, T> {
 		source.subscribe(new FluxResumeSubscriber<>(s, nextFactory));
 	}
 
-	static final class FluxResumeSubscriber<T> extends SubscriberMultiSubscription<T, T> {
+	static final class FluxResumeSubscriber<T> extends SubscriberMultiSubscription<T, T> implements FeedbackLoop {
 
 		final Function<? super Throwable, ? extends Publisher<? extends T>> nextFactory;
 
@@ -106,6 +104,16 @@ public final class FluxResume<T> extends reactor.Flux.FluxBarrier<T, T> {
 			else {
 				subscriber.onError(t);
 			}
+		}
+
+		@Override
+		public Object delegateInput() {
+			return nextFactory;
+		}
+
+		@Override
+		public Object delegateOutput() {
+			return null;
 		}
 	}
 }

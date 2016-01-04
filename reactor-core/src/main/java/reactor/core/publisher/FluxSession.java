@@ -49,7 +49,7 @@ public final class FluxSession<T> extends Flux<T> implements ReactiveState.Facto
 			subscriber.onComplete();
 		}
 		catch (Throwable throwable) {
-			MonoError.<T>create(throwable).subscribe(subscriber);
+			EmptySubscription.error(subscriber, throwable);
 		}
 	}
 

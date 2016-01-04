@@ -30,7 +30,6 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.publisher.MonoError;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
@@ -641,8 +640,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			}
 
 			if (!set) {
-				MonoError.<V>create(new IllegalStateException("Shared Processors do not support multi-subscribe")).subscribe(
-						s);
+				EmptySubscription.error(subscriber, new IllegalStateException("Shared Processors do not support multi-subscribe"));
 			}
 			else if (subscribed) {
 				doStart(s);

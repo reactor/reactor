@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Flux;
 import reactor.core.subscription.EmptySubscription;
+import reactor.core.support.ReactiveState;
 
 /**
  * Represents an never publisher which only calls onSubscribe.
@@ -29,16 +29,26 @@ import reactor.core.subscription.EmptySubscription;
  */
 
 /**
- * {@see https://github.com/reactor/reactive-streams-commons}
- *
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
  * @since 2.5
  */
-public final class FluxNever extends reactor.Flux<Object> {
+public final class FluxNever extends reactor.Flux<Object>
+		implements ReactiveState.Factory, ReactiveState.ActiveUpstream {
 
 	private static final Publisher<Object> INSTANCE = new FluxNever();
 
 	private FluxNever() {
 		// deliberately no op
+	}
+
+	@Override
+	public boolean isStarted() {
+		return true;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return false;
 	}
 
 	@Override

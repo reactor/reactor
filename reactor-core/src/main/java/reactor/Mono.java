@@ -27,6 +27,7 @@ import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxPeek;
 import reactor.core.publisher.FluxZip;
+import reactor.core.publisher.MonoCallable;
 import reactor.core.publisher.MonoEmpty;
 import reactor.core.publisher.MonoError;
 import reactor.core.publisher.MonoFirst;
@@ -42,7 +43,6 @@ import reactor.fn.tuple.Tuple3;
 import reactor.fn.tuple.Tuple4;
 import reactor.fn.tuple.Tuple5;
 import reactor.fn.tuple.Tuple6;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * A Reactive Streams {@link Publisher} with basic rx operators that completes successfully by emitting an element, or
@@ -119,7 +119,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * @return
 	 */
 	public static <T> Mono<T> error(Throwable error) {
-		return MonoError.<T>create(error);
+		return new MonoError<T>(error);
 	}
 
 	/**
@@ -131,7 +131,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * @return A {@link Mono}.
 	 */
 	public static <T> Mono<T> from(Callable<? extends T> supplier) {
-		throw new NotImplementedException();
+		return new MonoCallable<>(supplier);
 	}
 
 	/**

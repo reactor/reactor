@@ -55,7 +55,6 @@ import reactor.fn.tuple.Tuple3;
 import reactor.fn.tuple.Tuple4;
 import reactor.fn.tuple.Tuple5;
 import reactor.fn.tuple.Tuple6;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * A Reactive Fluxs {@link Publisher} with basic rx operators that emits 0 to N elements, and then complete
@@ -112,8 +111,7 @@ public abstract class Flux<T> implements Publisher<T> {
 			return empty();
 		}
 
-		throw new NotImplementedException();
-		//return new FluxAmb<>(sources);
+		return new FluxAmb<>(sources);
 	}
 
 	/**

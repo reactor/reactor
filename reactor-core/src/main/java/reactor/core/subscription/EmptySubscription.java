@@ -13,21 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.core.subscription;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.support.ReactiveState;
 
 /**
  * A singleton enumeration that represents a no-op Subscription instance that can be freely given out to clients.
- * <p>
- * {@see https//github.com/reactor/reactive-streams-commons}
- *
- * @since 2.5
  */
-public enum EmptySubscription implements Subscription, ReactiveState.Trace {
+public enum EmptySubscription implements Subscription {
 	INSTANCE;
 
 	@Override
