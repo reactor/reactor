@@ -938,7 +938,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * @return
 	 */
-	public final Flux<T> onErrorResumeNext(Function<Throwable, ? extends Publisher<? extends T>> fallbackFunction) {
+	public final Flux<T> onErrorResumeWith(Function<Throwable, ? extends Publisher<? extends T>> fallbackFunction) {
 		return new FluxResume<>(this, fallbackFunction);
 	}
 
@@ -983,7 +983,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	public final Flux<T> switchOnError(final Publisher<? extends T> fallback) {
-		return onErrorResumeNext(new Function<Throwable, Publisher<? extends T>>() {
+		return onErrorResumeWith(new Function<Throwable, Publisher<? extends T>>() {
 			@Override
 			public Publisher<? extends T> apply(Throwable throwable) {
 				return fallback;
