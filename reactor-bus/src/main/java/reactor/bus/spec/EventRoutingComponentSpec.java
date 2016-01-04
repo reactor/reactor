@@ -207,7 +207,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 			processor = Processors.blackbox(processor, new Function<Processor<Event<?>, Event<?>>, Publisher<Event<?>>>() {
 						@Override
 						public Publisher<Event<?>> apply(Processor<Event<?>, Event<?>> p) {
-							return Flux.wrap(p).log("reactor.bus.log");
+							return Flux.from(p).log("reactor.bus.log");
 						}
 					});
 		}

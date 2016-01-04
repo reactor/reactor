@@ -956,8 +956,8 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * {@code flux.to(Processors.queue()).subscribe(Subscribers.unbounded()) }
 	 *
-	 * @param processor
-	 * @param <V>
+	 * @param subscriber
+	 * @param <E>
 	 *
 	 * @return
 	 */
@@ -1061,7 +1061,7 @@ public abstract class Flux<T> implements Publisher<T> {
 		@Override
 		public String getName() {
 			return ReactiveStateUtils.getName(getClass().getSimpleName())
-			                         .replaceAll("Flux|Flux|Operator", "");
+			                         .replaceAll("Flux|Operator", "");
 		}
 
 		/**

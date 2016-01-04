@@ -228,10 +228,11 @@ public final class FluxZip<TUPLE extends Tuple, V> extends Flux<V>
 			int i;
 			ZipState<?> inner;
 			Publisher pub;
+			Object v;
 			for (i = 0; i < subscribers.length; i++) {
 				pub = sources[i];
-				if (pub instanceof Supplier) {
-					inner = new ScalarState(((Supplier<?>) pub).get());
+				if (pub instanceof Supplier && (v = ((Supplier<?>) pub).get()) != null) {
+					inner = new ScalarState(v);
 					subscribers[i] = inner;
 				}
 				else {
