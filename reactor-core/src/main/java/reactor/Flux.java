@@ -19,6 +19,7 @@ package reactor;
 import java.util.Iterator;
 import java.util.logging.Level;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -760,9 +761,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
-	 * <p>
-	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 * {@code flux.dispatchOn(Processors.queue()).subscribe(Subscribers.unbounded()) }
 	 *
 	 * @param group
 	 *
@@ -770,7 +769,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Flux<T> dispatchOn(ProcessorGroup group) {
-		return new FluxBarrier<>(((ProcessorGroup<T>) group).dispatchOn());
+		return new FluxDeferProcessor<>(this, ((ProcessorGroup<T>) group).dispatchOn());
 	}
 
 	/**
@@ -953,24 +952,21 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
-	 * <p>
+	 *
 	 * {@code flux.process(Processors.queue()).subscribe(Subscribers.unbounded()) }
 	 *
-	 * @param subscriber
-	 * @param <E>
+	 * @param processor
+	 * @param <V>
 	 *
 	 * @return
 	 */
-	public final <E extends Subscriber<? super T>> E process(E subscriber) {
-		subscribe(subscriber);
-		return subscriber;
+	public final <V> Flux<V> process(Processor<? super T, ? extends V> processor) {
+		return new FluxDeferProcessor<>(this, processor);
 	}
 
 	/**
-	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
 	 * <p>
-	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 * {@code flux.publishOn(Processors.queue()).subscribe(Subscribers.unbounded()) }
 	 *
 	 * @param group
 	 *
@@ -978,7 +974,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Flux<T> publishOn(ProcessorGroup group) {
-		return new FluxBarrier<>(((ProcessorGroup<T>) group).publishOn());
+		return new FluxDeferProcessor<>(this, ((ProcessorGroup<T>) group).publishOn());
 	}
 
 	/**
@@ -1117,6 +1113,32 @@ public abstract class Flux<T> implements Publisher<T> {
 		@Override
 		public void subscribe(Subscriber<? super I> s) {
 			source.subscribe(s);
+		}
+	}
+
+	static final class FluxDeferProcessor<I, O> extends FluxBarrier<I, O> implements ReactiveState.FeedbackLoop{
+
+		private final Processor<? super I, ? extends O> processor;
+
+		public FluxDeferProcessor(Publisher<? extends I> source, Processor<? super I, ? extends O> processor) {
+			super(source);
+			this.processor = processor;
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super O> s) {
+			processor.subscribe(s);
+			source.subscribe(processor);
+		}
+
+		@Override
+		public Object delegateInput() {
+			return processor;
+		}
+
+		@Override
+		public Object delegateOutput() {
+			return processor;
 		}
 	}
 

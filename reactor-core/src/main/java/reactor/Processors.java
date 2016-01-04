@@ -650,7 +650,6 @@ public final class Processors {
 		return RingBufferProcessor.create(name, bufferSize, autoCancel);
 	}
 
-
 	private Processors() {
 	}
 

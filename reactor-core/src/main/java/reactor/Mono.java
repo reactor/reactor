@@ -19,6 +19,7 @@ package reactor;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -58,7 +59,7 @@ import reactor.fn.tuple.Tuple6;
  * @see Flux
  * @since 2.5
  */
-public abstract class Mono<T> implements Publisher<T> {
+public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveState.Bounded {
 
 	/**
 	 * ==============================================================================================================
@@ -329,9 +330,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
-	 * <p>
-	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 * {@code mono.dispatchOn(Processors.queue()).subscribe(Subscribers.unbounded()) }
 	 *
 	 * @param group
 	 *
@@ -339,7 +338,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Mono<T> dispatchOn(ProcessorGroup group) {
-		return new MonoBarrier<>(((ProcessorGroup<T>) group).dispatchOn());
+		return new MonoDeferProcessor<>(this, ((ProcessorGroup<T>) group).dispatchOn());
 	}
 
 	/**
@@ -419,6 +418,12 @@ public abstract class Mono<T> implements Publisher<T> {
 		return new Flux.FluxBarrier<T, T>(this);
 	}
 
+	@Override
+	public T get() {
+
+		return null;
+	}
+
 	/**
 	 * Transform the item emitted by this {@link Mono} by applying a function to item emitted.
 	 *
@@ -444,9 +449,9 @@ public abstract class Mono<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Call {@link #subscribe(Subscriber)} and return the passed {@link Subscriber}, allows for chaining, e.g. :
+	 * Run the requests to this Publisher {@link Mono} on a given processor thread from the given {@link ProcessorGroup}
 	 * <p>
-	 * {@code Processors.topic().process(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 * {@code mono.publishOn(Processors.ioGroup()).subscribe(Subscribers.unbounded()) }
 	 *
 	 * @param group
 	 *
@@ -454,7 +459,7 @@ public abstract class Mono<T> implements Publisher<T> {
 	 */
 	@SuppressWarnings("unchecked")
 	public final Mono<T> publishOn(ProcessorGroup group) {
-		return new MonoBarrier<>(((ProcessorGroup<T>) group).publishOn());
+		return new MonoDeferProcessor<>(this, ((ProcessorGroup<T>) group).publishOn());
 	}
 
 	/**
@@ -467,6 +472,11 @@ public abstract class Mono<T> implements Publisher<T> {
 	 */
 	public final <R> Mono<R> then(Function<? super T, ? extends Mono<? extends R>> transformer) {
 		return new MonoBarrier<>(flatMap(transformer));
+	}
+
+	@Override
+	public final long getCapacity() {
+		return 1L;
 	}
 
 	/**
@@ -486,17 +496,12 @@ public abstract class Mono<T> implements Publisher<T> {
 	 * @param <O>
 	 */
 	public static class MonoBarrier<I, O> extends Mono<O>
-			implements ReactiveState.Factory, ReactiveState.Bounded, ReactiveState.Named, ReactiveState.Upstream {
+			implements Factory, Named, Upstream {
 
 		protected final Publisher<? extends I> source;
 
 		public MonoBarrier(Publisher<? extends I> source) {
 			this.source = source;
-		}
-
-		@Override
-		public long getCapacity() {
-			return 1L;
 		}
 
 		@Override
@@ -529,4 +534,29 @@ public abstract class Mono<T> implements Publisher<T> {
 		}
 	}
 
+	static final class MonoDeferProcessor<I, O> extends MonoBarrier<I, O> implements FeedbackLoop {
+
+		private final Processor<? super I, ? extends O> processor;
+
+		public MonoDeferProcessor(Publisher<? extends I> source, Processor<? super I, ? extends O> processor) {
+			super(source);
+			this.processor = processor;
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super O> s) {
+			processor.subscribe(s);
+			source.subscribe(processor);
+		}
+
+		@Override
+		public Object delegateInput() {
+			return processor;
+		}
+
+		@Override
+		public Object delegateOutput() {
+			return processor;
+		}
+	}
 }
