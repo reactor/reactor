@@ -56,7 +56,7 @@ import reactor.rx.broadcast.Broadcaster;
  * @author Stephane Maldini
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
-public class Promise<O> extends Mono<O>
+public final class Promise<O> extends Mono<O>
 		implements Supplier<O>, Processor<O, O>, Consumer<O>, ReactiveState.Bounded, Subscription,
 		           ReactiveState.Upstream, ReactiveState.Downstream, ReactiveState.ActiveUpstream {
 
@@ -217,8 +217,7 @@ public class Promise<O> extends Mono<O>
 	/**
 	 * Creates a new unfulfilled promise. <p> The {@code dispatcher} is used when notifying the Promise's consumers,
 	 * determining the thread on which they are called. The given {@code env} is used to determine the default await
-	 * timeout. The default await timeout will be 30 seconds. This Promise will consumer errors from its {@code parent}
-	 * such that if the parent completes in error then so too will this Promise.
+	 * timeout. The default await timeout will be 30 seconds.
 	 */
 	Promise() {
 		this(null);
@@ -227,8 +226,7 @@ public class Promise<O> extends Mono<O>
 	/**
 	 * Creates a new unfulfilled promise. <p> The {@code dispatcher} is used when notifying the Promise's consumers,
 	 * determining the thread on which they are called. The given {@code env} is used to determine the default await
-	 * timeout. If {@code env} is {@code null} the default await timeout will be 30 seconds. This Promise will consumer
-	 * errors from its {@code parent} such that if the parent completes in error then so too will this Promise.
+	 * timeout.
 	 *
 	 * @param timer The default Timer for time-sensitive downstream actions if any.
 	 */
@@ -245,17 +243,15 @@ public class Promise<O> extends Mono<O>
 	 * @param timer The default Timer for time-sensitive downstream actions if any.
 	 */
 	Promise(O value, @Nullable Timer timer) {
-		this.timer = timer;
-		this.defaultTimeout = DEFAULT_TIMEOUT;
-		this.pendingCondition = lock.newCondition();
+		this(timer);
 		finalState = FinalState.COMPLETE;
 		this.value = value;
 	}
 
 	/**
 	 * Creates a new promise that has failed with the given {@code error}. <p> The {@code observable} is used when
-	 * notifying the Promise's consumers, determining the thread on which they are called. The given {@code env} is used
-	 * to determine the default await timeout. If {@code env} is {@code null} the default await timeout will be 30
+	 * notifying the Promise's consumers, determining the thread on which they are called.
+	 * If {@code env} is {@code null} the default await timeout will be 30
 	 * seconds.
 	 *
 	 * @param error The error the completed the promise
@@ -268,10 +264,10 @@ public class Promise<O> extends Mono<O>
 	}
 
 	/**
-	 * Creates a new promise that has failed with the given {@code error}. <p> The {@code observable} is used when
+	 * Creates a new promise that has the given state. <p> The {@code observable} is used
+	 * when
 	 * notifying the Promise's consumers, determining the thread on which they are called. The given {@code env} is used
-	 * to determine the default await timeout. If {@code env} is {@code null} the default await timeout will be 30
-	 * seconds.
+	 * to determine the default await timeout.
 	 *
 	 * @param state The state of the promise
 	 * @param timer The default Timer for time-sensitive downstream actions if any.
@@ -460,11 +456,6 @@ public class Promise<O> extends Mono<O>
 		finally {
 			lock.unlock();
 		}
-	}
-
-	@Override
-	public final long getCapacity() {
-		return 1;
 	}
 
 	public Timer getTimer() {

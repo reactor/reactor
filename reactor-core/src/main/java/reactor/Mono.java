@@ -18,11 +18,17 @@ package reactor;
 
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.concurrent.locks.LockSupport;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.error.CancelException;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxMap;
@@ -34,8 +40,12 @@ import reactor.core.publisher.MonoError;
 import reactor.core.publisher.MonoFirst;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoJust;
+import reactor.core.subscription.CancelledSubscription;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
+import reactor.core.support.SignalType;
+import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -420,8 +430,19 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 
 	@Override
 	public T get() {
+		return get(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
+	}
 
-		return null;
+	/**
+	 * @param timeout
+	 * @param unit
+	 *
+	 * @return
+	 */
+	public T get(long timeout, TimeUnit unit) {
+		MonoResult<T> result = new MonoResult<>();
+		subscribe(result);
+		return result.await(timeout, unit);
 	}
 
 	/**
@@ -449,7 +470,8 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 	}
 
 	/**
-	 * Run the requests to this Publisher {@link Mono} on a given processor thread from the given {@link ProcessorGroup}
+	 * Run the requests to this Publisher {@link Mono} on a given processor thread from the given {@link
+	 * ProcessorGroup}
 	 * <p>
 	 * {@code mono.publishOn(Processors.ioGroup()).subscribe(Subscribers.unbounded()) }
 	 *
@@ -495,8 +517,7 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 	 * @param <I>
 	 * @param <O>
 	 */
-	public static class MonoBarrier<I, O> extends Mono<O>
-			implements Factory, Named, Upstream {
+	public static class MonoBarrier<I, O> extends Mono<O> implements Factory, Named, Upstream {
 
 		protected final Publisher<? extends I> source;
 
@@ -557,6 +578,93 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 		@Override
 		public Object delegateOutput() {
 			return processor;
+		}
+	}
+
+	static final class MonoResult<I> implements Subscriber<I>, ActiveUpstream {
+
+		volatile SignalType   endState;
+		volatile I            value;
+		volatile Throwable    error;
+		volatile Subscription s;
+
+		static final AtomicReferenceFieldUpdater<MonoResult, Subscription> SUBSCRIPTION =
+				PlatformDependent.newAtomicReferenceFieldUpdater(MonoResult.class, "s");
+
+		public I await(long timeout, TimeUnit unit) {
+			long delay = System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(timeout, unit);
+
+			try {
+				for (; ; ) {
+					switch (endState) {
+						case NEXT:
+							return value;
+						case ERROR:
+							if(error instanceof RuntimeException){
+								throw (RuntimeException)error;
+							}
+							throw ReactorFatalException.create(error);
+						case COMPLETE:
+							break;
+					}
+					if(delay > System.currentTimeMillis()){
+						throw ReactorFatalException.create(new TimeoutException());
+					}
+					LockSupport.parkNanos(1L);
+				}
+			}
+			finally {
+				Subscription s = SUBSCRIPTION.getAndSet(this, CancelledSubscription.INSTANCE);
+
+				if (s != null && s != CancelledSubscription.INSTANCE) {
+					s.cancel();
+				}
+			}
+		}
+
+		@Override
+		public boolean isStarted() {
+			return s != null && endState == null;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return endState != null;
+		}
+
+		@Override
+		public void onSubscribe(Subscription s) {
+			if (BackpressureUtils.validate(this.s, s)) {
+				this.s = s;
+				s.request(1L);
+			}
+		}
+
+		@Override
+		public void onNext(I i) {
+			s.cancel();
+			if (endState != null) {
+				throw CancelException.get();
+			}
+			value = i;
+			endState = SignalType.NEXT;
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			if (endState != null) {
+				BackpressureUtils.onErrorDropped(t);
+			}
+			error = t;
+			endState = SignalType.ERROR;
+		}
+
+		@Override
+		public void onComplete() {
+			if (endState != null) {
+				return;
+			}
+			endState = SignalType.COMPLETE;
 		}
 	}
 }

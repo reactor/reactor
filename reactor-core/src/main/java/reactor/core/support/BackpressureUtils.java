@@ -20,6 +20,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
+import reactor.core.error.ReactorFatalException;
 import reactor.core.support.rb.disruptor.Sequence;
 
 import java.util.Objects;
@@ -331,23 +332,47 @@ public enum BackpressureUtils {
 		return r;
 	}
 
+	/**
+	 *
+	 */
 	public static void reportSubscriptionSet() {
 		throw Exceptions.spec_2_13_exception();
 	}
 
+	/**
+	 *
+	 * @param n
+	 */
 	public static void reportBadRequest(long n) {
 		throw Exceptions.spec_3_09_exception(n);
 	}
 
+	/**
+	 *
+	 */
 	public static void reportMoreProduced() {
 		throw InsufficientCapacityException.get();
 	}
 
+	/**
+	 *
+	 * @param n
+	 * @return
+	 */
 	public static boolean validate(long n) {
 		if (n < 0) {
 			reportBadRequest(n);
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 *
+	 * @param e
+	 */
+	public static void onErrorDropped(Throwable e) {
+		Exceptions.throwIfFatal(e);
+		throw ReactorFatalException.create(e);
 	}
 }
