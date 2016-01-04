@@ -607,7 +607,7 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 						case COMPLETE:
 							break;
 					}
-					if(delay > System.currentTimeMillis()){
+					if(delay < System.currentTimeMillis()){
 						throw ReactorFatalException.create(new TimeoutException());
 					}
 					LockSupport.parkNanos(1L);
