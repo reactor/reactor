@@ -20,9 +20,9 @@ import java.util.Map;
 import org.reactivestreams.Publisher;
 import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple2;
+import reactor.rx.stream.StreamKv;
 import reactor.rx.stream.StreamReduceByKey;
 import reactor.rx.stream.StreamScanByKey;
-import reactor.rx.stream.StreamKv;
 
 /**
  * A Streams add-on to work with key/value pairs hydrated in {@link reactor.fn.tuple.Tuple2}.

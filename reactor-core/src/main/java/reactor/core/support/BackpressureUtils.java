@@ -16,17 +16,16 @@
 
 package reactor.core.support;
 
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.error.Exceptions;
-import reactor.core.error.InsufficientCapacityException;
-import reactor.core.error.ReactorFatalException;
-import reactor.core.support.rb.disruptor.Sequence;
-
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
+import reactor.core.error.InsufficientCapacityException;
+import reactor.core.support.rb.disruptor.Sequence;
 
 /**
  * A generic utility to check subscription, request size and to cap concurrent additive operations to Long
@@ -365,14 +364,5 @@ public enum BackpressureUtils {
 			return false;
 		}
 		return true;
-	}
-
-	/**
-	 *
-	 * @param e
-	 */
-	public static void onErrorDropped(Throwable e) {
-		Exceptions.throwIfFatal(e);
-		throw ReactorFatalException.create(e);
 	}
 }

@@ -669,7 +669,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			super.onNext(o);
 
 			if (terminated == 1) {
-				throw CancelException.get();
+				Exceptions.onNextDropped(o);
 			}
 
 			doNext(o);

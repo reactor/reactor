@@ -18,15 +18,12 @@ package reactor.rx.subscription;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.fn.Consumer;
 import reactor.rx.Stream;
 
 /**
@@ -100,7 +97,7 @@ public class PushSubscription<O> implements Subscription, ReactiveState.Upstream
 			subscriber.onNext(ev);
 		}
 		else {
-			throw CancelException.get();
+			Exceptions.onNextDropped(ev);
 		}
 	}
 

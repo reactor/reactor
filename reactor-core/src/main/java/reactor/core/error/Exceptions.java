@@ -15,9 +15,6 @@
  */
 package reactor.core.error;
 
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.MonoError;
-
 import java.util.HashSet;
 import java.util.Set;
 
@@ -165,6 +162,22 @@ public final class Exceptions {
 		} else if (t instanceof LinkageError) {
 			throw (LinkageError) t;
 		}
+	}
+
+	/**
+	 *
+	 * @param e
+	 */
+	public static void onErrorDropped(Throwable e) {
+		Exceptions.throwIfFatal(e);
+		throw ReactorFatalException.create(e);
+	}
+	/**
+	 *
+	 * @param t
+	 */
+	public static <T> void onNextDropped(T t) {
+		throw CancelException.get();
 	}
 
 	/**

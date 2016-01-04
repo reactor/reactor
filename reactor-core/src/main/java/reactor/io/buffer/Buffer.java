@@ -16,11 +16,6 @@
 
 package reactor.io.buffer;
 
-import reactor.core.support.Assert;
-import reactor.core.support.ReactiveState;
-import reactor.fn.Supplier;
-
-import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.BufferOverflowException;
@@ -36,6 +31,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import javax.annotation.concurrent.NotThreadSafe;
+
+import reactor.core.support.Assert;
+import reactor.core.support.ReactiveState;
+import reactor.fn.Supplier;
 
 /**
  * A {@literal Buffer} is a general-purpose IO utility class that wraps a {@link ByteBuffer}. It provides optional

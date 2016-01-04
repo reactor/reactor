@@ -19,8 +19,6 @@ package reactor.core.support.internal;
  * @author Stephane Maldini
  */
 
-import sun.misc.Unsafe;
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.nio.Buffer;
@@ -28,6 +26,8 @@ import java.nio.ByteBuffer;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
+import sun.misc.Unsafe;
 
 /**
  * Borrowed from Netty project which itself borrows from JCTools and various other projects.

@@ -20,7 +20,7 @@ import reactor.core.publisher.FluxLift
 import reactor.core.subscriber.test.DataTestSubscriber
 import spock.lang.Specification
 
-import static reactor.Flux.from
+import static reactor.Flux.fromIterable
 
 /**
  * @author Stephane Maldini
@@ -30,7 +30,7 @@ class PublishersSpec extends Specification {
   def "Error handling with onErrorReturn"() {
 
 	given: "Iterable publisher of 1000 to read queue"
-	def pub = from(1..1000).lift(FluxLift.lifter { d, s ->
+	def pub = fromIterable(1..1000).lift(FluxLift.lifter { d, s ->
 	  if (d == 3) {
 		throw new Exception('test')
 	  }
@@ -50,7 +50,7 @@ class PublishersSpec extends Specification {
   def "Error handling with onErrorResume"() {
 
 	given: "Iterable publisher of 1000 to read queue"
-	def pub = from(1..1000).lift(FluxLift.lifter { d, s ->
+	def pub = fromIterable(1..1000).lift(FluxLift.lifter { d, s ->
 	  if (d == 3) {
 		throw new Exception('test')
 	  }
@@ -59,7 +59,7 @@ class PublishersSpec extends Specification {
 
 	when: "read the queue"
 	def s = DataTestSubscriber.createWithTimeoutSecs(3)
-	pub.switchOnError(from(9999..10002)).subscribe(s)
+	pub.switchOnError(fromIterable(9999..10002)).subscribe(s)
 	s.sendUnboundedRequest()
 
 	then: "queues values correct"

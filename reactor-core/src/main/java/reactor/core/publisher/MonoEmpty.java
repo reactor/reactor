@@ -19,6 +19,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.ReactiveState;
+import reactor.fn.Supplier;
 
 /**
  * Represents an empty publisher which only calls onSubscribe and onComplete.
@@ -32,7 +33,7 @@ import reactor.core.support.ReactiveState;
  * @since 2.5
  */
 public final class MonoEmpty extends reactor.Mono<Object>
-		implements ReactiveState.Factory, ReactiveState.ActiveUpstream {
+		implements ReactiveState.Factory, ReactiveState.ActiveUpstream, Supplier<Object> {
 
 	private static final Publisher<Object> INSTANCE = new MonoEmpty();
 
@@ -54,6 +55,11 @@ public final class MonoEmpty extends reactor.Mono<Object>
 	public void subscribe(Subscriber<? super Object> s) {
 		s.onSubscribe(EmptySubscription.INSTANCE);
 		s.onComplete();
+	}
+
+	@Override
+	public Object get() {
+		return null; /* Scalar optimizations on empty */
 	}
 
 	/**

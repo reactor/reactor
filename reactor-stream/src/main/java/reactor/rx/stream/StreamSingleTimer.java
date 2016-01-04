@@ -15,15 +15,15 @@
  */
 package reactor.rx.stream;
 
+import java.util.concurrent.TimeUnit;
+
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
 import reactor.core.support.ReactiveState;
-import reactor.fn.Consumer;
 import reactor.core.timer.Timer;
+import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
-
-import java.util.concurrent.TimeUnit;
 
 /**
  * A Stream that emits {@link 0} after an initial delay and then complete

@@ -15,14 +15,13 @@
  */
 package reactor.rx.stream;
 
+import java.io.Serializable;
+import java.util.Map;
 
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.Stream;
-
-import java.io.Serializable;
-import java.util.Map;
 
 /**
  * A SubscribableMap is an event-driven Map that signals logged operations to its subscribers. Useful for IO bound

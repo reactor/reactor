@@ -27,7 +27,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
-import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.core.processor.FluxProcessor;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.Assert;
@@ -364,7 +364,7 @@ public final class StreamGroupBy<T, K> extends StreamBarrier<T, GroupedStream<K,
 				for (;;) {
 					int cancelled = cancellableGroups;
 					if (cancelled <= 0) {
-						throw CancelException.get();
+						Exceptions.onNextDropped(value);
 					}
 					if (CANCELLED_GROUPS.compareAndSet(this, cancelled, cancelled + 1)) {
 						p = groupByMap.putIfAbsent(key, child);

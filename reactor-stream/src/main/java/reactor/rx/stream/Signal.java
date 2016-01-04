@@ -15,12 +15,12 @@
  */
 package reactor.rx.stream;
 
+import java.io.Serializable;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
-
-import java.io.Serializable;
 
 /**
  * A domain representation of a Reactive {@link reactor.rx.Stream} signal.

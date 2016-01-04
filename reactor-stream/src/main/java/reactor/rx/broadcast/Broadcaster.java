@@ -23,6 +23,7 @@ import org.reactivestreams.Subscription;
 import reactor.Processors;
 import reactor.Timers;
 import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.timer.Timer;
@@ -305,7 +306,7 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 	public void onNext(O ev) {
 		try {
 			if(subscription.isCancelled()){
-				throw CancelException.get();
+				Exceptions.onNextDropped(ev);
 			}
 			subscription.ack();
 			receiver.onNext(ev);

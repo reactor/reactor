@@ -42,7 +42,6 @@ import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.MonoIgnoreElements;
-import reactor.rx.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
@@ -104,6 +103,7 @@ import reactor.rx.stream.StreamWindowShiftWhen;
 import reactor.rx.stream.StreamWindowWhen;
 import reactor.rx.stream.StreamZipWithIterable;
 import reactor.rx.subscriber.AdaptiveSubscriber;
+import reactor.rx.subscriber.BlockingQueueSubscriber;
 import reactor.rx.subscriber.BoundedSubscriber;
 import reactor.rx.subscriber.Control;
 import reactor.rx.subscriber.InterruptableSubscriber;
@@ -477,7 +477,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Flux.concat(Flux.from(Arrays.asList(Stream.this, publisher)))
+				Flux.concat(Flux.fromIterable(Arrays.asList(Stream.this, publisher)))
 				    .subscribe(s);
 			}
 		};
@@ -958,7 +958,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			}
 		}
 
-		final Publisher<V> mergedStream = Flux.merge(Flux.from(publisherList));
+		final Publisher<V> mergedStream = Flux.merge(Flux.fromIterable(publisherList));
 
 		return new StreamBarrier<O, V>(this) {
 			@Override
@@ -1191,7 +1191,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super O> s) {
-				Flux.merge(Flux.from(Arrays.asList(Stream.this, publisher)))
+				Flux.merge(Flux.fromIterable(Arrays.asList(Stream.this, publisher)))
 				    .subscribe(s);
 			}
 		};

@@ -17,12 +17,10 @@
 package reactor.core.processor;
 
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.core.error.Exceptions;
-import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.BackpressureUtils;

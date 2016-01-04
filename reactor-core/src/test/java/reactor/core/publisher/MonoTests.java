@@ -39,12 +39,12 @@ public class MonoTests {
 		CountDownLatch latch2 = new CountDownLatch(1);
 
 		try {
-			Mono.from(() -> {
+			Mono.fromCallable(() -> {
 				throw new RuntimeException("Some Exception");
 			})
 			    .publishOn(Processors.ioGroup())
 			    .doOnError(t -> latch1.countDown())
-			    .doOnComplete(latch2::countDown)
+			    .doOnSuccess(latch2::countDown)
 			    .get();
 		}
 		catch (RuntimeException re){

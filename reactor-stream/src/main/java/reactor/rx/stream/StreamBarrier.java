@@ -16,19 +16,15 @@
 
 package reactor.rx.stream;
 
-import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.Flux;
-import reactor.Processors;
 import reactor.core.error.Exceptions;
-import reactor.core.publisher.FluxLift;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.core.timer.Timer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
-import reactor.rx.broadcast.StreamProcessor;
 
 /**
  * @author Stephane Maldini

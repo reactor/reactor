@@ -586,7 +586,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'A new error consumer is subscribed'
-			Streams.fail(new RuntimeException()).when(RuntimeException) { errors++ }.consume()
+		  Streams.fail(new RuntimeException()).when(RuntimeException) { errors++ }.consume()
 
 		then:
 			'it is called since publisher is in error state'

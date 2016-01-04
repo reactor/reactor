@@ -167,7 +167,7 @@ public class EmitterProcessorDemandTests {
 		processor.subscribe(subscriber);
 
 		subscriber.request(1);
-		Flux.from(DATA)
+		Flux.fromIterable(DATA)
 		    .log()
 		    .subscribe(processor);
 
@@ -180,7 +180,7 @@ public class EmitterProcessorDemandTests {
 		DataTestSubscriber<String> subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
 		processor.subscribe(subscriber);
 
-		Flux.from(DATA)
+		Flux.fromIterable(DATA)
 		    .log()
 		    .subscribe(processor);
 
@@ -192,7 +192,7 @@ public class EmitterProcessorDemandTests {
 	@Test
 	public void testHanging() throws InterruptedException {
 		FluxProcessor<String, String> processor = Processors.emitter(2);
-		Flux.from(DATA)
+		Flux.fromIterable(DATA)
 		    .log()
 		    .subscribe(processor);
 
@@ -214,7 +214,7 @@ public class EmitterProcessorDemandTests {
 	@Test
 	public void testNPE() throws InterruptedException {
 		FluxProcessor<String, String> processor = Processors.emitter(8);
-		Flux.from(DATA)
+		Flux.fromIterable(DATA)
 		    .log()
 		    .subscribe(processor);
 

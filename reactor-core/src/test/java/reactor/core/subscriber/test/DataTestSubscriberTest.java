@@ -13,7 +13,7 @@ public class DataTestSubscriberTest {
 	@Test
 	public void testAssertNextSignals() throws Exception {
 		DataTestSubscriber<String> subscriber = DataTestSubscriber.createWithTimeoutSecs(1);
-		Flux.from(Arrays.asList("1", "2"))
+		Flux.fromIterable(Arrays.asList("1", "2"))
 		    .log()
 		    .subscribe(subscriber);
 

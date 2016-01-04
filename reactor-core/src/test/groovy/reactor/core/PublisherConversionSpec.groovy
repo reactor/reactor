@@ -25,7 +25,7 @@ import spock.lang.Specification
 
 import java.util.concurrent.CompletableFuture
 
-import static reactor.Flux.from
+import static reactor.Flux.fromIterable
 
 /**
  * @author Stephane Maldini
@@ -50,7 +50,7 @@ class PublisherConversionSpec extends Specification {
 
 
 	when: "Iterable publisher of 1000 to observable"
-	pub = from(1..1000)
+	pub = fromIterable(1..1000)
 	obs = pub.convert(Observable.class)
 	def blocking = obs.toList()
 
@@ -106,7 +106,7 @@ class PublisherConversionSpec extends Specification {
 
 
 	when: "Iterable publisher of 1000 to completable future"
-	pub = from(1..1000)
+	pub = fromIterable(1..1000)
 	obs = pub.<CompletableFuture<List<Integer>>> convert(CompletableFuture.class)
 	def vList = obs.get()
 

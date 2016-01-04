@@ -27,6 +27,7 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.core.publisher.MonoJust;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.EmptySubscription;
@@ -140,7 +141,7 @@ public final class CompletableFutureConverter extends PublisherConverter<Complet
 					s.cancel();
 				}
 				else {
-					throw CancelException.get();
+					Exceptions.onNextDropped(t);
 				}
 			}
 

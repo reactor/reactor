@@ -130,7 +130,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	public static <I> Flux<I> concat(Iterable<? extends Publisher<? extends I>> source) {
-		return concat(from(source));
+		return concat(fromIterable(source));
 	}
 
 	/**
@@ -145,9 +145,9 @@ public abstract class Flux<T> implements Publisher<T> {
 			return empty();
 		}
 		if (sources.length == 1) {
-			return wrap((Publisher<I>) sources[0]);
+			return from((Publisher<I>) sources[0]);
 		}
-		return concat(from(sources));
+		return concat(fromArray(sources));
 	}
 
 	/**
@@ -160,13 +160,13 @@ public abstract class Flux<T> implements Publisher<T> {
 	public static <IN> Flux<IN> convert(Object source) {
 
 		if (Publisher.class.isAssignableFrom(source.getClass())) {
-			return wrap((Publisher<IN>) source);
+			return from((Publisher<IN>) source);
 		}
 		else if (Iterable.class.isAssignableFrom(source.getClass())) {
-			return from((Iterable<IN>) source);
+			return fromIterable((Iterable<IN>) source);
 		}
 		else if (Iterator.class.isAssignableFrom(source.getClass())) {
-			return from((Iterator<IN>) source);
+			return fromIterator((Iterator<IN>) source);
 		}
 		else {
 			return (Flux<IN>) DependencyUtils.convertToPublisher(source);
@@ -252,17 +252,28 @@ public abstract class Flux<T> implements Publisher<T> {
 		return Mono.<T>error(error).flux();
 	}
 
+
 	/**
-	 * Create a {@link Flux} that emits the items contained in the provided {@link Iterable}.
+	 * Expose the specified {@link Publisher} with the {@link Flux} API.
 	 *
-	 * @param it
+	 * @param source
 	 * @param <T>
 	 *
 	 * @return
 	 */
-	public static <T> Flux<T> from(Iterable<? extends T> it) {
-		ForEachSequencer.IterableSequencer<T> iterablePublisher = new ForEachSequencer.IterableSequencer<>(it);
-		return create(iterablePublisher, iterablePublisher);
+	@SuppressWarnings("unchecked")
+	public static <T> Flux<T> from(Publisher<T> source) {
+		if (Flux.class.isAssignableFrom(source.getClass())) {
+			return (Flux<T>) source;
+		}
+
+		if (Supplier.class.isAssignableFrom(source.getClass())) {
+			T t = ((Supplier<T>) source).get();
+			if (t != null) {
+				return just(t);
+			}
+		}
+		return new FluxBarrier<>(source);
 	}
 
 	/**
@@ -273,7 +284,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * @return
 	 */
-	public static <T> Flux<T> from(T[] array) {
+	public static <T> Flux<T> fromArray(T[] array) {
 		if (array == null || array.length == 0) {
 			return empty();
 		}
@@ -284,12 +295,25 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
+	 * Create a {@link Flux} that emits the items contained in the provided {@link Iterable}.
+	 *
+	 * @param it
+	 * @param <T>
+	 *
+	 * @return
+	 */
+	public static <T> Flux<T> fromIterable(Iterable<? extends T> it) {
+		ForEachSequencer.IterableSequencer<T> iterablePublisher = new ForEachSequencer.IterableSequencer<>(it);
+		return create(iterablePublisher, iterablePublisher);
+	}
+
+	/**
 	 * @param defaultValues
 	 * @param <T>
 	 *
 	 * @return
 	 */
-	public static <T> Flux<T> from(final Iterator<? extends T> defaultValues) {
+	public static <T> Flux<T> fromIterator(final Iterator<? extends T> defaultValues) {
 		if (defaultValues == null || !defaultValues.hasNext()) {
 			return empty();
 		}
@@ -332,7 +356,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	@SafeVarargs
 	@SuppressWarnings("varargs")
 	public static <T> Flux<T> just(T... data) {
-		return from(data);
+		return fromArray(data);
 	}
 
 	/**
@@ -361,7 +385,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return a fresh Reactive Fluxs publisher ready to be subscribed
 	 */
 	public static <I> Flux<I> merge(Iterable<? extends Publisher<? extends I>> sources) {
-		return merge(from(sources));
+		return merge(fromIterable(sources));
 	}
 
 	/**
@@ -376,9 +400,9 @@ public abstract class Flux<T> implements Publisher<T> {
 			return empty();
 		}
 		if (sources.length == 1) {
-			return (Flux<I>) wrap(sources[0]);
+			return (Flux<I>) from(sources[0]);
 		}
-		return merge(from(sources));
+		return merge(fromArray(sources));
 	}
 
 	/**
@@ -391,29 +415,6 @@ public abstract class Flux<T> implements Publisher<T> {
 	@SuppressWarnings("unchecked")
 	public static <T> Flux<T> never() {
 		return FluxNever.instance();
-	}
-
-	/**
-	 * Expose the specified {@link Publisher} with the {@link Flux} API.
-	 *
-	 * @param source
-	 * @param <T>
-	 *
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Flux<T> wrap(Publisher<T> source) {
-		if (Flux.class.isAssignableFrom(source.getClass())) {
-			return (Flux<T>) source;
-		}
-
-		if (Supplier.class.isAssignableFrom(source.getClass())) {
-			T t = ((Supplier<T>) source).get();
-			if (t != null) {
-				return just(t);
-			}
-		}
-		return new FluxBarrier<>(source);
 	}
 
 	/**

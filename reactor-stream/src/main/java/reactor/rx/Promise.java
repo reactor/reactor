@@ -24,13 +24,11 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.Mono;
 import reactor.Timers;
-import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.subscriber.SubscriberBarrier;
@@ -45,8 +43,8 @@ import reactor.rx.broadcast.Broadcaster;
 /**
  * A {@code Promise} is a stateful event container that accepts a single value or error. In addition to {@link #get()
  * getting} or {@link #await() awaiting} the value, consumers can be registered to the outbound {@link #stream()} or via
- * , consumers can be registered to be notified of {@link #onError(Consumer) notified an error}, {@link
- * #onSuccess(Consumer) a value}, or {@link #onComplete(Consumer) both}. <p> A promise also provides methods for
+ * , consumers can be registered to be notified of {@link #doOnError(Consumer) notified an error}, {@link
+ * #doOnSuccess(Consumer) a value}, or {@link #onComplete(Consumer) both}. <p> A promise also provides methods for
  * composing actions with the future value much like a {@link reactor.rx.Stream}. However, where a {@link
  * reactor.rx.Stream} can process many values, a {@code Promise} processes only one value or error.
  *
@@ -89,31 +87,6 @@ public final class Promise<O> extends Mono<O>
 		return new Promise<T>(error, timer);
 	}
 
-	/**
-	 * Take the next value from a Publisher on subscribe.
-	 *
-	 * @param publisher
-	 * @param <T> type of the expected value
-	 * @return A {@link Promise}.
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Promise<T> from(final Publisher<T> publisher) {
-		if(Promise.class.isAssignableFrom(publisher.getClass())){
-			return (Promise<T>)publisher;
-		}
-		else if(Supplier.class.isAssignableFrom(publisher.getClass())) {
-			try{
-				return success(((Supplier<T>)publisher).get());
-			}
-			catch (Throwable t){
-				Exceptions.throwIfFatal(t);
-				return error(t);
-			}
-		}
-		Promise<T> p = prepare();
-		publisher.subscribe(p);
-		return p;
-	}
 
 	/**
 	 * Create a synchronous {@link Promise}.
@@ -601,38 +574,6 @@ public final class Promise<O> extends Mono<O>
 		completeAccepted();
 	}
 
-	/**
-	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed with an error,
-	 * or, if this {@code Promise} has already been fulfilled, is immediately scheduled to be executed. The error is
-	 * recovered and materialized as the next signal to the returned stream.
-	 *
-	 * @param onError the error {@link Consumer}
-	 *
-	 * @return {@literal the new Promise}
-	 */
-	public final Promise<O> onError(@Nonnull final Consumer<Throwable> onError) {
-		request(1);
-		lock.lock();
-		try {
-			if (finalState == FinalState.ERROR) {
-				onError.accept(error);
-				return this;
-			}
-			else if (finalState == FinalState.COMPLETE) {
-				return this;
-			}
-		}
-		catch (Throwable t) {
-			return new Promise<>(t, timer);
-		}
-		finally {
-			lock.unlock();
-		}
-
-		return stream().when(Throwable.class, onError)
-		               .consumeNext();
-	}
-
 	@Override
 	public void onError(Throwable cause) {
 		errorAccepted(cause);
@@ -651,35 +592,6 @@ public final class Promise<O> extends Mono<O>
 				subscription.request(1L);
 			}
 		}
-	}
-
-	/**
-	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is successfully completed
-	 * with a value, or, if this {@code Promise} has already been fulfilled, is immediately executed.
-	 *
-	 * @param onSuccess the success {@link Consumer}
-	 *
-	 * @return {@literal the new Promise}
-	 */
-	public final Promise<O> onSuccess(@Nonnull final Consumer<O> onSuccess) {
-		request(1);
-		lock.lock();
-		try {
-			if (finalState == FinalState.COMPLETE) {
-				if (value != null) {
-					onSuccess.accept(value);
-				}
-				return this;
-			}
-		}
-		catch (Throwable t) {
-			return new Promise<>(t, timer);
-		}
-		finally {
-			lock.unlock();
-		}
-		return stream().observe(onSuccess)
-		               .consumeNext();
 	}
 
 	/**
@@ -818,7 +730,7 @@ public final class Promise<O> extends Mono<O>
 		lock.lock();
 		try {
 			if (!isPending()) {
-				throw CancelException.get();
+				Exceptions.onNextDropped(value);
 			}
 			this.value = value;
 			this.finalState = FinalState.COMPLETE;

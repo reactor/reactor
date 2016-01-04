@@ -15,14 +15,14 @@
  */
 package reactor.rx.subscriber;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
-
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A {@code Tap} provides a limited window into an event stream. Using a {@code Tap} one can

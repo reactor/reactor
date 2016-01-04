@@ -295,7 +295,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> from(Iterable<? extends T> values) {
-		return Streams.wrap(Flux.from(values));
+		return Streams.wrap(Flux.fromIterable(values));
 	}
 
 	/**
@@ -308,7 +308,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the given values
 	 */
 	public static <T> Stream<T> from(Iterator<? extends T> values) {
-		return Streams.wrap(Flux.from(values));
+		return Streams.wrap(Flux.fromIterator(values));
 	}
 
 	/**

@@ -375,7 +375,7 @@ public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<
 	public void onNext(E e) {
 		Emission emission = emit(e);
 		if(emission.isCancelled()){
-			throw CancelException.get();
+			Exceptions.onNextDropped(e);
 		}
 		if(emission.isOk()){
 			return;

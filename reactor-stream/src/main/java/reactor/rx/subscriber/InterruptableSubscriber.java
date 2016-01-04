@@ -18,7 +18,7 @@ package reactor.rx.subscriber;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.reactivestreams.Subscription;
-import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.core.subscriber.ConsumerSubscriber;
 import reactor.core.subscription.CancelledSubscription;
 import reactor.core.subscription.EmptySubscription;
@@ -54,7 +54,7 @@ public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements
 	@Override
 	protected final void doNext(T x) {
 		if(subscription == CancelledSubscription.INSTANCE){
-			throw CancelException.get();
+			Exceptions.onNextDropped(x);
 		}
 		super.doNext(x);
 		doPostNext(x);

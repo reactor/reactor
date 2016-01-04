@@ -27,7 +27,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.FluxFlatMap;
@@ -40,6 +40,7 @@ import reactor.core.publisher.MonoError;
 import reactor.core.publisher.MonoFirst;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoJust;
+import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscription.CancelledSubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
@@ -69,7 +70,7 @@ import reactor.fn.tuple.Tuple6;
  * @see Flux
  * @since 2.5
  */
-public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveState.Bounded {
+public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 
 	/**
 	 * ==============================================================================================================
@@ -134,6 +135,25 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 	}
 
 	/**
+	 * Expose the specified {@link Publisher} with the {@link Mono} API, and ensure it will emit 0 or 1 item.
+	 *
+	 * @param source
+	 * @param <T>
+	 *
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <T> Mono<T> from(Publisher<T> source) {
+		if (source == null) {
+			return empty();
+		}
+		if (Mono.class.isAssignableFrom(source.getClass())) {
+			return (Mono<T>) source;
+		}
+		return new MonoFirst<>(source);
+	}
+
+	/**
 	 * Create a {@link Mono} producing the value for the {@link Mono} using the given supplier.
 	 *
 	 * @param supplier {@link Supplier} that will produce the value
@@ -141,7 +161,7 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 	 *
 	 * @return A {@link Mono}.
 	 */
-	public static <T> Mono<T> from(Callable<? extends T> supplier) {
+	public static <T> Mono<T> fromCallable(Callable<? extends T> supplier) {
 		return new MonoCallable<>(supplier);
 	}
 
@@ -299,25 +319,6 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 	}
 
 	/**
-	 * Expose the specified {@link Publisher} with the {@link Mono} API, and ensure it will emit 0 or 1 item.
-	 *
-	 * @param source
-	 * @param <T>
-	 *
-	 * @return
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Mono<T> wrap(Publisher<T> source) {
-		if (source == null) {
-			return empty();
-		}
-		if (Mono.class.isAssignableFrom(source.getClass())) {
-			return (Mono<T>) source;
-		}
-		return new MonoFirst<>(source);
-	}
-
-	/**
 	 * ==============================================================================================================
 	 * ==============================================================================================================
 	 * <p>
@@ -365,12 +366,22 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 	/**
 	 * Triggered when the {@link Mono} completes successfully.
 	 *
-	 * @param onComplete
+	 * @param onSuccess
 	 *
 	 * @return
 	 */
-	public final Mono<T> doOnComplete(Runnable onComplete) {
-		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, onComplete, null, null, null));
+	public final Mono<T> doOnSuccess(Runnable onSuccess) {
+		return new MonoSuccess<>(this, onSuccess, null);
+	}
+	/**
+	 * Triggered when the {@link Mono} completes successfully.
+	 *
+	 * @param onSuccess
+	 *
+	 * @return
+	 */
+	public final Mono<T> doOnSuccess(Consumer<? super T> onSuccess) {
+		return new MonoSuccess<>(this, null, onSuccess);
 	}
 
 	/**
@@ -428,16 +439,29 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 		return new Flux.FluxBarrier<T, T>(this);
 	}
 
-	@Override
+	/**
+	 * Block until a next signal is received, will return null if onComplete, T if onNext, throw a
+	 * ReactorFatalException if checked error or origin RuntimeException if unchecked.
+	 * If the default timeout {@link #DEFAULT_TIMEOUT} has elapsed, a TimeoutException will be thrown.
+	 *
+	 * @return T the result
+	 */
 	public T get() {
 		return get(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
 	}
 
 	/**
+	 * Block until a next signal is received, will return null if onComplete, T if onNext, throw a
+	 * ReactorFatalException if checked error or origin RuntimeException if unchecked.
+	 * If the default timeout {@link #DEFAULT_TIMEOUT} has elapsed, a TimeoutException will be thrown.
+	 *
+	 * Note that each get() will subscribe a new single (MonoResult) subscriber, in other words, the result might
+	 * miss signal from hot publishers.
+	 *
 	 * @param timeout
 	 * @param unit
 	 *
-	 * @return
+	 * @return T the result
 	 */
 	public T get(long timeout, TimeUnit unit) {
 		MonoResult<T> result = new MonoResult<>();
@@ -581,7 +605,70 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 		}
 	}
 
-	static final class MonoResult<I> implements Subscriber<I>, ActiveUpstream {
+	static final class MonoSuccess<I> extends MonoBarrier<I, I> implements FeedbackLoop{
+
+		private final Runnable onComplete;
+		private final Consumer<? super I> onSuccess;
+
+		public MonoSuccess(Publisher<? extends I> source, Runnable onComplete, Consumer<? super I> onSuccess) {
+			super(source);
+			this.onComplete = onComplete;
+			this.onSuccess = onSuccess;
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super I> s) {
+			source.subscribe(new MonoSuccessBarrier<>(s, onComplete, onSuccess));
+		}
+
+		@Override
+		public Object delegateInput() {
+			return onSuccess;
+		}
+
+		@Override
+		public Object delegateOutput() {
+			return onComplete;
+		}
+
+		private static final class MonoSuccessBarrier<I> extends SubscriberBarrier<I, I> {
+			private final Runnable onComplete;
+			private final Consumer<? super I> onSuccess;
+
+			public MonoSuccessBarrier(Subscriber<? super I> s, Runnable onComplete, Consumer<? super I> onSuccess) {
+				super(s);
+				this.onComplete = onComplete;
+				this.onSuccess = onSuccess;
+			}
+
+			@Override
+			protected void doComplete() {
+				if(onComplete != null){
+					onComplete.run();
+				}
+				if(onSuccess != null){
+					onSuccess.accept(null);
+				}
+			}
+
+			@Override
+			protected void doNext(I t) {
+				if(upstream() == null){
+					Exceptions.onNextDropped(t);
+					return;
+				}
+				cancel();
+				if(onComplete != null){
+					onComplete.run();
+				}
+				if(onSuccess != null){
+					onSuccess.accept(t);
+				}
+			}
+		}
+	}
+
+	protected static class MonoResult<I> implements Subscriber<I>, ActiveUpstream {
 
 		volatile SignalType   endState;
 		volatile I            value;
@@ -596,16 +683,19 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 
 			try {
 				for (; ; ) {
-					switch (endState) {
-						case NEXT:
-							return value;
-						case ERROR:
-							if(error instanceof RuntimeException){
-								throw (RuntimeException)error;
-							}
-							throw ReactorFatalException.create(error);
-						case COMPLETE:
-							break;
+					SignalType endState = this.endState;
+					if(endState != null) {
+						switch (endState) {
+							case NEXT:
+								return value;
+							case ERROR:
+								if (error instanceof RuntimeException) {
+									throw (RuntimeException) error;
+								}
+								throw ReactorFatalException.create(error);
+							case COMPLETE:
+								return null;
+						}
 					}
 					if(delay < System.currentTimeMillis()){
 						throw ReactorFatalException.create(new TimeoutException());
@@ -644,7 +734,7 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 		public void onNext(I i) {
 			s.cancel();
 			if (endState != null) {
-				throw CancelException.get();
+				Exceptions.onNextDropped(i);
 			}
 			value = i;
 			endState = SignalType.NEXT;
@@ -653,7 +743,7 @@ public abstract class Mono<T> implements Publisher<T>, Supplier<T>, ReactiveStat
 		@Override
 		public void onError(Throwable t) {
 			if (endState != null) {
-				BackpressureUtils.onErrorDropped(t);
+				Exceptions.onErrorDropped(t);
 			}
 			error = t;
 			endState = SignalType.ERROR;

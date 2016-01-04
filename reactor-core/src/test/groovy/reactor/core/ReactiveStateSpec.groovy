@@ -33,8 +33,8 @@ class ReactiveStateSpec extends Specification {
 
 	when: "Iterable publisher of 1000 to read queue"
 
-	def pub1 = from(1..1000).map { d -> d }
-	def pub2 = from(1..123).map { d -> d }
+	def pub1 = fromIterable(1..1000).map { d -> d }
+	def pub2 = fromIterable(1..123).map { d -> d }
 
 	def t = ReactiveStateUtils.scan(pub1)
 	println t

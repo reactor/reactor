@@ -16,13 +16,13 @@
 
 package reactor.fn.tuple;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 /**
  * A {@literal Tuple} is an immutable {@link Collection} of objects, each of which can be of an arbitrary type.
