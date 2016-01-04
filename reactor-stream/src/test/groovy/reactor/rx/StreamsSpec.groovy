@@ -309,6 +309,27 @@ class StreamsSpec extends Specification {
 				i == 10*/
 	}
 
+  def "Read Queues from Publishers"() {
+
+	given: "Iterable publisher of 1000 to read queue"
+	def pub = Streams.from(1..1000)
+	def queue = pub.toBlockingQueue()
+
+	when: "read the queue"
+	def v = queue.take()
+	def v2 = queue.take()
+	997.times {
+	  queue.poll()
+	}
+
+	def v3 = queue.take()
+
+	then: "queues values correct"
+	v == 1
+	v2 == 2
+	v3 == 1000
+  }
+
 	def 'A Stream with a known set of values makes those values available immediately'() {
 		given:
 			'a composable with values 1 to 5 inclusive'

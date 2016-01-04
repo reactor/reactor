@@ -17,8 +17,8 @@
 package reactor.core
 
 import reactor.Flux
-import reactor.Publishers
 import reactor.core.publisher.convert.CompletableFutureConverter
+import reactor.core.subscriber.test.DataTestSubscriber
 import rx.Observable
 import rx.Single
 import spock.lang.Specification
@@ -37,21 +37,16 @@ class PublisherConversionSpec extends Specification {
 	given: "Iterable publisher of 1000 to read queue"
 	def obs = Observable.range(1, 1000)
 	def pub = Flux.convert(obs)
-	def queue = Publishers.toReadQueue(pub)
+	def queue = DataTestSubscriber.createWithTimeoutSecs(3)
+
 
 	when: "read the queue"
-	def v = queue.take()
-	def v2 = queue.take()
-	997.times {
-	  queue.poll()
-	}
-
-	def v3 = queue.take()
+	pub.subscribe(queue)
+	queue.sendUnboundedRequest()
 
 	then: "queues values correct"
-	v == 1
-	v2 == 2
-	v3 == 1000
+	queue.assertNextSignals(*(1..1000))
+			.assertCompleteReceived()
 
 
 	when: "Iterable publisher of 1000 to observable"
@@ -59,7 +54,7 @@ class PublisherConversionSpec extends Specification {
 	obs = pub.convert(Observable.class)
 	def blocking = obs.toList()
 
-	v = blocking.toBlocking().single()
+	def v = blocking.toBlocking().single()
 
 	then: "queues values correct"
 	v[0] == 1
@@ -72,15 +67,15 @@ class PublisherConversionSpec extends Specification {
 	given: "Iterable publisher of 1000 to read queue"
 	def obs = Single.just(1)
 	def pub = Flux.convert(obs)
-	def queue = Publishers.toReadQueue(pub)
+	def queue = DataTestSubscriber.createWithTimeoutSecs(3)
 
 	when: "read the queue"
-	def v = queue.take()
-	def v2 = queue.take()
+	pub.subscribe(queue)
+	queue.sendUnboundedRequest()
 
 	then: "queues values correct"
-	v == 1
-	!v2
+	queue.assertNextSignals(1)
+			.assertCompleteReceived()
 
 
 	when: "Iterable publisher of 1000 to observable"
@@ -88,7 +83,7 @@ class PublisherConversionSpec extends Specification {
 	def single = pub.convert(Single.class)
 	def blocking = single.toObservable().toBlocking()
 
-	v = blocking.single()
+	def v = blocking.single()
 
 	then: "queues values correct"
 	v == 1
@@ -98,21 +93,21 @@ class PublisherConversionSpec extends Specification {
 
 	given: "Iterable publisher of 1 to read queue"
 	def obs = CompletableFuture.completedFuture([1])
-	def pub = Flux.<List<Integer>>convert(obs)
-	def queue = Publishers.toReadQueue(pub)
+	def pub = Flux.<List<Integer>> convert(obs)
+	def queue = DataTestSubscriber.createWithTimeoutSecs(3)
 
 	when: "read the queue"
-	def v = queue.take()
-	def v2 = queue.take()
+	pub.subscribe(queue)
+	queue.sendUnboundedRequest()
 
 	then: "queues values correct"
-	v == [1]
-	!v2
+	queue.assertNextSignals([1])
+			.assertCompleteReceived()
 
 
 	when: "Iterable publisher of 1000 to completable future"
 	pub = from(1..1000)
-	obs = pub.<CompletableFuture<List<Integer>>>convert(CompletableFuture.class)
+	obs = pub.<CompletableFuture<List<Integer>>> convert(CompletableFuture.class)
 	def vList = obs.get()
 
 	then: "queues values correct"
@@ -123,7 +118,7 @@ class PublisherConversionSpec extends Specification {
 	when: "Iterable publisher of 1 to completable future"
 	def newPub = Flux.just(1)
 	obs = CompletableFutureConverter.fromSingle(newPub)
-	v = obs.get()
+	def v = obs.get()
 
 	then: "queues values correct"
 	v == 1

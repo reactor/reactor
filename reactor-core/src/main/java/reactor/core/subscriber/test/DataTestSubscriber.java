@@ -60,7 +60,7 @@ public class DataTestSubscriber<T> extends TestSubscriber<T> {
 	 * @throws InterruptedException if a thread was interrupted during a waiting
 	 */
 	@SafeVarargs
-	public final void assertNextSignals(T... expectedNextSignals) throws InterruptedException {
+	public final DataTestSubscriber<T> assertNextSignals(T... expectedNextSignals) throws InterruptedException {
 		int expectedNum = expectedNextSignals.length;
 		assertNumNextSignalsReceived(numAssertedNextSignals + expectedNum);
 
@@ -86,6 +86,55 @@ public class DataTestSubscriber<T> extends TestSubscriber<T> {
 		}
 
 		numAssertedNextSignals += expectedNum;
+		return this;
+	}
+
+	@Override
+	public DataTestSubscriber<T> sendRequest(long n) {
+		super.sendRequest(n);
+		return this;
+	}
+
+	@Override
+	public DataTestSubscriber<T> requestUnboundedWithTimeout() throws InterruptedException {
+		super.requestUnboundedWithTimeout();
+		return this;
+	}
+
+	@Override
+	public DataTestSubscriber<T> sendUnboundedRequest() throws InterruptedException {
+		super.sendUnboundedRequest();
+		return this;
+	}
+
+	@Override
+	public DataTestSubscriber<T> requestWithTimeout(long n) throws InterruptedException {
+		super.requestWithTimeout(n);
+		return this;
+	}
+
+	@Override
+	public DataTestSubscriber<T> assertNumNextSignalsReceived(int n) throws InterruptedException {
+		super.assertNumNextSignalsReceived(n);
+		return this;
+	}
+
+	@Override
+	public DataTestSubscriber<T> assertCompleteReceived() throws InterruptedException {
+		super.assertCompleteReceived();
+		return this;
+	}
+
+	@Override
+	public DataTestSubscriber<T> assertNoCompleteReceived() throws InterruptedException {
+		super.assertNoCompleteReceived();
+		return this;
+	}
+
+	@Override
+	public DataTestSubscriber<T> assertErrorReceived() throws InterruptedException {
+		super.assertErrorReceived();
+		return this;
 	}
 
 	@Override

@@ -114,8 +114,9 @@ public class TestSubscriber<T> extends SubscriberWithDemand<T, T> {
 	 *
 	 * @throws InterruptedException
 	 */
-	public void requestUnboundedWithTimeout() throws InterruptedException {
+	public TestSubscriber<T> requestUnboundedWithTimeout() throws InterruptedException {
 		requestWithTimeout(Long.MAX_VALUE);
+		return this;
 	}
 
 	/**
@@ -123,7 +124,7 @@ public class TestSubscriber<T> extends SubscriberWithDemand<T, T> {
 	 * @param n
 	 * @throws InterruptedException
 	 */
-	public void requestWithTimeout(long n) throws InterruptedException {
+	public TestSubscriber<T> requestWithTimeout(long n) throws InterruptedException {
 		waitFor(timeoutSecs,
 				String.format("onSubscribe wasn't called within %d secs", timeoutSecs),
 				new Supplier<Boolean>() {
@@ -134,22 +135,25 @@ public class TestSubscriber<T> extends SubscriberWithDemand<T, T> {
 				});
 
 		requestMore(n);
+		return this;
 	}
 
 	/**
 	 *
 	 * @throws InterruptedException
 	 */
-	public void sendUnboundedRequest() throws InterruptedException {
+	public TestSubscriber<T> sendUnboundedRequest() throws InterruptedException {
 		requestMore(Long.MAX_VALUE);
+		return this;
 	}
 
 	/**
 	 *
 	 * @param n
 	 */
-	public void sendRequest(long n) {
+	public TestSubscriber<T> sendRequest(long n) {
 		requestMore(n);
+		return this;
 	}
 
 	/**
@@ -157,7 +161,7 @@ public class TestSubscriber<T> extends SubscriberWithDemand<T, T> {
 	 * @param n
 	 * @throws InterruptedException
 	 */
-	public void assertNumNextSignalsReceived(final int n) throws InterruptedException {
+	public TestSubscriber<T> assertNumNextSignalsReceived(final int n) throws InterruptedException {
 		Supplier<String> errorSupplier = new Supplier<String>() {
 			@Override
 			public String get() {
@@ -174,24 +178,26 @@ public class TestSubscriber<T> extends SubscriberWithDemand<T, T> {
 				return numNextSignalsReceived == n;
 			}
 		});
+		return this;
 	}
 
 	/**
 	 *
 	 * @throws InterruptedException
 	 */
-	public void assertCompleteReceived() throws InterruptedException {
+	public TestSubscriber<T> assertCompleteReceived() throws InterruptedException {
 		boolean result = completeLatch.await(timeoutSecs, TimeUnit.SECONDS);
 		if (!result) {
 			throw new AssertionError(String.format("Haven't received Complete signal within %d seconds", timeoutSecs));
 		}
+		return this;
 	}
 
 	/**
 	 *
 	 * @throws InterruptedException
 	 */
-	public void assertNoCompleteReceived() throws InterruptedException {
+	public TestSubscriber<T> assertNoCompleteReceived() throws InterruptedException {
 		long startTime = System.nanoTime();
 		do {
 			if (completeLatch.getCount() == 0) {
@@ -200,17 +206,19 @@ public class TestSubscriber<T> extends SubscriberWithDemand<T, T> {
 			Thread.sleep(100);
 		}
 		while (TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - startTime) < 1);
+		return this;
 	}
 
 	/**
 	 *
 	 * @throws InterruptedException
 	 */
-	public void assertErrorReceived() throws InterruptedException {
+	public TestSubscriber<T> assertErrorReceived() throws InterruptedException {
 		boolean result = errorLatch.await(timeoutSecs, TimeUnit.SECONDS);
 		if (!result) {
 			throw new AssertionError(String.format("Haven't received Error signal within %d seconds", timeoutSecs));
 		}
+		return this;
 	}
 
 	/**
@@ -223,8 +231,9 @@ public class TestSubscriber<T> extends SubscriberWithDemand<T, T> {
 	/**
 	 *
 	 */
-	public void cancelSubscription() {
+	public TestSubscriber<T> cancelSubscription() {
 		doCancel();
+		return this;
 	}
 
 	@Override

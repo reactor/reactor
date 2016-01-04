@@ -42,7 +42,7 @@ import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.MonoIgnoreElements;
-import reactor.core.subscriber.BlockingQueueSubscriber;
+import reactor.rx.subscriber.BlockingQueueSubscriber;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
