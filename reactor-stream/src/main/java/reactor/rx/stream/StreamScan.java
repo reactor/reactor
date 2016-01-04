@@ -27,7 +27,7 @@ import reactor.fn.BiFunction;
  */
 public final class StreamScan<T, A> extends StreamBarrier<T, A> {
 
-	public static BiFunction COUNTER = new BiFunction<Long, Object, Long>() {
+	public static final BiFunction COUNTER = new BiFunction<Long, Object, Long>() {
 		@Override
 		public Long apply(Long prev, Object o) {
 			return prev + 1L;
