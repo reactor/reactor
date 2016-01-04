@@ -33,6 +33,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
+import reactor.Mono;
 import reactor.Processors;
 import reactor.Timers;
 import reactor.core.processor.ProcessorGroup;
@@ -41,6 +42,7 @@ import reactor.core.publisher.FluxLog;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxZip;
+import reactor.core.publisher.MonoFirst;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
@@ -885,6 +887,17 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Stream<O> finallyDo(final Consumer<Signal<O>> consumer) {
 		return new StreamFinally<O>(this, consumer);
+	}
+
+	/**
+	 * Take 1 value at most from this {@link Stream}
+	 *
+	 * @return {@literal new Stream}
+	 *
+	 * @since 2.5
+	 */
+	public final Mono<O> first() {
+		return new MonoFirst<>(this);
 	}
 
 	/**

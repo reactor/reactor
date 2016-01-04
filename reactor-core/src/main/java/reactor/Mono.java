@@ -95,7 +95,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	@SuppressWarnings("varargs")
 	public static <T> Mono<T> any(Mono<? extends T>... monos) {
 		return Flux.amb(monos)
-		           .first();
+		           .next();
 	}
 
 	/**
@@ -108,7 +108,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	public static <T> Mono<T> any(Iterable<? extends Mono<? extends T>> monos) {
 		return Flux.amb(monos)
-		           .first();
+		           .next();
 	}
 
 	/**
@@ -190,7 +190,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	@SafeVarargs
 	@SuppressWarnings({"varargs", "unchecked"})
 	private static <T> Mono<List<T>> when(Mono<T>... monos) {
-		return new FluxZip<>(monos, FluxZip.TUPLE_TO_LIST_FUNCTION, 1).first();
+		return new FluxZip<>(monos, FluxZip.TUPLE_TO_LIST_FUNCTION, 1).next();
 	}
 
 	/**
@@ -204,7 +204,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Mono<List<T>> when(final Iterable<? extends Mono<? extends T>> monos) {
-		return new FluxZip<>(monos, FluxZip.TUPLE_TO_LIST_FUNCTION, 1).first();
+		return new FluxZip<>(monos, FluxZip.TUPLE_TO_LIST_FUNCTION, 1).next();
 	}
 
 	/**
@@ -220,7 +220,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T1, T2> Mono<Tuple2<T1, T2>> when(Mono<T1> p1, Mono<T2> p2) {
-		return new FluxZip<>(new Mono[]{p1, p2}, Flux.IDENTITY_FUNCTION, 1).first();
+		return new FluxZip<>(new Mono[]{p1, p2}, Flux.IDENTITY_FUNCTION, 1).next();
 	}
 
 	/**
@@ -238,7 +238,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3> Mono<Tuple3<T1, T2, T3>> when(Mono<T1> p1, Mono<T2> p2, Mono<T3> p3) {
-		return new FluxZip<>(new Mono[]{p1, p2, p3}, Flux.IDENTITY_FUNCTION, 1).first();
+		return new FluxZip<>(new Mono[]{p1, p2, p3}, Flux.IDENTITY_FUNCTION, 1).next();
 	}
 
 	/**
@@ -261,7 +261,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 			Mono<T2> p2,
 			Mono<T3> p3,
 			Mono<T4> p4) {
-		return new FluxZip<>(new Mono[]{p1, p2, p3, p4}, Flux.IDENTITY_FUNCTION, 1).first();
+		return new FluxZip<>(new Mono[]{p1, p2, p3, p4}, Flux.IDENTITY_FUNCTION, 1).next();
 	}
 
 	/**
@@ -287,7 +287,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 			Mono<T3> p3,
 			Mono<T4> p4,
 			Mono<T5> p5) {
-		return new FluxZip<>(new Mono[]{p1, p2, p3, p4, p5}, Flux.IDENTITY_FUNCTION, 1).first();
+		return new FluxZip<>(new Mono[]{p1, p2, p3, p4, p5}, Flux.IDENTITY_FUNCTION, 1).next();
 	}
 
 	/**
@@ -316,7 +316,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 			Mono<T4> p4,
 			Mono<T5> p5,
 			Mono<T6> p6) {
-		return new FluxZip<>(new Mono[]{p1, p2, p3, p4, p5, p6}, Flux.IDENTITY_FUNCTION, 1).first();
+		return new FluxZip<>(new Mono[]{p1, p2, p3, p4, p5, p6}, Flux.IDENTITY_FUNCTION, 1).next();
 	}
 
 	/**

@@ -40,6 +40,7 @@ import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.ForEachSequencer;
 import reactor.core.publisher.MonoFirst;
 import reactor.core.publisher.MonoIgnoreElements;
+import reactor.core.publisher.MonoSingle;
 import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
@@ -840,11 +841,15 @@ public abstract class Flux<T> implements Publisher<T> {
 
 	/**
 	 * Emit only the first item emitted by this {@link Flux}.
+	 * If the sequence completes without data, emit {@link java.util.NoSuchElementException}.
+	 * If the sequence emits more than 1 data, emit {@link ArrayIndexOutOfBoundsException}.
+	 *
+	 * @see #next for an alternative that emits no error on empty.
 	 *
 	 * @return
 	 */
 	public final Mono<T> first() {
-		return new MonoFirst<>(this);
+		return new MonoSingle<>(this);
 	}
 
 	/**
@@ -931,6 +936,19 @@ public abstract class Flux<T> implements Publisher<T> {
 	 */
 	public final Flux<T> mergeWith(Publisher<? extends T> source) {
 		return merge(just(this, source));
+	}
+
+	/**
+	 * Emit only the first item emitted by this {@link Flux}.
+	 *
+	 * If the sequence emits more than 1 data, emit {@link ArrayIndexOutOfBoundsException}.
+	 *
+	 * @see #first for an alternative that emits an error on empty.
+	 *
+	 * @return
+	 */
+	public final Mono<T> next() {
+		return new MonoFirst<>(this);
 	}
 
 	/**

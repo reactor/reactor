@@ -249,7 +249,7 @@ public class CombinationTests {
 	public void sampleMergeMonoTest() throws Exception {
 		CountDownLatch latch = new CountDownLatch(2);
 
-		Flux<Integer> p = Flux.merge(Flux.<Integer>empty().first(), Mono.just(1))
+		Flux<Integer> p = Flux.merge(Flux.<Integer>empty().next(), Mono.just(1))
 		                              .log("mono");
 
 		awaitLatch(p, latch);
