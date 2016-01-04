@@ -58,15 +58,14 @@ import reactor.fn.tuple.Tuple5;
 import reactor.fn.tuple.Tuple6;
 
 /**
- * A Reactive Fluxs {@link Publisher} with basic rx operators that emits 0 to N elements, and then complete
+ * A Reactive Streams {@link Publisher} with basic rx operators that emits 0 to N elements, and then completes
  * (successfully or with an error).
- * <p>
- * <p>It is intended to be used in Reactive Spring projects implementation and return types. Input parameters should
- * keep using raw {@link Publisher} as much as possible.
- * <p>
+ *
+ * <p>It is intended to be used in implementations and return types. Input parameters should keep using raw
+ * {@link Publisher} as much as possible.
+ *
  * <p>If it is known that the underlying {@link Publisher} will emit 0 or 1 element, {@link Mono} should be used
  * instead.
- * <p>
  *
  * @author Sebastien Deleuze
  * @author Stephane Maldini

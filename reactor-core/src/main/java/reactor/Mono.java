@@ -60,10 +60,10 @@ import reactor.fn.tuple.Tuple6;
 /**
  * A Reactive Streams {@link Publisher} with basic rx operators that completes successfully by emitting an element, or
  * with an error.
- * <p>
+ *
  * <p>{@code Mono<Void>} should be used for {Publisher} that just completes without any value.
- * <p>
- * <p>It is intended to be used in implementation and return types, input parameters should keep using raw {@link
+ *
+ * <p>It is intended to be used in implementations and return types, input parameters should keep using raw {@link
  * Publisher} as much as possible.
  *
  * @author Sebastien Deleuze
