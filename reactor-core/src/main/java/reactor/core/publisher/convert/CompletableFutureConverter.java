@@ -26,6 +26,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
+import reactor.Mono;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.publisher.MonoJust;
@@ -165,8 +166,8 @@ public final class CompletableFutureConverter extends PublisherConverter<Complet
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Flux toPublisher(Object future) {
-		return new FluxCompletableFuture<>((CompletableFuture<?>) future);
+	public Mono toPublisher(Object future) {
+		return new MonoCompletableFuture<>((CompletableFuture<?>) future);
 	}
 
 	@Override
@@ -174,7 +175,7 @@ public final class CompletableFutureConverter extends PublisherConverter<Complet
 		return CompletableFuture.class;
 	}
 
-	private static class FluxCompletableFuture<T> extends Flux<T>
+	private static class MonoCompletableFuture<T> extends Mono<T>
 			implements Consumer<Void>, BiConsumer<Long, SubscriberWithContext<T, Void>> {
 
 		private final CompletableFuture<? extends T> future;
@@ -182,10 +183,10 @@ public final class CompletableFutureConverter extends PublisherConverter<Complet
 
 		@SuppressWarnings("unused")
 		private volatile long requested;
-		private static final AtomicLongFieldUpdater<FluxCompletableFuture> REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(FluxCompletableFuture.class, "requested");
+		private static final AtomicLongFieldUpdater<MonoCompletableFuture> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(MonoCompletableFuture.class, "requested");
 
-		public FluxCompletableFuture(CompletableFuture<? extends T> future) {
+		public MonoCompletableFuture(CompletableFuture<? extends T> future) {
 			this.future = future;
 			this.futurePublisher = Flux.generate(this, null, this);
 		}
@@ -196,7 +197,7 @@ public final class CompletableFutureConverter extends PublisherConverter<Complet
 				return;
 			}
 
-			if (BackpressureUtils.getAndAdd(REQUESTED, FluxCompletableFuture.this, n) > 0) {
+			if (BackpressureUtils.getAndAdd(REQUESTED, MonoCompletableFuture.this, n) > 0) {
 				return;
 			}
 

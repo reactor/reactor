@@ -43,6 +43,7 @@ import reactor.core.publisher.MonoError;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoJust;
 import reactor.core.publisher.MonoNext;
+import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscription.CancelledSubscription;
 import reactor.core.support.BackpressureUtils;
@@ -110,6 +111,24 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	public static <T> Mono<T> any(Iterable<? extends Mono<? extends T>> monos) {
 		return new MonoBarrier<>(new FluxAmb<>(monos));
+	}
+
+
+	/**
+	 * @param source
+	 * @param <IN>
+	 *
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public static <IN> Mono<IN> convert(Object source) {
+
+		if (Publisher.class.isAssignableFrom(source.getClass())) {
+			return from((Publisher<IN>) source);
+		}
+		else {
+			return (Mono<IN>) Mono.from(DependencyUtils.convertToPublisher(source));
+		}
 	}
 
 	/**

@@ -167,7 +167,7 @@ public abstract class Flux<T> implements Publisher<T> {
 			return fromIterator((Iterator<IN>) source);
 		}
 		else {
-			return (Flux<IN>) DependencyUtils.convertToPublisher(source);
+			return (Flux<IN>) from(DependencyUtils.convertToPublisher(source));
 		}
 	}
 

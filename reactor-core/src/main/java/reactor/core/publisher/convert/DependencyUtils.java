@@ -170,7 +170,7 @@ public final class DependencyUtils {
 		return HAS_REACTOR_NET;
 	}
 
-	public static Flux<?> convertToPublisher(Object source) {
+	public static Publisher<?> convertToPublisher(Object source) {
 		if (source == null) {
 			throw new IllegalArgumentException("Cannot convert null sources");
 		}
