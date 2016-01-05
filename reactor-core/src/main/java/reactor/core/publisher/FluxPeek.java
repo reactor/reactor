@@ -93,39 +93,45 @@ public final class FluxPeek<T> extends reactor.Flux.FluxBarrier<T, T> {
 
         @Override
         public void request(long n) {
-            try {
-                parent.onRequestCall.accept(n);
-            }
-            catch (Throwable e) {
-                cancel();
-                onError(e);
-                return;
+            if (parent.onRequestCall != null) {
+                try {
+                    parent.onRequestCall.accept(n);
+                }
+                catch (Throwable e) {
+                    cancel();
+                    onError(e);
+                    return;
+                }
             }
             s.request(n);
         }
 
         @Override
         public void cancel() {
-            try {
-                parent.onCancelCall.run();
-            }
-            catch (Throwable e) {
-                cancel();
-                onError(e);
-                return;
+            if (parent.onCancelCall != null) {
+                try {
+                    parent.onCancelCall.run();
+                }
+                catch (Throwable e) {
+                    cancel();
+                    onError(e);
+                    return;
+                }
             }
             s.cancel();
         }
 
         @Override
         public void onSubscribe(Subscription s) {
-            try {
-                parent.onSubscribeCall.accept(s);
-            }
-            catch (Throwable e) {
-                onError(e);
-                EmptySubscription.error(actual, e);
-                return;
+            if (parent.onSubscribeCall != null) {
+                try {
+                    parent.onSubscribeCall.accept(s);
+                }
+                catch (Throwable e) {
+                    onError(e);
+                    EmptySubscription.error(actual, e);
+                    return;
+                }
             }
             this.s = s;
             actual.onSubscribe(this);
@@ -133,59 +139,73 @@ public final class FluxPeek<T> extends reactor.Flux.FluxBarrier<T, T> {
 
         @Override
         public void onNext(T t) {
-            try {
-                parent.onNextCall.accept(t);
-            }
-            catch (Throwable e) {
-                cancel();
-                onError(e);
-                return;
+            if (parent.onNextCall != null) {
+                try {
+                    parent.onNextCall.accept(t);
+                }
+                catch (Throwable e) {
+                    cancel();
+                    onError(e);
+                    return;
+                }
             }
             actual.onNext(t);
         }
 
         @Override
         public void onError(Throwable t) {
-            Exceptions.throwIfFatal(t);
-            try {
-                parent.onErrorCall.accept(t);
-            }
-            catch (Throwable e) {
-                Exceptions.onErrorDropped(e);
-                return;
+            if (parent.onErrorCall != null) {
+                Exceptions.throwIfFatal(t);
+                try {
+                    parent.onErrorCall.accept(t);
+                }
+                catch (Throwable e) {
+                    Exceptions.onErrorDropped(e);
+                    return;
+                }
             }
 
             actual.onError(t);
 
-            try {
-                parent.onAfterTerminateCall.run();
-            }
-            catch (Throwable e) {
-                Exceptions.throwIfFatal(e);
-                parent.onErrorCall.accept(t);
-                actual.onError(e);
+            if (parent.onAfterTerminateCall != null) {
+                try {
+                    parent.onAfterTerminateCall.run();
+                }
+                catch (Throwable e) {
+                    Exceptions.throwIfFatal(e);
+                    if (parent.onErrorCall != null) {
+                        parent.onErrorCall.accept(t);
+                    }
+                    actual.onError(e);
+                }
             }
         }
 
         @Override
         public void onComplete() {
-            try {
-                parent.onCompleteCall.run();
-            }
-            catch (Throwable e) {
-                onError(e);
-                return;
+            if (parent.onCompleteCall != null) {
+                try {
+                    parent.onCompleteCall.run();
+                }
+                catch (Throwable e) {
+                    onError(e);
+                    return;
+                }
             }
 
             actual.onComplete();
 
-            try {
-                parent.onAfterTerminateCall.run();
-            }
-            catch (Throwable e) {
-                Exceptions.throwIfFatal(e);
-                parent.onErrorCall.accept(e);
-                actual.onError(e);
+            if (parent.onAfterTerminateCall != null) {
+                try {
+                    parent.onAfterTerminateCall.run();
+                }
+                catch (Throwable e) {
+                    Exceptions.throwIfFatal(e);
+                    if (parent.onErrorCall != null) {
+                        parent.onErrorCall.accept(e);
+                    }
+                    actual.onError(e);
+                }
             }
         }
 
