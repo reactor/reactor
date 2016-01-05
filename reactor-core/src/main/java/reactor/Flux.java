@@ -946,12 +946,14 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 * @param fallbackFunction
+	 * Subscribe to a returned fallback publisher when any error occurs.
+	 *
+	 * @param fallback
 	 *
 	 * @return
 	 */
-	public final Flux<T> onErrorResumeWith(Function<Throwable, ? extends Publisher<? extends T>> fallbackFunction) {
-		return new FluxResume<>(this, fallbackFunction);
+	public final Flux<T> onErrorResumeWith(Function<Throwable, ? extends Publisher<? extends T>> fallback) {
+		return new FluxResume<>(this, fallback);
 	}
 
 	/**

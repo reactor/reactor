@@ -33,6 +33,7 @@ import reactor.core.publisher.FluxAmb;
 import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxPeek;
+import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.MonoCallable;
 import reactor.core.publisher.MonoEmpty;
@@ -489,6 +490,18 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	@SuppressWarnings("unchecked")
 	public final Flux<T> mergeWith(Publisher<? extends T> source) {
 		return Flux.merge(Flux.just(this, source));
+	}
+
+	/**
+	 * Subscribe to a returned fallback publisher when any error occurs.
+	 *
+	 * @param fallback
+	 *
+	 * @return
+	 * @see Flux#onErrorResumeWith
+	 */
+	public final Mono<T> otherwise(Function<Throwable, ? extends Mono<? extends T>> fallback) {
+		return new MonoBarrier<>(new FluxResume<>(this, fallback));
 	}
 
 	/**
