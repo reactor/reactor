@@ -17,6 +17,7 @@ package reactor.rx;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
+import reactor.Mono;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.support.Assert;
 import reactor.rx.subscriber.Control;
@@ -105,7 +106,7 @@ public class FizzBuzzTests extends AbstractReactorTest {
 		Promise<List<String>> p = stream2
 		  .observe(System.out::println)
 		  .buffer(numOfItems)
-		  .next();
+		  .promise();
 
 		for (int curr = 0; curr < numOfItems; curr++) {
 			if (curr % 5 == 0 && curr % 3 == 0) ring.onNext("FizBuz"+curr);

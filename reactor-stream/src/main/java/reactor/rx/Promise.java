@@ -44,7 +44,7 @@ import reactor.rx.broadcast.Broadcaster;
  * A {@code Promise} is a stateful event container that accepts a single value or error. In addition to {@link #get()
  * getting} or {@link #await() awaiting} the value, consumers can be registered to the outbound {@link #stream()} or via
  * , consumers can be registered to be notified of {@link #doOnError(Consumer) notified an error}, {@link
- * #doOnSuccess(Consumer) a value}, or {@link #onComplete(Consumer) both}. <p> A promise also provides methods for
+ * #doOnSuccess(Consumer) a value}, or {@link #doOnTerminate(Consumer) both}. <p> A promise also provides methods for
  * composing actions with the future value much like a {@link reactor.rx.Stream}. However, where a {@link
  * reactor.rx.Stream} can process many values, a {@code Promise} processes only one value or error.
  *
@@ -508,65 +508,6 @@ public final class Promise<O> extends Mono<O>
 	@Override
 	public boolean isTerminated() {
 		return finalState == FinalState.COMPLETE;
-	}
-
-
-	/**
-	 * Assign a {@link Consumer} that will either be invoked later, when the {@code Promise} is completed by either
-	 * setting a value or propagating an error, or, if this {@code Promise} has already been fulfilled, is immediately
-	 * scheduled to be executed.
-	 *
-	 * @param onComplete the completion {@link Consumer}
-	 *
-	 * @return {@literal the new Promise}
-	 */
-	public final Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
-		request(1);
-		lock.lock();
-		try {
-			if (finalState == FinalState.ERROR) {
-				onComplete.accept(this);
-				return new Promise<>(error, timer);
-			}
-			else if (finalState == FinalState.COMPLETE) {
-				onComplete.accept(this);
-				return new Promise<>(value, timer);
-			}
-		}
-		catch (Throwable t) {
-			return new Promise<>(t, timer);
-		}
-		finally {
-			lock.unlock();
-		}
-
-		return stream().lift(new Flux.Operator<O, O>() {
-			@Override
-			public Subscriber<? super O> apply(final Subscriber<? super O> subscriber) {
-				return new SubscriberBarrier<O, O>(subscriber) {
-					@Override
-					protected void doComplete() {
-						onComplete.accept(Promise.this);
-						subscriber.onComplete();
-					}
-
-					@Override
-					protected void doError(Throwable throwable) {
-						onComplete.accept(Promise.this);
-						subscriber.onError(throwable);
-					}
-
-					@Override
-					protected void doNext(O o) {
-						doCancel();
-						onComplete.accept(Promise.this);
-						subscriber.onNext(o);
-						subscriber.onComplete();
-					}
-				};
-			}
-		})
-		               .consumeNext();
 	}
 
 	@Override

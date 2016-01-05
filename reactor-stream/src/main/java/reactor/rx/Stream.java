@@ -41,8 +41,8 @@ import reactor.core.publisher.FluxLog;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxZip;
-import reactor.core.publisher.MonoNext;
 import reactor.core.publisher.MonoIgnoreElements;
+import reactor.core.publisher.MonoNext;
 import reactor.core.support.Assert;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
@@ -561,16 +561,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		return consumerAction;
 	}
 
-	/**
-	 * Fetch all values in a List to the returned Promise
-	 *
-	 * @return the promise of all data from this Stream
-	 *
-	 * @since 2.5
-	 */
-	public final Promise<List<O>> consumeAsList() {
-		return buffer(Integer.MAX_VALUE).consumeNext();
-	}
 
 	/**
 	 * Defer a Controls operations ready to be requested.
@@ -627,24 +617,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		ManualSubscriber<O> consumerAction = new ManualSubscriber<>(consumer, errorConsumer, completeConsumer);
 		subscribe(consumerAction);
 		return consumerAction;
-	}
-
-	/**
-	 * Return the promise of the next triggered signal. Unlike next, no extra action is required to request 1
-	 * onSubscribe allowing for the promise request to run on the onSubscribe signal thread.
-	 * <p>
-	 * A promise is a container that will capture only once the first arriving error|next|complete signal to this {@link
-	 * Stream}. It is useful to coordinate on single data streams or await for any signal.
-	 *
-	 * @return a new {@link Promise}
-	 *
-	 * @since 2.5
-	 */
-	public final Promise<O> consumeNext() {
-		Promise<O> d = new Promise<O>(getTimer());
-		d.request(1);
-		subscribe(d);
-		return d;
 	}
 
 	/**
@@ -1225,14 +1197,12 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * arriving error|next|complete signal to this {@link Stream}. It is useful to coordinate on single data streams or
 	 * await for any signal.
 	 *
-	 * @return a new {@link Promise}
+	 * @return a new {@link Mono}
 	 *
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public final Promise<O> next() {
-		Promise<O> d = new Promise<O>(getTimer());
-		subscribe(d);
-		return d;
+	public final Mono<O> next() {
+		return new MonoNext<>(this);
 	}
 
 	/**
@@ -1451,6 +1421,17 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 				processor.subscribe(s);
 			}
 		};
+	}
+
+	/**
+	 *
+	 * @return a subscribed Promise (caching the signal unlike {@link #next)
+	 */
+	public final Promise<O> promise() {
+		Promise<O> p = Promise.prepare();
+		p.request(1);
+		subscribe(p);
+		return p;
 	}
 
 	/**
@@ -2211,13 +2192,13 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Fetch all values in a List to the returned Promise
+	 * Fetch all values in a List to the returned Mono
 	 *
-	 * @return the promise of all data from this Stream
+	 * @return the mono of all data from this Stream
 	 *
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public final Promise<List<O>> toList() {
+	public final Mono<List<O>> toList() {
 		return buffer(Integer.MAX_VALUE).next();
 	}
 

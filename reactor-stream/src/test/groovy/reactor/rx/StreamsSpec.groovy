@@ -152,8 +152,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the value is retrieved'
-			def value1 = stream.toList().await()
-			def value2 = stream.toList().await()
+			def value1 = stream.toList().get()
+			def value2 = stream.toList().get()
 
 		then:
 			'it is available'
@@ -171,12 +171,12 @@ class StreamsSpec extends Specification {
 
 		then:
 			'it is available'
-			tap.awaitSuccess()
+			!tap.get()
 
 		when:
 			'the error signal is observed and stream is retrieved'
 			stream = Streams.fail(new Exception())
-			stream.after().next().await()
+			stream.after().next().get()
 
 		then:
 			'it is available'
@@ -361,10 +361,11 @@ class StreamsSpec extends Specification {
 					.publishOn(Processors.ioGroup("work", 8, 4))
 					.dispatchOn(asyncGroup)
 					.log()
+					.take(1)
 					.next()
 
 		then:
-			last.await(5, TimeUnit.SECONDS) > 20_000
+			last.get(5, TimeUnit.SECONDS) > 20_000
 	}
 
 	def 'A Stream can sample values over time with consumeOn'() {
@@ -669,7 +670,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the source accepts a value'
-			def value = mapped.next()
+			def value = mapped.promise()
 			println source.debug()
 			source.onNext(1)
 			println source.debug()
@@ -748,8 +749,6 @@ class StreamsSpec extends Specification {
 			'the sources are zipped'
 			def zippedStream = Streams.zip(odds.log('left'), even.log('right'), (BiFunction) { t1, t2 -> [t1, t2] })
 			def tap = zippedStream.log().toList()
-			tap.await(3, TimeUnit.SECONDS)
-			println tap.debug()
 
 		then:
 			'the values are all collected from source1 stream'
@@ -761,8 +760,6 @@ class StreamsSpec extends Specification {
 				Streams.zip(Streams.just(it), even, (BiFunction) { t1, t2 -> [t1, t2] }).log('second-fm')
 			}
 			tap = zippedStream.log('after-zip').toList()
-			tap.await(3, TimeUnit.SECONDS)
-			println tap.debug()
 
 
 		then:
@@ -1059,7 +1056,7 @@ class StreamsSpec extends Specification {
 			def source = Broadcaster.<Integer> create()
 			def processor = RingBufferProcessor.<Integer> create()
 
-			def res = source.process(processor).map { it * 2 }.log('processed').toList()
+			def res = source.process(processor).map { it * 2 }.log('processed').buffer().promise()
 
 		when:
 			'the source accepts a value'
@@ -1307,7 +1304,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			def res = numbers.buffer(2, 3).log('skip1').toList()
+			def res = numbers.buffer(2, 3).log('skip1').buffer().promise()
 
 		then:
 			'the collected lists are available'
@@ -1315,7 +1312,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'overlapping buffers'
-			res = numbers.buffer(3, 2).log('skip2').toList()
+			res = numbers.buffer(3, 2).log('skip2').buffer().promise()
 
 		then:
 			'the collected overlapping lists are available'
@@ -1324,7 +1321,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(100).log('beforeBuffer').buffer(200l, 300l, TimeUnit.MILLISECONDS).log('afterBuffer').toList()
+			res = numbers.throttle(100).log('beforeBuffer').buffer(200l, 300l, TimeUnit.MILLISECONDS).log('afterBuffer').buffer().promise()
 
 		then:
 			'the collected lists are available'
@@ -1340,7 +1337,7 @@ class StreamsSpec extends Specification {
 		when:
 			'non overlapping buffers'
 			def boundaryStream = Broadcaster.<Integer> create()
-			def res = numbers.buffer { boundaryStream }.consumeAsList()
+			def res = numbers.buffer { boundaryStream }.buffer().promise()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1358,7 +1355,7 @@ class StreamsSpec extends Specification {
 			'overlapping buffers'
 			def bucketOpening = Broadcaster.<Integer> create()
 			numbers = Broadcaster.<Integer> create()
-			res = numbers.log('numb').buffer(bucketOpening) { boundaryStream.log('boundary') }.log('promise').consumeAsList()
+			res = numbers.log('numb').buffer(bucketOpening) { boundaryStream.log('boundary') }.log('promise').buffer().promise()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1385,7 +1382,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			def res = numbers.log('n').window(2, 3).log('test').flatMap { it.log('fm').buffer() }.toList()
+			def res = numbers.log('n').window(2, 3).log('test').flatMap { it.log('fm').buffer() }.buffer().promise()
 
 		then:
 			'the collected lists are available'
@@ -1393,7 +1390,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'overlapping buffers'
-			res = numbers.window(3, 2).flatMap { it.buffer() }.toList()
+			res = numbers.window(3, 2).flatMap { it.buffer() }.buffer().promise()
 
 		then:
 			'the collected overlapping lists are available'
@@ -1402,7 +1399,8 @@ class StreamsSpec extends Specification {
 
 		when:
 			'non overlapping buffers'
-			res = numbers.throttle(100).window(200l, 300l, TimeUnit.MILLISECONDS).flatMap { it.log('fm').buffer() }.toList()
+			res = numbers.throttle(100).window(200l, 300l, TimeUnit.MILLISECONDS).flatMap { it.log('fm').buffer() }
+					.buffer().promise()
 
 		then:
 			'the collected lists are available'
@@ -1419,7 +1417,7 @@ class StreamsSpec extends Specification {
 		when:
 			'non overlapping buffers'
 			def boundaryStream = Broadcaster.<Integer> create()
-			def res = numbers.window { boundaryStream }.flatMap { it.buffer().log() }.consumeAsList()
+			def res = numbers.window { boundaryStream }.flatMap { it.buffer().log() }.buffer().promise()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1439,7 +1437,8 @@ class StreamsSpec extends Specification {
 			def bucketOpening = Broadcaster.<Integer> create()
 			res = numbers.log("w").window(bucketOpening.log("bucket")) { boundaryStream.log('boundary') }.flatMap { it
 					.log('fm').buffer() }
-					.consumeAsList()
+					.buffer()
+					.promise()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1680,7 +1679,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'accept a value'
-			def result = s.toList().await(5, TimeUnit.SECONDS)
+			def result = s.toList().get(5, TimeUnit.SECONDS)
 			//println s.debug()
 
 		then:
@@ -1706,7 +1705,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'accept a value'
-			def result = s.toList().await(5, TimeUnit.SECONDS)
+			def result = s.toList().get(5, TimeUnit.SECONDS)
 			//println s.debug()
 
 		then:
@@ -1726,9 +1725,9 @@ class StreamsSpec extends Specification {
 
 		when:
 			'accept a value'
-			res << s.next().await(5, TimeUnit.SECONDS)
-			res << s.next().await(5, TimeUnit.SECONDS)
-			res << s.next().await(5, TimeUnit.SECONDS)
+			res << s.next().get(5, TimeUnit.SECONDS)
+			res << s.next().get(5, TimeUnit.SECONDS)
+			res << s.next().get(5, TimeUnit.SECONDS)
 			//println s.debug()
 
 		then:
@@ -1758,7 +1757,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'accept a value'
-			def res = s.toList().await(5, TimeUnit.SECONDS)
+			def res = s.toList().get(5, TimeUnit.SECONDS)
 			//println s.debug()
 
 		then:
@@ -1775,7 +1774,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'accept a value'
-			def res = s.log().toList()
+			def res = s.log().buffer().promise()
 			s.onNext 1
 			s.onNext 2
 			s.onNext 3
@@ -1829,7 +1828,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'accept a value'
-			def result = s.toList().await()
+			def result = s.toList().get()
 
 		then:
 			'dispatching works'
@@ -1843,7 +1842,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'accept a value'
-			def result = s.count().next().await()
+			def result = s.count().next().get()
 
 		then:
 			'dispatching works'
@@ -2351,7 +2350,7 @@ class StreamsSpec extends Specification {
 				acc > 0l ? ((next.t1 + acc) / 2) : next.t1
 			}
 
-			def value = reduced.log().consumeNext()
+			def value = reduced.log().promise()
 			println value.debug()
 
 		when:
@@ -2389,7 +2388,7 @@ class StreamsSpec extends Specification {
 				acc > 0l ? ((next.t1 + acc) / 2) : next.t1
 			}
 
-			def value = reduced.log('promise').consumeNext()
+			def value = reduced.log('promise').promise()
 			println value.debug()
 
 		when:
@@ -2503,7 +2502,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the stream is retrieved and consumer are triggered'
-			def promise = stream.toList()
+			def promise = stream.buffer().promise()
 			nextConsumer.accept('test1')
 			nextConsumer.accept('test2')
 			nextConsumer.accept('test3')
@@ -2523,7 +2522,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'the stream is retrieved and consumer are triggered'
-			def promise = stream.toList()
+			def promise = stream.buffer().promise()
 			nextConsumer.accept('test1')
 			nextConsumer.accept('test3')
 			errorConsumer.accept(new Exception())
@@ -2637,12 +2636,11 @@ class StreamsSpec extends Specification {
 				}
 			}.next()
 		println value.debug()
-			value.await(10, TimeUnit.SECONDS)
+			value.get(10, TimeUnit.SECONDS)
 
 		then:
 			'Promise completed after 3 tries'
 			counter == 4
-			value.isComplete()
 	}
 
 	def 'A Stream can re-subscribe its oldest parent on complete signals'() {
@@ -2699,12 +2697,10 @@ class StreamsSpec extends Specification {
 					println "delay repeat by " + i + " second(s)"
 					Streams.timer(i)
 				}
-			}.next()
-			value.await()
+			}.next().get()
 
 		then:
 			'Promise completed after 3 tries'
-			value.isComplete()
 			counter == 4
 	}
 
@@ -2850,7 +2846,7 @@ class StreamsSpec extends Specification {
 			stream = Broadcaster.create()
 			def value2 = stream.skipWhile {
 				'test1' == it
-			}.toList()
+			}.buffer().promise()
 
 			stream.onNext('test1')
 			stream.onNext('test2')
@@ -2870,7 +2866,7 @@ class StreamsSpec extends Specification {
 					.dispatchOn(asyncGroup)
 
 		when:
-			def promise = stream.log("skipTime").skip(2, TimeUnit.SECONDS).toList()
+			def promise = stream.log("skipTime").skip(2, TimeUnit.SECONDS).buffer().promise()
 
 		then:
 			!promise.await()

@@ -761,6 +761,15 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
+	 * Introspect this Flux graph
+	 *
+	 * @return {@link reactor.core.support.ReactiveStateUtils.Graph} representation of a publisher graph
+	 */
+	public ReactiveStateUtils.Graph debug() {
+		return ReactiveStateUtils.scan(this);
+	}
+
+	/**
 	 * {@code flux.dispatchOn(Processors.queue()).subscribe(Subscribers.unbounded()) }
 	 *
 	 * @param group

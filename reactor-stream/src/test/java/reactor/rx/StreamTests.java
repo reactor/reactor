@@ -60,9 +60,9 @@ import reactor.core.support.Logger;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.rx.subscriber.Control;
-import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.broadcast.Broadcaster;
+import reactor.rx.broadcast.StreamProcessor;
+import reactor.rx.subscriber.Control;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -448,17 +448,17 @@ public class StreamTests extends AbstractReactorTest {
 		long avgTime = 50l;
 
 		Promise<Long> result = source.onOverflowBuffer()
-		                             .dispatchOn(asyncGroup)
-		                             .throttle(avgTime)
-		                             .elapsed()
-		                             .skip(1)
-		                             .nest()
-		                             .flatMap(self -> BiStreams.reduceByKey(self, (acc, next) -> acc + next))
-		                             .log("elapsed")
-		                             .sort((a, b) -> a.t1.compareTo(b.t1))
-		                             .reduce(-1L, (acc, next) -> acc > 0l ? ((next.t1 + acc) / 2) : next.t1)
-		                             .log("reduced-elapsed")
-		                             .consumeNext();
+		                          .dispatchOn(asyncGroup)
+		                          .throttle(avgTime)
+		                          .elapsed()
+		                          .skip(1)
+		                          .nest()
+		                          .flatMap(self -> BiStreams.reduceByKey(self, (acc, next) -> acc + next))
+		                          .log("elapsed")
+		                          .sort((a, b) -> a.t1.compareTo(b.t1))
+		                          .reduce(-1L, (acc, next) -> acc > 0l ? ((next.t1 + acc) / 2) : next.t1)
+		                          .log("reduced-elapsed")
+		                          .promise();
 
 		for (int j = 0; j < 10; j++) {
 			source.onNext(1);
@@ -472,21 +472,21 @@ public class StreamTests extends AbstractReactorTest {
 	public void konamiCode() throws InterruptedException {
 		final RingBufferProcessor<Integer> keyboardStream = RingBufferProcessor.create();
 
-		Promise<List<Boolean>> konamis = Streams.wrap(keyboardStream.start())
-		                                        .skipWhile(key -> KeyEvent.VK_UP != key)
-		                                        .buffer(10, 1)
-		                                        .map(keys -> keys.size() == 10 &&
-				                                        keys.get(0) == KeyEvent.VK_UP &&
-				                                        keys.get(1) == KeyEvent.VK_UP &&
-				                                        keys.get(2) == KeyEvent.VK_DOWN &&
-				                                        keys.get(3) == KeyEvent.VK_DOWN &&
-				                                        keys.get(4) == KeyEvent.VK_LEFT &&
-				                                        keys.get(5) == KeyEvent.VK_RIGHT &&
-				                                        keys.get(6) == KeyEvent.VK_LEFT &&
-				                                        keys.get(7) == KeyEvent.VK_RIGHT &&
-				                                        keys.get(8) == KeyEvent.VK_B &&
-				                                        keys.get(9) == KeyEvent.VK_A)
-		                                        .toList();
+		Mono<List<Boolean>> konamis = Streams.wrap(keyboardStream.start())
+		                                     .skipWhile(key -> KeyEvent.VK_UP != key)
+		                                     .buffer(10, 1)
+		                                     .map(keys -> keys.size() == 10 &&
+				                                     keys.get(0) == KeyEvent.VK_UP &&
+				                                     keys.get(1) == KeyEvent.VK_UP &&
+				                                     keys.get(2) == KeyEvent.VK_DOWN &&
+				                                     keys.get(3) == KeyEvent.VK_DOWN &&
+				                                     keys.get(4) == KeyEvent.VK_LEFT &&
+				                                     keys.get(5) == KeyEvent.VK_RIGHT &&
+				                                     keys.get(6) == KeyEvent.VK_LEFT &&
+				                                     keys.get(7) == KeyEvent.VK_RIGHT &&
+				                                     keys.get(8) == KeyEvent.VK_B &&
+				                                     keys.get(9) == KeyEvent.VK_A)
+		                                     .toList();
 
 		keyboardStream.onNext(KeyEvent.VK_UP);
 		keyboardStream.onNext(KeyEvent.VK_UP);
@@ -502,33 +502,21 @@ public class StreamTests extends AbstractReactorTest {
 		keyboardStream.onNext(KeyEvent.VK_C);
 		keyboardStream.onComplete();
 
-		System.out.println(konamis.await());
-		Assert.assertTrue(konamis.get()
-		                         .size() == 12);
-		Assert.assertFalse(konamis.get()
-		                          .get(0));
-		Assert.assertTrue(konamis.get()
-		                         .get(1));
-		Assert.assertFalse(konamis.get()
-		                          .get(2));
-		Assert.assertFalse(konamis.get()
-		                          .get(3));
-		Assert.assertFalse(konamis.get()
-		                          .get(4));
-		Assert.assertFalse(konamis.get()
-		                          .get(5));
-		Assert.assertFalse(konamis.get()
-		                          .get(6));
-		Assert.assertFalse(konamis.get()
-		                          .get(7));
-		Assert.assertFalse(konamis.get()
-		                          .get(8));
-		Assert.assertFalse(konamis.get()
-		                          .get(9));
-		Assert.assertFalse(konamis.get()
-		                          .get(10));
-		Assert.assertFalse(konamis.get()
-		                          .get(11));
+		List<Boolean> res = konamis.get();
+
+		Assert.assertTrue(res.size() == 12);
+		Assert.assertFalse(res.get(0));
+		Assert.assertTrue(res.get(1));
+		Assert.assertFalse(res.get(2));
+		Assert.assertFalse(res.get(3));
+		Assert.assertFalse(res.get(4));
+		Assert.assertFalse(res.get(5));
+		Assert.assertFalse(res.get(6));
+		Assert.assertFalse(res.get(7));
+		Assert.assertFalse(res.get(8));
+		Assert.assertFalse(res.get(9));
+		Assert.assertFalse(res.get(10));
+		Assert.assertFalse(res.get(11));
 	}
 
 	@Test
@@ -557,7 +545,8 @@ public class StreamTests extends AbstractReactorTest {
 		                                               })
 		                                               .log("faultTolerant")
 		                                               .retry()
-		                                               .consumeAsList();
+		                                               .buffer()
+		                                               .promise();
 
 		circuitSwitcher.onNext(closeCircuit);
 
@@ -573,19 +562,14 @@ public class StreamTests extends AbstractReactorTest {
 		closeCircuit.onComplete();
 		circuitSwitcher.onComplete();
 
-		System.out.println(promise.await());
-		Assert.assertEquals(promise.get()
-		                           .get(0), "test1");
-		Assert.assertEquals(promise.get()
-		                           .get(1), "test2");
-		Assert.assertEquals(promise.get()
-		                           .get(2), "test3");
-		Assert.assertEquals(promise.get()
-		                           .get(3), "Alternative Message");
-		Assert.assertEquals(promise.get()
-		                           .get(4), "test7");
-		Assert.assertEquals(promise.get()
-		                           .get(5), "test8");
+		List<String> res = promise.await();
+		Assert.assertNotNull(res);
+		Assert.assertEquals(res.get(0), "test1");
+		Assert.assertEquals(res.get(1), "test2");
+		Assert.assertEquals(res.get(2), "test3");
+		Assert.assertEquals(res.get(3), "Alternative Message");
+		Assert.assertEquals(res.get(4), "test7");
+		Assert.assertEquals(res.get(5), "test8");
 	}
 
 	@Test
@@ -797,10 +781,8 @@ public class StreamTests extends AbstractReactorTest {
 
 		final CountDownLatch latch = new CountDownLatch(NUM_MESSAGES);
 		Map<Integer, Integer> batchesDistribution = new ConcurrentHashMap<>();
-		batchingStreamDef
-		                 .partition(PARALLEL_STREAMS)
-		                 .consume(substream -> substream
-				                 .dispatchOn(asyncGroup)
+		batchingStreamDef.partition(PARALLEL_STREAMS)
+		                 .consume(substream -> substream.dispatchOn(asyncGroup)
 		                                                .buffer(BATCH_SIZE, TIMEOUT, TimeUnit.MILLISECONDS)
 		                                                .consume(items -> {
 			                                                batchesDistribution.compute(items.size(),
@@ -845,7 +827,6 @@ public class StreamTests extends AbstractReactorTest {
 		assertTrue("Latch is " + latch.getCount(), latch.getCount() == 0);
 	}
 
-
 	@Test
 	public void zipOfNull() {
 		try {
@@ -856,7 +837,7 @@ public class StreamTests extends AbstractReactorTest {
 			                  .next()
 			                  .get());
 		}
-		catch (NullPointerException npe){
+		catch (NullPointerException npe) {
 			return;
 		}
 		assertFalse("Should have failed", true);
@@ -910,24 +891,18 @@ public class StreamTests extends AbstractReactorTest {
 
 		CountDownLatch latch = new CountDownLatch(numOps);
 
-
-
 		for (int i = 0; i < numOps; i++) {
 			final String source = "ASYNC_TEST " + i;
 
 			Streams.just(source)
-			       .liftProcessor( () ->
-					    Processors.blackbox(Broadcaster.<String>create(),
-							       operationStream ->
-							       operationStream .dispatchOn(asyncGroup)
-							                       .throttle(100)
-							                       .map(s -> s + " MODIFIED")
-							                       .map(s -> {
-								                       latch.countDown();
-								                       return s;
-							                       })
-					    )
-			       )
+			       .liftProcessor(() -> Processors.blackbox(Broadcaster.<String>create(),
+					       operationStream -> operationStream.dispatchOn(asyncGroup)
+					                                         .throttle(100)
+					                                         .map(s -> s + " MODIFIED")
+					                                         .map(s -> {
+						                                         latch.countDown();
+						                                         return s;
+					                                         })))
 			       .take(2, TimeUnit.SECONDS)
 			       .log("parallelStream")
 			       .consume(System.out::println);
@@ -1252,7 +1227,7 @@ public class StreamTests extends AbstractReactorTest {
 		// The following works:
 		//List<Stream<Object>> list = Arrays.asList(s1);
 		// The following fails:
-		 List<Stream<Object>> list = Arrays.asList(s1, s2);
+		List<Stream<Object>> list = Arrays.asList(s1, s2);
 
 		Streams.combineLatest(list, t -> t)
 		       .log()
@@ -1269,6 +1244,7 @@ public class StreamTests extends AbstractReactorTest {
 	/**
 	 * This test case demonstrates a silent failure of {@link Streams#period(long)} when a resolution is specified that
 	 * is less than the backing {@link Timer} class.
+	 *
 	 * @throws InterruptedException - on failure.
 	 * @throws TimeoutException     - on failure. <p> by @masterav10 : https://github.com/reactor/reactor/issues/469
 	 */
@@ -1307,7 +1283,7 @@ public class StreamTests extends AbstractReactorTest {
 
 			Assert.assertTrue(prev > 0);
 			Assert.assertTrue(time > 0);
-			Assert.assertTrue("was " + (time - prev), time - prev <= delayMS*1.2);
+			Assert.assertTrue("was " + (time - prev), time - prev <= delayMS * 1.2);
 		}
 	}
 
@@ -1465,10 +1441,10 @@ public class StreamTests extends AbstractReactorTest {
 
 		final Semaphore doneSemaphore = new Semaphore(0);
 
-		final Promise<List<String>> listPromise = joinStream.flatMap(Streams::from)
-		                                                    .log("resultStream")
-		                                                    .toList()
-		                                                    .onComplete(v -> doneSemaphore.release());
+		final Mono<List<String>> listPromise = joinStream.flatMap(Streams::from)
+		                                                 .log("resultStream")
+		                                                 .toList()
+		                                                 .doOnTerminate((v, e) -> doneSemaphore.release());
 
 		System.out.println(forkBroadcaster.debug());
 
@@ -1477,9 +1453,9 @@ public class StreamTests extends AbstractReactorTest {
 		forkBroadcaster.onNext(3);
 		forkBroadcaster.onComplete();
 
-		listPromise.awaitSuccess(5, TimeUnit.SECONDS);
+		List<String> res = listPromise.get(5, TimeUnit.SECONDS);
 		System.out.println(forkBroadcaster.debug());
-		assertEquals(Arrays.asList("i0", "done1", "i0", "i1", "done2", "i0", "i1", "i2", "done3"), listPromise.get());
+		assertEquals(Arrays.asList("i0", "done1", "i0", "i1", "done2", "i0", "i1", "i2", "done3"), res);
 	}
 
 	@Test

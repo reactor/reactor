@@ -47,6 +47,7 @@ import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
+import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Supplier;
@@ -108,6 +109,15 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	public static <T> Mono<T> any(Iterable<? extends Mono<? extends T>> monos) {
 		return Flux.amb(monos)
 		           .next();
+	}
+
+	/**
+	 * Introspect this Mono graph
+	 *
+	 * @return {@link reactor.core.support.ReactiveStateUtils.Graph} representation of a publisher graph
+	 */
+	public ReactiveStateUtils.Graph debug() {
+		return ReactiveStateUtils.scan(this);
 	}
 
 	/**
@@ -403,8 +413,8 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 *
 	 * @return
 	 */
-	public final Mono<T> doOnTerminate(Runnable onTerminate) {
-		return new MonoBarrier<>(new FluxPeek<>(this, null, null, null, null, onTerminate, null, null));
+	public final Mono<T> doOnTerminate(BiConsumer<? super T, Throwable> onTerminate) {
+		return new MonoSuccess<>(this, onTerminate);
 	}
 
 	/**
@@ -618,16 +628,29 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 
 	static final class MonoSuccess<I> extends MonoBarrier<I, I> implements FeedbackLoop{
 
-		private final Consumer<? super I> onSuccess;
+		private final Consumer<? super I>   onSuccess;
+		private final BiConsumer<? super I, Throwable> onSuccessOrFailure;
 
-		public MonoSuccess(Publisher<? extends I> source, Consumer<? super I> onSuccess) {
+		MonoSuccess(Publisher<? extends I> source, Consumer<? super I> onSuccess) {
 			super(source);
 			this.onSuccess = Objects.requireNonNull(onSuccess);
+			this.onSuccessOrFailure = null;
+		}
+
+		MonoSuccess(Publisher<? extends I> source, BiConsumer<? super I, Throwable> onSuccessOrFailure) {
+			super(source);
+			this.onSuccess = null;
+			this.onSuccessOrFailure = Objects.requireNonNull(onSuccessOrFailure);
 		}
 
 		@Override
 		public void subscribe(Subscriber<? super I> s) {
-			source.subscribe(new MonoSuccessBarrier<>(s, onSuccess));
+			if(onSuccessOrFailure != null) {
+				source.subscribe(new MonoSuccessBarrier<>(s, onSuccessOrFailure));
+			}
+			else{
+				source.subscribe(new MonoSuccessBarrier<>(s, onSuccess));
+			}
 		}
 
 		@Override
@@ -642,10 +665,18 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 
 		private static final class MonoSuccessBarrier<I> extends SubscriberBarrier<I, I> {
 			private final Consumer<? super I> onSuccess;
+			private final BiConsumer<? super I, Throwable> onSuccessOrFailure;
+
+			public MonoSuccessBarrier(Subscriber<? super I> s, BiConsumer<? super I, Throwable> onSuccessOrFailure) {
+				super(s);
+				this.onSuccess = null;
+				this.onSuccessOrFailure = onSuccessOrFailure;
+			}
 
 			public MonoSuccessBarrier(Subscriber<? super I> s, Consumer<? super I> onSuccess) {
 				super(s);
 				this.onSuccess = onSuccess;
+				this.onSuccessOrFailure = null;
 			}
 
 			@Override
@@ -653,7 +684,12 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 				if(upstream() == null){
 					return;
 				}
-				onSuccess.accept(null);
+				if(onSuccess != null){
+					onSuccess.accept(null);
+				}
+				else{
+					onSuccessOrFailure.accept(null, null);
+				}
 				subscriber.onComplete();
 			}
 
@@ -664,9 +700,22 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 					return;
 				}
 				cancel();
-				onSuccess.accept(t);
+				if(onSuccess != null) {
+					onSuccess.accept(t);
+				}
+				else{
+					onSuccessOrFailure.accept(t, null);
+				}
 				subscriber.onNext(t);
 				subscriber.onComplete();
+			}
+
+			@Override
+			protected void doError(Throwable throwable) {
+				if(onSuccessOrFailure != null) {
+					onSuccessOrFailure.accept(null, throwable);
+				}
+				subscriber.onError(throwable);
 			}
 		}
 	}

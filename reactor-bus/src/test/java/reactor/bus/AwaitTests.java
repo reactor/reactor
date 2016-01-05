@@ -19,6 +19,7 @@ package reactor.bus;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
+import reactor.Mono;
 import reactor.Processors;
 import reactor.bus.selector.Selectors;
 import reactor.core.processor.RingBufferProcessor;
@@ -64,7 +65,7 @@ public class AwaitTests extends AbstractReactorTest {
 		EventBus r = EventBus.create(RingBufferProcessor.create("rb", 8));
 
 		Broadcaster<Event<Throwable>> stream = Broadcaster.<Event<Throwable>>create();
-		Promise<Long> promise = stream.log().take(16).count().consumeNext();
+		Promise<Long> promise = stream.log().take(16).count().promise();
 		r.on(Selectors.T(Throwable.class), stream.toNextConsumer());
 		r.on(Selectors.$("test"), (Event<?> ev) -> {
 			try {

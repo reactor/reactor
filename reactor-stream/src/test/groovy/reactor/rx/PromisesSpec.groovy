@@ -24,7 +24,6 @@ import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
 
 /**
  * @author Stephane Maldini
@@ -38,15 +37,13 @@ class PromisesSpec extends Specification {
 	def promise = Promise.ready()
 	def acceptedPromise
 
-	promise.onComplete { self -> acceptedPromise = self
-	}
+	promise.doOnTerminate { success, failure -> acceptedPromise = failure }.to(Promise.ready())
 
 	when: "the promise is rejected"
 	promise.onError new Exception()
 
 	then: "the consumer is invoked with the promise"
-	acceptedPromise == promise
-	promise.reason()
+	acceptedPromise == promise.reason()
   }
 
   def "An onComplete consumer is called when added to an already-rejected promise"() {
@@ -56,12 +53,10 @@ class PromisesSpec extends Specification {
 	when: "an onComplete consumer is added"
 	def acceptedPromise
 
-	promise.onComplete { self -> acceptedPromise = self
-	}
+	promise.doOnTerminate { data, failure -> acceptedPromise = failure }.to(Promise.ready())
 
 	then: "the consumer is invoked with the promise"
-	acceptedPromise == promise
-	promise.reason()
+	acceptedPromise == promise.reason()
   }
 
   def "An onComplete consumer is called when a promise is fulfilled"() {
@@ -69,14 +64,13 @@ class PromisesSpec extends Specification {
 	def promise = Promise.ready()
 	def acceptedPromise
 
-	promise.onComplete { self -> acceptedPromise = self
-	}
+	promise.doOnTerminate() { v, error -> acceptedPromise = v }.to(Promise.prepare())
 
 	when: "the promise is fulfilled"
 	promise.onNext 'test'
 
 	then: "the consumer is invoked with the promise"
-	acceptedPromise == promise
+	acceptedPromise == promise.get()
 	promise.success
   }
 
@@ -87,11 +81,10 @@ class PromisesSpec extends Specification {
 	when: "an onComplete consumer is added"
 	def acceptedPromise
 
-	promise.onComplete { self -> acceptedPromise = self
-	}
+	promise.doOnTerminate{ self, err -> acceptedPromise = self}.to(Promise.prepare())
 
 	then: "the consumer is invoked with the promise"
-	acceptedPromise == promise
+	acceptedPromise == promise.get()
 	promise.success
   }
 
@@ -380,8 +373,10 @@ class PromisesSpec extends Specification {
 
   def "Multiple promises can be combined"() {
 	given: "two fulfilled promises"
-	def promise1 = Broadcaster.<Integer> create().observe { println 'hey' + it }.next()
-	def promise2 = Promise.<Integer> ready().stream().log().next()
+	def bc1 = Broadcaster.<Integer> create();
+	def promise1 = bc1.observe { println 'hey' + it }.promise()
+	def bc2 = Promise.<Integer> ready()
+	def promise2 = bc2.stream().log().promise()
 
 	when: "a combined promise is first created"
 	def combined = Mono.when(promise1, promise2).to(Promise.prepare())
@@ -391,14 +386,14 @@ class PromisesSpec extends Specification {
 
 	when: "the first promise is fulfilled"
 	println promise1.debug()
-	promise1.onNext 1
+	bc1.onNext 1
 	println promise1.debug()
 
 	then: "the combined promise is still pending"
 	combined.pending
 
 	when: "the second promise if fulfilled"
-	promise2.onNext 2
+	bc2.onNext 2
 
 	println combined.debug()
 
@@ -546,13 +541,12 @@ class PromisesSpec extends Specification {
 
 	then: "the filtered promise is not fulfilled"
 	!filtered.get()
-	filtered.complete
   }
 
   def "A filtered promise is fulfilled if the filter allows the value to pass through"() {
 	given: "a promise with a filter that only accepts even values"
 	def promise = Promise.ready()
-	promise.stream().filter { it % 2 == 0 }.consumeNext()
+	promise.stream().filter { it % 2 == 0 }.next()
 
 	when: "the promise is fulfilled with an even value"
 	promise.onNext 2
@@ -566,13 +560,14 @@ class PromisesSpec extends Specification {
 	given: "a promise with a filter that throws an error"
 	def promise = Promise.ready()
 	def e = new RuntimeException()
-	def filteredPromise = promise.stream().filter { throw e }.consumeNext()
+	def filteredPromise = promise.stream().filter { throw e }.next()
 
 	when: "the promise is fulfilled"
 	promise.onNext 2
+	filteredPromise.get()
 
 	then: "the filtered promise is rejected"
-	filteredPromise.error
+	thrown RuntimeException
   }
 
   def "If a promise is already fulfilled with a value accepted by a filter the filtered promise is fulfilled"() {
@@ -580,10 +575,10 @@ class PromisesSpec extends Specification {
 	def promise = Promise.success(2)
 
 	when: "the promise is filtered with a filter that only accepts even values"
-	promise.stream().filter { it % 2 == 0 }
+	def v = promise.stream().filter { it % 2 == 0 }.next().get()
 
 	then: "the filtered promise is fulfilled"
-	promise.get() == 2
+	promise.get() == v
 	promise.success
   }
 
@@ -592,11 +587,10 @@ class PromisesSpec extends Specification {
 	def promise = Promise.success(1)
 
 	when: "the promise is filtered with a filter that only accepts even values"
-	def filtered = promise.stream().filter { it % 2 == 0 }.next()
+	def v = promise.stream().filter { it % 2 == 0 }.next().get()
 
 	then: "the filtered promise is not fulfilled"
-	!filtered.get()
-	filtered.complete
+	!v
   }
 
   def "Errors stop compositions"() {
