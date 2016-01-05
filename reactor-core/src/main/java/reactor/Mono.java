@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.logging.Level;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -31,6 +32,7 @@ import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.FluxAmb;
 import reactor.core.publisher.FluxFlatMap;
+import reactor.core.publisher.FluxLog;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxPeek;
 import reactor.core.publisher.FluxResume;
@@ -466,6 +468,43 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 		MonoResult<T> result = new MonoResult<>();
 		subscribe(result);
 		return result.await(timeout, unit);
+	}
+
+	/**
+	 * @return
+	 */
+	public final Mono<T> log() {
+		return log(null, Level.INFO, FluxLog.ALL);
+	}
+
+	/**
+	 * @param category
+	 *
+	 * @return
+	 */
+	public final Mono<T> log(String category) {
+		return log(category, Level.INFO, FluxLog.ALL);
+	}
+
+	/**
+	 * @param category
+	 * @param level
+	 *
+	 * @return
+	 */
+	public final Mono<T> log(String category, Level level) {
+		return log(category, level, FluxLog.ALL);
+	}
+
+	/**
+	 * @param category
+	 * @param level
+	 * @param options
+	 *
+	 * @return
+	 */
+	public final Mono<T> log(String category, Level level, int options) {
+		return new MonoBarrier<>(new FluxLog<>(this, category, level, options));
 	}
 
 	/**
