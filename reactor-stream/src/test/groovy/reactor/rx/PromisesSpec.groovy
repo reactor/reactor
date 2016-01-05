@@ -165,7 +165,7 @@ class PromisesSpec extends Specification {
 
 	then: "the promise is invoked without the accepted value"
 	!after.get()
-	after.isComplete()
+	after.isTerminated()
 	after.isSuccess()
 
 	when: "the promise is rejected"
@@ -176,7 +176,7 @@ class PromisesSpec extends Specification {
 	promise.onError new Exception()
 
 	then: "the promise is invoked with the rejecting value"
-	after.isComplete()
+	after.isTerminated()
 	after.isError()
 	after.reason().class == Exception
   }
@@ -228,7 +228,7 @@ class PromisesSpec extends Specification {
 	promise.onNext null
 
 	then: "the promise has completed"
-	promise.isComplete()
+	promise.isTerminated()
   }
 
   def "A function can be used to map a Promise's value when it's fulfilled"() {
@@ -491,7 +491,7 @@ class PromisesSpec extends Specification {
 	println combined.debug()
 
 	then: "it is rejected"
-	combined.error
+	thrown Exception
   }
 
   def "A single promise can be 'combined'"() {

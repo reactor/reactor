@@ -21,7 +21,6 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.concurrent.locks.LockSupport;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -30,6 +29,7 @@ import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.ProcessorGroup;
+import reactor.core.publisher.FluxAmb;
 import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxPeek;
@@ -37,9 +37,9 @@ import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.MonoCallable;
 import reactor.core.publisher.MonoEmpty;
 import reactor.core.publisher.MonoError;
-import reactor.core.publisher.MonoNext;
 import reactor.core.publisher.MonoIgnoreElements;
 import reactor.core.publisher.MonoJust;
+import reactor.core.publisher.MonoNext;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscription.CancelledSubscription;
 import reactor.core.support.BackpressureUtils;
@@ -94,8 +94,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	@SafeVarargs
 	@SuppressWarnings("varargs")
 	public static <T> Mono<T> any(Mono<? extends T>... monos) {
-		return Flux.amb(monos)
-		           .next();
+		return new MonoBarrier<>(new FluxAmb<>(monos));
 	}
 
 	/**
@@ -107,17 +106,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 * @return a {@link Mono}.
 	 */
 	public static <T> Mono<T> any(Iterable<? extends Mono<? extends T>> monos) {
-		return Flux.amb(monos)
-		           .next();
-	}
-
-	/**
-	 * Introspect this Mono graph
-	 *
-	 * @return {@link reactor.core.support.ReactiveStateUtils.Graph} representation of a publisher graph
-	 */
-	public ReactiveStateUtils.Graph debug() {
-		return ReactiveStateUtils.scan(this);
+		return new MonoBarrier<>(new FluxAmb<>(monos));
 	}
 
 	/**
@@ -199,7 +188,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	@SafeVarargs
 	@SuppressWarnings({"varargs", "unchecked"})
 	private static <T> Mono<List<T>> when(Mono<T>... monos) {
-		return new FluxZip<>(monos, FluxZip.TUPLE_TO_LIST_FUNCTION, 1).next();
+		return new MonoBarrier<>(new FluxZip<>(monos, FluxZip.TUPLE_TO_LIST_FUNCTION, 1));
 	}
 
 	/**
@@ -213,7 +202,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Mono<List<T>> when(final Iterable<? extends Mono<? extends T>> monos) {
-		return new FluxZip<>(monos, FluxZip.TUPLE_TO_LIST_FUNCTION, 1).next();
+		return new MonoBarrier<>(new FluxZip<>(monos, FluxZip.TUPLE_TO_LIST_FUNCTION, 1));
 	}
 
 	/**
@@ -229,7 +218,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T1, T2> Mono<Tuple2<T1, T2>> when(Mono<T1> p1, Mono<T2> p2) {
-		return new FluxZip<>(new Mono[]{p1, p2}, Flux.IDENTITY_FUNCTION, 1).next();
+		return new MonoBarrier<>(new FluxZip<>(new Mono[]{p1, p2}, Flux.IDENTITY_FUNCTION, 1));
 	}
 
 	/**
@@ -247,7 +236,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3> Mono<Tuple3<T1, T2, T3>> when(Mono<T1> p1, Mono<T2> p2, Mono<T3> p3) {
-		return new FluxZip<>(new Mono[]{p1, p2, p3}, Flux.IDENTITY_FUNCTION, 1).next();
+		return new MonoBarrier<>(new FluxZip<>(new Mono[]{p1, p2, p3}, Flux.IDENTITY_FUNCTION, 1));
 	}
 
 	/**
@@ -270,7 +259,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 			Mono<T2> p2,
 			Mono<T3> p3,
 			Mono<T4> p4) {
-		return new FluxZip<>(new Mono[]{p1, p2, p3, p4}, Flux.IDENTITY_FUNCTION, 1).next();
+		return new MonoBarrier<>(new FluxZip<>(new Mono[]{p1, p2, p3, p4}, Flux.IDENTITY_FUNCTION, 1));
 	}
 
 	/**
@@ -296,7 +285,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 			Mono<T3> p3,
 			Mono<T4> p4,
 			Mono<T5> p5) {
-		return new FluxZip<>(new Mono[]{p1, p2, p3, p4, p5}, Flux.IDENTITY_FUNCTION, 1).next();
+		return new MonoBarrier<>(new FluxZip<>(new Mono[]{p1, p2, p3, p4, p5}, Flux.IDENTITY_FUNCTION, 1));
 	}
 
 	/**
@@ -325,7 +314,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 			Mono<T4> p4,
 			Mono<T5> p5,
 			Mono<T6> p6) {
-		return new FluxZip<>(new Mono[]{p1, p2, p3, p4, p5, p6}, Flux.IDENTITY_FUNCTION, 1).next();
+		return new MonoBarrier<>(new FluxZip<>(new Mono[]{p1, p2, p3, p4, p5, p6}, Flux.IDENTITY_FUNCTION, 1));
 	}
 
 	/**
@@ -348,6 +337,15 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	 */
 	public final Mono<Void> after() {
 		return new MonoIgnoreElements<>(this);
+	}
+
+	/**
+	 * Introspect this Mono graph
+	 *
+	 * @return {@link reactor.core.support.ReactiveStateUtils.Graph} representation of a publisher graph
+	 */
+	public final ReactiveStateUtils.Graph debug() {
+		return ReactiveStateUtils.scan(this);
 	}
 
 	/**
@@ -720,7 +718,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 		}
 	}
 
-	protected static class MonoResult<I> implements Subscriber<I>, ActiveUpstream {
+	final static class MonoResult<I> implements Subscriber<I>, ActiveUpstream {
 
 		volatile SignalType   endState;
 		volatile I            value;
@@ -752,8 +750,12 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 					if(delay < System.currentTimeMillis()){
 						throw CancelException.get();
 					}
-					LockSupport.parkNanos(1L);
+					Thread.sleep(1);
 				}
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw ReactorFatalException.create(e);
 			}
 			finally {
 				Subscription s = SUBSCRIPTION.getAndSet(this, CancelledSubscription.INSTANCE);

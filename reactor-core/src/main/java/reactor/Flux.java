@@ -765,7 +765,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * @return {@link reactor.core.support.ReactiveStateUtils.Graph} representation of a publisher graph
 	 */
-	public ReactiveStateUtils.Graph debug() {
+	public final ReactiveStateUtils.Graph debug() {
 		return ReactiveStateUtils.scan(this);
 	}
 
