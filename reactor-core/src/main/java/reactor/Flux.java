@@ -37,9 +37,8 @@ import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxSession;
 import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.ForEachSequencer;
-import reactor.core.publisher.MonoNext;
 import reactor.core.publisher.MonoIgnoreElements;
-import reactor.core.publisher.MonoSingle;
+import reactor.core.publisher.MonoNext;
 import reactor.core.publisher.convert.DependencyUtils;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.ReactiveSession;
@@ -848,19 +847,6 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
-	 * Emit only the first item emitted by this {@link Flux}.
-	 * If the sequence completes without data, emit {@link java.util.NoSuchElementException}.
-	 * If the sequence emits more than 1 data, emit {@link ArrayIndexOutOfBoundsException}.
-	 *
-	 * @see #next for an alternative that emits no error on empty.
-	 *
-	 * @return
-	 */
-	public final Mono<T> first() {
-		return new MonoSingle<>(this);
-	}
-
-	/**
 	 * Transform the items emitted by this {@link Flux} into Publishers, then flatten the emissions from those by
 	 * merging them into a single {@link Flux}, so that they may interleave.
 	 *
@@ -1016,6 +1002,13 @@ public abstract class Flux<T> implements Publisher<T> {
 				return fallback;
 			}
 		});
+	}
+
+	/**
+	 * Start the chain and request unbounded demand.
+	 */
+	public final void subscribe() {
+		subscribe(Subscribers.unbounded());
 	}
 
 	/**

@@ -507,6 +507,13 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * Start the chain and request unbounded demand.
+	 */
+	public final void subscribe() {
+		subscribe(Subscribers.unbounded());
+	}
+
+	/**
 	 * Convert the value of {@link Mono} to another {@link Mono} possibly with another value type.
 	 *
 	 * @param transformer
@@ -780,7 +787,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 		public void onSubscribe(Subscription s) {
 			if (BackpressureUtils.validate(this.s, s)) {
 				this.s = s;
-				s.request(1L);
+				s.request(Long.MAX_VALUE);
 			}
 		}
 
