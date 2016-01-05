@@ -24,8 +24,8 @@ import reactor.core.support.ReactiveState;
 /**
  * Represents an never publisher which only calls onSubscribe.
  * <p>
- * This Publisher is effectively stateless and only a single instance exists. Use the {@link #instance()} method to
- * obtain a properly type-parametrized view of it.
+ * This Publisher is effectively stateless and only a single instance exists.
+ * Use the {@link #instance()} method to obtain a properly type-parametrized view of it.
  */
 
 /**
@@ -33,36 +33,36 @@ import reactor.core.support.ReactiveState;
  * @since 2.5
  */
 public final class FluxNever extends reactor.Flux<Object>
-		implements ReactiveState.Factory, ReactiveState.ActiveUpstream {
+        implements ReactiveState.Factory, ReactiveState.ActiveUpstream {
 
-	private static final Publisher<Object> INSTANCE = new FluxNever();
+    private static final Publisher<Object> INSTANCE = new FluxNever();
 
-	private FluxNever() {
-		// deliberately no op
-	}
+    private FluxNever() {
+        // deliberately no op
+    }
 
-	@Override
-	public boolean isStarted() {
-		return true;
-	}
+    @Override
+    public boolean isStarted() {
+        return true;
+    }
 
-	@Override
-	public boolean isTerminated() {
-		return false;
-	}
+    @Override
+    public boolean isTerminated() {
+        return false;
+    }
 
-	@Override
-	public void subscribe(Subscriber<? super Object> s) {
-		s.onSubscribe(EmptySubscription.INSTANCE);
-	}
+    @Override
+    public void subscribe(Subscriber<? super Object> s) {
+        s.onSubscribe(EmptySubscription.INSTANCE);
+    }
 
-	/**
-	 * Returns a properly parametrized instance of this never Publisher.
-	 *
-	 * @return a properly parametrized instance of this never Publisher
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> Flux<T> instance() {
-		return (Flux<T>) INSTANCE;
-	}
+    /**
+     * Returns a properly parametrized instance of this never Publisher.
+     *
+     * @return a properly parametrized instance of this never Publisher
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> Flux<T> instance() {
+        return (Flux<T>) INSTANCE;
+    }
 }

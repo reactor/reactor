@@ -24,7 +24,8 @@ import reactor.core.subscriber.SubscriberMultiSubscription;
 import reactor.fn.Function;
 
 /**
- * Resumes the failed main sequence with another sequence returned by a function for the particular failure exception.
+ * Resumes the failed main sequence with another sequence returned by
+ * a function for the particular failure exception.
  *
  * @param <T> the value type
  */
@@ -35,85 +36,85 @@ import reactor.fn.Function;
  */
 public final class FluxResume<T> extends reactor.Flux.FluxBarrier<T, T> {
 
-	final Function<? super Throwable, ? extends Publisher<? extends T>> nextFactory;
+    final Function<? super Throwable, ? extends Publisher<? extends T>> nextFactory;
 
-	public FluxResume(Publisher<? extends T> source,
-			Function<? super Throwable, ? extends Publisher<? extends T>> nextFactory) {
-		super(source);
-		this.nextFactory = Objects.requireNonNull(nextFactory, "nextFactory");
-	}
+    public FluxResume(Publisher<? extends T> source,
+            Function<? super Throwable, ? extends Publisher<? extends T>> nextFactory) {
+        super(source);
+        this.nextFactory = Objects.requireNonNull(nextFactory, "nextFactory");
+    }
 
-	@Override
-	public void subscribe(Subscriber<? super T> s) {
-		source.subscribe(new FluxResumeSubscriber<>(s, nextFactory));
-	}
+    @Override
+    public void subscribe(Subscriber<? super T> s) {
+        source.subscribe(new FluxResumeSubscriber<>(s, nextFactory));
+    }
 
-	static final class FluxResumeSubscriber<T> extends SubscriberMultiSubscription<T, T> implements FeedbackLoop {
+    static final class FluxResumeSubscriber<T> extends SubscriberMultiSubscription<T, T> implements FeedbackLoop {
 
-		final Function<? super Throwable, ? extends Publisher<? extends T>> nextFactory;
+        final Function<? super Throwable, ? extends Publisher<? extends T>> nextFactory;
 
-		boolean second;
+        boolean second;
 
-		public FluxResumeSubscriber(Subscriber<? super T> actual,
-				Function<? super Throwable, ? extends Publisher<? extends T>> nextFactory) {
-			super(actual);
-			this.nextFactory = nextFactory;
-		}
+        public FluxResumeSubscriber(Subscriber<? super T> actual,
+                Function<? super Throwable, ? extends Publisher<? extends T>> nextFactory) {
+            super(actual);
+            this.nextFactory = nextFactory;
+        }
 
-		@Override
-		public void onSubscribe(Subscription s) {
-			if (!second) {
-				subscriber.onSubscribe(this);
-			}
-			set(s);
-		}
+        @Override
+        public void onSubscribe(Subscription s) {
+            if (!second) {
+                subscriber.onSubscribe(this);
+            }
+            set(s);
+        }
 
-		@Override
-		public void onNext(T t) {
-			subscriber.onNext(t);
+        @Override
+        public void onNext(T t) {
+            subscriber.onNext(t);
 
-			if (!second) {
-				producedOne();
-			}
-		}
+            if (!second) {
+                producedOne();
+            }
+        }
 
-		@Override
-		public void onError(Throwable t) {
-			if (!second) {
-				second = true;
+        @Override
+        public void onError(Throwable t) {
+            if (!second) {
+                second = true;
 
-				Publisher<? extends T> p;
+                Publisher<? extends T> p;
 
-				try {
-					p = nextFactory.apply(t);
-				}
-				catch (Throwable e) {
-					e.addSuppressed(t);
-					subscriber.onError(e);
-					return;
-				}
-				if (p == null) {
-					NullPointerException t2 = new NullPointerException("The nextFactory returned a null Publisher");
-					t2.addSuppressed(t);
-					subscriber.onError(t2);
-				}
-				else {
-					p.subscribe(this);
-				}
-			}
-			else {
-				subscriber.onError(t);
-			}
-		}
+                try {
+                    p = nextFactory.apply(t);
+                }
+                catch (Throwable e) {
+                    e.addSuppressed(t);
+                    subscriber.onError(e);
+                    return;
+                }
+                if (p == null) {
+                    NullPointerException t2 = new NullPointerException("The nextFactory returned a null Publisher");
+                    t2.addSuppressed(t);
+                    subscriber.onError(t2);
+                }
+                else {
+                    p.subscribe(this);
+                }
+            }
+            else {
+                subscriber.onError(t);
+            }
+        }
 
-		@Override
-		public Object delegateInput() {
-			return nextFactory;
-		}
+        @Override
+        public Object delegateInput() {
+            return nextFactory;
+        }
 
-		@Override
-		public Object delegateOutput() {
-			return null;
-		}
-	}
+        @Override
+        public Object delegateOutput() {
+            return null;
+        }
+    }
 }
