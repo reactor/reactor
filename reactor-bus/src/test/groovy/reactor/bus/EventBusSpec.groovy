@@ -394,7 +394,7 @@ class EventBusSpec extends Specification {
 
 	when: "multithreaded bus can be serialized"
 	r = EventBus.create(Processors.queue("bus", 8), 4)
-	def tail = Streams.from(r.on(selector)).map { it.data }.observe { sleep(100) }.elapsed().log().take(10).buffer()
+	def tail = Streams.from(r.on(selector)).map { it.data }.doOnNext { sleep(100) }.elapsed().log().take(10).buffer()
 			.promise()
 
 	10.times {

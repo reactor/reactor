@@ -57,7 +57,7 @@ public class PopularTagTests extends AbstractReactorTest {
 				  .fromArray(samuelJackson.split(" "))
 				  .dispatchOn(asyncGroup)
 				  .filter(w -> !w.trim().isEmpty())
-				  .observe(i -> simulateLatency())
+				  .doOnNext(i -> simulateLatency())
 			)
 			.map(w -> Tuple.of(w, 1))
 		    .window(2, SECONDS)

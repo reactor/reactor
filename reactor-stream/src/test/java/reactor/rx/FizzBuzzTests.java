@@ -97,13 +97,13 @@ public class FizzBuzzTests extends AbstractReactorTest {
 				  }
 			  }
 		  }), (t1, t2) -> String.format("%s : %s", t1, t2))
-		  .observeError(Throwable.class, (o, t) -> {
+		  .when(Throwable.class, (o, t) -> {
 			  System.err.println(t.toString());
 			  t.printStackTrace();
 		  });
 
 		Promise<List<String>> p = stream2
-		  .observe(System.out::println)
+		  .doOnNext(System.out::println)
 		  .buffer(numOfItems)
 		  .promise();
 

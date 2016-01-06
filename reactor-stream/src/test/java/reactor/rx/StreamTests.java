@@ -239,7 +239,7 @@ public class StreamTests extends AbstractReactorTest {
 
 	@Test
 	public void promiseAcceptCountCannotExceedOne() {
-		Promise<Object> deferred = Promise.<Object>ready();
+		Promise<Object> deferred = Promise.ready();
 		deferred.onNext("alpha");
 		try {
 			deferred.onNext("bravo");
@@ -532,9 +532,9 @@ public class StreamTests extends AbstractReactorTest {
 
 		final int maxErrors = 3;
 
-		Promise<List<String>> promise = circuitSwitcher.observe(d -> successes.incrementAndGet())
+		Promise<List<String>> promise = circuitSwitcher.doOnNext(d -> successes.incrementAndGet())
 		                                               .when(Throwable.class, error -> failures.incrementAndGet())
-		                                               .observeStart(s -> {
+		                                               .doOnSubscribe(s -> {
 			                                               if (failures.compareAndSet(maxErrors, 0)) {
 				                                               System.out.println("failures: " + failures + " successes:" + successes);
 				                                               circuitSwitcher.onNext(openCircuit);
@@ -853,7 +853,7 @@ public class StreamTests extends AbstractReactorTest {
 				                           Streams.just(1111, l, 3333, 4444, 5555, 6666)).log("merged")
 		                                                                                 .dispatchOn(asyncGroup)
 		                                                                                 .log("dispatched")
-		                                                                                 .observeStart(x -> afterSubscribe.countDown())
+		                                                                                 .doOnSubscribe(x -> afterSubscribe.countDown())
 		                                                                                 .filter(nearbyLoc -> 3333 >= nearbyLoc)
 		                                                                                 .filter(nearbyLoc -> 2222 <= nearbyLoc)
 
@@ -1227,7 +1227,7 @@ public class StreamTests extends AbstractReactorTest {
 
 		Streams.combineLatest(list, t -> t)
 		       .log()
-		       .observe(obj -> {
+		       .doOnNext(obj -> {
 			       ref.set(obj);
 			       phaser.arrive();
 		       })
@@ -1262,7 +1262,7 @@ public class StreamTests extends AbstractReactorTest {
 		                      .map((signal) -> {
 			                      return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - elapsed);
 		                      })
-		                      .observe((elapsedMillis) -> {
+		                      .doOnNext((elapsedMillis) -> {
 			                      times.add(localTime + elapsedMillis);
 			                      barrier.arrive();
 		                      })
@@ -1409,14 +1409,13 @@ public class StreamTests extends AbstractReactorTest {
 					                      }
 					                      return list;
 				                      })
-				                      .observe(ls -> println("Computed: ", ls))
+				                      .doOnNext(ls -> println("Computed: ", ls))
 				                      .log("computation");
-		;
 
 		final Broadcaster<Integer> persistenceBroadcaster = Broadcaster.create();
 		final Stream<List<String>> persistenceStream =
 				persistenceBroadcaster.dispatchOn(Processors.singleGroup("persistence", BACKLOG))
-				                      .observe(i -> println("Persisted: ", i))
+				                      .doOnNext(i -> println("Persisted: ", i))
 				                      .map(i -> Collections.singletonList("done" + i))
 				                      .log("persistence");
 
@@ -1461,7 +1460,6 @@ public class StreamTests extends AbstractReactorTest {
 		try {
 			for (; ; ) {
 				forkJoinUsingDispatchersAndSplit();
-				;
 				println("**** Success! ****");
 				successCount++;
 			}

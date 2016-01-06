@@ -19,7 +19,6 @@ import org.reactivestreams.Publisher
 import org.reactivestreams.Subscription
 import reactor.Processors
 import reactor.Timers
-import reactor.core.error.CancelException
 import reactor.core.error.ReactorFatalException
 import reactor.core.processor.ProcessorGroup
 import reactor.core.processor.RingBufferProcessor
@@ -105,7 +104,7 @@ class StreamsSpec extends Specification {
 		when:
 			'the value is not retrieved'
 			def value = ""
-			def controls = stream.observe { value = it }.log().consumeLater()
+			def controls = stream.doOnNext { value = it }.log().consumeLater()
 
 		then:
 			'it is not available'
@@ -128,7 +127,7 @@ class StreamsSpec extends Specification {
 			def stream = Streams.fromIterable([1, 2, 3])
 					.broadcast()
 					.when(Throwable) { e = it }
-					.observeComplete { latch.countDown() }
+					.doOnComplete { latch.countDown() }
 
 		when:
 			'cumulated request of Long MAX'
@@ -460,15 +459,15 @@ class StreamsSpec extends Specification {
 
 		when:
 			'a Subscribe Consumer is registered'
-			stream = stream.observeStart { signals << 'subscribe' }
+			stream = stream.doOnSubscribe { signals << 'subscribe' }
 
 		and:
 			'a Cancel Consumer is registered'
-			stream = stream.observeCancel { signals << 'cancel' }
+			stream = stream.doOnCancel { signals << 'cancel' }
 
 		and:
 			'a Complete Consumer is registered'
-			stream = stream.observeComplete { signals << 'complete' }
+			stream = stream.doOnComplete { signals << 'complete' }
 
 		and:
 			'the stream is consumed'
@@ -489,7 +488,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'a Subscribe Consumer is registered'
-			stream = stream.defaultIfEmpty('test').observeComplete { values << 'complete' }
+			stream = stream.defaultIfEmpty('test').doOnComplete { values << 'complete' }
 
 		and:
 			'the stream is consumed'
@@ -2266,7 +2265,7 @@ class StreamsSpec extends Specification {
 			def source = Broadcaster.<Integer> create()
 
 			def value = null
-			def tail = source.log("drop").onOverflowDrop().observe { value = it }.log('overflow-drop-test')
+			def tail = source.log("drop").onOverflowDrop().doOnNext { value = it }.log('overflow-drop-test')
 					.consumeLater()
 
 			tail.request(5)
@@ -2501,7 +2500,7 @@ class StreamsSpec extends Specification {
 			def i = 0
 			stream = stream
 					.log('beforeObserve')
-					.observe {
+					.doOnNext {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
@@ -2521,7 +2520,7 @@ class StreamsSpec extends Specification {
 			'the stream triggers an error for the 2 first elements and is using retry() to ignore them'
 			i = 0
 			stream = Broadcaster.create()
-			def tap = stream.observe {
+			def tap = stream.doOnNext {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
@@ -2544,7 +2543,7 @@ class StreamsSpec extends Specification {
 			'the stream triggers an error for the 2 first elements and is using retry(matcher) to ignore them'
 			i = 0
 			stream = Streams.fromIterable(['test', 'test2', 'test3'])
-			value = stream.observe {
+			value = stream.doOnNext {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
@@ -2560,7 +2559,7 @@ class StreamsSpec extends Specification {
 			'the stream triggers an error for the 2 first elements and is using retry(matcher) to ignore them'
 			i = 0
 			stream = Broadcaster.create()
-			tap = stream.observe {
+			tap = stream.doOnNext {
 				if (i++ < 2) {
 					throw new RuntimeException()
 				}
@@ -2608,7 +2607,7 @@ class StreamsSpec extends Specification {
 		when:
 			'using repeat(2) to ignore complete twice and resubscribe'
 			def i = 0
-			stream = stream.repeat(2).observe { i++ }.count()
+			stream = stream.repeat(2).doOnNext { i++ }.count()
 
 			def value = stream.get()
 
@@ -2623,7 +2622,7 @@ class StreamsSpec extends Specification {
 			'using repeat() to ignore complete and resubscribe'
 			stream = Broadcaster.create()
 			i = 0
-			stream.take(3).log().repeat().observe { i++ }.consume()
+			stream.take(3).log().repeat().doOnNext { i++ }.consume()
 
 			stream.onNext('test')
 			stream.onNext('test2')
@@ -2686,7 +2685,7 @@ class StreamsSpec extends Specification {
 
 		when:
 			'elapsed operation is added and the stream is retrieved'
-			def value = stream.observe {
+			def value = stream.doOnNext {
 				sleep(1000)
 			}.elapsed().tap().get()
 

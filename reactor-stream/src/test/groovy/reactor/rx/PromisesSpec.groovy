@@ -374,7 +374,7 @@ class PromisesSpec extends Specification {
   def "Multiple promises can be combined"() {
 	given: "two fulfilled promises"
 	def bc1 = Broadcaster.<Integer> create();
-	def promise1 = bc1.observe { println 'hey' + it }.promise()
+	def promise1 = bc1.doOnNext { println 'hey' + it }.promise()
 	def bc2 = Promise.<Integer> ready()
 	def promise2 = bc2.stream().log().promise()
 

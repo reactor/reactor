@@ -54,7 +54,7 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 				p.dispatchOn(sharedGroup)
 		                  .partition(2)
 		                  .flatMap(stream -> stream.dispatchOn(asyncGroup)
-		                                           .observe(this::monitorThreadUse)
+		                                           .doOnNext(this::monitorThreadUse)
 		                                           .scan((prev, next) -> next)
 		                                           .map(integer -> -integer)
 		                                           .filter(integer -> integer <= 0)

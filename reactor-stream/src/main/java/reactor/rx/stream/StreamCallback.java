@@ -27,9 +27,9 @@ import reactor.fn.Consumer;
 public final  class StreamCallback<T> extends StreamBarrier<T, T> {
 
 	private final Consumer<? super T> consumer;
-	private final Consumer<Void> completeConsumer;
+	private final Runnable completeConsumer;
 
-	public StreamCallback(Publisher<T> source, Consumer<? super T> consumer, Consumer<Void> completeConsumer) {
+	public StreamCallback(Publisher<T> source, Consumer<? super T> consumer, Runnable completeConsumer) {
 		super(source);
 		this.consumer = consumer;
 		this.completeConsumer = completeConsumer;
@@ -43,9 +43,9 @@ public final  class StreamCallback<T> extends StreamBarrier<T, T> {
 	static final class CallbackAction<T> extends SubscriberBarrier<T, T> {
 
 		private final Consumer<? super T> consumer;
-		private final Consumer<Void> completeConsumer;
+		private final Runnable completeConsumer;
 
-		public CallbackAction(Subscriber<? super T> actual, Consumer<? super T> consumer, Consumer<Void> completeConsumer) {
+		public CallbackAction(Subscriber<? super T> actual, Consumer<? super T> consumer, Runnable completeConsumer) {
 			super(actual);
 			this.consumer = consumer;
 			this.completeConsumer = completeConsumer;
@@ -62,7 +62,7 @@ public final  class StreamCallback<T> extends StreamBarrier<T, T> {
 		@Override
 		protected void doComplete() {
 			if(completeConsumer != null){
-				completeConsumer.accept(null);
+				completeConsumer.run();
 			}
 			subscriber.onComplete();
 		}

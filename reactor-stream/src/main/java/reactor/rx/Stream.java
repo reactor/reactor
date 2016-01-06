@@ -535,7 +535,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
 	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
-	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
+	 * For a passive version that observe and forward incoming data see {@link #doOnNext(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
 	 *
@@ -610,7 +610,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will consume any values accepted by this {@code Stream}. As
 	 * such this a terminal action to be placed on a stream flow. It will also eagerly prefetch upstream publisher. <p>
-	 * For a passive version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
+	 * For a passive version that observe and forward incoming data see {@link #doOnNext(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
 	 *
@@ -661,7 +661,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * The passed {code requestMapper} function will receive the {@link Stream} of the last N requested elements
 	 * -starting with the capacity defined for the stream- when the N elements have been consumed. It will return a
 	 * {@link Publisher} of long signals S that will instruct the consumer to request S more elements. <p> For a passive
-	 * version that observe and forward incoming data see {@link #observe(reactor.fn.Consumer)}
+	 * version that observe and forward incoming data see {@link #doOnNext(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
 	 *
@@ -682,7 +682,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * -starting with the capacity defined for the stream- when the N elements have been consumed. It will return a
 	 * {@link Publisher} of long signals S that will instruct the consumer to request S more elements, possibly altering
 	 * the "batch" size if wished. <p> <p> For a passive version that observe and forward incoming data see {@link
-	 * #observe(reactor.fn.Consumer)}
+	 * #doOnNext(reactor.fn.Consumer)}
 	 *
 	 * @param consumer the consumer to invoke on each value
 	 *
@@ -1241,52 +1241,49 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return {@literal new Stream}
 	 *
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public final Stream<O> observe(@Nonnull final Consumer<? super O> consumer) {
+	public final Stream<O> doOnNext(@Nonnull final Consumer<? super O> consumer) {
 		return new StreamCallback<O>(this, consumer, null);
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will observe any cancel signal
+	 * Attach a {@link Runnable} to this {@code Stream} that will observe any cancel signal
 	 *
-	 * @param consumer the consumer to invoke on cancel
+	 * @param runnable the runnable to invoke on cancel
 	 *
 	 * @return {@literal a new stream}
 	 *
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public final Stream<O> observeCancel(@Nonnull final Consumer<Void> consumer) {
-		return new StreamStateCallback<O>(this, consumer, null);
+	public final Stream<O> doOnCancel(@Nonnull final Runnable runnable) {
+		return new StreamStateCallback<O>(this, runnable, null);
 	}
 
 	/**
-	 * Attach a {@link Consumer} to this {@code Stream} that will observe any complete signal
+	 * Attach a {@link Runnable} to this {@code Stream} that will observe any complete signal
 	 *
 	 * @param consumer the consumer to invoke on complete
 	 *
 	 * @return {@literal a new stream}
 	 *
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public final Stream<O> observeComplete(@Nonnull final Consumer<Void> consumer) {
+	public final Stream<O> doOnComplete(@Nonnull final Runnable consumer) {
 		return new StreamCallback<O>(this, null, consumer);
 	}
 
 	/**
-	 * Assign an error handler that will pass eventual associated values and exceptions of the given type. Will not stop
-	 * error propagation, use when(class, publisher), retry, ignoreError or recover to actively deal with the error.
+	 * Attach a {@link Consumer} to this {@code Stream} that will observe any error signal
 	 *
-	 * @param exceptionType the type of exceptions to handle
-	 * @param onError the error handler for each error
-	 * @param <E> type of the error to handle
+	 * @param consumer the runnable to invoke on cancel
 	 *
-	 * @return {@literal new Stream}
+	 * @return {@literal a new stream}
+	 *
+	 * @since 2.0, 2.5
 	 */
-	@SuppressWarnings("unchecked")
-	public final <E extends Throwable> Stream<O> observeError(@Nonnull final Class<E> exceptionType,
-			@Nonnull final BiConsumer<Object, ? super E> onError) {
-		return new StreamErrorWithValue<O, E>(this, exceptionType, onError, null);
+	public final Stream<O> doOnError(@Nonnull final Consumer<Throwable> consumer) {
+		return new StreamError<>(this, Throwable.class, consumer);
 	}
 
 	/**
@@ -1298,7 +1295,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.0
 	 */
-	public final Stream<O> observeStart(@Nonnull final Consumer<? super Subscription> consumer) {
+	public final Stream<O> doOnSubscribe(@Nonnull final Consumer<? super Subscription> consumer) {
 		return new StreamStateCallback<O>(this, null, consumer);
 	}
 
@@ -2460,11 +2457,26 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @param <E> type of the error to handle
 	 *
 	 * @return {@literal new Stream}
+	 * @since 2.0, 2.5
 	 */
-	@SuppressWarnings("unchecked")
 	public final <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
 			@Nonnull final Consumer<E> onError) {
 		return new StreamError<O, E>(this, exceptionType, onError);
+	}
+
+	/**
+	 * Assign an error handler that will pass eventual associated values and exceptions of the given type. Will not stop
+	 * error propagation, use when(class, publisher), retry, ignoreError or recover to actively deal with the error.
+	 *
+	 * @param exceptionType the type of exceptions to handle
+	 * @param onError the error handler for each error
+	 * @param <E> type of the error to handle
+	 *
+	 * @return {@literal new Stream}
+	 */
+	public final <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
+			@Nonnull final BiConsumer<Object, ? super E> onError) {
+		return new StreamErrorWithValue<O, E>(this, exceptionType, onError, null);
 	}
 
 	/**
@@ -2592,6 +2604,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			extends R > resultSelector){
 		return new StreamWithLatestFrom<>(this, other, resultSelector);
 	}
+
 
 	/**
 	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The result will

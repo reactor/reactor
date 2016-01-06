@@ -28,10 +28,10 @@ import reactor.fn.Consumer;
  */
 public class StreamStateCallback<T> extends StreamBarrier<T, T> {
 
-	private final Consumer<Void>                          cancelConsumer;
+	private final Runnable                          cancelConsumer;
 	private final Consumer<? super Subscription>          onSubscribeConsumer;
 
-	public StreamStateCallback(Publisher<T> source, Consumer<Void> cancelConsumer,
+	public StreamStateCallback(Publisher<T> source, Runnable cancelConsumer,
 			Consumer<? super Subscription> onSubscribeConsumer) {
 		super(source);
 		this.cancelConsumer = cancelConsumer;
@@ -45,11 +45,11 @@ public class StreamStateCallback<T> extends StreamBarrier<T, T> {
 
 	static final class StreamStateCallbackAction<T> extends SubscriberBarrier<T, T> {
 
-		private final Consumer<Void>                          cancelConsumer;
+		private final Runnable                    cancelConsumer;
 		private final Consumer<? super Subscription>          onSubscribeConsumer;
 
 		public StreamStateCallbackAction(Subscriber<? super T> actual,
-				Consumer<Void> cancelConsumer,
+				Runnable cancelConsumer,
 				Consumer<? super Subscription> onSubscribeConsumer) {
 			super(actual);
 			this.cancelConsumer = cancelConsumer;
@@ -67,7 +67,7 @@ public class StreamStateCallback<T> extends StreamBarrier<T, T> {
 		@Override
 		protected void doCancel() {
 			if (cancelConsumer != null) {
-				cancelConsumer.accept(null);
+				cancelConsumer.run();
 			}
 			super.doCancel();
 		}

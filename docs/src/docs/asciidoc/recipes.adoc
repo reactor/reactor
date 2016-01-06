@@ -172,9 +172,9 @@ final int maxErrors = 3;
 
 Promise<List<String>> promise = // <5>
 		circuitSwitcher // <6>
-			.observe(d -> successes.incrementAndGet()) // <7>
+			.doOnNext(d -> successes.incrementAndGet()) // <7>
 			.when(Throwable.class, error -> failures.incrementAndGet())
-			.observeStart(s -> { // <8>
+			.doOnSubscribe(s -> { // <8>
 
 				System.out.println("failures: " + failures +
 					 " successes:" + successes);
@@ -223,7 +223,7 @@ Assert.assertEquals(promise.get().get(5), "test8");
 <8> Monitor `onSubscribe(Subscription)` call which is called after successful stream start.
 <9> If the number of error is _maxErrors_, trip the circuit by changing the current circuitSwitcher data source to the fallback one.
 <10> Re-consume from the main stream in 1 Second by signalling circuitSwitcher with it.
-<11> Keep retrying on any exception, which means Cancel / Re Subscribe. That's why we `observeStart()` as any error will trigger it.
+<11> Keep retrying on any exception, which means Cancel / Re Subscribe. That's why we `doOnSubscribe()` as any error will trigger it.
 <12> Start the circuitSwitcher with the main `Stream`
 <13> Artificial wait to leave a chance to the timer to close the circuit,
 <14> Double `onComplete()` the current main stream and the circuitSwitcher itself (otherwise they will hang for the missing `onComplete()`.

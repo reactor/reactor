@@ -22,7 +22,7 @@ Streams.from(aListOfString)
       .from(sentence.split(" "))
       .dispatchOn(cachedDispatcher())
       .filter(word -> !word.trim().isEmpty())
-      .observe(word -> doSomething(word))
+      .doOnNext(word -> doSomething(word))
   )
   .map(word -> Tuple.of(word, 1))
   .window(1, TimeUnit.SECONDS)
@@ -594,7 +594,7 @@ import reactor.rx.Stream;
 Stream<String> stream = Streams.just("a","b","c","d","e","f","g","h");
 
 //prepare a shared pipeline
-Stream<String> sharedStream = stream.observe(System.out::println).broadcast();
+Stream<String> sharedStream = stream.doOnNext(System.out::println).broadcast();
 
 //prepare two unique pipelines
 Stream<String> actionChain1 = sharedStream.map(String::toUpperCase).filter(w -> w.equals("C"));
@@ -730,16 +730,16 @@ These operations are called `Actions`, and they will not <<streams.adoc#wireup,w
 
 ==== Observe
 
-If you want to passively observe data as it passes through the pipeline, then use the `.observe(Consumer)` methods and other `reactor.rx.action.passive` actions.
-To observe values, use link:/docs/api/reactor/rx/Stream.html#observe-reactor.fn.Consumer-[.observe(Consumer<? super T>)]. To observe errors without dealing with them definitively, use link:/docs/api/reactor/rx/Stream.html#observeError-java.lang.Class-reactor.fn.BiConsumer-[.observe(Class<? extends Throwable>, BiConsumer<Object,? extends Throwable>)]. To observe the Reactive Streams complete signal, use link:/docs/api/reactor/rx/Stream.html#observeComplete-reactor.fn.Consumer-[.observeComplete(Consumer<Void>)]. To observe the cancel signal, use link:/docs/api/reactor/rx/Stream.html#observeCancel-reactor.fn.Consumer-[.observeCancel(Consumer<Void>)]. To observe the Reactive Streams subscribe signal, use link:/docs/api/reactor/rx/Stream.html#observeSubscribe-reactor.fn.Consumer-[.observeSubscribe(Consumer<? super Subscription<T>>)].
+If you want to passively observe data as it passes through the pipeline, then use the `.doOnNext(Consumer)` methods and other `reactor.rx.action.passive` actions.
+To observe values, use link:/docs/api/reactor/rx/Stream.html#observe-reactor.fn.Consumer-[.doOnNext(Consumer<? super T>)]. To observe errors without dealing with them definitively, use link:/docs/api/reactor/rx/Stream.html#observeError-java.lang.Class-reactor.fn.BiConsumer-[.doOnNext(Class<? extends Throwable>, BiConsumer<Object,? extends Throwable>)]. To observe the Reactive Streams complete signal, use link:/docs/api/reactor/rx/Stream.html#doOnComplete-reactor.fn.Consumer-[.doOnComplete(Consumer<Void>)]. To observe the cancel signal, use link:/docs/api/reactor/rx/Stream.html#doOnCancel-reactor.fn.Consumer-[.doOnCancel(Consumer<Void>)]. To observe the Reactive Streams subscribe signal, use link:/docs/api/reactor/rx/Stream.html#observeSubscribe-reactor.fn.Consumer-[.observeSubscribe(Consumer<? super Subscription<T>>)].
 
-.observe(Consumer<T>)
+.doOnNext(Consumer<T>)
 [source,java]
 ----
 Stream<String> st;
 
-st.observe(s -> LOG.info("Got input [{}] on thread [{}}]", s, Thread.currentThread())) // <1>
-  .observeComplete(v -> LOG.info("Stream is complete")) // <2>
+st.doOnNext(s -> LOG.info("Got input [{}] on thread [{}}]", s, Thread.currentThread())) // <1>
+  .doOnComplete(v -> LOG.info("Stream is complete")) // <2>
   .observeError(Throwable.class, (o, t) -> LOG.error("{} caused an error: {}", o, t)) // <3>
   .consume(s -> service.doWork(s)); // <4>
 ----

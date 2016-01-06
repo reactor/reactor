@@ -56,12 +56,12 @@ public class StreamAndProcessorTests extends AbstractStreamVerification {
 		                                                                .map(integer -> -integer)
 		                                                                .buffer(batch, 50, TimeUnit.MILLISECONDS)
 		                                                                .flatMap(Streams::fromIterable)
-		                                                                .observe(array -> cumulated.getAndIncrement())
+		                                                                .doOnNext(array -> cumulated.getAndIncrement())
 		                                                                .flatMap(i -> Streams.zip(Streams.just(i),
 		                                                                                          otherStream,
 		                                                                                          combinator))
-		                                                                .observe(this::monitorThreadUse))
-		                                   .observe(array -> cumulatedJoin.getAndIncrement())
+		                                                                .doOnNext(this::monitorThreadUse))
+		                                   .doOnNext(array -> cumulatedJoin.getAndIncrement())
 		                                   .process(Processors.topic("stream-raw-join", bufferSize))
 		                                   .when(Throwable.class, Throwable::printStackTrace));
 	}
