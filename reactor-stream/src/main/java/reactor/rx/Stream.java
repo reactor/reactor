@@ -764,6 +764,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new {@link Stream} with unique values
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<O> distinct() {
 		return new StreamDistinct<>(this, HASHCODE_EXTRACTOR, hashSetSupplier());
 	}
