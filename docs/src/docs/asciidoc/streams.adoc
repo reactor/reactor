@@ -214,14 +214,14 @@ The use cases include:
 * Plain Publisher decoration with `Stream API`
 ****
 
-.Streams.concat() and Streams.wrap() in action
+.Streams.concat() and Streams.from() in action
 [source,java]
 ----
 Processor<String,String> processor = RingBufferProcessor.create();
 
 Stream<String> st1 = Streams.just("Hello "); // <1>
 Stream<String> st2 = Streams.just("World "); // <1>
-Stream<String> st3 = Streams.wrap(processor); // <2>
+Stream<String> st3 = Streams.from(processor); // <2>
 
 Streams.concat(st1, st2, st3) // <3>
   .reduce( (prev, next) -> prev + next ) // <4>
@@ -251,7 +251,7 @@ h|Streams.create(*Publisher<T>*)
 2+|Only subscribe to the passed `Publisher` when the first `Subscription.request(N)` hits the returned `Stream`.
 Therefore, it supports malformed Publishers that do not invoke `Subscriber.onSubscribe(Subscription)` as required per specification.
 
-h|Streams.wrap(*Publisher<T>*)
+h|Streams.from(*Publisher<T>*)
 |T
 2+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol:
 
@@ -511,7 +511,7 @@ h|BehaviorBroadcaster.first(*T*, _Environment, Dispatcher_)
 3+|Similar to `BehaviorBroadcaster` but starts with a default value T.
 
 
-h|Streams.wrap(*Processor<I, O>*)
+h|Streams.from(*Processor<I, O>*)
 |I
 |O
 3+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<O>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol:
@@ -1428,7 +1428,7 @@ h|Functional API or Factory method
 
 |
 
-h|Streams.create(Publisher), Streams.defer(Supplier), Streams.wrap(Publisher), Streams.generate(Supplier)
+h|Streams.create(Publisher), Streams.defer(Supplier), Streams.from(Publisher), Streams.generate(Supplier)
 |Protecting resource access with a `Publisher` is encouraged. A few <<streams.adoc#streams-basics, Stream factories>> will be particularly useful. The point of creating a `Publisher` is to only `onNext(T)` when the data is ready such as in an IO callback. The read should be triggered by a `Subscriber` request if possible to implement a form of backpressure.
 
 h|Stream.timeout(_arguments_)
@@ -1458,7 +1458,7 @@ a|<<streams.adoc#streams-multithreading,Threading control>> is strategic:
 The first step is to isolate the microservice access. Instead of returning a type `T` or `Future<T>`, we will now start using `Publisher<T>` and specifically `Stream<T>` or `Promise<T>`. The immediate benefit is we don't need to worry anymore about error handling and threading (yet): Errors are propagated in `onError` calls (no bubble up), threading might be tuned later, for instance using `dispatchOn`. The additional bonus is we get to make our code more _functional_. It also works nicely with Java 8 Lambdas! The target will be to reduce control brackets noise (if, for, while...) and limit more the need for sharing context. Ultimately our target design will encourage streaming over polling large datasets: functions will apply to a sequence, result by result, avoiding loop duplication.
 
 [IMPORTANT]
-We prefer to use the implementation artifacts and not `Publisher<T>` to get compile-time access to all the *Reactor Stream* API unless we want to be API agnostic (a possible case for library developers). `Streams.wrap(Publisher<T>)` will do the trick anyway to convert such generic return type into a proper `Stream<T>`.
+We prefer to use the implementation artifacts and not `Publisher<T>` to get compile-time access to all the *Reactor Stream* API unless we want to be API agnostic (a possible case for library developers). `Streams.from(Publisher<T>)` will do the trick anyway to convert such generic return type into a proper `Stream<T>`.
 
 .Evolving to reactive microservices, part 1, error isolation and non-blocking in some UserService
 [cols="1,1"]

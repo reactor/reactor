@@ -18,8 +18,10 @@ package reactor.rx;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -34,11 +36,11 @@ import org.reactivestreams.Subscription;
 import reactor.Flux;
 import reactor.Mono;
 import reactor.Processors;
+import reactor.Subscribers;
 import reactor.Timers;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxLog;
-import reactor.core.publisher.FluxMap;
 import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxZip;
 import reactor.core.publisher.MonoIgnoreElements;
@@ -49,6 +51,7 @@ import reactor.core.support.ReactiveStateUtils;
 import reactor.core.timer.Timer;
 import reactor.fn.BiConsumer;
 import reactor.fn.BiFunction;
+import reactor.fn.BooleanSupplier;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.fn.Predicate;
@@ -58,42 +61,60 @@ import reactor.fn.tuple.Tuple2;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.stream.GroupedStream;
+import reactor.rx.stream.MonoAll;
+import reactor.rx.stream.MonoAny;
+import reactor.rx.stream.MonoCollect;
+import reactor.rx.stream.MonoCount;
+import reactor.rx.stream.MonoElementAt;
+import reactor.rx.stream.MonoIsEmpty;
+import reactor.rx.stream.MonoReduce;
+import reactor.rx.stream.MonoSingle;
 import reactor.rx.stream.Signal;
+import reactor.rx.stream.StreamAccumulate;
 import reactor.rx.stream.StreamBarrier;
 import reactor.rx.stream.StreamBatch;
 import reactor.rx.stream.StreamBuffer;
-import reactor.rx.stream.StreamBufferShift;
+import reactor.rx.stream.StreamBufferShiftTimeout;
 import reactor.rx.stream.StreamBufferShiftWhen;
+import reactor.rx.stream.StreamBufferTimeout;
 import reactor.rx.stream.StreamBufferWhen;
 import reactor.rx.stream.StreamCallback;
+import reactor.rx.stream.StreamDebounce;
 import reactor.rx.stream.StreamDefaultIfEmpty;
+import reactor.rx.stream.StreamDelaySubscription;
 import reactor.rx.stream.StreamDematerialize;
 import reactor.rx.stream.StreamDistinct;
 import reactor.rx.stream.StreamDistinctUntilChanged;
 import reactor.rx.stream.StreamDrop;
 import reactor.rx.stream.StreamElapsed;
-import reactor.rx.stream.StreamElementAt;
 import reactor.rx.stream.StreamError;
 import reactor.rx.stream.StreamErrorWithValue;
-import reactor.rx.stream.StreamExists;
 import reactor.rx.stream.StreamFilter;
 import reactor.rx.stream.StreamFinally;
 import reactor.rx.stream.StreamGroupBy;
-import reactor.rx.stream.StreamLast;
+import reactor.rx.stream.StreamLatest;
+import reactor.rx.stream.StreamMap;
 import reactor.rx.stream.StreamMaterialize;
 import reactor.rx.stream.StreamRepeat;
+import reactor.rx.stream.StreamRepeatPredicate;
 import reactor.rx.stream.StreamRepeatWhen;
 import reactor.rx.stream.StreamRetry;
+import reactor.rx.stream.StreamRetryPredicate;
 import reactor.rx.stream.StreamRetryWhen;
 import reactor.rx.stream.StreamSample;
 import reactor.rx.stream.StreamScan;
 import reactor.rx.stream.StreamSkip;
-import reactor.rx.stream.StreamSkipUntilTimeout;
+import reactor.rx.stream.StreamSkipLast;
+import reactor.rx.stream.StreamSkipUntil;
+import reactor.rx.stream.StreamSkipWhile;
 import reactor.rx.stream.StreamSort;
 import reactor.rx.stream.StreamStateCallback;
 import reactor.rx.stream.StreamSwitch;
+import reactor.rx.stream.StreamSwitchIfEmpty;
 import reactor.rx.stream.StreamTake;
-import reactor.rx.stream.StreamTakeUntilTimeout;
+import reactor.rx.stream.StreamTakeLast;
+import reactor.rx.stream.StreamTakeUntil;
+import reactor.rx.stream.StreamTakeUntilPredicate;
 import reactor.rx.stream.StreamTakeWhile;
 import reactor.rx.stream.StreamThrottleRequest;
 import reactor.rx.stream.StreamThrottleRequestWhen;
@@ -102,7 +123,8 @@ import reactor.rx.stream.StreamWindow;
 import reactor.rx.stream.StreamWindowShift;
 import reactor.rx.stream.StreamWindowShiftWhen;
 import reactor.rx.stream.StreamWindowWhen;
-import reactor.rx.stream.StreamZipWithIterable;
+import reactor.rx.stream.StreamWithLatestFrom;
+import reactor.rx.stream.StreamZipIterable;
 import reactor.rx.subscriber.AdaptiveSubscriber;
 import reactor.rx.subscriber.BlockingQueueSubscriber;
 import reactor.rx.subscriber.BoundedSubscriber;
@@ -110,7 +132,6 @@ import reactor.rx.subscriber.Control;
 import reactor.rx.subscriber.InterruptableSubscriber;
 import reactor.rx.subscriber.ManualSubscriber;
 import reactor.rx.subscriber.Tap;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * Base class for components designed to provide a succinct API for working with future values. Provides base
@@ -126,13 +147,6 @@ import sun.reflect.generics.reflectiveObjects.NotImplementedException;
  */
 public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
-	private final static Consumer NOOP = new Consumer() {
-		@Override
-		public void accept(Object o) {
-
-		}
-	};
-
 	protected Stream() {
 	}
 
@@ -146,6 +160,14 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		return new StreamBarrier.Identity<>(new MonoIgnoreElements<>(this));
 	}
 
+	/**
+	 * @param predicate
+	 *
+	 * @return
+	 */
+	public final Mono<Boolean> all(Predicate<? super O> predicate) {
+		return new MonoAll<>(this, predicate);
+	}
 
 	/**
 	 * Select the first emitting Publisher between this and the given publisher. The "loosing" one will be cancelled
@@ -204,7 +226,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} whose values are a {@link java.util.List} of all values in this batch
 	 */
 	public final Stream<List<O>> buffer() {
-		return buffer((int) Math.min(Integer.MAX_VALUE, getCapacity()));
+		return buffer(Integer.MAX_VALUE);
 	}
 
 	/**
@@ -215,8 +237,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<List<O>> buffer(final int maxSize) {
-		return new StreamBuffer<O>(this, maxSize);
+		return new StreamBuffer<>(this, maxSize, (Supplier<List<O>>) LIST_SUPPLIER);
 	}
 
 	/**
@@ -256,11 +279,12 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new {@link Stream} whose values are a {@link List} of all values in this batch
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<List<O>> buffer(final int maxSize, final int skip) {
 		if (maxSize == skip) {
 			return buffer(maxSize);
 		}
-		return new StreamBufferShift<O>(this, maxSize, skip);
+		return new StreamBuffer<>(this, maxSize, skip, LIST_SUPPLIER);
 	}
 
 	/**
@@ -320,7 +344,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		if (timespan == timeshift) {
 			return buffer(timespan, unit, timer);
 		}
-		return new StreamBufferShift<O>(this, Integer.MAX_VALUE, Integer.MAX_VALUE, timeshift, timespan, unit, timer);
+		return new StreamBufferShiftTimeout<O>(this, timeshift, timespan, unit, timer);
 	}
 
 	/**
@@ -352,7 +376,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			final long timespan,
 			final TimeUnit unit,
 			final Timer timer) {
-		return new StreamBuffer<O>(this, maxSize, timespan, unit, timer);
+		return new StreamBufferTimeout<>(this, maxSize, timespan, unit, timer);
 	}
 
 	/**
@@ -433,6 +457,19 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	@SuppressWarnings({"unchecked", "unused"})
 	public final <E> Stream<E> cast(@Nonnull final Class<E> stream) {
 		return (Stream<E>) this;
+	}
+
+	/**
+	 * Collect the stream sequence with the given collector with the supplied container
+	 *
+	 * @param <E> the {@link Stream} collected container type
+	 *
+	 * @return a Mono sequence of the collected value on complete
+	 *
+	 * @since 2.5
+	 */
+	public final <E> Mono<E> collect(Supplier<E> containerSupplier, BiConsumer<E, ? super O> collector) {
+		return new MonoCollect<>(this, containerSupplier, collector);
 	}
 
 	/**
@@ -561,7 +598,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		return consumerAction;
 	}
 
-
 	/**
 	 * Defer a Controls operations ready to be requested.
 	 *
@@ -665,20 +701,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	/**
 	 * Count accepted events for each batch and pass each accumulated long to the {@param stream}.
 	 */
-	public final Stream<Long> count() {
-		return count(Long.MAX_VALUE);
-	}
-
-	/**
-	 * Count accepted events for each batch {@param i} and pass each accumulated long to the {@param stream}.
-	 *
-	 * @return a new {@link Stream}
-	 */
-	@SuppressWarnings("unchecked")
-	public final Stream<Long> count(final long i) {
-		Stream<O> thiz = i != Long.MAX_VALUE ? take(i) : this;
-
-		return new StreamScan<>(thiz, StreamScan.COUNTER, 0L).last();
+	public final Mono<Long> count() {
+		return new MonoCount<>(this);
 	}
 
 	/**
@@ -699,10 +723,20 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return {@literal new Stream}
 	 *
-	 * @since 2.0
+	 * @since 2.5
 	 */
 	public final Stream<O> defaultIfEmpty(@Nonnull final O defaultValue) {
-		return switchIfEmpty(Streams.just(defaultValue));
+		return new StreamDefaultIfEmpty<O>(this, defaultValue);
+	}
+
+	/**
+	 * @param subscriptionDelay
+	 * @param <U>
+	 *
+	 * @return
+	 */
+	public final <U> Stream<O> delaySubscription(Publisher<U> subscriptionDelay) {
+		return new StreamDelaySubscription<>(this, subscriptionDelay);
 	}
 
 	/**
@@ -731,7 +765,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} with unique values
 	 */
 	public final Stream<O> distinct() {
-		return new StreamDistinct<O, O>(this, null);
+		return new StreamDistinct<>(this, HASHCODE_EXTRACTOR, hashSetSupplier());
 	}
 
 	/**
@@ -742,7 +776,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} with values having distinct keys
 	 */
 	public final <V> Stream<O> distinct(final Function<? super O, ? extends V> keySelector) {
-		return new StreamDistinct<>(this, keySelector);
+		return new StreamDistinct<>(this, keySelector, hashSetSupplier());
 	}
 
 	/**
@@ -752,8 +786,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<O> distinctUntilChanged() {
-		return new StreamDistinctUntilChanged<O, O>(this, null);
+		return new StreamDistinctUntilChanged<O, O>(this, HASHCODE_EXTRACTOR);
 	}
 
 	/**
@@ -790,8 +825,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a source item at a specified index
 	 */
-	public final Stream<O> elementAt(final int index) {
-		return new StreamElementAt<O>(this, index);
+	public final Mono<O> elementAt(final int index) {
+		return new MonoElementAt<O>(this, index);
 	}
 
 	/**
@@ -799,11 +834,12 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * when index is out of bounds
 	 *
 	 * @param index index of an item
+	 * @param defaultValue supply a default value if not found
 	 *
 	 * @return a source item at a specified index or a default value
 	 */
-	public final Stream<O> elementAtOrDefault(final int index, final O defaultValue) {
-		return new StreamElementAt<O>(this, index, defaultValue);
+	public final Mono<O> elementAtOrDefault(final int index, final Supplier<? extends O> defaultValue) {
+		return new MonoElementAt<>(this, index, defaultValue);
 	}
 
 	/**
@@ -815,10 +851,10 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} with <code>true</code> if any value satisfies a predicate and <code>false</code>
 	 * otherwise
 	 *
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public final Stream<Boolean> exists(final Predicate<? super O> predicate) {
-		return new StreamExists<O>(this, predicate);
+	public final Mono<Boolean> exists(final Predicate<? super O> predicate) {
+		return new MonoAny<>(this, predicate);
 	}
 
 	/**
@@ -834,19 +870,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Evaluate each accepted boolean value. If the predicate test succeeds, the value is passed into the new {@code
-	 * Stream}. If the predicate test fails, the value is ignored.
-	 *
-	 * @return a new {@link Stream} containing only values that pass the predicate test
-	 *
-	 * @since 1.1, 2.0
-	 */
-	@SuppressWarnings("unchecked")
-	public final Stream<Boolean> filter() {
-		return ((Stream<Boolean>) this).filter(StreamFilter.simplePredicate);
-	}
-
-	/**
 	 * Attach a {@link Consumer} to this {@code Stream} that will observe terminal signal complete|error. The consumer
 	 * will listen for the signal and introspect its state.
 	 *
@@ -858,17 +881,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Stream<O> finallyDo(final Consumer<Signal<O>> consumer) {
 		return new StreamFinally<O>(this, consumer);
-	}
-
-	/**
-	 * Take 1 value at most from this {@link Stream}
-	 *
-	 * @return {@literal new Stream}
-	 *
-	 * @since 2.5
-	 */
-	public final Mono<O> first() {
-		return new MonoNext<>(this);
 	}
 
 	/**
@@ -935,7 +947,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			});
 
 			if (concurrency == 1) {
-				return Streams.wrap(pub);
+				return Streams.from(pub);
 			}
 			else {
 				publisherList.add(pub);
@@ -992,8 +1004,15 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @see Flux#after)
 	 */
 	@SuppressWarnings("unchecked")
-	public final Stream<O> ignoreElements() {
-		return new StreamBarrier.Identity<>(new MonoIgnoreElements(this));
+	public final Mono<O> ignoreElements() {
+		return (Mono<O>) new MonoIgnoreElements<>(this);
+	}
+
+	/**
+	 * @return
+	 */
+	public final Mono<Boolean> isEmpty() {
+		return new MonoIsEmpty<>(this);
 	}
 
 	/**
@@ -1016,8 +1035,17 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.0
 	 */
-	public final Stream<O> last() {
-		return new StreamLast<>(this);
+	public final Mono<O> last() {
+		return new Mono.MonoBarrier<>(new StreamTakeLast<>(this, 1));
+	}
+
+	/**
+	 * @return
+	 *
+	 * @since 2.5
+	 */
+	public final Stream<O> latest() {
+		return new StreamLatest<>(this);
 	}
 
 	/**
@@ -1116,7 +1144,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} containing the transformed values
 	 */
 	public final <V> Stream<V> map(@Nonnull final Function<? super O, ? extends V> fn) {
-		return new StreamBarrier.Identity<>(new FluxMap<O, V>(this, fn));
+		return new StreamMap<>(this, fn);
 	}
 
 	/**
@@ -1271,22 +1299,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final Stream<O> observeStart(@Nonnull final Consumer<? super Subscription> consumer) {
 		return new StreamStateCallback<O>(this, null, consumer);
-	}
-
-	/**
-	 * Subscribe to a fallback publisher when any error occurs.
-	 *
-	 * @param fallback the error handler for each error
-	 *
-	 * @return {@literal new Stream}
-	 */
-	public final Stream<O> switchOnError(@Nonnull final Publisher<? extends O> fallback) {
-		return new StreamBarrier.Identity<>(new FluxResume<O>(this, new Function<Throwable, Publisher<? extends O>>() {
-			@Override
-			public Publisher<? extends O> apply(Throwable throwable) {
-				return fallback;
-			}
-		}));
 	}
 
 	/**
@@ -1448,8 +1460,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @param fn the reduce function
 	 *
 	 * @return a new {@link Stream} whose values contain only the reduced objects
+	 * @since 1.1, 2.0, 2.5
 	 */
-	public final Stream<O> reduce(@Nonnull final BiFunction<O, O, O> fn) {
+	public final Mono<O> reduce(@Nonnull final BiFunction<O, O, O> fn) {
 		return scan(fn).last();
 	}
 
@@ -1462,10 +1475,31 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @param <A> the type of the reduced object
 	 *
 	 * @return a new {@link Stream} whose values contain only the reduced objects
+	 * @since 1.1, 2.0, 2.5
 	 */
-	public final <A> Stream<A> reduce(final A initial, @Nonnull BiFunction<A, ? super O, A> fn) {
+	public final <A> Mono<A> reduce(final A initial, @Nonnull BiFunction<A, ? super O, A> fn) {
+		return reduce(new Supplier<A>() {
+			@Override
+			public A get() {
+				return initial;
+			}
+		}, fn);
+	}
 
-		return scan(initial, fn).last();
+	/**
+	 * Reduce the values passing through this {@code Stream} into an object {@code A}. The arguments are the N-1 and N
+	 * next signal in this order.
+	 *
+	 * @param fn the reduce function
+	 * @param initial the initial argument to pass to the reduce function
+	 * @param <A> the type of the reduced object
+	 *
+	 * @return a new {@link Stream} whose values contain only the reduced objects
+	 *
+	 * @since 1.1, 2.0, 2.5
+	 */
+	public final <A> Mono<A> reduce(final Supplier<A> initial, @Nonnull BiFunction<A, ? super O, A> fn) {
+		return new MonoReduce<>(this, initial, fn);
 	}
 
 	/**
@@ -1476,21 +1510,47 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> repeat() {
-		return repeat(-1);
+		return repeat(ALWAYS_BOOLEAN_SUPPLIER);
+	}
+
+	/**
+	 * Create a new {@code Stream} which will keep re-subscribing its oldest parent-child stream pair on complete.
+	 *
+	 * @param predicate the boolean to evaluate on complete
+	 *
+	 * @since 2.5
+	 */
+	public final Stream<O> repeat(BooleanSupplier predicate) {
+		return new StreamRepeatPredicate<>(this, predicate);
 	}
 
 	/**
 	 * Create a new {@code Stream} which will keep re-subscribing its oldest parent-child stream pair on complete. The
-	 * action will be propagating complete after {@param numRepeat}. if positive
+	 * action will be propagating complete after {@param numRepeat}. 
 	 *
 	 * @param numRepeat the number of times to re-subscribe on complete
 	 *
 	 * @return a new repeated {@code Stream}
 	 *
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public final Stream<O> repeat(final int numRepeat) {
+	public final Stream<O> repeat(final long numRepeat) {
 		return new StreamRepeat<O>(this, numRepeat);
+	}
+
+	/**
+	 * Create a new {@code Stream} which will keep re-subscribing its oldest parent-child stream pair on complete. The
+	 * action will be propagating complete after {@param numRepeat}.
+	 *
+	 * @param numRepeat the number of times to re-subscribe on complete
+	 * @param predicate the boolean to evaluate on complete
+	 *
+	 * @return a new repeated {@code Stream}
+	 *
+	 * @since 2.0, 2.5
+	 */
+	public final Stream<O> repeat(final long numRepeat, BooleanSupplier predicate) {
+		return new StreamRepeatPredicate<>(this, countingBooleanSupplier(predicate, numRepeat));
 	}
 
 	/**
@@ -1498,15 +1558,15 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * produced by the passed mapper emits any next signal. It will propagate the complete and error if the backoff
 	 * stream emits the relative signals.
 	 *
-	 * @param backOffStream the function taking a stream of complete timestamp in millis as an downstream and returning
+	 * @param backOffStream the function providing a stream signalling an anonymous object on each complete
 	 * a new stream that applies some backoff policy, e.g. @{link Streams#timer(long)}
 	 *
 	 * @return a new repeated {@code Stream}
 	 *
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public final Stream<O> repeatWhen(final Function<? super Stream<? extends Long>, ? extends Publisher<?>> backOffStream) {
-		return new StreamRepeatWhen<O>(this, getTimer(), backOffStream);
+	public final Stream<O> repeatWhen(final Function<Stream<?>, ? extends Publisher<?>> backOffStream) {
+		return new StreamRepeatWhen<O>(this, backOffStream);
 	}
 
 	/**
@@ -1526,32 +1586,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Create an operation that returns the passed sequence if the Stream has completed without any emitted signals.
-	 *
-	 * @param fallback an alternate stream if empty
-	 *
-	 * @return {@literal new Stream}
-	 *
-	 * @since 2.5
-	 */
-	public final Stream<O> switchIfEmpty(@Nonnull final Publisher<? extends O> fallback) {
-		return new StreamDefaultIfEmpty<O>(this, fallback);
-	}
-
-	/**
-	 * Create an operation that returns the supplied sequence if the Stream has completed without any emitted signals.
-	 *
-	 * @param fallback the supplier to provide an alternate stream if empty
-	 *
-	 * @return {@literal new Stream}
-	 *
-	 * @since 2.5
-	 */
-	public final Stream<O> switchIfEmpty(@Nonnull final Supplier<? extends Publisher<? extends O>> fallback) {
-		return new StreamDefaultIfEmpty<>(this, fallback);
-	}
-
-	/**
 	 * Create a new {@code Stream} which will re-subscribe its oldest parent-child stream pair. The action will start
 	 * propagating errors after {@literal Integer.MAX_VALUE}.
 	 *
@@ -1559,8 +1593,9 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public final Stream<O> retry() {
-		return retry(-1);
+		return retry(ALWAYS_PREDICATE);
 	}
 
 	/**
@@ -1572,10 +1607,10 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new fault-tolerant {@code Stream}
 	 *
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public final Stream<O> retry(int numRetries) {
-		return retry(numRetries, null);
+	public final Stream<O> retry(long numRetries) {
+		return new StreamRetry<O>(this, numRetries);
 	}
 
 	/**
@@ -1590,7 +1625,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> retry(Predicate<Throwable> retryMatcher) {
-		return retry(-1, retryMatcher);
+		return new StreamRetryPredicate<>(this, retryMatcher);
 	}
 
 	/**
@@ -1604,10 +1639,10 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new fault-tolerant {@code Stream}
 	 *
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public final Stream<O> retry(final int numRetries, final Predicate<Throwable> retryMatcher) {
-		return new StreamRetry<O>(this, numRetries, retryMatcher);
+	public final Stream<O> retry(final long numRetries, final Predicate<Throwable> retryMatcher) {
+		return new StreamRetryPredicate<>(this, countingPredicate(retryMatcher, numRetries));
 	}
 
 	/**
@@ -1622,18 +1657,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.0
 	 */
-	public final Stream<O> retryWhen(final Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> backOffStream) {
-		return new StreamRetryWhen<O>(this, getTimer(), backOffStream);
-	}
-
-	/**
-	 * Create a new {@code Stream} whose values will be only the last value of each batch. Requires a {@code
-	 * getCapacity()}
-	 *
-	 * @return a new {@link Stream} whose values are the last value of each batch
-	 */
-	public final Stream<O> sample() {
-		return sample((int) Math.min(Integer.MAX_VALUE, getCapacity()));
+	public final Stream<O> retryWhen(final Function<Stream<Throwable>, ? extends Publisher<?>> backOffStream) {
+		return new StreamRetryWhen<O>(this, backOffStream);
 	}
 
 	/**
@@ -1644,8 +1669,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
-	public final Stream<O> sample(final int batchSize) {
-		return new StreamSample<O>(this, batchSize);
+	public final Stream<O> every(final int batchSize) {
+		return new StreamDebounce<O>(this, batchSize);
 	}
 
 	/**
@@ -1656,8 +1681,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
-	public final Stream<O> sample(long timespan, TimeUnit unit) {
-		return sample(Integer.MAX_VALUE, timespan, unit, getTimer());
+	public final Stream<O> every(long timespan, TimeUnit unit) {
+		return every(Integer.MAX_VALUE, timespan, unit, getTimer());
 	}
 
 	/**
@@ -1669,8 +1694,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
-	public final Stream<O> sample(int maxSize, long timespan, TimeUnit unit) {
-		return sample(maxSize, timespan, unit, getTimer());
+	public final Stream<O> every(int maxSize, long timespan, TimeUnit unit) {
+		return every(maxSize, timespan, unit, getTimer());
 	}
 
 	/**
@@ -1683,8 +1708,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @return a new {@link Stream} whose values are the last value of each batch
 	 */
-	public final Stream<O> sample(final int maxSize, final long timespan, final TimeUnit unit, final Timer timer) {
-		return new StreamSample<O>(this, false, maxSize, timespan, unit, timer);
+	public final Stream<O> every(final int maxSize, final long timespan, final TimeUnit unit, final Timer timer) {
+		return new StreamDebounce<O>(this, false, maxSize, timespan, unit, timer);
 	}
 
 	/**
@@ -1707,7 +1732,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} whose values are the first value of each batch)
 	 */
 	public final Stream<O> sampleFirst(final int batchSize) {
-		return new StreamSample<O>(this, batchSize, true);
+		return new StreamDebounce<O>(this, batchSize, true);
 	}
 
 	/**
@@ -1746,7 +1771,19 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @return a new {@link Stream} whose values are the first value of each batch
 	 */
 	public final Stream<O> sampleFirst(final int maxSize, final long timespan, final TimeUnit unit, final Timer timer) {
-		return new StreamSample<O>(this, true, maxSize, timespan, unit, timer);
+		return new StreamDebounce<O>(this, true, maxSize, timespan, unit, timer);
+	}
+
+	/**
+	 * Create a new {@code Stream} whose values will be only the first value signalled after the next {@code other}
+	 * emission.
+	 *
+	 * @param other the sampler stream
+	 *
+	 * @return a new {@link Stream} whose values are the  value of each batch
+	 */
+	public final <U> Stream<O> sample(Publisher<U> other) {
+		return new StreamSample<>(this, other);
 	}
 
 	/**
@@ -1760,7 +1797,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 1.1, 2.0
 	 */
 	public final Stream<O> scan(@Nonnull final BiFunction<O, O, O> fn) {
-		return scan(null, fn);
+		return new StreamAccumulate<>(this, fn);
 	}
 
 	/**
@@ -1777,7 +1814,30 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 1.1, 2.0
 	 */
 	public final <A> Stream<A> scan(final A initial, final @Nonnull BiFunction<A, ? super O, A> fn) {
-		return new StreamScan<O, A>(this, fn, initial);
+		return new StreamScan<>(this, initial, fn);
+	}
+
+	/**
+	 * @return
+	 */
+	public final Mono<O> single() {
+		return new MonoSingle<>(this);
+	}
+
+	/**
+	 * @param defaultSupplier
+	 *
+	 * @return
+	 */
+	public final Mono<O> singleOrDefault(Supplier<? extends O> defaultSupplier) {
+		return new MonoSingle<>(this, defaultSupplier);
+	}
+
+	/**
+	 * @return
+	 */
+	public final Mono<O> singleOrEmpty() {
+		return new MonoSingle<>(this, MonoSingle.<O>completeOnEmptySequence());
 	}
 
 	/**
@@ -1790,7 +1850,12 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> skip(long max) {
-		return skipWhile(max, null);
+		if (max > 0) {
+			return new StreamSkip<>(this, max);
+		}
+		else {
+			return this;
+		}
 	}
 
 	/**
@@ -1806,7 +1871,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<O> skip(long time, TimeUnit unit) {
 		return skip(time, unit, getTimer());
 	}
-
+	
 	/**
 	 * Create a new {@code Stream} that will NOT signal next elements up to the specified {@param time}.
 	 *
@@ -1821,7 +1886,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<O> skip(final long time, final TimeUnit unit, final Timer timer) {
 		if (time > 0) {
 			Assert.isTrue(timer != null, "Timer can't be found, try assigning an environment to the stream");
-			return new StreamSkipUntilTimeout<O>(this, time, unit, timer);
+			return skipUntil(Streams.timer(timer, time, unit));
 		}
 		else {
 			return this;
@@ -1829,36 +1894,43 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
-	 * Create a new {@code Stream} that will NOT signal next elements while {@param limitMatcher} is true.
+	 * Create a new {@code Stream} that WILL NOT signal last {@param n} elements
 	 *
-	 * @param limitMatcher the predicate to evaluate to start broadcasting events
+	 * @param n the number of elements to ignore before completion
 	 *
 	 * @return a new limited {@code Stream}
 	 *
-	 * @since 2.0
+	 * @since 2.5
 	 */
-	public final Stream<O> skipWhile(Predicate<O> limitMatcher) {
-		return skipWhile(Long.MAX_VALUE, limitMatcher);
+	public final Stream<O> skipLast(int n) {
+		return new StreamSkipLast<>(this, n);
 	}
 
 	/**
-	 * Create a new {@code Stream} that will NOT signal next elements while {@param limitMatcher} is true or up to
-	 * {@param max} times.
+	 * Create a new {@code Stream} that WILL NOT signal next elements until {@param other} emits.
+	 * If {@code other} terminates, then terminate the returned stream and cancel this stream.
 	 *
-	 * @param max the number of times to drop next signals before starting
-	 * @param limitMatcher the predicate to evaluate for starting dropping events and completing
+	 * @param other the Publisher to signal when to stop skipping
+	 *
+	 * @return a new limited {@code Stream}
+	 *
+	 * @since 2.5
+	 */
+	public final Stream<O> skipUntil(final Publisher<?> other) {
+		return new StreamSkipUntil<>(this, other);
+	}
+
+	/**
+	 * Create a new {@code Stream} that WILL NOT signal next elements while {@param limitMatcher} is true
+	 *
+	 * @param limitMatcher the predicate to evaluate for starting dropping events
 	 *
 	 * @return a new limited {@code Stream}
 	 *
 	 * @since 2.0
 	 */
-	public final Stream<O> skipWhile(final long max, final Predicate<O> limitMatcher) {
-		if (max > 0) {
-			return new StreamSkip<O>(this, limitMatcher, max);
-		}
-		else {
-			return this;
-		}
+	public final Stream<O> skipWhile(final Predicate<? super O> limitMatcher) {
+		return new StreamSkipWhile<>(this, limitMatcher);
 	}
 
 	/**
@@ -1928,7 +2000,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 * @since 2.0
 	 */
 	public final Stream<O> startWith(final Iterable<O> iterable) {
-		return startWith(Streams.from(iterable));
+		return startWith(Streams.fromIterable(iterable));
 	}
 
 	/**
@@ -1957,6 +2029,26 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * Start the chain and request unbounded demand.
+	 */
+	public final void subscribe() {
+		subscribe(Subscribers.unbounded());
+	}
+
+	/**
+	 * Create an operation that returns the passed sequence if the Stream has completed without any emitted signals.
+	 *
+	 * @param fallback an alternate stream if empty
+	 *
+	 * @return {@literal new Stream}
+	 *
+	 * @since 2.5
+	 */
+	public final Stream<O> switchIfEmpty(@Nonnull final Publisher<? extends O> fallback) {
+		return new StreamSwitchIfEmpty<O>(this, fallback);
+	}
+
+	/**
 	 * Assign the given {@link Function} to transform the incoming value {@code T} into a {@code Stream<O,V>} and pass
 	 * it into another {@code Stream}. The produced stream will emit the data from the most recent transformed stream.
 	 *
@@ -1970,6 +2062,22 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	@SuppressWarnings("unchecked")
 	public final <V> Stream<V> switchMap(@Nonnull final Function<? super O, Publisher<? extends V>> fn) {
 		return new StreamSwitch<>(map(fn));
+	}
+
+	/**
+	 * Subscribe to a fallback publisher when any error occurs.
+	 *
+	 * @param fallback the error handler for each error
+	 *
+	 * @return {@literal new Stream}
+	 */
+	public final Stream<O> switchOnError(@Nonnull final Publisher<? extends O> fallback) {
+		return new StreamBarrier.Identity<>(new FluxResume<O>(this, new Function<Throwable, Publisher<? extends O>>() {
+			@Override
+			public Publisher<? extends O> apply(Throwable throwable) {
+				return fallback;
+			}
+		}));
 	}
 
 	/**
@@ -2013,11 +2121,51 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final Stream<O> take(final long time, final TimeUnit unit, final Timer timer) {
 		if (time > 0) {
 			Assert.isTrue(timer != null, "Timer can't be found, try assigning an environment to the stream");
-			return new StreamTakeUntilTimeout<O>(this, time, unit, timer);
+			return takeUntil(Streams.timer(timer, time, unit));
 		}
 		else {
 			return Streams.empty();
 		}
+	}
+
+	/**
+	 * Create a new {@code Stream} that will signal the last {@param n} elements.
+	 *
+	 * @param n the max number of last elements to capture before onComplete
+	 *
+	 * @return a new limited {@code Stream}
+	 *
+	 * @since 2.5
+	 */
+	public final Stream<O> takeLast(int n) {
+		return new StreamTakeLast<>(this, n);
+	}
+
+	/**
+	 * Create a new {@code Stream} that will signal next elements until {@param limitMatcher} is true.
+	 *
+	 * @param limitMatcher the predicate to evaluate for starting dropping events and completing
+	 *
+	 * @return a new limited {@code Stream}
+	 *
+	 * @since 2.5
+	 */
+	public final Stream<O> takeUntil(final Predicate<? super O> limitMatcher) {
+		return new StreamTakeUntilPredicate<>(this, limitMatcher);
+	}
+
+	/**
+	 * Create a new {@code Stream} that will signal next elements until {@param other} emits.
+	 * Completion and Error will cause this stream to cancel.
+	 *
+	 * @param other the {@link Publisher} to signal when to stop replaying signal from upstream
+	 *
+	 * @return a new limited {@code Stream}
+	 *
+	 * @since 2.5
+	 */
+	public final Stream<O> takeUntil(final Publisher<?> other) {
+		return new StreamTakeUntil<>(this, other);
 	}
 
 	/**
@@ -2029,7 +2177,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 *
 	 * @since 2.0
 	 */
-	public final Stream<O> takeWhile(final Predicate<O> limitMatcher) {
+	public final Stream<O> takeWhile(final Predicate<? super O> limitMatcher) {
 		return new StreamTakeWhile<O>(this, limitMatcher);
 	}
 
@@ -2110,10 +2258,80 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		final Timer timer = getTimer();
 		Assert.state(timer != null, "Cannot use default timer as no environment has been provided to this " + "Stream");
 
-		return new StreamTimeout<O>(this,
-				fallback,
-				timer,
-				unit != null ? TimeUnit.MILLISECONDS.convert(timeout, unit) : timeout);
+		final Stream<Long> _timer = Streams.timer(timer, timeout, unit == null ? TimeUnit.MILLISECONDS : unit);
+		final Supplier<Publisher<Long>> first = new Supplier<Publisher<Long>>() {
+			@Override
+			public Publisher<Long> get() {
+				return _timer;
+			}
+		};
+		final Function<O, Publisher<Long>> rest = new Function<O, Publisher<Long>>() {
+			@Override
+			public Publisher<Long> apply(O o) {
+				return _timer;
+			}
+		};
+
+		return timeout(first, rest, fallback);
+	}
+
+	/**
+	 * Switch to the fallback Publisher if no data has been emitted when timeout publishers emit a signal <p> A Timeout
+	 * Exception will be signaled if no data or complete signal have been sent within the given period.
+	 *
+	 * @param allTimeout the timeout emitter before the each signal from this sequence
+	 *
+	 * @return a new {@link Stream}
+	 *
+	 * @since 2.5
+	 */
+	public final <U> Stream<O> timeout(final Supplier<? extends Publisher<U>> allTimeout) {
+		return timeout(allTimeout, new Function<O, Publisher<U>>() {
+			@Override
+			public Publisher<U> apply(O o) {
+				return allTimeout.get();
+			}
+		}, null);
+	}
+
+	/**
+	 * Switch to the fallback Publisher if no data has been emitted when timeout publishers emit a signal <p> A Timeout
+	 * Exception will be signaled if no data or complete signal have been sent within the given period.
+	 *
+	 * @param firstTimeout the timeout emitter before the first signal from this sequence
+	 * @param followingTimeouts the timeout in unit between two notifications on this composable
+	 *
+	 * @return a new {@link Stream}
+	 *
+	 * @since 2.5
+	 */
+	public final <U, V> Stream<O> timeout(Supplier<? extends Publisher<U>> firstTimeout,
+			Function<? super O, ? extends Publisher<V>> followingTimeouts) {
+		return timeout(firstTimeout, followingTimeouts, null);
+	}
+
+	/**
+	 * Switch to the fallback Publisher if no data has been emitted when timeout publishers emit a signal <p> The
+	 * current subscription will be cancelled and the fallback publisher subscribed. <p> A Timeout Exception will be
+	 * signaled if no data or complete signal have been sent within the given period.
+	 *
+	 * @param firstTimeout the timeout emitter before the first signal from this sequence
+	 * @param followingTimeouts the timeout in unit between two notifications on this composable
+	 * @param fallback the fallback {@link Publisher} to subscribe to once the timeout has occured
+	 *
+	 * @return a new {@link Stream}
+	 *
+	 * @since 2.5
+	 */
+	public final <U, V> Stream<O> timeout(Supplier<? extends Publisher<U>> firstTimeout,
+			Function<? super O, ? extends Publisher<V>> followingTimeouts, final Publisher<? extends O>
+			fallback) {
+		if(fallback == null) {
+			return new StreamTimeout<>(this, firstTimeout, followingTimeouts);
+		}
+		else{
+			return new StreamTimeout<>(this, firstTimeout, followingTimeouts, fallback);
+		}
 	}
 
 	/**
@@ -2149,6 +2367,20 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	@SuppressWarnings("unchecked")
 	public final Stream<Tuple2<Long, O>> timestamp() {
 		return map(TIMESTAMP_OPERATOR);
+	}
+
+	/**
+	 *
+	 * {@code flux.to(Processors.queue()).subscribe(Subscribers.unbounded()) }
+	 *
+	 * @param subscriber
+	 * @param <E>
+	 *
+	 * @return this subscriber
+	 */
+	public final <E extends Subscriber<? super O>> E to(E subscriber) {
+		subscribe(subscriber);
+		return subscriber;
 	}
 
 	/**
@@ -2232,18 +2464,6 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	public final <E extends Throwable> Stream<O> when(@Nonnull final Class<E> exceptionType,
 			@Nonnull final Consumer<E> onError) {
 		return new StreamError<O, E>(this, exceptionType, onError);
-	}
-
-	/**
-	 * Re-route incoming values into a dynamically created {@link Stream} every pre-defined {@link #getCapacity()}
-	 * times. The nested streams will be pushed into the returned {@code Stream}.
-	 *
-	 * @return a new {@link Stream} whose values are a {@link Stream} of all values in this window
-	 *
-	 * @since 2.0
-	 */
-	public final Stream<Stream<O>> window() {
-		return window((int) Math.min(Integer.MAX_VALUE, getCapacity()));
 	}
 
 	/**
@@ -2360,6 +2580,19 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * Combine the most recent items from this sequence and the passed sequence.
+	 *
+	 * @param other
+	 * @param <U>
+	 *
+	 * @return
+	 */
+	public final <U, R> Stream<R> withLatestFrom(Publisher<? extends U> other, BiFunction<? super O, ? super U, ?
+			extends R > resultSelector){
+		return new StreamWithLatestFrom<>(this, other, resultSelector);
+	}
+
+	/**
 	 * Pass all the nested {@link Publisher} values to a new {@link Stream} until one of them complete. The result will
 	 * be produced by the zipper transformation from a tuple of each upstream most recent emitted data.
 	 *
@@ -2403,7 +2636,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 			@Override
 			public void subscribe(Subscriber<? super V> s) {
-				Flux.<O, T2, V>zip(source, publisher, zipper).subscribe(s);
+				Flux.zip(source, publisher, zipper).subscribe(s);
 			}
 		};
 	}
@@ -2426,7 +2659,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 			@SuppressWarnings("unchecked")
 			@Override
 			public void subscribe(Subscriber<? super Tuple2<O, T2>> s) {
-				Flux.<O, T2, Tuple2<O, T2>>zip(source, publisher, IDENTITY_FUNCTION).subscribe(s);
+				Flux.<O, T2, Tuple2<O, T2>>zip(source, publisher, TUPLE2_BIFUNCTION).subscribe(s);
 			}
 		};
 	}
@@ -2441,7 +2674,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	public final <T2, V> Stream<V> zipWithIterable(Iterable<? extends T2> iterable,
 			@Nonnull BiFunction<? super O, ? super T2, ? extends V> zipper) {
-		return new StreamZipWithIterable<>(this, zipper, iterable);
+		return new StreamZipIterable<>(this, iterable, zipper);
 	}
 
 	/**
@@ -2454,82 +2687,8 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 	 */
 	@SuppressWarnings("unchecked")
 	public final <T2> Stream<Tuple2<O, T2>> zipWithIterable(Iterable<? extends T2> iterable) {
-		return new StreamZipWithIterable<>(this, (BiFunction<O, T2, Tuple2<O, T2>>) IDENTITY_FUNCTION, iterable);
+		return new StreamZipIterable<>(this, iterable, (BiFunction<O, T2, Tuple2<O, T2>>)TUPLE2_BIFUNCTION);
 	}
-
-	/**
-	 *
-	 * @param predicate
-	 * @return
-	 */
-	public final Stream<Boolean> all(Predicate<? super O> predicate){
-		throw new NotImplementedException(); //FIXME
-	}
-
-	/**
-	 *
-	 * @param predicate
-	 * @return
-	 */
-	public final Stream<Boolean> any(Predicate<? super O> predicate){
-		throw new NotImplementedException(); //FIXME
-	}
-
-	/**
-	 *
-	 * @param subscriptionDelay
-	 * @param <U>
-	 * @return
-	 */
-	public final <U> Stream<O> delaySubscription(Publisher<U> subscriptionDelay){
-		throw new NotImplementedException(); //FIXME
-	}
-
-	/**
-	 *
-	 * @return
-	 */
-	public final Stream<O> single(){
-		throw new NotImplementedException(); //FIXME
-	}
-
-	/**
-	 *
-	 * @param defaultSupplier
-	 * @return
-	 */
-	public final Stream<O> singleOrDefault(Supplier<? extends O> defaultSupplier){
-		throw new NotImplementedException(); //FIXME
-	}
-
-	/**
-	 *
-	 * @return
-	 */
-	public final Stream<Boolean> isEmpty(){
-		throw new NotImplementedException(); //FIXME
-	}
-
-	/**
-	 *
-	 * @return
-	 */
-	public final Stream<O> latest(){
-		throw new NotImplementedException(); //FIXME
-	}
-
-	/**
-	 *
-	 * @param other
-	 * @param
-	 * @param <U>
-	 * @return
-	 */
-	public final <U, R> Stream<O> withLatestFrom(Publisher<? extends U> other, BiFunction<? super O, ? super U, ?
-			extends R > resultSelector){
-		throw new NotImplementedException(); //FIXME
-	}
-
 
 	private static final class DispatchOn<O> extends StreamBarrier<O, O> implements FeedbackLoop {
 
@@ -2571,7 +2730,7 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 
 	private static final class PublishOn<O> extends StreamBarrier<O, O> implements ReactiveState.FeedbackLoop {
 
-		private final ProcessorGroup processorProvider;
+		final ProcessorGroup processorProvider;
 
 		public PublishOn(Stream<O> s, ProcessorGroup processorProvider) {
 			super(s);
@@ -2606,21 +2765,89 @@ public abstract class Stream<O> implements Publisher<O>, ReactiveState.Bounded {
 		}
 	}
 
-	private static final BiFunction IDENTITY_FUNCTION = new BiFunction() {
+	static final BooleanSupplier ALWAYS_BOOLEAN_SUPPLIER = new BooleanSupplier() {
+		@Override
+		public boolean getAsBoolean() {
+			return true;
+		}
+	};
+
+	static final Predicate ALWAYS_PREDICATE = new Predicate() {
+		@Override
+		public boolean test(Object o) {
+			return true;
+		}
+	};
+
+	static final Consumer   NOOP               = new Consumer() {
+		@Override
+		public void accept(Object o) {
+
+		}
+	};
+	private static final BiFunction TUPLE2_BIFUNCTION  = new BiFunction() {
 		@Override
 		public Tuple2 apply(Object t1, Object t2) {
 			return Tuple.of(t1, t2);
 		}
 	};
-
-	/**
-	 * A predefined map operator producing timestamp tuples
-	 */
-	private static final Function TIMESTAMP_OPERATOR = new Function<Object, Tuple2<Long, ?>>() {
+	static final Function HASHCODE_EXTRACTOR  = new Function<Object, Integer>() {
+		@Override
+		public Integer apply(Object t1) {
+			return t1.hashCode();
+		}
+	};
+	static final Supplier LIST_SUPPLIER = new Supplier() {
+		@Override
+		public Object get() {
+			return new ArrayList<>();
+		}
+	};
+	static final Supplier   SET_SUPPLIER       = new Supplier() {
+		@Override
+		public Object get() {
+			return new HashSet<>();
+		}
+	};
+	static final Function   TIMESTAMP_OPERATOR = new Function<Object, Tuple2<Long, ?>>() {
 		@Override
 		public Tuple2<Long, ?> apply(Object o) {
 			return Tuple.of(System.currentTimeMillis(), o);
 		}
 	};
 
+	@SuppressWarnings("unchecked")
+	static <O> Supplier<Set<O>> hashSetSupplier() {
+		return (Supplier<Set<O>>) SET_SUPPLIER;
+	}
+
+	@SuppressWarnings("unchecked")
+	static <O> Predicate<O> countingPredicate(final Predicate<O> predicate, final long max) {
+		if (max == 0) {
+			return predicate;
+		}
+		return new Predicate<O>() {
+			long n;
+
+			@Override
+			public boolean test(O o) {
+				return n++ < max && predicate.test(o);
+			}
+		};
+	}
+
+	@SuppressWarnings("unchecked")
+	static BooleanSupplier countingBooleanSupplier(final BooleanSupplier predicate, final long max) {
+		if (max == 0) {
+			return predicate;
+		}
+		return new BooleanSupplier() {
+			long n;
+
+			@Override
+			public boolean getAsBoolean() {
+				return n++ < max && predicate.getAsBoolean();
+			}
+		};
+	}
 }

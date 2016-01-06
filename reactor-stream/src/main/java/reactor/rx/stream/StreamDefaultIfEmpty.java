@@ -13,135 +13,112 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
+
+import java.util.Objects;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.subscriber.SubscriberBarrier;
-import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.core.support.Assert;
-import reactor.core.support.ReactiveStateUtils;
-import reactor.fn.Supplier;
+import reactor.core.subscriber.SubscriberDeferScalar;
+import reactor.core.support.BackpressureUtils;
 
 /**
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * Emits a scalar value if the source sequence turns out to be empty.
+ *
+ * @param <T> the value type
+ */
+
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ *
+ * @since 2.5
  */
 public final class StreamDefaultIfEmpty<T> extends StreamBarrier<T, T> {
 
-	private final Supplier<? extends Publisher<? extends T>> fallbackSelector;
+    final T value;
 
-	public StreamDefaultIfEmpty(Publisher<T> source, final Publisher<? extends T> fallbackSelector) {
-		super(source);
-		this.fallbackSelector = new Supplier<Publisher<? extends T>>() {
-			@Override
-			public Publisher<? extends T> get() {
-				return fallbackSelector;
-			}
-		};
-	}
+    public StreamDefaultIfEmpty(Publisher<? extends T> source, T value) {
+        super(source);
+        this.value = Objects.requireNonNull(value, "value");
+    }
 
-	public StreamDefaultIfEmpty(Publisher<T> source, Supplier<? extends Publisher<? extends T>> fallbackSelector) {
-		super(source);
-		this.fallbackSelector = fallbackSelector;
-	}
+    @Override
+    public void subscribe(Subscriber<? super T> s) {
+        source.subscribe(new StreamDefaultIfEmptySubscriber<>(s, value));
+    }
 
-	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new DefaultIfEmptyAction<>(subscriber, fallbackSelector);
-	}
+    static final class StreamDefaultIfEmptySubscriber<T> extends SubscriberDeferScalar<T, T> implements Upstream {
 
-	static final class DefaultIfEmptyAction<T> extends SubscriberWithDemand<T, T> implements Named {
+        final T value;
 
-		final Supplier<? extends Publisher<? extends T>> fallbackSelector;
+        Subscription s;
 
-		private volatile FallbackSubscriber<T> fallback;
-		private          FallbackSubscriber<T> cachedFallback;
+        boolean hasValue;
 
-		private boolean hasValue;
+        public StreamDefaultIfEmptySubscriber(Subscriber<? super T> actual, T value) {
+            super(actual);
+            this.value = value;
+        }
 
-		public DefaultIfEmptyAction(Subscriber<? super T> actual,
-				Supplier<? extends Publisher<? extends T>> fallbackSelector) {
-			super(actual);
-			Assert.notNull(fallbackSelector, "Fallback Selector supplier cannot be null.");
-			this.fallbackSelector = fallbackSelector;
-		}
+        @Override
+        public void request(long n) {
+            super.request(n);
+            s.request(n);
+        }
 
-		@Override
-		public String getName() {
-			return ReactiveStateUtils.getName(fallbackSelector);
-		}
+        @Override
+        public void cancel() {
+            super.cancel();
+            s.cancel();
+        }
 
-		@Override
-		protected void doRequest(long n) {
-			if (this.cachedFallback == null) {
-				this.cachedFallback = this.fallback;
-				if (this.cachedFallback != null) {
-					this.cachedFallback.request(n);
-					return;
-				}
-			}
-			super.doRequest(n);
-		}
+        @Override
+        public void onSubscribe(Subscription s) {
+            if (BackpressureUtils.validate(this.s, s)) {
+                this.s = s;
 
-		@Override
-		protected void doCancel() {
-			if (this.cachedFallback == null) {
-				this.cachedFallback = this.fallback;
-				if (this.cachedFallback != null) {
-					this.cachedFallback.cancel();
-					return;
-				}
-			}
-			super.doCancel();
-		}
+                subscriber.onSubscribe(this);
+            }
+        }
 
-		@Override
-		protected void doNext(T t) {
-			hasValue = true;
-			super.doNext(t);
-		}
+        @Override
+        public void onNext(T t) {
+            if (!hasValue) {
+                hasValue = true;
+            }
 
-		@Override
-		@SuppressWarnings("unchecked")
-		protected void checkedComplete() {
-			if(hasValue){
-				return;
-			}
-			Publisher<? extends T> fallback = fallbackSelector.get();
-			final long r = requestedFromDownstream();
-			if (fallback == null) {
-				super.checkedComplete();
-			}
-			else if (r != 0 && Supplier.class.isAssignableFrom(fallback.getClass())) {
-				subscriber.onNext(((Supplier<T>) fallback).get());
-				subscriber.onComplete();
-			}
-			else {
-				FallbackSubscriber<T> s = new FallbackSubscriber<>(subscriber, r);
-				this.fallback = s;
-				fallback.subscribe(s);
-			}
-		}
+            subscriber.onNext(t);
+        }
 
-		private static class FallbackSubscriber<T> extends SubscriberBarrier<T, T> {
+        @Override
+        public void onComplete() {
+            if (hasValue) {
+                subscriber.onComplete();
+            }
+            else {
+                set(value);
+            }
+        }
 
-			private final long initRequest;
+        @Override
+        public T get() {
+            return value;
+        }
 
-			public FallbackSubscriber(Subscriber<? super T> subscriber, long r) {
-				super(subscriber);
-				this.initRequest = r;
-			}
+        @Override
+        public void setValue(T value) {
+            // value is constant
+        }
 
-			@Override
-			public void doOnSubscribe(Subscription s) {
-				if (initRequest != 0L) {
-					s.request(initRequest);
-				}
-			}
-		}
-	}
+        @Override
+        public Object upstream() {
+            return s;
+        }
 
+        @Override
+        public Object delegateInput() {
+            return value;
+        }
+    }
 }

@@ -93,7 +93,7 @@ public final class EmitterProcessor<T> extends FluxProcessor<T, T>
 	boolean firstDrain = true;
 
 	public EmitterProcessor(){
-		this(true, Integer.MAX_VALUE, SMALL_BUFFER_SIZE, -1);
+		this(true, Integer.MAX_VALUE, Integer.MAX_VALUE, -1);
 	}
 
 	public EmitterProcessor(boolean autoCancel, int maxConcurrency, int bufferSize, int replayLastN) {

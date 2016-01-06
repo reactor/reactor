@@ -86,7 +86,7 @@ public final class StreamFuture<T> {
 			return Streams.empty();
 		}
 
-		return Streams.wrap(Flux.create(new Consumer<SubscriberWithContext<T, Void>>() {
+		return Streams.from(Flux.create(new Consumer<SubscriberWithContext<T, Void>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Void> s) {
 				try {

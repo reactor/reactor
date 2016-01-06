@@ -42,7 +42,7 @@ import reactor.rx.subscription.SwapSubscription;
 public class Broadcaster<O> extends StreamProcessor<O, O> {
 
 	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.broadcast
 	 * .Broadcaster#onNext(Object)}, {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values
 	 * broadcasted are directly consumable by subscribing to the returned instance.
 	 * @param <T> the type of values passing through the {@literal Broadcaster}
@@ -54,7 +54,7 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 
 
 	/**
-	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.action
+	 * Build a {@literal Broadcaster}, ready to broadcast values with {@link reactor.rx.broadcast
 	 * .Broadcaster#onNext(Object)}, {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete()}. Values
 	 * broadcasted are directly consumable by subscribing to the returned instance.
 	 * @param autoCancel Propagate cancel upstream
@@ -221,7 +221,7 @@ public class Broadcaster<O> extends StreamProcessor<O, O> {
 
 	/**
 	 * Build a {@literal Broadcaster}, rfirst broadcasting the most recent signal then starting with the passed value,
-	 * then ready to broadcast values with {@link reactor.rx.action
+	 * then ready to broadcast values with {@link reactor.rx.broadcast
 	 * .Broadcaster#onNext(Object)},
 	 * {@link Broadcaster#onError(Throwable)}, {@link Broadcaster#onComplete
 	 * ()}.

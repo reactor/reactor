@@ -52,7 +52,7 @@ public final class Signal<T> implements Supplier<T>, Consumer<Subscriber<? super
 		 * Only happens once, a complete signal is used to confirm the successful end of the data sequence flowing in a
 		 * {@link reactor.rx.Stream}. The signal releases batching operations such as {@link reactor.rx.Stream#buffer
 		 * ()},
-		 * {@link reactor.rx.Stream#window()} or {@link reactor.rx.Stream#reduce(reactor.fn.BiFunction)}
+		 * {@link reactor.rx.Stream#window} or {@link reactor.rx.Stream#reduce(reactor.fn.BiFunction)}
 		 * <p>
 		 * see {@link org.reactivestreams.Subscriber#onComplete()}
 		 */

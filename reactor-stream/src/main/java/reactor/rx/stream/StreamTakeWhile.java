@@ -13,59 +13,151 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
+
+import java.util.Objects;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SubscriberBarrier;
+import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
+import reactor.core.support.BackpressureUtils;
 import reactor.fn.Predicate;
 
 /**
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * Relays values while a predicate returns
+ * true for the values (checked before each value is delivered).
+ *
+ * @param <T> the value type
+ */
+
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ *
+ * @since 2.5
  */
 public final class StreamTakeWhile<T> extends StreamBarrier<T, T> {
 
-	private final Predicate<T> endPredicate;
+    final Predicate<? super T> predicate;
 
-	public StreamTakeWhile(Publisher<T> source, Predicate<T> endPredicate) {
-		super(source);
-		this.endPredicate = endPredicate;
-	}
+    public StreamTakeWhile(Publisher<? extends T> source, Predicate<? super T> predicate) {
+        super(source);
+        this.predicate = Objects.requireNonNull(predicate, "predicate");
+    }
 
-	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new TakeWhileAction<>(subscriber, endPredicate);
-	}
+    public Predicate<? super T> predicate() {
+        return predicate;
+    }
 
-	static final class TakeWhileAction<T> extends SubscriberBarrier<T, T> {
+    @Override
+    public void subscribe(Subscriber<? super T> s) {
+        source.subscribe(new StreamTakeWhileSubscriber<>(s, predicate));
+    }
 
-		private final Predicate<T> endPredicate;
+    static final class StreamTakeWhileSubscriber<T>
+            implements Subscriber<T>, Downstream, Upstream, ActiveUpstream, FeedbackLoop {
 
-		public TakeWhileAction(Subscriber<? super T> actual, Predicate<T> predicate) {
-			super(actual);
-			this.endPredicate = predicate;
-		}
+        final Subscriber<? super T> actual;
 
-		@Override
-		protected void doNext(T ev) {
-			if (endPredicate != null && !endPredicate.test(ev)) {
-				cancel();
-				subscriber.onComplete();
-			}
-			else {
-				subscriber.onNext(ev);
-			}
+        final Predicate<? super T> predicate;
 
-		}
+        Subscription s;
 
-		@Override
-		public String toString() {
-			return super.toString() + "{" +
-					"with-end-predicate" +
-					'}';
-		}
-	}
+        boolean done;
 
+        public StreamTakeWhileSubscriber(Subscriber<? super T> actual, Predicate<? super T> predicate) {
+            this.actual = actual;
+            this.predicate = predicate;
+        }
+
+        @Override
+        public void onSubscribe(Subscription s) {
+            if (BackpressureUtils.validate(this.s, s)) {
+                this.s = s;
+                actual.onSubscribe(s);
+            }
+        }
+
+        @Override
+        public void onNext(T t) {
+            if (done) {
+                Exceptions.onNextDropped(t);
+                return;
+            }
+
+            boolean b;
+
+            try {
+                b = predicate.test(t);
+            }
+            catch (Throwable e) {
+                s.cancel();
+
+                onError(e);
+
+                return;
+            }
+
+            if (!b) {
+                s.cancel();
+
+                onComplete();
+
+                return;
+            }
+
+            actual.onNext(t);
+        }
+
+        @Override
+        public void onError(Throwable t) {
+            if (done) {
+                Exceptions.onErrorDropped(t);
+                return;
+            }
+            done = true;
+
+            actual.onError(t);
+        }
+
+        @Override
+        public void onComplete() {
+            if (done) {
+                return;
+            }
+            done = true;
+
+            actual.onComplete();
+        }
+
+        @Override
+        public boolean isStarted() {
+            return s != null && !done;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return done;
+        }
+
+        @Override
+        public Object downstream() {
+            return actual;
+        }
+
+        @Override
+        public Object delegateInput() {
+            return predicate;
+        }
+
+        @Override
+        public Object delegateOutput() {
+            return null;
+        }
+
+        @Override
+        public Object upstream() {
+            return s;
+        }
+    }
 }

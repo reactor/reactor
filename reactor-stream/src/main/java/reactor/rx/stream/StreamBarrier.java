@@ -33,9 +33,9 @@ import reactor.rx.Stream;
 public class StreamBarrier<I, O> extends Stream<O>
 		implements ReactiveState.Named, ReactiveState.Upstream, Flux.Operator<I, O> {
 
-	final protected Publisher<I> source;
+	final protected Publisher<? extends I> source;
 
-	public StreamBarrier(Publisher<I> source) {
+	public StreamBarrier(Publisher<? extends I> source) {
 		this.source = source;
 	}
 
@@ -66,12 +66,12 @@ public class StreamBarrier<I, O> extends Stream<O>
 
 	@Override
 	public String getName() {
-		return ReactiveStateUtils.getName(getClass().getSimpleName())
+		return getClass().getSimpleName()
 		                 .replaceAll("Stream|Publisher|Operator", "");
 	}
 
 	@Override
-	public final Publisher<I> upstream() {
+	public final Publisher<? extends I> upstream() {
 		return source;
 	}
 

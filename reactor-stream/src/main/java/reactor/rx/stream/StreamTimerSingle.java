@@ -13,37 +13,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package reactor.rx.stream;
 
 import java.util.concurrent.TimeUnit;
 
 import org.reactivestreams.Subscriber;
 import reactor.core.error.Exceptions;
+import reactor.core.support.ReactiveState;
 import reactor.core.timer.Timer;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.subscription.PushSubscription;
 
 /**
- * A Stream that emits {@link 0} after an initial delay and ever incrementing long counter if the period argument is
- * specified.
+ * A Stream that emits {@link 0} after an initial delay and then complete
  * <p>
- * The TimerStream will manage dedicated timers for new subscriber assigned via
- * {@link this#subscribe(org.reactivestreams.Subscriber)}.
+ * The SingleTimerStream will manage dedicated timers for new subscriber assigned via {@link
+ * this#subscribe(org.reactivestreams.Subscriber)}.
  * <p>
- * Create such stream with the provided factory, E.g with a delay of 1 second, then every 2 seconds.:
+ * Create such stream with the provided factory, E.g.:
  * <pre>
  * {@code
- * Streams.timer(1, 2).consume(
+ * Streams.timer(env, 1).consume(
  * log::info,
  * log::error,
  * (-> log.info("complete"))
  * )
  * }
  * </pre>
- * <p>
  * Will log:
- * <pre>{@code
+ * <pre>
+ * {@code
  * 0
  * complete
  * }
@@ -51,17 +52,15 @@ import reactor.rx.subscription.PushSubscription;
  *
  * @author Stephane Maldini
  */
-public final class StreamKeyValue extends Stream<Long> {
+public final class StreamTimerSingle extends Stream<Long> implements ReactiveState.FeedbackLoop {
 
 	final private long     delay;
-	final private long     period;
 	final private TimeUnit unit;
 	final private Timer    timer;
 
-	public StreamKeyValue(long delay, long period, TimeUnit unit, Timer timer) {
-		this.delay = delay >= 0l ? delay : -1l;
+	public StreamTimerSingle(long delay, TimeUnit unit, Timer timer) {
+		this.delay = delay >= 0l ? delay : 0l;
 		this.unit = unit != null ? unit : TimeUnit.SECONDS;
-		this.period = period;
 		this.timer = timer;
 	}
 
@@ -69,26 +68,23 @@ public final class StreamKeyValue extends Stream<Long> {
 	public void subscribe(final Subscriber<? super Long> subscriber) {
 		try {
 			subscriber.onSubscribe(new TimerSubscription(this, subscriber));
-		} catch (Throwable throwable) {
+		}
+		catch (Throwable throwable) {
 			Exceptions.throwIfFatal(throwable);
 			subscriber.onError(throwable);
 		}
 	}
 
-	@Override
-	public Timer getTimer() {
-		return timer;
-	}
+	private class TimerSubscription extends PushSubscription<Long> implements Timed {
 
-	private class TimerSubscription extends PushSubscription<Long> {
-
-		long counter = 0l;
-		final Pausable registration = timer.schedule(new Consumer<Long>() {
+		final Pausable registration = timer.submit(new Consumer<Long>() {
 			@Override
 			public void accept(Long aLong) {
-				subscriber.onNext(counter++);
+				subscriber.onNext(0l);
+				subscriber.onComplete();
+				timer.cancel();
 			}
-		}, period, unit, delay == -1 ? TimeUnit.MILLISECONDS.convert(period, unit) : delay);
+		}, delay, unit);
 
 		public TimerSubscription(Stream<Long> publisher, Subscriber<? super Long> subscriber) {
 			super(publisher, subscriber);
@@ -100,10 +96,25 @@ public final class StreamKeyValue extends Stream<Long> {
 			timer.cancel();
 			super.cancel();
 		}
+
+		@Override
+		public long period() {
+			return TimeUnit.MILLISECONDS.convert(delay, unit);
+		}
+	}
+
+	@Override
+	public Object delegateInput() {
+		return timer;
+	}
+
+	@Override
+	public Object delegateOutput() {
+		return timer;
 	}
 
 	@Override
 	public String toString() {
-		return "delay=" + delay + "ms" + (period > 0 ? ", period=" + period : "") + ", period-unit=" + unit;
+		return "delay=" + delay + " " + unit;
 	}
 }

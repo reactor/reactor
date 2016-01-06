@@ -16,9 +16,10 @@
 
 package reactor.rx;
 
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +40,7 @@ import reactor.core.subscriber.SubscriberWithContext;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.ReactiveState;
+import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.timer.Timer;
 import reactor.fn.BiConsumer;
 import reactor.fn.BiFunction;
@@ -57,11 +59,13 @@ import reactor.rx.stream.StreamBarrier;
 import reactor.rx.stream.StreamCombineLatest;
 import reactor.rx.stream.StreamDefer;
 import reactor.rx.stream.StreamFuture;
+import reactor.rx.stream.StreamIterable;
 import reactor.rx.stream.StreamJust;
-import reactor.rx.stream.StreamKeyValue;
 import reactor.rx.stream.StreamRange;
-import reactor.rx.stream.StreamSingleTimer;
 import reactor.rx.stream.StreamSwitch;
+import reactor.rx.stream.StreamTimerPeriod;
+import reactor.rx.stream.StreamTimerSingle;
+import reactor.rx.stream.StreamWithLatestFrom;
 
 /**
  * A public factory to build {@link Stream}, Streams provide for common transformations from a few structures such as
@@ -101,7 +105,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static <T> Stream<T> yield(Consumer<? super ReactiveSession<T>> sessionConsumer) {
-		return wrap(Flux.yield(sessionConsumer));
+		return from(Flux.yield(sessionConsumer));
 	}
 
 	/**
@@ -155,14 +159,14 @@ public class Streams {
 	public static <T, C> Stream<T> createWith(BiConsumer<Long, SubscriberWithContext<T, C>> requestConsumer,
 	                                          Function<Subscriber<? super T>, C> contextFactory,
 	                                          Consumer<C> shutdownConsumer) {
-		return Streams.wrap(Flux.generate(requestConsumer, contextFactory, shutdownConsumer));
+		return Streams.from(Flux.generate(requestConsumer, contextFactory, shutdownConsumer));
 	}
 
 	/**
 	 * @see Flux#create(Consumer)
 	 */
 	public static <T> Stream<T> create(Consumer<SubscriberWithContext<T, Void>> request) {
-		return wrap(Flux.create(request));
+		return from(Flux.create(request));
 	}
 
 	/**
@@ -170,7 +174,7 @@ public class Streams {
 	 */
 	public static <T, C> Stream<T> create(Consumer<SubscriberWithContext<T, C>> request,
 			Function<Subscriber<? super T>, C> onSubscribe) {
-		return wrap(Flux.create(request, onSubscribe));
+		return from(Flux.create(request, onSubscribe));
 	}
 
 	/**
@@ -179,7 +183,7 @@ public class Streams {
 	public static <T, C> Stream<T> create(Consumer<SubscriberWithContext<T, C>> request,
 			Function<Subscriber<? super T>, C> onSubscribe,
 			Consumer<C> onTerminate) {
-		return wrap(Flux.create(request, onSubscribe, onTerminate));
+		return from(Flux.create(request, onSubscribe, onTerminate));
 	}
 
 	/**
@@ -194,7 +198,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stream<T> wrap(final Publisher<T> publisher) {
+	public static <T> Stream<T> from(final Publisher<T> publisher) {
 		if (Stream.class.isAssignableFrom(publisher.getClass())) {
 			return (Stream<T>) publisher;
 		}
@@ -221,7 +225,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	@SuppressWarnings("unchecked")
-	public static <I, O> StreamProcessor<I, O> wrap(final Processor<I, O> processor) {
+	public static <I, O> StreamProcessor<I, O> from(final Processor<I, O> processor) {
 		if (StreamProcessor.class.isAssignableFrom(processor.getClass())) {
 			return (StreamProcessor<I, O>) processor;
 		}
@@ -246,7 +250,7 @@ public class Streams {
 	 * .Supplier}
 	 * will be invoked and it's up to the developer to choose to return a new instance of a {@link Publisher} or reuse
 	 * one,
-	 * effecitvely behaving like {@link reactor.rx.Streams#wrap(Publisher)}.
+	 * effecitvely behaving like {@link reactor.rx.Streams#from(Publisher)}.
 	 *
 	 * @param supplier the publisher factory to call on subscribe
 	 * @param <T>      the type of values passing through the {@literal Stream}
@@ -282,7 +286,7 @@ public class Streams {
 	 * @return a new {@link Stream}
 	 */
 	public static <O, T extends Throwable> Stream<O> fail(T throwable) {
-		return wrap(Mono.<O>error(throwable));
+		return from(Mono.<O>error(throwable));
 	}
 
 	/**
@@ -294,8 +298,8 @@ public class Streams {
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> from(Iterable<? extends T> values) {
-		return Streams.wrap(Flux.fromIterable(values));
+	public static <T> Stream<T> fromIterable(Iterable<? extends T> values) {
+		return new StreamIterable<>(values);
 	}
 
 	/**
@@ -307,8 +311,8 @@ public class Streams {
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> from(Iterator<? extends T> values) {
-		return Streams.wrap(Flux.fromIterator(values));
+	public static <T> Stream<T> fromIterator(Iterator<? extends T> values) {
+		return from(Flux.fromIterator(values));
 	}
 
 	/**
@@ -320,8 +324,8 @@ public class Streams {
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
-	public static <T> Stream<T> from(T[] values) {
-		return from(Arrays.asList(values));
+	public static <T> Stream<T> fromArray(T[] values) {
+		return from(Flux.fromArray(values));
 	}
 
 	/**
@@ -331,7 +335,7 @@ public class Streams {
 	 * @param future the future to poll value from
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <T> Stream<T> from(Future<? extends T> future) {
+	public static <T> Stream<T> fromFuture(Future<? extends T> future) {
 		return StreamFuture.create(future);
 	}
 
@@ -342,7 +346,7 @@ public class Streams {
 	 * @param future the future to poll value from
 	 * @return a new {@link reactor.rx.Stream}
 	 */
-	public static <T> Stream<T> from(Future<? extends T> future, long time, TimeUnit unit) {
+	public static <T> Stream<T> fromFuture(Future<? extends T> future, long time, TimeUnit unit) {
 		return StreamFuture.create(future, time, unit);
 	}
 
@@ -355,7 +359,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Integer> range(int start, int count) {
-		return StreamRange.create(start, count);
+		return new StreamRange(start, count);
 	}
 
 	/**
@@ -399,7 +403,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> timer(Timer timer, long delay, TimeUnit unit) {
-		return new StreamSingleTimer(delay, unit, timer);
+		return new StreamTimerSingle(delay, unit, timer);
 	}
 
 	/**
@@ -501,7 +505,7 @@ public class Streams {
 	 * @return a new {@link reactor.rx.Stream}
 	 */
 	public static Stream<Long> period(Timer timer, long delay, long period, TimeUnit unit) {
-		return new StreamKeyValue(TimeUnit.MILLISECONDS.convert(delay, unit), period, unit, timer);
+		return new StreamTimerPeriod(TimeUnit.MILLISECONDS.convert(delay, unit), period, unit, timer);
 	}
 
 	/**
@@ -526,149 +530,23 @@ public class Streams {
 	 * request.
 	 * <p>
 	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2) {
-		return from(Arrays.asList(value1, value2));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3) {
-		return from(Arrays.asList(value1, value2, value3));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4) {
-		return from(Arrays.asList(value1, value2, value3, value4));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param value5 The fifth value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param value5 The fifth value to {@code onNext()}
-	 * @param value6 The sixth value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5, value6));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param value5 The fifth value to {@code onNext()}
-	 * @param value6 The sixth value to {@code onNext()}
-	 * @param value7 The seventh value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param value5 The fifth value to {@code onNext()}
-	 * @param value6 The sixth value to {@code onNext()}
-	 * @param value7 The seventh value to {@code onNext()}
-	 * @param value8 The eigth value to {@code onNext()}
-	 * @param <T>    type of the values
-	 * @return a {@link Stream} based on the given values
-	 */
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8));
-	}
-
-	/**
-	 * Build a {@literal Stream} whom data is sourced by each element of the passed iterable on subscription
-	 * request.
-	 * <p>
-	 *
-	 * @param value1 The first value to {@code onNext()}
-	 * @param value2 The second value to {@code onNext()}
-	 * @param value3 The third value to {@code onNext()}
-	 * @param value4 The fourth value to {@code onNext()}
-	 * @param value5 The fifth value to {@code onNext()}
-	 * @param value6 The sixth value to {@code onNext()}
-	 * @param value7 The seventh value to {@code onNext()}
-	 * @param value8 The eigth value to {@code onNext()}
-	 * @param rest rest of values to {@code onNext()}
+	 * @param values The values to {@code onNext()}
 	 * @param <T>    type of the values
 	 * @return a {@link Stream} based on the given values
 	 */
 	@SafeVarargs
-	@SuppressWarnings("varargs")
-	public static <T> Stream<T> just(T value1, T value2, T value3, T value4, T value5, T value6, T value7, T value8, T... rest) {
-		return from(Arrays.asList(value1, value2, value3, value4, value5, value6, value7, value8)).concatWith(from(Arrays.asList(rest)));
+	@SuppressWarnings({"unchecked", "varargs"})
+	public static <T> Stream<T> just(T... values) {
+		return from(Flux.fromArray(Objects.requireNonNull(values)));
 	}
+
 
 	/**
 	 * @see Flux#convert(Object)
 	 * @since 2.5
 	 */
 	public static <T> Stream<T> convert(Object source) {
-		return Streams.wrap(Flux.<T>convert(source));
+		return from(Flux.<T>convert(source));
 	}
 
 	/**
@@ -703,8 +581,7 @@ public class Streams {
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param mergedPublishers The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>              type of the value
@@ -713,140 +590,22 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> amb(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		return wrap(Flux.amb(mergedPublishers));
+		return from(Flux.amb(mergedPublishers));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> amb(Publisher<? extends T> source1,
-			Publisher<? extends T> source2
-	) {
-		return amb(Arrays.asList(source1, source2));
-	}
 
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param sources The upstreams {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>     type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public static <T> Stream<T> amb(Publisher<? extends T> source1,
-			Publisher<? extends T> source2,
-			Publisher<? extends T> source3
-	) {
-		return amb(Arrays.asList(source1, source2, source3));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> amb(Publisher<? extends T> source1,
-			Publisher<? extends T> source2,
-			Publisher<? extends T> source3,
-			Publisher<? extends T> source4
-	) {
-		return amb(Arrays.asList(source1, source2, source3, source4));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> amb(Publisher<? extends T> source1,
-			Publisher<? extends T> source2,
-			Publisher<? extends T> source3,
-			Publisher<? extends T> source4,
-			Publisher<? extends T> source5
-	) {
-		return amb(Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> amb(Publisher<? extends T> source1,
-			Publisher<? extends T> source2,
-			Publisher<? extends T> source3,
-			Publisher<? extends T> source4,
-			Publisher<? extends T> source5,
-			Publisher<? extends T> source6
-	) {
-		return amb(Arrays.asList(source1, source2, source3, source4, source5,
-				source6));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> amb(Publisher<? extends T> source1,
-			Publisher<? extends T> source2,
-			Publisher<? extends T> source3,
-			Publisher<? extends T> source4,
-			Publisher<? extends T> source5,
-			Publisher<? extends T> source6,
-			Publisher<? extends T> source7
-	) {
-		return amb(Arrays.asList(source1, source2, source3, source4, source5,
-				source6, source7));
+	@SafeVarargs
+	@SuppressWarnings({"unchecked", "varargs"})
+	public static <T> Stream<T> amb(Publisher<? extends T>... sources) {
+		return from(Flux.amb(sources));
 	}
 
 	/**
@@ -862,7 +621,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> concat(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		return Streams.wrap(Flux.concat(mergedPublishers));
+		return from(Flux.concat(mergedPublishers));
 	}
 
 	/**
@@ -877,7 +636,7 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T> Stream<T> concat(Publisher<? extends Publisher<? extends T>> concatdPublishers) {
-		return wrap(Flux.concat(concatdPublishers));
+		return from(Flux.concat(concatdPublishers));
 	}
 
 	/**
@@ -886,143 +645,20 @@ public class Streams {
 	 * passed
 	 * to.
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param sources The upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>     type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2
-	) {
-		return concat(Arrays.asList(source1, source2));
+	@SuppressWarnings({"unchecked", "varargs"})
+	@SafeVarargs
+	public static <T> Stream<T> concat(Publisher<? extends T>... sources) {
+		return from(Flux.concat(sources));
 	}
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
-	 * passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3
-	) {
-		return concat(Arrays.asList(source1, source2, source3));
-	}
 
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
-	 * passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3,
-	                                   Publisher<? extends T> source4
-	) {
-		return concat(Arrays.asList(source1, source2, source3, source4));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
-	 * passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3,
-	                                   Publisher<? extends T> source4,
-	                                   Publisher<? extends T> source5
-	) {
-		return concat(Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
-	 * passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3,
-	                                   Publisher<? extends T> source4,
-	                                   Publisher<? extends T> source5,
-	                                   Publisher<? extends T> source6
-	) {
-		return concat(Arrays.asList(source1, source2, source3, source4, source5,
-		  source6));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * Each source publisher will be consumed until complete in sequence, with the same order than they have been
-	 * passed
-	 * to.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> concat(Publisher<? extends T> source1,
-	                                   Publisher<? extends T> source2,
-	                                   Publisher<? extends T> source3,
-	                                   Publisher<? extends T> source4,
-	                                   Publisher<? extends T> source5,
-	                                   Publisher<? extends T> source6,
-	                                   Publisher<? extends T> source7
-	) {
-		return concat(Arrays.asList(source1, source2, source3, source4, source5,
-		  source6, source7));
-	}
-
-	/**
-	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
 	 *
 	 * @param mergedPublishers The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>              type of the value
@@ -1031,13 +667,12 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> merge(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		return wrap(Flux.merge(mergedPublishers));
+		return from(Flux.merge(mergedPublishers));
 	}
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param mergedPublishers The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>              type of the value
@@ -1045,175 +680,80 @@ public class Streams {
 	 * @since 2.0
 	 */
 	public static <T, E extends T> Stream<E> merge(Publisher<? extends Publisher<E>> mergedPublishers) {
-		return wrap(Flux.merge(mergedPublishers));
+		return from(Flux.merge(mergedPublishers));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param sources The upstreams {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>     type of the value
 	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2
-	) {
-		return merge(Arrays.asList(source1, source2));
+	@SafeVarargs
+	@SuppressWarnings({"unchecked", "varargs"})
+	public static <T> Stream<T> merge(Publisher<? extends T>... sources) {
+		return from(Flux.merge(sources));
 	}
 
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3
-	) {
-		return merge(Arrays.asList(source1, source2, source3));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4
-	) {
-		return merge(Arrays.asList(source1, source2, source3, source4));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5
-	) {
-		return merge(Arrays.asList(source1, source2, source3, source4, source5));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6
-	) {
-		return merge(Arrays.asList(source1, source2, source3, source4, source5,
-		  source6));
-	}
-
-	/**
-	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
-	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source3 The third upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source4 The fourth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source5 The fifth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source6 The sixth upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source7 The seventh upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param <T>     type of the value
-	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
-	 */
-	public static <T> Stream<T> merge(Publisher<? extends T> source1,
-	                                  Publisher<? extends T> source2,
-	                                  Publisher<? extends T> source3,
-	                                  Publisher<? extends T> source4,
-	                                  Publisher<? extends T> source5,
-	                                  Publisher<? extends T> source6,
-	                                  Publisher<? extends T> source7
-	) {
-		return merge(Arrays.asList(source1, source2, source3, source4, source5,
-		  source6, source7));
-	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
 	 * all publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
 	 *
-	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param sources    The upstreams {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
 	 *                   value to signal downstream
-	 * @param <T1>       type of the value from source1
-	 * @param <T2>       type of the value from source2
+	 * @param <T>       type of the value from sources
 	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
-	public static <T1, T2, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
-	                                                  Publisher<? extends T2> source2,
-	                                                  final BiFunction<? super T1, ? super T2, ? extends V>
-			                                                  combinator) {
-		return combineLatest(Arrays.asList(source1, source2), new Function<Tuple2<T1, T2>, V>() {
-			@Override
-			public V apply(Tuple2<T1, T2> tuple) {
-				return combinator.apply(tuple.getT1(), tuple.getT2());
-			}
-		});
+	@SuppressWarnings({"unchecked", "varargs"})
+	@SafeVarargs
+	public static <T, V> Stream<V> combineLatest(final Function<Object[], V> combinator,
+			Publisher<? extends T>... sources) {
+		if (sources == null || sources.length == 0) {
+			return empty();
+		}
+
+		if (sources.length == 1) {
+			return from((Publisher<V>) sources[0]);
+		}
+
+		return new StreamCombineLatest<>(sources,
+				combinator,
+				(Supplier<? extends Queue<StreamCombineLatest.SourceAndArray>>) XS_QUEUE_SUPPLIER,
+				ReactiveState.XS_BUFFER_SIZE);
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
 	 * all publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+	 *
+	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the value
+	 * to signal downstream
+	 * @param <T1> type of the value from source1
+	 * @param <T2> type of the value from source2
+	 * @param <V> The produced output after transformation by {@param combinator}
+	 *
+	 * @return a {@link Stream} based on the produced value
+	 *
+	 * @since 2.5
+	 */
+	public static <T1, T2, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
+			Publisher<? extends T2> source2,
+			BiFunction<? super T1, ? super T2, ? extends V> combinator) {
+		return new StreamWithLatestFrom<>(source1, source2, combinator);
+	}
+	/**
+	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
+	 * all publishers.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1227,19 +767,18 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
 	                                                      Publisher<? extends T2> source2,
 	                                                      Publisher<? extends T3> source3,
-	                                                      Function<Tuple3<T1, T2, T3>,
-	                                                        ? extends V> combinator) {
-		return combineLatest(Arrays.asList(source1, source2, source3), combinator);
+			Function<Object[], V> combinator) {
+		return combineLatest(combinator, new Publisher[]{source1, source2, source3});
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
 	 * all publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1255,20 +794,19 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3, T4, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
 	                                                          Publisher<? extends T2> source2,
 	                                                          Publisher<? extends T3> source3,
 	                                                          Publisher<? extends T4> source4,
-	                                                          Function<Tuple4<T1, T2, T3, T4>,
-	                                                            V> combinator) {
-		return combineLatest(Arrays.asList(source1, source2, source3, source4), combinator);
+			Function<Object[], V> combinator) {
+		return combineLatest(combinator, new Publisher[]{source1, source2, source3, source4});
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
 	 * all publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1285,21 +823,20 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3, T4, T5, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
 	                                                              Publisher<? extends T2> source2,
 	                                                              Publisher<? extends T3> source3,
 	                                                              Publisher<? extends T4> source4,
 	                                                              Publisher<? extends T5> source5,
-	                                                              Function<Tuple5<T1, T2, T3, T4, T5>,
-	                                                                V> combinator) {
-		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5), combinator);
+			Function<Object[], V> combinator) {
+		return combineLatest(combinator, new Publisher[]{source1, source2, source3, source4, source5});
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
 	 * all publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1319,22 +856,21 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3, T4, T5, T6, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
 	                                                                  Publisher<? extends T2> source2,
 	                                                                  Publisher<? extends T3> source3,
 	                                                                  Publisher<? extends T4> source4,
 	                                                                  Publisher<? extends T5> source5,
 	                                                                  Publisher<? extends T6> source6,
-	                                                                  Function<Tuple6<T1, T2, T3, T4, T5, T6>,
-	                                                                    V> combinator) {
-		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5, source6), combinator);
+			Function<Object[], V> combinator) {
+		return combineLatest(combinator, new Publisher[]{source1, source2, source3, source4, source5, source6});
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
 	 * all publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1356,6 +892,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3, T4, T5, T6, T7, V> Stream<V> combineLatest(Publisher<? extends T1> source1,
 	                                                                      Publisher<? extends T2> source2,
 	                                                                      Publisher<? extends T3> source3,
@@ -1363,83 +900,68 @@ public class Streams {
 	                                                                      Publisher<? extends T5> source5,
 	                                                                      Publisher<? extends T6> source6,
 	                                                                      Publisher<? extends T7> source7,
-	                                                                      Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
-	                                                                        V> combinator) {
-		return combineLatest(Arrays.asList(source1, source2, source3, source4, source5, source6, source7),
-		  combinator);
+			Function<Object[], V> combinator) {
+		return combineLatest(combinator,
+				new Publisher[]{source1, source2, source3, source4, source5, source6, source7});
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
 	 * all publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param sources    The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
 	 *                   value to signal downstream
 	 * @param <V>        The produced output after transformation by {@param combinator}
-	 * @param <TUPLE>    The type of tuple to use that must match source Publishers type
 	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
 	@SuppressWarnings("unchecked")
-	public static <TUPLE extends Tuple, V> Stream<V> combineLatest(List<? extends Publisher<?>> sources,
-	                                                               final Function<? super TUPLE, ? extends V>
-			                                                               combinator) {
-		int n = sources != null ? sources.size() : 0;
-		if(n == 0){
+	public static <T, V> Stream<V> combineLatest(Iterable<? extends Publisher<? extends T>> sources,
+			final Function<Object[], V> combinator) {
+		if (sources == null) {
 			return empty();
 		}
-		if(n == 1){
-			return wrap(sources.get(0)).map(new Function<Object, V>() {
-				@Override
-				public V apply(Object o) {
-					return combinator.apply((TUPLE)Tuple.of(o));
-				}
-			});
-		}
-		return new StreamCombineLatest<>(
-				just(sources.toArray(new Publisher[sources.size()])),
+
+		return new StreamCombineLatest<>(sources,
 				combinator,
-				ReactiveState
-				.SMALL_BUFFER_SIZE	/ 2
+				(Supplier<? extends Queue<StreamCombineLatest.SourceAndArray>>) XS_QUEUE_SUPPLIER,
+				ReactiveState.XS_BUFFER_SIZE
 		);
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the combination of the most recent published values from
 	 * all publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param sources    The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
 	 *                   value to signal downstream
 	 * @param <V>        The produced output after transformation by {@param combinator}
 	 * @return a {@link Stream} based on the produced value
-	 * @since 2.0
+	 * @since 2.0, 2.5
 	 */
 	@SuppressWarnings("unchecked")
-	public static <TUPLE extends Tuple, V> Stream<V> combineLatest(
-	  Publisher<? extends Publisher<?>> sources,
-	  Function<? super TUPLE, ? extends V> combinator) {
-		return new StreamCombineLatest<>(
-				wrap(sources).buffer().map(new Function<List<? extends Publisher<?>>, Publisher[]>() {
+	public static <V> Stream<V> combineLatest(Publisher<? extends Publisher<?>> sources,
+			final Function<Object[], V> combinator) {
+		return from(sources).buffer()
+		                    .flatMap(new Function<List<? extends Publisher<?>>, Publisher<V>>() {
 					@Override
-					public Publisher[] apply(List<? extends Publisher<?>> publishers) {
-						return publishers.toArray(new Publisher[publishers.size()]);
+					public Publisher<V> apply(List<? extends Publisher<?>> publishers) {
+						return new StreamCombineLatest<Object, V>(publishers,
+								combinator,
+								(Supplier<? extends Queue<StreamCombineLatest.SourceAndArray>>) XS_QUEUE_SUPPLIER,
+								ReactiveState.XS_BUFFER_SIZE);
 					}
-				}),
-				combinator,
-				ReactiveState.SMALL_BUFFER_SIZE / 2
+		                    }
 		);
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1454,13 +976,12 @@ public class Streams {
 	public static <T1, T2, V> Stream<V> zip(Publisher<? extends T1> source1,
 	                                        Publisher<? extends T2> source2,
 	                                        BiFunction<? super T1, ? super T2, ? extends V> combinator) {
-		return wrap(Flux.zip(source1, source2, combinator));
+		return from(Flux.zip(source1, source2, combinator));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1473,13 +994,12 @@ public class Streams {
 	@SuppressWarnings("unchecked")
 	public static <T1, T2> Stream<Tuple2<T1, T2>> zip(Publisher<? extends T1> source1,
 	                                                  Publisher<? extends T2> source2) {
-		return wrap(Flux.zip(source1, source2));
+		return from(Flux.zip(source1, source2));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1498,13 +1018,14 @@ public class Streams {
 	                                            Publisher<? extends T3> source3,
 	                                            Function<Tuple3<T1, T2, T3>,
 	                                              ? extends V> combinator) {
-		return zip(Arrays.asList(source1, source2, source3), combinator);
+		return from(new FluxZip<>(new Publisher[]{source1, source2, source3},
+				combinator,
+				ReactiveState.XS_BUFFER_SIZE));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1515,16 +1036,18 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.5
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3> Stream<Tuple3<T1, T2, T3>> zip(Publisher<? extends T1> source1,
 												              Publisher<? extends T2> source2,
 												              Publisher<? extends T3> source3) {
-		return zip(Arrays.asList(source1, source2, source3));
+		return from(new FluxZip<>(new Publisher[]{source1, source2, source3},
+				(Function<Tuple3<T1, T2, T3>, Tuple3<T1, T2, T3>>) IDENTITY_FUNCTION,
+				ReactiveState.XS_BUFFER_SIZE));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1546,13 +1069,14 @@ public class Streams {
 	                                                Publisher<? extends T4> source4,
 	                                                Function<Tuple4<T1, T2, T3, T4>,
 	                                                  V> combinator) {
-		return zip(Arrays.asList(source1, source2, source3, source4), combinator);
+		return from(new FluxZip<>(new Publisher[]{source1, source2, source3, source4},
+				combinator,
+				ReactiveState.XS_BUFFER_SIZE));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1565,17 +1089,19 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.5
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3, T4> Stream<Tuple4<T1, T2, T3, T4>> zip(Publisher<? extends T1> source1,
 													                  Publisher<? extends T2> source2,
 													                  Publisher<? extends T3> source3,
 													                  Publisher<? extends T4> source4) {
-		return zip(Arrays.asList(source1, source2, source3, source4));
+		return from(new FluxZip<>(new Publisher[]{source1, source2, source3, source4},
+				IDENTITY_FUNCTION,
+				ReactiveState.XS_BUFFER_SIZE));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1599,13 +1125,14 @@ public class Streams {
 	                                                    Publisher<? extends T5> source5,
 	                                                    Function<Tuple5<T1, T2, T3, T4, T5>,
 	                                                      V> combinator) {
-		return zip(Arrays.asList(source1, source2, source3, source4, source5), combinator);
+		return from(new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5},
+				combinator,
+				ReactiveState.XS_BUFFER_SIZE));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1619,18 +1146,20 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.5
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3, T4, T5> Stream<Tuple5<T1, T2, T3, T4, T5>> zip(Publisher<? extends T1> source1,
 														                      Publisher<? extends T2> source2,
 														                      Publisher<? extends T3> source3,
 														                      Publisher<? extends T4> source4,
 														                      Publisher<? extends T5> source5) {
-		return zip(Arrays.asList(source1, source2, source3, source4, source5));
+		return from(new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5},
+				(Function<Tuple5<T1, T2, T3, T4, T5>, Tuple5<T1, T2, T3, T4, T5>>) IDENTITY_FUNCTION,
+				ReactiveState.XS_BUFFER_SIZE));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1658,13 +1187,14 @@ public class Streams {
 	                                                        Publisher<? extends T6> source6,
 	                                                        Function<Tuple6<T1, T2, T3, T4, T5, T6>,
 	                                                          V> combinator) {
-		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6), combinator);
+		return from(new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5, source6},
+				combinator,
+				ReactiveState.XS_BUFFER_SIZE));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1681,19 +1211,21 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.5
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3, T4, T5, T6> Stream<Tuple6<T1, T2, T3, T4, T5, T6>> zip(Publisher<? extends T1> source1,
 															                          Publisher<? extends T2> source2,
 															                          Publisher<? extends T3> source3,
 															                          Publisher<? extends T4> source4,
 															                          Publisher<? extends T5> source5,
 															                          Publisher<? extends T6> source6) {
-		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6));
+		return from(new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5, source6},
+				(Function<Tuple6<T1, T2, T3, T4, T5, T6>, Tuple6<T1, T2, T3, T4, T5, T6>>) IDENTITY_FUNCTION,
+				ReactiveState.XS_BUFFER_SIZE));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1724,14 +1256,14 @@ public class Streams {
 	                                                            Publisher<? extends T7> source7,
 	                                                            Function<Tuple7<T1, T2, T3, T4, T5, T6, T7>,
 	                                                              V> combinator) {
-		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6, source7),
-		  combinator);
+		return from(new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5, source6, source7},
+				combinator,
+				ReactiveState.XS_BUFFER_SIZE));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param source1    The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param source2    The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
@@ -1750,6 +1282,7 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.5
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T1, T2, T3, T4, T5, T6, T7> Stream<Tuple7<T1, T2, T3, T4, T5, T6, T7>> zip(
 			Publisher<? extends T1> source1,
 			Publisher<? extends T2> source2,
@@ -1758,13 +1291,14 @@ public class Streams {
 			Publisher<? extends T5> source5,
 			Publisher<? extends T6> source6,
 			Publisher<? extends T7> source7) {
-		return zip(Arrays.asList(source1, source2, source3, source4, source5, source6, source7));
+		return from(new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5, source6, source7},
+				IDENTITY_FUNCTION,
+				ReactiveState.XS_BUFFER_SIZE));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param sources    The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
@@ -1774,9 +1308,9 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <TUPLE extends Tuple, V> Stream<V> zip(List<? extends Publisher<?>> sources,
-	                                                    final Function<? super TUPLE, ? extends V> combinator) {
-		return wrap(Flux.zip(sources, new Function<Tuple, V>() {
+	public static <TUPLE extends Tuple, V> Stream<V> zip(Iterable<? extends Publisher<?>> sources,
+			final Function<? super TUPLE, ? extends V> combinator) {
+		return from(Flux.zip(sources, new Function<Tuple, V>() {
 			@Override
 			@SuppressWarnings("unchecked")
 			public V apply(Tuple tuple) {
@@ -1787,8 +1321,7 @@ public class Streams {
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param sources    The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <TUPLE>    The type of tuple to use that must match source Publishers type
@@ -1796,14 +1329,13 @@ public class Streams {
 	 * @since 2.5
 	 */
 	@SuppressWarnings("unchecked")
-	public static <TUPLE extends Tuple> Stream<TUPLE> zip(List<? extends Publisher<?>> sources) {
-		return wrap((Publisher<TUPLE>) Flux.zip(sources));
+	public static <TUPLE extends Tuple> Stream<TUPLE> zip(Iterable<? extends Publisher<?>> sources) {
+		return from((Publisher<TUPLE>) Flux.zip(sources));
 	}
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param sources    The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param combinator The aggregate function that will receive a unique value from each upstream and return the
@@ -1816,7 +1348,8 @@ public class Streams {
 	  Publisher<? extends Publisher<?>> sources,
 	  final Function<? super TUPLE, ? extends V> combinator) {
 
-		return wrap(sources).buffer().flatMap(new Function<List<? extends Publisher<?>>, Publisher<V>>() {
+		return from(sources).buffer()
+		                    .flatMap(new Function<List<? extends Publisher<?>>, Publisher<V>>() {
 			@Override
 			public Publisher<V> apply(List<? extends Publisher<?>> publishers) {
 				return new FluxZip<>(publishers.toArray(
@@ -1829,49 +1362,37 @@ public class Streams {
 
 	/**
 	 * Build a {@literal Stream} whose data are generated by the passed publishers.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param sources    The publisher of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.5
 	 */
-	public static <TUPLE extends Tuple> Stream<TUPLE> zip(Publisher<? extends Publisher<?>> sources) {
-
-		return wrap(sources).buffer().flatMap(new Function<List<? extends Publisher<?>>, Publisher<TUPLE>>() {
-			@SuppressWarnings("unchecked")
-			@Override
-			public Publisher<TUPLE> apply(List<? extends Publisher<?>> publishers) {
-				return new FluxZip<>(publishers.toArray(
-						new Publisher[publishers.size()]),
-						IDENTITY_FUNCTION,
-						ReactiveState.XS_BUFFER_SIZE);
-			}
-		});
+	@SuppressWarnings("unchecked")
+	public static Stream<Tuple> zip(Publisher<? extends Publisher<?>> sources) {
+		return zip(sources, (Function<Tuple, Tuple>) IDENTITY_FUNCTION);
 	}
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
 	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
-	 * @param source1 The first upstream {@link org.reactivestreams.Publisher} to subscribe to.
-	 * @param source2 The second upstream {@link org.reactivestreams.Publisher} to subscribe to.
+	 * @param sources The upstreams {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>     type of the value
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
-	public static <T> Stream<List<T>> join(Publisher<? extends T> source1,
-	                                       Publisher<? extends T> source2) {
-		return join(Arrays.asList(source1, source2));
+	@SuppressWarnings({"unchecked", "varargs"})
+	@SafeVarargs
+	public static <T> Stream<List<T>> join(Publisher<? extends T>... sources) {
+		return from(Flux.zip(FluxZip.JOIN_FUNCTION, sources));
 	}
 
 	/**
 	 * Build a Synchronous {@literal Stream} whose data are aggregated from the passed publishers
 	 * (1 element consumed for each merged publisher. resulting in an array of size of {@param mergedPublishers}.
-	 * The Stream's batch size will be set to {@literal Long.MAX_VALUE} or the minimum capacity allocated to any
-	 * eventual {@link Stream} publisher type.
+
 	 *
 	 * @param sources The list of upstream {@link org.reactivestreams.Publisher} to subscribe to.
 	 * @param <T>     type of the value
@@ -1879,8 +1400,8 @@ public class Streams {
 	 * @since 2.0
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> Stream<List<T>> join(List<? extends Publisher<?>> sources) {
-		return zip(sources, (Function<Tuple, List<T>>) FluxZip.JOIN_FUNCTION);
+	public static <T> Stream<List<T>> join(Iterable<? extends Publisher<?>> sources) {
+		return zip(sources, FluxZip.JOIN_FUNCTION);
 	}
 
 	/**
@@ -1892,20 +1413,7 @@ public class Streams {
 	 * @param publisher the publisher to listen for terminal signals
 	 */
 	public static void await(Publisher<?> publisher) throws InterruptedException {
-		await(publisher, 30000, TimeUnit.MILLISECONDS, true);
-	}
-
-	/**
-	 * Wait {code timeout} Seconds until a terminal signal from the passed publisher has been emitted.
-	 * If the terminal signal is an error, it will propagate to the caller.
-	 * Effectively this is making sure a stream has completed before the return of this call.
-	 * It is usually used in controlled environment such as tests.
-	 *
-	 * @param publisher the publisher to listen for terminal signals
-	 * @param timeout   the maximum wait time in seconds
-	 */
-	public static void await(Publisher<?> publisher, long timeout) throws InterruptedException {
-		await(publisher, timeout, TimeUnit.SECONDS, true);
+		await(publisher, 30000, TimeUnit.MILLISECONDS);
 	}
 
 	/**
@@ -1919,21 +1427,6 @@ public class Streams {
 	 * @param unit      the TimeUnit to use for the timeout
 	 */
 	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit) throws InterruptedException {
-		await(publisher, timeout, unit, true);
-	}
-
-	/**
-	 * Wait {code timeout} in {@code unit} until a terminal signal from the passed publisher has been emitted.
-	 * If the terminal signal is an error, it will propagate to the caller.
-	 * Effectively this is making sure a stream has completed before the return of this call.
-	 * It is usually used in controlled environment such as tests.
-	 *
-	 * @param publisher the publisher to listen for terminal signals
-	 * @param timeout   the maximum wait time in unit
-	 * @param unit      the TimeUnit to use for the timeout
-	 */
-	public static void await(Publisher<?> publisher, long timeout, TimeUnit unit, final boolean request) throws
-	                                                                                                     InterruptedException {
 		final AtomicReference<Throwable> exception = new AtomicReference<>();
 
 		final CountDownLatch latch = new CountDownLatch(1);
@@ -1956,9 +1449,7 @@ public class Streams {
 			@Override
 			public void onSubscribe(Subscription subscription) {
 				s = subscription;
-				if (request) {
-					subscription.request(Long.MAX_VALUE);
-				}
+				subscription.request(Long.MAX_VALUE);
 			}
 		});
 
@@ -1970,14 +1461,19 @@ public class Streams {
 		}
 	}
 
-
-
-	private static final Stream NEVER = wrap(Flux.never());
+	private static final Stream NEVER = from(Flux.never());
 
 	private static final Function IDENTITY_FUNCTION = new Function() {
 		@Override
 		public Object apply(Object o) {
 			return o;
+		}
+	};
+
+	private static final Supplier XS_QUEUE_SUPPLIER = new Supplier() {
+		@Override
+		public Object get() {
+			return RingBuffer.newSequencedQueue(RingBuffer.createSingleProducer(ReactiveState.XS_BUFFER_SIZE));
 		}
 	};
 

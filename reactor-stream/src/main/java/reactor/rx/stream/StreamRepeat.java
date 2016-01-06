@@ -13,80 +13,119 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
 
-import org.reactivestreams.Processor;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.Processors;
-import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.core.support.BackpressureUtils;
+import reactor.core.subscriber.SubscriberMultiSubscription;
+import reactor.core.subscription.EmptySubscription;
 
 /**
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * Repeatedly subscribes to the source and relays its values either
+ * indefinitely or a fixed number of times.
+ * <p>
+ * The times == Long.MAX_VALUE is treated as infinite repeat.
+ *
+ * @param <T> the value type
+ */
+
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ *
+ * @since 2.5
  */
 public final class StreamRepeat<T> extends StreamBarrier<T, T> {
 
-	private final int                    numRetries;
+    final long times;
 
-	public StreamRepeat(Publisher<T> source, int numRetries) {
-		super(source);
-		this.numRetries = numRetries;
-	}
+    public StreamRepeat(Publisher<? extends T> source) {
+        this(source, Long.MAX_VALUE);
+    }
 
-	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new RepeatAction<>(subscriber, numRetries, source);
-	}
+    public StreamRepeat(Publisher<? extends T> source, long times) {
+        super(source);
+        if (times < 0L) {
+            throw new IllegalArgumentException("times >= 0 required");
+        }
+        this.times = times;
+    }
 
-	static final class RepeatAction<T> extends SubscriberWithDemand<T, T> {
+    @Override
+    public void subscribe(Subscriber<? super T> s) {
+        if (times == 0) {
+            EmptySubscription.complete(s);
+            return;
+        }
 
-		private final int                    numRetries;
-		private final Publisher<? extends T> rootPublisher;
-		private long currentNumRetries = 0;
+        StreamRepeatSubscriber<T> parent = new StreamRepeatSubscriber<>(source, s, times);
 
-		public RepeatAction(Subscriber<? super T> actual, int numRetries, Publisher<? extends T> parentStream) {
-			super(actual);
-			this.numRetries = numRetries;
-			this.rootPublisher = parentStream;
-		}
+        s.onSubscribe(parent);
 
-		@Override
-		protected void doNext(T ev) {
-			BackpressureUtils.getAndSub(REQUESTED, this, 1L);
-			subscriber.onNext(ev);
-		}
+        if (!parent.isCancelled()) {
+            parent.onComplete();
+        }
+    }
 
-		@Override
-		protected void doOnSubscribe(Subscription subscription) {
-			if (TERMINATED.compareAndSet(this, TERMINATED_WITH_SUCCESS, NOT_TERMINATED)) {
-				long r = requestedFromDownstream();
-				if( r > 0L ){
-					requestMore(r);
-				}
-			}
-			else {
-				subscriber.onSubscribe(this);
-			}
-		}
+    static final class StreamRepeatSubscriber<T> extends SubscriberMultiSubscription<T, T> {
 
-		@Override
-		protected void checkedComplete() {
-			if (numRetries != -1 && ++currentNumRetries > numRetries) {
-				subscriber.onComplete();
-				currentNumRetries = 0;
-			}
-			else {
-				if (rootPublisher != null) {
-					subscription = null;
-					Processor<T, T> emitter = Processors.emitter();
-					emitter.subscribe(RepeatAction.this);
-					rootPublisher.subscribe(emitter);
-				}
-			}
-		}
-	}
+        final Publisher<? extends T> source;
+
+        long remaining;
+
+        volatile int wip;
+        @SuppressWarnings("rawtypes")
+        static final AtomicIntegerFieldUpdater<StreamRepeatSubscriber> WIP =
+                AtomicIntegerFieldUpdater.newUpdater(StreamRepeatSubscriber.class, "wip");
+
+        long produced;
+
+        public StreamRepeatSubscriber(Publisher<? extends T> source, Subscriber<? super T> actual, long remaining) {
+            super(actual);
+            this.source = source;
+            this.remaining = remaining;
+        }
+
+        @Override
+        public void onNext(T t) {
+            produced++;
+
+            subscriber.onNext(t);
+        }
+
+        @Override
+        public void onComplete() {
+            long r = remaining;
+            if (r != Long.MAX_VALUE) {
+                if (r == 0) {
+                    subscriber.onComplete();
+                    return;
+                }
+                remaining = r - 1;
+            }
+
+            resubscribe();
+        }
+
+        void resubscribe() {
+            if (WIP.getAndIncrement(this) == 0) {
+                do {
+                    if (isCancelled()) {
+                        return;
+                    }
+
+                    long c = produced;
+                    if (c != 0L) {
+                        produced = 0L;
+                        produced(c);
+                    }
+
+                    source.subscribe(this);
+
+                }
+                while (WIP.decrementAndGet(this) != 0);
+            }
+        }
+    }
 }

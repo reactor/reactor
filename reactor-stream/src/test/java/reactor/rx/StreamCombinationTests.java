@@ -96,7 +96,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
 		}
 
-		return Streams.wrap(sensorOdd);
+		return Streams.from(sensorOdd);
 	}
 
 	public Stream<SensorData> sensorEven() {
@@ -107,7 +107,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 			// add substream to "master" list
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
 		}
-		return Streams.wrap(sensorEven);
+		return Streams.from(sensorEven);
 	}
 
 	@Test

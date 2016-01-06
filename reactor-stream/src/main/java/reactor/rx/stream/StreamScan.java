@@ -13,111 +13,243 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
+
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SubscriberBarrier;
+import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
+import reactor.core.support.BackpressureUtils;
 import reactor.fn.BiFunction;
 
 /**
- * @author Stephane Maldini
- * @since 1.1, 2.0, 2.5
+ * Aggregates the source values with the help of an accumulator function
+ * and emits the intermediate results.
+ * <p>
+ * The accumulation works as follows:
+ * <pre><code>
+ * result[0] = initialValue;
+ * result[1] = accumulator(result[0], source[0])
+ * result[2] = accumulator(result[1], source[1])
+ * result[3] = accumulator(result[2], source[2])
+ * ...
+ * </code></pre>
+ *
+ * @param <T> the source value type
+ * @param <R> the aggregate type
  */
-public final class StreamScan<T, A> extends StreamBarrier<T, A> {
 
-	public static final BiFunction COUNTER = new BiFunction<Long, Object, Long>() {
-		@Override
-		public Long apply(Long prev, Object o) {
-			return prev + 1L;
-		}
-	};
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ *
+ * @since 2.5
+ */
+public final class StreamScan<T, R> extends StreamBarrier<T, R> {
 
-	private final BiFunction<A, ? super T, A> fn;
-	private final A                           initialValue;
+	final BiFunction<R, ? super T, R> accumulator;
 
-	public StreamScan(Publisher<T> source, BiFunction<A, ? super T, A> fn, A initialValue) {
+	final R initialValue;
+
+	public StreamScan(Publisher<? extends T> source, R initialValue, BiFunction<R, ? super T, R> accumulator) {
 		super(source);
-		this.fn = fn;
-		this.initialValue = initialValue;
+		this.accumulator = Objects.requireNonNull(accumulator, "accumulator");
+		this.initialValue = Objects.requireNonNull(initialValue, "initialValue");
 	}
 
 	@Override
-	public Subscriber<? super T> apply(Subscriber<? super A> subscriber) {
-		return new ScanAction<>(subscriber, initialValue, fn);
+	public void subscribe(Subscriber<? super R> s) {
+		source.subscribe(new StreamScanSubscriber<>(s, accumulator, initialValue));
 	}
 
-	static final class ScanAction<T, A> extends SubscriberBarrier<T, A> {
+	static final class StreamScanSubscriber<T, R>
+			implements Subscriber<T>, Subscription, Downstream, DownstreamDemand, FeedbackLoop, Upstream,
+			           ActiveUpstream {
 
-		private final BiFunction<A, ? super T, A> fn;
-		private final A                           initialValue;
-		private       A                           acc;
-		private boolean initialized = false;
+		final Subscriber<? super R> actual;
 
-		private static final Object NOVALUE_SENTINEL = new Object();
+		final BiFunction<R, ? super T, R> accumulator;
 
-		@SuppressWarnings("unchecked")
-		public ScanAction(Subscriber<? super A> actual, A initial, BiFunction<A, ? super T, A> fn) {
-			super(actual);
-			this.initialValue = initial == null ? (A) NOVALUE_SENTINEL : initial;
-			this.acc = initialValue;
-			this.fn = fn;
-		}
+		Subscription s;
 
-	/*final AtomicBoolean once      = new AtomicBoolean();
-	final AtomicBoolean excessive = new AtomicBoolean();
+		R value;
 
-	@Override
-	public void requestMore(long n) {
-		if (once.compareAndSet(false, true)) {
-			if (acc == NOVALUE_SENTINEL || n == Long.MAX_VALUE) {
-				super.requestMore(n);
-			} else if (n == 1) {
-				excessive.set(true);
-				super.requestMore(1);
-			} else {
-				super.requestMore(n - 1);
-			}
-		} else {
-			if (excessive.compareAndSet(true, false) && n != Long.MAX_VALUE) {
-				super.requestMore(n - 1);
-			} else {
-				super.requestMore(n);
-			}
-		}
-	}*/
+		boolean done;
 
-		@Override
-		@SuppressWarnings("unchecked")
-		protected void doNext(T ev) {
-			checkInit();
-			if (this.acc == NOVALUE_SENTINEL) {
-				this.acc = (A) ev;
-			}
-			else {
-				this.acc = fn.apply(acc, ev);
-			}
+		/**
+		 * Indicates the source completed and the value field is ready to be emitted.
+		 * <p>
+		 * The AtomicLong (this) holds the requested amount in bits 0..62 so there is room for one signal bit. This also
+		 * means the standard request accounting helper method doesn't work.
+		 */
+		static final long COMPLETED_MASK = 0x8000_0000_0000_0000L;
 
-			subscriber.onNext(acc);
+		static final long REQUESTED_MASK = Long.MAX_VALUE;
+
+		volatile long requested;
+		@SuppressWarnings("rawtypes")
+		static final AtomicLongFieldUpdater<StreamScanSubscriber> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(StreamScanSubscriber.class, "requested");
+
+		public StreamScanSubscriber(Subscriber<? super R> actual,
+				BiFunction<R, ? super T, R> accumulator,
+				R initialValue) {
+			this.actual = actual;
+			this.accumulator = accumulator;
+			this.value = initialValue;
 		}
 
 		@Override
-		protected void doComplete() {
-			checkInit();
-			subscriber.onComplete();
+		public void onSubscribe(Subscription s) {
+			if (BackpressureUtils.validate(this.s, s)) {
+				this.s = s;
+
+				actual.onSubscribe(this);
+			}
 		}
 
-		private void checkInit() {
-			if (!initialized) {
-				initialized = true;
-				if (initialValue != NOVALUE_SENTINEL) {
-					subscriber.onNext(initialValue);
+		@Override
+		public void onNext(T t) {
+			if (done) {
+				Exceptions.onNextDropped(t);
+				return;
+			}
+
+			R r = value;
+
+			actual.onNext(r);
+
+			if (requested != Long.MAX_VALUE) {
+				REQUESTED.decrementAndGet(this);
+			}
+
+			try {
+				r = accumulator.apply(r, t);
+			}
+			catch (Throwable e) {
+				s.cancel();
+
+				onError(e);
+			}
+
+			if (r == null) {
+				s.cancel();
+
+				onError(new NullPointerException("The accumulator returned a null value"));
+				return;
+			}
+
+			value = r;
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			if (done) {
+				Exceptions.onErrorDropped(t);
+				return;
+			}
+			done = true;
+			actual.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			if (done) {
+				return;
+			}
+			done = true;
+
+			R v = value;
+
+			for (; ; ) {
+				long r = requested;
+
+				// if any request amount is still available, emit the value and complete
+				if ((r & REQUESTED_MASK) != 0L) {
+					actual.onNext(v);
+					actual.onComplete();
+					return;
+				}
+				// NO_REQUEST_NO_VALUE -> NO_REQUEST_HAS_VALUE
+				if (REQUESTED.compareAndSet(this, 0, COMPLETED_MASK)) {
+					return;
 				}
 			}
 		}
 
+		@Override
+		public void request(long n) {
+			if (BackpressureUtils.validate(n)) {
+				for (; ; ) {
+
+					long r = requested;
+
+					// NO_REQUEST_HAS_VALUE
+					if (r == COMPLETED_MASK) {
+						// any positive request value will do here
+						// transition to HAS_REQUEST_HAS_VALUE
+						if (REQUESTED.compareAndSet(this, COMPLETED_MASK, COMPLETED_MASK | 1)) {
+							actual.onNext(value);
+							actual.onComplete();
+						}
+						return;
+					}
+
+					// HAS_REQUEST_HAS_VALUE
+					if (r < 0L) {
+						return;
+					}
+
+					// transition to HAS_REQUEST_NO_VALUE
+					long u = BackpressureUtils.addCap(r, n);
+					if (REQUESTED.compareAndSet(this, r, u)) {
+						s.request(n);
+						return;
+					}
+				}
+			}
+		}
+
+		@Override
+		public void cancel() {
+			s.cancel();
+		}
+
+		@Override
+		public boolean isStarted() {
+			return s != null && !done;
+		}
+
+		@Override
+		public long requestedFromDownstream() {
+			return requested;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return done;
+		}
+
+		@Override
+		public Object downstream() {
+			return actual;
+		}
+
+		@Override
+		public Object delegateInput() {
+			return accumulator;
+		}
+
+		@Override
+		public Object delegateOutput() {
+			return null;
+		}
+
+		@Override
+		public Object upstream() {
+			return s;
+		}
 	}
-
-
 }

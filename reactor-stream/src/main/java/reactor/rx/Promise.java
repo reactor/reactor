@@ -108,7 +108,7 @@ public final class Promise<O> extends Mono<O>
 	 */
 	public static <T> Promise<T> prepare(Timer timer) {
 		Promise<T> p = new Promise<T>(timer);
-		p.request(1);
+		p.request(1L);
 		return p;
 	}
 

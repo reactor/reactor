@@ -640,8 +640,7 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 
 		@Override
 		public String getName() {
-			return ReactiveStateUtils.getName(getClass().getSimpleName())
-			                         .replaceAll("Mono|Stream|Operator", "");
+			return getClass().getSimpleName().replaceAll("Mono|Stream|Operator", "");
 		}
 
 		/**

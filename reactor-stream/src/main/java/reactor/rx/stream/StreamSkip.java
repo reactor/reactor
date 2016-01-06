@@ -15,61 +15,118 @@
  */
 package reactor.rx.stream;
 
+import java.util.Objects;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SubscriberBarrier;
-import reactor.fn.Predicate;
+import org.reactivestreams.Subscription;
 
 /**
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * Skips the first N elements from a reactive stream.
+ *
+ * @param <T> the value type
  */
-public final  class StreamSkip<T> extends StreamBarrier<T, T> {
 
-	private final Predicate<T> startPredicate;
-	private final long         limit;
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ *
+ * @since 2.5
+ */
+public final class StreamSkip<T> extends StreamBarrier<T, T> {
 
-	public StreamSkip(Publisher<T> source, Predicate<T> startPredicate, long limit) {
-		super(source);
-		this.startPredicate = startPredicate;
-		this.limit = limit;
-	}
+    final Publisher<? extends T> source;
 
-	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new SkipAction<>(subscriber, startPredicate, limit);
-	}
+    final long n;
 
-	static final class SkipAction<T> extends SubscriberBarrier<T, T> {
+    public StreamSkip(Publisher<? extends T> source, long n) {
+        super(source);
+        if (n < 0) {
+            throw new IllegalArgumentException("n >= 0 required but it was " + n);
+        }
+        this.source = Objects.requireNonNull(source, "source");
+        this.n = n;
+    }
 
-		private final Predicate<T> startPredicate;
-		private final long         limit;
+    public long n() {
+        return n;
+    }
 
-		private long counted = 0L;
+    @Override
+    public void subscribe(Subscriber<? super T> s) {
+        if (n == 0) {
+            source.subscribe(s);
+        }
+        else {
+            source.subscribe(new StreamSkipSubscriber<>(s, n));
+        }
+    }
 
-		public SkipAction(Subscriber<? super T> actual, Predicate<T> predicate, long limit) {
-			super(actual);
-			this.startPredicate = predicate;
-			this.limit = limit;
-		}
+    static final class StreamSkipSubscriber<T>
+            implements Subscriber<T>, Downstream, UpstreamDemand, Bounded, ActiveUpstream {
 
-		@Override
-		protected void doNext(T ev) {
-			if (counted == -1L || counted++ >= limit || (startPredicate != null && !startPredicate.test(ev))) {
-				subscriber.onNext(ev);
-				if(counted != 1L){
-					counted = -1L;
-				}
-			}
-		}
+        final Subscriber<? super T> actual;
 
+        final long n;
 
-		@Override
-		public String toString() {
-			return super.toString() + "{" +
-					"skip=" + limit + (startPredicate == null ?
-					", with-start-predicate" : "") +
-					'}';
-		}
-	}
+        long remaining;
+
+        public StreamSkipSubscriber(Subscriber<? super T> actual, long n) {
+            this.actual = actual;
+            this.n = n;
+            this.remaining = n;
+        }
+
+        @Override
+        public void onSubscribe(Subscription s) {
+            actual.onSubscribe(s);
+
+            s.request(n);
+        }
+
+        @Override
+        public void onNext(T t) {
+            long r = remaining;
+            if (r == 0L) {
+                actual.onNext(t);
+            }
+            else {
+                remaining = r - 1;
+            }
+        }
+
+        @Override
+        public void onError(Throwable t) {
+            actual.onError(t);
+        }
+
+        @Override
+        public void onComplete() {
+            actual.onComplete();
+        }
+
+        @Override
+        public boolean isStarted() {
+            return remaining != n;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return remaining == 0;
+        }
+
+        @Override
+        public long getCapacity() {
+            return n;
+        }
+
+        @Override
+        public Object downstream() {
+            return actual;
+        }
+
+        @Override
+        public long expectedFromUpstream() {
+            return remaining;
+        }
+    }
 }

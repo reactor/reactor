@@ -280,7 +280,7 @@ public class BlockingQueueSubscriber<IN> extends BaseSubscriber<IN> implements R
 
 		while ((res = store.poll()) == null) {
 			if (blockingTerminatedCheck()) throw CancelException.get();
-			if (remainingCapacity == 0);
+
 			if (System.currentTimeMillis() > timespan) {
 				break;
 			}

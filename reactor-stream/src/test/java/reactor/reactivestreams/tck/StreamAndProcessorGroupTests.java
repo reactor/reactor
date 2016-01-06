@@ -58,10 +58,10 @@ public class StreamAndProcessorGroupTests extends AbstractStreamVerification {
 		                                           .scan((prev, next) -> next)
 		                                           .map(integer -> -integer)
 		                                           .filter(integer -> integer <= 0)
-		                                           .sample(1)
+		                                           .every(1)
 		                                           .map(integer -> -integer)
 		                                           .buffer(batch, 50, TimeUnit.MILLISECONDS)
-		                                           .flatMap(Streams::from)
+		                                           .flatMap(Streams::fromIterable)
 		                                           .flatMap(i -> Streams.zip(Streams.just(i), otherStream, combinator))
 
 				.dispatchOn(sharedGroup))

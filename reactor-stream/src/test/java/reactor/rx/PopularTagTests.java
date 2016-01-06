@@ -50,11 +50,11 @@ public class PopularTagTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(1);
 
 		Control top10every1second =
-		  Streams.from(PULP_SAMPLE)
+		  Streams.fromIterable(PULP_SAMPLE)
 		    .dispatchOn(asyncGroup)
 			.flatMap(samuelJackson ->
 				Streams
-				  .from(samuelJackson.split(" "))
+				  .fromArray(samuelJackson.split(" "))
 				  .dispatchOn(asyncGroup)
 				  .filter(w -> !w.trim().isEmpty())
 				  .observe(i -> simulateLatency())

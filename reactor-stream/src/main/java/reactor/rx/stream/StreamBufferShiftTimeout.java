@@ -27,7 +27,6 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.core.support.BackpressureUtils;
 import reactor.core.timer.Timer;
 import reactor.fn.Consumer;
 
@@ -35,28 +34,19 @@ import reactor.fn.Consumer;
  * @author Stephane Maldini
  * @since 2.0, 2.5
  */
-public final class StreamBufferShift<T> extends StreamBarrier<T, List<T>> {
+public final class StreamBufferShiftTimeout<T> extends StreamBarrier<T, List<T>> {
 
 	private final long     timeshift;
 	private final long     timespan;
 	private final TimeUnit unit;
 	private final Timer    timer;
-	private final int      skip;
-	private final int      batchSize;
 
-	public StreamBufferShift(Publisher<T> source, int size, int skip) {
-		this(source, size, skip, -1L, -1L, null, null);
-	}
-
-	public StreamBufferShift(Publisher<T> source, int size,
-			int skip,
+	public StreamBufferShiftTimeout(Publisher<T> source,
 			final long timeshift,
 			final long timespan,
 			TimeUnit unit,
 			final Timer timer) {
 		super(source);
-		this.skip = skip;
-		this.batchSize = size;
 		if (timespan > 0 && timeshift > 0) {
 			final TimeUnit targetUnit = unit != null ? unit : TimeUnit.SECONDS;
 			this.timespan = timespan;
@@ -74,7 +64,7 @@ public final class StreamBufferShift<T> extends StreamBarrier<T, List<T>> {
 
 	@Override
 	public Subscriber<? super T> apply(Subscriber<? super List<T>> subscriber) {
-		return new BufferShiftAction<>(subscriber, batchSize, skip, timeshift, timespan, unit, timer);
+		return new BufferShiftAction<>(subscriber, timeshift, timespan, unit, timer);
 	}
 
 	final static class BufferShiftAction<T> extends SubscriberWithDemand<T, List<T>> {
@@ -83,8 +73,6 @@ public final class StreamBufferShift<T> extends StreamBarrier<T, List<T>> {
 		private final long           timeshift;
 		private final TimeUnit       unit;
 		private final Timer          timer;
-		private final int            skip;
-		private final int            batchSize;
 
 		private final List<List<T>> buckets = new LinkedList<>();
 
@@ -92,16 +80,12 @@ public final class StreamBufferShift<T> extends StreamBarrier<T, List<T>> {
 		private int      index;
 
 		public BufferShiftAction(Subscriber<? super List<T>> actual,
-				int size,
-				int skip,
 				final long timeshift,
 				final long timespan,
 				TimeUnit unit,
 				final Timer timer) {
 
 			super(actual);
-			this.skip = skip;
-			this.batchSize = size;
 			if (timespan > 0 && timeshift > 0) {
 				final TimeUnit targetUnit = unit != null ? unit : TimeUnit.SECONDS;
 				final Consumer<List<T>> flushTimerTask = new Consumer<List<T>>() {
@@ -167,19 +151,11 @@ public final class StreamBufferShift<T> extends StreamBarrier<T, List<T>> {
 
 		@Override
 		protected void doRequested(long before, long n) {
-			if(batchSize == Integer.MAX_VALUE || n == Long.MAX_VALUE){
-				requestMore(Long.MAX_VALUE);
-			}
-			else{
-				requestMore(BackpressureUtils.multiplyCap(n, skip + batchSize));
-			}
+			requestMore(Long.MAX_VALUE);
 		}
 
 		@Override
 		protected void doNext(T value) {
-			if (timer == null && index++ % skip == 0) {
-				buckets.add(batchSize < 2048 ? new ArrayList<T>(batchSize) : new ArrayList<T>());
-			}
 			flushCallback(value);
 		}
 
@@ -200,7 +176,7 @@ public final class StreamBufferShift<T> extends StreamBarrier<T, List<T>> {
 
 		@Override
 		protected void doTerminate() {
-			if(timeshiftRegistration != null){
+			if (timeshiftRegistration != null) {
 				timeshiftRegistration.cancel();
 			}
 		}
@@ -210,16 +186,7 @@ public final class StreamBufferShift<T> extends StreamBarrier<T, List<T>> {
 			while (it.hasNext()) {
 				List<T> bucket = it.next();
 				bucket.add(event);
-				if (bucket.size() == batchSize) {
-					it.remove();
-					subscriber.onNext(bucket);
-				}
 			}
-		}
-
-		@Override
-		public String toString() {
-			return super.toString() + "{skip=" + skip + "}";
 		}
 	}
 }

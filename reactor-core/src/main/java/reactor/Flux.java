@@ -503,7 +503,7 @@ public abstract class Flux<T> implements Publisher<T> {
 	public static <T1, T2, T3> Flux<Tuple3<T1, T2, T3>> zip(Publisher<? extends T1> source1,
 			Publisher<? extends T2> source2,
 			Publisher<? extends T3> source3) {
-		return new FluxZip<>(new Publisher[]{source1, source2, source3}, IDENTITY_FUNCTION, ReactiveState.XS_BUFFER_SIZE);
+		return zip(IDENTITY_FUNCTION, source1, source2, source3);
 	}
 
 	/**
@@ -548,7 +548,7 @@ public abstract class Flux<T> implements Publisher<T> {
 			Publisher<? extends T2> source2,
 			Publisher<? extends T3> source3,
 			Publisher<? extends T4> source4) {
-		return new FluxZip<>(new Publisher[]{source1, source2, source3, source4}, IDENTITY_FUNCTION, ReactiveState.XS_BUFFER_SIZE);
+		return zip(IDENTITY_FUNCTION, source1, source2, source3, source4);
 	}
 
 	/**
@@ -598,8 +598,7 @@ public abstract class Flux<T> implements Publisher<T> {
 			Publisher<? extends T3> source3,
 			Publisher<? extends T4> source4,
 			Publisher<? extends T5> source5) {
-		return new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5}, IDENTITY_FUNCTION, ReactiveState
-				.XS_BUFFER_SIZE);
+		return zip(IDENTITY_FUNCTION, source1, source2, source3, source4, source5);
 	}
 
 	/**
@@ -632,7 +631,7 @@ public abstract class Flux<T> implements Publisher<T> {
 			Function<Tuple6<T1, T2, T3, T4, T5, T6>, V> combinator) {
 		return new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5, source6}, combinator,
 				ReactiveState
-						.XS_BUFFER_SIZE);
+				.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -658,9 +657,7 @@ public abstract class Flux<T> implements Publisher<T> {
 			Publisher<? extends T4> source4,
 			Publisher<? extends T5> source5,
 			Publisher<? extends T6> source6) {
-		return new FluxZip<>(new Publisher[]{source1, source2, source3, source4, source5, source6}, IDENTITY_FUNCTION,
-				ReactiveState
-				.XS_BUFFER_SIZE);
+		return zip(IDENTITY_FUNCTION, source1, source2, source3, source4, source5, source6);
 	}
 
 	/**
@@ -681,7 +678,26 @@ public abstract class Flux<T> implements Publisher<T> {
 	 * @return
 	 */
 	public static <O> Flux<O> zip(Iterable<? extends Publisher<?>> sources,
-			final Function<? super Tuple, ? extends O> combinator) {
+			final Function<Tuple, O> combinator) {
+
+		if (sources == null) {
+			return empty();
+		}
+
+		return new FluxZip<>(sources, combinator, ReactiveState.XS_BUFFER_SIZE);
+	}
+
+	/**
+	 * @param sources
+	 * @param combinator
+	 * @param <O>
+	 *
+	 * @return
+	 */
+	@SafeVarargs
+	@SuppressWarnings("varargs")
+	public static <I, O> Flux<O> zip(
+			final Function<Tuple, O> combinator, Publisher<? extends I>... sources) {
 
 		if (sources == null) {
 			return empty();
@@ -937,8 +953,6 @@ public abstract class Flux<T> implements Publisher<T> {
 	 *
 	 * If the sequence emits more than 1 data, emit {@link ArrayIndexOutOfBoundsException}.
 	 *
-	 * @see #first for an alternative that emits an error on empty.
-	 *
 	 * @return
 	 */
 	public final Mono<T> next() {
@@ -1080,8 +1094,7 @@ public abstract class Flux<T> implements Publisher<T> {
 
 		@Override
 		public String getName() {
-			return ReactiveStateUtils.getName(getClass().getSimpleName())
-			                         .replaceAll("Flux|Operator", "");
+			return getClass().getSimpleName().replaceAll("Flux|Operator", "");
 		}
 
 		/**

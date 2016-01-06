@@ -72,7 +72,7 @@ Publisher<String> fileStream = new Publisher<String>() { // <1>
 	}
 };
 
-Streams.wrap(fileStream)
+Streams.from(fileStream)
 	.capacity(4L) // <9>
 	.consumeOn( // <10>
 		Environment.sharedDispatcher(),

@@ -15,49 +15,181 @@
  */
 package reactor.rx.stream;
 
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.subscriber.SubscriberWithDemand;
+import reactor.core.error.Exceptions;
 import reactor.core.support.BackpressureUtils;
+import reactor.fn.Consumer;
 
 /**
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * Drops values if the subscriber doesn't request fast enough.
+ *
+ * @param <T> the value type
  */
-public final class StreamDrop<O> extends StreamBarrier<O, O> {
 
-	public StreamDrop(Publisher<O> source) {
-		super(source);
-	}
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ *
+ * @since 2.5
+ */
+public final class StreamDrop<T> extends StreamBarrier<T, T> {
 
-	@Override
-	public Subscriber<? super O> apply(Subscriber<? super O> subscriber) {
-		return new DropAction<>(subscriber);
-	}
+    static final Consumer NOOP = new Consumer() {
+        @Override
+        public void accept(Object t) {
 
-	final static class DropAction<O> extends SubscriberWithDemand<O, O> {
+        }
+    };
 
-		public DropAction(Subscriber<? super O> actual) {
-			super(actual);
-		}
+    final Consumer<? super T> onDrop;
 
-		@Override
-		protected void doOnSubscribe(Subscription subscription) {
-			subscriber.onSubscribe(this);
-			requestMore(Long.MAX_VALUE);
-		}
+    @SuppressWarnings("unchecked")
+    public StreamDrop(Publisher<? extends T> source) {
+        super(source);
+        this.onDrop = (Consumer<? super T>) NOOP;
+    }
 
-		@Override
-		protected void doRequested(long before, long n) {
-		}
+    public StreamDrop(Publisher<? extends T> source, Consumer<? super T> onDrop) {
+        super(source);
+        this.onDrop = Objects.requireNonNull(onDrop, "onDrop");
+    }
 
-		@Override
-		protected void doNext(O o) {
-			if(BackpressureUtils.getAndSub(REQUESTED, this, 1L) != 0L) {
-				subscriber.onNext(o);
-			}
-		}
+    @Override
+    public void subscribe(Subscriber<? super T> s) {
+        source.subscribe(new StreamDropSubscriber<>(s, onDrop));
+    }
 
-	}
+    static final class StreamDropSubscriber<T>
+            implements Subscriber<T>, Subscription, Downstream, Upstream, ActiveUpstream, DownstreamDemand,
+                       FeedbackLoop {
+
+        final Subscriber<? super T> actual;
+
+        final Consumer<? super T> onDrop;
+
+        Subscription s;
+
+        volatile long requested;
+        @SuppressWarnings("rawtypes")
+        static final AtomicLongFieldUpdater<StreamDropSubscriber> REQUESTED =
+                AtomicLongFieldUpdater.newUpdater(StreamDropSubscriber.class, "requested");
+
+        boolean done;
+
+        public StreamDropSubscriber(Subscriber<? super T> actual, Consumer<? super T> onDrop) {
+            this.actual = actual;
+            this.onDrop = onDrop;
+        }
+
+        @Override
+        public void request(long n) {
+            if (BackpressureUtils.validate(n)) {
+                BackpressureUtils.addAndGet(REQUESTED, this, n);
+            }
+        }
+
+        @Override
+        public void cancel() {
+            s.cancel();
+        }
+
+        @Override
+        public void onSubscribe(Subscription s) {
+            if (BackpressureUtils.validate(this.s, s)) {
+                this.s = s;
+
+                actual.onSubscribe(this);
+
+                s.request(Long.MAX_VALUE);
+            }
+        }
+
+        @Override
+        public void onNext(T t) {
+
+            if (done) {
+                return;
+            }
+
+            if (requested != 0L) {
+
+                actual.onNext(t);
+
+                if (requested != Long.MAX_VALUE) {
+                    REQUESTED.decrementAndGet(this);
+                }
+
+            }
+            else {
+                try {
+                    onDrop.accept(t);
+                }
+                catch (Throwable e) {
+                    cancel();
+
+                    onError(e);
+                }
+            }
+        }
+
+        @Override
+        public void onError(Throwable t) {
+            if (done) {
+                Exceptions.onErrorDropped(t);
+                return;
+            }
+            done = true;
+
+            actual.onError(t);
+        }
+
+        @Override
+        public void onComplete() {
+            if (done) {
+                return;
+            }
+            done = true;
+
+            actual.onComplete();
+        }
+
+        @Override
+        public boolean isStarted() {
+            return s != null && !done;
+        }
+
+        @Override
+        public boolean isTerminated() {
+            return done;
+        }
+
+        @Override
+        public Object downstream() {
+            return actual;
+        }
+
+        @Override
+        public long requestedFromDownstream() {
+            return requested;
+        }
+
+        @Override
+        public Object delegateInput() {
+            return onDrop;
+        }
+
+        @Override
+        public Object delegateOutput() {
+            return null;
+        }
+
+        @Override
+        public Object upstream() {
+            return s;
+        }
+    }
 }

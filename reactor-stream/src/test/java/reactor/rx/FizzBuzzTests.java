@@ -17,7 +17,6 @@ package reactor.rx;
 
 import org.junit.Test;
 import reactor.AbstractReactorTest;
-import reactor.Mono;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.core.support.Assert;
 import reactor.rx.subscriber.Control;
@@ -88,7 +87,7 @@ public class FizzBuzzTests extends AbstractReactorTest {
 		//this line works
 //        Broadcaster<String> ring = Broadcaster.create(Environment.get());
 
-		Stream<String> stream = Streams.wrap(ring.start());
+		Stream<String> stream = Streams.from(ring.start());
 
 		Stream<String> stream2 = stream
 		  .zipWith(Streams.createWith((d, s) -> {
