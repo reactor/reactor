@@ -153,7 +153,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements / 2 + 1);
 
-		Control tail = Streams.combineLatest(sensorOdd(), sensorEven(), this::computeMin)
+		Control tail = Streams.combineLatest(sensorOdd().cache(), sensorEven().cache(), this::computeMin)
 		                      .log("combineLatest")
 		                      .consume(i -> latch.countDown(), null, latch::countDown);
 
