@@ -52,7 +52,7 @@ public class ProcessorGroupWorkTests extends AbstractProcessorVerification {
 	}
 	@Override
 	public void simpleTest() throws Exception {
-		ProcessorGroup<String> serviceRB = Processors.ioGroup("rbWork", 32);
+		ProcessorGroup<String> serviceRB = Processors.asyncGroup("rbWork", 32);
 		BiConsumer<String, Consumer<? super String>>  r = serviceRB.dataDispatcher();
 
 		long start = System.currentTimeMillis();
@@ -69,7 +69,7 @@ public class ProcessorGroupWorkTests extends AbstractProcessorVerification {
 		};
 		r.accept("Hello World!", c);
 
-		boolean success = serviceRB.awaitAndShutdown(5, TimeUnit.SECONDS);
+		boolean success = serviceRB.awaitAndShutdown(1, TimeUnit.SECONDS);
 		long end = System.currentTimeMillis();
 
 		Assert.isTrue(latch.getCount() == 0, "Event missed");
