@@ -23,7 +23,7 @@ import reactor.bus.routing.ConsumerFilteringRouter
 import reactor.bus.selector.Selectors
 import reactor.fn.Consumer
 import reactor.rx.Promise
-import reactor.rx.Streams
+import reactor.rx.Stream
 import spock.lang.Specification
 
 import java.util.concurrent.CountDownLatch
@@ -394,7 +394,7 @@ class EventBusSpec extends Specification {
 
 	when: "multithreaded bus can be serialized"
 	r = EventBus.create(Processors.queue("bus", 8), 4)
-	def tail = Streams.from(r.on(selector)).map { it.data }.doOnNext { sleep(100) }.elapsed().log().take(10).buffer()
+	def tail = Stream.from(r.on(selector)).map { it.data }.doOnNext { sleep(100) }.elapsed().log().take(10).buffer()
 			.promise()
 
 	10.times {

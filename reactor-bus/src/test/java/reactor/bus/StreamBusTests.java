@@ -21,11 +21,11 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
+import reactor.bus.stream.StreamCoordinator;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.fn.Function;
-import reactor.rx.Streams;
+import reactor.rx.Stream;
 import reactor.rx.subscriber.Tap;
-import reactor.bus.stream.StreamCoordinator;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -54,7 +54,7 @@ public class StreamBusTests {
 			latch1.countDown();
 		}));
 
-		Streams.just("Hello World!")
+		Stream.just("Hello World!")
 		       .map(streamCoordinator.wrap((Function<String, String>) String::toUpperCase))
 		       .consume(s -> {
 			       latch2.countDown();
@@ -75,7 +75,7 @@ public class StreamBusTests {
 
 		assertThat("EventBus Consumer has been invoked", latch1.await(1, TimeUnit.SECONDS), is(true));
 		assertThat("Stream map Function has been invoked", latch2.getCount(), is(0L));
-		assertThat("BarrierStreams has published downstream", latch3.await(1, TimeUnit.SECONDS), is(true));
+		assertThat("BarrierStream has published downstream", latch3.await(1, TimeUnit.SECONDS), is(true));
 	}
 
 	@Test
@@ -92,7 +92,7 @@ public class StreamBusTests {
 			latch.countDown();
 		});
 
-		r.notify(Streams.just("1", "2", "3", "4", "5")
+		r.notify(Stream.just("1", "2", "3", "4", "5")
 		                .map(Integer::parseInt), key.getObject());
 
 		//await(s, is(5));
