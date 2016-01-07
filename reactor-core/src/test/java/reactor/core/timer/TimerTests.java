@@ -62,6 +62,7 @@ public class TimerTests {
 		timer.cancel();
 	}
 
+
     @Test
     public void timeTravelWithBusySpinStrategyTest() throws InterruptedException {
         timeTravelTest(new WaitStrategy.BusySpin(), 1);
@@ -113,5 +114,110 @@ public class TimerTests {
         Assert.assertEquals(iterations, timesCalled.get());
 
         timer.cancel();
+        executor.shutdown();
+    }
+
+    @Test
+    public void precisionWithBusySpinStrategyTest() throws InterruptedException {
+        precisionTest(new BusySpinWaitStrategy(), 1);
+        precisionTest(new BusySpinWaitStrategy(), 5);
+        precisionTest(new BusySpinWaitStrategy(), 10);
+    }
+
+    @Test
+    public void precisionWithYieldingWaitStrategy() throws InterruptedException {
+        precisionTest(new YieldingWaitStrategy(), 1);
+        precisionTest(new YieldingWaitStrategy(), 5);
+        precisionTest(new YieldingWaitStrategy(), 10);
+    }
+
+    @Test
+    public void precisionWithSleepingWaitStrategy() throws InterruptedException {
+        precisionTest(new SleepingWaitStrategy(), 1);
+        precisionTest(new SleepingWaitStrategy(), 5);
+        precisionTest(new SleepingWaitStrategy(), 10);
+    }
+
+    @Test
+    public void minTimeTestWithSleepingWaitStrategy() throws InterruptedException {
+        minTimeTest(new SleepingWaitStrategy(), 1);
+        minTimeTest(new SleepingWaitStrategy(), 5);
+        minTimeTest(new SleepingWaitStrategy(), 10);
+    }
+
+    @Test
+    public void minTimeTestWithYieldingWaitStrategy() throws InterruptedException {
+        minTimeTest(new YieldingWaitStrategy(), 1);
+        minTimeTest(new YieldingWaitStrategy(), 5);
+        minTimeTest(new YieldingWaitStrategy(), 10);
+    }
+
+    @Test
+    public void minTimeTestWithBusySpinWaitStrategy() throws InterruptedException {
+        minTimeTest(new BusySpinWaitStrategy(), 1);
+        minTimeTest(new BusySpinWaitStrategy(), 5);
+        minTimeTest(new BusySpinWaitStrategy(), 10);
+    }
+
+
+    private void minTimeTest(WaitStrategy waitStrategy, int iterations) throws InterruptedException {
+        AtomicInteger timesCalled = new AtomicInteger(0);
+        CountDownLatch latch = new CountDownLatch(iterations);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        Timer timer = new HashWheelTimer("precision-test",
+                                         10,
+                                         512,
+                                         waitStrategy,
+                                         executor);
+        timer.start();
+
+        long start = System.currentTimeMillis();
+        timer.schedule(new Consumer<Long>() {
+            @Override
+            public void accept(Long aLong) {
+                timesCalled.incrementAndGet();
+                latch.countDown();
+            }
+        }, 100, TimeUnit.MILLISECONDS, 100);
+
+        latch.await(10, TimeUnit.SECONDS);
+
+        Assert.assertEquals(iterations, timesCalled.get());
+        long end = System.currentTimeMillis();
+        System.out.println(end-start);
+        Assert.assertTrue(end - start >= 100 * iterations);
+
+        timer.cancel();
+        executor.shutdown();
+    }
+
+    private void precisionTest(WaitStrategy waitStrategy, int iterations) throws InterruptedException {
+        AtomicInteger timesCalled = new AtomicInteger(0);
+        CountDownLatch latch = new CountDownLatch(iterations);
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        Timer timer = new HashWheelTimer("precision-test",
+                                         50,
+                                         512,
+                                         waitStrategy,
+                                         executor);
+        timer.start();
+
+        timer.schedule(new Consumer<Long>() {
+            @Override
+            public void accept(Long aLong) {
+                timesCalled.incrementAndGet();
+                latch.countDown();
+            }
+        }, 100, TimeUnit.MILLISECONDS);
+
+        Thread.sleep(100 * iterations);
+
+        Assert.assertEquals(0, latch.getCount());
+        Assert.assertEquals(iterations, timesCalled.get());
+
+        timer.cancel();
+        executor.shutdown();
     }
 }
