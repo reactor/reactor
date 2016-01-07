@@ -15,14 +15,14 @@
  */
 package reactor.core.subscriber;
 
+import java.util.Random;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.tck.SubscriberWhiteboxVerification;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.Test;
-import reactor.Publishers;
+import reactor.Flux;
 import reactor.Subscribers;
-
-import java.util.Random;
 
 /**
  * @author Stephane Maldini
@@ -75,7 +75,7 @@ public class SubscriberFactoryTests extends SubscriberWhiteboxVerification<Long>
 	@org.junit.Test
 	public void someTest() {
 
-		Publishers.create(sub ->
+		Flux.create(sub ->
 			sub.onNext(random.nextLong())
 		).subscribe(Subscribers.unbounded(
 		  (data, sub) -> {

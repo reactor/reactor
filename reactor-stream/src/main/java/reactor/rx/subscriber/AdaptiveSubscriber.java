@@ -24,9 +24,9 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
+import reactor.core.timer.Timer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
-import reactor.core.timer.Timer;
 import reactor.rx.Stream;
 import reactor.rx.broadcast.Broadcaster;
 

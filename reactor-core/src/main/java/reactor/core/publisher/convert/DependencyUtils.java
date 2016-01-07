@@ -17,6 +17,7 @@
 package reactor.core.publisher.convert;
 
 import org.reactivestreams.Publisher;
+import reactor.Flux;
 
 /**
  * @author Stephane Maldini
@@ -198,25 +199,29 @@ public final class DependencyUtils {
 			throw new IllegalArgumentException("Cannot convert " + source + " source to " + to + " type");
 		}
 		if (hasRxJava1()) {
-			if (hasRxJava1Single() && RX_JAVA_1_SINGLE_CONVERTER.get().isAssignableFrom(to)) {
+			if (hasRxJava1Single() && RX_JAVA_1_SINGLE_CONVERTER.get()
+			                                                    .isAssignableFrom(to)) {
 				return (T) RX_JAVA_1_SINGLE_CONVERTER.apply(source, to);
 			}
-			else if (RX_JAVA_1_CONVERTER.get().isAssignableFrom(to)) {
+			else if (RX_JAVA_1_CONVERTER.get()
+			                            .isAssignableFrom(to)) {
 				return (T) RX_JAVA_1_CONVERTER.apply(source, to);
 			}
 		}
 
-		if (hasJdk8CompletableFuture() && COMPLETABLE_FUTURE_CONVERTER.get().isAssignableFrom(to)) {
+		if (hasJdk8CompletableFuture() && COMPLETABLE_FUTURE_CONVERTER.get()
+		                                                              .isAssignableFrom(to)) {
 			return (T) COMPLETABLE_FUTURE_CONVERTER.apply(source, to);
 		}
 
-		if (hasJdk9Flow() && JDK_9_FLOW_CONVERTER.get().isAssignableFrom(to)) {
+		if (hasJdk9Flow() && JDK_9_FLOW_CONVERTER.get()
+		                                         .isAssignableFrom(to)) {
 			return (T) JDK_9_FLOW_CONVERTER.apply(source, to);
 		}
 		throw new UnsupportedOperationException("Cannot convert " + source.getClass() + " source to " + to.getClass() + " type");
 	}
 
-	public static String reactorVersion(){
+	public static String reactorVersion() {
 		return VERSION;
 	}
 }

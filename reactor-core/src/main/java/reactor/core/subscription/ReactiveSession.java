@@ -24,17 +24,16 @@ import java.util.concurrent.locks.LockSupport;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
+import reactor.core.timer.TimeUtils;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Predicate;
-import reactor.core.timer.TimeUtils;
 
 /**
  * @author Stephane Maldini
@@ -127,7 +126,7 @@ public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<
 		}
 		catch (Throwable t) {
 			uncaughtException = t;
-			Publishers.<E>error(t).subscribe(actual);
+			EmptySubscription.error(actual, t);
 		}
 	}
 
@@ -376,7 +375,7 @@ public class ReactiveSession<E> implements ReactiveState.Downstream, Subscriber<
 	public void onNext(E e) {
 		Emission emission = emit(e);
 		if(emission.isCancelled()){
-			throw CancelException.get();
+			Exceptions.onNextDropped(e);
 		}
 		if(emission.isOk()){
 			return;

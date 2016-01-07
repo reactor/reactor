@@ -25,20 +25,21 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.error.SpecificationExceptions;
+import reactor.core.subscription.EmptySubscription;
+import reactor.core.support.Assert;
+import reactor.core.support.BackpressureUtils;
 import reactor.core.support.Logger;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.SignalType;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.Sequencer;
-import reactor.core.support.Assert;
-import reactor.core.support.BackpressureUtils;
-import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Supplier;
@@ -133,7 +134,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	 */
 	public static <E> ProcessorGroup<E> create(final Processor<Runnable, Runnable> p,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 		return create(p, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 	}
@@ -151,7 +152,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	public static <E> ProcessorGroup<E> create(Supplier<? extends Processor<Runnable, Runnable>> p,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 		if (p != null && concurrency > 1) {
 			return new PooledProcessorGroup<>(p, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
@@ -174,7 +175,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	public static <E> ProcessorGroup<E> create(final Processor<Runnable, Runnable> p,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 		return new SingleProcessorGroup<E>(new Supplier<Processor<Runnable, Runnable>>() {
 			@Override
@@ -218,53 +219,48 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			AtomicIntegerFieldUpdater.newUpdater(ProcessorGroup.class, "refCount");
 
 	@Override
-	public BaseProcessor<T, T> get() {
+	public FluxProcessor<T, T> get() {
 		return dispatchOn();
 	}
 
 	/**
-	 * @param clazz
-	 * @param <V>
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public <V> BaseProcessor<V, V> dispatchOn(Class<V> clazz) {
-		return (BaseProcessor<V, V>) dispatchOn();
+	public final FluxProcessor<T, T> dispatchOn() {
+		return dispatchOn(null);
+	}
+	/**
+	 * @return
+	 */
+	public FluxProcessor<T, T> dispatchOn(Publisher<? extends T> source) {
+		return createBarrier(false, source);
 	}
 
 	/**
 	 * @return
 	 */
-	public BaseProcessor<T, T> dispatchOn() {
-		return createBarrier(false);
+	public final FluxProcessor<T, T> publishOn() {
+		return publishOn(null);
 	}
 
 	/**
-	 * @param clazz
-	 * @param <V>
+	 *
+	 * @param source
 	 * @return
 	 */
-	@SuppressWarnings("unchecked")
-	public <V> BaseProcessor<V, V> publishOn(Class<V> clazz) {
-		return (BaseProcessor<V, V>) publishOn();
-	}
-
-	/**
-	 * @return
-	 */
-	public BaseProcessor<T, T> publishOn() {
-		return createBarrier(true);
+	public FluxProcessor<T, T> publishOn(Publisher<? extends T> source) {
+		return createBarrier(true, source);
 	}
 
 	/**
 	 * @return
 	 */
-	public Consumer<Consumer<Void>> dispatcher() {
+	public Consumer<Runnable> dispatcher() {
 		if (processor == null) {
 			return SYNC_DISPATCHER;
 		}
 
-		return createBarrier(false);
+		return createBarrier(false, null);
 	}
 
 	/**
@@ -278,7 +274,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return (BiConsumer<V, Consumer<? super V>>) SYNC_DATA_DISPATCHER;
 		}
 
-		return createBarrier(false);
+		return createBarrier(false, null);
 	}
 
 	/**
@@ -290,7 +286,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return (BiConsumer<T, Consumer<? super T>>) SYNC_DATA_DISPATCHER;
 		}
 
-		return createBarrier(false);
+		return createBarrier(false, null);
 	}
 
 	/**
@@ -301,7 +297,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			return SYNC_EXECUTOR;
 		}
 
-		return createBarrier(false);
+		return createBarrier(false, null);
 	}
 
 	public boolean awaitAndShutdown() {
@@ -376,10 +372,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	/**
 	 * Singleton delegating consumer for synchronous dispatchers
 	 */
-	private final static Consumer<Consumer<Void>> SYNC_DISPATCHER = new Consumer<Consumer<Void>>() {
+	private final static Consumer<Runnable> SYNC_DISPATCHER = new Consumer<Runnable>() {
 		@Override
-		public void accept(Consumer<Void> callback) {
-			callback.accept(null);
+		public void accept(Runnable callback) {
+			callback.run();
 		}
 	};
 
@@ -393,13 +389,13 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 	};
 
-	private final static int LIMIT_BUFFER_SIZE = BaseProcessor.SMALL_BUFFER_SIZE / 2;
+	private final static int LIMIT_BUFFER_SIZE = ReactiveState.SMALL_BUFFER_SIZE / 2;
 
 	@SuppressWarnings("unchecked")
 	protected ProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 			int concurrency,
 			Consumer<Throwable> uncaughtExceptionHandler,
-			Consumer<Void> shutdownHandler,
+			Runnable shutdownHandler,
 			boolean autoShutdown) {
 		this.autoShutdown = autoShutdown;
 		this.concurrency = concurrency;
@@ -435,7 +431,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			}
 
 			for (int i = 0; i < concurrency; i++) {
-				this.processor.onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+				this.processor.onSubscribe(EmptySubscription.INSTANCE);
 				this.processor.subscribe(new TaskSubscriber(tailRecurser, autoShutdown, uncaughtExceptionHandler,
 						shutdownHandler));
 			}
@@ -468,7 +464,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		REF_COUNT.incrementAndGet(this);
 	}
 
-	private <Y> ProcessorBarrier<Y> createBarrier(boolean forceWork) {
+	private <Y> ProcessorBarrier<Y> createBarrier(boolean forceWork, Publisher<? extends Y> source) {
 
 		if (processor == null) {
 			return new SyncProcessorBarrier<>(this);
@@ -481,10 +477,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		incrementReference();
 
 		if (forceWork || concurrency > 1) {
-			return new WorkProcessorBarrier<>(this);
+			return new WorkProcessorBarrier<>(this, source);
 		}
 
-		return new ProcessorBarrier<>(true, this);
+		return new ProcessorBarrier<>(true, this, source);
 	}
 
 	/**
@@ -540,13 +536,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 	}
 
-	private static class ProcessorBarrier<V> extends BaseProcessor<V, V>
-			implements Consumer<Consumer<Void>>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
+	private static class ProcessorBarrier<V> extends FluxProcessor<V, V>
+			implements Consumer<Runnable>, BiConsumer<V, Consumer<? super V>>, Executor, Subscription,
 			           Bounded, Upstream, FeedbackLoop, Downstream, Buffering, ActiveDownstream, ActiveUpstream,
 			           Named, UpstreamDemand, UpstreamPrefetch, DownstreamDemand, FailState,
 			           Runnable {
 
 		protected final ProcessorGroup service;
+		protected final Publisher<? extends V> source;
 
 		private final RingBuffer<RingBuffer.Slot<V>> emitBuffer;
 		private final Sequence                       pollCursor;
@@ -574,9 +571,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 		protected Subscriber<? super V> subscriber;
 
-		public ProcessorBarrier(boolean buffer, final ProcessorGroup service) {
-			super(true);
+		public ProcessorBarrier(boolean buffer, final ProcessorGroup service,
+				 final Publisher<? extends V> source ) {
 			this.service = service;
+			this.source = source;
 			if (!buffer) {
 				emitBuffer = null;
 				pollCursor = null;
@@ -602,23 +600,23 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		@Override
 		public final void accept(V data, Consumer<? super V> consumer) {
 			if (consumer == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			dispatch(new ConsumerRunnable<>(data, consumer));
 		}
 
 		@Override
-		public final void accept(Consumer<Void> consumer) {
+		public final void accept(Runnable consumer) {
 			if (consumer == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
-			dispatch(new ConsumerRunnable<>(null, consumer));
+			dispatch(consumer);
 		}
 
 		@Override
 		public final void execute(Runnable command) {
 			if (command == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			dispatch(command);
 		}
@@ -626,7 +624,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		@Override
 		public final void subscribe(Subscriber<? super V> s) {
 			if (s == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			final boolean set, subscribed;
 			synchronized (this) {
@@ -637,12 +635,11 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 				else {
 					set = false;
 				}
-				subscribed = this.upstreamSubscription != null;
+				subscribed = source != null || this.upstreamSubscription != null;
 			}
 
 			if (!set) {
-				Exceptions.<V>publisher(new IllegalStateException("Shared Processors do not support multi-subscribe")).subscribe(
-						s);
+				EmptySubscription.error(subscriber, new IllegalStateException("Shared Processors do not support multi-subscribe"));
 			}
 			else if (subscribed) {
 				doStart(s);
@@ -655,13 +652,13 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			Subscriber<? super V> subscriber = null;
 
 			synchronized (this) {
-				if (BackpressureUtils.checkSubscription(upstreamSubscription, s)) {
+				if (BackpressureUtils.validate(upstreamSubscription, s)) {
 					upstreamSubscription = s;
 					subscriber = this.subscriber;
 				}
 			}
 
-			if (subscriber != null) {
+			if (subscriber != null && source == null) {
 				doStart(subscriber);
 			}
 		}
@@ -671,7 +668,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			super.onNext(o);
 
 			if (terminated == 1) {
-				throw CancelException.get();
+				Exceptions.onNextDropped(o);
 			}
 
 			doNext(o);
@@ -714,6 +711,9 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 			RUNNING.incrementAndGet(this);
 
 			subscriber.onSubscribe(this);
+			if(source != null){
+				source.subscribe(this);
+			}
 			service.processor.onNext(new Runnable() {
 				@Override
 				public void run() {
@@ -780,7 +780,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 		@Override
 		public long limit() {
-			return BaseProcessor.SMALL_BUFFER_SIZE;
+			return ReactiveState.SMALL_BUFFER_SIZE;
 		}
 
 		@Override
@@ -969,11 +969,6 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
-		public long getAvailableCapacity() {
-			return emitBuffer != null ? emitBuffer.pending() : getCapacity();
-		}
-
-		@Override
 		public long getCapacity() {
 			return emitBuffer != null ? SMALL_BUFFER_SIZE : Long.MAX_VALUE;
 		}
@@ -991,8 +986,8 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 	private static final class WorkProcessorBarrier<V> extends ProcessorBarrier<V> {
 
-		public WorkProcessorBarrier(ProcessorGroup service) {
-			super(false, service);
+		public WorkProcessorBarrier(ProcessorGroup service, Publisher<? extends V> source) {
+			super(false, service, source);
 		}
 
 		@Override
@@ -1001,6 +996,10 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 				@Override
 				public void run() {
 					Subscriber subscriber = WorkProcessorBarrier.this.subscriber;
+					if(source != null) {
+						source.subscribe(WorkProcessorBarrier.this);
+					}
+
 					if(subscriber != null) {
 						subscriber.onSubscribe(WorkProcessorBarrier.this);
 					}
@@ -1073,7 +1072,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	private static final class SyncProcessorBarrier<V> extends ProcessorBarrier<V>{
 
 		public SyncProcessorBarrier(ProcessorGroup service) {
-			super(false, service);
+			super(false, service, null);
 		}
 
 		@Override
@@ -1138,14 +1137,14 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 	private static class TaskSubscriber implements Subscriber<Runnable>, Trace {
 
 		private final Consumer<Throwable> uncaughtExceptionHandler;
-		private final Consumer<Void>      shutdownHandler;
+		private final Runnable      shutdownHandler;
 		private final TailRecurser        tailRecurser;
 		private final boolean        autoShutdown;
 
 		public TaskSubscriber(TailRecurser tailRecurser,
 				boolean autoShutdown,
 				Consumer<Throwable> uncaughtExceptionHandler,
-				Consumer<Void> shutdownHandler) {
+				Runnable shutdownHandler) {
 			this.uncaughtExceptionHandler = uncaughtExceptionHandler;
 			this.shutdownHandler = shutdownHandler;
 			this.tailRecurser = tailRecurser;
@@ -1189,7 +1188,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		@Override
 		public void onComplete() {
 			if (shutdownHandler != null) {
-				shutdownHandler.accept(null);
+				shutdownHandler.run();
 			}
 		}
 
@@ -1200,7 +1199,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		public SingleProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 				int concurrency,
 				Consumer<Throwable> uncaughtExceptionHandler,
-				Consumer<Void> shutdownHandler,
+				Runnable shutdownHandler,
 				boolean autoShutdown) {
 			super(processor, concurrency, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 		}
@@ -1215,7 +1214,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		public PooledProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 				int concurrency,
 				Consumer<Throwable> uncaughtExceptionHandler,
-				Consumer<Void> shutdownHandler,
+				Runnable shutdownHandler,
 				boolean autoShutdown) {
 			super(null, concurrency, null, null, autoShutdown);
 
@@ -1296,22 +1295,22 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 		}
 
 		@Override
-		public BaseProcessor<T, T> dispatchOn() {
-			return next().dispatchOn();
+		public FluxProcessor<T, T> dispatchOn(Publisher<? extends T> source) {
+			return next().dispatchOn(source);
 		}
 
 		@Override
-		public BaseProcessor<T, T> publishOn() {
-			return next().publishOn();
+		public FluxProcessor<T, T> publishOn(Publisher<? extends T> source) {
+			return next().publishOn(source);
 		}
 
 		@Override
-		public Consumer<Consumer<Void>> dispatcher() {
+		public Consumer<Runnable> dispatcher() {
 			return next().dispatcher();
 		}
 
 		@Override
-		public BaseProcessor<T, T> get() {
+		public FluxProcessor<T, T> get() {
 			return next().get();
 		}
 
@@ -1319,7 +1318,7 @@ public class ProcessorGroup<T> implements Supplier<Processor<T, T>>, ReactiveSta
 
 			public InnerProcessorGroup(Supplier<? extends Processor<Runnable, Runnable>> processor,
 					Consumer<Throwable> uncaughtExceptionHandler,
-					Consumer<Void> shutdownHandler,
+					Runnable shutdownHandler,
 					boolean autoShutdown) {
 				super(processor, 1, uncaughtExceptionHandler, shutdownHandler, autoShutdown);
 			}

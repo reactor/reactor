@@ -29,9 +29,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
-import reactor.core.support.Logger;
 import reactor.AbstractReactorTest;
 import reactor.Processors;
+import reactor.core.support.Logger;
 import reactor.fn.Consumer;
 import reactor.rx.subscriber.Control;
 
@@ -90,24 +90,24 @@ public class StreamCombinationTests extends AbstractReactorTest {
 	public Stream<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
-			this.sensorOdd = Processors.log(Processors.topic("odd"), "odd");
+			this.sensorOdd = Processors.blackbox(Processors.topic("odd"), p -> p.log("odd"));
 
 			// add substream to "master" list
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
 		}
 
-		return Streams.wrap(sensorOdd);
+		return Streams.from(sensorOdd);
 	}
 
 	public Stream<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
-			this.sensorEven = Processors.log(Processors.topic("even"), "even");
+			this.sensorEven = Processors.blackbox(Processors.topic("even"), p -> p.log("even"));
 
 			// add substream to "master" list
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
 		}
-		return Streams.wrap(sensorEven);
+		return Streams.from(sensorEven);
 	}
 
 	@Test
@@ -116,7 +116,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 		CountDownLatch latch = new CountDownLatch(elements);
 
 		Control tail = sensorOdd().mergeWith(sensorEven())
-		                          .observe(loggingConsumer())
+		                          .doOnNext(loggingConsumer())
 		                          .consume(i -> latch.countDown());
 
 		generateData(elements);
@@ -140,7 +140,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		Control tail = Streams.concat(sensorEven(), sensorOdd())
 		                      .log("concat")
-		                      .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
+		                      .consume(i -> latch.countDown(), null, latch::countDown);
 
 		System.out.println(tail.debug());
 		generateData(elements);
@@ -155,7 +155,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		Control tail = Streams.combineLatest(sensorOdd(), sensorEven(), this::computeMin)
 		                      .log("combineLatest")
-		                      .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
+		                      .consume(i -> latch.countDown(), null, latch::countDown);
 
 		generateData(elements);
 
@@ -169,7 +169,7 @@ public class StreamCombinationTests extends AbstractReactorTest {
 
 		Control tail = sensorEven().concatWith(sensorOdd())
 		                           .log("concat")
-		                           .consume(i -> latch.countDown(), null, nothing -> latch.countDown());
+		                           .consume(i -> latch.countDown(), null, latch::countDown);
 
 		generateData(elements);
 

@@ -24,13 +24,12 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.SignalType;
 import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.SequenceBarrier;
 import reactor.core.support.rb.disruptor.Sequencer;
-import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
-import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 
 /**
@@ -161,7 +160,7 @@ public final class RingBufferSubscriberUtils {
 	public static <T> boolean waitRequestOrTerminalEvent(LongSupplier pendingRequest,
 			RingBuffer<MutableSignal<T>> ringBuffer, SequenceBarrier barrier,
 			Subscriber<? super T> subscriber, AtomicBoolean isRunning,
-			LongSupplier nextSequence, Consumer<Void> waiter) {
+			LongSupplier nextSequence, Runnable waiter) {
 		try {
 			long waitedSequence;
 			MutableSignal<T> event;

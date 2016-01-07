@@ -15,66 +15,174 @@
  */
 package reactor.rx.stream;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
+import reactor.fn.*;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SubscriberBarrier;
-import reactor.fn.Function;
+import org.reactivestreams.*;
+
+import reactor.core.error.Exceptions;
+import reactor.core.subscription.EmptySubscription;
+import reactor.core.support.BackpressureUtils;
 
 /**
- * @author Anatoly Kadyshev
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * For each subscriber, tracks the source values that have been seen and
+ * filters out duplicates.
+ *
+ * @param <T> the source value type
+ * @param <K> the key extacted from the source value to be used for duplicate testing
+ * @param <C> the collection type whose add() method is used for testing for duplicates
  */
-public final class StreamDistinct<T, V> extends StreamBarrier<T, T> {
 
-	private final Function<? super T, ? extends V> keySelector;
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ * @since 2.5
+ */
+public final class StreamDistinct<T, K, C extends Collection<? super K>> extends StreamBarrier<T, T> {
 
-	public StreamDistinct(Publisher<T> source, Function<? super T, ? extends V> keySelector) {
+	final Function<? super T, ? extends K> keyExtractor;
+
+	final Supplier<C> collectionSupplier;
+
+	public StreamDistinct(Publisher<? extends T> source, Function<? super T, ? extends K> keyExtractor,
+							 Supplier<C> collectionSupplier) {
 		super(source);
-		this.keySelector = keySelector;
+		this.keyExtractor = Objects.requireNonNull(keyExtractor, "keyExtractor");
+		this.collectionSupplier = Objects.requireNonNull(collectionSupplier, "collectionSupplier");
 	}
 
 	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new DistinctAction<>(subscriber, keySelector);
+	public void subscribe(Subscriber<? super T> s) {
+		C collection;
+
+		try {
+			collection = collectionSupplier.get();
+		} catch (Throwable e) {
+			EmptySubscription.error(s, e);
+			return;
+		}
+
+		if (collection == null) {
+			EmptySubscription.error(s, new NullPointerException("The collectionSupplier returned a null collection"));
+			return;
+		}
+
+		source.subscribe(new StreamDistinctSubscriber<>(s, collection, keyExtractor));
 	}
 
-	static final class DistinctAction<T, V> extends SubscriberBarrier<T, T> {
+	static final class StreamDistinctSubscriber<T, K, C extends Collection<? super K>>
+			implements Subscriber<T>, Downstream, FeedbackLoop, Upstream, ActiveUpstream {
+		final Subscriber<? super T> actual;
 
-		private final Set<V> keySet = new HashSet<V>();
+		final C collection;
 
-		private final Function<? super T, ? extends V> keySelector;
+		final Function<? super T, ? extends K> keyExtractor;
 
-		public DistinctAction(Subscriber<? super T> actual, Function<? super T, ? extends V> keySelector) {
-			super(actual);
-			this.keySelector = keySelector;
+		Subscription s;
+
+		boolean done;
+
+		public StreamDistinctSubscriber(Subscriber<? super T> actual, C collection,
+										   Function<? super T, ? extends K> keyExtractor) {
+			this.actual = actual;
+			this.collection = collection;
+			this.keyExtractor = keyExtractor;
 		}
 
 		@Override
-		@SuppressWarnings("unchecked")
-		protected void doNext(T currentData) {
-			V currentKey;
-			if (keySelector != null) {
-				currentKey = keySelector.apply(currentData);
+		public void onSubscribe(Subscription s) {
+			if (BackpressureUtils.validate(this.s, s)) {
+				this.s = s;
+
+				actual.onSubscribe(s);
+			}
+		}
+
+		@Override
+		public void onNext(T t) {
+			if (done) {
+				Exceptions.onNextDropped(t);
+				return;
+			}
+
+			K k;
+
+			try {
+				k = keyExtractor.apply(t);
+			} catch (Throwable e) {
+				s.cancel();
+
+				onError(e);
+				return;
+			}
+
+			boolean b;
+
+			try {
+				b = collection.add(k);
+			} catch (Throwable e) {
+				s.cancel();
+
+				onError(e);
+				return;
+			}
+
+
+			if (b) {
+				actual.onNext(t);
 			} else {
-				currentKey = (V) currentData;
-			}
-
-			if(keySet.add(currentKey)) {
-				subscriber.onNext(currentData);
+				s.request(1);
 			}
 		}
 
 		@Override
-		protected void doComplete() {
-			subscriber.onComplete();
-			keySet.clear();
+		public void onError(Throwable t) {
+			if (done) {
+				Exceptions.onErrorDropped(t);
+				return;
+			}
+			done = true;
+
+			actual.onError(t);
 		}
 
+		@Override
+		public void onComplete() {
+			if (done) {
+				return;
+			}
+			done = true;
+
+			actual.onComplete();
+		}
+
+		@Override
+		public boolean isStarted() {
+			return s != null && !done;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return done;
+		}
+
+		@Override
+		public Object downstream() {
+			return actual;
+		}
+
+		@Override
+		public Object delegateInput() {
+			return keyExtractor;
+		}
+
+		@Override
+		public Object delegateOutput() {
+			return null;
+		}
+
+		@Override
+		public Object upstream() {
+			return s;
+		}
 	}
-
-
 }

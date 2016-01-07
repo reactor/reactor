@@ -18,8 +18,7 @@ package reactor.rx.stream;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
-import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.core.subscriber.BaseSubscriber;
 import reactor.core.subscriber.SubscriberWithDemand;
 import reactor.core.support.BackpressureUtils;
@@ -52,7 +51,7 @@ public abstract class StreamFallback<T> extends StreamBarrier<T, T> {
 		@Override
 		protected void doNext(T ev) {
 			if(switched){
-				throw CancelException.get();
+				Exceptions.onNextDropped(ev);
 			}
 			else{
 				BackpressureUtils.getAndSub(REQUESTED, this, 1L);

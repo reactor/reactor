@@ -15,32 +15,9 @@
  */
 package reactor.core.support;
 
-import org.reactivestreams.Subscription;
-
 /**
  * @author Stephane Maldini
  */
 public enum SignalType {
 	NEXT, ERROR, COMPLETE, SUBSCRIPTION;
-
-	/**
-	 * A singleton noop subscription
-	 */
-	public static final Subscription NOOP_SUBSCRIPTION = new NoopSubscription();
-
-	private final static class NoopSubscription implements Subscription, ReactiveState.Trace {
-		@Override
-		public void request(long n) {
-		}
-
-		@Override
-		public void cancel() {
-		}
-
-		@Override
-		public String toString() {
-			return "NoopSubscription";
-		}
-	}
-
 }

@@ -18,443 +18,302 @@ package reactor.rx;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
-import javax.annotation.Nonnull;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import javax.annotation.Nullable;
 
 import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.Publishers;
+import reactor.Mono;
+import reactor.Timers;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
-import reactor.core.processor.ProcessorGroup;
-import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.ReactiveStateUtils;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.fn.Supplier;
+import reactor.core.support.SignalType;
+import reactor.core.support.internal.PlatformDependent;
 import reactor.core.timer.Timer;
+import reactor.fn.BiConsumer;
+import reactor.fn.Consumer;
+import reactor.fn.Supplier;
 import reactor.rx.broadcast.Broadcaster;
 
 /**
- * A {@code Promise} is a stateful event container that accepts a single value or error.
- * In addition to {@link #get() getting} or {@link #await() awaiting} the value, consumers
- * can be registered to the outbound {@link #stream()} or via , consumers can be
- * registered to be notified of {@link #onError(Consumer) notified an error}, {@link
- * #onSuccess(Consumer) a value}, or {@link #onComplete(Consumer) both}. <p> A promise
- * also provides methods for composing actions with the future value much like a {@link
- * reactor.rx.Stream}. However, where a {@link reactor.rx.Stream} can process many values,
- * a {@code Promise} processes only one value or error.
+ * A {@code Promise} is a stateful event container that accepts a single value or error. In addition to {@link #peek()
+ * getting} or {@link #await() awaiting} the value, consumers can be registered to the outbound {@link #stream()} or via
+ * , consumers can be registered to be notified of {@link #doOnError(Consumer) notified an error}, {@link
+ * #doOnSuccess(Consumer) a value}, or {@link #doOnTerminate(BiConsumer)} both}. <p> A promise also provides methods for
+ * composing actions with the future value much like a {@link reactor.rx.Stream}. However, where a {@link
+ * reactor.rx.Stream} can process many values, a {@code Promise} processes only one value or error.
+ *
  * @param <O> the type of the value that will be made available
+ *
  * @author Jon Brisbin
  * @author Stephane Maldini
- * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+
- * specification</a>
+ * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
-public class Promise<O>
-		implements Supplier<O>, Processor<O, O>, Consumer<O>, ReactiveState.Bounded, Subscription,
-		           ReactiveState.Upstream, ReactiveState.Downstream, ReactiveState.ActiveUpstream {
+public final class Promise<O> extends Mono<O>
+		implements Processor<O, O>, Consumer<O>, ReactiveState.Bounded, Subscription, ReactiveState
+		.FailState,  ReactiveState.Upstream, ReactiveState.Downstream, ReactiveState.ActiveUpstream {
 
-	private volatile int requested = 0;
-
+	private final static Promise                            COMPLETE  = success(null);
 	private static final AtomicIntegerFieldUpdater<Promise> REQUESTED =
 			AtomicIntegerFieldUpdater.newUpdater(Promise.class, "requested");
 
-	private final ReentrantLock lock = new ReentrantLock();
+	/**
+	 * Create synchronous {@link Promise} and use the given error to complete the {@link Promise} immediately.
+	 *
+	 * @param error the error to complete the {@link Promise} with
+	 * @param <T> the type of the value
+	 *
+	 * @return A {@link Promise} that is completed with the given error
+	 */
+	public static <T> Promise<T> error(Throwable error) {
+		return error(Timers.globalOrNull(), error);
+	}
 
-	private final long defaultTimeout;
+	/**
+	 * Create a {@link Promise} and use the given error to complete the {@link Promise} immediately.
+	 *
+	 * @param error the error to complete the {@link Promise} with
+	 * @param timer the {@link Timer} to use by default for scheduled operations
+	 * @param <T> the type of the value
+	 *
+	 * @return A {@link Promise} that is completed with the given error
+	 */
+	public static <T> Promise<T> error(Timer timer, Throwable error) {
+		return new Promise<T>(error, timer);
+	}
 
-	private final Condition pendingCondition;
+	/**
+	 * Create a synchronous {@link Promise}.
+	 *
+	 * @param <T> type of the expected value
+	 *
+	 * @return A {@link Promise}.
+	 */
+	public static <T> Promise<T> prepare() {
+		return prepare(Timers.globalOrNull());
+	}
 
-	private final Timer timer;
+	/**
+	 * Create a `{@link Promise}.
+	 *
+	 * @param timer the {@link Timer} to use by default for scheduled operations
+	 * @param <T> type of the expected value
+	 *
+	 * @return a new {@link Promise}
+	 */
+	public static <T> Promise<T> prepare(Timer timer) {
+		Promise<T> p = new Promise<T>(timer);
+		p.request(1L);
+		return p;
+	}
+
+	/**
+	 * Create a {@link Promise}.
+	 *
+	 * @param timer the {@link Timer} to use by default for scheduled operations
+	 * @param <T> type of the expected value
+	 *
+	 * @return a new {@link Promise}
+	 */
+	public static <T> Promise<T> ready(Timer timer) {
+		return new Promise<T>(timer);
+	}
+
+	/**
+	 * Create a synchronous {@link Promise}.
+	 *
+	 * @param <T> type of the expected value
+	 *
+	 * @return A {@link Promise}.
+	 */
+	public static <T> Promise<T> ready() {
+		return ready(Timers.globalOrNull());
+	}
+
+	/**
+	 * Create a {@link Promise} already completed without any data.
+	 *
+	 * @return A {@link Promise} that is completed
+	 */
+	@SuppressWarnings("unchecked")
+	public static Promise<Void> success() {
+		return COMPLETE;
+	}
+
+	/**
+	 * Create a {@link Promise} using the given value to complete the {@link Promise} immediately.
+	 *
+	 * @param value the value to complete the {@link Promise} with
+	 * @param <T> the type of the value
+	 *
+	 * @return A {@link Promise} that is completed with the given value
+	 */
+	public static <T> Promise<T> success(T value) {
+		return success(Timers.globalOrNull(), value);
+	}
+
+	/**
+	 * Create a {@link Promise} using the given value to complete the {@link Promise} immediately.
+	 *
+	 * @param value the value to complete the {@link Promise} with
+	 * @param timer the {@link Timer} to use by default for scheduled operations
+	 * @param <T> the type of the value
+	 *
+	 * @return A {@link Promise} that is completed with the given value
+	 */
+	public static <T> Promise<T> success(Timer timer, T value) {
+		return new Promise<T>(value, timer);
+	}
+
+	private final Timer        timer;
+	protected     Subscription subscription;
 
 	Broadcaster<O> outboundStream;
 
-	public enum FinalState {
-		ERROR,
-		COMPLETE
-	}
+	volatile int requested = 0;
+	volatile SignalType endState;
+	volatile O          value;
+	volatile Throwable  error;
 
-	FinalState finalState = null;
+	final static AtomicReferenceFieldUpdater<Promise, SignalType> STATE_UPDATER =
+			PlatformDependent.newAtomicReferenceFieldUpdater(Promise.class, "endState");
 
-	private O value;
-
-	private Throwable error;
-
-	private boolean hasBlockers = false;
-
-	protected Subscription subscription;
 
 	/**
-	 * Creates a new unfulfilled promise. <p> The {@code dispatcher} is used when
-	 * notifying the Promise's consumers, determining the thread on which they are called.
-	 * The given {@code env} is used to determine the default await timeout. The default
-	 * await timeout will be 30 seconds. This Promise will consumer errors from its {@code
-	 * parent} such that if the parent completes in error then so too will this Promise.
-	 */
-	public Promise() {
-		this(null);
-	}
-
-	/**
-	 * Creates a new unfulfilled promise. <p> The {@code dispatcher} is used when
-	 * notifying the Promise's consumers, determining the thread on which they are called.
-	 * The given {@code env} is used to determine the default await timeout. If {@code
-	 * env} is {@code null} the default await timeout will be 30 seconds. This Promise
-	 * will consumer errors from its {@code parent} such that if the parent completes in
-	 * error then so too will this Promise.
+	 * Creates a new unfulfilled promise
+	 *
 	 * @param timer The default Timer for time-sensitive downstream actions if any.
 	 */
-	public Promise(@Nullable Timer timer) {
+	Promise(@Nullable Timer timer) {
 		this.timer = timer;
-		this.defaultTimeout = DEFAULT_TIMEOUT;
-		this.pendingCondition = lock.newCondition();
 	}
 
 	/**
 	 * Creates a new promise that has been fulfilled with the given {@code value}.
+	 *
 	 * @param value The value that fulfills the promise
 	 * @param timer The default Timer for time-sensitive downstream actions if any.
 	 */
-	public Promise(O value, @Nullable Timer timer) {
-		this(timer);
-		finalState = FinalState.COMPLETE;
+	Promise(O value, @Nullable Timer timer) {
+		this.timer = timer;
+		endState = value == null ? SignalType.COMPLETE : SignalType.NEXT;
 		this.value = value;
 	}
 
 	/**
-	 * Creates a new promise that has failed with the given {@code error}. <p> The {@code
-	 * observable} is used when notifying the Promise's consumers, determining the thread
-	 * on which they are called. The given {@code env} is used to determine the default
-	 * await timeout. If {@code env} is {@code null} the default await timeout will be 30
-	 * seconds.
+	 * Creates a new promise that has failed with the given {@code error}. <p> The {@code observable} is used when
+	 * notifying the Promise's consumers, determining the thread on which they are called. If {@code env} is {@code
+	 * null} the default await timeout will be 30 seconds.
+	 *
 	 * @param error The error the completed the promise
 	 * @param timer The default Timer for time-sensitive downstream actions if any.
 	 */
-	public Promise(Throwable error, Timer timer) {
-		this(timer);
-		finalState = FinalState.ERROR;
+	Promise(Throwable error, @Nullable Timer timer) {
+		this.timer = timer;
+		endState = SignalType.ERROR;
 		this.error = error;
 	}
 
 	/**
-	 * Assign a {@link Consumer} that will either be invoked later, when the {@code
-	 * Promise} is completed by either setting a value or propagating an error, or, if
-	 * this {@code Promise} has already been fulfilled, is immediately scheduled to be
-	 * executed.
-	 * @param onComplete the completion {@link Consumer}
-	 * @return {@literal the new Promise}
+	 * Creates a new promise that has the given state. <p> The {@code observable} is used when notifying the Promise's
+	 * consumers, determining the thread on which they are called. The given {@code env} is used to determine the
+	 * default await timeout.
+	 *
+	 * @param state The state of the promise
+	 * @param timer The default Timer for time-sensitive downstream actions if any.
 	 */
-	public final Promise<O> onComplete(@Nonnull final Consumer<Promise<O>> onComplete) {
-		request(1);
-		lock.lock();
-		try {
-			if (finalState == FinalState.ERROR) {
-				onComplete.accept(this);
-				return Promises.error(timer, error);
-			}
-			else if (finalState == FinalState.COMPLETE) {
-				onComplete.accept(this);
-				return Promises.success(timer, value);
-			}
-		}
-		catch (Throwable t) {
-			return Promises.error(timer, t);
-		}
-		finally {
-			lock.unlock();
-		}
-
-		return stream().lift(new Publishers.Operator<O, O>() {
-			@Override
-			public Subscriber<? super O> apply(final Subscriber<? super O> subscriber) {
-				return new SubscriberBarrier<O, O>(subscriber){
-					@Override
-					protected void doNext(O o) {
-						doCancel();
-						onComplete.accept(Promise.this);
-						subscriber.onNext(o);
-						subscriber.onComplete();
-					}
-
-					@Override
-					protected void doError(Throwable throwable) {
-						onComplete.accept(Promise.this);
-						subscriber.onError(throwable);
-					}
-
-					@Override
-					protected void doComplete() {
-						onComplete.accept(Promise.this);
-						subscriber.onComplete();
-					}
-				};
-			}
-		}).consumeNext();
-	}
-
-	/**
-	 * Assign a {@link Consumer} that will either be invoked later, when the {@code
-	 * Promise} is successfully completed with a value, or, if this {@code Promise} has
-	 * already been fulfilled, is immediately executed.
-	 * @param onSuccess the success {@link Consumer}
-	 * @return {@literal the new Promise}
-	 */
-	public final Promise<O> onSuccess(@Nonnull final Consumer<O> onSuccess) {
-		request(1);
-		lock.lock();
-		try {
-			if (finalState == FinalState.COMPLETE) {
-				if (value != null) {
-					onSuccess.accept(value);
-				}
-				return this;
-			}
-		}
-		catch (Throwable t) {
-			return Promises.error(timer, t);
-		}
-		finally {
-			lock.unlock();
-		}
-		return stream().observe(onSuccess).consumeNext();
-	}
-
-	/**
-	 * Assign a {@link Function} that will either be invoked later, when the {@code
-	 * Promise} is successfully completed with a value, or, if this {@code Promise} has
-	 * already been fulfilled, is immediately scheduled to be executed.
-	 * @param transformation the function to apply on signal to the transformed Promise
-	 * @return {@literal the new Promise}
-	 */
-	public final <V> Promise<V> map(@Nonnull final Function<? super O, ? extends V> transformation) {
-		lock.lock();
-		try {
-			if (finalState == FinalState.ERROR) {
-				return Promises.error(timer, error);
-			}
-			else if (finalState == FinalState.COMPLETE) {
-				return Promises.success(timer,
-						value != null ? transformation.apply(value) : null);
-			}
-		}
-		catch (Throwable t) {
-			return Promises.error(timer, t);
-		}
-		finally {
-			lock.unlock();
-		}
-		return (Promise<V>) stream().map(transformation).next();
-	}
-
-	/**
-	 * Assign a {@link Function} that will either be invoked later, when the {@code
-	 * Promise} is successfully completed with a value, or, if this {@code Promise} has
-	 * already been fulfilled, is immediately scheduled to be executed. <p> FlatMap is
-	 * typically used to listen for a delayed/async publisher, e.g. promise.flatMap( data
-	 * -> Promise.success (data) ). The result is merged directly on the returned stream.
-	 * @param transformation the function to apply on signal to the supplied Promise that
-	 * will be merged back.
-	 * @return {@literal the new Promise}
-	 */
-	public final <V> Promise<V> flatMap(
-			@Nonnull final Function<? super O, ? extends Publisher<? extends V>> transformation) {
-		lock.lock();
-		try {
-			if (finalState == FinalState.ERROR) {
-				return Promises.error(timer, error);
-			}
-			else if (finalState == FinalState.COMPLETE) {
-				if (value != null) {
-					Promise<V> successPromise = Promises.<V>ready(timer);
-					transformation.apply(value).subscribe(successPromise);
-					return successPromise;
-				}
-				else {
-					return Promises.success(timer, null);
-				}
-			}
-		}
-		catch (Throwable t) {
-			return Promises.error(timer, t);
-		}
-		finally {
-			lock.unlock();
-		}
-		return (Promise<V>) stream().flatMap(transformation).next();
-
-	}
-
-	/**
-	 * Assign a {@link Consumer} that will either be invoked later, when the {@code
-	 * Promise} is completed with an error, or, if this {@code Promise} has already been
-	 * fulfilled, is immediately scheduled to be executed. The error is recovered and
-	 * materialized as the next signal to the returned stream.
-	 * @param onError the error {@link Consumer}
-	 * @return {@literal the new Promise}
-	 */
-	public final Promise<O> onError(@Nonnull final Consumer<Throwable> onError) {
-		request(1);
-		lock.lock();
-		try {
-			if (finalState == FinalState.ERROR) {
-				onError.accept(error);
-				return this;
-			}
-			else if (finalState == FinalState.COMPLETE) {
-				return this;
-			}
-		}
-		catch (Throwable t) {
-			return Promises.error(timer, t);
-		}
-		finally {
-			lock.unlock();
-		}
-
-		return stream().when(Throwable.class, onError).consumeNext();
-	}
-
-	/**
-
-	 */
-	@SuppressWarnings("unchecked")
-	public final <E> Promise<E> process(final Processor<O, E> processor) {
-		subscribe(processor);
-		if (Promise.class.isAssignableFrom(processor.getClass())) {
-			return (Promise<E>) processor;
-		}
-		Promise<E> promise = Promises.ready(getTimer());
-		processor.subscribe(promise);
-		return promise;
-	}
-
-	/**
-	 */
-	public final Promise<O> publishOn(final ProcessorGroup<O> processorProvider) {
-		return stream().publishOn(processorProvider).next();
-	}
-
-	/**
-	 */
-	public final Promise<O> dispatchOn(final ProcessorGroup<O> processorProvider) {
-		return stream().dispatchOn(processorProvider).next();
-	}
-
-	/**
-	 * Only forward onError and onComplete signals into the returned stream.
-	 * @return {@literal new Promise}
-	 */
-	public final Promise<Void> after() {
-		lock.lock();
-		try {
-			if (finalState == FinalState.COMPLETE) {
-				return Promises.<Void>success(timer, null);
-			}
-		}
-		catch (Throwable t) {
-			return Promises.<Void>error(timer, t);
-		}
-		finally {
-			lock.unlock();
-		}
-		return stream().after().next();
+	Promise(SignalType state, @Nullable Timer timer) {
+		this(timer);
+		this.endState = state;
 	}
 
 	@Override
-	public final Object upstream() {
-		return subscription;
+	public void accept(O o) {
+		onNext(o);
 	}
 
 	/**
-	 * Indicates whether this {@code Promise} has been completed with either an error or a
-	 * value
-	 * @return {@code true} if this {@code Promise} is complete, {@code false} otherwise.
-	 * @see #isPending()
+	 * Block the calling thread, waiting for the completion of this {@code Promise}. A default timeout as specified in
+	 * {@link System#getProperties()} using the key {@link #DEFAULT_TIMEOUT} is used. The default is 30 seconds. If the
+	 * promise is completed with an error a RuntimeException that wraps the error is thrown.
+	 *
+	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has
+	 * not completed
+	 *
+	 * @throws InterruptedException if the thread is interruped while awaiting completion
+	 * @throws RuntimeException     if the promise is completed with an error
 	 */
-
-	public boolean isComplete() {
-		lock.lock();
-		try {
-			return finalState != null;
-		}
-		finally {
-			lock.unlock();
-		}
+	public O await() throws InterruptedException {
+		return await(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
 	}
 
 	/**
-	 * Indicates whether this {@code Promise} has yet to be completed with a value or an
-	 * error.
-	 * @return {@code true} if this {@code Promise} is still pending, {@code false}
-	 * otherwise.
-	 * @see #isComplete()
+	 * Block the calling thread for the specified time, waiting for the completion of this {@code Promise}.
+	 *
+	 * @param timeout the timeout value
+	 * @param unit the {@link TimeUnit} of the timeout value
+	 *
+	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has
+	 * not completed
+	 *
+	 * @throws InterruptedException if the thread is interruped while awaiting completion
 	 */
-	public boolean isPending() {
-		lock.lock();
-		try {
-			return finalState == null;
+	public O await(long timeout, TimeUnit unit) throws InterruptedException {
+		request(1);
+		if (!isPending()) {
+			return peek();
 		}
-		finally {
-			lock.unlock();
+
+		long delay = System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(timeout, unit);
+
+		for (; ; ) {
+			SignalType endState = this.endState;
+			if (endState != null) {
+				switch (endState) {
+					case NEXT:
+						return value;
+					case ERROR:
+						if (error instanceof RuntimeException) {
+							throw (RuntimeException) error;
+						}
+						throw ReactorFatalException.create(error);
+					case COMPLETE:
+						return null;
+				}
+			}
+			if (delay < System.currentTimeMillis()) {
+				throw CancelException.get();
+			}
+			Thread.sleep(1);
 		}
 	}
 
 	/**
-	 * Indicates whether this {@code Promise} has been successfully completed a value.
-	 * @return {@code true} if this {@code Promise} is successful, {@code false}
-	 * otherwise.
-	 */
-	public boolean isSuccess() {
-		lock.lock();
-		try {
-			return finalState == FinalState.COMPLETE;
-		}
-		finally {
-			lock.unlock();
-		}
-	}
-
-	/**
-	 * Indicates whether this {@code Promise} has been completed with an error.
-	 * @return {@code true} if this {@code Promise} was completed with an error, {@code
-	 * false} otherwise.
-	 */
-	public boolean isError() {
-		lock.lock();
-		try {
-			return finalState == FinalState.ERROR;
-		}
-		finally {
-			lock.unlock();
-		}
-	}
-
-	/**
-	 * Block the calling thread, waiting for the completion of this {@code Promise}. A
-	 * default timeout as specified in {@link System#getProperties()} using the key {@code
-	 * reactor.await.defaultTimeout} is used. The default is 30 seconds. If the promise is
-	 * completed with an error a RuntimeException that wraps the error is thrown.
+	 * Block the calling thread, waiting for the completion of this {@code Promise}. A default timeout as specified in
+	 * {@link System#getProperties()} using the key {@code reactor.await.defaultTimeout} is used. The default is 30
+	 * seconds. If the promise is completed with an error a RuntimeException that wraps the error is thrown.
+	 *
 	 * @return true if complete without error
+	 *
 	 * @throws InterruptedException if the thread is interruped while awaiting completion
 	 * @throws RuntimeException     if the promise is completed with an error
 	 */
 	public boolean awaitSuccess() throws InterruptedException {
-		return awaitSuccess(defaultTimeout, TimeUnit.MILLISECONDS);
+		return awaitSuccess(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
 	}
 
 	/**
-	 * Block the calling thread for the specified time, waiting for the completion of this
-	 * {@code Promise}.
+	 * Block the calling thread for the specified time, waiting for the completion of this {@code Promise}.
+	 *
 	 * @param timeout the timeout value
 	 * @param unit the {@link TimeUnit} of the timeout value
+	 *
 	 * @return true if complete without error completed
+	 *
 	 * @throws InterruptedException if the thread is interruped while awaiting completion
 	 */
 	public boolean awaitSuccess(long timeout, TimeUnit unit) throws InterruptedException {
@@ -462,267 +321,133 @@ public class Promise<O>
 		return isSuccess();
 	}
 
-	/**
-	 * Block the calling thread, waiting for the completion of this {@code Promise}. A
-	 * default timeout as specified in {@link System#getProperties()} using the key {@code
-	 * reactor.await.defaultTimeout} is used. The default is 30 seconds. If the promise is
-	 * completed with an error a RuntimeException that wraps the error is thrown.
-	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached
-	 * and the {@code Promise} has not completed
-	 * @throws InterruptedException if the thread is interruped while awaiting completion
-	 * @throws RuntimeException     if the promise is completed with an error
-	 */
-	public O await() throws InterruptedException {
-		return await(defaultTimeout, TimeUnit.MILLISECONDS);
-	}
-
-	/**
-	 * Block the calling thread for the specified time, waiting for the completion of this
-	 * {@code Promise}.
-	 * @param timeout the timeout value
-	 * @param unit the {@link TimeUnit} of the timeout value
-	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached
-	 * and the {@code Promise} has not completed
-	 * @throws InterruptedException if the thread is interruped while awaiting completion
-	 */
-	public O await(long timeout, TimeUnit unit) throws InterruptedException {
-		request(1);
-		if (!isPending()) {
-			return get();
-		}
-
-		lock.lock();
-		try {
-			hasBlockers = true;
-			if (timeout >= 0) {
-				long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
-				long endTime = System.currentTimeMillis() + msTimeout;
-				while (finalState == null && (System.currentTimeMillis()) < endTime) {
-					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
-				}
-			}
-			else {
-				while (finalState == null) {
-					this.pendingCondition.await(200, TimeUnit.MILLISECONDS);
-				}
-			}
-		}
-		finally {
-			hasBlockers = false;
-			lock.unlock();
-		}
-
-		return get();
-	}
-
-	/**
-	 * Block the calling thread, waiting for the completion of this {@code Promise}. A
-	 * default timeout as specified in Reactor's {@link System#getProperties()} using the
-	 * key {@code reactor.await.defaultTimeout} is used. The default is 30 seconds. If the
-	 * promise is completed with an error a RuntimeException that wraps the error is
-	 * thrown.
-	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached
-	 * and the {@code Promise} has not completed
-	 * @throws RuntimeException if the promise is completed with an error
-	 */
-	public O poll() {
-		return poll(defaultTimeout, TimeUnit.MILLISECONDS);
-	}
-
-	/**
-	 * Block the calling thread for the specified time, waiting for the completion of this
-	 * {@code Promise}. If the promise is completed with an error a RuntimeException that
-	 * wraps the error is thrown.
-	 * @param timeout the timeout value
-	 * @param unit the {@link TimeUnit} of the timeout value
-	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached
-	 * and the {@code Promise} has not completed
-	 */
-	public O poll(long timeout, TimeUnit unit) {
-		try {
-			return await(timeout, unit);
-		}
-		catch (InterruptedException ie) {
-			Thread.currentThread().interrupt();
-			return null;
-		}
-	}
-
-	/**
-	 * Returns the value that completed this promise. Returns {@code null} if the promise
-	 * has not been completed. If the promise is completed with an error a
-	 * RuntimeException that wraps the error is thrown.
-	 * @return the value that completed the promise, or {@code null} if it has not been
-	 * completed
-	 * @throws RuntimeException if the promise was completed with an error
-	 */
 	@Override
-	public O get() {
-		request(1);
-		lock.lock();
-		try {
-			if (finalState == FinalState.COMPLETE) {
-				return value;
-			}
-			else if (finalState == FinalState.ERROR) {
-				if (RuntimeException.class.isInstance(error)) {
-					throw (RuntimeException) error;
-				}
-				else {
-					throw new RuntimeException(error);
-				}
-			}
-			else {
-				return null;
-			}
-		}
-		finally {
-			lock.unlock();
+	public void cancel() {
+		Subscription subscription = this.subscription;
+		if (subscription != null) {
+			this.subscription = null;
+			subscription.cancel();
 		}
 	}
 
-	/**
-	 * Return the error (if any) that has completed this {@code Promise}. Returns {@code
-	 * null} if the promise has not been completed, or was completed with a value.
-	 * @return the error (if any)
-	 */
-	public Throwable reason() {
-		lock.lock();
-		try {
-			return error;
-		}
-		finally {
-			lock.unlock();
-		}
-	}
-
-	public Stream<O> stream() {
-		Broadcaster<O> out = outboundStream;
-		if (out == null) {
-			lock.lock();
-			out = outboundStream;
-			try {
-				if (finalState == FinalState.COMPLETE) {
-					if (value == null) {
-						return Streams.<O>empty();
-					}
-					else {
-						return Streams.just(value);
-					}
-
-				}
-				else if (finalState == FinalState.ERROR) {
-					return Streams.fail(error);
-				}
-				else if (out == null){
-					out = Broadcaster.replayLastOrDefault(value, timer);
-				}
-				else {
-					return out;
-				}
-				outboundStream = out;
-			}
-			finally {
-				lock.unlock();
-			}
-		}
-
-		if (out != null) {
-			out.onSubscribe(this);
-		}
+	@Override
+	public Subscriber downstream() {
 		return outboundStream;
 	}
 
-	@Override
-	public void subscribe(final Subscriber<? super O> subscriber) {
-		stream().subscribe(subscriber);
+	/**
+	 * Returns the value that completed this promise. Returns {@code null} if the promise has not been completed. If the
+	 * promise is completed with an error a RuntimeException that wraps the error is thrown.
+	 *
+	 * @return the value that completed the promise, or {@code null} if it has not been completed
+	 *
+	 * @throws RuntimeException if the promise was completed with an error
+	 */
+	public O peek() {
+		request(1);
+		SignalType endState = this.endState;
+
+		if (endState == SignalType.NEXT) {
+			return value;
+		}
+		else if (endState == SignalType.ERROR) {
+			if (RuntimeException.class.isInstance(error)) {
+				throw (RuntimeException) error;
+			}
+			else {
+				throw ReactorFatalException.create(error);
+			}
+		}
+		else {
+			return null;
+		}
 	}
 
 	public Timer getTimer() {
 		return timer;
 	}
 
-	@Override
-	public void onSubscribe(Subscription subscription) {
-		if (BackpressureUtils.checkSubscription(this.subscription, subscription)) {
-			this.subscription = subscription;
-			if (requested == 1) {
-				subscription.request(1L);
-			}
-		}
+
+	/**
+	 * Indicates whether this {@code Promise} has been completed with an error.
+	 *
+	 * @return {@code true} if this {@code Promise} was completed with an error, {@code false} otherwise.
+	 */
+	public boolean isError() {
+		return endState == SignalType.ERROR;
+	}
+
+	/**
+	 * Indicates whether this {@code Promise} has yet to be completed with a value or an error.
+	 *
+	 * @return {@code true} if this {@code Promise} is still pending, {@code false} otherwise.
+	 *
+	 * @see #isTerminated()
+	 */
+	public boolean isPending() {
+		return endState == null;
 	}
 
 	@Override
-	public void onNext(O element) {
-		valueAccepted(element);
+	public boolean isStarted() {
+		return requested > 0;
+	}
+
+	/**
+	 * Indicates whether this {@code Promise} has been successfully completed a value.
+	 *
+	 * @return {@code true} if this {@code Promise} is successful, {@code false} otherwise.
+	 */
+	public boolean isSuccess() {
+		return endState == SignalType.NEXT || endState == SignalType.COMPLETE;
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return endState == SignalType.COMPLETE || endState == SignalType.ERROR;
 	}
 
 	@Override
 	public void onComplete() {
-		completeAccepted();
+		onNext(null);
 	}
 
 	@Override
 	public void onError(Throwable cause) {
-		errorAccepted(cause);
+		if (this.endState != null ||
+				!STATE_UPDATER.compareAndSet(this, null, SignalType.ERROR)) {
+				Exceptions.onErrorDropped(cause);
+			return;
+		}
+
+		this.error = cause;
+		subscription = null;
+
+		if (outboundStream != null) {
+			outboundStream.onError(error);
+		}
 	}
 
 	@Override
-	public void accept(O o) {
-		valueAccepted(o);
-	}
-
-	public ReactiveStateUtils.Graph debug() {
-		return ReactiveStateUtils.scan(this);
-	}
-
-	protected void errorAccepted(Throwable error) {
-		lock.lock();
-		try {
-			if (!isPending()) {
-				throw ReactorFatalException.create(error);
-			}
-
-			this.error = error;
-			this.finalState = FinalState.ERROR;
-
-			subscription = null;
-
-			if (outboundStream != null) {
-				outboundStream.onError(error);
-			}
-
-			if (hasBlockers) {
-				pendingCondition.signalAll();
-				hasBlockers = false;
-			}
-		}
-		finally {
-			lock.unlock();
-		}
-	}
-
-	protected void valueAccepted(O value) {
+	public void onNext(O value) {
 		Subscriber<O> subscriber;
-		lock.lock();
-		try {
-			if (!isPending()) {
-				throw CancelException.get();
+
+		SignalType endSignal = null == value ? SignalType.COMPLETE : SignalType.NEXT;
+
+		if (this.endState != null ||
+				!STATE_UPDATER.compareAndSet(this, null, endSignal)) {
+			if (value != null) {
+				Exceptions.onNextDropped(value);
 			}
+			return;
+		}
+
+		if(value != null) {
 			this.value = value;
-			this.finalState = FinalState.COMPLETE;
-
-			subscriber = outboundStream;
-
-			if (hasBlockers) {
-				pendingCondition.signalAll();
-				hasBlockers = false;
-			}
 		}
-		finally {
-			lock.unlock();
-		}
-		if (subscriber != null ) {
+		subscriber = outboundStream;
+
+		if (subscriber != null) {
 			if (value != null) {
 				subscriber.onNext(value);
 			}
@@ -738,25 +463,46 @@ public class Promise<O>
 		}
 	}
 
-	protected void completeAccepted() {
-		lock.lock();
-		try {
-			if (isPending()) {
-				valueAccepted(null);
+	@Override
+	public void onSubscribe(Subscription subscription) {
+		if (BackpressureUtils.validate(this.subscription, subscription)) {
+			this.subscription = subscription;
+			if (requested == 1) {
+				subscription.request(1L);
 			}
-
-			subscription = null;
-		}
-		finally {
-			lock.unlock();
 		}
 	}
 
 	/**
+	 * Block the calling thread for the specified time, waiting for the completion of this {@code Promise}. If the
+	 * promise is completed with an error a RuntimeException that wraps the error is thrown.
 	 *
+	 * @param timeout the timeout value
+	 * @param unit the {@link TimeUnit} of the timeout value
+	 *
+	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has
+	 * not completed
 	 */
-	public final void fulfill(){
-		request(1L);
+	@Override
+	public O get(long timeout, TimeUnit unit) {
+		try {
+			return await(timeout, unit);
+		}
+		catch (InterruptedException ie) {
+			Thread.currentThread()
+			      .interrupt();
+			throw CancelException.get();
+		}
+	}
+
+	/**
+	 * Peek the error (if any) that has completed this {@code Promise}. Returns {@code null} if the promise has not been
+	 * completed, or was completed with a value.
+	 *
+	 * @return the error (if any)
+	 */
+	public Throwable reason() {
+		return error;
 	}
 
 	@Override
@@ -777,47 +523,54 @@ public class Promise<O>
 		}
 	}
 
-	@Override
-	public void cancel() {
-		Subscription subscription = this.subscription;
-		if (subscription != null) {
-			this.subscription = null;
-			subscription.cancel();
+	public Stream<O> stream() {
+		Broadcaster<O> out = outboundStream;
+		if (out == null) {
+			SignalType endState = this.endState;
+			if (endState == SignalType.COMPLETE) {
+				return Streams.<O>empty();
+			}
+			else if(endState == SignalType.NEXT) {
+				return Streams.just(value);
+			}
+			else if (endState == SignalType.ERROR) {
+				return Streams.fail(error);
+			}
+			else {
+				out = Broadcaster.replayLastOrDefault(value, timer);
+			}
+			outboundStream = out;
 		}
-	}
 
-	@Override
-	public final long getCapacity() {
-		return 1;
-	}
+		if (out != null){
 
-	@Override
-	public String toString() {
-		lock.lock();
-		try {
-			return "Promise{" +
-					"value=" + value +
-					(finalState != null ? ", state=" + finalState : "") +
-					", error=" + error +
-					'}';
+			out.onSubscribe(this);
 		}
-		finally {
-			lock.unlock();
-		}
-	}
 
-	@Override
-	public Subscriber downstream() {
 		return outboundStream;
 	}
 
 	@Override
-	public boolean isStarted() {
-		return requested > 0;
+	public void subscribe(final Subscriber<? super O> subscriber) {
+		stream().subscribe(subscriber);
 	}
 
 	@Override
-	public boolean isTerminated() {
-		return finalState == FinalState.COMPLETE;
+	public String toString() {
+		return "{" +
+				"value : \"" + value + "\", " +
+				(endState != null ? "state : \"" + endState + "\", " : "") +
+				"error : \"" + error + "\" " +
+				'}';
+	}
+
+	@Override
+	public final Object upstream() {
+		return subscription;
+	}
+
+	@Override
+	public Throwable getError() {
+		return reason();
 	}
 }

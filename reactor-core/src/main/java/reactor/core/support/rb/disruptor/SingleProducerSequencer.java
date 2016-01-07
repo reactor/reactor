@@ -15,16 +15,15 @@
  */
 package reactor.core.support.rb.disruptor;
 
+import java.util.concurrent.locks.LockSupport;
+
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.support.WaitStrategy;
-import reactor.fn.Consumer;
-
-import java.util.concurrent.locks.LockSupport;
 
 abstract class SingleProducerSequencerPad extends Sequencer
 {
     protected long p1, p2, p3, p4, p5, p6, p7;
-    public SingleProducerSequencerPad(int bufferSize, WaitStrategy waitStrategy, Consumer<Void> spinObserver)
+    public SingleProducerSequencerPad(int bufferSize, WaitStrategy waitStrategy, Runnable spinObserver)
     {
         super(bufferSize, waitStrategy, spinObserver);
     }
@@ -32,7 +31,7 @@ abstract class SingleProducerSequencerPad extends Sequencer
 
 abstract class SingleProducerSequencerFields extends SingleProducerSequencerPad
 {
-    public SingleProducerSequencerFields(int bufferSize, WaitStrategy waitStrategy, Consumer<Void> spinObserver)
+    public SingleProducerSequencerFields(int bufferSize, WaitStrategy waitStrategy, Runnable spinObserver)
     {
         super(bufferSize, waitStrategy, spinObserver);
     }
@@ -60,7 +59,7 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
      * @param bufferSize the size of the buffer that this will sequence over.
      * @param waitStrategy for those waiting on sequences.
      */
-    public SingleProducerSequencer(int bufferSize, final WaitStrategy waitStrategy, Consumer<Void> spinObserver)
+    public SingleProducerSequencer(int bufferSize, final WaitStrategy waitStrategy, Runnable spinObserver)
     {
         super(bufferSize, waitStrategy, spinObserver);
     }
@@ -122,7 +121,7 @@ public final class SingleProducerSequencer extends SingleProducerSequencerFields
             while (wrapPoint > (minSequence = Sequencer.getMinimumSequence(gatingSequences, nextValue)))
             {
                 if(spinObserver != null) {
-                    spinObserver.accept(null);
+                    spinObserver.run();
                 }
                 LockSupport.parkNanos(1L); // TODO: Use waitStrategy to spin?
             }

@@ -15,13 +15,12 @@
  */
 package reactor.core.support.rb.disruptor;
 
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 import reactor.core.error.InsufficientCapacityException;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.internal.PlatformDependent;
 import reactor.core.support.WaitStrategy;
-import reactor.fn.Consumer;
-
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import reactor.core.support.internal.PlatformDependent;
 
 import static java.util.Arrays.copyOf;
 
@@ -37,7 +36,7 @@ public abstract class Sequencer
     private static final AtomicReferenceFieldUpdater<Sequencer, Sequence[]> SEQUENCE_UPDATER     =
       AtomicReferenceFieldUpdater.newUpdater(Sequencer.class, Sequence[].class, "gatingSequences");
 
-    protected final Consumer<Void> spinObserver;
+    protected final Runnable spinObserver;
     protected final int            bufferSize;
     protected final WaitStrategy   waitStrategy;
     protected final    Sequence   cursor          = Sequencer.newSequence(Sequencer.INITIAL_CURSOR_VALUE);
@@ -166,7 +165,7 @@ public abstract class Sequencer
 	 * @param waitStrategy
 	 * @param spinObserver
 	 */
-	public Sequencer(int bufferSize, WaitStrategy waitStrategy, Consumer<Void> spinObserver) {
+	public Sequencer(int bufferSize, WaitStrategy waitStrategy, Runnable spinObserver) {
 		if (bufferSize < 1) {
 			throw new IllegalArgumentException("bufferSize must not be less than 1");
 		}

@@ -13,90 +13,112 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
 
-import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.Processors;
-import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.core.support.BackpressureUtils;
-import reactor.fn.Predicate;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
+import org.reactivestreams.*;
+
+import reactor.core.subscriber.SubscriberMultiSubscription;
 
 /**
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * Repeatedly subscribes to the source sequence if it signals any error
+ * either indefinitely or a fixed number of times.
+ * <p>
+ * The times == Long.MAX_VALUE is treated as infinite retry.
+ *
+ * @param <T> the value type
+ */
+
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ * @since 2.5
  */
 public final class StreamRetry<T> extends StreamBarrier<T, T> {
 
-	private final int                    numRetries;
-	private final Predicate<Throwable>   retryMatcher;
+	final long times;
 
-	public StreamRetry(Publisher<T> source, int numRetries, Predicate<Throwable> predicate) {
+	public StreamRetry(Publisher<? extends T> source) {
+		this(source, Long.MAX_VALUE);
+	}
+
+	public StreamRetry(Publisher<? extends T> source, long times) {
 		super(source);
-		this.numRetries = numRetries;
-		this.retryMatcher = predicate;
+		if (times < 0L) {
+			throw new IllegalArgumentException("times >= 0 required");
+		}
+		this.times = times;
 	}
 
 	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new RetryAction<>(subscriber, numRetries, retryMatcher, source);
+	public void subscribe(Subscriber<? super T> s) {
+		StreamRetrySubscriber<T> parent = new StreamRetrySubscriber<>(source, s, times);
+
+		s.onSubscribe(parent);
+
+		if (!parent.isCancelled()) {
+			parent.resubscribe();
+		}
 	}
 
-	static final class RetryAction<T> extends SubscriberWithDemand<T, T> {
+	static final class StreamRetrySubscriber<T>
+	  extends SubscriberMultiSubscription<T, T> {
 
-		private final long                   numRetries;
-		private final Predicate<Throwable>   retryMatcher;
-		private final Publisher<? extends T> rootPublisher;
+		final Publisher<? extends T> source;
 
-		private long currentNumRetries = 0;
+		long remaining;
 
-		public RetryAction(Subscriber<? super T> actual,
-				int numRetries,
-				Predicate<Throwable> predicate,
-				Publisher<? extends T> parentStream) {
+		volatile int wip;
+		@SuppressWarnings("rawtypes")
+		static final AtomicIntegerFieldUpdater<StreamRetrySubscriber> WIP =
+		  AtomicIntegerFieldUpdater.newUpdater(StreamRetrySubscriber.class, "wip");
+
+		long produced;
+
+		public StreamRetrySubscriber(Publisher<? extends T> source, Subscriber<? super T> actual, long remaining) {
 			super(actual);
-
-			this.numRetries = numRetries;
-			this.retryMatcher = predicate;
-			this.rootPublisher = parentStream;
+			this.source = source;
+			this.remaining = remaining;
 		}
 
 		@Override
-		protected void doOnSubscribe(Subscription subscription) {
-			if(TERMINATED.compareAndSet(this, TERMINATED_WITH_ERROR, NOT_TERMINATED)) {
-				currentNumRetries = 0;
-				requestMore(BackpressureUtils.addCap(requestedFromDownstream(), 1L));
-			}
-			else {
-				subscriber.onSubscribe(this);
-			}
+		public void onNext(T t) {
+			produced++;
+
+			subscriber.onNext(t);
 		}
 
 		@Override
-		protected void doNext(T ev) {
-			BackpressureUtils.getAndSub(REQUESTED, this, 1L);
-			subscriber.onNext(ev);
+		public void onError(Throwable t) {
+			long r = remaining;
+			if (r != Long.MAX_VALUE) {
+				if (r == 0) {
+					subscriber.onError(t);
+					return;
+				}
+				remaining = r - 1;
+			}
+
+			resubscribe();
 		}
 
-		@Override
-		@SuppressWarnings("unchecked")
-		protected void checkedError(Throwable throwable) {
+		void resubscribe() {
+			if (WIP.getAndIncrement(this) == 0) {
+				do {
+					if (isCancelled()) {
+						return;
+					}
 
-			if ((numRetries != -1 && ++currentNumRetries > numRetries) && (retryMatcher == null || !retryMatcher.test(
-					throwable))) {
-				subscriber.onError(throwable);
-				currentNumRetries = 0;
-			}
-			else if (rootPublisher != null) {
-				subscription = null;
-				Processor<T, T> emitter = Processors.emitter();
-				emitter.subscribe(RetryAction.this);
-				rootPublisher.subscribe(emitter);
+					long c = produced;
+					if (c != 0L) {
+						produced = 0L;
+						produced(c);
+					}
+
+					source.subscribe(this);
+
+				} while (WIP.decrementAndGet(this) != 0);
 			}
 		}
 	}
-
 }

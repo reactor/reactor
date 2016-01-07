@@ -16,38 +16,33 @@
 
 package reactor.rx.stream;
 
-import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Processors;
-import reactor.Publishers;
-import reactor.core.error.SpecificationExceptions;
-import reactor.core.publisher.PublisherFactory;
+import reactor.Flux;
+import reactor.core.error.Exceptions;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.core.timer.Timer;
 import reactor.fn.Function;
 import reactor.rx.Stream;
-import reactor.rx.broadcast.StreamProcessor;
 
 /**
  * @author Stephane Maldini
  * @since 2.5
  */
 public class StreamBarrier<I, O> extends Stream<O>
-		implements ReactiveState.Named, ReactiveState.Upstream, Publishers.Operator<I, O>,
-		           Publishers.LiftOperator<I, O> {
+		implements ReactiveState.Named, ReactiveState.Upstream, Flux.Operator<I, O> {
 
-	final protected Publisher<I> source;
+	final protected Publisher<? extends I> source;
 
-	public StreamBarrier(Publisher<I> source) {
+	public StreamBarrier(Publisher<? extends I> source) {
 		this.source = source;
 	}
 
 	@Override
 	public void subscribe(Subscriber<? super O> s) {
 		if (s == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
+			throw Exceptions.spec_2_13_exception();
 		}
 		source.subscribe(apply(s));
 	}
@@ -70,51 +65,14 @@ public class StreamBarrier<I, O> extends Stream<O>
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public <E> StreamProcessor<E, O> combine() {
-		Subscriber<?> oldestReceiver = null;
-		Function oldestOperator = operator();
-
-		Object oldestSender = this;
-
-		while (oldestSender != null && Upstream.class.isAssignableFrom(oldestSender.getClass())) {
-			oldestSender = ((Upstream) oldestSender).upstream();
-			if (oldestSender != null) {
-				if (Subscriber.class.isAssignableFrom(oldestSender.getClass())) {
-					oldestReceiver = (Subscriber) oldestSender;
-				}
-				if (PublisherFactory.LiftOperator.class.isAssignableFrom(oldestSender.getClass())) {
-					oldestOperator =
-							Publishers.<Object, Object, Object>opFusion(((PublisherFactory.LiftOperator<Object, Object>) oldestSender).operator(),
-									oldestOperator);
-				}
-			}
-		}
-
-		if (oldestReceiver == null) {
-			Processor<E, E> root = Processors.emitter();
-			return StreamProcessor.from(root, Publishers.lift(root, oldestOperator));
-		}
-		else {
-			return StreamProcessor.from((Subscriber<E>) oldestReceiver, this);
-		}
-	}
-
-	@Override
 	public String getName() {
-		Function operator = operator();
-		return ReactiveStateUtils.getName(this == operator ? getClass().getSimpleName() : operator)
+		return getClass().getSimpleName()
 		                 .replaceAll("Stream|Publisher|Operator", "");
 	}
 
 	@Override
-	public final Publisher<I> upstream() {
+	public final Publisher<? extends I> upstream() {
 		return source;
-	}
-
-	@Override
-	public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
-		return this;
 	}
 
 	@Override
@@ -146,10 +104,10 @@ public class StreamBarrier<I, O> extends Stream<O>
 		}
 
 		@Override
-		public Function<Subscriber<? super O>, Subscriber<? super I>> operator() {
-			return barrierProvider;
+		public String getName() {
+			return ReactiveStateUtils.getName(barrierProvider)
+			                         .replaceAll("Stream|Publisher|Operator", "");
 		}
-
 		@Override
 		public Subscriber<? super I> apply(Subscriber<? super O> subscriber) {
 			return barrierProvider.apply(subscriber);

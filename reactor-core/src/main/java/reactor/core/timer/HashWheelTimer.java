@@ -30,10 +30,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.reactivestreams.Processor;
 import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
-import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.WaitStrategy;
+import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
@@ -139,9 +139,9 @@ public class HashWheelTimer extends Timer {
 			public void run() {
 				long deadline = timeMillisResolver.get();
 
-				Consumer<Void> noop = new Consumer<Void>() {
+				Runnable noop = new Runnable() {
 					@Override
-					public void accept(Void noop) {
+					public void run() {
 						if (loop.isInterrupted()) {
 							throw AlertException.INSTANCE;
 						}

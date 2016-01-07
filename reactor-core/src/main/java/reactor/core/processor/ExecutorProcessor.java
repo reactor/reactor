@@ -22,8 +22,8 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
 import reactor.core.support.SingleUseExecutor;
 
 /**
@@ -31,7 +31,7 @@ import reactor.core.support.SingleUseExecutor;
  *
  * @author Stephane Maldini
  */
-public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
+public abstract class ExecutorProcessor<IN, OUT> extends FluxProcessor<IN, OUT>
 		implements ReactiveState.ActiveUpstream, ReactiveState.ActiveDownstream, ReactiveState.Named, ReactiveState.Identified{
 
 	protected final ExecutorService executor;
@@ -41,6 +41,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 
 	protected final ClassLoader contextClassLoader;
 	protected final String name;
+	protected final boolean autoCancel;
 
 	@SuppressWarnings("unused")
 	private volatile       int                                      subscriberCount  = 0;
@@ -53,7 +54,7 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 
 	protected ExecutorProcessor(String name, ExecutorService executor,
 			boolean autoCancel) {
-		super(autoCancel);
+		this.autoCancel = autoCancel;
 		contextClassLoader = new ClassLoader(Thread.currentThread()
 		                                           .getContextClassLoader()) {
 		};
@@ -67,8 +68,29 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 	}
 
 	@Override
+	public String getId() {
+		return contextClassLoader.hashCode()+"";
+	}
+
+	@Override
+	public String getName() {
+		return "/Processors/"+name;
+	}
+
+	/**
+	 * @return a snapshot number of available onNext before starving the resource
+	 */
+	public long getAvailableCapacity() {
+		return getCapacity();
+	}
+
+	protected boolean incrementSubscribers() {
+		return SUBSCRIBER_COUNT.getAndIncrement(this) == 0;
+	}
+
+	@Override
 	protected void doOnSubscribe(Subscription s) {
-		if (s != SignalType.NOOP_SUBSCRIPTION) {
+		if (s != EmptySubscription.INSTANCE) {
 			requestTask(s);
 		}
 	}
@@ -207,24 +229,9 @@ public abstract class ExecutorProcessor<IN, OUT> extends BaseProcessor<IN, OUT>
 			return true;
 		}
 		catch (Throwable t) {
-			Exceptions.<OUT>publisher(t)
-					.subscribe(subscriber);
+			EmptySubscription.error(subscriber, t);
 			return false;
 		}
-	}
-
-	@Override
-	public String getId() {
-		return contextClassLoader.hashCode()+"";
-	}
-
-	@Override
-	public String getName() {
-		return "/Processors/"+name;
-	}
-
-	protected boolean incrementSubscribers() {
-		return SUBSCRIBER_COUNT.getAndIncrement(this) == 0;
 	}
 
 	protected int decrementSubscribers() {

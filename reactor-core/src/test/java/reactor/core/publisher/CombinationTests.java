@@ -27,13 +27,14 @@ import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.core.support.Logger;
+import reactor.Flux;
+import reactor.Mono;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.Subscribers;
-import reactor.core.processor.BaseProcessor;
+import reactor.core.processor.FluxProcessor;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Assert;
+import reactor.core.support.Logger;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.Consumer;
 
@@ -81,10 +82,10 @@ public class CombinationTests {
 
 	@Test
 	public void tesSubmitSession() throws Exception {
-		BaseProcessor<Integer, Integer> processor = Processors.emitter();
+		FluxProcessor<Integer, Integer> processor = Processors.emitter();
 		AtomicInteger count = new AtomicInteger();
-		processor.process(Processors.ioGroup()
-		                            .get())
+		processor.to(Processors.ioGroup()
+		                       .get())
 		         .subscribe(Subscribers.create(s -> {
 			         try {
 				         Thread.sleep(1000);
@@ -114,15 +115,15 @@ public class CombinationTests {
 
 	@Test
 	public void testEmitter() throws Throwable {
-		BaseProcessor<Integer, Integer> processor = Processors.emitter();
+		FluxProcessor<Integer, Integer> processor = Processors.emitter();
 
 		int n = 100_000;
 		int subs = 4;
 		final CountDownLatch latch = new CountDownLatch((n + 1) * subs);
 
 		for (int i = 0; i < subs; i++) {
-			processor.process(Processors.singleGroup()
-			                            .get())
+			processor.to(Processors.singleGroup()
+			                       .get())
 			         .subscribe(Subscribers.create(s -> {
 				         s.request(1L);
 				         return null;
@@ -155,7 +156,7 @@ public class CombinationTests {
 	public Publisher<SensorData> sensorOdd() {
 		if (sensorOdd == null) {
 			// this is the stream we publish odd-numbered events to
-			this.sensorOdd = Processors.log(Processors.topic("odd"), "odd");
+			this.sensorOdd = Processors.blackbox(Processors.topic("odd"), p -> p.log("odd"));
 
 			// add substream to "master" list
 			//allSensors().add(sensorOdd.reduce(this::computeMin).timeout(1000));
@@ -167,7 +168,7 @@ public class CombinationTests {
 	public Publisher<SensorData> sensorEven() {
 		if (sensorEven == null) {
 			// this is the stream we publish even-numbered events to
-			this.sensorEven = Processors.log(Processors.topic("even"), "even");
+			this.sensorEven = Processors.blackbox(Processors.topic("even"), p -> p.log("even"));
 
 			// add substream to "master" list
 			//allSensors().add(sensorEven.reduce(this::computeMin).timeout(1000));
@@ -180,7 +181,8 @@ public class CombinationTests {
 		int elements = 40;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Publisher<SensorData> p = Publishers.log(Publishers.merge(sensorOdd(), sensorEven()), "merge");
+		Publisher<SensorData> p = Flux.merge(sensorOdd(), sensorEven())
+		                              .log("merge");
 
 		generateData(elements);
 
@@ -190,17 +192,19 @@ public class CombinationTests {
 	@Test
 	public void sampleAmbTest() throws Exception {
 		int elements = 40;
-		CountDownLatch latch = new CountDownLatch(elements/2 + 1);
+		CountDownLatch latch = new CountDownLatch(elements / 2 + 1);
 
-		Publisher<SensorData> p = Publishers.log(Publishers.amb(sensorOdd(), sensorEven()), "amb");
+		Publisher<SensorData> p = Flux.amb(sensorOdd(), sensorEven())
+		                              .log("amb");
 
-		System.out.println(ReactiveStateUtils.scan(p).toString());
+		System.out.println(ReactiveStateUtils.scan(p)
+		                                     .toString());
 
-		Subscriber<SensorData> s = Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch
-				.countDown());
+		Subscriber<SensorData> s = Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch.countDown());
 		p.subscribe(s);
 		Thread.sleep(1000);
-		System.out.println(ReactiveStateUtils.scan(s).toString());
+		System.out.println(ReactiveStateUtils.scan(s)
+		                                     .toString());
 
 		generateData(elements);
 	}
@@ -219,7 +223,8 @@ public class CombinationTests {
 
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Publisher<SensorData> p = Publishers.log(Publishers.concat(sensorEven(), sensorOdd()), "concat");
+		Publisher<SensorData> p = Flux.concat(sensorEven(), sensorOdd())
+		                              .log("concat");
 
 		//System.out.println(tail.debug());
 		generateData(elements);
@@ -232,9 +237,20 @@ public class CombinationTests {
 		int elements = 69;
 		CountDownLatch latch = new CountDownLatch((elements / 2) + 1);
 
-		Publisher<SensorData> p = Publishers.log(Publishers.zip(sensorEven(), sensorOdd(), this::computeMin), "zip");
+		Publisher<SensorData> p = Flux.zip(sensorEven(), sensorOdd(), this::computeMin)
+		                              .log("zip");
 
 		generateData(elements);
+
+		awaitLatch(p, latch);
+	}
+
+	@Test
+	public void sampleMergeMonoTest() throws Exception {
+		CountDownLatch latch = new CountDownLatch(2);
+
+		Flux<Integer> p = Flux.merge(Flux.<Integer>empty().next(), Mono.just(1))
+		                              .log("mono");
 
 		awaitLatch(p, latch);
 	}
@@ -244,9 +260,8 @@ public class CombinationTests {
 		int elements = 1;
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 
-		Publisher<SensorData> p = Publishers.log(Publishers.zip(sensorEven(),
-				Publishers.just(new SensorData(1L, 14.0f)),
-				this::computeMin), "zip2");
+		Publisher<SensorData> p = Flux.zip(sensorEven(), Flux.just(new SensorData(1L, 14.0f)), this::computeMin)
+		                              .log("zip2");
 
 		generateData(elements);
 
@@ -259,20 +274,22 @@ public class CombinationTests {
 		CountDownLatch latch = new CountDownLatch(elements + 1);
 		Processor<SensorData, SensorData> sensorDataProcessor = Processors.<SensorData>singleGroup().get();
 
-		sensorDataProcessor.subscribe(Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch.countDown()));
+		sensorDataProcessor.subscribe(Subscribers.unbounded((d, sub) -> latch.countDown(),
+				null,
+				n -> latch.countDown()));
 
-		Publishers.log(Publishers.zip(Publishers.just(new SensorData(2L, 12.0f)),
-				Publishers.just(new SensorData(1L, 14.0f)),
-				this::computeMin), "zip3")
-		          .subscribe(sensorDataProcessor);
+		Flux.zip(Flux.just(new SensorData(2L, 12.0f)), Flux.just(new SensorData(1L, 14.0f)), this::computeMin)
+		    .log("zip3")
+		    .subscribe(sensorDataProcessor);
 
-		System.out.println(ReactiveStateUtils.scan(sensorDataProcessor).toString());
+		System.out.println(ReactiveStateUtils.scan(sensorDataProcessor)
+		                                     .toString());
 
 		awaitLatch(null, latch);
 	}
 
 	@SuppressWarnings("unchecked")
-	private void awaitLatch(Publisher<SensorData> tail, CountDownLatch latch) throws Exception {
+	private void awaitLatch(Publisher<?> tail, CountDownLatch latch) throws Exception {
 		if (tail != null) {
 			tail.subscribe(Subscribers.unbounded((d, sub) -> latch.countDown(), null, n -> latch.countDown()));
 		}
@@ -294,7 +311,8 @@ public class CombinationTests {
 			else {
 				upstream = sensorOdd;
 			}
-			System.out.println(ReactiveStateUtils.scan(upstream).toString());
+			System.out.println(ReactiveStateUtils.scan(upstream)
+			                                     .toString());
 			upstream.onNext(data);
 		}
 

@@ -124,7 +124,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 			}
 
 			return Streams
-			  .from(list)
+			  .fromIterable(list)
 			  .log("iterable-publisher")
 			  .filter(integer -> true)
 			  .map(integer -> integer);
@@ -258,7 +258,7 @@ public abstract class AbstractStreamVerification extends org.reactivestreams.tck
 				System.out.println(stream.debug());
 			}
 		}
-		//stream.onComplete();
+		//stream.then();
 
 		latch.await(8, TimeUnit.SECONDS);
 		System.out.println(stream.debug());

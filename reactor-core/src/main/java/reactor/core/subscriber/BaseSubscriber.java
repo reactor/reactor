@@ -18,11 +18,9 @@ package reactor.core.subscriber;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
-import reactor.core.error.SpecificationExceptions;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.BackpressureUtils;
-import reactor.core.support.SignalType;
-import reactor.fn.Supplier;
 
 /**
  * Convenience subscriber base class that checks for input errors and provide a self-subscription operation.
@@ -42,7 +40,7 @@ public class BaseSubscriber<T> implements Subscriber<T> {
 	 * Note that {@link org.reactivestreams.Processor} can extend this behavior to effectively start its subscribers.
 	 */
 	public BaseSubscriber<T> start() {
-		onSubscribe(SignalType.NOOP_SUBSCRIPTION);
+		onSubscribe(EmptySubscription.INSTANCE);
 		return this;
 	}
 
@@ -64,14 +62,14 @@ public class BaseSubscriber<T> implements Subscriber<T> {
 
 	@Override
 	public void onSubscribe(Subscription s) {
-		BackpressureUtils.checkSubscription(null, s);
-		//To validate with BackpressureUtils.checkSubscription(current, s)
+		BackpressureUtils.validate(null, s);
+		//To validate with BackpressureUtils.validate(current, s)
 	}
 
 	@Override
 	public void onNext(T t) {
 		if (t == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
+			throw Exceptions.spec_2_13_exception();
 		}
 
 	}
@@ -79,7 +77,7 @@ public class BaseSubscriber<T> implements Subscriber<T> {
 	@Override
 	public void onError(Throwable t) {
 		if (t == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
+			throw Exceptions.spec_2_13_exception();
 		}
 		Exceptions.throwIfFatal(t);
 	}

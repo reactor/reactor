@@ -20,9 +20,9 @@ import java.util.Map;
 import org.reactivestreams.Publisher;
 import reactor.fn.BiFunction;
 import reactor.fn.tuple.Tuple2;
+import reactor.rx.stream.StreamKv;
 import reactor.rx.stream.StreamReduceByKey;
 import reactor.rx.stream.StreamScanByKey;
-import reactor.rx.stream.StreamKv;
 
 /**
  * A Streams add-on to work with key/value pairs hydrated in {@link reactor.fn.tuple.Tuple2}.
@@ -58,7 +58,7 @@ public class BiStreams extends Streams {
 	public static <KEY, VALUE> Stream<Tuple2<KEY, VALUE>> reduceByKey(Publisher<Tuple2<KEY, VALUE>> publisher,
 	                                                                  StreamKv<KEY, VALUE> mapStream,
 	                                                                  BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		return reduceByKey(publisher, mapStream, mapStream, accumulator);
+		return reduceByKey(publisher, mapStream.getStore(), mapStream, accumulator);
 	}
 
 	/**
@@ -120,7 +120,7 @@ public class BiStreams extends Streams {
 	public static <KEY, VALUE> Stream<Tuple2<KEY, VALUE>> scanByKey(Publisher<Tuple2<KEY, VALUE>> publisher,
 	                                                                StreamKv<KEY, VALUE> mapStream,
 	                                                                BiFunction<VALUE, VALUE, VALUE> accumulator) {
-		return scanByKey(publisher, mapStream, mapStream, accumulator);
+		return scanByKey(publisher, mapStream.getStore(), mapStream, accumulator);
 	}
 
 	/**

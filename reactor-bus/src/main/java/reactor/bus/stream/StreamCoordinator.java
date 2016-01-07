@@ -56,7 +56,7 @@ import reactor.rx.Stream;
  * bus.notify("hello", Event.wrap("Hello World!"));
  * </code></pre>
  * <p> NOTE: To get blocking semantics for the calling thread, you only need to call {@link reactor.rx.Stream#next()} to
- * return a {@code Promise}. </p>
+ * return a {@code Mono}. </p>
  */
 public class StreamCoordinator extends Stream<List<Object>> implements Subscription {
 

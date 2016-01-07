@@ -13,88 +13,179 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SubscriberWithDemand;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
+import org.reactivestreams.*;
+
+import reactor.core.error.Exceptions;
+import reactor.core.support.BackpressureUtils;
 
 /**
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * Takes only the first N values from the source Publisher.
+ * <p>
+ * If N is zero, the subscriber gets completed if the source completes, signals an error or
+ * signals its first value (which is not not relayed though).
+ *
+ * @param <T> the value type
+ */
+
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ * @since 2.5
  */
 public final class StreamTake<T> extends StreamBarrier<T, T> {
 
-	private final long limit;
+	final long n;
 
-	public StreamTake(Publisher<T> source, long limit) {
+	public StreamTake(Publisher<? extends T> source, long n) {
 		super(source);
-		this.limit = limit;
+		if (n < 0) {
+			throw new IllegalArgumentException("n >= 0 required but it was " + n);
+		}
+		this.n = n;
+	}
+
+	public Publisher<? extends T> source() {
+		return source;
+	}
+
+	public long n() {
+		return n;
 	}
 
 	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new TakeAction<>(subscriber, limit);
+	public void subscribe(Subscriber<? super T> s) {
+		source.subscribe(new StreamTakeSubscriber<>(s, n));
 	}
 
-	static final class TakeAction<T> extends SubscriberWithDemand<T, T> {
+	static final class StreamTakeSubscriber<T>
+	  implements Subscriber<T>, Subscription, Upstream, ActiveUpstream,
+				 UpstreamDemand, Bounded, Downstream {
 
-		private final long limit;
+		final Subscriber<? super T> actual;
 
-		private long counted = 0L;
+		final long n;
 
-		public TakeAction(Subscriber<? super T> actual, long limit) {
-			super(actual);
-			this.limit = limit;
+		long remaining;
+
+		Subscription s;
+
+		boolean done;
+
+		volatile int wip;
+		@SuppressWarnings("rawtypes")
+		static final AtomicIntegerFieldUpdater<StreamTakeSubscriber> WIP =
+		  AtomicIntegerFieldUpdater.newUpdater(StreamTakeSubscriber.class, "wip");
+
+		public StreamTakeSubscriber(Subscriber<? super T> actual, long n) {
+			this.actual = actual;
+			this.n = n;
+			this.remaining = n;
 		}
 
 		@Override
-		protected void doRequest(long n) {
-			if (n >= limit) {
-				requestMore(limit);
-			}
-			else {
-				long r, toAdd;
-				do {
-					r = requestedFromDownstream();
-					if (r >= limit) {
-						return;
-					}
-					toAdd = r + n;
-				}
-				while (!REQUESTED.compareAndSet(this, r, toAdd));
-
-				if (toAdd >= limit) {
-					requestMore(limit - r);
-				}
-				else {
-					requestMore(n);
+		public void onSubscribe(Subscription s) {
+			if (BackpressureUtils.validate(this.s, s)) {
+				this.s = s;
+				actual.onSubscribe(this);
+				if (n == 0 && wip == 0) {
+					request(Long.MAX_VALUE);
 				}
 			}
 		}
 
 		@Override
-		protected void doNext(T ev) {
-			subscriber.onNext(ev);
-
-			if (++counted >= limit) {
-				cancel();
-				subscriber.onComplete();
+		public void onNext(T t) {
+			if (done) {
+				Exceptions.onNextDropped(t);
+				return;
 			}
+
+			long r = remaining;
+
+			if (r == 0) {
+				onComplete();
+				return;
+			}
+
+			remaining = --r;
+			boolean stop = r == 0L;
+
+			actual.onNext(t);
+
+			if (stop) {
+				s.cancel();
+
+				onComplete();
+			}
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			if (done) {
+				Exceptions.onErrorDropped(t);
+				return;
+			}
+			done = true;
+			actual.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			if (done) {
+				return;
+			}
+			done = true;
+			actual.onComplete();
+		}
+
+		@Override
+		public void request(long n) {
+			if (wip != 0) {
+				s.request(n);
+			} else if (WIP.compareAndSet(this, 0, 1)) {
+				if (n >= this.n) {
+					s.request(Long.MAX_VALUE);
+				} else {
+					s.request(n);
+				}
+			}
+		}
+
+		@Override
+		public void cancel() {
+			s.cancel();
+		}
+		@Override
+		public boolean isStarted() {
+			return s != null && !done;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return done;
 		}
 
 		@Override
 		public long getCapacity() {
-			return limit;
+			return n;
 		}
 
 		@Override
-		public String toString() {
-			return super.toString() + "{" +
-					"take=" + limit +
-					", counted=" + counted +
-					'}';
+		public Object upstream() {
+			return s;
+		}
+
+		@Override
+		public long expectedFromUpstream() {
+			return remaining;
+		}
+
+		@Override
+		public Object downstream() {
+			return actual;
 		}
 	}
 }

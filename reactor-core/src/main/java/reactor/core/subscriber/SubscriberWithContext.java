@@ -15,12 +15,12 @@
  */
 package reactor.core.subscriber;
 
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.support.ReactiveState;
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * A {@link Subscriber} with a typed stateful context. Some error isolation is also provided

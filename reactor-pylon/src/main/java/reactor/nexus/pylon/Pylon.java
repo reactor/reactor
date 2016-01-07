@@ -32,10 +32,10 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import org.reactivestreams.Publisher;
+import reactor.Mono;
 import reactor.core.support.Logger;
-import reactor.Publishers;
-import reactor.fn.Function;
 import reactor.core.timer.Timer;
+import reactor.fn.Function;
 import reactor.io.IO;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ReactiveChannel;
@@ -169,8 +169,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	 * @see this#start(ReactiveChannelHandler)
 	 */
 	public final void startAndAwait() throws InterruptedException {
-		Publishers.toReadQueue(start(null))
-		          .take();
+		start().get();
 		InetSocketAddress addr = server.getListenAddress();
 		log.info("Pylon Warped. Troops can receive signal under http://" + addr.getHostName() + ":" + addr.getPort() +
 				CONSOLE_URL);
@@ -179,17 +178,17 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 	/**
 	 * @see this#start(ReactiveChannelHandler)
 	 */
-	public final void start() throws InterruptedException {
-		start(null);
+	public final Mono<Void> start() throws InterruptedException {
+		return start(null);
 	}
 
 	@Override
-	protected Publisher<Void> doStart(ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler) {
+	protected Mono<Void> doStart(ReactiveChannelHandler<Buffer, Buffer, ReactiveChannel<Buffer, Buffer>> handler) {
 		return server.start();
 	}
 
 	@Override
-	protected Publisher<Void> doShutdown() {
+	protected Mono<Void> doShutdown() {
 		return server.shutdown();
 	}
 

@@ -21,9 +21,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.reactivestreams.Processor;
+import reactor.Flux;
 import reactor.Processors;
-import reactor.Publishers;
 import reactor.Subscribers;
+import reactor.core.publisher.FluxLift;
 import reactor.core.support.Assert;
 
 /**
@@ -35,7 +36,7 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 	@Override
 	public Processor<Long, Long> createProcessor(int bufferSize) {
 		System.out.println("new processor");
-		return Processors.log(Processors.<Long>queue("rb-work", bufferSize));
+		return Processors.blackbox(Processors.<Long>queue("rb-work", bufferSize), Flux::log);
 	}
 
 	@Override
@@ -46,8 +47,8 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 
 	@Override
 	public void simpleTest() throws Exception {
-		final Processor<Integer, Integer> sink = Processors.topic("topic");
-		final Processor<Integer, Integer> processor = Processors.queue("queue");
+		final FluxProcessor<Integer, Integer> sink = Processors.topic("topic");
+		final FluxProcessor<Integer, Integer> processor = Processors.queue("queue");
 
 		int elems = 1_000_000;
 		CountDownLatch latch = new CountDownLatch(elems);
@@ -61,16 +62,16 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 			sub.abort();
 		}));
 
-		Publishers.lift(processor, (d, sub) -> {
+		Flux.from(processor).lift(FluxLift.lifter((d, sub) -> {
 			count.incrementAndGet();
 			sub.onNext(d);
-		}).subscribe(Subscribers.unbounded((d, sub) -> {
+		})).subscribe(Subscribers.unbounded((d, sub) -> {
 			latch.countDown();
 			//list.add(d);
 		}));
 
 		sink.subscribe(processor);
-		Subscribers.start(sink);
+		sink.start();
 		for(int i = 0; i < elems; i++){
 
 			sink.onNext(i);
@@ -137,6 +138,6 @@ public class RingBufferWorkProcessorTests extends AbstractProcessorVerification 
 
 		processor
 		  .writeWith(pub)
-		  .subscribe(SubscriberFactory.unbounded());
+		  .subscribe(Subscribers.unbounded());
 	}*/
 }

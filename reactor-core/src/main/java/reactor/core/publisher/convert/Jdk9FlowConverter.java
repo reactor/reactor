@@ -21,6 +21,7 @@ import java.util.concurrent.Flow;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 
 /**
  * @author Stephane Maldini
@@ -30,32 +31,31 @@ public final class Jdk9FlowConverter extends PublisherConverter<Flow.Publisher> 
 	static final Jdk9FlowConverter INSTANCE = new Jdk9FlowConverter();
 
 	@SuppressWarnings("unchecked")
-	static public <T> Flow.Publisher<T> from(Publisher<T> o){
+	static public <T> Flow.Publisher<T> from(Publisher<T> o) {
 		return INSTANCE.fromPublisher(o);
 	}
 
 	@SuppressWarnings("unchecked")
-	static public <T> Publisher<T> from(Flow.Publisher<T> o){
+	static public <T> Publisher<T> from(Flow.Publisher<T> o) {
 		return INSTANCE.toPublisher(o);
 	}
 
-
 	@Override
 	public Flow.Publisher fromPublisher(final Publisher<?> pub) {
-			return new Flow.Publisher<Object>() {
-				@Override
-				public void subscribe(Flow.Subscriber<? super Object> subscriber) {
-					pub.subscribe(new FlowSubscriber(subscriber));
-				}
-			};
+		return new Flow.Publisher<Object>() {
+			@Override
+			public void subscribe(Flow.Subscriber<? super Object> subscriber) {
+				pub.subscribe(new FlowSubscriber(subscriber));
+			}
+		};
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Publisher toPublisher(Object o) {
+	public Flux toPublisher(Object o) {
 		final Flow.Publisher<?> pub = (Flow.Publisher<?>) o;
 		if (Flow.Publisher.class.isAssignableFrom(o.getClass())) {
-			return new Publisher<Object>() {
+			return new Flux<Object>() {
 				@Override
 				public void subscribe(final Subscriber<? super Object> s) {
 					pub.subscribe(new SubscriberToRS(s));

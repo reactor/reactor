@@ -31,6 +31,13 @@ import reactor.core.error.AlertException;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
+import reactor.core.publisher.FluxFactory;
+import reactor.core.subscription.EmptySubscription;
+import reactor.core.support.BackpressureUtils;
+import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.ReactiveState;
+import reactor.core.support.SignalType;
+import reactor.core.support.WaitStrategy;
 import reactor.core.support.rb.MutableSignal;
 import reactor.core.support.rb.RequestTask;
 import reactor.core.support.rb.RingBufferSequencer;
@@ -39,12 +46,6 @@ import reactor.core.support.rb.disruptor.RingBuffer;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.core.support.rb.disruptor.SequenceBarrier;
 import reactor.core.support.rb.disruptor.Sequencer;
-import reactor.core.publisher.PublisherFactory;
-import reactor.core.support.BackpressureUtils;
-import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.core.support.ReactiveState;
-import reactor.core.support.SignalType;
-import reactor.core.support.WaitStrategy;
 import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 import reactor.fn.Supplier;
@@ -76,7 +77,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		implements ReactiveState.Buffering, ReactiveState.LinkedDownstreams{
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and auto-cancel. <p> A new Cached ThreadExecutorPool will be
 	 * implicitely created.
 	 * @param <E> Type of processed signals
@@ -88,7 +89,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and the passed auto-cancel setting. <p> A new Cached
 	 * ThreadExecutorPool will be implicitely created.
 	 * @param autoCancel Should this propagate cancellation when unregistered by all
@@ -102,7 +103,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and auto-cancel. <p> The passed {@link
 	 * java.util.concurrent.ExecutorService} will execute as many event-loop consuming the
 	 * ringbuffer as subscribers.
@@ -115,7 +116,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and the passed auto-cancel setting. <p> The passed {@link
 	 * java.util.concurrent.ExecutorService} will execute as many event-loop consuming the
 	 * ringbuffer as subscribers.
@@ -131,7 +132,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and the passed auto-cancel setting. <p> A new Cached
 	 * ThreadExecutorPool will be implicitely created and will use the passed name to
 	 * qualify the created threads.
@@ -289,7 +290,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and auto-cancel. <p> A Shared Processor authorizes concurrent
 	 * onNext calls and is suited for multi-threaded publisher that will fan-in data. <p>
 	 * A new Cached ThreadExecutorPool will be implicitely created.
@@ -302,7 +303,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and the passed auto-cancel setting. <p> A Shared Processor
 	 * authorizes concurrent onNext calls and is suited for multi-threaded publisher that
 	 * will fan-in data. <p> A new Cached ThreadExecutorPool will be implicitely created.
@@ -317,7 +318,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and auto-cancel. <p> A Shared Processor authorizes concurrent
 	 * onNext calls and is suited for multi-threaded publisher that will fan-in data. <p>
 	 * The passed {@link java.util.concurrent.ExecutorService} will execute as many
@@ -331,7 +332,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and the passed auto-cancel setting. <p> A Shared Processor
 	 * authorizes concurrent onNext calls and is suited for multi-threaded publisher that
 	 * will fan-in data. <p> The passed {@link java.util.concurrent.ExecutorService} will
@@ -349,7 +350,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 	}
 
 	/**
-	 * Create a new RingBufferProcessor using {@link #SMALL_BUFFER_SIZE} backlog size,
+	 * Create a new RingBufferProcessor using {@link ReactiveState#SMALL_BUFFER_SIZE} backlog size,
 	 * blockingWait Strategy and the passed auto-cancel setting. <p> A Shared Processor
 	 * authorizes concurrent onNext calls and is suited for multi-threaded publisher that
 	 * will fan-in data. <p> A new Cached ThreadExecutorPool will be implicitely created
@@ -566,9 +567,9 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 			}
 		};
 
-		Consumer<Void> spinObserver = new Consumer<Void>() {
+		Runnable spinObserver = new Runnable() {
 			@Override
-			public void accept(Void aVoid) {
+			public void run() {
 				if (!alive() && SUBSCRIBER_COUNT.get(RingBufferProcessor.this) == 0) {
 					throw AlertException.INSTANCE;
 				}
@@ -597,7 +598,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 
 		if (!alive()) {
 			RingBufferSequencer<E> sequencer = coldSource();
-			PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
+			FluxFactory.create(sequencer, sequencer).subscribe(subscriber);
 			return;
 		}
 
@@ -634,10 +635,10 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 			decrementSubscribers();
 			if (!alive() && RejectedExecutionException.class.isAssignableFrom(t.getClass())){
 				RingBufferSequencer<E> sequencer = coldSource();
-				PublisherFactory.create(sequencer, sequencer).subscribe(subscriber);
+				FluxFactory.create(sequencer, sequencer).subscribe(subscriber);
 			}
 			else{
-				Exceptions.<E>publisher(t).subscribe(subscriber);
+				EmptySubscription.error(subscriber, t);
 			}
 		}
 	}
@@ -700,9 +701,9 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		minimum.set(ringBuffer.getCursor());
 		ringBuffer.addGatingSequence(minimum);
 		new NamedDaemonThreadFactory(name+"[request-task]", null, null, false)
-				.newThread(new RequestTask(s, new Consumer<Void>() {
+				.newThread(new RequestTask(s, new Runnable() {
 					@Override
-					public void accept(Void aVoid) {
+					public void run() {
 						if (!alive()) {
 							if(cancelled){
 								throw CancelException.INSTANCE;
@@ -828,9 +829,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 		public void run() {
 			try {
 				if (!running.compareAndSet(false, true)) {
-					Exceptions.<T>publisher(
-							new IllegalStateException("Thread is already running"))
-					          .subscribe(subscriber);
+					EmptySubscription.error(subscriber, new IllegalStateException("Thread is already running"));
 					return;
 				}
 
@@ -884,7 +883,7 @@ public final class RingBufferProcessor<E> extends ExecutorProcessor<E, E>
 							}
 						}
 						sequence.set(availableSequence);
-						if (SignalType.NOOP_SUBSCRIPTION !=
+						if (EmptySubscription.INSTANCE !=
 								processor.upstreamSubscription) {
 							processor.readWait.signalAllWhenBlocking();
 						}

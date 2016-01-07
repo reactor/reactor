@@ -15,14 +15,13 @@
  */
 package reactor.rx.stream;
 
+import java.io.Serializable;
+import java.util.Map;
 
 import reactor.fn.Function;
 import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.rx.Stream;
-
-import java.io.Serializable;
-import java.util.Map;
 
 /**
  * A SubscribableMap is an event-driven Map that signals logged operations to its subscribers. Useful for IO bound
@@ -33,7 +32,9 @@ import java.util.Map;
  *
  * @author Stephane Maldini
  */
-public abstract class StreamKv<K, V> extends Stream<StreamKv.Signal<K, V>> implements Map<K, V> {
+public abstract class StreamKv<K, V> extends Stream<StreamKv.Signal<K, V>> {
+
+	protected final Map<K, V> store;
 
 	public enum Operation {
 		put, putAll, remove, clear
@@ -99,26 +100,8 @@ public abstract class StreamKv<K, V> extends Stream<StreamKv.Signal<K, V>> imple
 		}
 	}
 
-	public static class MutableSignal<K, V> extends Signal<K, V> {
-		public MutableSignal() {
-			super(null, null, null, null);
-		}
-
-		public void op(Operation op) {
-			this.op = op;
-		}
-
-		public void key(K key) {
-			this.key = key;
-		}
-
-		public void previous(V previous) {
-			this.previous = previous;
-		}
-
-		public void value(V value) {
-			this.value = value;
-		}
+	public StreamKv(Map<K, V> store) {
+		this.store = store;
 	}
 
 	/**
@@ -137,6 +120,10 @@ public abstract class StreamKv<K, V> extends Stream<StreamKv.Signal<K, V>> imple
 				}
 			}
 		});
+	}
+
+	public Map<K, V> getStore() {
+		return store;
 	}
 
 	/**

@@ -18,8 +18,10 @@ package reactor.rx.subscriber;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.reactivestreams.Subscription;
-import reactor.core.error.CancelException;
+import reactor.core.error.Exceptions;
 import reactor.core.subscriber.ConsumerSubscriber;
+import reactor.core.subscription.CancelledSubscription;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.fn.Consumer;
@@ -36,47 +38,23 @@ public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements
 	final static AtomicReferenceFieldUpdater<InterruptableSubscriber, Subscription> SUBSCRIPTION =
 			PlatformDependent.newAtomicReferenceFieldUpdater(InterruptableSubscriber.class, "subscription");
 
-	static final Subscription CANCELLED = new Subscription() {
-		@Override
-		public void request(long n) {
-
-		}
-
-		@Override
-		public void cancel() {
-
-		}
-	};
-	static final Subscription UNSUBSCRIBED = new Subscription() {
-		@Override
-		public void request(long n) {
-
-		}
-
-		@Override
-		public void cancel() {
-
-		}
-	};
-
-
 	public InterruptableSubscriber(Consumer<? super T> consumer, Consumer<? super Throwable> errorConsumer,
-			Consumer<Void> completeConsumer) {
+			Runnable completeConsumer) {
 		super(consumer, errorConsumer, completeConsumer);
-		SUBSCRIPTION.lazySet(this, UNSUBSCRIBED);
+		SUBSCRIPTION.lazySet(this, EmptySubscription.INSTANCE);
 	}
 
 	@Override
 	public void cancel() {
-		if(SUBSCRIPTION.getAndSet(this, CANCELLED) != CANCELLED) {
+		if(SUBSCRIPTION.getAndSet(this, CancelledSubscription.INSTANCE) != CancelledSubscription.INSTANCE) {
 			super.cancel();
 		}
 	}
 
 	@Override
 	protected final void doNext(T x) {
-		if(subscription == CANCELLED){
-			throw CancelException.get();
+		if(subscription == CancelledSubscription.INSTANCE){
+			Exceptions.onNextDropped(x);
 		}
 		super.doNext(x);
 		doPostNext(x);
@@ -84,21 +62,21 @@ public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements
 
 	@Override
 	protected final void doSubscribe(Subscription s) {
-		if(SUBSCRIPTION.getAndSet(this, s) != CANCELLED) {
+		if(SUBSCRIPTION.getAndSet(this, s) != CancelledSubscription.INSTANCE) {
 			doSafeSubscribe(s);
 		}
 	}
 
 	@Override
 	protected final void doError(Throwable t) {
-		if(SUBSCRIPTION.getAndSet(this, CANCELLED) != CANCELLED) {
+		if(SUBSCRIPTION.getAndSet(this, CancelledSubscription.INSTANCE) != CancelledSubscription.INSTANCE) {
 			doSafeError(t);
 		}
 	}
 
 	@Override
 	protected final void doComplete() {
-		if(SUBSCRIPTION.getAndSet(this, CANCELLED) != CANCELLED) {
+		if(SUBSCRIPTION.getAndSet(this, CancelledSubscription.INSTANCE) != CancelledSubscription.INSTANCE) {
 			doSafeComplete();
 		}
 	}
@@ -106,7 +84,7 @@ public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements
 	@Override
 	protected void requestMore(long n) {
 		Subscription subscription = SUBSCRIPTION.get(this);
-		if(subscription != UNSUBSCRIBED){
+		if(subscription != EmptySubscription.INSTANCE){
 			subscription.request(n);
 		}
 	}
@@ -129,7 +107,7 @@ public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements
 
 	@Override
 	public boolean isTerminated() {
-		return SUBSCRIPTION.get(this) == CANCELLED ;
+		return SUBSCRIPTION.get(this) == CancelledSubscription.INSTANCE ;
 	}
 
 	@Override
@@ -139,6 +117,6 @@ public class InterruptableSubscriber<T> extends ConsumerSubscriber<T> implements
 
 	@Override
 	public boolean isStarted() {
-		return SUBSCRIPTION.get(this) != UNSUBSCRIBED ;
+		return SUBSCRIPTION.get(this) != EmptySubscription.INSTANCE ;
 	}
 }

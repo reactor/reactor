@@ -13,153 +13,210 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
 
-import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.Processors;
-import reactor.core.subscriber.SubscriberWithDemand;
-import reactor.core.support.BackpressureUtils;
-import reactor.core.support.ReactiveState;
-import reactor.core.timer.Timer;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import reactor.fn.Function;
-import reactor.rx.Stream;
-import reactor.rx.broadcast.Broadcaster;
+
+import org.reactivestreams.*;
+
+import reactor.core.processor.EmitterProcessor;
+import reactor.core.subscriber.*;
+import reactor.core.subscription.DeferredSubscription;
+import reactor.core.subscription.EmptySubscription;
 
 /**
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * retries a source when a companion sequence signals
+ * an item in response to the main's error signal
+ * <p>
+ * <p>If the companion sequence signals when the main source is active, the repeat
+ * attempt is suppressed and any terminal signal will terminate the main source with the same signal immediately.
+ *
+ * @param <T> the source value type
+ */
+
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ * @since 2.5
  */
 public final class StreamRetryWhen<T> extends StreamBarrier<T, T> {
 
-	private final Timer                                                                 timer;
-	private final Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate;
+	final Function<? super reactor.rx.Stream<Throwable>, ? extends Publisher<? extends Object>> whenSourceFactory;
 
-	public StreamRetryWhen(Publisher<T> source, Timer timer,
-			Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate) {
+	public StreamRetryWhen(Publisher<? extends T> source,
+							  Function<? super reactor.rx.Stream<Throwable>, ? extends Publisher<? extends Object>> whenSourceFactory) {
 		super(source);
-		this.predicate = predicate;
-		this.timer = timer;
+		this.whenSourceFactory = Objects.requireNonNull(whenSourceFactory, "whenSourceFactory");
 	}
 
 	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new RetryWhenAction<>(subscriber, timer, predicate, source);
+	public void subscribe(Subscriber<? super T> s) {
+
+		StreamRetryWhenOtherSubscriber other = new StreamRetryWhenOtherSubscriber();
+
+		reactor.rx.subscriber.SerializedSubscriber<T> serial = new reactor.rx.subscriber.SerializedSubscriber<>(s);
+
+		StreamRetryWhenMainSubscriber<T> main = new StreamRetryWhenMainSubscriber<>(serial, other
+		  .completionSignal, source);
+		other.main = main;
+
+		serial.onSubscribe(main);
+
+		Publisher<? extends Object> p;
+
+		try {
+			p = whenSourceFactory.apply(other);
+		} catch (Throwable e) {
+			s.onError(e);
+			return;
+		}
+
+		if (p == null) {
+			s.onError(new NullPointerException("The whenSourceFactory returned a null Publisher"));
+			return;
+		}
+
+		p.subscribe(other);
+
+		if (!main.cancelled) {
+			source.subscribe(main);
+		}
 	}
 
-	static final class RetryWhenAction<T> extends SubscriberWithDemand<T, T> implements ReactiveState.FeedbackLoop {
+	static final class StreamRetryWhenMainSubscriber<T> extends SubscriberMultiSubscription<T, T> {
 
-		private final Broadcaster<Throwable> retryStream;
-		private final Publisher<? extends T> rootPublisher;
+		final DeferredSubscription otherArbiter;
 
-		public RetryWhenAction(Subscriber<? super T> actual,
-				Timer timer,
-				Function<? super Stream<? extends Throwable>, ? extends Publisher<?>> predicate,
-				Publisher<? extends T> rootPublisher) {
+		final Subscriber<Throwable> signaller;
 
+		final Publisher<? extends T> source;
+
+		volatile int wip;
+		@SuppressWarnings("rawtypes")
+		static final AtomicIntegerFieldUpdater<StreamRetryWhenMainSubscriber> WIP =
+		  AtomicIntegerFieldUpdater.newUpdater(StreamRetryWhenMainSubscriber.class, "wip");
+
+		volatile boolean cancelled;
+
+		public StreamRetryWhenMainSubscriber(Subscriber<? super T> actual, Subscriber<Throwable> signaller,
+												Publisher<? extends T> source) {
 			super(actual);
-
-			this.retryStream = Broadcaster.create(timer);
-			this.rootPublisher = rootPublisher;
-			Publisher<?> afterRetryPublisher = predicate.apply(retryStream);
-			afterRetryPublisher.subscribe(new RestartSubscriber());
+			this.signaller = signaller;
+			this.source = source;
+			this.otherArbiter = new DeferredSubscription();
 		}
 
 		@Override
-		protected void checkedComplete() {
-			retryStream.onComplete();
+		public void cancel() {
+			if (cancelled) {
+				return;
+			}
+			cancelled = true;
+
+			cancelWhen();
+
+			super.cancel();
+		}
+
+		void cancelWhen() {
+			otherArbiter.cancel();
+		}
+
+		public void setWhen(Subscription w) {
+			otherArbiter.set(w);
+		}
+
+		@Override
+		public void onNext(T t) {
+			subscriber.onNext(t);
+
+			producedOne();
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			otherArbiter.request(1);
+
+			signaller.onNext(t);
+		}
+
+		@Override
+		public void onComplete() {
+			otherArbiter.cancel();
+
 			subscriber.onComplete();
 		}
 
-		protected void doRetry() {
-			subscription = null;
-			Processor<T, T> emitter = Processors.emitter();
-			emitter.subscribe(RetryWhenAction.this);
-			rootPublisher.subscribe(emitter);
-		}
+		void resubscribe() {
+			if (WIP.getAndIncrement(this) == 0) {
+				do {
+					if (cancelled) {
+						return;
+					}
 
-		@Override
-		protected void doNext(T t) {
-			BackpressureUtils.getAndSub(REQUESTED, this, 1L);
-			subscriber.onNext(t);
-		}
+					source.subscribe(this);
 
-		@Override
-		protected void doOnSubscribe(Subscription subscription) {
-			if(TERMINATED.compareAndSet(this, TERMINATED_WITH_ERROR, NOT_TERMINATED)) {
-				requestMore(BackpressureUtils.addCap(requestedFromDownstream(), 1L));
-			}
-			else {
-				subscriber.onSubscribe(this);
+				} while (WIP.decrementAndGet(this) != 0);
 			}
 		}
 
+		void whenError(Throwable e) {
+			cancelled = true;
+			super.cancel();
+
+			subscriber.onError(e);
+		}
+
+		void whenComplete() {
+			cancelled = true;
+			super.cancel();
+
+			subscriber.onComplete();
+		}
+	}
+
+	static final class StreamRetryWhenOtherSubscriber
+	extends reactor.rx.Stream<Throwable>
+	implements Subscriber<Object>, FeedbackLoop, Trace, Inner {
+		StreamRetryWhenMainSubscriber<?> main;
+
+		final EmitterProcessor<Throwable> completionSignal = new EmitterProcessor<>();
+
 		@Override
-		@SuppressWarnings("unchecked")
-		protected void checkedError(Throwable cause) {
-			retryStream.onNext(cause);
+		public void onSubscribe(Subscription s) {
+			main.setWhen(s);
+			completionSignal.onSubscribe(EmptySubscription.INSTANCE);
+		}
+
+		@Override
+		public void onNext(Object t) {
+			main.resubscribe();
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			main.whenError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			main.whenComplete();
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super Throwable> s) {
+			completionSignal.subscribe(s);
 		}
 
 		@Override
 		public Object delegateInput() {
-			return retryStream;
+			return main;
 		}
 
 		@Override
 		public Object delegateOutput() {
-			return null;
-		}
-
-		private class RestartSubscriber implements Subscriber<Object>, Bounded,  Inner, FeedbackLoop{
-
-			Subscription s;
-
-			@Override
-			public long getCapacity() {
-				return RetryWhenAction.this.getCapacity();
-			}
-
-			@Override
-			public void onSubscribe(Subscription s) {
-				this.s = s;
-				s.request(1L);
-			}
-
-			@Override
-			public void onNext(Object o) {
-				//s.cancel();
-				//publisher.subscribe(this);
-				doRetry();
-				if (s != null) {
-					s.request(1L);
-				}
-			}
-
-			@Override
-			public void onError(Throwable t) {
-				cancel();
-				subscriber.onError(t);
-			}
-
-			@Override
-			public void onComplete() {
-				cancel();
-				subscriber.onComplete();
-			}
-
-			@Override
-			public Object delegateInput() {
-				return RetryWhenAction.this;
-			}
-
-			@Override
-			public Object delegateOutput() {
-				return null;
-			}
+			return completionSignal;
 		}
 	}
-
 }

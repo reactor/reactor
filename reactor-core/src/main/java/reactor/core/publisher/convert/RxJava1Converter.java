@@ -21,9 +21,10 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
 import reactor.core.error.Exceptions;
-import reactor.core.error.SpecificationExceptions;
-import reactor.core.publisher.PublisherJust;
+import reactor.core.publisher.FluxJust;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import rx.Observable;
 import rx.Producer;
@@ -37,12 +38,12 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 	static final RxJava1Converter INSTANCE = new RxJava1Converter();
 
 	@SuppressWarnings("unchecked")
-	static public <T> Observable<T> from(Publisher<T> o){
+	static public <T> Observable<T> from(Publisher<T> o) {
 		return INSTANCE.fromPublisher(o);
 	}
 
 	@SuppressWarnings("unchecked")
-	static public <T> Publisher<T> from(Observable<T> o){
+	static public <T> Flux<T> from(Observable<T> o) {
 		return INSTANCE.toPublisher(o);
 	}
 
@@ -64,20 +65,19 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Publisher toPublisher(Object o) {
+	public Flux toPublisher(Object o) {
 		final Observable<Object> obs = (Observable<Object>) o;
 		if (ScalarSynchronousObservable.class.isAssignableFrom(obs.getClass())) {
-			return new PublisherJust<>(((ScalarSynchronousObservable) obs).get());
+			return new FluxJust<>(((ScalarSynchronousObservable) obs).get());
 		}
-		return new Publisher<Object>() {
+		return new Flux<Object>() {
 			@Override
 			public void subscribe(final Subscriber<? super Object> s) {
 				try {
-					obs.unsafeSubscribe(new RxSubscriberToRS(s));
+					obs.subscribe(new RxSubscriberToRS(s));
 				}
 				catch (Throwable t) {
-					Exceptions.publisher(t)
-					          .subscribe(s);
+					EmptySubscription.error(s, t);
 				}
 			}
 		};
@@ -88,8 +88,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 		return Observable.class;
 	}
 
-	private static class SubscriberToRx
-			implements Subscriber<Object>, Producer, Subscription, rx.Subscription {
+	private static class SubscriberToRx implements Subscriber<Object>, Producer, Subscription, rx.Subscription {
 
 		private final    rx.Subscriber<? super Object> subscriber;
 		private volatile int                           terminated;
@@ -111,7 +110,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 			try {
 				BackpressureUtils.checkRequest(n);
 			}
-			catch (SpecificationExceptions.Spec309_NullOrNegativeRequest c) {
+			catch (Exceptions.Spec309_NullOrNegativeRequest c) {
 				subscriber.onError(c);
 			}
 
@@ -144,7 +143,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 
 		@Override
 		public void onSubscribe(final Subscription s) {
-			if (BackpressureUtils.checkSubscription(subscription, s)) {
+			if (BackpressureUtils.validate(subscription, s)) {
 				this.subscription = s;
 				subscriber.add(this);
 				subscriber.onStart();
@@ -212,7 +211,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 		@Override
 		public void onError(Throwable e) {
 			if (e == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			s.onError(e);
 		}
@@ -220,7 +219,7 @@ public class RxJava1Converter extends PublisherConverter<Observable> {
 		@Override
 		public void onNext(Object o) {
 			if (o == null) {
-				throw SpecificationExceptions.spec_2_13_exception();
+				throw Exceptions.spec_2_13_exception();
 			}
 			s.onNext(o);
 		}

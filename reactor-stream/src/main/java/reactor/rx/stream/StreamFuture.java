@@ -18,7 +18,7 @@ package reactor.rx.stream;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import reactor.core.publisher.PublisherFactory;
+import reactor.Flux;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
@@ -86,7 +86,7 @@ public final class StreamFuture<T> {
 			return Streams.empty();
 		}
 
-		return Streams.wrap(PublisherFactory.create(new Consumer<SubscriberWithContext<T, Void>>() {
+		return Streams.from(Flux.create(new Consumer<SubscriberWithContext<T, Void>>() {
 			@Override
 			public void accept(SubscriberWithContext<T, Void> s) {
 				try {

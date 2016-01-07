@@ -13,74 +13,227 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
 
-import java.util.concurrent.TimeUnit;
+import java.util.Objects;
+import java.util.concurrent.atomic.*;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import reactor.core.timer.Timer;
+import org.reactivestreams.*;
+
+import reactor.rx.subscriber.SerializedSubscriber;
+import reactor.core.subscription.CancelledSubscription;
+import reactor.core.support.*;
 
 /**
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * Samples the main source and emits its latest value whenever the other Publisher
+ * signals a value.
+ * <p>
+ * <p>
+ * Termination of either Publishers will result in termination for the Subscriber
+ * as well.
+ * <p>
+ * <p>
+ * Both Publishers will run in unbounded mode because the backpressure
+ * would interfere with the sampling precision.
+ * 
+ * @param <T> the input and output value type
+ * @param <U> the value type of the sampler (irrelevant)
  */
-public final class StreamSample<T> extends StreamBatch<T, T> {
 
-	public StreamSample(Publisher<T> source, int maxSize) {
-		this(source, maxSize, false);
-	}
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ * @since 2.5
+ */
+public final class StreamSample<T, U> extends StreamBarrier<T, T> {
 
-	public StreamSample(Publisher<T> source, int maxSize, boolean first) {
-		super(source, maxSize, !first, first, true);
-	}
+	final Publisher<U> other;
 
-	public StreamSample(Publisher<T> source, boolean first, int maxSize, long timespan, TimeUnit unit, Timer timer) {
-		super(source, maxSize, !first, first, true, timespan, unit, timer);
+	public StreamSample(Publisher<? extends T> source, Publisher<U> other) {
+		super(source);
+		this.other = Objects.requireNonNull(other, "other");
 	}
 
 	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new SampleAction<T>(prepareSub(subscriber), first, batchSize, timespan, unit, timer);
+	public void subscribe(Subscriber<? super T> s) {
+
+		Subscriber<T> serial = new SerializedSubscriber<>(s);
+
+		StreamSampleMainSubscriber<T> main = new StreamSampleMainSubscriber<>(serial);
+
+		s.onSubscribe(main);
+
+		other.subscribe(new StreamSampleOtherSubscriber<>(main));
+
+		source.subscribe(main);
 	}
 
-	final static class SampleAction<T> extends StreamBatch.BatchAction<T, T> {
+	static final class StreamSampleMainSubscriber<T>
+	  implements Subscriber<T>, Subscription {
 
-		private T sample;
+		final Subscriber<? super T> actual;
 
-		public SampleAction(Subscriber<? super T> actual,
-				boolean first,
-				int maxSize,
-				long timespan,
-				TimeUnit unit,
-				Timer timer) {
+		volatile T value;
+		@SuppressWarnings("rawtypes")
+		static final AtomicReferenceFieldUpdater<StreamSampleMainSubscriber, Object> VALUE =
+		  AtomicReferenceFieldUpdater.newUpdater(StreamSampleMainSubscriber.class, Object.class, "value");
 
-			super(actual, maxSize, !first, first, true, timespan, unit, timer);
+		volatile Subscription main;
+		@SuppressWarnings("rawtypes")
+		static final AtomicReferenceFieldUpdater<StreamSampleMainSubscriber, Subscription> MAIN =
+		  AtomicReferenceFieldUpdater.newUpdater(StreamSampleMainSubscriber.class, Subscription.class, "main");
+
+
+		volatile Subscription other;
+		@SuppressWarnings("rawtypes")
+		static final AtomicReferenceFieldUpdater<StreamSampleMainSubscriber, Subscription> OTHER =
+		  AtomicReferenceFieldUpdater.newUpdater(StreamSampleMainSubscriber.class, Subscription.class, "other");
+
+		volatile long requested;
+		@SuppressWarnings("rawtypes")
+		static final AtomicLongFieldUpdater<StreamSampleMainSubscriber> REQUESTED =
+		  AtomicLongFieldUpdater.newUpdater(StreamSampleMainSubscriber.class, "requested");
+
+		public StreamSampleMainSubscriber(Subscriber<? super T> actual) {
+			this.actual = actual;
 		}
 
 		@Override
-		protected void firstCallback(T event) {
-			sample = event;
+		public void onSubscribe(Subscription s) {
+			if (!MAIN.compareAndSet(this, null, s)) {
+				s.cancel();
+				if (main != CancelledSubscription.INSTANCE) {
+					BackpressureUtils.reportSubscriptionSet();
+				}
+				return;
+			}
+			s.request(Long.MAX_VALUE);
+		}
+
+		void cancelMain() {
+			Subscription s = main;
+			if (s != CancelledSubscription.INSTANCE) {
+				s = MAIN.getAndSet(this, CancelledSubscription.INSTANCE);
+				if (s != null && s != CancelledSubscription.INSTANCE) {
+					s.cancel();
+				}
+			}
+		}
+
+		void cancelOther() {
+			Subscription s = other;
+			if (s != CancelledSubscription.INSTANCE) {
+				s = OTHER.getAndSet(this, CancelledSubscription.INSTANCE);
+				if (s != null && s != CancelledSubscription.INSTANCE) {
+					s.cancel();
+				}
+			}
+		}
+
+		void setOther(Subscription s) {
+			if (!OTHER.compareAndSet(this, null, s)) {
+				s.cancel();
+				if (other != CancelledSubscription.INSTANCE) {
+					BackpressureUtils.reportSubscriptionSet();
+				}
+				return;
+			}
+			s.request(Long.MAX_VALUE);
 		}
 
 		@Override
-		protected void nextCallback(T event) {
-			sample = event;
-		}
-
-		@Override
-		protected void flushCallback(T event) {
-			if (sample != null) {
-				T _last = sample;
-				sample = null;
-				subscriber.onNext(_last);
+		public void request(long n) {
+			if (BackpressureUtils.validate(n)) {
+				BackpressureUtils.addAndGet(REQUESTED, this, n);
 			}
 		}
 
 		@Override
-		public String toString() {
-			return super.toString() + " sample=" + sample;
+		public void cancel() {
+			cancelMain();
+			cancelOther();
 		}
+
+		@Override
+		public void onNext(T t) {
+			value = t;
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			cancelOther();
+
+			actual.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			cancelOther();
+
+			actual.onComplete();
+		}
+
+		@SuppressWarnings("unchecked")
+		T getAndNullValue() {
+			return (T) VALUE.getAndSet(this, null);
+		}
+
+		void decrement() {
+			REQUESTED.decrementAndGet(this);
+		}
+	}
+
+	static final class StreamSampleOtherSubscriber<T, U> implements Subscriber<U> {
+		final StreamSampleMainSubscriber<T> main;
+
+		public StreamSampleOtherSubscriber(StreamSampleMainSubscriber<T> main) {
+			this.main = main;
+		}
+
+		@Override
+		public void onSubscribe(Subscription s) {
+			main.setOther(s);
+		}
+
+		@Override
+		public void onNext(U t) {
+			StreamSampleMainSubscriber<T> m = main;
+
+			T v = m.getAndNullValue();
+
+			if (v != null) {
+				if (m.requested != 0L) {
+					m.actual.onNext(v);
+
+					if (m.requested != Long.MAX_VALUE) {
+						m.decrement();
+					}
+					return;
+				}
+
+				m.cancel();
+
+				m.actual.onError(new IllegalStateException("Can't signal value due to lack of requests"));
+			}
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			StreamSampleMainSubscriber<T> m = main;
+
+			m.cancelMain();
+
+			m.actual.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			StreamSampleMainSubscriber<T> m = main;
+
+			m.cancelMain();
+
+			m.actual.onComplete();
+		}
+
+
 	}
 }

@@ -15,58 +15,143 @@
  */
 package reactor.rx.stream;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SubscriberBarrier;
+import java.util.Objects;
 import reactor.fn.Function;
 
+import org.reactivestreams.*;
+
+import reactor.core.error.Exceptions;
+import reactor.core.support.BackpressureUtils;
+
 /**
- * @author Stephane Maldini
- * @since 2.0, 2.5
+ * Filters out subsequent and repeated elements.
+ *
+ * @param <T> the value type
+ * @param <K> the key type used for comparing subsequent elements
  */
 
-public class StreamDistinctUntilChanged<T, V> extends StreamBarrier<T, T> {
+/**
+ * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ * @since 2.5
+ */
+public final class StreamDistinctUntilChanged<T, K> extends StreamBarrier<T, T> {
 
-	private final Function<? super T, ? extends V> keySelector;
+	final Function<? super T, K> keyExtractor;
 
-	public StreamDistinctUntilChanged(Publisher<T> source, Function<? super T, ? extends V> keySelector) {
+	public StreamDistinctUntilChanged(Publisher<? extends T> source, Function<? super T, K> keyExtractor) {
 		super(source);
-		this.keySelector = keySelector;
+		this.keyExtractor = Objects.requireNonNull(keyExtractor, "keyExtractor");
 	}
 
 	@Override
-	public Subscriber<? super T> apply(Subscriber<? super T> subscriber) {
-		return new DistinctUntilChangedAction<>(subscriber, keySelector);
+	public void subscribe(Subscriber<? super T> s) {
+		source.subscribe(new StreamDistinctUntilChangedSubscriber<>(s, keyExtractor));
 	}
 
-	static final class DistinctUntilChangedAction<T, V> extends SubscriberBarrier<T, T> {
+	static final class StreamDistinctUntilChangedSubscriber<T, K>
+			implements Subscriber<T>, Downstream, FeedbackLoop, Upstream, ActiveUpstream {
+		final Subscriber<? super T> actual;
 
-		private V lastKey;
+		final Function<? super T, K> keyExtractor;
 
-		private final Function<? super T, ? extends V> keySelector;
+		Subscription s;
 
-		public DistinctUntilChangedAction(
-				Subscriber<? super T> subscriber,
-				Function<? super T, ? extends V> keySelector) {
-			super(subscriber);
-			this.keySelector = keySelector;
+		boolean done;
+
+		K lastKey;
+
+		public StreamDistinctUntilChangedSubscriber(Subscriber<? super T> actual,
+													   Function<? super T, K> keyExtractor) {
+			this.actual = actual;
+			this.keyExtractor = keyExtractor;
 		}
 
 		@Override
-		@SuppressWarnings("unchecked")
-		protected void doNext(T currentData) {
-			V currentKey;
-			if (keySelector != null) {
-				currentKey = keySelector.apply(currentData);
-			} else {
-				currentKey = (V) currentData;
-			}
+		public void onSubscribe(Subscription s) {
+			if (BackpressureUtils.validate(this.s, s)) {
+				this.s = s;
 
-			if(currentKey == null || !currentKey.equals(lastKey)) {
-				lastKey = currentKey;
-				subscriber.onNext(currentData);
+				actual.onSubscribe(s);
 			}
 		}
-	}
 
+		@Override
+		public void onNext(T t) {
+			if (done) {
+				Exceptions.onNextDropped(t);
+				return;
+			}
+
+			K k;
+
+			try {
+				k = keyExtractor.apply(t);
+			} catch (Throwable e) {
+				s.cancel();
+
+				onError(e);
+				return;
+			}
+
+
+			if (Objects.equals(lastKey, k)) {
+				lastKey = k;
+				s.request(1);
+			} else {
+				lastKey = k;
+				actual.onNext(t);
+			}
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			if (done) {
+				Exceptions.onErrorDropped(t);
+				return;
+			}
+			done = true;
+
+			actual.onError(t);
+		}
+
+		@Override
+		public void onComplete() {
+			if (done) {
+				return;
+			}
+			done = true;
+
+			actual.onComplete();
+		}
+
+		@Override
+		public boolean isStarted() {
+			return s != null && !done;
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return done;
+		}
+
+		@Override
+		public Object downstream() {
+			return actual;
+		}
+
+		@Override
+		public Object delegateInput() {
+			return keyExtractor;
+		}
+
+		@Override
+		public Object delegateOutput() {
+			return lastKey;
+		}
+
+		@Override
+		public Object upstream() {
+			return null;
+		}
+	}
 }

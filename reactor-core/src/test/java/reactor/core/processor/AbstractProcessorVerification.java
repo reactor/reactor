@@ -15,19 +15,19 @@
  */
 package reactor.core.processor;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import org.junit.Test;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.tck.TestEnvironment;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
-import reactor.Publishers;
+import reactor.Flux;
 import reactor.Timers;
-
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /**
  * @author Stephane Maldini
@@ -109,6 +109,6 @@ public abstract class AbstractProcessorVerification extends org.reactivestreams.
 
 	@Override
 	public Publisher<Long> createFailedPublisher() {
-		return Publishers.error(new Exception("test"));
+		return Flux.error(new Exception("test"));
 	}
 }

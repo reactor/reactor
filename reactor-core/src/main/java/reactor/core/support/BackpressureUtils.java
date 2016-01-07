@@ -16,14 +16,20 @@
 
 package reactor.core.support;
 
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.error.SpecificationExceptions;
-import reactor.core.support.rb.disruptor.Sequence;
-
+import java.util.Objects;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.error.Exceptions;
+import reactor.core.error.InsufficientCapacityException;
+import reactor.core.subscription.CancelledSubscription;
+import reactor.core.support.rb.disruptor.Sequence;
+import reactor.fn.BooleanSupplier;
 
 /**
  * A generic utility to check subscription, request size and to cap concurrent additive operations to Long
@@ -33,9 +39,11 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
  * Combine utils available to operator implementations, @see http://github.com/reactor/reactive-streams-commons
  *
  * @author Stephane Maldini
+ *
  * @since 2.5
  */
-public abstract class BackpressureUtils {
+public enum BackpressureUtils {
+	;
 
 
 	static final long COMPLETED_MASK = 0x8000_0000_0000_0000L;
@@ -45,18 +53,18 @@ public abstract class BackpressureUtils {
 	 * Check Subscription current state and cancel new Subscription if different null, returning true if
 	 * ready to subscribe.
 	 *
-	 * @param oldSub current Subscription, expected to be null
-	 * @param newSub new Subscription
+	 * @param current current Subscription, expected to be null
+	 * @param next new Subscription
 	 * @return true if Subscription can be used
 	 */
-	public static boolean checkSubscription(Subscription oldSub, Subscription newSub) {
-		if (newSub == null) {
-			throw SpecificationExceptions.spec_2_13_exception();
-		}
-		if (oldSub != null) {
-			newSub.cancel();
+	public static boolean validate(Subscription current, Subscription next) {
+		Objects.requireNonNull(next, "Subscription cannot be null");
+		if (current != null) {
+			next.cancel();
+			//reportSubscriptionSet();
 			return false;
 		}
+
 		return true;
 	}
 
@@ -68,7 +76,7 @@ public abstract class BackpressureUtils {
 	 */
 	public static void checkRequest(long n) throws IllegalArgumentException {
 		if (n <= 0L) {
-			throw SpecificationExceptions.spec_3_09_exception(n);
+			throw Exceptions.spec_3_09_exception(n);
 		}
 	}
 
@@ -86,9 +94,9 @@ public abstract class BackpressureUtils {
 	public static boolean checkRequest(long n, Subscriber<?> subscriber) {
 		if (n <= 0L) {
 			if (null != subscriber) {
-				subscriber.onError(SpecificationExceptions.spec_3_09_exception(n));
+				subscriber.onError(Exceptions.spec_3_09_exception(n));
 			} else {
-				throw SpecificationExceptions.spec_3_09_exception(n);
+				throw Exceptions.spec_3_09_exception(n);
 			}
 			return false;
 		}
@@ -326,5 +334,240 @@ public abstract class BackpressureUtils {
 		} while (!sequence.compareAndSet(r, u));
 
 		return r;
+	}
+
+	public static <F> boolean terminate(AtomicReferenceFieldUpdater<F, Subscription> field, F instance) {
+		Subscription a = field.get(instance);
+		if (a != CancelledSubscription.INSTANCE) {
+			a = field.getAndSet(instance, CancelledSubscription.INSTANCE);
+			if (a != null && a != CancelledSubscription.INSTANCE) {
+				a.cancel();
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static <F> boolean setOnce(AtomicReferenceFieldUpdater<F, Subscription> field, F instance, Subscription s) {
+		Subscription a = field.get(instance);
+		if (a == CancelledSubscription.INSTANCE) {
+			return false;
+		}
+		if (a != null) {
+			reportSubscriptionSet();
+			return false;
+		}
+
+		if (field.compareAndSet(instance, null, s)) {
+			return true;
+		}
+
+		a = field.get(instance);
+
+		if (a == CancelledSubscription.INSTANCE) {
+			return false;
+		}
+
+		reportSubscriptionSet();
+		return false;
+	}
+
+	/**
+	 *
+	 */
+	public static void reportSubscriptionSet() {
+		throw Exceptions.spec_2_13_exception();
+	}
+
+	/**
+	 *
+	 * @param n
+	 */
+	public static void reportBadRequest(long n) {
+		throw Exceptions.spec_3_09_exception(n);
+	}
+
+	/**
+	 *
+	 */
+	public static void reportMoreProduced() {
+		throw InsufficientCapacityException.get();
+	}
+
+	/**
+	 *
+	 * @param n
+	 * @return
+	 */
+	public static boolean validate(long n) {
+		if (n < 0) {
+			reportBadRequest(n);
+			return false;
+		}
+		return true;
+	}/**
+	 * Perform a potential post-completion request accounting.
+	 *
+	 * @param n
+	 * @param actual
+	 * @param queue
+	 * @param field
+	 * @param isCancelled
+	 * @return true if the state indicates a completion state.
+	 */
+	public static <T, F> boolean postCompleteRequest(long n,
+			Subscriber<? super T> actual,
+			Queue<T> queue,
+			AtomicLongFieldUpdater<F> field,
+			F instance,
+			BooleanSupplier isCancelled) {
+
+		for (; ; ) {
+			long r = field.get(instance);
+
+			// extract the current request amount
+			long r0 = r & REQUESTED_MASK;
+
+			// preserve COMPLETED_MASK and calculate new requested amount
+			long u = (r & COMPLETED_MASK) | addCap(r0, n);
+
+			if (field.compareAndSet(instance, r, u)) {
+				// (complete, 0) -> (complete, n) transition then replay
+				if (r == COMPLETED_MASK) {
+
+					postCompleteDrain(n | COMPLETED_MASK, actual, queue, field, instance, isCancelled);
+
+					return true;
+				}
+				// (active, r) -> (active, r + n) transition then continue with requesting from upstream
+				return false;
+			}
+		}
+
+	}
+
+	/**
+	 * Drains the queue either in a pre- or post-complete state.
+	 *
+	 * @param n
+	 * @param actual
+	 * @param queue
+	 * @param field
+	 * @param isCancelled
+	 * @return true if the queue was completely drained or the drain process was cancelled
+	 */
+	static <T, F> boolean postCompleteDrain(long n,
+			Subscriber<? super T> actual,
+			Queue<T> queue,
+			AtomicLongFieldUpdater<F> field,
+			F instance,
+			BooleanSupplier isCancelled) {
+
+// TODO enable fast-path
+//        if (n == -1 || n == Long.MAX_VALUE) {
+//            for (;;) {
+//                if (isCancelled.getAsBoolean()) {
+//                    break;
+//                }
+//
+//                T v = queue.poll();
+//
+//                if (v == null) {
+//                    actual.onComplete();
+//                    break;
+//                }
+//
+//                actual.onNext(v);
+//            }
+//
+//            return true;
+//        }
+
+		long e = n & COMPLETED_MASK;
+
+		for (; ; ) {
+
+			while (e != n) {
+				if (isCancelled.getAsBoolean()) {
+					return true;
+				}
+
+				T t = queue.poll();
+
+				if (t == null) {
+					actual.onComplete();
+					return true;
+				}
+
+				actual.onNext(t);
+				e++;
+			}
+
+			if (isCancelled.getAsBoolean()) {
+				return true;
+			}
+
+			if (queue.isEmpty()) {
+				actual.onComplete();
+				return true;
+			}
+
+			n = field.get(instance);
+
+			if (n == e) {
+
+				n = field.addAndGet(instance, -(e & REQUESTED_MASK));
+
+				if ((n & REQUESTED_MASK) == 0L) {
+					return false;
+				}
+
+				e = n & COMPLETED_MASK;
+			}
+		}
+
+	}
+
+	/**
+	 * Tries draining the queue if the source just completed.
+	 *
+	 * @param actual
+	 * @param queue
+	 * @param field
+	 * @param isCancelled
+	 */
+	public static <T, F> void postComplete(Subscriber<? super T> actual,
+			Queue<T> queue,
+			AtomicLongFieldUpdater<F> field,
+			F instance,
+			BooleanSupplier isCancelled) {
+
+		if (queue.isEmpty()) {
+			actual.onComplete();
+			return;
+		}
+
+		if (postCompleteDrain(field.get(instance), actual, queue, field, instance, isCancelled)) {
+			return;
+		}
+
+		for (; ; ) {
+			long r = field.get(instance);
+
+			if ((r & COMPLETED_MASK) != 0L) {
+				return;
+			}
+
+			long u = r | COMPLETED_MASK;
+			// (active, r) -> (complete, r) transition
+			if (field.compareAndSet(instance, r, u)) {
+				// if the requested amount was non-zero, drain the queue
+				if (r != 0L) {
+					postCompleteDrain(u, actual, queue, field, instance, isCancelled);
+				}
+
+				return;
+			}
+		}
 	}
 }

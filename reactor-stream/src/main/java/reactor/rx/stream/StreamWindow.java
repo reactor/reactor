@@ -22,7 +22,8 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Processors;
-import reactor.core.processor.BaseProcessor;
+import reactor.core.processor.FluxProcessor;
+import reactor.core.support.ReactiveState;
 import reactor.core.timer.Timer;
 import reactor.rx.Stream;
 
@@ -53,13 +54,13 @@ public class StreamWindow<T> extends StreamBatch<T, Stream<T>> {
 
 	final static class Window<T> extends Stream<T> implements Subscriber<T>, Subscription{
 
-		final protected BaseProcessor<T, T> processor;
-		final protected Timer timer;
+		final protected FluxProcessor<T, T> processor;
+		final protected Timer               timer;
 
 		protected int count = 0;
 
 		public Window(Timer timer) {
-			this(timer, BaseProcessor.SMALL_BUFFER_SIZE);
+			this(timer, ReactiveState.SMALL_BUFFER_SIZE);
 		}
 
 		public Window(Timer timer, int size) {

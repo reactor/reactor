@@ -25,11 +25,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.Flux;
+import reactor.Mono;
 import reactor.core.error.CancelException;
 import reactor.core.error.Exceptions;
-import reactor.core.publisher.PublisherFactory;
-import reactor.core.publisher.PublisherJust;
+import reactor.core.publisher.MonoJust;
 import reactor.core.subscriber.SubscriberWithContext;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -38,8 +40,7 @@ import reactor.fn.Consumer;
  * @author Sebastien Deleuze
  * @author Stephane Maldini
  */
-public final class CompletableFutureConverter
-		extends PublisherConverter<CompletableFuture> {
+public final class CompletableFutureConverter extends PublisherConverter<CompletableFuture> {
 
 	static final CompletableFutureConverter INSTANCE = new CompletableFutureConverter();
 
@@ -68,7 +69,7 @@ public final class CompletableFutureConverter
 
 			@Override
 			public void onSubscribe(Subscription s) {
-				if (BackpressureUtils.checkSubscription(ref.getAndSet(s), s)) {
+				if (BackpressureUtils.validate(ref.getAndSet(s), s)) {
 					s.request(Long.MAX_VALUE);
 				}
 				else {
@@ -102,8 +103,7 @@ public final class CompletableFutureConverter
 		return future;
 	}
 
-	private <T> CompletableFuture<T> completableFuture(
-			final AtomicReference<Subscription> ref){
+	private <T> CompletableFuture<T> completableFuture(final AtomicReference<Subscription> ref) {
 		return new CompletableFuture<T>() {
 			@Override
 			public boolean cancel(boolean mayInterruptIfRunning) {
@@ -126,7 +126,7 @@ public final class CompletableFutureConverter
 		pub.subscribe(new Subscriber<Object>() {
 			@Override
 			public void onSubscribe(Subscription s) {
-				if (BackpressureUtils.checkSubscription(ref.getAndSet(s), s)) {
+				if (BackpressureUtils.validate(ref.getAndSet(s), s)) {
 					s.request(Long.MAX_VALUE);
 				}
 				else {
@@ -137,11 +137,12 @@ public final class CompletableFutureConverter
 			@Override
 			public void onNext(Object t) {
 				Subscription s = ref.getAndSet(null);
-				if( s != null ){
+				if (s != null) {
 					future.complete(t);
 					s.cancel();
-				} else {
-					throw CancelException.get();
+				}
+				else {
+					Exceptions.onNextDropped(t);
 				}
 			}
 
@@ -165,8 +166,8 @@ public final class CompletableFutureConverter
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Publisher toPublisher(Object future) {
-		return new PublisherCompletableFuture<>((CompletableFuture<?>) future);
+	public Mono toPublisher(Object future) {
+		return new MonoCompletableFuture<>((CompletableFuture<?>) future);
 	}
 
 	@Override
@@ -174,22 +175,20 @@ public final class CompletableFutureConverter
 		return CompletableFuture.class;
 	}
 
-	private static class PublisherCompletableFuture<T>
-			implements Publisher<T>, Consumer<Void>,
-			           BiConsumer<Long, SubscriberWithContext<T, Void>> {
+	private static class MonoCompletableFuture<T> extends Mono<T>
+			implements Consumer<Void>, BiConsumer<Long, SubscriberWithContext<T, Void>> {
 
 		private final CompletableFuture<? extends T> future;
 		private final Publisher<? extends T>         futurePublisher;
 
 		@SuppressWarnings("unused")
 		private volatile long requested;
-		private static final AtomicLongFieldUpdater<PublisherCompletableFuture>
-				REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(PublisherCompletableFuture.class, "requested");
+		private static final AtomicLongFieldUpdater<MonoCompletableFuture> REQUESTED =
+				AtomicLongFieldUpdater.newUpdater(MonoCompletableFuture.class, "requested");
 
-		public PublisherCompletableFuture(CompletableFuture<? extends T> future) {
+		public MonoCompletableFuture(CompletableFuture<? extends T> future) {
 			this.future = future;
-			this.futurePublisher = PublisherFactory.createWithDemand(this, null, this);
+			this.futurePublisher = Flux.generate(this, null, this);
 		}
 
 		@Override
@@ -198,7 +197,7 @@ public final class CompletableFutureConverter
 				return;
 			}
 
-			if (BackpressureUtils.getAndAdd(REQUESTED, PublisherCompletableFuture.this, n) > 0) {
+			if (BackpressureUtils.getAndAdd(REQUESTED, MonoCompletableFuture.this, n) > 0) {
 				return;
 			}
 
@@ -227,18 +226,17 @@ public final class CompletableFutureConverter
 		public void subscribe(final Subscriber<? super T> subscriber) {
 			try {
 				if (future.isDone()) {
-					new PublisherJust<>(future.get()).subscribe(subscriber);
+					new MonoJust<>(future.get()).subscribe(subscriber);
 				}
 				else if (future.isCancelled()) {
-					Exceptions.publisher(CancelException.get());
+					EmptySubscription.error(subscriber, CancelException.get());
 				}
 				else {
 					futurePublisher.subscribe(subscriber);
 				}
 			}
 			catch (Throwable throwable) {
-				Exceptions.<T>publisher(throwable)
-				          .subscribe(subscriber);
+				EmptySubscription.error(subscriber, throwable);
 			}
 		}
 	}

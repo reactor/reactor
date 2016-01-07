@@ -22,7 +22,7 @@ import reactor.bus.filter.RoundRobinFilter
 import reactor.bus.routing.ConsumerFilteringRouter
 import reactor.bus.selector.Selectors
 import reactor.fn.Consumer
-import reactor.rx.Promises
+import reactor.rx.Promise
 import reactor.rx.Streams
 import spock.lang.Specification
 
@@ -382,7 +382,7 @@ class EventBusSpec extends Specification {
 	def r = EventBus.config().get()
 	def selector = anonymous()
 	int event = 0
-	def s = r.on(selector).onOverflowBuffer().map { it.data }.consume { event = it }
+	def s = r.on(selector).onBackpressureBuffer().map { it.data }.consume { event = it }
 	println s.debug()
 
 	when: 'accept a value'
@@ -394,7 +394,8 @@ class EventBusSpec extends Specification {
 
 	when: "multithreaded bus can be serialized"
 	r = EventBus.create(Processors.queue("bus", 8), 4)
-	def tail = Streams.wrap(r.on(selector)).map { it.data }.observe { sleep(100) }.elapsed().log().take(10).toList()
+	def tail = Streams.from(r.on(selector)).map { it.data }.doOnNext { sleep(100) }.elapsed().log().take(10).buffer()
+			.promise()
 
 	10.times {
 	  r.notify(selector.object, Event.wrap(it))
@@ -404,7 +405,7 @@ class EventBusSpec extends Specification {
 
 	then:
 	tail.await().size() == 10
-	tail.get().sum { it.t1 } >= 1000 //correctly serialized
+	tail.peek().sum { it.t1 } >= 1000 //correctly serialized
 
 	cleanup:
 	r.processor.onComplete()
@@ -413,8 +414,8 @@ class EventBusSpec extends Specification {
   def "An Observable can be used to consume a promise's value when it's fulfilled"() {
 	given:
 	"a promise with a consuming Observable"
-	def promise = Promises.<Object> ready()
-	def promise2 = Promises.<Object> ready()
+	def promise = Promise.<Object> ready()
+	def promise2 = Promise.<Object> ready()
 	def bus = EventBus.create()
 
 	bus.on(Selectors.$('key'), promise2)
@@ -432,8 +433,8 @@ class EventBusSpec extends Specification {
   def "An Observable can be used to consume the value of an already-fulfilled promise"() {
 	given:
 	"a fulfilled promise"
-	def promise = Promises.success('test')
-	def promise2 = Promises.<Object> ready()
+	def promise = Promise.success('test')
+	def promise2 = Promise.<Object> ready()
 	def bus = EventBus.create()
 
 	when:

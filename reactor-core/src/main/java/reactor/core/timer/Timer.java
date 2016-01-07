@@ -16,10 +16,10 @@
 
 package reactor.core.timer;
 
+import java.util.concurrent.TimeUnit;
+
 import reactor.core.support.ReactiveState;
 import reactor.fn.Consumer;
-
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author Stephane Maldini

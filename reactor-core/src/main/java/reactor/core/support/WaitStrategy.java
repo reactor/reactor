@@ -15,7 +15,6 @@
  */
 package reactor.core.support;
 
-
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
@@ -25,7 +24,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import reactor.core.error.AlertException;
 import reactor.core.support.rb.disruptor.Sequence;
-import reactor.fn.Consumer;
 import reactor.fn.LongSupplier;
 
 /**
@@ -47,7 +45,7 @@ public interface WaitStrategy
      * @throws AlertException if the status of the Disruptor has changed.
      * @throws InterruptedException if the thread is interrupted.
      */
-    long waitFor(long sequence, LongSupplier cursor, Consumer<Void> spinObserver)
+    long waitFor(long sequence, LongSupplier cursor, Runnable spinObserver)
         throws AlertException, InterruptedException;
 
     /**
@@ -66,7 +64,7 @@ public interface WaitStrategy
         private final Condition processorNotifyCondition = lock.newCondition();
 
         @Override
-        public long waitFor(long sequence, LongSupplier cursorSequence, Consumer<Void> barrier)
+        public long waitFor(long sequence, LongSupplier cursorSequence, Runnable barrier)
             throws AlertException, InterruptedException
         {
             long availableSequence;
@@ -77,7 +75,7 @@ public interface WaitStrategy
                 {
                     while ((availableSequence = cursorSequence.get()) < sequence)
                     {
-                        barrier.accept(null);
+                        barrier.run();
                         processorNotifyCondition.await();
                     }
                 }
@@ -89,7 +87,7 @@ public interface WaitStrategy
 
             while ((availableSequence = cursorSequence.get()) < sequence)
             {
-                barrier.accept(null);
+                barrier.run();
             }
 
             return availableSequence;
@@ -119,14 +117,14 @@ public interface WaitStrategy
     final class BusySpin implements WaitStrategy
     {
         @Override
-        public long waitFor(final long sequence, LongSupplier cursor, final Consumer<Void> barrier)
+        public long waitFor(final long sequence, LongSupplier cursor, final Runnable barrier)
             throws AlertException, InterruptedException
         {
             long availableSequence;
 
             while ((availableSequence = cursor.get()) < sequence)
             {
-                barrier.accept(null);
+                barrier.run();
             }
 
             return availableSequence;
@@ -151,7 +149,7 @@ public interface WaitStrategy
         private final AtomicBoolean signalNeeded             = new AtomicBoolean(false);
 
         @Override
-        public long waitFor(long sequence, LongSupplier cursorSequence, Consumer<Void> barrier)
+        public long waitFor(long sequence, LongSupplier cursorSequence, Runnable barrier)
             throws AlertException, InterruptedException
         {
             long availableSequence;
@@ -170,7 +168,7 @@ public interface WaitStrategy
                             break;
                         }
 
-                        barrier.accept(null);
+                        barrier.run();
                         processorNotifyCondition.await();
                     }
                     while ((availableSequence = cursorSequence.get()) < sequence);
@@ -183,7 +181,7 @@ public interface WaitStrategy
 
             while ((availableSequence = cursorSequence.get()) < sequence)
             {
-                barrier.accept(null);
+                barrier.run();
             }
 
             return availableSequence;
@@ -264,7 +262,7 @@ public interface WaitStrategy
         }
 
         @Override
-        public long waitFor(long sequence, LongSupplier cursor, Consumer<Void> barrier)
+        public long waitFor(long sequence, LongSupplier cursor, Runnable barrier)
             throws AlertException, InterruptedException
         {
             long availableSequence;
@@ -298,7 +296,7 @@ public interface WaitStrategy
                     }
                     counter = SPIN_TRIES;
                 }
-                barrier.accept(null);
+                barrier.run();
             }
             while (true);
         }
@@ -336,7 +334,7 @@ public interface WaitStrategy
         }
 
         @Override
-        public long waitFor(final long sequence, LongSupplier cursor, final Consumer<Void> barrier)
+        public long waitFor(final long sequence, LongSupplier cursor, final Runnable barrier)
             throws AlertException, InterruptedException
         {
             long availableSequence;
@@ -355,10 +353,10 @@ public interface WaitStrategy
         {
         }
 
-        private int applyWaitMethod(final Consumer<Void> barrier, int counter)
+        private int applyWaitMethod(final Runnable barrier, int counter)
             throws AlertException
         {
-            barrier.accept(null);
+            barrier.run();
 
             if (counter > 100)
             {
@@ -389,7 +387,7 @@ public interface WaitStrategy
         private static final int SPIN_TRIES = 100;
 
         @Override
-        public long waitFor(final long sequence, LongSupplier cursor, final Consumer<Void> barrier)
+        public long waitFor(final long sequence, LongSupplier cursor, final Runnable barrier)
             throws AlertException, InterruptedException
         {
             long availableSequence;
@@ -408,10 +406,10 @@ public interface WaitStrategy
         {
         }
 
-        private int applyWaitMethod(final Consumer<Void> barrier, int counter)
+        private int applyWaitMethod(final Runnable barrier, int counter)
             throws AlertException
         {
-            barrier.accept(null);
+            barrier.run();
 
             if (0 == counter)
             {

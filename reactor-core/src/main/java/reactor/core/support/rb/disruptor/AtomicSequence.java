@@ -15,10 +15,10 @@
  */
 package reactor.core.support.rb.disruptor;
 
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+
 import reactor.core.support.ReactiveState;
 import reactor.fn.LongSupplier;
-
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
 /**
  * <p>Concurrent sequence class used for tracking the progress of

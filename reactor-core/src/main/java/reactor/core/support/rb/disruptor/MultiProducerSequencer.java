@@ -18,9 +18,8 @@ package reactor.core.support.rb.disruptor;
 import java.util.concurrent.locks.LockSupport;
 
 import reactor.core.error.InsufficientCapacityException;
-import reactor.core.support.internal.PlatformDependent0;
 import reactor.core.support.WaitStrategy;
-import reactor.fn.Consumer;
+import reactor.core.support.internal.PlatformDependent0;
 import sun.misc.Unsafe;
 
 
@@ -52,7 +51,7 @@ public final class MultiProducerSequencer extends Sequencer
      * @param bufferSize the size of the buffer that this will sequence over.
      * @param waitStrategy for those waiting on sequences.
      */
-    public MultiProducerSequencer(int bufferSize, final WaitStrategy waitStrategy, Consumer<Void> spinObserver) {
+    public MultiProducerSequencer(int bufferSize, final WaitStrategy waitStrategy, Runnable spinObserver) {
         super(bufferSize, waitStrategy, spinObserver);
 
         if (!Sequencer.isPowerOfTwo(bufferSize)) {
@@ -136,7 +135,7 @@ public final class MultiProducerSequencer extends Sequencer
                 if (wrapPoint > gatingSequence)
                 {
                     if(spinObserver != null) {
-                        spinObserver.accept(null);
+                        spinObserver.run();
                     }
                     LockSupport.parkNanos(1); // TODO, should we spin based on the wait strategy?
                     continue;
