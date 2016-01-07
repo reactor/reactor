@@ -17,16 +17,14 @@ package reactor.rx.stream;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.processor.EmitterProcessor;
-import reactor.core.subscriber.SubscriberDeferSubscription;
-import reactor.core.subscriber.SubscriberMultiSubscription;
 import reactor.fn.Function;
-import reactor.rx.Stream;
-import reactor.rx.subscriber.SerializedSubscriber;
+
+import org.reactivestreams.*;
+
+import reactor.core.processor.EmitterProcessor;
+import reactor.core.subscriber.*;
+import reactor.core.subscription.DeferredSubscription;
+import reactor.core.subscription.EmptySubscription;
 
 /**
  * Repeats a source when a companion sequence
@@ -40,184 +38,192 @@ import reactor.rx.subscriber.SerializedSubscriber;
 
 /**
  * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
- *
  * @since 2.5
  */
 public final class StreamRepeatWhen<T> extends StreamBarrier<T, T> {
 
-    final Function<Stream<?>, ? extends Publisher<? extends Object>> whenSourceFactory;
+	final Function<? super reactor.rx.Stream<Object>, ? extends Publisher<? extends Object>> whenSourceFactory;
 
-    public StreamRepeatWhen(Publisher<? extends T> source,
-            Function<Stream<?>, ? extends Publisher<? extends Object>> whenSourceFactory) {
-        super(source);
-        this.whenSourceFactory = Objects.requireNonNull(whenSourceFactory, "whenSourceFactory");
-    }
+	public StreamRepeatWhen(Publisher<? extends T> source,
+							   Function<? super reactor.rx.Stream<Object>, ? extends Publisher<? extends Object>> whenSourceFactory) {
+		super(source);
+		this.whenSourceFactory = Objects.requireNonNull(whenSourceFactory, "whenSourceFactory");
+	}
 
-    @Override
-    public void subscribe(Subscriber<? super T> s) {
+	@Override
+	public void subscribe(Subscriber<? super T> s) {
 
-        StreamRepeatWhenOtherSubscriber other = new StreamRepeatWhenOtherSubscriber();
+		StreamRepeatWhenOtherSubscriber other = new StreamRepeatWhenOtherSubscriber();
 
-        SerializedSubscriber<T> serial = new SerializedSubscriber<>(s);
+		reactor.rx.subscriber.SerializedSubscriber<T> serial = new reactor.rx.subscriber.SerializedSubscriber<>(s);
 
-        StreamRepeatWhenMainSubscriber<T> main =
-                new StreamRepeatWhenMainSubscriber<>(serial, other.completionSignal, source);
-        other.main = main;
+		StreamRepeatWhenMainSubscriber<T> main = new StreamRepeatWhenMainSubscriber<>(serial, other
+		  .completionSignal, source);
+		other.main = main;
 
-        serial.onSubscribe(main);
+		serial.onSubscribe(main);
 
-        Publisher<? extends Object> p;
+		Publisher<? extends Object> p;
 
-        try {
-            p = whenSourceFactory.apply(other);
-        }
-        catch (Throwable e) {
-            s.onError(e);
-            return;
-        }
+		try {
+			p = whenSourceFactory.apply(other);
+		} catch (Throwable e) {
+			s.onError(e);
+			return;
+		}
 
-        if (p == null) {
-            s.onError(new NullPointerException("The whenSourceFactory returned a null Publisher"));
-            return;
-        }
+		if (p == null) {
+			s.onError(new NullPointerException("The whenSourceFactory returned a null Publisher"));
+			return;
+		}
 
-        p.subscribe(other);
+		p.subscribe(other);
 
-        if (!main.cancelled) {
-            source.subscribe(main);
-        }
-    }
+		if (!main.cancelled) {
+			source.subscribe(main);
+		}
+	}
 
-    static final class StreamRepeatWhenMainSubscriber<T> extends SubscriberMultiSubscription<T, T> {
+	static final class StreamRepeatWhenMainSubscriber<T> extends SubscriberMultiSubscription<T, T> {
 
-        final SubscriberDeferSubscription<T, T> otherArbiter;
+		final DeferredSubscription otherArbiter;
 
-        final Subscriber<Object> signaller;
+		final Subscriber<Object> signaller;
 
-        final Publisher<? extends T> source;
+		final Publisher<? extends T> source;
 
-        volatile int wip;
-        @SuppressWarnings("rawtypes")
-        static final AtomicIntegerFieldUpdater<StreamRepeatWhenMainSubscriber> WIP =
-                AtomicIntegerFieldUpdater.newUpdater(StreamRepeatWhenMainSubscriber.class, "wip");
+		volatile int wip;
+		@SuppressWarnings("rawtypes")
+		static final AtomicIntegerFieldUpdater<StreamRepeatWhenMainSubscriber> WIP =
+		  AtomicIntegerFieldUpdater.newUpdater(StreamRepeatWhenMainSubscriber.class, "wip");
 
-        volatile boolean cancelled;
+		volatile boolean cancelled;
 
-        static final Object NEXT = new Object();
+		static final Object NEXT = new Object();
 
-        public StreamRepeatWhenMainSubscriber(Subscriber<? super T> actual,
-                Subscriber<Object> signaller,
-                Publisher<? extends T> source) {
-            super(actual);
-            this.signaller = signaller;
-            this.source = source;
-            this.otherArbiter = new SubscriberDeferSubscription<>(null);
-        }
+		public StreamRepeatWhenMainSubscriber(Subscriber<? super T> actual, Subscriber<Object> signaller,
+												 Publisher<? extends T> source) {
+			super(actual);
+			this.signaller = signaller;
+			this.source = source;
+			this.otherArbiter = new DeferredSubscription();
+		}
 
-        @Override
-        public void cancel() {
-            if (cancelled) {
-                return;
-            }
-            cancelled = true;
+		@Override
+		public void cancel() {
+			if (cancelled) {
+				return;
+			}
+			cancelled = true;
 
-            cancelWhen();
+			cancelWhen();
 
-            super.cancel();
-        }
+			super.cancel();
+		}
 
-        void cancelWhen() {
-            otherArbiter.cancel();
-        }
+		void cancelWhen() {
+			otherArbiter.cancel();
+		}
 
-        public void setWhen(Subscription w) {
-            otherArbiter.set(w);
-        }
+		public void setWhen(Subscription w) {
+			otherArbiter.set(w);
+		}
 
-        @Override
-        public void onSubscribe(Subscription s) {
-            set(s);
-        }
+		@Override
+		public void onSubscribe(Subscription s) {
+			set(s);
+		}
 
-        @Override
-        public void onNext(T t) {
-            subscriber.onNext(t);
+		@Override
+		public void onNext(T t) {
+			subscriber.onNext(t);
 
-            producedOne();
-        }
+			producedOne();
+		}
 
-        @Override
-        public void onError(Throwable t) {
-            otherArbiter.cancel();
+		@Override
+		public void onError(Throwable t) {
+			otherArbiter.cancel();
 
-            subscriber.onError(t);
-        }
+			subscriber.onError(t);
+		}
 
-        @Override
-        public void onComplete() {
-            otherArbiter.request(1);
+		@Override
+		public void onComplete() {
+			otherArbiter.request(1);
 
-            signaller.onNext(NEXT);
-        }
+			signaller.onNext(NEXT);
+		}
 
-        void resubscribe() {
-            if (WIP.getAndIncrement(this) == 0) {
-                do {
-                    if (cancelled) {
-                        return;
-                    }
+		void resubscribe() {
+			if (WIP.getAndIncrement(this) == 0) {
+				do {
+					if (cancelled) {
+						return;
+					}
 
-                    source.subscribe(this);
+					source.subscribe(this);
 
-                }
-                while (WIP.decrementAndGet(this) != 0);
-            }
-        }
+				} while (WIP.decrementAndGet(this) != 0);
+			}
+		}
 
-        void whenError(Throwable e) {
-            cancelled = true;
-            super.cancel();
+		void whenError(Throwable e) {
+			cancelled = true;
+			super.cancel();
 
-            subscriber.onError(e);
-        }
+			subscriber.onError(e);
+		}
 
-        void whenComplete() {
-            cancelled = true;
-            super.cancel();
+		void whenComplete() {
+			cancelled = true;
+			super.cancel();
 
-            subscriber.onComplete();
-        }
-    }
+			subscriber.onComplete();
+		}
+	}
 
-    static final class StreamRepeatWhenOtherSubscriber extends Stream<Object> implements Subscriber<Object> {
+	static final class StreamRepeatWhenOtherSubscriber 
+	extends reactor.rx.Stream<Object>
+	implements Subscriber<Object>, FeedbackLoop, Trace, Inner {
+		StreamRepeatWhenMainSubscriber<?> main;
 
-        StreamRepeatWhenMainSubscriber<?> main;
+		final EmitterProcessor<Object> completionSignal = new EmitterProcessor<>();
 
-        final EmitterProcessor<Object> completionSignal = new EmitterProcessor<>();
+		@Override
+		public void onSubscribe(Subscription s) {
+			main.setWhen(s);
+			completionSignal.onSubscribe(EmptySubscription.INSTANCE);
+		}
 
-        @Override
-        public void onSubscribe(Subscription s) {
-            main.setWhen(s);
-        }
+		@Override
+		public void onNext(Object t) {
+			main.resubscribe();
+		}
 
-        @Override
-        public void onNext(Object t) {
-            main.resubscribe();
-        }
+		@Override
+		public void onError(Throwable t) {
+			main.whenError(t);
+		}
 
-        @Override
-        public void onError(Throwable t) {
-            main.whenError(t);
-        }
+		@Override
+		public void onComplete() {
+			main.whenComplete();
+		}
 
-        @Override
-        public void onComplete() {
-            main.whenComplete();
-        }
+		@Override
+		public void subscribe(Subscriber<? super Object> s) {
+			completionSignal.subscribe(s);
+		}
 
-        @Override
-        public void subscribe(Subscriber<? super Object> s) {
-            completionSignal.subscribe(s);
-        }
-    }
+		@Override
+		public Object delegateInput() {
+			return main;
+		}
+
+		@Override
+		public Object delegateOutput() {
+			return completionSignal;
+		}
+	}
 }

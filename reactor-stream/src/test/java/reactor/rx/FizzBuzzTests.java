@@ -15,17 +15,17 @@
  */
 package reactor.rx;
 
-import org.junit.Test;
-import reactor.AbstractReactorTest;
-import reactor.core.processor.RingBufferProcessor;
-import reactor.core.support.Assert;
-import reactor.rx.subscriber.Control;
-
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.junit.Test;
+import reactor.AbstractReactorTest;
+import reactor.core.processor.RingBufferProcessor;
+import reactor.core.support.Assert;
+import reactor.rx.subscriber.Control;
 
 /**
  * https://github.com/reactor/reactor/issues/500
@@ -90,14 +90,14 @@ public class FizzBuzzTests extends AbstractReactorTest {
 		Stream<String> stream = Streams.from(ring.start());
 
 		Stream<String> stream2 = stream
-		  .zipWith(Streams.createWith((d, s) -> {
+				.zipWith(Streams.createWith((d, s) -> {
 			  for (int i = 0; i < d; i++) {
 				  if(!s.isCancelled()) {
 					  s.onNext(System.currentTimeMillis());
 				  }
 			  }
 		  }), (t1, t2) -> String.format("%s : %s", t1, t2))
-		  .when(Throwable.class, (o, t) -> {
+				.whenErrorValue(Throwable.class, (o, t) -> {
 			  System.err.println(t.toString());
 			  t.printStackTrace();
 		  });

@@ -25,12 +25,14 @@ import org.reactivestreams.Subscription;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.FluxAmb;
 import reactor.core.publisher.FluxArray;
+import reactor.core.publisher.FluxDefaultIfEmpty;
 import reactor.core.publisher.FluxFactory;
 import reactor.core.publisher.FluxFlatMap;
 import reactor.core.publisher.FluxJust;
 import reactor.core.publisher.FluxLift;
 import reactor.core.publisher.FluxLog;
 import reactor.core.publisher.FluxMap;
+import reactor.core.publisher.FluxMapSignal;
 import reactor.core.publisher.FluxNever;
 import reactor.core.publisher.FluxPeek;
 import reactor.core.publisher.FluxResume;
@@ -728,6 +730,15 @@ public abstract class Flux<T> implements Publisher<T> {
 	}
 
 	/**
+	 * Emit from the fastest first sequence between this publisher and the given publisher
+	 *
+	 * @return the fastest sequence
+	 */
+	public final Flux<T> ambWith(Publisher<? extends T> other) {
+		return amb(this, other);
+	}
+
+	/**
 	 * @param capacity
 	 *
 	 * @return
@@ -782,6 +793,17 @@ public abstract class Flux<T> implements Publisher<T> {
 	 */
 	public final ReactiveStateUtils.Graph debug() {
 		return ReactiveStateUtils.scan(this);
+	}
+
+	/**
+	 * Provide a default unique value if this sequence is completed without any data
+	 *
+	 * @param defaultV the alternate value if this sequence is empty
+	 *
+	 * @return a new {@link Flux}
+	 */
+	public final Flux<T> defaultIfEmpty(T defaultV) {
+		return new FluxDefaultIfEmpty<>(this, defaultV);
 	}
 
 	/**
@@ -873,6 +895,27 @@ public abstract class Flux<T> implements Publisher<T> {
 	 */
 	public final <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapper) {
 		return new FluxFlatMap<>(this, mapper, ReactiveState.SMALL_BUFFER_SIZE, 32);
+	}
+
+	/**
+	 * Transform the signals emitted by this {@link Flux} into Publishers, then flatten the emissions from those by
+	 * merging them into a single {@link Flux}, so that they may interleave.
+	 *
+	 * @param mapperOnNext
+	 * @param mapperOnError
+	 * @param mapperOnComplete
+	 * @param <R>
+	 *
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public final <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapperOnNext,
+			Function<Throwable, ? extends Publisher<? extends R>> mapperOnError,
+			Supplier<? extends Publisher<? extends R>> mapperOnComplete) {
+		return new FluxFlatMap<>(
+				new FluxMapSignal<>(this, mapperOnNext, mapperOnError, mapperOnComplete),
+				IDENTITY_FUNCTION,
+				ReactiveState.SMALL_BUFFER_SIZE, 32);
 	}
 
 	/**

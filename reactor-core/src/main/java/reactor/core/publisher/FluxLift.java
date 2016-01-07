@@ -20,6 +20,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.Flux;
+import reactor.Mono;
 import reactor.core.subscriber.SubscriberBarrier;
 import reactor.core.subscriber.SubscriberWithContext;
 import reactor.fn.BiConsumer;
@@ -30,7 +31,7 @@ import reactor.fn.Function;
  * @author Stephane Maldini
  * @since 2.5
  */
-public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Operator<I, O> {
+public final class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Operator<I, O> {
 
 	/**
 	 * Intercept a source {@link Publisher} onNext signal to eventually transform, forward or filter the data by calling
@@ -122,6 +123,30 @@ public class FluxLift<I, O> extends Flux.FluxBarrier<I, O> implements Flux.Opera
 		return barrierProvider.apply(subscriber);
 	}
 
+	/**
+	 * Mono lift inlined
+	 * @param <I>
+	 * @param <O>
+	 */
+	public static final class MonoLift<I, O> extends Mono.MonoBarrier<I, O> implements Flux.Operator<I, O> {
+		final private Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider;
+
+		public MonoLift(Publisher<I> source, Function<Subscriber<? super O>, Subscriber<? super I>> barrierProvider) {
+			super(source);
+			this.barrierProvider = barrierProvider;
+		}
+
+		@Override
+		public void subscribe(Subscriber<? super O> s) {
+			source.subscribe(apply(s));
+		}
+
+		@Override
+		public Subscriber<? super I> apply(Subscriber<? super O> subscriber) {
+			return barrierProvider.apply(subscriber);
+		}
+
+	}
 	private static final class ConsumerSubscriberBarrier<I, O> extends SubscriberBarrier<I, O> {
 
 		private final BiConsumer<I, SubscriberWithContext<? super O, Subscription>> dataConsumer;

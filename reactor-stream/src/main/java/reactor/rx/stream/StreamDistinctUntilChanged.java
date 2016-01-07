@@ -1,28 +1,12 @@
-/*
- * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package reactor.rx.stream;
 
 import java.util.Objects;
+import reactor.fn.Function;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
+import org.reactivestreams.*;
+
 import reactor.core.error.Exceptions;
 import reactor.core.support.BackpressureUtils;
-import reactor.fn.Function;
 
 /**
  * Filters out subsequent and repeated elements.
@@ -33,128 +17,126 @@ import reactor.fn.Function;
 
 /**
  * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
- *
  * @since 2.5
  */
 public final class StreamDistinctUntilChanged<T, K> extends StreamBarrier<T, T> {
 
-    final Function<? super T, K> keyExtractor;
+	final Function<? super T, K> keyExtractor;
 
-    public StreamDistinctUntilChanged(Publisher<? extends T> source, Function<? super T, K> keyExtractor) {
-        super(source);
-        this.keyExtractor = Objects.requireNonNull(keyExtractor, "keyExtractor");
-    }
+	public StreamDistinctUntilChanged(Publisher<? extends T> source, Function<? super T, K> keyExtractor) {
+		super(source);
+		this.keyExtractor = Objects.requireNonNull(keyExtractor, "keyExtractor");
+	}
 
-    @Override
-    public void subscribe(Subscriber<? super T> s) {
-        source.subscribe(new StreamDistinctUntilChangedSubscriber<>(s, keyExtractor));
-    }
+	@Override
+	public void subscribe(Subscriber<? super T> s) {
+		source.subscribe(new StreamDistinctUntilChangedSubscriber<>(s, keyExtractor));
+	}
 
-    static final class StreamDistinctUntilChangedSubscriber<T, K>
-            implements Subscriber<T>, Downstream, FeedbackLoop, Upstream, ActiveUpstream {
+	static final class StreamDistinctUntilChangedSubscriber<T, K>
+			implements Subscriber<T>, Downstream, FeedbackLoop, Upstream, ActiveUpstream {
+		final Subscriber<? super T> actual;
 
-        final Subscriber<? super T> actual;
+		final Function<? super T, K> keyExtractor;
 
-        final Function<? super T, K> keyExtractor;
+		Subscription s;
 
-        Subscription s;
+		boolean done;
 
-        boolean done;
+		K lastKey;
 
-        K lastKey;
+		public StreamDistinctUntilChangedSubscriber(Subscriber<? super T> actual,
+													   Function<? super T, K> keyExtractor) {
+			this.actual = actual;
+			this.keyExtractor = keyExtractor;
+		}
 
-        public StreamDistinctUntilChangedSubscriber(Subscriber<? super T> actual, Function<? super T, K> keyExtractor) {
-            this.actual = actual;
-            this.keyExtractor = keyExtractor;
-        }
+		@Override
+		public void onSubscribe(Subscription s) {
+			if (BackpressureUtils.validate(this.s, s)) {
+				this.s = s;
 
-        @Override
-        public void onSubscribe(Subscription s) {
-            if (BackpressureUtils.validate(this.s, s)) {
-                this.s = s;
+				actual.onSubscribe(s);
+			}
+		}
 
-                actual.onSubscribe(s);
-            }
-        }
+		@Override
+		public void onNext(T t) {
+			if (done) {
+				Exceptions.onNextDropped(t);
+				return;
+			}
 
-        @Override
-        public void onNext(T t) {
-            if (done) {
-                Exceptions.onNextDropped(t);
-                return;
-            }
+			K k;
 
-            K k;
+			try {
+				k = keyExtractor.apply(t);
+			} catch (Throwable e) {
+				s.cancel();
 
-            try {
-                k = keyExtractor.apply(t);
-            }
-            catch (Throwable e) {
-                s.cancel();
+				onError(e);
+				return;
+			}
 
-                onError(e);
-                return;
-            }
 
-            if (Objects.equals(lastKey, k)) {
-                lastKey = k;
-                s.request(1);
-            }
-            else {
-                lastKey = k;
-                actual.onNext(t);
-            }
-        }
+			if (Objects.equals(lastKey, k)) {
+				lastKey = k;
+				s.request(1);
+			} else {
+				lastKey = k;
+				actual.onNext(t);
+			}
+		}
 
-        @Override
-        public void onError(Throwable t) {
-            if (done) {
-                Exceptions.onErrorDropped(t);
-                return;
-            }
-            done = true;
+		@Override
+		public void onError(Throwable t) {
+			if (done) {
+				Exceptions.onErrorDropped(t);
+				return;
+			}
+			done = true;
 
-            actual.onError(t);
-        }
+			actual.onError(t);
+		}
 
-        @Override
-        public void onComplete() {
-            if (done) {
-                return;
-            }
-            done = true;
+		@Override
+		public void onComplete() {
+			if (done) {
+				return;
+			}
+			done = true;
 
-            actual.onComplete();
-        }
+			actual.onComplete();
+		}
 
-        @Override
-        public boolean isStarted() {
-            return s != null && !done;
-        }
+		@Override
+		public boolean isStarted() {
+			return s != null && !done;
+		}
 
-        @Override
-        public boolean isTerminated() {
-            return done;
-        }
+		@Override
+		public boolean isTerminated() {
+			return done;
+		}
 
-        @Override
-        public Object downstream() {
-            return actual;
-        }
+		@Override
+		public Object downstream() {
+			return actual;
+		}
 
-        @Override
-        public Object delegateInput() {
-            return keyExtractor;
-        }
+		@Override
+		public Object delegateInput() {
+			return keyExtractor;
+		}
 
-        @Override
-        public Object delegateOutput() {
-            return lastKey;
-        }
+		@Override
+		public Object delegateOutput() {
+			return lastKey;
+		}
 
-        @Override
-        public Object upstream() {
-            return null;
-        }
-    }
+		@Override
+		public Object upstream() {
+			return null;
+		}
+	}
 }

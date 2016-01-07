@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.core.subscriber;
 
 import java.util.Objects;
@@ -32,7 +31,7 @@ import reactor.fn.Supplier;
  * @param <I> The upstream sequence type
  * @param <O> The downstream sequence type
  */
-public class SubscriberDeferScalar<I, O>
+public class SubscriberDeferredScalar<I, O>
 		implements Subscriber<I>, Subscription, Supplier<O>, ReactiveState.FeedbackLoop, ReactiveState.ActiveUpstream,
 		           ReactiveState.ActiveDownstream, ReactiveState.Downstream {
 
@@ -47,10 +46,10 @@ public class SubscriberDeferScalar<I, O>
 
 	volatile int state;
 	@SuppressWarnings("rawtypes")
-	static final AtomicIntegerFieldUpdater<SubscriberDeferScalar> STATE =
-			AtomicIntegerFieldUpdater.newUpdater(SubscriberDeferScalar.class, "state");
+	static final AtomicIntegerFieldUpdater<SubscriberDeferredScalar> STATE =
+			AtomicIntegerFieldUpdater.newUpdater(SubscriberDeferredScalar.class, "state");
 
-	public SubscriberDeferScalar(Subscriber<? super O> subscriber) {
+	public SubscriberDeferredScalar(Subscriber<? super O> subscriber) {
 		this.subscriber = subscriber;
 	}
 

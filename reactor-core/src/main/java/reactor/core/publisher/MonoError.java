@@ -35,51 +35,53 @@ import reactor.fn.Supplier;
  */
 public final class MonoError<T> extends reactor.Mono<T> implements ReactiveState.Factory, ReactiveState.FailState {
 
-	final Supplier<? extends Throwable> supplier;
+    final Supplier<? extends Throwable> supplier;
 
-	public MonoError(Throwable error) {
-		this(create(error));
-	}
+    public MonoError(Throwable error) {
+        this(create(error));
+    }
 
-	/**
-	 * A static error supplier
-	 * @param error
-	 * @return a static supplier
-	 */
-	static Supplier<Throwable> create(final Throwable error) {
-		Objects.requireNonNull(error);
-		return new Supplier<Throwable>() {
-			@Override
-			public Throwable get() {
-				return error;
-			}
-		};
-	}
+    /**
+     * A static error supplier
+     *
+     * @param error
+     *
+     * @return a static supplier
+     */
+    static Supplier<Throwable> create(final Throwable error) {
+        Objects.requireNonNull(error);
+        return new Supplier<Throwable>() {
+            @Override
+            public Throwable get() {
+                return error;
+            }
+        };
+    }
 
-	public MonoError(Supplier<? extends Throwable> supplier) {
-		this.supplier = Objects.requireNonNull(supplier);
-	}
+    public MonoError(Supplier<? extends Throwable> supplier) {
+        this.supplier = Objects.requireNonNull(supplier);
+    }
 
-	@Override
-	public Throwable getError() {
-		return supplier.get();
-	}
+    @Override
+    public Throwable getError() {
+        return supplier.get();
+    }
 
-	@Override
-	public void subscribe(Subscriber<? super T> s) {
-		Throwable e;
+    @Override
+    public void subscribe(Subscriber<? super T> s) {
+        Throwable e;
 
-		try {
-			e = supplier.get();
-		}
-		catch (Throwable ex) {
-			e = ex;
-		}
+        try {
+            e = supplier.get();
+        }
+        catch (Throwable ex) {
+            e = ex;
+        }
 
-		if (e == null) {
-			e = new NullPointerException("The Throwable returned by the supplier is null");
-		}
+        if (e == null) {
+            e = new NullPointerException("The Throwable returned by the supplier is null");
+        }
 
-		EmptySubscription.error(s, e);
-	}
+        EmptySubscription.error(s, e);
+    }
 }

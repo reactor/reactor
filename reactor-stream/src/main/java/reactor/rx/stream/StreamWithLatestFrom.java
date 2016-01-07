@@ -13,26 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.subscription.CancelledSubscription;
-import reactor.core.subscription.EmptySubscription;
-import reactor.core.support.BackpressureUtils;
 import reactor.fn.BiFunction;
+
+import org.reactivestreams.*;
+
 import reactor.rx.subscriber.SerializedSubscriber;
+import reactor.core.subscription.*;
+import reactor.core.support.BackpressureUtils;
 
 /**
- * Combines values from a main Publisher with values from another Publisher through a bi-function and emits the result.
+ * Combines values from a main Publisher with values from another
+ * Publisher through a bi-function and emits the result.
  * <p>
  * <p>
- * The operator will drop values from the main source until the other Publisher produces any value.
+ * The operator will drop values from the main source until the other
+ * Publisher produces any value.
  * <p>
  * If the other Publisher completes without any value, the sequence is completed.
  *
@@ -43,18 +42,15 @@ import reactor.rx.subscriber.SerializedSubscriber;
 
 /**
  * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
- *
  * @since 2.5
  */
 public final class StreamWithLatestFrom<T, U, R> extends StreamBarrier<T, R> {
-
 	final Publisher<? extends U> other;
 
 	final BiFunction<? super T, ? super U, ? extends R> combiner;
 
-	public StreamWithLatestFrom(Publisher<? extends T> source,
-			Publisher<? extends U> other,
-			BiFunction<? super T, ? super U, ? extends R> combiner) {
+	public StreamWithLatestFrom(Publisher<? extends T> source, Publisher<? extends U> other,
+								   BiFunction<? super T, ? super U, ? extends R> combiner) {
 		super(source);
 		this.other = Objects.requireNonNull(other, "other");
 		this.combiner = Objects.requireNonNull(combiner, "combiner");
@@ -73,8 +69,8 @@ public final class StreamWithLatestFrom<T, U, R> extends StreamBarrier<T, R> {
 		source.subscribe(main);
 	}
 
-	static final class StreamWithLatestFromSubscriber<T, U, R> implements Subscriber<T>, Subscription {
-
+	static final class StreamWithLatestFromSubscriber<T, U, R>
+	  implements Subscriber<T>, Subscription {
 		final Subscriber<? super R> actual;
 
 		final BiFunction<? super T, ? super U, ? extends R> combiner;
@@ -82,21 +78,17 @@ public final class StreamWithLatestFrom<T, U, R> extends StreamBarrier<T, R> {
 		volatile Subscription main;
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<StreamWithLatestFromSubscriber, Subscription> MAIN =
-				AtomicReferenceFieldUpdater.newUpdater(StreamWithLatestFromSubscriber.class,
-						Subscription.class,
-						"main");
+		  AtomicReferenceFieldUpdater.newUpdater(StreamWithLatestFromSubscriber.class, Subscription.class, "main");
 
 		volatile Subscription other;
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<StreamWithLatestFromSubscriber, Subscription> OTHER =
-				AtomicReferenceFieldUpdater.newUpdater(StreamWithLatestFromSubscriber.class,
-						Subscription.class,
-						"other");
+		  AtomicReferenceFieldUpdater.newUpdater(StreamWithLatestFromSubscriber.class, Subscription.class, "other");
 
 		volatile U otherValue;
 
 		public StreamWithLatestFromSubscriber(Subscriber<? super R> actual,
-				BiFunction<? super T, ? super U, ? extends R> combiner) {
+												 BiFunction<? super T, ? super U, ? extends R> combiner) {
 			this.actual = actual;
 			this.combiner = combiner;
 		}
@@ -148,8 +140,7 @@ public final class StreamWithLatestFrom<T, U, R> extends StreamBarrier<T, R> {
 				if (main != CancelledSubscription.INSTANCE) {
 					BackpressureUtils.reportSubscriptionSet();
 				}
-			}
-			else {
+			} else {
 				actual.onSubscribe(this);
 			}
 		}
@@ -163,8 +154,7 @@ public final class StreamWithLatestFrom<T, U, R> extends StreamBarrier<T, R> {
 
 				try {
 					r = combiner.apply(t, u);
-				}
-				catch (Throwable e) {
+				} catch (Throwable e) {
 					onError(e);
 					return;
 				}
@@ -175,8 +165,7 @@ public final class StreamWithLatestFrom<T, U, R> extends StreamBarrier<T, R> {
 				}
 
 				actual.onNext(r);
-			}
-			else {
+			} else {
 				main.request(1);
 			}
 		}
@@ -206,7 +195,6 @@ public final class StreamWithLatestFrom<T, U, R> extends StreamBarrier<T, R> {
 	}
 
 	static final class StreamWithLatestFromOtherSubscriber<U> implements Subscriber<U> {
-
 		final StreamWithLatestFromSubscriber<?, U, ?> main;
 
 		public StreamWithLatestFromOtherSubscriber(StreamWithLatestFromSubscriber<?, U, ?> main) {

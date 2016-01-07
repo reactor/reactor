@@ -17,6 +17,7 @@ package reactor.core.error;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 /**
  * Static Helpers to decorate an error with an associated data
@@ -26,9 +27,15 @@ import java.util.Set;
  * @author Stephane Maldini
  * @since 2.0
  */
-public final class Exceptions {
+public enum Exceptions {
+	;
 
 	private static final int MAX_DEPTH = 25;
+
+	/**
+	 * A singleton instance of a Throwable indicating a terminal state for exceptions, don't leak this!
+	 */
+	public static final Throwable TERMINATED = new Throwable("No further exceptions");
 
 	public static IllegalStateException spec_2_12_exception() {
 		return new Spec212_DuplicateOnSubscribe();
@@ -40,9 +47,6 @@ public final class Exceptions {
 
 	public static IllegalArgumentException spec_3_09_exception(long elements) {
 		return new Spec309_NullOrNegativeRequest(elements);
-	}
-
-	private Exceptions() {
 	}
 
 	/**
@@ -172,6 +176,7 @@ public final class Exceptions {
 		Exceptions.throwIfFatal(e);
 		throw ReactorFatalException.create(e);
 	}
+
 	/**
 	 *
 	 * @param t
@@ -179,7 +184,6 @@ public final class Exceptions {
 	public static <T> void onNextDropped(T t) {
 		throw CancelException.get();
 	}
-
 	/**
 	 * Represents an error that was encountered while trying to emit an item from an Observable, and
 	 * tries to preserve that item for future use and/or reporting.
@@ -187,8 +191,8 @@ public final class Exceptions {
 	public static class ValueCause extends RuntimeException {
 
 		private static final long serialVersionUID = -3454462756050397899L;
-		private final Object value;
 
+		private final Object value;
 		/**
 		 * Create a {@code CauseValue} error and include in its error message a string representation of
 		 * the item that was intended to be emitted at the time the error was handled.
@@ -231,26 +235,61 @@ public final class Exceptions {
 			}
 			return value.getClass().getName() + ".class : " + value;
 		}
-	}
 
+	}
 	public static final class Spec309_NullOrNegativeRequest extends IllegalArgumentException {
+
 		public Spec309_NullOrNegativeRequest(long elements) {
 			super("Spec. Rule 3.9 - Cannot request a non strictly positive number: " +
 			  elements);
 		}
 	}
-
 	public static final class Spec213_ArgumentIsNull extends NullPointerException {
+
 		public Spec213_ArgumentIsNull() {
 			super("Spec 2.13: Signal/argument cannot be null");
 		}
 	}
-
 	public static final class Spec212_DuplicateOnSubscribe extends IllegalStateException {
+
 		public Spec212_DuplicateOnSubscribe() {
 			super("Spec. Rule 2.12 - Subscriber.onSubscribe MUST NOT be called more than once" +
 			" " +
 			  "(based on object equality)");
 		}
+	}
+
+	public static <T> boolean addThrowable(AtomicReferenceFieldUpdater<T, Throwable> field,
+			T instance,
+			Throwable exception) {
+		for (; ; ) {
+			Throwable current = field.get(instance);
+
+			if (current == TERMINATED) {
+				return false;
+			}
+
+			Throwable update;
+			if (current == null) {
+				update = exception;
+			}
+			else {
+				update = new Throwable("Multiple exceptions");
+				update.addSuppressed(current);
+				update.addSuppressed(exception);
+			}
+
+			if (field.compareAndSet(instance, current, update)) {
+				return true;
+			}
+		}
+	}
+
+	public static <T> Throwable terminate(AtomicReferenceFieldUpdater<T, Throwable> field, T instance) {
+		Throwable current = field.get(instance);
+		if (current != TERMINATED) {
+			current = field.getAndSet(instance, TERMINATED);
+		}
+		return current;
 	}
 }

@@ -19,7 +19,7 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 
 import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SubscriberDeferScalar;
+import reactor.core.subscriber.SubscriberDeferredScalar;
 import reactor.core.support.ReactiveState;
 
 /**
@@ -36,42 +36,42 @@ import reactor.core.support.ReactiveState;
  */
 public final class MonoCallable<T> extends reactor.Mono<T> implements ReactiveState.Factory, ReactiveState.Upstream {
 
-	final Callable<? extends T> callable;
+    final Callable<? extends T> callable;
 
-	public MonoCallable(Callable<? extends T> callable) {
-		this.callable = Objects.requireNonNull(callable, "callable");
-	}
+    public MonoCallable(Callable<? extends T> callable) {
+        this.callable = Objects.requireNonNull(callable, "callable");
+    }
 
-	@Override
-	public Object upstream() {
-		return callable;
-	}
+    @Override
+    public Object upstream() {
+        return callable;
+    }
 
-	@Override
-	public void subscribe(Subscriber<? super T> s) {
+    @Override
+    public void subscribe(Subscriber<? super T> s) {
 
-		SubscriberDeferScalar<T, T> sds = new SubscriberDeferScalar<>(s);
+        SubscriberDeferredScalar<T, T> sds = new SubscriberDeferredScalar<>(s);
 
-		s.onSubscribe(sds);
+        s.onSubscribe(sds);
 
-		if (sds.isCancelled()) {
-			return;
-		}
+        if (sds.isCancelled()) {
+            return;
+        }
 
-		T t;
-		try {
-			t = callable.call();
-		}
-		catch (Throwable e) {
-			s.onError(e);
-			return;
-		}
+        T t;
+        try {
+            t = callable.call();
+        }
+        catch (Throwable e) {
+            s.onError(e);
+            return;
+        }
 
-		if (t == null) {
-			s.onError(new NullPointerException("The callable returned null"));
-			return;
-		}
+        if (t == null) {
+            s.onError(new NullPointerException("The callable returned null"));
+            return;
+        }
 
-		sds.set(t);
-	}
+        sds.set(t);
+    }
 }

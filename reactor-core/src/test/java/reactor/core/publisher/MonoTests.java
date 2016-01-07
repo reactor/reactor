@@ -53,4 +53,16 @@ public class MonoTests {
 		assertThat("Error latch was counted down", latch1.await(1, TimeUnit.SECONDS), is(true));
 		assertThat("Complete latch was not counted down", latch2.getCount(), is(1L));
 	}
+
+	@Test
+	public void promiseOnAfterHandlesExceptions() throws Exception {
+		String h = Mono.fromCallable(() -> {
+			Thread.sleep(400);
+			return "hello";
+		})
+		               .publishOn(Processors.ioGroup())
+		               .after(() -> Mono.just("world"))
+		               .get();
+		assertThat("Alternate mono not seen", h, is("world"));
+	}
 }

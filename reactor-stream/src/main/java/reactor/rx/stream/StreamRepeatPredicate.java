@@ -1,31 +1,16 @@
-/*
- * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package reactor.rx.stream;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import reactor.core.subscriber.SubscriberMultiSubscription;
 import reactor.fn.BooleanSupplier;
 
+import org.reactivestreams.*;
+
+import reactor.core.subscriber.SubscriberMultiSubscription;
+
 /**
- * Repeatedly subscribes to the source if the predicate returns true after completion of the previous subscription.
+ * Repeatedly subscribes to the source if the predicate returns true after
+ * completion of the previous subscription.
  *
  * @param <T> the value type
  */
@@ -55,7 +40,8 @@ public final class StreamRepeatPredicate<T> extends StreamBarrier<T, T> {
 		}
 	}
 
-	static final class StreamRepeatPredicateSubscriber<T> extends SubscriberMultiSubscription<T, T> {
+	static final class StreamRepeatPredicateSubscriber<T>
+	  extends SubscriberMultiSubscription<T, T> {
 
 		final Publisher<? extends T> source;
 
@@ -64,13 +50,12 @@ public final class StreamRepeatPredicate<T> extends StreamBarrier<T, T> {
 		volatile int wip;
 		@SuppressWarnings("rawtypes")
 		static final AtomicIntegerFieldUpdater<StreamRepeatPredicateSubscriber> WIP =
-				AtomicIntegerFieldUpdater.newUpdater(StreamRepeatPredicateSubscriber.class, "wip");
+		  AtomicIntegerFieldUpdater.newUpdater(StreamRepeatPredicateSubscriber.class, "wip");
 
 		long produced;
 
-		public StreamRepeatPredicateSubscriber(Publisher<? extends T> source,
-				Subscriber<? super T> actual,
-				BooleanSupplier predicate) {
+		public StreamRepeatPredicateSubscriber(Publisher<? extends T> source, 
+				Subscriber<? super T> actual, BooleanSupplier predicate) {
 			super(actual);
 			this.source = source;
 			this.predicate = predicate;
@@ -86,19 +71,17 @@ public final class StreamRepeatPredicate<T> extends StreamBarrier<T, T> {
 		@Override
 		public void onComplete() {
 			boolean b;
-
+			
 			try {
 				b = predicate.getAsBoolean();
-			}
-			catch (Throwable e) {
+			} catch (Throwable e) {
 				subscriber.onError(e);
 				return;
 			}
-
+			
 			if (b) {
 				resubscribe();
-			}
-			else {
+			} else {
 				subscriber.onComplete();
 			}
 		}
@@ -118,8 +101,7 @@ public final class StreamRepeatPredicate<T> extends StreamBarrier<T, T> {
 
 					source.subscribe(this);
 
-				}
-				while (WIP.decrementAndGet(this) != 0);
+				} while (WIP.decrementAndGet(this) != 0);
 			}
 		}
 	}

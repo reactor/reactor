@@ -382,7 +382,7 @@ class EventBusSpec extends Specification {
 	def r = EventBus.config().get()
 	def selector = anonymous()
 	int event = 0
-	def s = r.on(selector).onOverflowBuffer().map { it.data }.consume { event = it }
+	def s = r.on(selector).onBackpressureBuffer().map { it.data }.consume { event = it }
 	println s.debug()
 
 	when: 'accept a value'
@@ -405,7 +405,7 @@ class EventBusSpec extends Specification {
 
 	then:
 	tail.await().size() == 10
-	tail.get().sum { it.t1 } >= 1000 //correctly serialized
+	tail.peek().sum { it.t1 } >= 1000 //correctly serialized
 
 	cleanup:
 	r.processor.onComplete()

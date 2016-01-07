@@ -1,36 +1,19 @@
-/*
- * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package reactor.rx.stream;
 
 import java.util.Objects;
+import reactor.fn.*;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
+import org.reactivestreams.*;
+
 import reactor.core.error.Exceptions;
-import reactor.core.subscriber.SubscriberDeferScalar;
+import reactor.core.subscriber.SubscriberDeferredScalar;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
-import reactor.fn.BiConsumer;
-import reactor.fn.Supplier;
 
 /**
- * Collects the values of the source sequence into a container returned by a supplier and a collector action working on
- * the container and the current source value.
+ * Collects the values of the source sequence into a container returned by
+ * a supplier and a collector action working on the container and the current source
+ * value.
  *
  * @param <T> the source value type
  * @param <R> the container value type
@@ -38,7 +21,6 @@ import reactor.fn.Supplier;
 
 /**
  * {@see https://github.com/reactor/reactive-streams-commons}
- *
  * @since 2.5
  */
 public final class MonoCollect<T, R> extends reactor.Mono.MonoBarrier<T, R> {
@@ -47,7 +29,8 @@ public final class MonoCollect<T, R> extends reactor.Mono.MonoBarrier<T, R> {
 
 	final BiConsumer<? super R, ? super T> action;
 
-	public MonoCollect(Publisher<? extends T> source, Supplier<R> supplier, BiConsumer<? super R, ? super T> action) {
+	public MonoCollect(Publisher<? extends T> source, Supplier<R> supplier,
+							BiConsumer<? super R, ? super T> action) {
 		super(source);
 		this.supplier = Objects.requireNonNull(supplier, "supplier");
 		this.action = Objects.requireNonNull(action);
@@ -59,8 +42,7 @@ public final class MonoCollect<T, R> extends reactor.Mono.MonoBarrier<T, R> {
 
 		try {
 			container = supplier.get();
-		}
-		catch (Throwable e) {
+		} catch (Throwable e) {
 			EmptySubscription.error(s, e);
 			return;
 		}
@@ -73,7 +55,9 @@ public final class MonoCollect<T, R> extends reactor.Mono.MonoBarrier<T, R> {
 		source.subscribe(new MonoCollectSubscriber<>(s, action, container));
 	}
 
-	static final class MonoCollectSubscriber<T, R> extends SubscriberDeferScalar<T, R> implements Upstream {
+	static final class MonoCollectSubscriber<T, R>
+			extends SubscriberDeferredScalar<T, R>
+	implements Upstream {
 
 		final BiConsumer<? super R, ? super T> action;
 
@@ -83,9 +67,8 @@ public final class MonoCollect<T, R> extends reactor.Mono.MonoBarrier<T, R> {
 
 		boolean done;
 
-		public MonoCollectSubscriber(Subscriber<? super R> actual,
-				BiConsumer<? super R, ? super T> action,
-				R container) {
+		public MonoCollectSubscriber(Subscriber<? super R> actual, BiConsumer<? super R, ? super T> action,
+										  R container) {
 			super(actual);
 			this.action = action;
 			this.container = container;
@@ -117,8 +100,7 @@ public final class MonoCollect<T, R> extends reactor.Mono.MonoBarrier<T, R> {
 
 			try {
 				action.accept(container, t);
-			}
-			catch (Throwable e) {
+			} catch (Throwable e) {
 				cancel();
 
 				onError(e);
@@ -153,6 +135,8 @@ public final class MonoCollect<T, R> extends reactor.Mono.MonoBarrier<T, R> {
 		public void setValue(R value) {
 			// value is constant
 		}
+
+
 
 		@Override
 		public boolean isTerminated() {

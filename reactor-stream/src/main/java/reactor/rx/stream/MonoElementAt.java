@@ -1,41 +1,23 @@
-/*
- * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package reactor.rx.stream;
 
 import java.util.Objects;
-
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.error.Exceptions;
-import reactor.core.subscriber.SubscriberDeferScalar;
-import reactor.core.support.BackpressureUtils;
 import reactor.fn.Supplier;
 
+import org.reactivestreams.*;
+
+import reactor.core.error.Exceptions;
+import reactor.core.subscriber.SubscriberDeferredScalar;
+import reactor.core.support.BackpressureUtils;
+
 /**
- * Emits only the element at the given index position or signals a default value if specified or
- * IndexOutOfBoundsException if the sequence is shorter.
+ * Emits only the element at the given index position or signals a
+ * default value if specified or IndexOutOfBoundsException if the sequence is shorter.
  *
  * @param <T> the value type
  */
 
 /**
  * {@see https://github.com/reactor/reactive-streams-commons}
- *
  * @since 2.5
  */
 public final class MonoElementAt<T> extends reactor.Mono.MonoBarrier<T, T> {
@@ -67,8 +49,9 @@ public final class MonoElementAt<T> extends reactor.Mono.MonoBarrier<T, T> {
 		source.subscribe(new MonoElementAtSubscriber<>(s, index, defaultSupplier));
 	}
 
-	static final class MonoElementAtSubscriber<T> extends SubscriberDeferScalar<T, T> implements Upstream {
-
+	static final class MonoElementAtSubscriber<T>
+			extends SubscriberDeferredScalar<T, T>
+	implements Upstream {
 		final Supplier<? extends T> defaultSupplier;
 
 		long index;
@@ -77,9 +60,8 @@ public final class MonoElementAt<T> extends reactor.Mono.MonoBarrier<T, T> {
 
 		boolean done;
 
-		public MonoElementAtSubscriber(Subscriber<? super T> actual,
-				long index,
-				Supplier<? extends T> defaultSupplier) {
+		public MonoElementAtSubscriber(Subscriber<? super T> actual, long index,
+											Supplier<? extends T> defaultSupplier) {
 			super(actual);
 			this.index = index;
 			this.defaultSupplier = defaultSupplier;
@@ -149,14 +131,12 @@ public final class MonoElementAt<T> extends reactor.Mono.MonoBarrier<T, T> {
 
 			if (ds == null) {
 				subscriber.onError(new IndexOutOfBoundsException());
-			}
-			else {
+			} else {
 				T t;
 
 				try {
 					t = ds.get();
-				}
-				catch (Throwable e) {
+				} catch (Throwable e) {
 					subscriber.onError(e);
 					return;
 				}
@@ -169,6 +149,7 @@ public final class MonoElementAt<T> extends reactor.Mono.MonoBarrier<T, T> {
 				set(t);
 			}
 		}
+
 
 		@Override
 		public boolean isTerminated() {

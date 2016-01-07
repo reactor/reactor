@@ -32,8 +32,10 @@ import reactor.core.error.ReactorFatalException;
 import reactor.core.processor.ProcessorGroup;
 import reactor.core.publisher.FluxAmb;
 import reactor.core.publisher.FluxFlatMap;
+import reactor.core.publisher.FluxLift;
 import reactor.core.publisher.FluxLog;
 import reactor.core.publisher.FluxMap;
+import reactor.core.publisher.FluxMapSignal;
 import reactor.core.publisher.FluxPeek;
 import reactor.core.publisher.FluxResume;
 import reactor.core.publisher.FluxZip;
@@ -353,12 +355,33 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * Combine the result from this mono and another into a {@link Tuple2}.
+	 *
+	 * @param other
+	 *
+	 * @return a new combined Mono
+	 * @see #when
+	 */
+	public final <T2> Mono<Tuple2<T, T2>> and(Mono<T2> other) {
+		return when(this, other);
+	}
+
+	/**
 	 * Return a {@code Mono<Void>} that completes when this {@link Mono} completes.
 	 *
 	 * @return
 	 */
 	public final Mono<Void> after() {
 		return new MonoIgnoreElements<>(this);
+	}
+
+	/**
+	 * Return a {@code Mono<Void>} that completes when this {@link Mono} completes.
+	 *
+	 * @return
+	 */
+	public final <V> Mono<V> after(Supplier<? extends Mono<V>> sourceSupplier) {
+		return new MonoBarrier<>(after().flatMap(null, null, sourceSupplier));
 	}
 
 	/**
@@ -451,6 +474,29 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * Transform the signals emitted by this {@link Flux} into Publishers, then flatten the emissions from those by
+	 * merging them into a single {@link Flux}, so that they may interleave.
+	 *
+	 * @param mapperOnNext
+	 * @param mapperOnError
+	 * @param mapperOnComplete
+	 * @param <R>
+	 *
+	 * @return
+	 *
+	 * @see Flux#flatMap(Function, Function, Supplier)
+	 */
+	@SuppressWarnings("unchecked")
+	public final <R> Flux<R> flatMap(Function<? super T, ? extends Publisher<? extends R>> mapperOnNext,
+			Function<Throwable, ? extends Publisher<? extends R>> mapperOnError,
+			Supplier<? extends Publisher<? extends R>> mapperOnComplete) {
+		return new FluxFlatMap<>(
+				new FluxMapSignal<>(this, mapperOnNext, mapperOnError, mapperOnComplete),
+				Flux.IDENTITY_FUNCTION,
+				ReactiveState.SMALL_BUFFER_SIZE, 32);
+	}
+
+	/**
 	 * Convert this {@link Mono} to a {@link Flux}
 	 *
 	 * @return
@@ -490,7 +536,23 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	}
 
 	/**
+	 * Create a {@link Mono} intercepting all source signals with the returned Subscriber that might choose to pass them
+	 * alone to the provided Subscriber (given to the returned {@code subscribe(Subscriber)}.
+
+	 * @param lifter
+	 * @param <V>
 	 * @return
+	 *
+	 * @see Flux#lift
+	 */
+	public final <V> Mono<V> lift(Function<Subscriber<? super V>, Subscriber<? super T>> lifter) {
+		return new FluxLift.MonoLift<>(this, lifter);
+	}
+
+	/**
+	 * @return
+	 *
+	 * @see Flux#log()
 	 */
 	public final Mono<T> log() {
 		return log(null, Level.INFO, FluxLog.ALL);
@@ -548,6 +610,18 @@ public abstract class Mono<T> implements Publisher<T>, ReactiveState.Bounded {
 	@SuppressWarnings("unchecked")
 	public final Flux<T> mergeWith(Publisher<? extends T> source) {
 		return Flux.merge(Flux.just(this, source));
+	}
+
+	/**
+	 * Emit the any of the result from this mono or from the given mono
+	 *
+	 * @param source
+	 *
+	 * @return a new Mono
+	 * @see #any
+	 */
+	public final Mono<T> or(Mono<? extends T> source) {
+		return any(this, source);
 	}
 
 	/**

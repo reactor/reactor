@@ -28,26 +28,26 @@ import reactor.fn.Supplier;
  * @since 2.5
  */
 public final class MonoJust<T> extends reactor.Mono<T>
-		implements Supplier<T>, ReactiveState.Factory, ReactiveState.Upstream {
+        implements Supplier<T>, ReactiveState.Factory, ReactiveState.Upstream {
 
-	final T value;
+    final T value;
 
-	public MonoJust(T value) {
-		this.value = Objects.requireNonNull(value, "value");
-	}
+    public MonoJust(T value) {
+        this.value = Objects.requireNonNull(value, "value");
+    }
 
-	@Override
-	public T get() {
-		return value;
-	}
+    @Override
+    public T get() {
+        return value;
+    }
 
-	@Override
-	public void subscribe(Subscriber<? super T> s) {
-		s.onSubscribe(new ScalarSubscription<>(s, value));
-	}
+    @Override
+    public void subscribe(Subscriber<? super T> s) {
+        s.onSubscribe(new ScalarSubscription<>(s, value));
+    }
 
-	@Override
-	public Object upstream() {
-		return value;
-	}
+    @Override
+    public Object upstream() {
+        return value;
+    }
 }

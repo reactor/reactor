@@ -23,6 +23,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.support.BackpressureUtils;
 import reactor.fn.Function;
+import reactor.fn.Supplier;
 
 /**
  * Maps the values of the source publisher one-on-one via a mapper function.
@@ -32,48 +33,57 @@ import reactor.fn.Function;
  */
 
 /**
- * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
+ * @author Stephane Maldini
  * @since 2.5
  */
-public final class FluxMap<T, R> extends reactor.Flux.FluxBarrier<T, R> {
+public final class FluxMapSignal<T, R> extends reactor.Flux.FluxBarrier<T, R> {
 
-    final Function<? super T, ? extends R> mapper;
+    final Function<? super T, ? extends R> mapperNext;
+    final Function<Throwable, ? extends R> mapperError;
+    final Supplier<? extends R>            mapperComplete;
 
     /**
-     * Constructs a FluxMap instance with the given source and mapper.
+     * Constructs a FluxMapSignal instance with the given source and mappers.
      *
      * @param source the source Publisher instance
-     * @param mapper the mapper function
+     * @param mapperNext the next mapper function
+     * @param mapperError the error mapper function
+     * @param mapperComplete the complete mapper function
      *
      * @throws NullPointerException if either {@code source} or {@code mapper} is null.
      */
-    public FluxMap(Publisher<? extends T> source, Function<? super T, ? extends R> mapper) {
+    public FluxMapSignal(Publisher<? extends T> source,
+            Function<? super T, ? extends R> mapperNext,
+            Function<Throwable, ? extends R> mapperError,
+            Supplier<? extends R>            mapperComplete) {
         super(source);
-        this.mapper = Objects.requireNonNull(mapper, "mapper");
-    }
+	    if(mapperNext == null && mapperError == null && mapperComplete == null){
+		    throw new NullPointerException("Map Signal needs at least one valid mapper");
+	    }
 
-    public Function<? super T, ? extends R> mapper() {
-        return mapper;
+        this.mapperNext = mapperNext;
+        this.mapperError = mapperError;
+        this.mapperComplete = mapperComplete;
     }
 
     @Override
     public void subscribe(Subscriber<? super R> s) {
-        source.subscribe(new FluxMapSubscriber<>(s, mapper));
+        source.subscribe(new FluxMapSignalSubscriber<>(s, this));
     }
 
-    static final class FluxMapSubscriber<T, R>
-            implements Subscriber<T>, Upstream, Downstream, FeedbackLoop, ActiveUpstream {
+    static final class FluxMapSignalSubscriber<T, R>
+            implements Subscriber<T>, Upstream, Downstream, ActiveUpstream {
 
         final Subscriber<? super R>            actual;
-        final Function<? super T, ? extends R> mapper;
+        final FluxMapSignal<T, R> parent;
 
         boolean done;
 
         Subscription s;
 
-        public FluxMapSubscriber(Subscriber<? super R> actual, Function<? super T, ? extends R> mapper) {
+        public FluxMapSignalSubscriber(Subscriber<? super R> actual, FluxMapSignal<T, R> parent) {
             this.actual = actual;
-            this.mapper = mapper;
+            this.parent = parent;
         }
 
         @Override
@@ -87,7 +97,7 @@ public final class FluxMap<T, R> extends reactor.Flux.FluxBarrier<T, R> {
 
         @Override
         public void onNext(T t) {
-            if (done) {
+            if (done || parent.mapperNext == null) {
                 Exceptions.onNextDropped(t);
                 return;
             }
@@ -95,19 +105,16 @@ public final class FluxMap<T, R> extends reactor.Flux.FluxBarrier<T, R> {
             R v;
 
             try {
-                v = mapper.apply(t);
+                v = parent.mapperNext.apply(t);
             }
             catch (Throwable e) {
-                done = true;
-                s.cancel();
-                actual.onError(e);
+               error(e);
                 return;
             }
 
             if (v == null) {
                 done = true;
-                s.cancel();
-                actual.onError(new NullPointerException("The mapper returned a null value."));
+	            error(new NullPointerException("The mapper returned a null value."));
                 return;
             }
 
@@ -123,7 +130,28 @@ public final class FluxMap<T, R> extends reactor.Flux.FluxBarrier<T, R> {
 
             done = true;
 
-            actual.onError(t);
+	        if(parent.mapperError == null){
+		        actual.onError(t);
+		        return;
+	        }
+
+	        R v;
+
+	        try {
+		        v = parent.mapperError.apply(t);
+	        }
+	        catch (Throwable e) {
+		        error(e);
+		        return;
+	        }
+
+	        if (v == null) {
+		        done = true;
+		        error(new NullPointerException("The mapper returned a null value."));
+		        return;
+	        }
+
+	        actual.onNext(v);
         }
 
         @Override
@@ -133,7 +161,28 @@ public final class FluxMap<T, R> extends reactor.Flux.FluxBarrier<T, R> {
             }
             done = true;
 
-            actual.onComplete();
+	        if(parent.mapperComplete == null){
+		        actual.onComplete();
+		        return;
+	        }
+
+	        R v;
+
+	        try {
+		        v = parent.mapperComplete.get();
+	        }
+	        catch (Throwable e) {
+		        error(e);
+		        return;
+	        }
+
+	        if (v == null) {
+		        done = true;
+		        error(new NullPointerException("The mapper returned a null value."));
+		        return;
+	        }
+
+	        actual.onNext(v);
         }
 
         @Override
@@ -152,18 +201,14 @@ public final class FluxMap<T, R> extends reactor.Flux.FluxBarrier<T, R> {
         }
 
         @Override
-        public Object delegateInput() {
-            return mapper;
-        }
-
-        @Override
-        public Object delegateOutput() {
-            return null;
-        }
-
-        @Override
         public Object upstream() {
             return s;
         }
+
+	    void error(Throwable e){
+		    done = true;
+		    s.cancel();
+		    actual.onError(e);
+	    }
     }
 }

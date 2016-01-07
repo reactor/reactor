@@ -1,30 +1,13 @@
-/*
- * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package reactor.rx.stream;
 
 import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.subscriber.SubscriberDeferScalar;
-import reactor.core.support.BackpressureUtils;
 import reactor.fn.BooleanSupplier;
+
+import org.reactivestreams.*;
+
+import reactor.core.subscriber.SubscriberDeferredScalar;
+import reactor.core.support.*;
 
 /**
  * Emits the last N values the source emitted before its completion.
@@ -34,7 +17,6 @@ import reactor.fn.BooleanSupplier;
 
 /**
  * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
- *
  * @since 2.5
  */
 public final class StreamTakeLast<T> extends StreamBarrier<T, T> {
@@ -53,16 +35,15 @@ public final class StreamTakeLast<T> extends StreamBarrier<T, T> {
 	public void subscribe(Subscriber<? super T> s) {
 		if (n == 0) {
 			source.subscribe(new StreamTakeLastZeroSubscriber<>(s));
-		}
-		else if (n == 1) {
+		} else if (n == 1) {
 			source.subscribe(new StreamTakeLastOneSubscriber<>(s));
-		}
-		else {
+		} else {
 			source.subscribe(new StreamTakeLastManySubscriber<>(s, n));
 		}
 	}
 
-	static final class StreamTakeLastZeroSubscriber<T> implements Subscriber<T>, Downstream {
+	static final class StreamTakeLastZeroSubscriber<T> implements Subscriber<T>,
+																	 Downstream {
 
 		final Subscriber<? super T> actual;
 
@@ -98,7 +79,9 @@ public final class StreamTakeLast<T> extends StreamBarrier<T, T> {
 		}
 	}
 
-	static final class StreamTakeLastOneSubscriber<T> extends SubscriberDeferScalar<T, T> implements Upstream {
+	static final class StreamTakeLastOneSubscriber<T>
+			extends SubscriberDeferredScalar<T, T>
+	implements Upstream {
 
 		Subscription s;
 
@@ -150,7 +133,7 @@ public final class StreamTakeLast<T> extends StreamBarrier<T, T> {
 	}
 
 	static final class StreamTakeLastManySubscriber<T>
-			implements Subscriber<T>, Subscription, BooleanSupplier, Downstream, ActiveDownstream, Upstream, Buffering {
+	  implements Subscriber<T>, Subscription, BooleanSupplier, Downstream, ActiveDownstream, Upstream, Buffering {
 
 		final Subscriber<? super T> actual;
 
@@ -165,7 +148,7 @@ public final class StreamTakeLast<T> extends StreamBarrier<T, T> {
 		volatile long requested;
 		@SuppressWarnings("rawtypes")
 		static final AtomicLongFieldUpdater<StreamTakeLastManySubscriber> REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(StreamTakeLastManySubscriber.class, "requested");
+		  AtomicLongFieldUpdater.newUpdater(StreamTakeLastManySubscriber.class, "requested");
 
 		public StreamTakeLastManySubscriber(Subscriber<? super T> actual, int n) {
 			this.actual = actual;

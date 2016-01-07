@@ -13,19 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.subscription.CancelledSubscription;
-import reactor.core.subscription.EmptySubscription;
-import reactor.core.support.BackpressureUtils;
+import org.reactivestreams.*;
+
 import reactor.rx.subscriber.SerializedSubscriber;
+import reactor.core.subscription.*;
+import reactor.core.support.BackpressureUtils;
 
 /**
  * Relays values from the main Publisher until another Publisher signals an event.
@@ -36,7 +33,6 @@ import reactor.rx.subscriber.SerializedSubscriber;
 
 /**
  * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
- *
  * @since 2.5
  */
 public final class StreamTakeUntil<T, U> extends StreamBarrier<T, T> {
@@ -60,7 +56,6 @@ public final class StreamTakeUntil<T, U> extends StreamBarrier<T, T> {
 	}
 
 	static final class StreamTakeUntilOtherSubscriber<U> implements Subscriber<U> {
-
 		final StreamTakeUntilMainSubscriber<?> main;
 
 		boolean once;
@@ -103,20 +98,17 @@ public final class StreamTakeUntil<T, U> extends StreamBarrier<T, T> {
 	}
 
 	static final class StreamTakeUntilMainSubscriber<T> implements Subscriber<T>, Subscription {
-
 		final SerializedSubscriber<T> actual;
 
 		volatile Subscription main;
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<StreamTakeUntilMainSubscriber, Subscription> MAIN =
-				AtomicReferenceFieldUpdater.newUpdater(StreamTakeUntilMainSubscriber.class, Subscription.class, "main");
+		  AtomicReferenceFieldUpdater.newUpdater(StreamTakeUntilMainSubscriber.class, Subscription.class, "main");
 
 		volatile Subscription other;
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<StreamTakeUntilMainSubscriber, Subscription> OTHER =
-				AtomicReferenceFieldUpdater.newUpdater(StreamTakeUntilMainSubscriber.class,
-						Subscription.class,
-						"other");
+		  AtomicReferenceFieldUpdater.newUpdater(StreamTakeUntilMainSubscriber.class, Subscription.class, "other");
 
 		public StreamTakeUntilMainSubscriber(Subscriber<? super T> actual) {
 			this.actual = new SerializedSubscriber<>(actual);
@@ -169,8 +161,7 @@ public final class StreamTakeUntil<T, U> extends StreamBarrier<T, T> {
 				if (main != CancelledSubscription.INSTANCE) {
 					BackpressureUtils.reportSubscriptionSet();
 				}
-			}
-			else {
+			} else {
 				actual.onSubscribe(this);
 			}
 		}

@@ -57,12 +57,14 @@ import reactor.fn.tuple.Tuple7;
 import reactor.rx.broadcast.StreamProcessor;
 import reactor.rx.stream.StreamBarrier;
 import reactor.rx.stream.StreamCombineLatest;
+import reactor.rx.stream.StreamConcatArray;
+import reactor.rx.stream.StreamConcatIterable;
 import reactor.rx.stream.StreamDefer;
 import reactor.rx.stream.StreamFuture;
 import reactor.rx.stream.StreamIterable;
 import reactor.rx.stream.StreamJust;
 import reactor.rx.stream.StreamRange;
-import reactor.rx.stream.StreamSwitch;
+import reactor.rx.stream.StreamSwitchMap;
 import reactor.rx.stream.StreamTimerPeriod;
 import reactor.rx.stream.StreamTimerSingle;
 import reactor.rx.stream.StreamWithLatestFrom;
@@ -560,7 +562,7 @@ public class Streams {
 	 */
 	public static <T> StreamProcessor<Publisher<? extends T>, T> switchOnNext() {
 		Processor<Publisher<? extends T>, Publisher<? extends T>> emitter = Processors.replay();
-		StreamProcessor<Publisher<? extends T>, T> p = StreamProcessor.from(emitter, new StreamSwitch<>(emitter));
+		StreamProcessor<Publisher<? extends T>, T> p = StreamProcessor.from(emitter, switchOnNext(emitter));
 		p.onSubscribe(EmptySubscription.INSTANCE);
 		return p;
 	}
@@ -574,9 +576,10 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0
 	 */
+	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> switchOnNext(
 	  Publisher<Publisher<? extends T>> mergedPublishers) {
-		return new StreamSwitch<>(mergedPublishers);
+		return new StreamSwitchMap<>(mergedPublishers, IDENTITY_FUNCTION, XS_QUEUE_SUPPLIER, ReactiveState.XS_BUFFER_SIZE);
 	}
 
 	/**
@@ -621,7 +624,7 @@ public class Streams {
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Stream<T> concat(Iterable<? extends Publisher<? extends T>> mergedPublishers) {
-		return from(Flux.concat(mergedPublishers));
+		return new StreamConcatIterable<>(mergedPublishers);
 	}
 
 	/**
@@ -650,10 +653,10 @@ public class Streams {
 	 * @return a {@link Stream} based on the produced value
 	 * @since 2.0, 2.5
 	 */
-	@SuppressWarnings({"unchecked", "varargs"})
+	@SuppressWarnings("varargs")
 	@SafeVarargs
 	public static <T> Stream<T> concat(Publisher<? extends T>... sources) {
-		return from(Flux.concat(sources));
+		return new StreamConcatArray<>(sources);
 	}
 
 	/**
@@ -772,7 +775,7 @@ public class Streams {
 	                                                      Publisher<? extends T2> source2,
 	                                                      Publisher<? extends T3> source3,
 			Function<Object[], V> combinator) {
-		return combineLatest(combinator, new Publisher[]{source1, source2, source3});
+		return combineLatest(combinator, source1, source2, source3);
 	}
 
 	/**
@@ -800,7 +803,7 @@ public class Streams {
 	                                                          Publisher<? extends T3> source3,
 	                                                          Publisher<? extends T4> source4,
 			Function<Object[], V> combinator) {
-		return combineLatest(combinator, new Publisher[]{source1, source2, source3, source4});
+		return combineLatest(combinator, source1, source2, source3, source4);
 	}
 
 	/**
@@ -830,7 +833,7 @@ public class Streams {
 	                                                              Publisher<? extends T4> source4,
 	                                                              Publisher<? extends T5> source5,
 			Function<Object[], V> combinator) {
-		return combineLatest(combinator, new Publisher[]{source1, source2, source3, source4, source5});
+		return combineLatest(combinator, source1, source2, source3, source4, source5);
 	}
 
 	/**
@@ -864,7 +867,7 @@ public class Streams {
 	                                                                  Publisher<? extends T5> source5,
 	                                                                  Publisher<? extends T6> source6,
 			Function<Object[], V> combinator) {
-		return combineLatest(combinator, new Publisher[]{source1, source2, source3, source4, source5, source6});
+		return combineLatest(combinator, source1, source2, source3, source4, source5, source6);
 	}
 
 	/**
@@ -901,8 +904,7 @@ public class Streams {
 	                                                                      Publisher<? extends T6> source6,
 	                                                                      Publisher<? extends T7> source7,
 			Function<Object[], V> combinator) {
-		return combineLatest(combinator,
-				new Publisher[]{source1, source2, source3, source4, source5, source6, source7});
+		return combineLatest(combinator, source1, source2, source3, source4, source5, source6, source7);
 	}
 
 	/**
@@ -1461,16 +1463,16 @@ public class Streams {
 		}
 	}
 
-	private static final Stream NEVER = from(Flux.never());
+	static final Stream NEVER = from(Flux.never());
 
-	private static final Function IDENTITY_FUNCTION = new Function() {
+	static final Function IDENTITY_FUNCTION = new Function() {
 		@Override
 		public Object apply(Object o) {
 			return o;
 		}
 	};
 
-	private static final Supplier XS_QUEUE_SUPPLIER = new Supplier() {
+	static final Supplier XS_QUEUE_SUPPLIER = new Supplier() {
 		@Override
 		public Object get() {
 			return RingBuffer.newSequencedQueue(RingBuffer.createSingleProducer(ReactiveState.XS_BUFFER_SIZE));

@@ -13,59 +13,34 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.core.subscriber;
+
+package reactor.core.subscription;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.subscription.CancelledSubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
 
 /**
- * Arbitrates the requests and cancellation for a Subscription that may be set onSubscribe once only.
- * <p>
- * Note that {@link #request(long)} doesn't validate the amount.
+ * Base class for Subscribers that will receive their Subscriptions at any time yet they need to be cancelled or
+ * requested at any time.
  */
-public class SubscriberDeferSubscription<I, O>
-		implements Subscription, Subscriber<I>, ReactiveState.DownstreamDemand, ReactiveState.ActiveUpstream,
-		           ReactiveState.ActiveDownstream, ReactiveState.Downstream, ReactiveState.Upstream {
-
-	protected final Subscriber<? super O> subscriber;
+public class DeferredSubscription implements Subscription, ReactiveState.ActiveUpstream, ReactiveState.ActiveDownstream,
+                                             ReactiveState.DownstreamDemand, ReactiveState.Upstream {
 
 	volatile Subscription s;
-	@SuppressWarnings("rawtypes")
-	static final AtomicReferenceFieldUpdater<SubscriberDeferSubscription, Subscription> S =
-			AtomicReferenceFieldUpdater.newUpdater(SubscriberDeferSubscription.class, Subscription.class, "s");
+	static final AtomicReferenceFieldUpdater<DeferredSubscription, Subscription> S =
+			AtomicReferenceFieldUpdater.newUpdater(DeferredSubscription.class, Subscription.class, "s");
 
 	volatile long requested;
-	@SuppressWarnings("rawtypes")
-	static final AtomicLongFieldUpdater<SubscriberDeferSubscription> REQUESTED =
-			AtomicLongFieldUpdater.newUpdater(SubscriberDeferSubscription.class, "requested");
+	static final AtomicLongFieldUpdater<DeferredSubscription> REQUESTED =
+			AtomicLongFieldUpdater.newUpdater(DeferredSubscription.class, "requested");
 
-	/**
-	 * Constructs a SingleSubscriptionArbiter with zero initial request.
-	 */
-	public SubscriberDeferSubscription(Subscriber<? super O> subscriber) {
-		this.subscriber = subscriber;
-	}
-
-	/**
-	 * Constructs a SingleSubscriptionArbiter with the specified initial request amount.
-	 *
-	 * @param initialRequest
-	 *
-	 * @throws IllegalArgumentException if initialRequest is negative
-	 */
-	public SubscriberDeferSubscription(Subscriber<? super O> subscriber, long initialRequest) {
-		if (initialRequest < 0) {
-			throw new IllegalArgumentException("initialRequest >= required but it was " + initialRequest);
-		}
-		this.subscriber = subscriber;
-		REQUESTED.lazySet(this, initialRequest);
+	protected final void setInitialRequest(long n) {
+		REQUESTED.lazySet(this, n);
 	}
 
 	/**
@@ -84,6 +59,7 @@ public class SubscriberDeferSubscription<I, O>
 		}
 		if (a != null) {
 			s.cancel();
+			BackpressureUtils.reportSubscriptionSet();
 			return false;
 		}
 
@@ -102,8 +78,10 @@ public class SubscriberDeferSubscription<I, O>
 
 		if (a != CancelledSubscription.INSTANCE) {
 			s.cancel();
+			return false;
 		}
 
+		BackpressureUtils.reportSubscriptionSet();
 		return false;
 	}
 
@@ -149,13 +127,6 @@ public class SubscriberDeferSubscription<I, O>
 		return s == CancelledSubscription.INSTANCE;
 	}
 
-	/**
-	 * Returns true if a subscription has been set or the arbiter has been cancelled.
-	 * <p>
-	 * Use {@link #isCancelled()} to distinguish between the two states.
-	 *
-	 * @return true if a subscription has been set or the arbiter has been cancelled
-	 */
 	@Override
 	public final boolean isStarted() {
 		return s != null;
@@ -164,11 +135,6 @@ public class SubscriberDeferSubscription<I, O>
 	@Override
 	public final boolean isTerminated() {
 		return isCancelled();
-	}
-
-	@Override
-	public final Subscriber<? super O> downstream() {
-		return subscriber;
 	}
 
 	@Override
@@ -181,30 +147,4 @@ public class SubscriberDeferSubscription<I, O>
 		return s;
 	}
 
-	@Override
-	public void onSubscribe(Subscription s) {
-		set(s);
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public void onNext(I t) {
-		if (subscriber != null) {
-			subscriber.onNext((O) t);
-		}
-	}
-
-	@Override
-	public void onError(Throwable t) {
-		if (subscriber != null) {
-			subscriber.onError(t);
-		}
-	}
-
-	@Override
-	public void onComplete() {
-		if (subscriber != null) {
-			subscriber.onComplete();
-		}
-	}
 }

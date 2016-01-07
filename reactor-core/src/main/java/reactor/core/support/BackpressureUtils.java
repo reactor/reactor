@@ -21,11 +21,13 @@ import java.util.Queue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.core.error.Exceptions;
 import reactor.core.error.InsufficientCapacityException;
+import reactor.core.subscription.CancelledSubscription;
 import reactor.core.support.rb.disruptor.Sequence;
 import reactor.fn.BooleanSupplier;
 
@@ -334,6 +336,42 @@ public enum BackpressureUtils {
 		return r;
 	}
 
+	public static <F> boolean terminate(AtomicReferenceFieldUpdater<F, Subscription> field, F instance) {
+		Subscription a = field.get(instance);
+		if (a != CancelledSubscription.INSTANCE) {
+			a = field.getAndSet(instance, CancelledSubscription.INSTANCE);
+			if (a != null && a != CancelledSubscription.INSTANCE) {
+				a.cancel();
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static <F> boolean setOnce(AtomicReferenceFieldUpdater<F, Subscription> field, F instance, Subscription s) {
+		Subscription a = field.get(instance);
+		if (a == CancelledSubscription.INSTANCE) {
+			return false;
+		}
+		if (a != null) {
+			reportSubscriptionSet();
+			return false;
+		}
+
+		if (field.compareAndSet(instance, null, s)) {
+			return true;
+		}
+
+		a = field.get(instance);
+
+		if (a == CancelledSubscription.INSTANCE) {
+			return false;
+		}
+
+		reportSubscriptionSet();
+		return false;
+	}
+
 	/**
 	 *
 	 */
@@ -531,6 +569,5 @@ public enum BackpressureUtils {
 				return;
 			}
 		}
-
 	}
 }

@@ -23,10 +23,11 @@ import reactor.core.error.ReactorFatalException
 import reactor.core.processor.ProcessorGroup
 import reactor.core.processor.RingBufferProcessor
 import reactor.core.subscriber.SubscriberWithContext
+import reactor.core.subscriber.test.DataTestSubscriber
 import reactor.core.support.ReactiveStateUtils
 import reactor.fn.BiFunction
-import reactor.rx.stream.Signal
 import reactor.rx.broadcast.Broadcaster
+import reactor.rx.stream.Signal
 import spock.lang.Ignore
 import spock.lang.Shared
 import spock.lang.Specification
@@ -883,7 +884,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the count value matches the number of accept'
-			tap.get() == 3
+			tap.peek() == 3
 	}
 
 	def 'A Stream can return a value at a certain index'() {
@@ -1123,7 +1124,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the reduced composable holds the reduced value'
-			value.get() == 120
+			value.peek() == 120
 	}
 
 	def 'When a known number of values is being reduced, only the final value is made available'() {
@@ -1138,7 +1139,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the reduced value is unknown'
-			value.get() == null
+			value.peek() == null
 
 		when:
 			'the second value is accepted'
@@ -1147,7 +1148,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the reduced value is known'
-			value.get() == 2
+			value.peek() == 2
 	}
 
 	def 'When an unknown number of values is being reduced, each reduction is passed to a consumer on window'() {
@@ -1163,7 +1164,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the reduction is not available'
-			!value.get()
+			!value.peek()
 
 		when:
 			'the second value is accepted and flushed'
@@ -1171,7 +1172,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the updated reduction is available'
-			value.get() == 2
+			value.peek() == 2
 	}
 
 	def 'When an unknown number of values is being scanned, each reduction is passed to a consumer'() {
@@ -1224,7 +1225,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the list contains the first element'
-			value.get() == [1]
+			value.peek() == [1]
 	}
 
 	def 'Collect will accumulate a list of accepted values and pass it to a consumer'() {
@@ -1240,7 +1241,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the collected list is not yet available'
-			value.get() == null
+			value.peek() == null
 
 		when:
 			'the second value is accepted'
@@ -1248,7 +1249,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the collected list contains the first and second elements'
-			value.get() == [1, 2]
+			value.peek() == [1, 2]
 	}
 
 
@@ -1292,7 +1293,7 @@ class StreamsSpec extends Specification {
 		when:
 			'non overlapping buffers'
 			def boundaryStream = Broadcaster.<Integer> create()
-			def res = numbers.buffer { boundaryStream }.buffer().promise()
+			def res = numbers.buffer ( boundaryStream ).buffer().promise()
 
 			numbers.onNext(1)
 			numbers.onNext(2)
@@ -1471,7 +1472,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the collected list is not yet available'
-			promise.get() == null
+			promise.peek() == null
 
 		when:
 			'the second value is accepted'
@@ -1740,7 +1741,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'dispatching works'
-			res.get() == [1, 2, 3]
+			res.peek() == [1, 2, 3]
 	}
 
 	def 'Creating Stream from Timer'() {
@@ -2265,7 +2266,7 @@ class StreamsSpec extends Specification {
 			def source = Broadcaster.<Integer> create()
 
 			def value = null
-			def tail = source.log("drop").onOverflowDrop().doOnNext { value = it }.log('overflow-drop-test')
+			def tail = source.log("drop").onBackpressureDrop().doOnNext { value = it }.log('overflow-drop-test')
 					.consumeLater()
 
 			tail.request(5)
@@ -2319,7 +2320,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the average elapsed time between 2 signals is greater than throttled time'
-			value.get() >= avgTime * 0.6
+			value.peek() >= avgTime * 0.6
 
 	}
 
@@ -2359,7 +2360,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the average elapsed time between 2 signals is greater than throttled time'
-			value.get() >= avgTime * 0.6
+			value.peek() >= avgTime * 0.6
 
 	}
 
@@ -2467,7 +2468,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'it is available'
-			promise.get() == ['test1', 'test2', 'test3']
+			promise.peek() == ['test1', 'test2', 'test3']
 	}
 
 	def 'A Stream can be transformed into error consumer for reuse'() {
@@ -2483,7 +2484,7 @@ class StreamsSpec extends Specification {
 			nextConsumer.accept('test1')
 			nextConsumer.accept('test3')
 			errorConsumer.accept(new Exception())
-			promise.get()
+			promise.peek()
 
 		then:
 			'toList promise is under error'
@@ -2514,7 +2515,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'3 values are passed since it is a cold stream resubscribed 2 times and finally managed to get the 3 values'
-			value.get() == 3
+			value.peek() == 3
 
 		when:
 			'the stream triggers an error for the 2 first elements and is using retry() to ignore them'
@@ -2533,7 +2534,7 @@ class StreamsSpec extends Specification {
 			stream.onNext('test3')
 			stream.onComplete()
 			println tap.debug()
-			def res = tap.get()
+			def res = tap.peek()
 
 		then:
 			'it is a hot stream and only 1 value (the most recent) is available'
@@ -2574,7 +2575,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'it is a hot stream and only 1 value (the most recent) is available'
-			tap.get() == 1
+			tap.peek() == 1
 	}
 
 	def 'A Stream can re-subscribe its oldest parent on error signals after backoff stream'() {
@@ -2584,19 +2585,21 @@ class StreamsSpec extends Specification {
 			def value = Streams.yield {
 				counter++
 				it.onError(new RuntimeException("always fails $counter"))
-			}.log('retry').retryWhen { attempts ->
-				attempts.log('retry.in').zipWith(Streams.range(1, 3),  { t1, t2 -> t2 }).log().flatMap { i ->
+			}.retryWhen { attempts ->
+			  attempts.log('zipWith').zipWith(Streams.range(1, 3), { t1, t2 -> t2 }).flatMap { i ->
 					println "delay retry by " + i + " second(s)"
 				  println attempts.debug()
 					Streams.timer(i)
 				}
-			}.next()
+			}.to(DataTestSubscriber.createWithTimeoutSecs(10))
 		println value.debug()
-			value.get(10, TimeUnit.SECONDS)
+		value.sendUnboundedRequest()
 
 		then:
 			'Promise completed after 3 tries'
+		value.assertCompleteReceived()
 			counter == 4
+
 	}
 
 	def 'A Stream can re-subscribe its oldest parent on complete signals'() {
@@ -2812,7 +2815,7 @@ class StreamsSpec extends Specification {
 
 		then:
 			'the second is the last available'
-			value2.get() == ['test2', 'test3']
+			value2.peek() == ['test2', 'test3']
 	}
 
 

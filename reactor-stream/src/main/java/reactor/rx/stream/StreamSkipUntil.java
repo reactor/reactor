@@ -13,22 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
 
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.subscription.CancelledSubscription;
-import reactor.core.subscription.EmptySubscription;
-import reactor.core.support.BackpressureUtils;
+import org.reactivestreams.*;
+
 import reactor.rx.subscriber.SerializedSubscriber;
+import reactor.core.subscription.*;
+import reactor.core.support.BackpressureUtils;
 
 /**
- * Skips values from the main publisher until the other publisher signals an onNext or onComplete.
+ * Skips values from the main publisher until the other publisher signals
+ * an onNext or onComplete.
  *
  * @param <T> the value type of the main Publisher
  * @param <U> the value type of the other Publisher
@@ -36,7 +34,6 @@ import reactor.rx.subscriber.SerializedSubscriber;
 
 /**
  * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
- *
  * @since 2.5
  */
 public final class StreamSkipUntil<T, U> extends StreamBarrier<T, T> {
@@ -60,7 +57,6 @@ public final class StreamSkipUntil<T, U> extends StreamBarrier<T, T> {
 	}
 
 	static final class StreamSkipUntilOtherSubscriber<U> implements Subscriber<U> {
-
 		final StreamSkipUntilMainSubscriber<?> main;
 
 		public StreamSkipUntilOtherSubscriber(StreamSkipUntilMainSubscriber<?> main) {
@@ -107,21 +103,20 @@ public final class StreamSkipUntil<T, U> extends StreamBarrier<T, T> {
 
 	}
 
-	static final class StreamSkipUntilMainSubscriber<T> implements Subscriber<T>, Subscription {
+	static final class StreamSkipUntilMainSubscriber<T>
+	  implements Subscriber<T>, Subscription {
 
 		final SerializedSubscriber<T> actual;
 
 		volatile Subscription main;
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<StreamSkipUntilMainSubscriber, Subscription> MAIN =
-				AtomicReferenceFieldUpdater.newUpdater(StreamSkipUntilMainSubscriber.class, Subscription.class, "main");
+		  AtomicReferenceFieldUpdater.newUpdater(StreamSkipUntilMainSubscriber.class, Subscription.class, "main");
 
 		volatile Subscription other;
 		@SuppressWarnings("rawtypes")
 		static final AtomicReferenceFieldUpdater<StreamSkipUntilMainSubscriber, Subscription> OTHER =
-				AtomicReferenceFieldUpdater.newUpdater(StreamSkipUntilMainSubscriber.class,
-						Subscription.class,
-						"other");
+		  AtomicReferenceFieldUpdater.newUpdater(StreamSkipUntilMainSubscriber.class, Subscription.class, "other");
 
 		volatile boolean gate;
 
@@ -176,8 +171,7 @@ public final class StreamSkipUntil<T, U> extends StreamBarrier<T, T> {
 				if (main != CancelledSubscription.INSTANCE) {
 					BackpressureUtils.reportSubscriptionSet();
 				}
-			}
-			else {
+			} else {
 				actual.onSubscribe(this);
 			}
 		}
@@ -186,8 +180,7 @@ public final class StreamSkipUntil<T, U> extends StreamBarrier<T, T> {
 		public void onNext(T t) {
 			if (gate) {
 				actual.onNext(t);
-			}
-			else {
+			} else {
 				main.request(1);
 			}
 		}

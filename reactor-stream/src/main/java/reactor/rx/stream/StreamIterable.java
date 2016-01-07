@@ -1,31 +1,12 @@
-/*
- * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package reactor.rx.stream;
 
-import java.util.Iterator;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
+import org.reactivestreams.*;
+
 import reactor.core.subscription.EmptySubscription;
-import reactor.core.support.BackpressureUtils;
-import reactor.core.support.ReactiveState;
-import reactor.rx.Stream;
+import reactor.core.support.*;
 
 /**
  * Emits the contents of an Iterable source.
@@ -35,10 +16,13 @@ import reactor.rx.Stream;
 
 /**
  * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
- *
  * @since 2.5
  */
-public final class StreamIterable<T> extends Stream<T> implements ReactiveState.Factory, ReactiveState.Upstream {
+public final class StreamIterable<T> 
+extends reactor.rx.Stream<T>
+implements 
+												   ReactiveState.Factory,
+												   ReactiveState.Upstream {
 
 	final Iterable<? extends T> iterable;
 
@@ -52,8 +36,7 @@ public final class StreamIterable<T> extends Stream<T> implements ReactiveState.
 
 		try {
 			it = iterable.iterator();
-		}
-		catch (Throwable e) {
+		} catch (Throwable e) {
 			EmptySubscription.error(s, e);
 			return;
 		}
@@ -82,8 +65,7 @@ public final class StreamIterable<T> extends Stream<T> implements ReactiveState.
 
 		try {
 			b = it.hasNext();
-		}
-		catch (Throwable e) {
+		} catch (Throwable e) {
 			EmptySubscription.error(s, e);
 			return;
 		}
@@ -92,11 +74,11 @@ public final class StreamIterable<T> extends Stream<T> implements ReactiveState.
 			return;
 		}
 
-		s.onSubscribe(new FluxIterableSubscription<>(s, it));
+		s.onSubscribe(new StreamIterableSubscription<>(s, it));
 	}
 
-	static final class FluxIterableSubscription<T>
-			implements Downstream, Upstream, DownstreamDemand, ActiveDownstream, ActiveUpstream, Subscription {
+	static final class StreamIterableSubscription<T>
+	  implements Downstream, Upstream, DownstreamDemand, ActiveDownstream, ActiveUpstream, Subscription {
 
 		final Subscriber<? super T> actual;
 
@@ -106,10 +88,10 @@ public final class StreamIterable<T> extends Stream<T> implements ReactiveState.
 
 		volatile long requested;
 		@SuppressWarnings("rawtypes")
-		static final AtomicLongFieldUpdater<FluxIterableSubscription> REQUESTED =
-				AtomicLongFieldUpdater.newUpdater(FluxIterableSubscription.class, "requested");
+		static final AtomicLongFieldUpdater<StreamIterableSubscription> REQUESTED =
+		  AtomicLongFieldUpdater.newUpdater(StreamIterableSubscription.class, "requested");
 
-		public FluxIterableSubscription(Subscriber<? super T> actual, Iterator<? extends T> iterator) {
+		public StreamIterableSubscription(Subscriber<? super T> actual, Iterator<? extends T> iterator) {
 			this.actual = actual;
 			this.iterator = iterator;
 		}
@@ -120,8 +102,7 @@ public final class StreamIterable<T> extends Stream<T> implements ReactiveState.
 				if (BackpressureUtils.addAndGet(REQUESTED, this, n) == 0) {
 					if (n == Long.MAX_VALUE) {
 						fastPath();
-					}
-					else {
+					} else {
 						slowPath(n);
 					}
 				}
@@ -141,8 +122,7 @@ public final class StreamIterable<T> extends Stream<T> implements ReactiveState.
 
 					try {
 						t = a.next();
-					}
-					catch (Throwable ex) {
+					} catch (Throwable ex) {
 						s.onError(ex);
 						return;
 					}
@@ -166,8 +146,7 @@ public final class StreamIterable<T> extends Stream<T> implements ReactiveState.
 
 					try {
 						b = a.hasNext();
-					}
-					catch (Throwable ex) {
+					} catch (Throwable ex) {
 						s.onError(ex);
 						return;
 					}
@@ -210,8 +189,7 @@ public final class StreamIterable<T> extends Stream<T> implements ReactiveState.
 
 				try {
 					t = a.next();
-				}
-				catch (Exception ex) {
+				} catch (Exception ex) {
 					s.onError(ex);
 					return;
 				}
@@ -235,8 +213,7 @@ public final class StreamIterable<T> extends Stream<T> implements ReactiveState.
 
 				try {
 					b = a.hasNext();
-				}
-				catch (Exception ex) {
+				} catch (Exception ex) {
 					s.onError(ex);
 					return;
 				}

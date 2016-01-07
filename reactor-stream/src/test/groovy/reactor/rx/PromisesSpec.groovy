@@ -70,7 +70,7 @@ class PromisesSpec extends Specification {
 	promise.onNext 'test'
 
 	then: "the consumer is invoked with the promise"
-	acceptedPromise == promise.get()
+	acceptedPromise == promise.peek()
 	promise.success
   }
 
@@ -84,7 +84,7 @@ class PromisesSpec extends Specification {
 	promise.doOnTerminate{ self, err -> acceptedPromise = self}.to(Promise.prepare())
 
 	then: "the consumer is invoked with the promise"
-	acceptedPromise == promise.get()
+	acceptedPromise == promise.peek()
 	promise.success
   }
 
@@ -164,7 +164,7 @@ class PromisesSpec extends Specification {
 	promise.onNext "test"
 
 	then: "the promise is invoked without the accepted value"
-	!after.get()
+	!after.peek()
 	after.isTerminated()
 	after.isSuccess()
 
@@ -203,7 +203,7 @@ class PromisesSpec extends Specification {
 	def promise = Promise.error(failure)
 
 	when: "getting the promise's value"
-	promise.get()
+	promise.peek()
 
 	then: "the error that the promise was rejected with is thrown"
 	thrown(Exception)
@@ -214,7 +214,7 @@ class PromisesSpec extends Specification {
 	def promise = Promise.success('test')
 
 	when: "getting the promise's value"
-	def value = promise.get()
+	def value = promise.peek()
 
 	then: "the value used to fulfil the promise is returned"
 	value == 'test'
@@ -398,8 +398,8 @@ class PromisesSpec extends Specification {
 	println combined.debug()
 
 	then: "the combined promise is fulfilled with both values"
-	combined.get().t1 == 1
-	combined.get().t2 == 2
+	combined.peek().t1 == 1
+	combined.peek().t2 == 2
 	combined.success
   }
 
@@ -429,12 +429,12 @@ class PromisesSpec extends Specification {
 	when: "a combined promise is first created"
 	def combined = Promise.prepare()
 	Mono.when(promise1, promise2).subscribe(combined)
-	combined.get()
+	combined.peek()
 
 	then: "it is fulfilled"
 	combined.success
-	combined.get().t1 == 1
-	combined.get().t2 == 2
+	combined.peek().t1 == 1
+	combined.peek().t2 == 2
 
 	when: "promises are supplied"
 	promise1 = Mono.fromCallable { '1' }
@@ -444,8 +444,8 @@ class PromisesSpec extends Specification {
 
 	then: "it is fulfilled"
 	combined.success
-	combined.get().t1 == '1'
-	combined.get().t2 == '2'
+	combined.peek().t1 == '1'
+	combined.peek().t2 == '2'
 
   }
 
@@ -459,7 +459,7 @@ class PromisesSpec extends Specification {
 	Mono.any(promise1, promise2).subscribe(combined)
 
 	then: "it is fulfilled"
-	combined.get() == 1
+	combined.peek() == 1
 	combined.success
   }
 
@@ -475,7 +475,7 @@ class PromisesSpec extends Specification {
 
 	then: "it is fulfilled"
 	combined.awaitSuccess(3205, TimeUnit.MILLISECONDS)
-	combined.get() == 2
+	combined.peek() == 2
   }
 
   def "A combined promise is immediately rejected if its component promises are already rejected"() {
@@ -553,7 +553,7 @@ class PromisesSpec extends Specification {
 
 	then: "the filtered promise is fulfilled"
 	promise.success
-	promise.get() == 2
+	promise.peek() == 2
   }
 
   def "If a filter throws an exception the filtered promise is rejected"() {
@@ -578,7 +578,7 @@ class PromisesSpec extends Specification {
 	def v = promise.stream().filter { it % 2 == 0 }.next().get()
 
 	then: "the filtered promise is fulfilled"
-	promise.get() == v
+	promise.peek() == v
 	promise.success
   }
 

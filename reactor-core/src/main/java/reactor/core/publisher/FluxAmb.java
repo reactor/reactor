@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.subscriber.SubscriberDeferSubscription;
+import reactor.core.subscriber.SubscriberDeferredSubscription;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
@@ -271,7 +271,7 @@ public final class FluxAmb<T> extends reactor.Flux<T> implements ReactiveState.F
         }
     }
 
-    static final class FluxAmbSubscriber<T> extends SubscriberDeferSubscription<T, T> implements Inner {
+    static final class FluxAmbSubscriber<T> extends SubscriberDeferredSubscription<T, T> implements Inner {
 
         final FluxAmbCoordinator<T> parent;
 

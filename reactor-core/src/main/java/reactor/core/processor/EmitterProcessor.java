@@ -563,16 +563,10 @@ public final class EmitterProcessor<T> extends FluxProcessor<T, T>
 				return;
 			}
 			int toRequest = (bufferSize - r) - buffered;
-//			System.out.println(subscription + " WRONG torequest:" + toRequest + " b:" + buffered + " r " + r + "  q " +
-//					emitBuffer + " " +
-//					"o:" + outstanding + " sr:" + subscribers[0].requested);
 			if (toRequest > 0 && subscription != null) {
 				OUTSTANDING.addAndGet(this, toRequest);
 				subscription.request(toRequest);
 			}
-		}
-		else {
-//			System.out.println(subscription + " b:" + buffered + " NOOOO ");
 		}
 	}
 

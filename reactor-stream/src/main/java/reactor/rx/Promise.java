@@ -31,7 +31,6 @@ import reactor.core.error.Exceptions;
 import reactor.core.error.ReactorFatalException;
 import reactor.core.support.BackpressureUtils;
 import reactor.core.support.ReactiveState;
-import reactor.core.support.ReactiveStateUtils;
 import reactor.core.support.SignalType;
 import reactor.core.support.internal.PlatformDependent;
 import reactor.core.timer.Timer;
@@ -41,7 +40,7 @@ import reactor.fn.Supplier;
 import reactor.rx.broadcast.Broadcaster;
 
 /**
- * A {@code Promise} is a stateful event container that accepts a single value or error. In addition to {@link #get()
+ * A {@code Promise} is a stateful event container that accepts a single value or error. In addition to {@link #peek()
  * getting} or {@link #await() awaiting} the value, consumers can be registered to the outbound {@link #stream()} or via
  * , consumers can be registered to be notified of {@link #doOnError(Consumer) notified an error}, {@link
  * #doOnSuccess(Consumer) a value}, or {@link #doOnTerminate(BiConsumer)} both}. <p> A promise also provides methods for
@@ -55,8 +54,8 @@ import reactor.rx.broadcast.Broadcaster;
  * @see <a href="https://github.com/promises-aplus/promises-spec">Promises/A+ specification</a>
  */
 public final class Promise<O> extends Mono<O>
-		implements Supplier<O>, Processor<O, O>, Consumer<O>, ReactiveState.Bounded, Subscription,
-		           ReactiveState.Upstream, ReactiveState.Downstream, ReactiveState.ActiveUpstream {
+		implements Processor<O, O>, Consumer<O>, ReactiveState.Bounded, Subscription, ReactiveState
+		.FailState,  ReactiveState.Upstream, ReactiveState.Downstream, ReactiveState.ActiveUpstream {
 
 	private final static Promise                            COMPLETE  = success(null);
 	private static final AtomicIntegerFieldUpdater<Promise> REQUESTED =
@@ -266,7 +265,7 @@ public final class Promise<O> extends Mono<O>
 	public O await(long timeout, TimeUnit unit) throws InterruptedException {
 		request(1);
 		if (!isPending()) {
-			return get();
+			return peek();
 		}
 
 		long delay = System.currentTimeMillis() + TimeUnit.MILLISECONDS.convert(timeout, unit);
@@ -344,8 +343,7 @@ public final class Promise<O> extends Mono<O>
 	 *
 	 * @throws RuntimeException if the promise was completed with an error
 	 */
-	@Override
-	public O get() {
+	public O peek() {
 		request(1);
 		SignalType endState = this.endState;
 
@@ -476,20 +474,6 @@ public final class Promise<O> extends Mono<O>
 	}
 
 	/**
-	 * Block the calling thread, waiting for the completion of this {@code Promise}. A default timeout as specified in
-	 * Reactor's {@link System#getProperties()} using the key {@code reactor.await.defaultTimeout} is used. The default
-	 * is 30 seconds. If the promise is completed with an error a RuntimeException that wraps the error is thrown.
-	 *
-	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has
-	 * not completed
-	 *
-	 * @throws RuntimeException if the promise is completed with an error
-	 */
-	public O poll() {
-		return poll(DEFAULT_TIMEOUT, TimeUnit.MILLISECONDS);
-	}
-
-	/**
 	 * Block the calling thread for the specified time, waiting for the completion of this {@code Promise}. If the
 	 * promise is completed with an error a RuntimeException that wraps the error is thrown.
 	 *
@@ -499,14 +483,15 @@ public final class Promise<O> extends Mono<O>
 	 * @return the value of this {@code Promise} or {@code null} if the timeout is reached and the {@code Promise} has
 	 * not completed
 	 */
-	public O poll(long timeout, TimeUnit unit) {
+	@Override
+	public O get(long timeout, TimeUnit unit) {
 		try {
 			return await(timeout, unit);
 		}
 		catch (InterruptedException ie) {
 			Thread.currentThread()
 			      .interrupt();
-			return null;
+			throw CancelException.get();
 		}
 	}
 
@@ -584,4 +569,8 @@ public final class Promise<O> extends Mono<O>
 		return subscription;
 	}
 
+	@Override
+	public Throwable getError() {
+		return reason();
+	}
 }

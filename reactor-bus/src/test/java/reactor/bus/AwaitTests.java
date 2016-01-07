@@ -19,7 +19,6 @@ package reactor.bus;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
-import reactor.Mono;
 import reactor.Processors;
 import reactor.bus.selector.Selectors;
 import reactor.core.processor.RingBufferProcessor;
@@ -81,7 +80,7 @@ public class AwaitTests extends AbstractReactorTest {
 		}
 		promise.await(5, TimeUnit.SECONDS);
 
-		assert promise.get() == 16;
+		assert promise.peek() == 16;
 		try{
 			r.getProcessor().onComplete();
 		}catch(Throwable c){

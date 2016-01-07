@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package reactor.rx.stream;
 
 import java.util.Objects;
@@ -30,68 +29,67 @@ import reactor.core.subscriber.SubscriberMultiSubscription;
 
 /**
  * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
- *
  * @since 2.5
  */
 public final class StreamSwitchIfEmpty<T> extends StreamBarrier<T, T> {
 
-	final Publisher<? extends T> other;
+    final Publisher<? extends T> other;
 
-	public StreamSwitchIfEmpty(Publisher<? extends T> source, Publisher<? extends T> other) {
-		super(source);
-		this.other = Objects.requireNonNull(other, "other");
-	}
+    public StreamSwitchIfEmpty(Publisher<? extends T> source, Publisher<? extends T> other) {
+        super(source);
+        this.other = Objects.requireNonNull(other, "other");
+    }
 
-	@Override
-	public void subscribe(Subscriber<? super T> s) {
-		StreamSwitchIfEmptySubscriber<T> parent = new StreamSwitchIfEmptySubscriber<>(s, other);
+    @Override
+    public void subscribe(Subscriber<? super T> s) {
+        StreamSwitchIfEmptySubscriber<T> parent = new StreamSwitchIfEmptySubscriber<>(s, other);
 
-		s.onSubscribe(parent);
+        s.onSubscribe(parent);
 
-		source.subscribe(parent);
-	}
+        source.subscribe(parent);
+    }
 
-	static final class StreamSwitchIfEmptySubscriber<T> extends SubscriberMultiSubscription<T, T>
-			implements FeedbackLoop {
+    static final class StreamSwitchIfEmptySubscriber<T> extends SubscriberMultiSubscription<T, T>
+            implements FeedbackLoop {
 
-		final Publisher<? extends T> other;
+        final Publisher<? extends T> other;
 
-		boolean once;
+        boolean once;
 
-		public StreamSwitchIfEmptySubscriber(Subscriber<? super T> actual, Publisher<? extends T> other) {
-			super(actual);
-			this.other = other;
-		}
+        public StreamSwitchIfEmptySubscriber(Subscriber<? super T> actual, Publisher<? extends T> other) {
+            super(actual);
+            this.other = other;
+        }
 
-		@Override
-		public void onNext(T t) {
-			if (!once) {
-				once = true;
-			}
+        @Override
+        public void onNext(T t) {
+            if (!once) {
+                once = true;
+            }
 
-			subscriber.onNext(t);
-		}
+            subscriber.onNext(t);
+        }
 
-		@Override
-		public void onComplete() {
-			if (!once) {
-				once = true;
+        @Override
+        public void onComplete() {
+            if (!once) {
+                once = true;
 
-				other.subscribe(this);
-			}
-			else {
-				subscriber.onComplete();
-			}
-		}
+                other.subscribe(this);
+            }
+            else {
+                subscriber.onComplete();
+            }
+        }
 
-		@Override
-		public Object delegateInput() {
-			return null;
-		}
+        @Override
+        public Object delegateInput() {
+            return null;
+        }
 
-		@Override
-		public Object delegateOutput() {
-			return other;
-		}
-	}
+        @Override
+        public Object delegateOutput() {
+            return other;
+        }
+    }
 }

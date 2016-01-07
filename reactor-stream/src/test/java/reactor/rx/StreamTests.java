@@ -247,7 +247,7 @@ public class StreamTests extends AbstractReactorTest {
 		catch (CancelException ise) {
 			// Swallow
 		}
-		assertEquals(deferred.get(), "alpha");
+		assertEquals(deferred.peek(), "alpha");
 	}
 
 	@Test
@@ -448,7 +448,7 @@ public class StreamTests extends AbstractReactorTest {
 		Broadcaster<Integer> source = Broadcaster.<Integer>create();
 		long avgTime = 50l;
 
-		Promise<Long> result = source.onOverflowBuffer()
+		Promise<Long> result = source.onBackpressureBuffer()
 		                          .dispatchOn(asyncGroup)
 		                          .throttle(avgTime)
 		                          .elapsed()
@@ -546,6 +546,7 @@ public class StreamTests extends AbstractReactorTest {
 		                                               })
 		                                               .log("faultTolerant")
 		                                               .retry()
+		                                               .take(6)
 		                                               .buffer()
 		                                               .promise();
 

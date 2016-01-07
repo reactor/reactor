@@ -1,35 +1,21 @@
-/*
- * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package reactor.rx.stream;
 
 import java.util.Objects;
-
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.error.Exceptions;
-import reactor.core.support.BackpressureUtils;
 import reactor.fn.BiFunction;
 
+import org.reactivestreams.*;
+
+import reactor.core.error.Exceptions;
+import reactor.core.support.BackpressureUtils;
+
 /**
- * Accumulates the source values with an accumulator function and returns the intermediate results of this function.
+ * Accumulates the source values with an accumulator function and
+ * returns the intermediate results of this function.
  * <p>
- * Unlike {@link StreamScan}, this operator doesn't take an initial value but treats the first source value as initial
- * value. <br> The accumulation works as follows:
+ * Unlike {@link StreamScan}, this operator doesn't take an initial value
+ * but treats the first source value as initial value.
+ * <br>
+ * The accumulation works as follows:
  * <pre><code>
  * result[0] = accumulator(source[0], source[1])
  * result[1] = accumulator(result[0], source[2])
@@ -42,7 +28,6 @@ import reactor.fn.BiFunction;
 
 /**
  * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
- *
  * @since 2.5
  */
 public final class StreamAccumulate<T> extends StreamBarrier<T, T> {
@@ -59,9 +44,8 @@ public final class StreamAccumulate<T> extends StreamBarrier<T, T> {
 		source.subscribe(new StreamAccumulateSubscriber<>(s, accumulator));
 	}
 
-	static final class StreamAccumulateSubscriber<T>
-			implements Subscriber<T>, Downstream, Upstream, FeedbackLoop, ActiveUpstream {
-
+	static final class StreamAccumulateSubscriber<T> implements Subscriber<T>, Downstream, Upstream, FeedbackLoop,
+																   ActiveUpstream {
 		final Subscriber<? super T> actual;
 
 		final BiFunction<T, ? super T, T> accumulator;
@@ -98,8 +82,7 @@ public final class StreamAccumulate<T> extends StreamBarrier<T, T> {
 			if (v != null) {
 				try {
 					t = accumulator.apply(v, t);
-				}
-				catch (Throwable e) {
+				} catch (Throwable e) {
 					s.cancel();
 
 					onError(e);

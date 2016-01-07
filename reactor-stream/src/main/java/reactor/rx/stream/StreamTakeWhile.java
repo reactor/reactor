@@ -1,28 +1,12 @@
-/*
- * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package reactor.rx.stream;
 
 import java.util.Objects;
+import reactor.fn.Predicate;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
+import org.reactivestreams.*;
+
 import reactor.core.error.Exceptions;
 import reactor.core.support.BackpressureUtils;
-import reactor.fn.Predicate;
 
 /**
  * Relays values while a predicate returns
@@ -33,131 +17,128 @@ import reactor.fn.Predicate;
 
 /**
  * {@see <a href='https://github.com/reactor/reactive-streams-commons'>https://github.com/reactor/reactive-streams-commons</a>}
- *
  * @since 2.5
  */
 public final class StreamTakeWhile<T> extends StreamBarrier<T, T> {
 
-    final Predicate<? super T> predicate;
+	final Predicate<? super T> predicate;
 
-    public StreamTakeWhile(Publisher<? extends T> source, Predicate<? super T> predicate) {
-        super(source);
-        this.predicate = Objects.requireNonNull(predicate, "predicate");
-    }
+	public StreamTakeWhile(Publisher<? extends T> source, Predicate<? super T> predicate) {
+		super(source);
+		this.predicate = Objects.requireNonNull(predicate, "predicate");
+	}
 
-    public Predicate<? super T> predicate() {
-        return predicate;
-    }
+	public Predicate<? super T> predicate() {
+		return predicate;
+	}
 
-    @Override
-    public void subscribe(Subscriber<? super T> s) {
-        source.subscribe(new StreamTakeWhileSubscriber<>(s, predicate));
-    }
+	@Override
+	public void subscribe(Subscriber<? super T> s) {
+		source.subscribe(new StreamTakeWhileSubscriber<>(s, predicate));
+	}
 
-    static final class StreamTakeWhileSubscriber<T>
-            implements Subscriber<T>, Downstream, Upstream, ActiveUpstream, FeedbackLoop {
+	static final class StreamTakeWhileSubscriber<T> implements Subscriber<T>, Downstream, Upstream,
+																  ActiveUpstream, FeedbackLoop {
+		final Subscriber<? super T> actual;
 
-        final Subscriber<? super T> actual;
+		final Predicate<? super T> predicate;
 
-        final Predicate<? super T> predicate;
+		Subscription s;
 
-        Subscription s;
+		boolean done;
 
-        boolean done;
+		public StreamTakeWhileSubscriber(Subscriber<? super T> actual, Predicate<? super T> predicate) {
+			this.actual = actual;
+			this.predicate = predicate;
+		}
 
-        public StreamTakeWhileSubscriber(Subscriber<? super T> actual, Predicate<? super T> predicate) {
-            this.actual = actual;
-            this.predicate = predicate;
-        }
+		@Override
+		public void onSubscribe(Subscription s) {
+			if (BackpressureUtils.validate(this.s, s)) {
+				this.s = s;
+				actual.onSubscribe(s);
+			}
+		}
 
-        @Override
-        public void onSubscribe(Subscription s) {
-            if (BackpressureUtils.validate(this.s, s)) {
-                this.s = s;
-                actual.onSubscribe(s);
-            }
-        }
+		@Override
+		public void onNext(T t) {
+			if (done) {
+				Exceptions.onNextDropped(t);
+				return;
+			}
 
-        @Override
-        public void onNext(T t) {
-            if (done) {
-                Exceptions.onNextDropped(t);
-                return;
-            }
+			boolean b;
 
-            boolean b;
+			try {
+				b = predicate.test(t);
+			} catch (Throwable e) {
+				s.cancel();
 
-            try {
-                b = predicate.test(t);
-            }
-            catch (Throwable e) {
-                s.cancel();
+				onError(e);
 
-                onError(e);
+				return;
+			}
 
-                return;
-            }
+			if (!b) {
+				s.cancel();
 
-            if (!b) {
-                s.cancel();
+				onComplete();
 
-                onComplete();
+				return;
+			}
 
-                return;
-            }
+			actual.onNext(t);
+		}
 
-            actual.onNext(t);
-        }
+		@Override
+		public void onError(Throwable t) {
+			if (done) {
+				Exceptions.onErrorDropped(t);
+				return;
+			}
+			done = true;
 
-        @Override
-        public void onError(Throwable t) {
-            if (done) {
-                Exceptions.onErrorDropped(t);
-                return;
-            }
-            done = true;
+			actual.onError(t);
+		}
 
-            actual.onError(t);
-        }
+		@Override
+		public void onComplete() {
+			if (done) {
+				return;
+			}
+			done = true;
 
-        @Override
-        public void onComplete() {
-            if (done) {
-                return;
-            }
-            done = true;
+			actual.onComplete();
+		}
 
-            actual.onComplete();
-        }
+		@Override
+		public boolean isStarted() {
+			return s != null && !done;
+		}
 
-        @Override
-        public boolean isStarted() {
-            return s != null && !done;
-        }
+		@Override
+		public boolean isTerminated() {
+			return done;
+		}
 
-        @Override
-        public boolean isTerminated() {
-            return done;
-        }
+		@Override
+		public Object downstream() {
+			return actual;
+		}
 
-        @Override
-        public Object downstream() {
-            return actual;
-        }
+		@Override
+		public Object delegateInput() {
+			return predicate;
+		}
 
-        @Override
-        public Object delegateInput() {
-            return predicate;
-        }
+		@Override
+		public Object delegateOutput() {
+			return null;
+		}
 
-        @Override
-        public Object delegateOutput() {
-            return null;
-        }
-
-        @Override
-        public Object upstream() {
-            return s;
-        }
-    }
+		@Override
+		public Object upstream() {
+			return s;
+		}
+	}
 }

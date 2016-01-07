@@ -1,42 +1,24 @@
-/*
- * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package reactor.rx.stream;
 
-import java.util.NoSuchElementException;
-import java.util.Objects;
-
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.error.Exceptions;
-import reactor.core.subscriber.SubscriberDeferScalar;
-import reactor.core.support.BackpressureUtils;
+import java.util.*;
 import reactor.fn.Supplier;
 
+import org.reactivestreams.*;
+
+import reactor.core.error.Exceptions;
+import reactor.core.subscriber.SubscriberDeferredScalar;
+import reactor.core.support.BackpressureUtils;
+
 /**
- * Expects and emits a single item from the source or signals NoSuchElementException(or a default generated value) for
- * empty source, IndexOutOfBoundsException for a multi-item source.
+ * Expects and emits a single item from the source or signals
+ * NoSuchElementException(or a default generated value) for empty source,
+ * IndexOutOfBoundsException for a multi-item source.
  *
  * @param <T> the value type
  */
 
 /**
  * {@see https://github.com/reactor/reactive-streams-commons}
- *
  * @since 2.5
  */
 public final class MonoSingle<T> extends reactor.Mono.MonoBarrier<T, T> {
@@ -50,12 +32,11 @@ public final class MonoSingle<T> extends reactor.Mono.MonoBarrier<T, T> {
 
 	/**
 	 * @param <T>
-	 *
 	 * @return a Supplier instance marker that bypass NoSuchElementException if empty
 	 */
 	@SuppressWarnings("unchecked")
 	public static <T> Supplier<T> completeOnEmptySequence() {
-		return (Supplier<T>) COMPLETE_ON_EMPTY_SEQUENCE;
+		return (Supplier<T>)COMPLETE_ON_EMPTY_SEQUENCE;
 	}
 
 	final Supplier<? extends T> defaultSupplier;
@@ -75,7 +56,8 @@ public final class MonoSingle<T> extends reactor.Mono.MonoBarrier<T, T> {
 		source.subscribe(new MonoSingleSubscriber<>(s, defaultSupplier));
 	}
 
-	static final class MonoSingleSubscriber<T> extends SubscriberDeferScalar<T, T> implements Upstream {
+	static final class MonoSingleSubscriber<T> extends SubscriberDeferredScalar<T, T>
+	implements Upstream {
 
 		final Supplier<? extends T> defaultSupplier;
 
@@ -161,7 +143,7 @@ public final class MonoSingle<T> extends reactor.Mono.MonoBarrier<T, T> {
 				Supplier<? extends T> ds = defaultSupplier;
 				if (ds != null) {
 
-					if (ds == COMPLETE_ON_EMPTY_SEQUENCE) {
+					if (ds == COMPLETE_ON_EMPTY_SEQUENCE){
 						subscriber.onComplete();
 						return;
 					}
@@ -170,8 +152,7 @@ public final class MonoSingle<T> extends reactor.Mono.MonoBarrier<T, T> {
 
 					try {
 						t = ds.get();
-					}
-					catch (Throwable e) {
+					} catch (Throwable e) {
 						subscriber.onError(e);
 						return;
 					}
@@ -182,12 +163,10 @@ public final class MonoSingle<T> extends reactor.Mono.MonoBarrier<T, T> {
 					}
 
 					set(t);
-				}
-				else {
+				} else {
 					subscriber.onError(new NoSuchElementException("Source was empty"));
 				}
-			}
-			else if (c == 1) {
+			} else if (c == 1) {
 				subscriber.onNext(value);
 				subscriber.onComplete();
 			}

@@ -17,7 +17,6 @@ package reactor.core.publisher;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
-import reactor.Flux;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.support.ReactiveState;
 
@@ -59,10 +58,11 @@ public final class FluxNever extends reactor.Flux<Object>
     /**
      * Returns a properly parametrized instance of this never Publisher.
      *
+     * @param <T> the value type
      * @return a properly parametrized instance of this never Publisher
      */
     @SuppressWarnings("unchecked")
-    public static <T> Flux<T> instance() {
-        return (Flux<T>) INSTANCE;
+    public static <T> reactor.Flux<T> instance() {
+        return (reactor.Flux<T>) INSTANCE;
     }
 }
