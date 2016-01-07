@@ -14,11 +14,7 @@ endif::[]
 
 include::gettingstarted.adoc[]
 
-include::20to21.adoc[]
-
-[[reactor-stream]]
-= *reactor-stream*
-include::streams.adoc[]
+include::20to25.adoc[]
 
 [[reactor-bus]]
 = *reactor-bus*
@@ -33,7 +29,3 @@ include::spring.adoc[]
 
 include::groovy.adoc[]
 include::clojure.adoc[]
-
-[[reactor-samples]]
-= Cookbook
-include::recipes.adoc[]

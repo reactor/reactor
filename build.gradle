@@ -181,69 +181,6 @@ configure(subprojects) { project ->
 	}
 }
 
-project('reactor-core') {
-	description = 'Core Reactor components'
-
-	apply plugin: 'osgi'
-	apply plugin: 'groovy'
-
-
-	ext.bundleImportPackages = [
-			  'org.slf4j;version="[1.5.4,2)"',
-			  '*'
-	  ]
-
-	configurations {
-	  jsr166backport
-	  testCompile.extendsFrom jsr166backport
-	  compile.extendsFrom jsr166backport
-	}
-
-	  /*task testNG(type: Test) {
-		useTestNG()
-	}*/
-
-	dependencies {
-		// Reactive Streams
-		compile "org.reactivestreams:reactive-streams:1.0.0"
-		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
-
-	  	//Optional RxJava 1 Support
-	  	optional "io.reactivex:rxjava:$rxJavaVersion"
-	  	//Optional JDK 9 Support
-	  	jsr166backport "io.projectreactor:jsr166:1.0.0.BUILD-SNAPSHOT"
-	}
-
-	jar {
-		manifest {
-			instruction 'Import-Package', bundleImportPackages.join(',')
-		}
-	}
-
-	test {
-	  jvmArgs = ["-Xbootclasspath/p:" + configurations.jsr166backport.asPath]
-	}
-
-}
-
-project('reactor-stream') {
-	description = 'Reactor Stream components'
-
-	apply plugin: 'osgi'
-	apply plugin: 'groovy'
-
-	task testNG(type: Test) {
-		useTestNG()
-	}
-
-	dependencies {
-		compile project(':reactor-core')
-
-		testCompile "org.reactivestreams:reactive-streams-tck:1.0.0"
-		testCompile "com.fasterxml.jackson.core:jackson-databind:$jacksonDatabindVersion"
-	}
-}
-
 project('reactor-bus') {
 	description = 'Reactor Event Bus components'
 
@@ -287,7 +224,7 @@ project('reactor-bus') {
 	dependencies {
 		jarjar("com.googlecode.jarjar:jarjar:1.3")
 
-		compile project(':reactor-stream')
+		compile "io.projectreactor:reactor-stream:$version"
 
 		jsr166e "io.gatling:jsr166e:1.0@jar"
 		compile(files(jsr166eRepackJar))
@@ -322,7 +259,7 @@ project("reactor-pipe") {
 		targetCompatibility = 1.8
 	}
   dependencies {
-    compile project(':reactor-core')
+    compile "io.projectreactor:reactor-core:$version"
     compile project(':reactor-bus')
     compile "org.pcollections:pcollections:$pcollectionsVersion"
   }
@@ -333,7 +270,7 @@ project('reactor-alloc') {
   description = 'Pooling utilities'
 
   dependencies {
-	  compile project(':reactor-core')
+	  compile "io.projectreactor:reactor-core:$version"
 
 	  optional project(':reactor-bus')
 	}
@@ -350,7 +287,7 @@ project('reactor-logback') {
 	ext.baseName = "${archivesBaseName}-${version}"
 
 	dependencies {
-		compile project(':reactor-core')
+		compile "io.projectreactor:reactor-core:$version"
 
 		compile "ch.qos.logback:logback-classic:$logbackVersion",
 				"net.openhft:chronicle:$openHftChronicleVersion",
