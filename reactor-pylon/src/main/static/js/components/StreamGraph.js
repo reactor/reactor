@@ -270,7 +270,7 @@ class StreamGraph extends React.Component {
                     color: 'green'
                 };
                 n.mass = 3;
-                n.label = n.name + '\n\n';
+                n.label = n.name.replace("/loggers/", "") + '\n\n';
             }
             else {
                 n.label = n.name;
