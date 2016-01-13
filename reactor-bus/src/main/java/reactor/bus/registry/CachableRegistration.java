@@ -76,7 +76,7 @@ public class CachableRegistration<K, V> implements Registration<K, V>, ReactiveS
 	}
 
 	@Override
-	public Registration<K, V> cancel() {
+	public void cancel() {
 		if (!cancelled) {
 			if (null != onCancel) {
 				onCancel.run();
@@ -86,7 +86,6 @@ public class CachableRegistration<K, V> implements Registration<K, V>, ReactiveS
 			}
 			this.cancelled = true;
 		}
-		return this;
 	}
 
 	@Override
@@ -95,12 +94,16 @@ public class CachableRegistration<K, V> implements Registration<K, V>, ReactiveS
 	}
 
 	@Override
-	public Registration<K, V> pause() {
+	public void pause() {
 		this.paused = true;
 		if (lifecycle) {
 			((Pausable) object).pause();
 		}
-		return this;
+	}
+
+	@Override
+	public void request(long n){
+		//ignore
 	}
 
 	@Override
@@ -109,12 +112,11 @@ public class CachableRegistration<K, V> implements Registration<K, V>, ReactiveS
 	}
 
 	@Override
-	public Registration<K, V> resume() {
+	public void resume() {
 		paused = false;
 		if (lifecycle) {
 			((Pausable) object).resume();
 		}
-		return this;
 	}
 
 	@Override

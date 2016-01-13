@@ -67,7 +67,7 @@ public interface Registration<K, V> extends ReactiveState.Pausable {
 	 * @return {@literal this}
 	 */
 	@Override
-	Registration<K, V> cancel();
+	void cancel();
 
 	/**
 	 * Has this been cancelled?
@@ -83,7 +83,7 @@ public interface Registration<K, V> extends ReactiveState.Pausable {
 	 * @return {@literal this}
 	 */
 	@Override
-	Registration<K, V> pause();
+	void pause();
 
 	/**
 	 * Whether this {@literal Registration} has been paused or not.
@@ -98,6 +98,6 @@ public interface Registration<K, V> extends ReactiveState.Pausable {
 	 * @return {@literal this}
 	 */
 	@Override
-	Registration<K, V> resume();
+	void resume();
 
 }

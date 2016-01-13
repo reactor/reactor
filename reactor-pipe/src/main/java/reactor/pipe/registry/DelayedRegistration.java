@@ -34,8 +34,8 @@ public final class DelayedRegistration<K, V> implements Registration<K, V> {
     }
 
     @Override
-    public Registration<K, V> cancel() {
-        return null;
+    public void cancel() {
+
     }
 
     @Override
@@ -44,8 +44,8 @@ public final class DelayedRegistration<K, V> implements Registration<K, V> {
     }
 
     @Override
-    public Registration<K, V> pause() {
-        return null;
+    public void pause() {
+
     }
 
     @Override
@@ -54,7 +54,12 @@ public final class DelayedRegistration<K, V> implements Registration<K, V> {
     }
 
     @Override
-    public Registration<K, V> resume() {
-        return null;
+    public void resume() {
+
+    }
+
+    @Override
+    public void request(long n) {
+
     }
 }
