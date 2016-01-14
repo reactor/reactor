@@ -1241,10 +1241,10 @@ h|onOverflowDrop()
 
 image::images/marble/marble-overflowdrop.png[onOverflowDrop(), width=500, align="center", link="images/marble/marble-overflowdrop.png"]
 
-h|throttle(*long*)
+h|throttleRequest(*long*)
 ^.^a|Delay downstream `request(long)` and periodically decrement the accumulated demand one by one to request upstream.
 
-image::images/marble/marble-throttle.png[throttle(delay), width=500, align="center", link="images/marble/marble-throttle.png"]
+image::images/marble/marble-throttle.png[throttleRequest(delay), width=500, align="center", link="images/marble/marble-throttle.png"]
 
 h|requestWhen(*Function<Stream<Long>, Publisher<Long>>*)
 ^.^a|Pass any downstream `request(long)` to `Stream<Long>` sequence of requests that can be altered and returned using any form of `Publisher<Long>`. The `RequestWhenAction` will subscribe to the produced sequence and immediately forward `onNext(Long)` to the upstream `request(long)`. It behaves similarly to `adaptiveConsume` but can be inserted at any point in the `Stream` pipeline.
@@ -1871,7 +1871,7 @@ Broadcaster<Integer> source = Broadcaster.<Integer> create(Environment.get());
 long avgTime = 50l;
 
 Promise<Long> result = source
-    .throttle(avgTime) // <1>
+    .throttleRequest(avgTime) // <1>
     .elapsed() // <2>
     .nest() // <3>
     .flatMap(self ->
