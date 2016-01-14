@@ -39,7 +39,7 @@ project('docs') {
 		options.author = true
 		options.header = rootProject.description
 		options.overview = "src/api/overview.html"
-		options.stylesheetFile = file("src/api/stylesheet.css")
+		//options.stylesheetFile = file("src/api/stylesheet.css")
 		options.links(rootProject.ext.javadocLinks)
 
 		source rootProject.subprojects.collect { project ->
