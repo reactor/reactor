@@ -254,24 +254,60 @@ h1#logo {
   }
 }
 
-.meter {
-  height: 20px;  /* Can be anything */
-  position: relative;
-  background-color: $reactorPrimary;
-}
-
-.meter > span {
-  display: block;
-  height: 100%;
-  background-color: indianred;
-  position: relative;
-  overflow: hidden;
+.buffers {
+  .section-content {
+    padding: 10px 20px;
+  }
 }
 
 .buffer {
-  text-align: center;
+  border-bottom: 1px solid #CCC;
+  @include clearfix();
+  padding: 5px 0;
+  position: relative;
+  .meter {
+    height: 30px;
+    width: 400px;
+    position: absolute;
+    right: 2px;
+    top: 5px;
+    background: #dddddd;
+    overflow: hidden;
+    border-radius: 3px;
+    .progress {
+      height: 30px;
+      background: $reactorPrimary;
+      position: absolute;
+      left: 0;
+      top: 0;
+      overflow: hidden;
+      z-index: 2;
+      .progress-value, .progress-buff {
+        color: white;
+        z-index: 3;
+      }
+    }
+
+    .progress-value, .progress-buff {
+      position: absolute;
+      top: 0;
+      z-index: 1;
+      font-size: 11px;
+      line-height: 30px;
+      font-weight: bold;
+    }
+    .progress-value {
+      left: 5px;
+    }
+    .progress-buff {
+      left: 320px;
+      text-align: right;
+      width: 70px;
+    }
+  }
   .name {
-    font-size: x-small;
+    line-height: 30px;
+    padding-left: 2px;
   }
 }
 

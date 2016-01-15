@@ -77,12 +77,15 @@ class CapacityDoughnut extends React.Component {
         var value = ((this.state.last.buffered / (this.state.last.buffered + this.state.last.free)) * 100)
             .toFixed(1);
         return (
-            <div className="box buffer" style={{height:'130px', width:'130px'}}>
+            <div className="buffer">
                 <div className="meter">
-                    <span style={{width: value+'%'}}></span>
+                    <div className="progress" style={{width: value+'%'}}>
+                        <div className="progress-value">{value}%</div>
+                        <div className="progress-buff">({this.state.last.buffered}/{this.state.last.capacity})</div>
+                    </div>
+                    <div className="progress-value">{value}%</div>
+                    <div className="progress-buff">({this.state.last.buffered}/{this.state.last.capacity})</div>
                 </div>
-                <div>{value}%</div>
-                <div>({this.state.last.buffered}/{this.state.last.capacity})</div>
                 <div className="name">{this.state.last.name}</div>
             </div>
         );
