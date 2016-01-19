@@ -32,7 +32,6 @@ import reactor.bus.routing.Router;
 import reactor.bus.selector.Selector;
 import reactor.bus.stream.BusStream;
 import reactor.core.error.Exceptions;
-import reactor.core.error.Exceptions.UpstreamException;
 import reactor.core.support.Assert;
 import reactor.core.support.Logger;
 import reactor.core.support.ReactiveState;
@@ -264,7 +263,7 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, ReactiveState.Link
       Exceptions.throwIfFatal(t);
       processorErrorHandler.accept(t);
     } else {
-      throw Exceptions.UpstreamException.create(t);
+      Exceptions.onErrorDropped(t);
     }
   }
 
