@@ -1,13 +1,13 @@
 package reactor.bus;
 
-import org.junit.Test;
-import reactor.Processors;
-import reactor.bus.selector.Selectors;
-import reactor.core.support.Assert;
-import reactor.fn.Consumer;
-
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import org.junit.Test;
+import reactor.bus.selector.Selectors;
+import reactor.core.publisher.Processors;
+import reactor.core.support.Assert;
+import reactor.fn.Consumer;
 
 public class EventBusTests {
 

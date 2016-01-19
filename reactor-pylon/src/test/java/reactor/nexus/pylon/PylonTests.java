@@ -19,9 +19,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
-import reactor.Timers;
 import reactor.core.subscription.ReactiveSession;
 import reactor.core.support.Exceptions;
+import reactor.core.timer.Timers;
 import reactor.io.net.ReactiveNet;
 import reactor.io.net.nexus.Nexus;
 

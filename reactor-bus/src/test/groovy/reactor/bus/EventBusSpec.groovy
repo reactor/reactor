@@ -17,10 +17,10 @@
 package reactor.bus
 
 import groovy.transform.CompileStatic
-import reactor.Processors
 import reactor.bus.filter.RoundRobinFilter
 import reactor.bus.routing.ConsumerFilteringRouter
 import reactor.bus.selector.Selectors
+import reactor.core.publisher.Processors
 import reactor.fn.Consumer
 import reactor.rx.Promise
 import reactor.rx.Stream

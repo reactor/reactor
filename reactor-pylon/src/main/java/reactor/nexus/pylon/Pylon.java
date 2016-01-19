@@ -32,7 +32,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 
 import org.reactivestreams.Publisher;
-import reactor.Mono;
+import reactor.core.publisher.Mono;
 import reactor.core.support.Logger;
 import reactor.core.timer.Timer;
 import reactor.fn.Function;

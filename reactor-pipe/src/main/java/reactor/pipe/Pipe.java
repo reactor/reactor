@@ -1,12 +1,22 @@
 package reactor.pipe;
 
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.pcollections.PVector;
 import org.pcollections.TreePVector;
-import reactor.Timers;
 import reactor.bus.Bus;
 import reactor.core.support.ReactiveState.Pausable;
 import reactor.core.timer.Timer;
-import reactor.fn.*;
+import reactor.core.timer.Timers;
+import reactor.fn.BiConsumer;
+import reactor.fn.BiFunction;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.fn.Predicate;
+import reactor.fn.Supplier;
+import reactor.fn.UnaryOperator;
 import reactor.pipe.concurrent.Atom;
 import reactor.pipe.concurrent.LazyVar;
 import reactor.pipe.key.Key;
@@ -15,10 +25,6 @@ import reactor.pipe.operation.SlidingWindowOperation;
 import reactor.pipe.state.DefaultStateProvider;
 import reactor.pipe.state.StateProvider;
 import reactor.pipe.stream.StreamSupplier;
-
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 
 @SuppressWarnings("unchecked")
 public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {

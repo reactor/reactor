@@ -17,8 +17,6 @@ package reactor.bus.spec;
 
 import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
-import reactor.Flux;
-import reactor.Processors;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
 import reactor.bus.filter.Filter;
@@ -32,6 +30,8 @@ import reactor.bus.registry.Registry;
 import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
 import reactor.bus.routing.TraceableDelegatingRouter;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Processors;
 import reactor.core.support.Assert;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;

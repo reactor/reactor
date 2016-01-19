@@ -19,14 +19,12 @@ package reactor.bus;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
-import reactor.Processors;
 import reactor.bus.selector.Selectors;
+import reactor.core.publisher.Processors;
 import reactor.core.publisher.TopicProcessor;
 import reactor.fn.Consumer;
 import reactor.rx.Promise;
 import reactor.rx.broadcast.Broadcaster;
-
-import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
  * @author Jon Brisbin

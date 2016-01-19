@@ -22,10 +22,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import reactor.Processors;
-import reactor.Timers;
 import reactor.core.publisher.ProcessorGroup;
+import reactor.core.publisher.Processors;
 import reactor.core.timer.Timer;
+import reactor.core.timer.Timers;
 
 /**
  * @author Stephane Maldini
