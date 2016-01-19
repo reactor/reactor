@@ -41,7 +41,7 @@ import reactor.bus.stream.BusStream;
 import reactor.core.subscription.EmptySubscription;
 import reactor.core.subscription.SubscriptionWithContext;
 import reactor.core.support.Assert;
-import reactor.core.support.BackpressureUtils;
+import reactor.core.subscription.BackpressureUtils;
 import reactor.core.support.Logger;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
