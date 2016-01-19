@@ -32,10 +32,10 @@ import ch.qos.logback.core.spi.FilterReply;
 import org.reactivestreams.Processor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.publisher.WorkQueueProcessor;
+import reactor.core.publisher.ProcessorWorkQueue;
 
 /**
- * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.core.publisher.TopicProcessor}
+ * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.core.publisher.ProcessorTopic}
  * internally
  * to queue events to a single-writer thread. This implementation doesn't do any actually appending itself, it just
  * delegates to a "real" appender but it uses the efficient queueing mechanism of the {@literal RingBuffer} to do so.
@@ -111,7 +111,7 @@ public class AsyncAppender
 	public void start() {
 		startDelegateAppender();
 
-		processor = WorkQueueProcessor.share("logger", backlog, false);
+		processor = ProcessorWorkQueue.share("logger", backlog, false);
 		processor.subscribe(this);
 	}
 

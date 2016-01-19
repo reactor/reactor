@@ -103,7 +103,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	 * @param processor   The {@link Processor} to use.
 	 * @param concurrency The allowed number of concurrent routing. This is highly dependent on the
 	 *                    processor used. Only "Work" processors like {@link reactor.core.publisher
-	 *                    .WorkQueueProcessor}
+	 *                    .ProcessorWorkQueue}
 	 *                    will be meaningful as they distribute their messages, default RS behavior is to broadcast
 	 *                    resulting
 	 * @return A new {@link EventBus}
@@ -123,7 +123,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	 * @param processor   The {@link Processor} to use. May be {@code null} in which case the bus will be synchronous
 	 * @param concurrency The allowed number of concurrent routing. This is highly dependent on the
 	 *                    processor used. Only "Work" processors like {@link reactor.core.publisher
-	 *                    .WorkQueueProcessor}
+	 *                    .ProcessorWorkQueue}
 	 *                    will be meaningful as they distribute their messages, default RS behavior is to broadcast
 	 *                    resulting
 	 */
@@ -141,7 +141,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	 *                    is used.
 	 * @param concurrency The allowed number of concurrent routing. This is highly dependent on the
 	 *                    processor used. Only "Work" processors like {@link reactor.core.publisher
-	 *                    .WorkQueueProcessor}
+	 *                    .ProcessorWorkQueue}
 	 *                    will be meaningful as they distribute their messages, default RS behavior is to broadcast
 	 *                    resulting
 	 * @param router      The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code null} in
@@ -178,7 +178,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	 *                              processor is used.
 	 * @param concurrency           The allowed number of concurrent routing. This is highly dependent on the
 	 *                              processor used. Only "Work" processors like {@link reactor.core.publisher
-	 *                              .WorkQueueProcessor} will be meaningful as they distribute their messages,
+	 *                              .ProcessorWorkQueue} will be meaningful as they distribute their messages,
 	 *                              default RS behavior is to broadcast resulting in a matching number of duplicate
 	 *                              routing.
 	 * @param router                The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code

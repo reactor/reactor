@@ -217,7 +217,7 @@ The use cases include:
 .Streams.concat() and Streams.from() in action
 [source,java]
 ----
-Processor<String,String> processor = TopicProcessor.create();
+Processor<String,String> processor = ProcessorTopic.create();
 
 Stream<String> st1 = Streams.just("Hello "); // <1>
 Stream<String> st2 = Streams.just("World "); // <1>
@@ -537,7 +537,7 @@ For Asynchronous broadcasting, always consider a <<core-processor.adoc#core-proc
 * Some `Dispatcher` types that can be assigned to a `Broadcaster` might not support concurrent `onNext`. Use `RingBuffer*Processor.share()` for an alternative, thread-safe, concurrent `onNext`.
 * RingBuffer*Processor supports replaying an event canceled in-flight by a downstream subscriber if it's still running on the processor thread. A Broadcaster won't support replaying.
 * RingBuffer*Processor are faster than their alternative Broadcaster with a RingBufferDispatcher
-* WorkQueueProcessor supports scaling up with the number of attached subscribers.
+* ProcessorWorkQueue supports scaling up with the number of attached subscribers.
 * *Broadcaster might be promoted to a `Processor` in 2.5 anyway, achieving the same thing and removing the need for the Reactor user to struggle picking between `Processor` and `Broadcaster`*.
 ****
 ====
@@ -901,9 +901,9 @@ Various `Stream` factories, the `Broadcaster`, the `Stream.dispatchOn`  and the 
 * The `Stream.subscribeOn` action will be executing *onSubscribe* only on the passed dispatcher.
 ** Since the only time the passed `Dispatcher` is called is *onSubscribe*, any dispatcher can be used including the concurrent ones such as `WorkQueueDispatcher`.
 ** The first `request` might still execute in the *onSubscribe* thread, for instance, with `Stream.consume()` actions.
-* Attaching a `Processor` via `Stream.process` for instance can affect the thread too. The `Processor` such as `TopicProcessor` will run the `Subscribers` on its managed threads.
+* Attaching a `Processor` via `Stream.process` for instance can affect the thread too. The `Processor` such as `ProcessorTopic` will run the `Subscribers` on its managed threads.
 ** `request` and `cancel` will run on the processor as well if in its context already.
-** `WorkQueueProcessor` will only dispatch *onNext* signals to one `Subscriber` at most unless it has canceled in-flight (replay to a new Subscriber).
+** `ProcessorWorkQueue` will only dispatch *onNext* signals to one `Subscriber` at most unless it has canceled in-flight (replay to a new Subscriber).
 ****
 
 Since the common contract is to start requesting data *onSubscribe*, `subscribeOn` is an efficient tool to scale-up streams, particularly unbounded ones.
@@ -934,7 +934,7 @@ The only request executed possibly running on the dispatcher assigned in `subscr
 ----
 Streams
   .range(1, 100)
-  .process(TopicProcessor.create()) // <2>
+  .process(ProcessorTopic.create()) // <2>
   .subscribeOn(Environment.workDispatcher()) // <1>
   .capacity(1); // <3>
   .consume(); // <4>
@@ -2039,7 +2039,7 @@ h|_All_ window(_arguments_)
 
 h|process(XXXWorkProcessor)
 |T
-2+|Since a WorkQueueProcessor distributes the signals to each subscribe, it is an efficient alternative to `partition()` when it's just about scaling-up, not routing.
+2+|Since a ProcessorWorkQueue distributes the signals to each subscribe, it is an efficient alternative to `partition()` when it's just about scaling-up, not routing.
 
 |===
 

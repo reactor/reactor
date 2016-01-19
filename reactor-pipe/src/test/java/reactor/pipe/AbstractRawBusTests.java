@@ -7,7 +7,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.pcollections.TreePVector;
 import reactor.bus.AbstractBus;
-import reactor.core.publisher.WorkQueueProcessor;
+import reactor.core.publisher.ProcessorWorkQueue;
 import reactor.core.timer.Timer;
 import reactor.core.timer.Timers;
 import reactor.fn.Supplier;
@@ -23,12 +23,12 @@ public class AbstractRawBusTests {
     public static final TimeUnit LATCH_TIME_UNIT = TimeUnit.SECONDS;
 
     protected AbstractBus<Key, Object>          firehose;
-    protected WorkQueueProcessor<Runnable> processor;
+    protected ProcessorWorkQueue<Runnable> processor;
     protected Pipe<Integer, Integer> integerPipe;
 
     @Before
     public void setup() {
-        this.processor = WorkQueueProcessor.<Runnable>create(Executors.newFixedThreadPool(1),
+        this.processor = ProcessorWorkQueue.<Runnable>create(Executors.newFixedThreadPool(1),
                                                                   1024);
         this.firehose = new RawBus<Key, Object>(new ConcurrentRegistry<>(),
                                                 processor,

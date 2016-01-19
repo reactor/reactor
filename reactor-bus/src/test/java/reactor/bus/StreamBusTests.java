@@ -22,7 +22,7 @@ import org.junit.Test;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
 import reactor.bus.stream.StreamCoordinator;
-import reactor.core.publisher.TopicProcessor;
+import reactor.core.publisher.ProcessorTopic;
 import reactor.fn.Function;
 import reactor.rx.Stream;
 import reactor.rx.subscriber.Tap;
@@ -44,7 +44,7 @@ public class StreamBusTests {
 
 		StreamCoordinator streamCoordinator = new StreamCoordinator();
 
-		EventBus bus = EventBus.create(TopicProcessor.create());
+		EventBus bus = EventBus.create(ProcessorTopic.create());
 		bus.on($("hello"), streamCoordinator.wrap((Event<String> ev) -> {
 			try {
 				Thread.sleep(500);
