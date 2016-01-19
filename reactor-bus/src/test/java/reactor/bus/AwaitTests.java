@@ -26,6 +26,8 @@ import reactor.fn.Consumer;
 import reactor.rx.Promise;
 import reactor.rx.broadcast.Broadcaster;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
