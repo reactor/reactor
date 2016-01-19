@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.error.Exceptions;
+import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.rx.Stream;

@@ -20,8 +20,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import reactor.Timers;
-import reactor.core.error.CancelException;
 import reactor.core.subscription.ReactiveSession;
+import reactor.core.support.Exceptions;
 import reactor.io.net.ReactiveNet;
 import reactor.io.net.nexus.Nexus;
 
@@ -44,7 +44,7 @@ public class PylonTests {
 				      s.submit(s);
 			      }
 			      else {
-				      throw CancelException.get();
+				      Exceptions.failWithCancel();
 			      }
 		      }, 200, TimeUnit.MILLISECONDS);
 

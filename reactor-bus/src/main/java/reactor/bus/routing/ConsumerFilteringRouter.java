@@ -16,17 +16,16 @@
 
 package reactor.bus.routing;
 
-import reactor.core.support.Logger;
+import java.util.List;
+
 import reactor.bus.Event;
 import reactor.bus.filter.Filter;
 import reactor.bus.registry.Registration;
-import reactor.core.error.CancelException;
 import reactor.core.support.Assert;
-import reactor.core.error.Exceptions;
+import reactor.core.support.Exceptions;
+import reactor.core.support.Logger;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
-
-import java.util.List;
 
 /**
  * An {@link Router} that {@link Filter#filter filters} consumers before routing events to
@@ -71,7 +70,7 @@ public class ConsumerFilteringRouter implements Router<Object, Event<?>> {
 				}
 				try {
 					((BiConsumer<Object, E>) reg.getObject()).accept(key, event);
-				} catch (CancelException cancel) {
+				} catch (Exceptions.CancelException cancel) {
 					reg.cancel();
 				} catch (Throwable t) {
 					if (null != errorConsumer) {
