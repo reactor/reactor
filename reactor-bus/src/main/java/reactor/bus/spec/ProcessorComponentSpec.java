@@ -17,7 +17,7 @@
 package reactor.bus.spec;
 
 import org.reactivestreams.Processor;
-import reactor.core.processor.ProcessorGroup;
+import reactor.core.publisher.ProcessorGroup;
 import reactor.fn.Supplier;
 
 /**

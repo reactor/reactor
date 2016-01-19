@@ -27,10 +27,7 @@ import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.subscription.EmptySubscription;
-import reactor.core.support.Logger;
 import reactor.Subscribers;
-import reactor.bus.stream.BusStream;
 import reactor.bus.registry.CachingRegistry;
 import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
@@ -40,9 +37,12 @@ import reactor.bus.selector.ClassSelector;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
 import reactor.bus.spec.EventBusSpec;
+import reactor.bus.stream.BusStream;
+import reactor.core.subscription.EmptySubscription;
 import reactor.core.subscription.SubscriptionWithContext;
 import reactor.core.support.Assert;
 import reactor.core.support.BackpressureUtils;
+import reactor.core.support.Logger;
 import reactor.core.support.ReactiveState;
 import reactor.core.support.ReactiveStateUtils;
 import reactor.fn.BiConsumer;
@@ -102,8 +102,8 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	 *
 	 * @param processor   The {@link Processor} to use.
 	 * @param concurrency The allowed number of concurrent routing. This is highly dependent on the
-	 *                    processor used. Only "Work" processors like {@link reactor.core.processor
-	 *                    .RingBufferWorkProcessor}
+	 *                    processor used. Only "Work" processors like {@link reactor.core.publisher
+	 *                    .WorkQueueProcessor}
 	 *                    will be meaningful as they distribute their messages, default RS behavior is to broadcast
 	 *                    resulting
 	 * @return A new {@link EventBus}
@@ -122,8 +122,8 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	 *
 	 * @param processor   The {@link Processor} to use. May be {@code null} in which case the bus will be synchronous
 	 * @param concurrency The allowed number of concurrent routing. This is highly dependent on the
-	 *                    processor used. Only "Work" processors like {@link reactor.core.processor
-	 *                    .RingBufferWorkProcessor}
+	 *                    processor used. Only "Work" processors like {@link reactor.core.publisher
+	 *                    .WorkQueueProcessor}
 	 *                    will be meaningful as they distribute their messages, default RS behavior is to broadcast
 	 *                    resulting
 	 */
@@ -140,8 +140,8 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	 *                    processor
 	 *                    is used.
 	 * @param concurrency The allowed number of concurrent routing. This is highly dependent on the
-	 *                    processor used. Only "Work" processors like {@link reactor.core.processor
-	 *                    .RingBufferWorkProcessor}
+	 *                    processor used. Only "Work" processors like {@link reactor.core.publisher
+	 *                    .WorkQueueProcessor}
 	 *                    will be meaningful as they distribute their messages, default RS behavior is to broadcast
 	 *                    resulting
 	 * @param router      The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code null} in
@@ -177,8 +177,8 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	 * @param processor             The {@link Processor} to use. May be {@code null} in which case a new synchronous
 	 *                              processor is used.
 	 * @param concurrency           The allowed number of concurrent routing. This is highly dependent on the
-	 *                              processor used. Only "Work" processors like {@link reactor.core.processor
-	 *                              .RingBufferWorkProcessor} will be meaningful as they distribute their messages,
+	 *                              processor used. Only "Work" processors like {@link reactor.core.publisher
+	 *                              .WorkQueueProcessor} will be meaningful as they distribute their messages,
 	 *                              default RS behavior is to broadcast resulting in a matching number of duplicate
 	 *                              routing.
 	 * @param router                The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code

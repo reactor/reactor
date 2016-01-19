@@ -1,20 +1,20 @@
 package reactor.pipe;
 
-import org.junit.Test;
-import org.pcollections.TreePVector;
-import reactor.core.processor.RingBufferWorkProcessor;
-import reactor.pipe.concurrent.AVar;
-import reactor.pipe.concurrent.Atom;
-import reactor.pipe.key.Key;
-import reactor.pipe.registry.ConcurrentRegistry;
-import reactor.pipe.router.NoOpRouter;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.junit.Test;
+import org.pcollections.TreePVector;
+import reactor.core.publisher.WorkQueueProcessor;
+import reactor.pipe.concurrent.AVar;
+import reactor.pipe.concurrent.Atom;
+import reactor.pipe.key.Key;
+import reactor.pipe.registry.ConcurrentRegistry;
+import reactor.pipe.router.NoOpRouter;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -211,7 +211,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
 
     @Test
     public void testSmoke() throws InterruptedException { // Tests backpressure and in-thread dispatches
-        RingBufferWorkProcessor<Runnable> processor = RingBufferWorkProcessor.<Runnable>create(
+        WorkQueueProcessor<Runnable> processor = WorkQueueProcessor.<Runnable>create(
                 Executors.newFixedThreadPool(4),
                 256);
         RawBus<Key, Object> bus = new RawBus<Key, Object>(new ConcurrentRegistry<>(),

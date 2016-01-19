@@ -75,8 +75,8 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, ReactiveState.Link
    * @param consumerRegistry      The {@link Registry} to be used to match {@link Selector} and dispatch to {@link
    *                              Consumer}
    * @param concurrency           The allowed number of concurrent routing. This is highly dependent on the
-   *                              processor used. Only "Work" processors like {@link reactor.core.processor
-   *                              .RingBufferWorkProcessor} will be meaningful as they distribute their messages,
+   *                              processor used. Only "Work" processors like {@link reactor.core.publisher
+   *                              .WorkQueueProcessor} will be meaningful as they distribute their messages,
    *                              default RS behavior is to broadcast resulting in a matching number of duplicate
    *                              routing.
    * @param router                The {@link Router} used to route events to {@link Consumer Consumers}. May be {@code

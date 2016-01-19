@@ -16,22 +16,26 @@
 
 package reactor.logback;
 
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
-import ch.qos.logback.core.LogbackException;
-import ch.qos.logback.core.filter.Filter;
-import ch.qos.logback.core.spi.*;
-import org.reactivestreams.Processor;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-import reactor.core.processor.RingBufferWorkProcessor;
-
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
+import ch.qos.logback.core.LogbackException;
+import ch.qos.logback.core.filter.Filter;
+import ch.qos.logback.core.spi.AppenderAttachable;
+import ch.qos.logback.core.spi.AppenderAttachableImpl;
+import ch.qos.logback.core.spi.ContextAwareBase;
+import ch.qos.logback.core.spi.FilterAttachableImpl;
+import ch.qos.logback.core.spi.FilterReply;
+import org.reactivestreams.Processor;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
+import reactor.core.publisher.WorkQueueProcessor;
+
 /**
- * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.core.processor.RingBufferProcessor}
+ * A Logback {@literal Appender} implementation that uses a Reactor {@link reactor.core.publisher.TopicProcessor}
  * internally
  * to queue events to a single-writer thread. This implementation doesn't do any actually appending itself, it just
  * delegates to a "real" appender but it uses the efficient queueing mechanism of the {@literal RingBuffer} to do so.
@@ -107,7 +111,7 @@ public class AsyncAppender
 	public void start() {
 		startDelegateAppender();
 
-		processor = RingBufferWorkProcessor.share("logger", backlog, false);
+		processor = WorkQueueProcessor.share("logger", backlog, false);
 		processor.subscribe(this);
 	}
 
