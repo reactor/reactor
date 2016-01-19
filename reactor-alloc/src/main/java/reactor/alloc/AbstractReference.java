@@ -17,7 +17,7 @@
 package reactor.alloc;
 
 import reactor.core.support.ReactiveState;
-import reactor.core.timer.TimeUtils;
+import reactor.core.timer.Timers;
 
 /**
  * An abstract {@link Reference} implementation that does reference counting.
@@ -34,12 +34,12 @@ public abstract class AbstractReference<T extends ReactiveState.Recyclable> impl
 
 	protected AbstractReference(T obj) {
 		this.obj = obj;
-		this.inception = TimeUtils.approxCurrentTimeMillis();
+		this.inception = Timers.currentTimeMillisResolver().get();
 	}
 
 	@Override
 	public long getAge() {
-		return TimeUtils.approxCurrentTimeMillis() - inception;
+		return Timers.currentTimeMillisResolver().get() - inception;
 	}
 
 	@Override
