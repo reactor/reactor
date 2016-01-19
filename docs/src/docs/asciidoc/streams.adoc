@@ -1733,7 +1733,7 @@ In the end, the last `Subscriber` in the chain will be notified with the `onErro
 * CancelException
 ** Happens if no subscriber is available during `onNext` propagation, e.g. when a subscriber asynchronously canceled during `onNext` emission
 ** Use the JVM property *-Dreactor.trace.cancel=true* to enable verbose CancelException and logging in Environment default journal. If not set, Environment will not report these exceptions and there won't be any stacktrace associated neither.
-* ReactorFatalException
+* Exceptions.UpstreamException
 ** Happens when Reactor defines an unrecoverable situation like a scheduling on `Timer` not matching the resolution.
 * JVM unsafe exceptions:
 ** StackOverflowError
