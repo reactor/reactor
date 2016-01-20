@@ -19,7 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
-import reactor.core.subscription.ReactiveSession;
+import reactor.core.subscriber.ReactiveSession;
 import reactor.core.timer.Timers;
 import reactor.core.util.Exceptions;
 import reactor.io.net.ReactiveNet;
