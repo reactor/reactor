@@ -17,7 +17,7 @@
 package reactor.bus.registry;
 
 import reactor.bus.selector.Selector;
-import reactor.core.support.ReactiveState;
+import reactor.core.util.ReactiveState;
 
 /**
  * A {@code Registration} represents an object that has been {@link Registry#register(Selector,

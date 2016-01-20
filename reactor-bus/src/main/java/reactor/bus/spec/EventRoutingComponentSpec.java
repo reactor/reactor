@@ -32,7 +32,7 @@ import reactor.bus.routing.Router;
 import reactor.bus.routing.TraceableDelegatingRouter;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Processors;
-import reactor.core.support.Assert;
+import reactor.core.util.Assert;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.fn.Function;

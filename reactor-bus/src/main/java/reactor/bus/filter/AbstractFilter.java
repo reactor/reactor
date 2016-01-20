@@ -16,9 +16,9 @@
 
 package reactor.bus.filter;
 
-import reactor.core.support.Assert;
-
 import java.util.List;
+
+import reactor.core.util.Assert;
 
 abstract class AbstractFilter implements Filter {
 

@@ -33,8 +33,8 @@ import java.util.jar.JarFile;
 
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
-import reactor.core.support.Logger;
 import reactor.core.timer.Timer;
+import reactor.core.util.Logger;
 import reactor.fn.Function;
 import reactor.io.IO;
 import reactor.io.buffer.Buffer;

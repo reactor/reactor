@@ -16,11 +16,11 @@
 
 package reactor.bus.support;
 
-import reactor.bus.Event;
-import reactor.core.support.Assert;
-import reactor.fn.Consumer;
-
 import javax.annotation.Nonnull;
+
+import reactor.bus.Event;
+import reactor.core.util.Assert;
+import reactor.fn.Consumer;
 
 /**
  * Simple {@link Consumer} implementation that pulls the data from an {@link reactor.bus.Event} and

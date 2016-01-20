@@ -18,7 +18,7 @@ package reactor.bus.registry;
 
 import reactor.bus.selector.ObjectSelector;
 import reactor.bus.selector.Selector;
-import reactor.core.support.ReactiveState;
+import reactor.core.util.ReactiveState;
 
 /**
  * @author Jon Brisbin

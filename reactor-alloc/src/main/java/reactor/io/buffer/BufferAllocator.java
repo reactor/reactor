@@ -16,14 +16,14 @@
 
 package reactor.io.buffer;
 
+import java.nio.ByteBuffer;
+import java.util.List;
+
 import reactor.alloc.Allocator;
 import reactor.alloc.Reference;
 import reactor.alloc.ReferenceCountingAllocator;
-import reactor.core.support.ReactiveState;
+import reactor.core.util.ReactiveState;
 import reactor.fn.Supplier;
-
-import java.nio.ByteBuffer;
-import java.util.List;
 
 /**
  * An {@link reactor.alloc.Allocator} implementation that allocates {@link Buffer Buffers}.

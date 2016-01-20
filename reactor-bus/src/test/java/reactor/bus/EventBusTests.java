@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import reactor.bus.selector.Selectors;
 import reactor.core.publisher.Processors;
-import reactor.core.support.Assert;
+import reactor.core.util.Assert;
 import reactor.fn.Consumer;
 
 public class EventBusTests {

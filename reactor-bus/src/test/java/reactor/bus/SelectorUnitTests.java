@@ -16,24 +16,24 @@
 
 package reactor.bus;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Test;
-import reactor.core.support.Logger;
-import reactor.bus.registry.Registration;
-import reactor.bus.registry.Registries;
-import reactor.bus.registry.Registry;
-import reactor.bus.selector.Selector;
-import reactor.bus.selector.Selectors;
-import reactor.fn.Consumer;
-import reactor.fn.Function;
-import reactor.fn.tuple.Tuple;
-import reactor.fn.tuple.Tuple2;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.Test;
+import reactor.bus.registry.Registration;
+import reactor.bus.registry.Registries;
+import reactor.bus.registry.Registry;
+import reactor.bus.selector.Selector;
+import reactor.bus.selector.Selectors;
+import reactor.core.util.Logger;
+import reactor.fn.Consumer;
+import reactor.fn.Function;
+import reactor.fn.tuple.Tuple;
+import reactor.fn.tuple.Tuple2;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static reactor.bus.selector.JsonPathSelector.J;
@@ -105,7 +105,7 @@ public class SelectorUnitTests {
 				} catch (IOException e) {
 					throw new IllegalStateException(e);
 				}
-				return Tuple.<Selector, Object>of(sel, key);
+				return Tuple.of(sel, key);
 			}
 		});
 
@@ -120,7 +120,7 @@ public class SelectorUnitTests {
 				} catch (IOException e) {
 					throw new IllegalStateException(e);
 				}
-				return Tuple.<Selector, Object>of(sel, key);
+				return Tuple.of(sel, key);
 			}
 		});
 	}

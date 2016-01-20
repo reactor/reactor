@@ -16,13 +16,13 @@
 
 package reactor.alloc;
 
-import reactor.core.support.ReactiveState;
-import reactor.fn.Supplier;
-
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
+
+import reactor.core.util.ReactiveState;
+import reactor.fn.Supplier;
 
 /**
  * An implementation of {@link Allocator} that uses reference counting to determine when an object

@@ -16,11 +16,11 @@
 
 package reactor.bus.filter;
 
-import reactor.core.support.Logger;
-import reactor.core.support.Assert;
-
 import java.util.Collections;
 import java.util.List;
+
+import reactor.core.util.Assert;
+import reactor.core.util.Logger;
 
 /**
  * @author Jon Brisbin

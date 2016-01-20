@@ -23,11 +23,11 @@ import reactor.bus.Bus;
 import reactor.bus.EventBus;
 import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
-import reactor.rx.subscriber.SerializedSubscriber;
-import reactor.core.support.ReactiveState;
+import reactor.core.util.ReactiveState;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
+import reactor.rx.subscriber.SerializedSubscriber;
 
 /**
  * Emit signals whenever an Event arrives from the {@link reactor.bus.selector.Selector} topic from the {@link

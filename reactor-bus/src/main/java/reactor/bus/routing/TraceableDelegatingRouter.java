@@ -16,13 +16,13 @@
 
 package reactor.bus.routing;
 
-import reactor.core.support.Logger;
+import java.util.List;
+
 import reactor.bus.registry.Registration;
-import reactor.core.support.Assert;
+import reactor.core.util.Assert;
+import reactor.core.util.Logger;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
-
-import java.util.List;
 
 /**
  * @author Jon Brisbin

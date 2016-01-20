@@ -16,9 +16,9 @@
 
 package reactor.alloc;
 
-import reactor.core.support.ReactiveState;
-
 import java.util.List;
+
+import reactor.core.util.ReactiveState;
 
 /**
  * An {@code Allocator} is responsible for returning to the caller a {@link Reference} to a reusable

@@ -16,7 +16,7 @@
 
 package reactor.alloc;
 
-import reactor.core.support.ReactiveState;
+import reactor.core.util.ReactiveState;
 import reactor.fn.Supplier;
 
 /**

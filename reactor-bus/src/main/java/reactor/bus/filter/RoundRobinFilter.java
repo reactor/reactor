@@ -16,8 +16,6 @@
 
 package reactor.bus.filter;
 
-import reactor.core.support.Assert;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +23,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import reactor.core.util.Assert;
 
 /**
  * A {@link Filter} implementation that returns a single item. The item is selected

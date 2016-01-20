@@ -32,7 +32,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
-import reactor.core.support.ExecutorUtils;
+import reactor.core.util.ExecutorUtils;
 
 /**
  * @author Jon Brisbin

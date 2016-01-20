@@ -19,7 +19,7 @@ package reactor.bus.support;
 import reactor.bus.Bus;
 import reactor.bus.Event;
 import reactor.bus.EventBus;
-import reactor.core.support.Assert;
+import reactor.core.util.Assert;
 import reactor.fn.Consumer;
 
 /**
