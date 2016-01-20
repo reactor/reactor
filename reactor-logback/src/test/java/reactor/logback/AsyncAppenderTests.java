@@ -16,13 +16,6 @@
 
 package reactor.logback;
 
-import ch.qos.logback.classic.Logger;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.LoggerFactory;
-import reactor.core.support.NamedDaemonThreadFactory;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,6 +26,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import ch.qos.logback.classic.Logger;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.LoggerFactory;
+import reactor.core.support.ExecutorUtils;
 
 /**
  * @author Jon Brisbin
@@ -73,7 +73,7 @@ public class AsyncAppenderTests {
 			  });
 		}
 
-		threadPool = Executors.newCachedThreadPool(new NamedDaemonThreadFactory("benchmark-writers"));
+		threadPool = Executors.newCachedThreadPool(ExecutorUtils.newNamedFactory("benchmark-writers"));
 		syncLog = (Logger) LoggerFactory.getLogger("sync");
 		asyncLog = (Logger) LoggerFactory.getLogger("async");
 		chronicleLog = (Logger) LoggerFactory.getLogger("chronicle");
