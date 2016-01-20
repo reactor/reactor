@@ -97,11 +97,11 @@ Streams.from(fileStream)
 .Obviously there are ways to make that code more efficient but also do more with less. Let's take a look at Reactor alternative `PublisherFactory` from core module, which is used by `Streams.createWith()` methods from stream module as well.
 
 
-.Build a lazy file read with Core FluxFactory and compose with Stream API
+.Build a lazy file read with Core Flux and compose with Stream API
 [source, java]
 ----
 final String filename = "settings.gradle";
-Publisher<String> fileStream = FluxFactory.create(
+Publisher<String> fileStream = Flux.create(
 	(n, sub) -> { // <1>
 		String line;
 		final BufferedReader inputStream = sub.context() // <2>
@@ -144,7 +144,7 @@ Streams
 <5> Define a context once for a new `Subscriber` that will be available later for each request `SubscriberWithContext.context()`
 <6> Define a terminal callback once intercepting `cancel()`, `onComplete()` or `onError(e)`.
 
-We can use `FluxFactory`, or <<streams.adoc#streams-basics, Streams factories>> like `Streams.createWith()` to quickly achieve common use cases:
+We can use `Flux`, or <<streams.adoc#streams-basics, Streams factories>> like `Streams.createWith()` to quickly achieve common use cases:
 
 * Open IO once
 * React on requests
