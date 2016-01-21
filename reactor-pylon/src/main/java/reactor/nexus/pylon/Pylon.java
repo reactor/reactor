@@ -36,7 +36,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.timer.Timer;
 import reactor.core.util.Logger;
 import reactor.fn.Function;
-import reactor.io.IO;
 import reactor.io.buffer.Buffer;
 import reactor.io.net.ReactiveChannel;
 import reactor.io.net.ReactiveChannelHandler;
@@ -111,7 +110,7 @@ public final class Pylon extends ReactivePeer<Buffer, Buffer, ReactiveChannel<Bu
 
 		log.info("Warping Pylon...");
 
-		final Publisher<Buffer> cacheManifest = IO.readFile(pylon.pathToStatic(CACHE_MANIFEST));
+		final Publisher<Buffer> cacheManifest = Buffer.readFile(pylon.pathToStatic(CACHE_MANIFEST));
 
 		server.file(CONSOLE_FAVICON, pylon.pathToStatic(CONSOLE_FAVICON))
 		      .get(CACHE_MANIFEST, new CacheManifestHandler(cacheManifest))
