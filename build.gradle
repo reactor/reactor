@@ -227,6 +227,7 @@ project('reactor-bus') {
 		jarjar("com.googlecode.jarjar:jarjar:1.3")
 
 		compile "io.projectreactor:reactor-stream:$version"
+		optional "io.projectreactor:reactor-io:$version"
 
 		jsr166e "io.gatling:jsr166e:1.0@jar"
 		compile(files(jsr166eRepackJar))
