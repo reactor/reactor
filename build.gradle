@@ -274,6 +274,7 @@ project('reactor-alloc') {
 
   dependencies {
 	  compile "io.projectreactor:reactor-core:$version"
+	  optional "io.projectreactor:reactor-io:$version"
 
 	  optional project(':reactor-bus')
 	}
