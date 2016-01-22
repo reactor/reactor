@@ -16,7 +16,7 @@
 
 package reactor.alloc;
 
-import reactor.core.util.ReactiveState;
+import reactor.core.trait.Recyclable;
 import reactor.fn.Supplier;
 
 /**
@@ -25,7 +25,7 @@ import reactor.fn.Supplier;
  * @author Jon Brisbin
  * @since 1.1
  */
-public interface Reference<T extends ReactiveState.Recyclable> extends Supplier<T> {
+public interface Reference<T extends Recyclable> extends Supplier<T> {
 
 	/**
 	 * Get the age of this {@code Reference} since it's creation.

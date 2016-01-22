@@ -15,7 +15,7 @@
  */
 package reactor.alloc
 
-import reactor.core.util.ReactiveState
+import reactor.core.trait.*
 import reactor.fn.Supplier
 import spock.lang.Specification
 
@@ -35,7 +35,7 @@ class AllocatorsSpec extends Specification {
 		given: "references and a thread pool"
 			def threadPool = Executors.newCachedThreadPool()
 			def pool = new ReferenceCountingAllocator(4, {
-				new ReactiveState.Recyclable() {
+				new Recyclable() {
 					@Override
 					void recycle() {
 					}
@@ -97,7 +97,7 @@ class AllocatorsSpec extends Specification {
 
 	}
 
-	class Generic<T> implements ReactiveState.Recyclable {
+	class Generic<T> implements Recyclable {
 		T data
 
 		@Override

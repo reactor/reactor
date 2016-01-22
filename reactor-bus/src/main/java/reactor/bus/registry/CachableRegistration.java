@@ -18,17 +18,20 @@ package reactor.bus.registry;
 
 import reactor.bus.selector.ObjectSelector;
 import reactor.bus.selector.Selector;
-import reactor.core.util.ReactiveState;
+import reactor.core.trait.Cancellable;
+import reactor.core.trait.Groupable;
+import reactor.core.trait.Introspectable;
+import reactor.core.trait.Pausable;
+import reactor.core.trait.Publishable;
 
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class CachableRegistration<K, V> implements Registration<K, V>, ReactiveState.Downstream,
-                                                   ReactiveState.Grouped<Selector>,
-                                                   ReactiveState.ActiveDownstream,
-                                                   ReactiveState.Inner
-                                                   {
+public class CachableRegistration<K, V> implements Registration<K, V>, Publishable,
+                                                   Groupable<Selector>,
+                                                   Cancellable,
+                                                   Introspectable{
 
 	private static final Selector<Void> NO_MATCH = new ObjectSelector<Void, Void>(null) {
 		@Override
@@ -89,6 +92,16 @@ public class CachableRegistration<K, V> implements Registration<K, V>, ReactiveS
 	}
 
 	@Override
+	public int getMode() {
+		return INNER;
+	}
+
+	@Override
+	public String getName() {
+		return CachableRegistration.class.getSimpleName();
+	}
+
+	@Override
 	public boolean isCancelled() {
 		return cancelled;
 	}
@@ -124,10 +137,14 @@ public class CachableRegistration<K, V> implements Registration<K, V>, ReactiveS
 		return object;
 	}
 
+
+
 	@Override
 	public Selector key() {
 		return selector;
 	}
+
+
 
 	@Override
 	public String toString() {

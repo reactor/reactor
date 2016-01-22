@@ -21,7 +21,7 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-import reactor.core.util.ReactiveState;
+import reactor.core.trait.Recyclable;
 import reactor.fn.Supplier;
 
 /**
@@ -32,7 +32,7 @@ import reactor.fn.Supplier;
  * @author Jon Brisbin
  * @since 1.1
  */
-public class ReferenceCountingAllocator<T extends ReactiveState.Recyclable> implements Allocator<T> {
+public class ReferenceCountingAllocator<T extends Recyclable> implements Allocator<T> {
 
 	private static final int DEFAULT_INITIAL_SIZE = 2048;
 
@@ -138,7 +138,7 @@ public class ReferenceCountingAllocator<T extends ReactiveState.Recyclable> impl
 		}
 	}
 
-	private class ReferenceCountingAllocatorReference<T extends ReactiveState.Recyclable> extends AbstractReference<T> {
+	private class ReferenceCountingAllocatorReference<T extends Recyclable> extends AbstractReference<T> {
 		private final int bit;
 
 		private ReferenceCountingAllocatorReference(T obj, int bit) {

@@ -39,11 +39,13 @@ import reactor.bus.spec.EventBusSpec;
 import reactor.bus.stream.BusStream;
 import reactor.core.subscriber.Subscribers;
 import reactor.core.subscriber.SubscriptionWithContext;
+import reactor.core.trait.Connectable;
+import reactor.core.trait.Introspectable;
+import reactor.core.trait.Publishable;
 import reactor.core.util.Assert;
 import reactor.core.util.BackpressureUtils;
 import reactor.core.util.EmptySubscription;
 import reactor.core.util.Logger;
-import reactor.core.util.ReactiveState;
 import reactor.core.util.ReactiveStateUtils;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -65,7 +67,7 @@ import reactor.rx.Stream;
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<Event<?>>,
-                                                                       ReactiveState.FeedbackLoop {
+                                                                       Connectable {
 
 	private final Processor<Event<?>, Event<?>> processor;
 
@@ -227,12 +229,12 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	}
 
 	@Override
-	public Object delegateInput() {
+	public Object connectedInput() {
 		return processor;
 	}
 
 	@Override
-	public Object delegateOutput() {
+	public Object connectedOutput() {
 		return processor;
 	}
 
@@ -547,7 +549,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 		}
 	}
 
-	private static class EventBusConsumer<T extends Event<?>> implements Consumer<T>, Trace, Downstream {
+	private static class EventBusConsumer<T extends Event<?>> implements Consumer<T>, Introspectable, Publishable {
 
 		private final Selector selector;
 		private final Class<?>    tClass;
@@ -573,6 +575,16 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 		@Override
 		public Object downstream() {
 			return consumer;
+		}
+
+		@Override
+		public int getMode() {
+			return TRACE_ONLY;
+		}
+
+		@Override
+		public String getName() {
+			return EventBusConsumer.class.getSimpleName();
 		}
 	}
 

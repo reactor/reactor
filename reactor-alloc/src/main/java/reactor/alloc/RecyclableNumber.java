@@ -16,12 +16,12 @@
 
 package reactor.alloc;
 
-import reactor.core.util.ReactiveState;
+import reactor.core.trait.Recyclable;
 
 /**
  * @author Jon Brisbin
  */
-public class RecyclableNumber extends Number implements ReactiveState.Recyclable {
+public class RecyclableNumber extends Number implements Recyclable {
 
 	private volatile double value = -1;
 

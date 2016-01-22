@@ -23,7 +23,9 @@ import reactor.bus.Bus;
 import reactor.bus.EventBus;
 import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
-import reactor.core.util.ReactiveState;
+import reactor.core.trait.Introspectable;
+import reactor.core.trait.Publishable;
+import reactor.core.trait.Subscribable;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
 import reactor.rx.Stream;
@@ -85,7 +87,7 @@ public final class BusStream<T> extends Stream<T> {
 		  '}';
 	}
 
-	private class BusToSubscriber implements Consumer<T>, ReactiveState.Trace, ReactiveState.Downstream {
+	private class BusToSubscriber implements Consumer<T>, Introspectable, Publishable {
 
 		private final Subscriber<? super T> subscriber;
 
@@ -102,9 +104,19 @@ public final class BusStream<T> extends Stream<T> {
 		public void accept(T event) {
 			subscriber.onNext(event);
 		}
+
+		@Override
+		public int getMode() {
+			return TRACE_ONLY;
+		}
+
+		@Override
+		public String getName() {
+			return BusToSubscriber.class.getSimpleName();
+		}
 	}
 
-	private class BusToSubscription implements Subscription, ReactiveState.Trace, ReactiveState.Upstream {
+	private class BusToSubscription implements Subscription, Introspectable, Subscribable {
 
 		final         Registration<?, ? extends BiConsumer<?, ? extends T>> registration;
 
@@ -125,6 +137,16 @@ public final class BusStream<T> extends Stream<T> {
 		@Override
 		public void cancel() {
 			registration.cancel();
+		}
+
+		@Override
+		public int getMode() {
+			return TRACE_ONLY;
+		}
+
+		@Override
+		public String getName() {
+			return BusToSubscription.class.getSimpleName();
 		}
 	}
 }

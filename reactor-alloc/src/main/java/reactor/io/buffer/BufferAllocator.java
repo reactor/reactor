@@ -22,7 +22,6 @@ import java.util.List;
 import reactor.alloc.Allocator;
 import reactor.alloc.Reference;
 import reactor.alloc.ReferenceCountingAllocator;
-import reactor.core.util.ReactiveState;
 import reactor.fn.Supplier;
 
 /**
@@ -38,7 +37,7 @@ public class BufferAllocator implements Allocator<Buffer> {
 	 * Create a {@code BufferAllocator} of size=256, direct=false, and bufferSize=Buffer.SMALL_IO_BUFFER_SIZE.
 	 */
 	public BufferAllocator() {
-		this(256, false, ReactiveState.SMALL_IO_BUFFER_SIZE);
+		this(256, false, PlatformDependent.SMALL_IO_BUFFER_SIZE);
 	}
 
 	/**

@@ -25,8 +25,8 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 
+import reactor.core.trait.Recyclable;
 import reactor.core.util.Assert;
-import reactor.core.util.ReactiveState;
 import reactor.core.util.UUIDUtils;
 import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple;
@@ -40,7 +40,7 @@ import reactor.fn.tuple.Tuple2;
  * @author Stephane Maldini
  * @author Andy Wilkinson
  */
-public class Event<T> implements Serializable, ReactiveState.Recyclable {
+public class Event<T> implements Serializable, Recyclable {
 
 	private static final long serialVersionUID = -2476263092040373361L;
 	private final transient Consumer<Throwable> errorConsumer;

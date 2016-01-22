@@ -18,7 +18,7 @@ package reactor.alloc;
 
 import java.util.List;
 
-import reactor.core.util.ReactiveState;
+import reactor.core.trait.Recyclable;
 
 /**
  * An {@code Allocator} is responsible for returning to the caller a {@link Reference} to a reusable
@@ -27,7 +27,7 @@ import reactor.core.util.ReactiveState;
  * @author Jon Brisbin
  * @since 1.1
  */
-public interface Allocator<T extends ReactiveState.Recyclable> {
+public interface Allocator<T extends Recyclable> {
 
 	/**
 	 * Allocate an object from the internal pool.

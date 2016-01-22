@@ -9,7 +9,7 @@ import org.pcollections.TreePVector;
 import reactor.bus.Bus;
 import reactor.core.timer.Timer;
 import reactor.core.timer.Timers;
-import reactor.core.util.ReactiveState.Pausable;
+import reactor.core.trait.Pausable;
 import reactor.fn.BiConsumer;
 import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
@@ -25,6 +25,8 @@ import reactor.pipe.operation.SlidingWindowOperation;
 import reactor.pipe.state.DefaultStateProvider;
 import reactor.pipe.state.StateProvider;
 import reactor.pipe.stream.StreamSupplier;
+
+.Pausable;
 
 @SuppressWarnings("unchecked")
 public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {

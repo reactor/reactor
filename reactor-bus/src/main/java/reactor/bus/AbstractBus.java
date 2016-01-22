@@ -31,10 +31,12 @@ import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
 import reactor.bus.selector.Selector;
 import reactor.bus.stream.BusStream;
+import reactor.core.trait.Introspectable;
+import reactor.core.trait.Publishable;
+import reactor.core.trait.SubscribableMany;
 import reactor.core.util.Assert;
 import reactor.core.util.Exceptions;
 import reactor.core.util.Logger;
-import reactor.core.util.ReactiveState;
 import reactor.core.util.UUIDUtils;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -55,7 +57,7 @@ import reactor.rx.Stream;
  * @author Alex Petrov
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public abstract class AbstractBus<K, V> implements Bus<K, V>, ReactiveState.LinkedDownstreams {
+public abstract class AbstractBus<K, V> implements Bus<K, V>, SubscribableMany {
 
   protected static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
     new PassThroughFilter()
@@ -273,7 +275,7 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, ReactiveState.Link
     router.route(key, value, consumerRegistry.select(key), null, processorErrorHandler);
   }
 
-  private static class BusConsumer<K, T> implements BiConsumer<K, T>, Trace, Downstream {
+  private static class BusConsumer<K, T> implements BiConsumer<K, T>, Introspectable, Publishable {
 
     private final Consumer<T> consumer;
 
@@ -289,6 +291,16 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, ReactiveState.Link
     @Override
     public void accept(K k, T v) {
       consumer.accept(v);
+    }
+
+    @Override
+    public int getMode() {
+      return TRACE_ONLY;
+    }
+
+    @Override
+    public String getName() {
+      return BusConsumer.class.getSimpleName();
     }
   }
 }

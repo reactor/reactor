@@ -16,12 +16,12 @@
 
 package reactor.alloc;
 
-import reactor.core.util.ReactiveState;
+import reactor.core.trait.Recyclable;
 
 /**
  * @author Jon Brisbin
  */
-public class RecyclableString implements ReactiveState.Recyclable {
+public class RecyclableString implements Recyclable {
 
 	private volatile String value = "";
 
