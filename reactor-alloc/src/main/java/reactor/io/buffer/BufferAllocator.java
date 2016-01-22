@@ -22,6 +22,7 @@ import java.util.List;
 import reactor.alloc.Allocator;
 import reactor.alloc.Reference;
 import reactor.alloc.ReferenceCountingAllocator;
+import reactor.core.util.PlatformDependent;
 import reactor.fn.Supplier;
 
 /**
