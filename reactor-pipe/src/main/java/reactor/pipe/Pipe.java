@@ -26,7 +26,6 @@ import reactor.pipe.state.DefaultStateProvider;
 import reactor.pipe.state.StateProvider;
 import reactor.pipe.stream.StreamSupplier;
 
-.Pausable;
 
 @SuppressWarnings("unchecked")
 public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
