@@ -41,7 +41,7 @@ import reactor.core.subscriber.Subscribers;
 import reactor.core.subscriber.SubscriptionWithContext;
 import reactor.core.trait.Connectable;
 import reactor.core.trait.Introspectable;
-import reactor.core.trait.Publishable;
+import reactor.core.trait.Subscribable;
 import reactor.core.util.Assert;
 import reactor.core.util.BackpressureUtils;
 import reactor.core.util.EmptySubscription;
@@ -549,7 +549,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 		}
 	}
 
-	private static class EventBusConsumer<T extends Event<?>> implements Consumer<T>, Introspectable, Publishable {
+	private static class EventBusConsumer<T extends Event<?>> implements Consumer<T>, Introspectable, Subscribable {
 
 		private final Selector selector;
 		private final Class<?>    tClass;

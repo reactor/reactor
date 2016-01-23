@@ -32,7 +32,7 @@ import reactor.bus.routing.Router;
 import reactor.bus.selector.Selector;
 import reactor.bus.stream.BusStream;
 import reactor.core.trait.Introspectable;
-import reactor.core.trait.Publishable;
+import reactor.core.trait.Subscribable;
 import reactor.core.trait.SubscribableMany;
 import reactor.core.util.Assert;
 import reactor.core.util.Exceptions;
@@ -275,7 +275,7 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, SubscribableMany {
     router.route(key, value, consumerRegistry.select(key), null, processorErrorHandler);
   }
 
-  private static class BusConsumer<K, T> implements BiConsumer<K, T>, Introspectable, Publishable {
+  private static class BusConsumer<K, T> implements BiConsumer<K, T>, Introspectable, Subscribable {
 
     private final Consumer<T> consumer;
 

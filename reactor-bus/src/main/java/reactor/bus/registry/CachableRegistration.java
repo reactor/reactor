@@ -22,13 +22,13 @@ import reactor.core.trait.Cancellable;
 import reactor.core.trait.Groupable;
 import reactor.core.trait.Introspectable;
 import reactor.core.trait.Pausable;
-import reactor.core.trait.Publishable;
+import reactor.core.trait.Subscribable;
 
 /**
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class CachableRegistration<K, V> implements Registration<K, V>, Publishable,
+public class CachableRegistration<K, V> implements Registration<K, V>, Subscribable,
                                                    Groupable<Selector>,
                                                    Cancellable,
                                                    Introspectable{

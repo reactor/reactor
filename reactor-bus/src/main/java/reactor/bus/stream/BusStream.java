@@ -87,7 +87,7 @@ public final class BusStream<T> extends Stream<T> {
 		  '}';
 	}
 
-	private class BusToSubscriber implements Consumer<T>, Introspectable, Publishable {
+	private class BusToSubscriber implements Consumer<T>, Introspectable, Subscribable {
 
 		private final Subscriber<? super T> subscriber;
 
@@ -116,7 +116,7 @@ public final class BusStream<T> extends Stream<T> {
 		}
 	}
 
-	private class BusToSubscription implements Subscription, Introspectable, Subscribable {
+	private class BusToSubscription implements Subscription, Introspectable, Publishable {
 
 		final         Registration<?, ? extends BiConsumer<?, ? extends T>> registration;
 
