@@ -61,7 +61,7 @@ ext {
 			"http://docs.oracle.com/javaee/6/api/",
 			"http://fasterxml.github.io/jackson-databind/javadoc/2.5/",
 			"http://www.goldmansachs.com/gs-collections/javadoc/5.1.0/",
-			"http://www.reactive-streams.org/reactive-streams-tck-1.0.0-javadoc/",
+			"http://www.reactive-streams.org/reactive-streams-1.0.0-javadoc/",
 			"http://next.projectreactor.io/core/docs/api/",
 			"http://next.projectreactor.io/stream/docs/api/",
 	] as String[]
