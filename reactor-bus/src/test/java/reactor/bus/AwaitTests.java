@@ -23,8 +23,8 @@ import reactor.bus.selector.Selectors;
 import reactor.core.publisher.ProcessorTopic;
 import reactor.core.publisher.Processors;
 import reactor.fn.Consumer;
+import reactor.rx.Broadcaster;
 import reactor.rx.Promise;
-import reactor.rx.broadcast.Broadcaster;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 
