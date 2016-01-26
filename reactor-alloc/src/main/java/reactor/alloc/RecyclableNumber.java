@@ -16,7 +16,7 @@
 
 package reactor.alloc;
 
-import reactor.core.trait.Recyclable;
+import reactor.core.state.Recyclable;
 
 /**
  * @author Jon Brisbin

@@ -16,8 +16,8 @@
 
 package reactor.alloc;
 
+import reactor.core.state.Recyclable;
 import reactor.core.timer.Timers;
-import reactor.core.trait.Recyclable;
 
 /**
  * An abstract {@link Reference} implementation that does reference counting.

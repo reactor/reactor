@@ -15,7 +15,7 @@
  */
 package reactor.alloc
 
-import reactor.core.trait.*
+import reactor.core.state.Recyclable
 import reactor.fn.Supplier
 import spock.lang.Specification
 

@@ -21,7 +21,7 @@ import java.util.BitSet;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
 
-import reactor.core.trait.Recyclable;
+import reactor.core.state.Recyclable;
 import reactor.fn.Supplier;
 
 /**
