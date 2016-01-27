@@ -31,7 +31,7 @@ import reactor.core.state.Pausable;
 public class CachableRegistration<K, V> implements Registration<K, V>, Producer,
                                                    Groupable<Selector>,
                                                    Cancellable,
-                                                   Introspectable{
+                                                   Introspectable {
 
 	private static final Selector<Void> NO_MATCH = new ObjectSelector<Void, Void>(null) {
 		@Override
