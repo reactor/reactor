@@ -37,8 +37,8 @@ import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
 import reactor.bus.spec.EventBusSpec;
 import reactor.bus.stream.BusStream;
-import reactor.core.graph.Connectable;
-import reactor.core.graph.Subscribable;
+import reactor.core.flow.Loopback;
+import reactor.core.flow.Producer;
 import reactor.core.state.Introspectable;
 import reactor.core.subscriber.Subscribers;
 import reactor.core.subscriber.SubscriptionWithContext;
@@ -67,7 +67,7 @@ import reactor.rx.Stream;
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<Event<?>>,
-                                                                       Connectable {
+                                                                       Loopback {
 
 	private final Processor<Event<?>, Event<?>> processor;
 
@@ -549,7 +549,7 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 		}
 	}
 
-	private static class EventBusConsumer<T extends Event<?>> implements Consumer<T>, Introspectable, Subscribable {
+	private static class EventBusConsumer<T extends Event<?>> implements Consumer<T>, Introspectable, Producer {
 
 		private final Selector selector;
 		private final Class<?>    tClass;

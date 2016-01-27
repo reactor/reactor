@@ -31,8 +31,8 @@ import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
 import reactor.bus.selector.Selector;
 import reactor.bus.stream.BusStream;
-import reactor.core.graph.Subscribable;
-import reactor.core.graph.SubscribableMany;
+import reactor.core.flow.Producer;
+import reactor.core.flow.MultiProducer;
 import reactor.core.state.Introspectable;
 import reactor.core.util.Assert;
 import reactor.core.util.Exceptions;
@@ -57,7 +57,7 @@ import reactor.rx.Stream;
  * @author Alex Petrov
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public abstract class AbstractBus<K, V> implements Bus<K, V>, SubscribableMany {
+public abstract class AbstractBus<K, V> implements Bus<K, V>, MultiProducer {
 
   protected static final Router DEFAULT_EVENT_ROUTER = new ConsumerFilteringRouter(
     new PassThroughFilter()
@@ -275,7 +275,7 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, SubscribableMany {
     router.route(key, value, consumerRegistry.select(key), null, processorErrorHandler);
   }
 
-  private static class BusConsumer<K, T> implements BiConsumer<K, T>, Introspectable, Subscribable {
+  private static class BusConsumer<K, T> implements BiConsumer<K, T>, Introspectable, Producer {
 
     private final Consumer<T> consumer;
 

@@ -18,7 +18,7 @@ package reactor.bus.registry;
 
 import reactor.bus.selector.ObjectSelector;
 import reactor.bus.selector.Selector;
-import reactor.core.graph.Subscribable;
+import reactor.core.flow.Producer;
 import reactor.core.state.Cancellable;
 import reactor.core.state.Groupable;
 import reactor.core.state.Introspectable;
@@ -28,7 +28,7 @@ import reactor.core.state.Pausable;
  * @author Jon Brisbin
  * @author Stephane Maldini
  */
-public class CachableRegistration<K, V> implements Registration<K, V>, Subscribable,
+public class CachableRegistration<K, V> implements Registration<K, V>, Producer,
                                                    Groupable<Selector>,
                                                    Cancellable,
                                                    Introspectable{

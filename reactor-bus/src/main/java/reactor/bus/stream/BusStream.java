@@ -23,8 +23,8 @@ import reactor.bus.Bus;
 import reactor.bus.EventBus;
 import reactor.bus.registry.Registration;
 import reactor.bus.selector.Selector;
-import reactor.core.graph.Publishable;
-import reactor.core.graph.Subscribable;
+import reactor.core.flow.Receiver;
+import reactor.core.flow.Producer;
 import reactor.core.state.Introspectable;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -87,7 +87,7 @@ public final class BusStream<T> extends Stream<T> {
 		  '}';
 	}
 
-	private class BusToSubscriber implements Consumer<T>, Introspectable, Subscribable {
+	private class BusToSubscriber implements Consumer<T>, Introspectable, Producer {
 
 		private final Subscriber<? super T> subscriber;
 
@@ -116,7 +116,7 @@ public final class BusStream<T> extends Stream<T> {
 		}
 	}
 
-	private class BusToSubscription implements Subscription, Introspectable, Publishable {
+	private class BusToSubscription implements Subscription, Introspectable, Receiver {
 
 		final         Registration<?, ? extends BiConsumer<?, ? extends T>> registration;
 
