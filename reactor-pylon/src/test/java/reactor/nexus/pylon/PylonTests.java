@@ -19,7 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
-import reactor.core.subscriber.ReactiveSession;
+import reactor.core.subscriber.SignalEmitter;
 import reactor.core.timer.Timer;
 import reactor.core.util.Exceptions;
 import reactor.io.net.ReactiveNet;
@@ -37,7 +37,7 @@ public class PylonTests {
 
 		Pylon.create().startAndAwait();
 
-		final ReactiveSession<Object> s = nexus.streamCannon();
+		final SignalEmitter<Object> s = nexus.streamCannon();
 		Timer.create()
 		     .schedule(aLong -> {
 			      if (!s.isCancelled()) {
