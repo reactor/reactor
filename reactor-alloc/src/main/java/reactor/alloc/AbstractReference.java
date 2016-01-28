@@ -17,7 +17,6 @@
 package reactor.alloc;
 
 import reactor.core.state.Recyclable;
-import reactor.core.timer.Timers;
 
 /**
  * An abstract {@link Reference} implementation that does reference counting.
@@ -34,12 +33,12 @@ public abstract class AbstractReference<T extends Recyclable> implements Referen
 
 	protected AbstractReference(T obj) {
 		this.obj = obj;
-		this.inception = Timers.currentTimeMillisResolver().get();
+		this.inception = Timer.currentTimeMillisResolver().get();
 	}
 
 	@Override
 	public long getAge() {
-		return Timers.currentTimeMillisResolver().get() - inception;
+		return Timer.currentTimeMillisResolver().get() - inception;
 	}
 
 	@Override

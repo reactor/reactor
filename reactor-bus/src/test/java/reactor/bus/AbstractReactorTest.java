@@ -25,7 +25,6 @@ import org.junit.BeforeClass;
 import reactor.core.publisher.ProcessorGroup;
 import reactor.core.publisher.Processors;
 import reactor.core.timer.Timer;
-import reactor.core.timer.Timers;
 
 /**
  * @author Stephane Maldini
@@ -40,7 +39,7 @@ public abstract class AbstractReactorTest {
 
 	@BeforeClass
 	public static void loadEnv() {
-		timer = Timers.global();
+		timer = Timer.global();
 		ioGroup = Processors.ioGroup("work", 2048, 4, Throwable::printStackTrace, null, false);
 		asyncGroup = Processors.asyncGroup("async", 2048, 4, Throwable::printStackTrace, null, false);
 	}
@@ -50,7 +49,7 @@ public abstract class AbstractReactorTest {
 		timer = null;
 		ioGroup.shutdown();
 		asyncGroup.shutdown();
-		//Timers.unregisterGlobal();
+		//Timer.unregisterGlobal();
 	}
 
 	static {

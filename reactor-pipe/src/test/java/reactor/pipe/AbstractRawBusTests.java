@@ -9,7 +9,6 @@ import org.pcollections.TreePVector;
 import reactor.bus.AbstractBus;
 import reactor.core.publisher.ProcessorWorkQueue;
 import reactor.core.timer.Timer;
-import reactor.core.timer.Timers;
 import reactor.fn.Supplier;
 import reactor.pipe.key.Key;
 import reactor.pipe.registry.ConcurrentRegistry;
@@ -40,7 +39,7 @@ public class AbstractRawBusTests {
             @Override
             public Timer get() {
                 // for tests we use a higher resolution timer
-                return Timers.create("pipe-timer", 1, 512);
+                return Timer.create("pipe-timer", 1, 512);
             }
       });
     }

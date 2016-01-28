@@ -24,7 +24,6 @@ import org.pcollections.TreePVector;
 import reactor.bus.Bus;
 import reactor.core.state.Pausable;
 import reactor.core.timer.Timer;
-import reactor.core.timer.Timers;
 import reactor.fn.BiConsumer;
 import reactor.fn.BiFunction;
 import reactor.fn.Consumer;
@@ -62,7 +61,7 @@ public class Pipe<INIT, CURRENT> implements IPipe<Pipe, INIT, CURRENT> {
         this(suppliers, stateProvider, new Supplier<Timer>() {
             @Override
             public Timer get() {
-                return Timers.create("pipe-timer", 10, 512);
+                return Timer.create("pipe-timer", 10, 512);
             }
         });
     }
