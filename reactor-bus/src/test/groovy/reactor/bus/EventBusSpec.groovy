@@ -20,7 +20,6 @@ import groovy.transform.CompileStatic
 import reactor.bus.filter.RoundRobinFilter
 import reactor.bus.routing.ConsumerFilteringRouter
 import reactor.bus.selector.Selectors
-import reactor.core.publisher.Processors
 import reactor.fn.Consumer
 import reactor.rx.Promise
 import reactor.rx.Stream
@@ -393,7 +392,7 @@ class EventBusSpec extends Specification {
 	event == 1
 
 	when: "multithreaded bus can be serialized"
-	r = EventBus.create(Processors.queue("bus", 8), 4)
+	r = EventBus.create(WorkQueueProcessor.create("bus", 8), 4)
 	def tail = Stream.from(r.on(selector)).map { it.data }.doOnNext { sleep(100) }.elapsed().log().take(10).buffer()
 			.promise()
 

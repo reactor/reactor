@@ -5,7 +5,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import reactor.bus.selector.Selectors;
-import reactor.core.publisher.Processors;
 import reactor.core.util.Assert;
 import reactor.fn.Consumer;
 
@@ -13,7 +12,7 @@ public class EventBusTests {
 
 	@Test
 	public void workerOrchestrator() throws InterruptedException {
-		EventBus reactor = EventBus.create(Processors.queue(), 4);
+		EventBus reactor = EventBus.create(WorkQueueProcessor.create(), 4);
 
 		CountDownLatch latch = new CountDownLatch(3);
 

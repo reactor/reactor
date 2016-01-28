@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import reactor.core.publisher.ProcessorGroup;
-import reactor.core.publisher.Processors;
 import reactor.core.timer.Timer;
 
 /**
@@ -40,8 +39,8 @@ public abstract class AbstractReactorTest {
 	@BeforeClass
 	public static void loadEnv() {
 		timer = Timer.global();
-		ioGroup = Processors.ioGroup("work", 2048, 4, Throwable::printStackTrace, null, false);
-		asyncGroup = Processors.asyncGroup("async", 2048, 4, Throwable::printStackTrace, null, false);
+		ioGroup = ProcessorGroup.io("work", 2048, 4, Throwable::printStackTrace, null, false);
+		asyncGroup = ProcessorGroup.async("async", 2048, 4, Throwable::printStackTrace, null, false);
 	}
 
 	@AfterClass

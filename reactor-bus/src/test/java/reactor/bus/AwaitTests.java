@@ -20,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import reactor.bus.selector.Selectors;
-import reactor.core.publisher.Processors;
 import reactor.core.publisher.TopicProcessor;
 import reactor.fn.Consumer;
 import reactor.rx.Broadcaster;
@@ -37,7 +36,7 @@ public class AwaitTests extends AbstractReactorTest {
 
 	@Test
 	public void testAwaitDoesntBlockUnnecessarily() throws InterruptedException {
-		EventBus innerReactor = EventBus.config().concurrency(4).processor(Processors.queue("simple-work",
+		EventBus innerReactor = EventBus.config().concurrency(4).processor(WorkQueueProcessor.create("simple-work",
 		  64)).get();
 
 		for (int i = 0; i < 10000; i++) {
