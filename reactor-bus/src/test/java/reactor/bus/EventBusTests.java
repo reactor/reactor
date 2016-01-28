@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import reactor.bus.selector.Selectors;
+import reactor.core.publisher.WorkQueueProcessor;
 import reactor.core.util.Assert;
 import reactor.fn.Consumer;
 

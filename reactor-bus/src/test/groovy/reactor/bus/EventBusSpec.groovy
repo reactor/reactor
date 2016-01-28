@@ -20,6 +20,7 @@ import groovy.transform.CompileStatic
 import reactor.bus.filter.RoundRobinFilter
 import reactor.bus.routing.ConsumerFilteringRouter
 import reactor.bus.selector.Selectors
+import reactor.core.publisher.WorkQueueProcessor
 import reactor.fn.Consumer
 import reactor.rx.Promise
 import reactor.rx.Stream

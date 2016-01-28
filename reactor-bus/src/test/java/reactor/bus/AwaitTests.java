@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import reactor.bus.selector.Selectors;
 import reactor.core.publisher.TopicProcessor;
+import reactor.core.publisher.WorkQueueProcessor;
 import reactor.fn.Consumer;
 import reactor.rx.Broadcaster;
 import reactor.rx.Promise;
