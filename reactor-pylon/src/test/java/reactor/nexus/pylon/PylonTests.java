@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import reactor.core.subscriber.ReactiveSession;
+import reactor.core.timer.Timer;
 import reactor.core.util.Exceptions;
 import reactor.io.net.ReactiveNet;
 import reactor.io.net.nexus.Nexus;
@@ -38,7 +39,7 @@ public class PylonTests {
 
 		final ReactiveSession<Object> s = nexus.streamCannon();
 		Timer.create()
-		      .schedule(aLong -> {
+		     .schedule(aLong -> {
 			      if (!s.isCancelled()) {
 				      s.submit(s);
 			      }
