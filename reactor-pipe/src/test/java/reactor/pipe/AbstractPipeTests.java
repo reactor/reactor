@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.Test;
 import org.pcollections.TreePVector;
-import reactor.core.publisher.ProcessorWorkQueue;
+import reactor.core.publisher.WorkQueueProcessor;
 import reactor.pipe.concurrent.AVar;
 import reactor.pipe.concurrent.Atom;
 import reactor.pipe.key.Key;
@@ -211,7 +211,7 @@ public abstract class AbstractPipeTests extends AbstractRawBusTests {
 
     @Test
     public void testSmoke() throws InterruptedException { // Tests backpressure and in-thread dispatches
-        ProcessorWorkQueue<Runnable> processor = ProcessorWorkQueue.<Runnable>create(
+        WorkQueueProcessor<Runnable> processor = WorkQueueProcessor.<Runnable>create(
                 Executors.newFixedThreadPool(4),
                 256);
         RawBus<Key, Object> bus = new RawBus<Key, Object>(new ConcurrentRegistry<>(),

@@ -20,8 +20,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
 import reactor.bus.selector.Selectors;
-import reactor.core.publisher.ProcessorTopic;
 import reactor.core.publisher.Processors;
+import reactor.core.publisher.TopicProcessor;
 import reactor.fn.Consumer;
 import reactor.rx.Broadcaster;
 import reactor.rx.Promise;
@@ -61,7 +61,7 @@ public class AwaitTests extends AbstractReactorTest {
 	@Test
 	public void testDoesntDeadlockOnError() throws InterruptedException {
 
-		EventBus r = EventBus.create(ProcessorTopic.create("rb", 8));
+		EventBus r = EventBus.create(TopicProcessor.create("rb", 8));
 
 		Broadcaster<Event<Throwable>> stream = Broadcaster.<Event<Throwable>>create();
 		Promise<Long> promise = stream.log().take(16).count().subscribeWith(Promise.prepare());
