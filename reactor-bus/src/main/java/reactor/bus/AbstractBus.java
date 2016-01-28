@@ -31,8 +31,8 @@ import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
 import reactor.bus.selector.Selector;
 import reactor.bus.stream.BusStream;
-import reactor.core.flow.Producer;
 import reactor.core.flow.MultiProducer;
+import reactor.core.flow.Producer;
 import reactor.core.state.Introspectable;
 import reactor.core.util.Assert;
 import reactor.core.util.Exceptions;
@@ -256,7 +256,7 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, MultiProducer {
   }
 
   @Override
-  public long downstreamsCount() {
+  public long downstreamCount() {
     return consumerRegistry.size();
   }
 
