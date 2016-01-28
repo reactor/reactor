@@ -31,6 +31,7 @@ import reactor.bus.routing.ConsumerFilteringRouter;
 import reactor.bus.routing.Router;
 import reactor.bus.routing.TraceableDelegatingRouter;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxProcessor;
 import reactor.core.util.Assert;
 import reactor.fn.BiConsumer;
 import reactor.fn.Consumer;
@@ -203,7 +204,7 @@ public abstract class EventRoutingComponentSpec<SPEC extends EventRoutingCompone
 
 	private EventBus createReactor(Processor<Event<?>, Event<?>> processor, int concurrency) {
 		if (traceEventPath) {
-			processor = Processors.blackbox(processor, new Function<Processor<Event<?>, Event<?>>, Publisher<Event<?>>>() {
+			processor = FluxProcessor.blackbox(processor, new Function<Processor<Event<?>, Event<?>>, Publisher<Event<?>>>() {
 						@Override
 						public Publisher<Event<?>> apply(Processor<Event<?>, Event<?>> p) {
 							return Flux.from(p).log("reactor.bus.log");
