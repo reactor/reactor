@@ -30,8 +30,8 @@ import reactor.core.timer.Timer;
  */
 public abstract class AbstractReactorTest {
 
-	protected static ProcessorGroup<?> asyncGroup;
-	protected static ProcessorGroup<?> ioGroup;
+	protected static ProcessorGroup asyncGroup;
+	protected static ProcessorGroup ioGroup;
 	protected static Timer             timer;
 
 	protected final Map<Thread, AtomicLong> counters = new ConcurrentHashMap<>();
