@@ -66,7 +66,6 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, MultiProducer {
   private final Registry<K, BiConsumer<K, ? extends V>> consumerRegistry;
   private final Router                                  router;
   private final Consumer<Throwable>                     processorErrorHandler;
-  private final Consumer<Throwable>                     uncaughtErrorHandler;
   private final int                                     concurrency;
 
   private volatile UUID id;
@@ -87,37 +86,30 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, MultiProducer {
    *                              Selector#matches(Object) match} the notification key and does not perform any type
    *                              conversion will be used.
    * @param processorErrorHandler The {@link Consumer} to be used on {@link Processor} exceptions. May be {@code null}
-   *                              in which case exceptions will be delegated to {@code uncaughtErrorHandler}.
-   * @param uncaughtErrorHandler  Default {@link Consumer} to be used on all uncaught exceptions. May be {@code null}
-   *                              in which case exceptions will be logged.
+   *                              in which case exceptions will be delegated to `{@code uncaughtErrorHandler}.
+   *
    */
   @SuppressWarnings("unchecked")
   public AbstractBus(@Nonnull Registry<K, BiConsumer<K, ? extends V>> consumerRegistry,
                      int concurrency,
                      @Nullable Router router,
-                     @Nullable Consumer<Throwable> processorErrorHandler,
-                     @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+                     @Nullable Consumer<Throwable> processorErrorHandler) {
     Assert.notNull(consumerRegistry, "Consumer Registry cannot be null.");
     this.consumerRegistry = consumerRegistry;
     this.concurrency = concurrency;
     this.router = (null == router ? DEFAULT_EVENT_ROUTER : router);
     if (null == processorErrorHandler) {
       this.processorErrorHandler = new Consumer<Throwable>() {
+        final Logger log = Logger.getLogger(AbstractBus.class);
+
         @Override
         public void accept(Throwable t) {
-          if (uncaughtErrorHandler == null) {
-            final Logger log = Logger.getLogger(AbstractBus.class);
-            log.error(t.getMessage(), t);
-          } else {
-            uncaughtErrorHandler.accept(t);
-          }
+          log.error(t.getMessage(), t);
         }
       };
     } else {
       this.processorErrorHandler = processorErrorHandler;
     }
-
-    this.uncaughtErrorHandler = uncaughtErrorHandler;
   }
 
   /**
@@ -159,15 +151,6 @@ public abstract class AbstractBus<K, V> implements Bus<K, V>, MultiProducer {
    */
   public Consumer<Throwable> getProcessorErrorHandler() {
     return processorErrorHandler;
-  }
-
-  /**
-   * Get the {@link Consumer<Throwable>} uncaught error handler
-   *
-   * @return The {@link Consumer<Throwable>} uncaught error handler in use
-   */
-  public Consumer<Throwable> getUncaughtErrorHandler() {
-    return uncaughtErrorHandler;
   }
 
   @Override

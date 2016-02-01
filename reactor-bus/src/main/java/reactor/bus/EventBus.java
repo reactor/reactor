@@ -32,7 +32,6 @@ import reactor.bus.registry.Registration;
 import reactor.bus.registry.Registries;
 import reactor.bus.registry.Registry;
 import reactor.bus.routing.Router;
-import reactor.bus.selector.ClassSelector;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.Selectors;
 import reactor.bus.spec.EventBusSpec;
@@ -155,20 +154,18 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	public EventBus(@Nullable Processor<Event<?>, Event<?>> processor,
 	                int concurrency,
 	                @Nullable Router router) {
-		this(processor, concurrency, router, null, null);
+		this(processor, concurrency, router, null);
 	}
 
 	public EventBus(@Nullable Processor<Event<?>, Event<?>> processor,
 	                int concurrency,
 	                @Nullable Router router,
-	                @Nullable Consumer<Throwable> processorErrorHandler,
-	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+	                @Nullable Consumer<Throwable> processorErrorHandler) {
 		this(Registries.<Object, BiConsumer<Object, ? extends Event<?>>>create(),
 		  processor,
 		  concurrency,
 		  router,
-		  processorErrorHandler,
-		  uncaughtErrorHandler);
+		  processorErrorHandler);
 	}
 
 	/**
@@ -190,21 +187,17 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 	 *                              conversion will be used.
 	 * @param processorErrorHandler The {@link Consumer} to be used on {@link Processor} exceptions. May be {@code null}
 	 *                              in which case exceptions will be routed to this {@link EventBus} by it's class.
-	 * @param uncaughtErrorHandler  Default {@link Consumer} to be used on all uncaught exceptions. May be {@code null}
-	 *                              in which case exceptions will be logged.
 	 */
 	@SuppressWarnings("unchecked")
 	public EventBus(@Nonnull final Registry<Object, BiConsumer<Object, ? extends Event<?>>> consumerRegistry,
 	                @Nullable Processor<Event<?>, Event<?>> processor,
 	                int concurrency,
 	                @Nullable final Router router,
-					@Nullable Consumer<Throwable> processorErrorHandler,
-	                @Nullable final Consumer<Throwable> uncaughtErrorHandler) {
+					@Nullable Consumer<Throwable> processorErrorHandler) {
 		super(consumerRegistry,
 					concurrency,
 					router,
-					processorErrorHandler != null ? processorErrorHandler : new UncaughtExceptionConsumer(consumerRegistry),
-					uncaughtErrorHandler);
+					processorErrorHandler != null ? processorErrorHandler : new UncaughtExceptionConsumer(consumerRegistry));
 
 		Assert.notNull(consumerRegistry, "Consumer Registry cannot be null.");
 		this.processor = processor;
@@ -215,8 +208,6 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 			}
 			processor.onSubscribe(EmptySubscription.INSTANCE);
 		}
-
-		this.on(new ClassSelector(Throwable.class), new BusErrorConsumer(uncaughtErrorHandler));
 	}
 
 	/**
@@ -604,26 +595,6 @@ public class EventBus extends AbstractBus<Object, Event<?>> implements Consumer<
 									   consumerRegistry.select(type),
 									   null,
 									   null);
-		}
-	}
-
-	private static class BusErrorConsumer implements Consumer<Event<Throwable>> {
-
-		final         Logger              log;
-		private final Consumer<Throwable> uncaughtErrorHandler;
-
-		public BusErrorConsumer(Consumer<Throwable> uncaughtErrorHandler) {
-			this.uncaughtErrorHandler = uncaughtErrorHandler;
-			log = Logger.getLogger(EventBus.class);
-		}
-
-		@Override
-		public void accept(Event<Throwable> ev) {
-			if (null == uncaughtErrorHandler) {
-				log.error(ev.getData().getMessage(), ev.getData());
-			} else {
-				uncaughtErrorHandler.accept(ev.getData());
-			}
 		}
 	}
 

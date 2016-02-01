@@ -359,7 +359,6 @@ class EventBusSpec extends Specification {
 	def r = EventBus.config().
 			sync().
 			dispatchErrorHandler(consumer { t -> count++ }).
-			uncaughtErrorHandler(consumer { t -> count++ }).
 			get()
 	r.on $('test'), consumer { ev -> throw new Exception("error") }
 
