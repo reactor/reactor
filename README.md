@@ -41,7 +41,7 @@ Fully featured reactive extension API with Promise and Stream types
     - reactor-pylon
     - reactor-pipes
 
-## incubator
+## reactor-incubator
 
 - https://github.com/reactor/reactor-incubator
 - Sub-modules:
