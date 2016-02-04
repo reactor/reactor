@@ -23,7 +23,8 @@ Fully featured reactive composition API (Rx scope) with Promise and Stream types
 - Documentation source : http://next.projectreactor.io/io/docs/reference
 - API space : http://next.projectreactor.io/io/docs/api
 - Sub-modules:
-    - reactor-aeron
+    - reactor-io : Memory and InterProcessCommunication abstractions
+    - reactor-aeron : Efficient unicast/multicast messaging
     - reactor-codec: JSON, compression, Kryo, Protobuf codecs
     - reactor-net: TCP and HTTP client and server
 
