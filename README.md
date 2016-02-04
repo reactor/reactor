@@ -5,10 +5,7 @@
 Starting from 2.5.0.M1, Reactor is composed of the following modules:
 
 ## reactor-core
-Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](next.projectreactor
-.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](next.projectreactor
-.io/core/docs/api/reactor/core/publisher/Flux.html (n
-elements) types (originated in PR #607)
+Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types (originated in PR #607)
 
 - https://github.com/reactor/reactor-core
 - Documentation source : http://next.projectreactor.io/core/docs/reference
@@ -61,6 +58,7 @@ Fully featured reactive extension API with Promise and Stream types
 
 Snapshot Maven artifacts are provided in the SpringSource snapshot repositories. To add this repo to your Gradle build, specify the URL like the following:
 
+```groovy
     ext {
       reactorVersion = '2.5.0.BUILD-SNAPSHOT'
     }
@@ -95,7 +93,7 @@ Snapshot Maven artifacts are provided in the SpringSource snapshot repositories.
        // compile "io.projectreactor:reactor-codec:$reactorVersion"
 
     }
-
+```
 
 ### Documentation
 
