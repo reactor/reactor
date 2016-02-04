@@ -1,7 +1,0 @@
-== Groovy extensions
-
-=== Groovy support
-
-=== Grails support
-
-Reactor is provided in core Grails 3.0 distribution as part of the http://grails.github.io/grails-doc/3.0.x/guide/single.html#events[Eventing support].

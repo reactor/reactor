@@ -1,8 +1,0 @@
-[[clojure]]
-== Clojure support
-
-[quote, README, project page]
-Meltdown is a Clojure interface to Reactor, an asynchronous programming, event passing and stream processing toolkit for the JVM.
-It follows the path of Romulan, an old ClojureWerkz project on top of LMAX Disruptor that's been abandoned.
-
-https://github.com/clojurewerkz/meltdown[ClojureWerkz Meltdown]
