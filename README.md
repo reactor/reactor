@@ -56,7 +56,8 @@ Fully featured reactive extension API with Promise and Stream types
 
 ### Maven Artifacts
 
-Snapshot Maven artifacts are provided in the SpringSource snapshot repositories. To add this repo to your Gradle build, specify the URL like the following:
+Fresh snapshot and release artifacts are provided in the _repo.spring.io_ repositories. 
+Stable Release are synchronozied with Maven Central. To add this repo to your Gradle build, specify the URL like the following:
 
 ```groovy
     ext {
