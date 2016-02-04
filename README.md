@@ -23,27 +23,27 @@ Fully featured reactive composition API (Rx scope) with Promise and Stream types
 - Documentation source : http://next.projectreactor.io/io/docs/reference
 - API space : http://next.projectreactor.io/io/docs/api
 - Sub-modules:
--- reactor-aeron
--- reactor-codec: JSON, compression, Kryo, Protobuf codecs
--- reactor-net: TCP and HTTP client and server
+    - reactor-aeron
+    - reactor-codec: JSON, compression, Kryo, Protobuf codecs
+    - reactor-net: TCP and HTTP client and server
 
 ## https://github.com/reactor/reactor-extensions:
 
 - Documentation source : http://next.projectreactor.io/ext/docs/reference
 - API space : http://next.projectreactor.io/ext/docs/api
 - Sub-modules:
--- reactor-alloc
--- reactor-bus
--- reactor-logback
--- reactor-pylon
--- reactor-pipes
+    - reactor-alloc
+    - reactor-bus
+    - reactor-logback
+    - reactor-pylon
+    - reactor-pipes
 
 ## https://github.com/reactor/reactor-incubator
 - Sub-modules:
--- reactor-amqp
--- reactor-chronicle
--- reactor-groovy
--- reactor-net-0mq
+    - reactor-amqp
+    - reactor-chronicle
+    - reactor-groovy
+    - reactor-net-0mq
 
 ### Enrolling
 
