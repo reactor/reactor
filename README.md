@@ -9,39 +9,41 @@ Starting from 2.5.0.M1, Reactor is composed of the following modules:
 ## https://github.com/reactor/reactor-core
 Reactive foundations for apps and frameworks + lite Reactive composition API with Mono (1 element) and Flux (n elements) types (originated in PR #607)
 
-Documentation source : http://next.projectreactor.io/core/docs/reference
-API space : http://next.projectreactor.io/core/docs/api
+- Documentation source : http://next.projectreactor.io/core/docs/reference
+- API space : http://next.projectreactor.io/core/docs/api
 
 ## https://github.com/reactor/reactor-stream
 Fully featured reactive composition API (Rx scope) with Promise and Stream types
 
-Documentation source : http://next.projectreactor.io/stream/docs/reference
-API space : http://next.projectreactor.io/stream/docs/api
+- Documentation source : http://next.projectreactor.io/stream/docs/reference
+- API space : http://next.projectreactor.io/stream/docs/api
 
 ## https://github.com/reactor/reactor-io:
 
-Documentation source : http://next.projectreactor.io/io/docs/reference
-API space : http://next.projectreactor.io/io/docs/api
-reactor-aeron
-reactor-codec: JSON, compression, Kryo, Protobuf codecs
-reactor-net: TCP and HTTP client and server
+- Documentation source : http://next.projectreactor.io/io/docs/reference
+- API space : http://next.projectreactor.io/io/docs/api
+
+- reactor-aeron
+- reactor-codec: JSON, compression, Kryo, Protobuf codecs
+- reactor-net: TCP and HTTP client and server
 
 ## https://github.com/reactor/reactor-extensions:
 
-Documentation source : http://next.projectreactor.io/ext/docs/reference
-API space : http://next.projectreactor.io/ext/docs/api
-reactor-alloc
-reactor-bus
-reactor-logback
-reactor-pylon
-reactor-pipes
+- Documentation source : http://next.projectreactor.io/ext/docs/reference
+- API space : http://next.projectreactor.io/ext/docs/api
+
+- reactor-alloc
+- reactor-bus
+- reactor-logback
+- reactor-pylon
+- reactor-pipes
 
 ## https://github.com/reactor/reactor-incubator
 
-reactor-amqp
-reactor-chronicle
-reactor-groovy
-reactor-net-0mq
+- reactor-amqp
+- reactor-chronicle
+- reactor-groovy
+- reactor-net-0mq
 
 ### Enrolling
 
