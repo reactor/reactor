@@ -4,7 +4,44 @@
 
 `Reactor` is a foundational library building for reactive fast data applications on the JVM. It provides abstractions for Java, Groovy, [Clojure](https://github.com/clojurewerkz/meltdown) and other JVM languages to make building event and data-driven applications easier. It’s also really fast. On a recent laptop with a dual-core processor, it's possible to process over 15,000,000 events per second with the `TopicProcessor` and over 25,000,000 events per second in a single thread. Other processors are available to provide the developer with a range of choices from thread-pool style, long-running task execution to non-blocking, high-volume task dispatching.
 
-[![Build Status](http://drone.io/github.com/reactor/reactor/status.png)](https://drone.io/github.com/reactor/reactor/latest)
+Starting from 2.5.0.M1, Reactor is composed of the following modules:
+
+## https://github.com/reactor/reactor-core
+Reactive foundations for apps and frameworks + lite Reactive composition API with Mono (1 element) and Flux (n elements) types (originated in PR #607)
+
+Documentation source : http://next.projectreactor.io/core/docs/reference
+API space : http://next.projectreactor.io/core/docs/api
+
+## https://github.com/reactor/reactor-stream
+Fully featured reactive composition API (Rx scope) with Promise and Stream types
+
+Documentation source : http://next.projectreactor.io/stream/docs/reference
+API space : http://next.projectreactor.io/stream/docs/api
+
+## https://github.com/reactor/reactor-io:
+
+Documentation source : http://next.projectreactor.io/io/docs/reference
+API space : http://next.projectreactor.io/io/docs/api
+reactor-aeron
+reactor-codec: JSON, compression, Kryo, Protobuf codecs
+reactor-net: TCP and HTTP client and server
+
+## https://github.com/reactor/reactor-extensions:
+
+Documentation source : http://next.projectreactor.io/ext/docs/reference
+API space : http://next.projectreactor.io/ext/docs/api
+reactor-alloc
+reactor-bus
+reactor-logback
+reactor-pylon
+reactor-pipes
+
+## https://github.com/reactor/reactor-incubator
+
+reactor-amqp
+reactor-chronicle
+reactor-groovy
+reactor-net-0mq
 
 ### Enrolling
 
@@ -60,8 +97,7 @@ Snapshot Maven artifacts are provided in the SpringSource snapshot repositories.
 
 ### Documentation
 
-* [Guides](http://projectreactor.io/docs/)
-* [API Reference](http://reactor.github.io/docs/api/)
+* [Guides](http://next.projectreactor.io/docs/)
 * [Reactive Streams](http://www.reactive-streams.org/)
 
 ### Community / Support
