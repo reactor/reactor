@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/reactor/reactor](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/reactor/reactor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Starting from 2.5.0.M1, Reactor is composed of the following modules:
+Starting from 2.5.0, Reactor is composed of the following modules:
 
 ## reactor-core
 Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types
