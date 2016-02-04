@@ -4,21 +4,21 @@
 
 Starting from 2.5.0, Reactor is composed of the following modules:
 
-## reactor-core
+## reactor-core *2.5.0.M1*
 Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types
 
 - https://github.com/reactor/reactor-core
 - Documentation source : http://next.projectreactor.io/core/docs/reference
 - API space : http://next.projectreactor.io/core/docs/api
 
-## reactor-stream
+## reactor-stream *2.5.0.M1*
 Fully featured reactive extension API with Promise and Stream types
 
 - https://github.com/reactor/reactor-stream
 - Documentation source : http://next.projectreactor.io/stream/docs/reference
 - API space : http://next.projectreactor.io/stream/docs/api
 
-## reactor-io
+## reactor-io *2.5.0.BUILD-SNAPSHPOT*
 
 - https://github.com/reactor/reactor-io:
 - Documentation source : http://next.projectreactor.io/io/docs/reference
@@ -29,7 +29,7 @@ Fully featured reactive extension API with Promise and Stream types
     - reactor-codec: JSON, compression, Kryo, Protobuf codecs
     - reactor-net: TCP and HTTP client and server
 
-## reactor-extensions
+## reactor-extensions *2.5.0.BUILD-SNAPSHPOT*
 
 - https://github.com/reactor/reactor-extensions
 - Documentation source : http://next.projectreactor.io/ext/docs/reference
@@ -41,7 +41,7 @@ Fully featured reactive extension API with Promise and Stream types
     - reactor-pylon
     - reactor-pipes
 
-## reactor-incubator
+## reactor-incubator *2.5.0.BUILD-SNAPSHPOT*
 
 - https://github.com/reactor/reactor-incubator
 - Sub-modules:
