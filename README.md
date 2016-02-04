@@ -60,9 +60,6 @@ Fresh snapshot and release artifacts are provided in the _repo.spring.io_ reposi
 Stable Release are synchronozied with Maven Central. To add this repo to your Gradle build, specify the URL like the following:
 
 ```groovy
-    ext {
-      reactorVersion = '2.5.0.BUILD-SNAPSHOT'
-    }
 
     repositories {
       //maven { url 'http://repo.spring.io/libs-release' }
@@ -73,25 +70,25 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
 
     dependencies {
       // Reactor Core
-      compile "io.projectreactor:reactor-core:$reactorVersion"
+      compile "io.projectreactor:reactor-core:2.5.0.BUILD-SNAPSHOT"
 
       // Reactor Stream
-      // compile "io.projectreactor:reactor-stream:$reactorVersion"
+      // compile "io.projectreactor:reactor-stream:2.5.0.BUILD-SNAPSHOT"
 
       // Reactor Aeron
-      // compile "io.projectreactor:reactor-aeron:$reactorVersion"
+      // compile "io.projectreactor:reactor-aeron:2.5.0.BUILD-SNAPSHOT"
 
        // Reactor Pipes
-      // compile "io.projectreactor:reactor-pipes:$reactorVersion"
+      // compile "io.projectreactor:reactor-pipes:2.5.0.BUILD-SNAPSHOT"
 
        // Reactor Netty4
-       // compile "io.projectreactor:reactor-net:$reactorVersion"
+       // compile "io.projectreactor:reactor-net:2.5.0.BUILD-SNAPSHOT"
 
        // Netty for Reactor Net (auto detects if in classpath)
        // compile 'io.netty:netty-all:4.0.34.Final'
 
        // Reactor Codecs (Jackson, Kryo...)
-       // compile "io.projectreactor:reactor-codec:$reactorVersion"
+       // compile "io.projectreactor:reactor-codec:2.5.0.BUILD-SNAPSHOT"
 
     }
 ```
