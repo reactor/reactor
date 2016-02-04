@@ -4,20 +4,26 @@
 
 Starting from 2.5.0.M1, Reactor is composed of the following modules:
 
-### https://github.com/reactor/reactor-core
-Reactive foundations for apps and frameworks + lite Reactive composition API with Mono (1 element) and Flux (n elements) types (originated in PR #607)
+## reactor-core
+Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](next.projectreactor
+.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](next.projectreactor
+.io/core/docs/api/reactor/core/publisher/Flux.html (n
+elements) types (originated in PR #607)
 
+- https://github.com/reactor/reactor-core
 - Documentation source : http://next.projectreactor.io/core/docs/reference
 - API space : http://next.projectreactor.io/core/docs/api
 
-### https://github.com/reactor/reactor-stream
-Fully featured reactive composition API (Rx scope) with Promise and Stream types
+## reactor-stream
+Fully featured reactive extension API with Promise and Stream types
 
+- https://github.com/reactor/reactor-stream
 - Documentation source : http://next.projectreactor.io/stream/docs/reference
 - API space : http://next.projectreactor.io/stream/docs/api
 
-### https://github.com/reactor/reactor-io:
+## reactor-io
 
+- https://github.com/reactor/reactor-io:
 - Documentation source : http://next.projectreactor.io/io/docs/reference
 - API space : http://next.projectreactor.io/io/docs/api
 - Sub-modules:
@@ -26,8 +32,9 @@ Fully featured reactive composition API (Rx scope) with Promise and Stream types
     - reactor-codec: JSON, compression, Kryo, Protobuf codecs
     - reactor-net: TCP and HTTP client and server
 
-### https://github.com/reactor/reactor-extensions:
+## reactor-extensions
 
+- https://github.com/reactor/reactor-extensions
 - Documentation source : http://next.projectreactor.io/ext/docs/reference
 - API space : http://next.projectreactor.io/ext/docs/api
 - Sub-modules:
@@ -37,7 +44,9 @@ Fully featured reactive composition API (Rx scope) with Promise and Stream types
     - reactor-pylon
     - reactor-pipes
 
-## https://github.com/reactor/reactor-incubator
+## incubator
+
+- https://github.com/reactor/reactor-incubator
 - Sub-modules:
     - reactor-amqp
     - reactor-chronicle
