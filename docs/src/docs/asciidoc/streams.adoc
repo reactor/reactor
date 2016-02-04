@@ -255,7 +255,7 @@ h|Streams.from(*Publisher<T>*)
 |T
 2+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<T>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol:
 
-onSubscribe > onNext\* > (onError \| onComplete)
+onSubscribe > onNext* > (onError \| onComplete)
 
 h|Streams.defer(*Supplier<Publisher<T>>*)
 |T
@@ -516,7 +516,7 @@ h|Streams.from(*Processor<I, O>*)
 |O
 3+|A simple delegating `Stream` to the passed `Publisher.subscribe(Subscriber<O>)` argument. Only supports _well formed_ Publishers correctly using the Reactive Streams protocol:
 
-onSubscribe > onNext\* > (onError \| onComplete)
+onSubscribe > onNext* > (onError \| onComplete)
 
 
 h|Promises.<T>prepare(*Environment, Dispatcher*)
