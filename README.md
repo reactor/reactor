@@ -5,7 +5,7 @@
 Starting from 2.5.0.M1, Reactor is composed of the following modules:
 
 ## reactor-core
-Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types (originated in PR #607)
+Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types
 
 - https://github.com/reactor/reactor-core
 - Documentation source : http://next.projectreactor.io/core/docs/reference
