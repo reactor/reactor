@@ -34,10 +34,10 @@ _2.5.0.BUILD-SNAPSHPOT_
     - reactor-codec: JSON, compression, Kryo, Protobuf codecs
     - reactor-net: TCP and HTTP client and server
 
-# reactor-extensions 
+# reactor-addons 
 _2.5.0.BUILD-SNAPSHPOT_
 
-- https://github.com/reactor/reactor-extensions
+- https://github.com/reactor/reactor-addons
 - Documentation source : http://next.projectreactor.io/ext/docs/reference
 - API space : http://next.projectreactor.io/ext/docs/api
 - Sub-modules:
