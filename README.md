@@ -7,11 +7,11 @@ Starting from 2.5.0, Reactor is composed of the following modules:
 # reactor-core 
 _2.5.0.M1_
 
-Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://next.projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types
+Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](http://projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types
 
 - https://github.com/reactor/reactor-core
-- Documentation source : http://next.projectreactor.io/core/docs/reference
-- API space : http://next.projectreactor.io/core/docs/api
+- Documentation source : http://projectreactor.io/core/docs/reference
+- API space : http://projectreactor.io/core/docs/api
 
 # reactor-stream 
 _2.5.0.M1_
@@ -19,15 +19,15 @@ _2.5.0.M1_
 Fully featured reactive extension API with Promise and Stream types
 
 - https://github.com/reactor/reactor-stream
-- Documentation source : http://next.projectreactor.io/stream/docs/reference
-- API space : http://next.projectreactor.io/stream/docs/api
+- Documentation source : http://projectreactor.io/stream/docs/reference
+- API space : http://projectreactor.io/stream/docs/api
 
 # reactor-io 
 _2.5.0.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-io:
-- Documentation source : http://next.projectreactor.io/io/docs/reference
-- API space : http://next.projectreactor.io/io/docs/api
+- Documentation source : http://projectreactor.io/io/docs/reference
+- API space : http://projectreactor.io/io/docs/api
 - Sub-modules:
     - reactor-io : Memory and InterProcessCommunication abstractions
     - reactor-aeron : Efficient unicast/multicast messaging
@@ -38,8 +38,8 @@ _2.5.0.BUILD-SNAPSHPOT_
 _2.5.0.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-addons
-- Documentation source : http://next.projectreactor.io/ext/docs/reference
-- API space : http://next.projectreactor.io/ext/docs/api
+- Documentation source : http://projectreactor.io/ext/docs/reference
+- API space : http://projectreactor.io/ext/docs/api
 - Sub-modules:
     - reactor-alloc
     - reactor-bus
@@ -105,7 +105,7 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
 
 ### Documentation
 
-* [Guides](http://next.projectreactor.io/docs/)
+* [Guides](http://projectreactor.io/docs/)
 * [Reactive Streams](http://www.reactive-streams.org/)
 
 ### Community / Support
