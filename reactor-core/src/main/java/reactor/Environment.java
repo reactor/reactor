@@ -1035,10 +1035,12 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 			return true;
 		}
 
+
 		int getNextIndex() {
 			int index;
 			for (; ; ) {
-				if ((index = this.index.incrementAndGet()) == poolsize) {
+				index = this.index.get() + 1;
+				if (index == poolsize) {
 					if (this.index.compareAndSet(index, 0)) {
 						return 0;
 					}
