@@ -14,7 +14,7 @@ Reactive foundations for apps and frameworks and lite reactive extensions API wi
 - API space : http://projectreactor.io/core/docs/api
 
 # reactor-stream 
-_2.5.0.M1_
+_2.5.0.BUILD-SNAPSHOT_
 
 Fully featured reactive extension API with Promise and Stream types
 
