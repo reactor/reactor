@@ -2,9 +2,9 @@
 
 [![Join the chat at https://gitter.im/reactor/reactor](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/reactor/reactor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Starting from 2.5.0, Reactor is composed of the following modules:
+Starting from 2.5.0, Reactor is decomposed into the following projects:
 
-# reactor-core 
+# Reactor Core
 _2.5.0.M1_
 
 Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](http://projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types
@@ -13,7 +13,7 @@ Reactive foundations for apps and frameworks and lite reactive extensions API wi
 - Documentation source : http://projectreactor.io/core/docs/reference
 - API space : http://projectreactor.io/core/docs/api
 
-# reactor-stream 
+# Reactor Stream
 _2.5.0.BUILD-SNAPSHOT_
 
 Fully featured reactive extension API with Promise and Stream types
@@ -22,7 +22,7 @@ Fully featured reactive extension API with Promise and Stream types
 - Documentation source : http://projectreactor.io/stream/docs/reference
 - API space : http://projectreactor.io/stream/docs/api
 
-# reactor-io 
+# Reactor IO
 _2.5.0.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-io:
@@ -34,7 +34,7 @@ _2.5.0.BUILD-SNAPSHPOT_
     - reactor-codec: JSON, compression, Kryo, Protobuf codecs
     - reactor-net: TCP and HTTP client and server
 
-# reactor-addons 
+# Reactor Addons
 _2.5.0.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-addons
@@ -47,7 +47,7 @@ _2.5.0.BUILD-SNAPSHPOT_
     - reactor-pylon
     - reactor-pipes
 
-# reactor-incubator
+# Reactor Incubator
 _2.5.0.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-incubator
