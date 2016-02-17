@@ -5,7 +5,7 @@
 Starting from 2.5.0, Reactor is now organized into multiple projects:
 
 # Reactor Core
-_2.5.0.M1_
+[![Reactor Core](https://maven-badges.herokuapp.com/maven-central/io.projectreactor/reactor-core/badge.svg?style=plastic)](http://mvnrepository.com/artifact/io.projectreactor/reactor-core)
 
 Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](http://projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types
 
