@@ -13,14 +13,14 @@ Reactive foundations for apps and frameworks and lite reactive extensions API wi
 - Documentation source : http://projectreactor.io/core/docs/reference
 - API space : http://projectreactor.io/core/docs/api
 
-# Reactor Stream
+# Reactor Fluxion
 _2.5.0.BUILD-SNAPSHOT_
 
-Fully featured reactive extension API with Promise and Stream types
+Fully featured reactive extension API with Promise and Fluxion types
 
-- https://github.com/reactor/reactor-stream
-- Documentation source : http://projectreactor.io/stream/docs/reference
-- API space : http://projectreactor.io/stream/docs/api
+- https://github.com/reactor/reactor-fluxion
+- Documentation source : http://projectreactor.io/fluxion/docs/reference
+- API space : http://projectreactor.io/fluxion/docs/api
 
 # Reactor IO
 _2.5.0.BUILD-SNAPSHPOT_
@@ -58,7 +58,7 @@ _2.5.0.BUILD-SNAPSHPOT_
     - reactor-net-0mq
 
 # Reactive Streams Commons
-In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core (Rx Lite) and reactor-stream (full rx). Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise. 
+In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core (Rx Lite) and reactor-fluxion (full rx). Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
 
 ### Enrolling
 
@@ -82,8 +82,8 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
       // Reactor Core
       compile "io.projectreactor:reactor-core:2.5.0.BUILD-SNAPSHOT"
 
-      // Reactor Stream
-      // compile "io.projectreactor:reactor-stream:2.5.0.BUILD-SNAPSHOT"
+      // Reactor Fluxion
+      // compile "io.projectreactor:reactor-fluxion:2.5.0.BUILD-SNAPSHOT"
 
       // Reactor Aeron
       // compile "io.projectreactor:reactor-aeron:2.5.0.BUILD-SNAPSHOT"
