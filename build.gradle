@@ -192,6 +192,7 @@ project('reactor-core') {
       'com.fasterxml.jackson.databind.node;resolution:=optional',
       'com.fasterxml.jackson.databind.type;resolution:=optional',
       'org.slf4j;version="[1.5.4,2)"',
+      '!reactor.jarjar.*',
       '*'
   ]
 
