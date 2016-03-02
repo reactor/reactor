@@ -9,20 +9,12 @@ Starting from 2.5.0, Reactor is now organized into multiple projects:
 # Reactor Core
 [![Reactor Core](https://maven-badges.herokuapp.com/maven-central/io.projectreactor/reactor-core/badge.svg?style=plastic)](http://mvnrepository.com/artifact/io.projectreactor/reactor-core)
 
-Reactive foundations for apps and frameworks and lite reactive extensions API with [Mono](http://projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types
+Reactive foundations for apps and frameworks and reactive extensions inspired API with [Mono](http://projectreactor
+.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types
 
 - https://github.com/reactor/reactor-core
 - Documentation source : http://projectreactor.io/core/docs/reference
 - API space : http://projectreactor.io/core/docs/api
-
-# Reactor Stream
-_2.5.0.BUILD-SNAPSHOT_
-
-Fully featured reactive extension API with Promise and Fluxion types
-
-- https://github.com/reactor/reactor-stream
-- Documentation source : http://projectreactor.io/stream/docs/reference
-- API space : http://projectreactor.io/stream/docs/api
 
 # Reactor IO
 _2.5.0.BUILD-SNAPSHPOT_
@@ -60,7 +52,7 @@ _2.5.0.BUILD-SNAPSHPOT_
     - reactor-net-0mq
 
 # Reactive Streams Commons
-In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core (Rx Lite) and reactor-stream (full rx). Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
+In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core. Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
 
 ### Enrolling
 
