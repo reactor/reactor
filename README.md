@@ -76,9 +76,6 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
       // Reactor Core
       compile "io.projectreactor:reactor-core:2.5.0.BUILD-SNAPSHOT"
 
-      // Reactor Stream
-      // compile "io.projectreactor:reactor-stream:2.5.0.BUILD-SNAPSHOT"
-
       // Reactor Aeron
       // compile "io.projectreactor:reactor-aeron:2.5.0.BUILD-SNAPSHOT"
 
