@@ -16,8 +16,8 @@
 
 /**
  * Reactive network components are located in this package scope implementing the following exposed contract:
- * A {@link reactor.io.netty.ReactorPeer} NetServer/NetClient is a {@link org.reactivestreams.Publisher} of
- * {@link reactor.io.netty.ReactorChannel} that are themselves {@link org.reactivestreams.Publisher} of input data.
+ * A {@link reactor.io.net.ReactorPeer} NetServer/NetClient is a {@link org.reactivestreams.Publisher} of
+ * {@link reactor.io.net.ReactorChannel} that are themselves {@link org.reactivestreams.Publisher} of input data.
  * This input data will be the received information from a Server perspective and response information from a Client perspective.
  * A channel also expose useful methods to write, close and generally control the lifecycle of the underlying connection.
  */

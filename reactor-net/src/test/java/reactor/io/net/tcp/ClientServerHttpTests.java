@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.io.netty.tcp;
+package reactor.io.net.tcp;
 
 import org.junit.After;
 import org.junit.Before;
@@ -27,8 +27,8 @@ import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.netty.NetStreams;
-import reactor.io.netty.http.HttpClient;
+import reactor.io.net.NetStreams;
+import reactor.io.net.http.HttpClient;
 import reactor.rx.Promise;
 import reactor.rx.Streams;
 import reactor.rx.broadcast.Broadcaster;
@@ -45,7 +45,7 @@ import static org.junit.Assert.assertThat;
  */
 @Ignore
 public class ClientServerHttpTests {
-	private reactor.io.netty.http.HttpServer<List<String>, List<String>> httpServer;
+	private reactor.io.net.http.HttpServer<List<String>, List<String>> httpServer;
 	private Broadcaster<String> broadcaster;
 
 	@Test

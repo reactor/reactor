@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package reactor.io.netty.http;
+package reactor.io.net.http;
 
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.netty.ReactorChannelHandler;
-import reactor.io.netty.ReactorClient;
-import reactor.io.netty.config.ClientSocketOptions;
-import reactor.io.netty.http.model.Method;
+import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.ReactorClient;
+import reactor.io.net.config.ClientSocketOptions;
+import reactor.io.net.http.model.Method;
 import reactor.rx.Promise;
 
 /**

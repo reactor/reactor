@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.netty.impl.zmq.tcp;
+package reactor.io.net.impl.zmq.tcp;
 
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -32,14 +32,14 @@ import reactor.fn.Consumer;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.netty.ChannelStream;
-import reactor.io.netty.ReactorChannelHandler;
-import reactor.io.netty.config.ServerSocketOptions;
-import reactor.io.netty.config.SslOptions;
-import reactor.io.netty.impl.zmq.ZeroMQChannelStream;
-import reactor.io.netty.impl.zmq.ZeroMQServerSocketOptions;
-import reactor.io.netty.impl.zmq.ZeroMQWorker;
-import reactor.io.netty.tcp.TcpServer;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.config.ServerSocketOptions;
+import reactor.io.net.config.SslOptions;
+import reactor.io.net.impl.zmq.ZeroMQChannelStream;
+import reactor.io.net.impl.zmq.ZeroMQServerSocketOptions;
+import reactor.io.net.impl.zmq.ZeroMQWorker;
+import reactor.io.net.tcp.TcpServer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;

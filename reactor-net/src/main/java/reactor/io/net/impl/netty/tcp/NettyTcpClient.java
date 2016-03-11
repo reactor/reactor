@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.netty.impl.netty.tcp;
+package reactor.io.net.impl.netty.tcp;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -35,17 +35,17 @@ import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.netty.ChannelStream;
-import reactor.io.netty.ReactorChannelHandler;
-import reactor.io.netty.Reconnect;
-import reactor.io.netty.config.ClientSocketOptions;
-import reactor.io.netty.config.SslOptions;
-import reactor.io.netty.impl.netty.NettyChannelHandlerBridge;
-import reactor.io.netty.impl.netty.NettyChannelStream;
-import reactor.io.netty.impl.netty.NettyClientSocketOptions;
-import reactor.io.netty.impl.netty.NettyNativeDetector;
-import reactor.io.netty.tcp.TcpClient;
-import reactor.io.netty.tcp.ssl.SSLEngineSupplier;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.Reconnect;
+import reactor.io.net.config.ClientSocketOptions;
+import reactor.io.net.config.SslOptions;
+import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
+import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.net.impl.netty.NettyClientSocketOptions;
+import reactor.io.net.impl.netty.NettyNativeDetector;
+import reactor.io.net.tcp.TcpClient;
+import reactor.io.net.tcp.ssl.SSLEngineSupplier;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;

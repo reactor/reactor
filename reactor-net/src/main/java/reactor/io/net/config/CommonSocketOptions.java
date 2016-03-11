@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.netty.config;
+package reactor.io.net.config;
 
 import reactor.io.buffer.Buffer;
 

@@ -17,4 +17,4 @@
 /**
  * Decoding using the syslog format.
  */
-package reactor.io.netty.codec.syslog;
+package reactor.io.net.codec.syslog;

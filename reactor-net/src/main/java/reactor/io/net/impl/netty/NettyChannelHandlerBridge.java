@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.netty.impl.netty;
+package reactor.io.net.impl.netty;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -31,9 +31,9 @@ import reactor.core.support.Exceptions;
 import reactor.core.support.NonBlocking;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
-import reactor.io.netty.ChannelStream;
-import reactor.io.netty.ReactorChannelHandler;
-import reactor.io.netty.Spec;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.Spec;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.subscription.PushSubscription;
 
@@ -41,7 +41,7 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
 /**
  * Netty {@link io.netty.channel.ChannelInboundHandler} implementation that passes data to a Reactor {@link
- * reactor.io.netty.ChannelStream}.
+ * reactor.io.net.ChannelStream}.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini

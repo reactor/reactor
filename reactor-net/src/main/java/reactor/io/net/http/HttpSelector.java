@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.io.netty.http;
+package reactor.io.net.http;
 
 import reactor.bus.selector.HeaderResolver;
 import reactor.bus.selector.Selector;
 import reactor.bus.selector.UriPathSelector;
-import reactor.io.netty.http.model.Method;
-import reactor.io.netty.http.model.Protocol;
+import reactor.io.net.http.model.Method;
+import reactor.io.net.http.model.Protocol;
 
 /**
  * A Selector to match against ServerRequest

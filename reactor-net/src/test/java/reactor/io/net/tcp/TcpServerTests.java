@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.netty.tcp;
+package reactor.io.net.tcp;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.LineBasedFrameDecoder;
@@ -37,16 +37,16 @@ import reactor.fn.Supplier;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.*;
 import reactor.io.codec.json.JsonCodec;
-import reactor.io.netty.ChannelStream;
-import reactor.io.netty.NetStreams;
-import reactor.io.netty.ReactorChannelHandler;
-import reactor.io.netty.config.ServerSocketOptions;
-import reactor.io.netty.config.SslOptions;
-import reactor.io.netty.http.HttpServer;
-import reactor.io.netty.impl.netty.NettyServerSocketOptions;
-import reactor.io.netty.impl.netty.tcp.NettyTcpClient;
-import reactor.io.netty.impl.zmq.tcp.ZeroMQTcpServer;
-import reactor.io.netty.tcp.support.SocketUtils;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.NetStreams;
+import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.config.ServerSocketOptions;
+import reactor.io.net.config.SslOptions;
+import reactor.io.net.http.HttpServer;
+import reactor.io.net.impl.netty.NettyServerSocketOptions;
+import reactor.io.net.impl.netty.tcp.NettyTcpClient;
+import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
+import reactor.io.net.tcp.support.SocketUtils;
 import reactor.rx.Streams;
 import reactor.rx.broadcast.Broadcaster;
 

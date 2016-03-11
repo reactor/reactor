@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.netty.http.model;
+package reactor.io.net.http.model;
 
 import java.text.ParseException;
 import java.util.Date;

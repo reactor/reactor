@@ -14,16 +14,16 @@
  *  limitations under the License.
  */
 
-package reactor.io.netty.impl.zmq;
+package reactor.io.net.impl.zmq;
 
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 import reactor.core.support.Assert;
 import reactor.fn.Consumer;
-import reactor.io.netty.config.ClientSocketOptions;
+import reactor.io.net.config.ClientSocketOptions;
 
 /**
- * {@link reactor.io.netty.config.ClientSocketOptions} that include ZeroMQ-specific configuration options.
+ * {@link reactor.io.net.config.ClientSocketOptions} that include ZeroMQ-specific configuration options.
  *
  * @author Jon Brisbin
  */

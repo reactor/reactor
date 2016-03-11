@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.io.netty.http;
+package reactor.io.net.http;
 
 import org.apache.http.HttpException;
 import org.junit.After;
@@ -21,8 +21,8 @@ import org.junit.Before;
 import org.junit.Test;
 import reactor.Environment;
 import reactor.io.buffer.Buffer;
-import reactor.io.netty.NetStreams;
-import reactor.io.netty.ReactorChannelHandler;
+import reactor.io.net.NetStreams;
+import reactor.io.net.ReactorChannelHandler;
 import reactor.rx.Streams;
 
 import java.io.IOException;

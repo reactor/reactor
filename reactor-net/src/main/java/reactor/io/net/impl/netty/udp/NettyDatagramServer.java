@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.netty.impl.netty.udp;
+package reactor.io.net.impl.netty.udp;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ChannelFactory;
@@ -36,14 +36,14 @@ import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.netty.ChannelStream;
-import reactor.io.netty.ReactorChannelHandler;
-import reactor.io.netty.config.ServerSocketOptions;
-import reactor.io.netty.impl.netty.NettyChannelHandlerBridge;
-import reactor.io.netty.impl.netty.NettyChannelStream;
-import reactor.io.netty.impl.netty.NettyNativeDetector;
-import reactor.io.netty.impl.netty.NettyServerSocketOptions;
-import reactor.io.netty.udp.DatagramServer;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.config.ServerSocketOptions;
+import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
+import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.net.impl.netty.NettyNativeDetector;
+import reactor.io.net.impl.netty.NettyServerSocketOptions;
+import reactor.io.net.udp.DatagramServer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 
@@ -55,7 +55,7 @@ import java.net.NetworkInterface;
 import java.net.ProtocolFamily;
 
 /**
- * {@link reactor.io.netty.udp.DatagramServer} implementation built on Netty.
+ * {@link reactor.io.net.udp.DatagramServer} implementation built on Netty.
  *
  * @author Jon Brisbin
  * @author Stephane Maldini

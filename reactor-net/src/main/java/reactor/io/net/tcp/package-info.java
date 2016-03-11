@@ -17,4 +17,4 @@
 /**
  * Components for writing TCP-based clients and servers using Reactor abstractions.
  */
-package reactor.io.netty.tcp;
+package reactor.io.net.tcp;

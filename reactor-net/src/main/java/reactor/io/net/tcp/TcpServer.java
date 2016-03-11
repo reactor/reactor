@@ -14,17 +14,17 @@
  *  limitations under the License.
  */
 
-package reactor.io.netty.tcp;
+package reactor.io.net.tcp;
 
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.netty.ChannelStream;
-import reactor.io.netty.ReactorPeer;
-import reactor.io.netty.config.ServerSocketOptions;
-import reactor.io.netty.config.SslOptions;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactorPeer;
+import reactor.io.net.config.ServerSocketOptions;
+import reactor.io.net.config.SslOptions;
 
 import java.net.InetSocketAddress;
 
@@ -69,7 +69,7 @@ public abstract class TcpServer<IN, OUT>
 	}
 
 	/**
-	 * Get the {@link reactor.io.netty.config.ServerSocketOptions} currently in effect.
+	 * Get the {@link reactor.io.net.config.ServerSocketOptions} currently in effect.
 	 *
 	 * @return the current server options
 	 */
@@ -78,7 +78,7 @@ public abstract class TcpServer<IN, OUT>
 	}
 
 	/**
-	 * Get the {@link reactor.io.netty.config.SslOptions} current in effect.
+	 * Get the {@link reactor.io.net.config.SslOptions} current in effect.
 	 *
 	 * @return the SSL options
 	 */

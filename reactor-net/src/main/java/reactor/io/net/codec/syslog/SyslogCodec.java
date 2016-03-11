@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.netty.codec.syslog;
+package reactor.io.net.codec.syslog;
 
 import reactor.fn.Consumer;
 import reactor.fn.Function;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.netty.tcp.syslog;
+package reactor.io.net.tcp.syslog;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -32,11 +32,11 @@ import org.junit.Test;
 import reactor.Environment;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
-import reactor.io.netty.NetStreams;
-import reactor.io.netty.codec.syslog.SyslogCodec;
-import reactor.io.netty.codec.syslog.SyslogMessage;
-import reactor.io.netty.tcp.TcpServer;
-import reactor.io.netty.tcp.syslog.hdfs.HdfsConsumer;
+import reactor.io.net.NetStreams;
+import reactor.io.net.codec.syslog.SyslogCodec;
+import reactor.io.net.codec.syslog.SyslogMessage;
+import reactor.io.net.tcp.TcpServer;
+import reactor.io.net.tcp.syslog.hdfs.HdfsConsumer;
 import reactor.rx.Streams;
 
 import java.io.IOException;

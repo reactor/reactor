@@ -19,18 +19,18 @@ import reactor.Environment;
 import reactor.core.support.Assert;
 import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
-import reactor.io.netty.http.HttpClient;
-import reactor.io.netty.http.HttpServer;
-import reactor.io.netty.impl.netty.http.NettyHttpClient;
-import reactor.io.netty.impl.netty.http.NettyHttpServer;
-import reactor.io.netty.impl.netty.tcp.NettyTcpClient;
-import reactor.io.netty.impl.netty.tcp.NettyTcpServer;
-import reactor.io.netty.impl.netty.udp.NettyDatagramServer;
-import reactor.io.netty.impl.zmq.tcp.ZeroMQTcpClient;
-import reactor.io.netty.impl.zmq.tcp.ZeroMQTcpServer;
-import reactor.io.netty.tcp.TcpClient;
-import reactor.io.netty.tcp.TcpServer;
-import reactor.io.netty.udp.DatagramServer;
+import reactor.io.net.http.HttpClient;
+import reactor.io.net.http.HttpServer;
+import reactor.io.net.impl.netty.http.NettyHttpClient;
+import reactor.io.net.impl.netty.http.NettyHttpServer;
+import reactor.io.net.impl.netty.tcp.NettyTcpClient;
+import reactor.io.net.impl.netty.tcp.NettyTcpServer;
+import reactor.io.net.impl.netty.udp.NettyDatagramServer;
+import reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient;
+import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
+import reactor.io.net.tcp.TcpClient;
+import reactor.io.net.tcp.TcpServer;
+import reactor.io.net.udp.DatagramServer;
 import reactor.rx.Streams;
 
 /**
@@ -137,8 +137,8 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when server is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -170,8 +170,8 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when server is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -202,8 +202,8 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when server is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -244,8 +244,8 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when server is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -264,7 +264,7 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
 	 *
-	 * @param configuringFunction a function will apply and return a {@link reactor.io.netty.Spec} to customize the peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
 	 * @param <IN>                the given input type received by this peer. Any configured codec decoder must match
 	 *             this type.
 	 * @param <OUT>               the given output type received by this peer. Any configured codec encoder must match
@@ -280,8 +280,8 @@ public class NetStreams extends Streams {
 	/**
 	 * Bind a new TCP server to the specified bind address and port.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpServer} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when server is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -301,7 +301,7 @@ public class NetStreams extends Streams {
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
 	 *
 	 * @param serverFactory       the given implementation class for this peer
-	 * @param configuringFunction a function will apply and return a {@link reactor.io.netty.Spec} to customize the peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
 	 * @param <IN>                the given input type received by this peer. Any configured codec decoder must match
 	 *             this type.
 	 * @param <OUT>               the given output type received by this peer. Any configured codec encoder must match
@@ -321,8 +321,8 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -353,8 +353,8 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -386,8 +386,8 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -419,8 +419,8 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -461,8 +461,8 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty first and ZeroMQ then is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -481,7 +481,7 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
 	 *
-	 * @param configuringFunction a function will apply and return a {@link reactor.io.netty.Spec} to customize the peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
 	 * @param <IN>                the given input type received by this peer. Any configured codec decoder must match
 	 *             this type.
 	 * @param <OUT>               the given output type received by this peer. Any configured codec encoder must match
@@ -497,8 +497,8 @@ public class NetStreams extends Streams {
 	/**
 	 * Bind a new TCP client to the specified connect address and port.
 	 * <p>
-	 * A {@link reactor.io.netty.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * A {@link reactor.io.net.tcp.TcpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will emit:
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -518,7 +518,7 @@ public class NetStreams extends Streams {
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
 	 *
 	 * @param clientFactory       the given implementation class for this peer
-	 * @param configuringFunction a function will apply and return a {@link reactor.io.netty.Spec} to customize the peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
 	 * @param <IN>                the given input type received by this peer. Any configured codec decoder must match
 	 *             this type.
 	 * @param <OUT>               the given output type received by this peer. Any configured codec encoder must match
@@ -631,9 +631,9 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.http.HttpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will
+	 * A {@link reactor.io.net.http.HttpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will
 	 * emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -652,7 +652,7 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
 	 *
-	 * @param configuringFunction a function will apply and return a {@link reactor.io.netty.Spec} to customize the peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
 	 * @param <IN>                the given input type received by this peer. Any configured codec decoder must match
 	 *             this type.
 	 * @param <OUT>               the given output type received by this peer. Any configured codec encoder must match
@@ -671,9 +671,9 @@ public class NetStreams extends Streams {
 	 * from the classpath on Class init. Support for Netty is provided as long as the relevant
 	 * library dependencies are on the classpath.
 	 * <p>
-	 * A {@link reactor.io.netty.http.HttpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will
+	 * A {@link reactor.io.net.http.HttpClient} is a specific kind of {@link org.reactivestreams.Publisher} that will
 	 * emit:
-	 * - onNext {@link reactor.io.netty.ChannelStream} to consume data from
+	 * - onNext {@link reactor.io.net.ChannelStream} to consume data from
 	 * - onComplete when client is shutdown
 	 * - onError when any exception (more specifically IO exception) occurs
 	 * From the emitted {@link ReactorChannel}, one can decide to add in-channel consumers to read any incoming
@@ -693,7 +693,7 @@ public class NetStreams extends Streams {
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
 	 *
 	 * @param clientFactory       the given implementation class for this peer
-	 * @param configuringFunction a function will apply and return a {@link reactor.io.netty.Spec} to customize the peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
 	 * @param <IN>                the given input type received by this peer. Any configured codec decoder must match
 	 *             this type.
 	 * @param <OUT>               the given output type received by this peer. Any configured codec encoder must match
@@ -857,7 +857,7 @@ public class NetStreams extends Streams {
 	 * <p>
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
 	 *
-	 * @param configuringFunction a function will apply and return a {@link reactor.io.netty.Spec} to customize the peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
 	 * @param <IN>                the given input type received by this peer. Any configured codec decoder must match
 	 *             this type.
 	 * @param <OUT>               the given output type received by this peer. Any configured codec encoder must match
@@ -892,7 +892,7 @@ public class NetStreams extends Streams {
 	 * By default the type of emitted data or received data is {@link reactor.io.buffer.Buffer}
 	 *
 	 * @param serverFactory       the given implementation class for this peer
-	 * @param configuringFunction a function will apply and return a {@link reactor.io.netty.Spec} to customize the peer
+	 * @param configuringFunction a function will apply and return a {@link reactor.io.net.Spec} to customize the peer
 	 * @param <IN>                the given input type received by this peer. Any configured codec decoder must match
 	 *             this type.
 	 * @param <OUT>               the given output type received by this peer. Any configured codec encoder must match

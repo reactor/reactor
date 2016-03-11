@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.io.netty.http.model;
+package reactor.io.net.http.model;
 
 import reactor.core.support.Assert;
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.netty.http;
+package reactor.io.net.http;
 
 import org.reactivestreams.Publisher;
 import reactor.Environment;
@@ -25,10 +25,10 @@ import reactor.bus.selector.Selector;
 import reactor.core.Dispatcher;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.netty.NetSelectors;
-import reactor.io.netty.ReactorChannelHandler;
-import reactor.io.netty.ReactorPeer;
-import reactor.io.netty.http.model.HttpHeaders;
+import reactor.io.net.NetSelectors;
+import reactor.io.net.ReactorChannelHandler;
+import reactor.io.net.ReactorPeer;
+import reactor.io.net.http.model.HttpHeaders;
 import reactor.rx.Promise;
 
 import java.net.InetSocketAddress;

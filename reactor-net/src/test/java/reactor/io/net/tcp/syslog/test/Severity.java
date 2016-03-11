@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.netty.tcp.syslog.test;
+package reactor.io.net.tcp.syslog.test;
 
 /**
  * The possible severities of a syslog message

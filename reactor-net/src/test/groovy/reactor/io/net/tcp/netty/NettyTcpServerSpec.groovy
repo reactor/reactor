@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package reactor.io.netty.tcp.netty
+package reactor.io.net.tcp.netty
 
 import reactor.Environment
 import reactor.io.buffer.Buffer
 import reactor.io.codec.PassThroughCodec
 import reactor.io.codec.json.JsonCodec
-import reactor.io.netty.NetStreams
-import reactor.io.netty.tcp.support.SocketUtils
+import reactor.io.net.NetStreams
+import reactor.io.net.tcp.support.SocketUtils
 import reactor.rx.Streams
 import spock.lang.Specification
 

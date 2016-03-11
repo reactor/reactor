@@ -17,9 +17,9 @@
 package reactor.io.net;
 
 import reactor.bus.selector.Selectors;
-import reactor.io.netty.http.HttpSelector;
-import reactor.io.netty.http.model.Method;
-import reactor.io.netty.http.model.Protocol;
+import reactor.io.net.http.HttpSelector;
+import reactor.io.net.http.model.Method;
+import reactor.io.net.http.model.Protocol;
 
 /**
  * Helper methods for creating {@link reactor.bus.selector.Selector}s.
@@ -46,7 +46,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.netty.NetSelectors#http}.
+	 * An alias for {@link reactor.io.net.NetSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -62,7 +62,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.netty.NetSelectors#http}.
+	 * An alias for {@link reactor.io.net.NetSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -78,7 +78,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.netty.NetSelectors#http}.
+	 * An alias for {@link reactor.io.net.NetSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -94,7 +94,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.netty.NetSelectors#http}.
+	 * An alias for {@link reactor.io.net.NetSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>
@@ -110,7 +110,7 @@ public abstract class NetSelectors extends Selectors {
 	}
 
 	/**
-	 * An alias for {@link reactor.io.netty.NetSelectors#http}.
+	 * An alias for {@link reactor.io.net.NetSelectors#http}.
 	 * <p>
 	 * Creates a {@link reactor.bus.selector.Selector} based on a URI template filtering .
 	 * <p>

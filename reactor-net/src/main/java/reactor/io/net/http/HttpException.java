@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.netty.http;
+package reactor.io.net.http;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
 

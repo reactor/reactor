@@ -14,16 +14,16 @@
  *  limitations under the License.
  */
 
-package reactor.io.netty.udp;
+package reactor.io.net.udp;
 
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.netty.ChannelStream;
-import reactor.io.netty.ReactorPeer;
-import reactor.io.netty.config.ServerSocketOptions;
+import reactor.io.net.ChannelStream;
+import reactor.io.net.ReactorPeer;
+import reactor.io.net.config.ServerSocketOptions;
 import reactor.rx.Promise;
 
 import java.net.InetAddress;
@@ -119,7 +119,7 @@ public abstract class DatagramServer<IN, OUT>
 	protected NetworkInterface getMulticastInterface() { return multicastInterface; }
 
 	/**
-	 * Get the {@link reactor.io.netty.config.ServerSocketOptions} currently in effect.
+	 * Get the {@link reactor.io.net.config.ServerSocketOptions} currently in effect.
 	 *
 	 * @return the server options in use
 	 */

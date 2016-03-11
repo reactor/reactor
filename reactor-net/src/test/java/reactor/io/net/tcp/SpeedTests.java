@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.netty.tcp;
+package reactor.io.net.tcp;
 
 import org.junit.Ignore;
 import org.junit.Test;

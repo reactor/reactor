@@ -22,7 +22,7 @@ import java.net.InetSocketAddress;
 
 /**
  * Implementations of this interface will be instantiated by a {@link reactor.fn.Supplier} to provide information
- * to the {@link reactor.io.netty.tcp.TcpClient} whether or not to attempt to reconnect a broken connection.
+ * to the {@link reactor.io.net.tcp.TcpClient} whether or not to attempt to reconnect a broken connection.
  * <p/>
  * The {@link #reconnect(java.net.InetSocketAddress, int)} method will be invoked, passing the currently-connected
  * address and the number of times a reconnection has been attempted on this connection. If the client is to reconnect

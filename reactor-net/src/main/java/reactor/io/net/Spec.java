@@ -26,13 +26,13 @@ import reactor.fn.tuple.Tuple;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.netty.config.ClientSocketOptions;
-import reactor.io.netty.config.ServerSocketOptions;
-import reactor.io.netty.config.SslOptions;
-import reactor.io.netty.http.HttpChannel;
-import reactor.io.netty.http.HttpServer;
-import reactor.io.netty.tcp.TcpServer;
-import reactor.io.netty.udp.DatagramServer;
+import reactor.io.net.config.ClientSocketOptions;
+import reactor.io.net.config.ServerSocketOptions;
+import reactor.io.net.config.SslOptions;
+import reactor.io.net.http.HttpChannel;
+import reactor.io.net.http.HttpServer;
+import reactor.io.net.tcp.TcpServer;
+import reactor.io.net.udp.DatagramServer;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -85,7 +85,7 @@ public interface Spec {
 		protected Codec<Buffer, IN, OUT> codec;
 
 		/**
-		 * Set the common {@link reactor.io.netty.config.ServerSocketOptions} for channels made in this server.
+		 * Set the common {@link reactor.io.net.config.ServerSocketOptions} for channels made in this server.
 		 *
 		 * @param options The options to set when new channels are made.
 		 * @return {@literal this}
@@ -174,9 +174,9 @@ public interface Spec {
 	 * @author Jon Brisbin
 	 * @author Stephane Maldini
 	 */
-	class TcpClientSpec<IN, OUT> extends DispatcherComponentSpec<TcpClientSpec<IN, OUT>, reactor.io.netty.tcp.TcpClient<IN, OUT>> {
+	class TcpClientSpec<IN, OUT> extends DispatcherComponentSpec<TcpClientSpec<IN, OUT>, reactor.io.net.tcp.TcpClient<IN, OUT>> {
 
-		private final Constructor<reactor.io.netty.tcp.TcpClient> clientImplConstructor;
+		private final Constructor<reactor.io.net.tcp.TcpClient> clientImplConstructor;
 
 		private Supplier<InetSocketAddress> connectAddress;
 
@@ -189,13 +189,13 @@ public interface Spec {
 		 * Create a {@code TcpClient.Spec} using the given implementation class.
 		 *
 		 * @param clientImpl
-		 * 		The concrete implementation of {@link reactor.io.netty.tcp.TcpClient} to instantiate.
+		 * 		The concrete implementation of {@link reactor.io.net.tcp.TcpClient} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
-		TcpClientSpec(@Nonnull Class<? extends reactor.io.netty.tcp.TcpClient> clientImpl) {
+		TcpClientSpec(@Nonnull Class<? extends reactor.io.net.tcp.TcpClient> clientImpl) {
 			Assert.notNull(clientImpl, "TcpClient implementation class cannot be null.");
 			try {
-				this.clientImplConstructor = (Constructor<reactor.io.netty.tcp.TcpClient>) clientImpl.getDeclaredConstructor(
+				this.clientImplConstructor = (Constructor<reactor.io.net.tcp.TcpClient>) clientImpl.getDeclaredConstructor(
 						Environment.class,
 						Dispatcher.class,
 						Supplier.class,
@@ -211,7 +211,7 @@ public interface Spec {
 		}
 
 		/**
-		 * Set the common {@link reactor.io.netty.config.ClientSocketOptions} for connections made in this client.
+		 * Set the common {@link reactor.io.net.config.ClientSocketOptions} for connections made in this client.
 		 *
 		 * @param options
 		 * 		The socket options to apply to new connections.
@@ -317,7 +317,7 @@ public interface Spec {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		protected reactor.io.netty.tcp.TcpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
+		protected reactor.io.net.tcp.TcpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
 			try {
 				return clientImplConstructor.newInstance(
 						environment,
@@ -348,7 +348,7 @@ public interface Spec {
 	class TcpServerSpec<IN, OUT>
 			extends PeerSpec<IN, OUT, ChannelStream<IN, OUT>, TcpServerSpec<IN, OUT>, TcpServer<IN, OUT>> {
 
-		private final Constructor<? extends reactor.io.netty.tcp.TcpServer> serverImplConstructor;
+		private final Constructor<? extends reactor.io.net.tcp.TcpServer> serverImplConstructor;
 
 		private SslOptions sslOptions = null;
 
@@ -356,10 +356,10 @@ public interface Spec {
 		 * Create a {@code TcpServer.Spec} using the given implementation class.
 		 *
 		 * @param serverImpl
-		 * 		The concrete implementation of {@link reactor.io.netty.tcp.TcpServer} to instantiate.
+		 * 		The concrete implementation of {@link reactor.io.net.tcp.TcpServer} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
-		TcpServerSpec(@Nonnull Class<? extends reactor.io.netty.tcp.TcpServer> serverImpl) {
+		TcpServerSpec(@Nonnull Class<? extends reactor.io.net.tcp.TcpServer> serverImpl) {
 			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
 			try {
 				this.serverImplConstructor = serverImpl.getDeclaredConstructor(
@@ -393,7 +393,7 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.netty.tcp.TcpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
+		protected reactor.io.net.tcp.TcpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
 			try {
 				return serverImplConstructor.newInstance(
 						env,
@@ -418,11 +418,11 @@ public interface Spec {
 	 */
 	class DatagramServerSpec<IN, OUT>
 			extends PeerSpec<IN, OUT, ChannelStream<IN, OUT>, DatagramServerSpec<IN, OUT>, DatagramServer<IN, OUT>> {
-		protected final Constructor<? extends reactor.io.netty.udp.DatagramServer> serverImplCtor;
+		protected final Constructor<? extends reactor.io.net.udp.DatagramServer> serverImplCtor;
 
 		private NetworkInterface multicastInterface;
 
-		DatagramServerSpec(Class<? extends reactor.io.netty.udp.DatagramServer> serverImpl) {
+		DatagramServerSpec(Class<? extends reactor.io.net.udp.DatagramServer> serverImpl) {
 			Assert.notNull(serverImpl, "NetServer implementation class cannot be null.");
 			try {
 				this.serverImplCtor = serverImpl.getDeclaredConstructor(
@@ -455,7 +455,7 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.netty.udp.DatagramServer<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
+		protected reactor.io.net.udp.DatagramServer<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
 			try {
 				return serverImplCtor.newInstance(
 						environment,
@@ -486,7 +486,7 @@ public interface Spec {
 	class HttpServerSpec<IN, OUT>
 			extends PeerSpec<IN, OUT, HttpChannel<IN, OUT>, HttpServerSpec<IN, OUT>, HttpServer<IN, OUT>> {
 
-		private final Constructor<? extends reactor.io.netty.http.HttpServer> serverImplConstructor;
+		private final Constructor<? extends reactor.io.net.http.HttpServer> serverImplConstructor;
 
 		private SslOptions sslOptions = null;
 
@@ -494,10 +494,10 @@ public interface Spec {
 		 * Create a {@code TcpServer.Spec} using the given implementation class.
 		 *
 		 * @param serverImpl
-		 * 		The concrete implementation of {@link reactor.io.netty.http.HttpClient} to instantiate.
+		 * 		The concrete implementation of {@link reactor.io.net.http.HttpClient} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
-		HttpServerSpec(@Nonnull Class<? extends reactor.io.netty.http.HttpServer> serverImpl) {
+		HttpServerSpec(@Nonnull Class<? extends reactor.io.net.http.HttpServer> serverImpl) {
 			Assert.notNull(serverImpl, "TcpServer implementation class cannot be null.");
 			try {
 				this.serverImplConstructor = serverImpl.getDeclaredConstructor(
@@ -531,7 +531,7 @@ public interface Spec {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected reactor.io.netty.http.HttpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
+		protected reactor.io.net.http.HttpServer<IN, OUT> configure(Dispatcher dispatcher, Environment env) {
 			try {
 				return serverImplConstructor.newInstance(
 						env,
@@ -558,9 +558,9 @@ public interface Spec {
 	 *
 	 * @author Stephane Maldini
 	 */
-	class HttpClientSpec<IN, OUT> extends DispatcherComponentSpec<HttpClientSpec<IN, OUT>, reactor.io.netty.http.HttpClient<IN, OUT>> {
+	class HttpClientSpec<IN, OUT> extends DispatcherComponentSpec<HttpClientSpec<IN, OUT>, reactor.io.net.http.HttpClient<IN, OUT>> {
 
-		private final Constructor<reactor.io.netty.http.HttpClient> clientImplConstructor;
+		private final Constructor<reactor.io.net.http.HttpClient> clientImplConstructor;
 
 		private Supplier<InetSocketAddress> connectAddress;
 		private ClientSocketOptions options    = new ClientSocketOptions();
@@ -571,13 +571,13 @@ public interface Spec {
 		 * Create a {@code TcpClient.Spec} using the given implementation class.
 		 *
 		 * @param clientImpl
-		 * 		The concrete implementation of {@link reactor.io.netty.http.HttpClient} to instantiate.
+		 * 		The concrete implementation of {@link reactor.io.net.http.HttpClient} to instantiate.
 		 */
 		@SuppressWarnings({"unchecked", "rawtypes"})
-		HttpClientSpec(@Nonnull Class<? extends reactor.io.netty.http.HttpClient> clientImpl) {
+		HttpClientSpec(@Nonnull Class<? extends reactor.io.net.http.HttpClient> clientImpl) {
 			Assert.notNull(clientImpl, "TcpClient implementation class cannot be null.");
 			try {
-				this.clientImplConstructor = (Constructor<reactor.io.netty.http.HttpClient>) clientImpl.getDeclaredConstructor(
+				this.clientImplConstructor = (Constructor<reactor.io.net.http.HttpClient>) clientImpl.getDeclaredConstructor(
 						Environment.class,
 						Dispatcher.class,
 						Supplier.class,
@@ -593,7 +593,7 @@ public interface Spec {
 		}
 
 		/**
-		 * Set the common {@link reactor.io.netty.config.ClientSocketOptions} for connections made in this client.
+		 * Set the common {@link reactor.io.net.config.ClientSocketOptions} for connections made in this client.
 		 *
 		 * @param options
 		 * 		The socket options to apply to new connections.
@@ -685,7 +685,7 @@ public interface Spec {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		protected reactor.io.netty.http.HttpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
+		protected reactor.io.net.http.HttpClient<IN, OUT> configure(Dispatcher dispatcher, Environment environment) {
 			try {
 				return clientImplConstructor.newInstance(
 						environment,
