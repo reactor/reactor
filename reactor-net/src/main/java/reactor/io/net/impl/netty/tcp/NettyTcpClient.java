@@ -74,8 +74,6 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	private final EventLoopGroup           ioGroup;
 	private final Supplier<ChannelFuture>  connectionSupplier;
 
-	private volatile InetSocketAddress connectAddress;
-
 	/**
 	 * Creates a new NettyTcpClient that will use the given {@code env} for configuration and the given {@code
 	 * reactor} to
@@ -87,19 +85,18 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 	 *
 	 * @param env            The configuration environment
 	 * @param dispatcher     The dispatcher used to send events
-	 * @param connectAddress The address the client will connect to
+	 * @param hostSupplier The address the client will connect to
 	 * @param options        The configuration options for the client's socket
 	 * @param sslOptions     The SSL configuration options for the client's socket
 	 * @param codec          The codec used to encode and decode data
 	 */
 	public NettyTcpClient(Environment env,
 	                      Dispatcher dispatcher,
-	                      InetSocketAddress connectAddress,
+							Supplier<InetSocketAddress>  hostSupplier,
 	                      final ClientSocketOptions options,
 	                      final SslOptions sslOptions,
 	                      Codec<Buffer, IN, OUT> codec) {
-		super(env, dispatcher, connectAddress, options, sslOptions, codec);
-		this.connectAddress = connectAddress;
+		super(env, dispatcher, hostSupplier, options, sslOptions, codec);
 
 		if (options instanceof NettyClientSocketOptions) {
 			this.nettyOptions = (NettyClientSocketOptions) options;
@@ -271,9 +268,9 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		private final Broadcaster<Tuple2<InetSocketAddress, Integer>> broadcaster =
 				BehaviorBroadcaster.create(getDefaultEnvironment(), getDefaultDispatcher());
 
-		private volatile InetSocketAddress connectAddress;
+		private volatile Supplier<InetSocketAddress> connectAddress;
 
-		private ReconnectingChannelListener(InetSocketAddress connectAddress,
+		private ReconnectingChannelListener(Supplier<InetSocketAddress> connectAddress,
 		                                    Reconnect reconnect) {
 			this.connectAddress = connectAddress;
 			this.reconnect = reconnect;
@@ -282,14 +279,15 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		@SuppressWarnings("unchecked")
 		@Override
 		public void operationComplete(final ChannelFuture future) throws Exception {
-			broadcaster.onNext(Tuple.of(connectAddress, attempts.get()));
+			final InetSocketAddress _connectAddress = connectAddress.get();
+			broadcaster.onNext(Tuple.of(_connectAddress, attempts.get()));
 			if (!future.isSuccess()) {
 				int attempt = attempts.incrementAndGet();
-				Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempt);
+				Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(_connectAddress, attempt);
 				if (null == tup) {
 					// do not attempt a reconnect
 					if (log.isErrorEnabled()) {
-						log.error("Reconnection to {} failed after {} attempts. Giving up.", connectAddress, attempt -
+						log.error("Reconnection to {} failed after {} attempts. Giving up.", _connectAddress, attempt -
 						  1);
 					}
 					future.channel().eventLoop().submit(new Runnable() {
@@ -314,7 +312,7 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 							log.info("CLOSED: " + ioCh);
 						}
 
-						Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(connectAddress, attempts
+						Tuple2<InetSocketAddress, Long> tup = reconnect.reconnect(_connectAddress, attempts
 						  .incrementAndGet());
 						if (null == tup) {
 							broadcaster.onComplete();
@@ -330,8 +328,13 @@ public class NettyTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 		}
 
 		private void attemptReconnect(final Tuple2<InetSocketAddress, Long> tup) {
-			connectAddress = tup.getT1();
-			bootstrap.remoteAddress(connectAddress);
+			connectAddress = new Supplier<InetSocketAddress>() {
+				@Override
+				public InetSocketAddress get() {
+					return tup.getT1();
+				}
+			};
+			bootstrap.remoteAddress(tup.getT1());
 			long delay = tup.getT2();
 
 			if (log.isInfoEnabled()) {
