@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.codec.syslog;
+package reactor.io.netty.codec.syslog;
 
 import java.util.Date;
 

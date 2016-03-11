@@ -10,9 +10,9 @@ import reactor.fn.Predicate;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.net.tcp.TcpClient;
-import reactor.io.net.tcp.TcpServer;
-import reactor.io.net.tcp.support.SocketUtils;
+import reactor.io.netty.tcp.TcpClient;
+import reactor.io.netty.tcp.TcpServer;
+import reactor.io.netty.tcp.support.SocketUtils;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Streams;
@@ -83,30 +83,30 @@ public class AbstractNetClientServerTest {
 		return port;
 	}
 
-	protected <T> Spec.TcpServerSpec<T, T> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
+	protected <T> Spec.TcpServerSpec<T, T> createTcpServer(Class<? extends reactor.io.netty.tcp.TcpServer> type,
 	                                                  Class<? extends T> dataType) {
 		return createTcpServer(type, dataType, dataType);
 	}
 
-	protected <IN, OUT> Spec.TcpServerSpec<IN, OUT> createTcpServer(Class<? extends reactor.io.net.tcp.TcpServer> type,
+	protected <IN, OUT> Spec.TcpServerSpec<IN, OUT> createTcpServer(Class<? extends reactor.io.netty.tcp.TcpServer> type,
 	                                                           Class<? extends IN> inType,
 	                                                           Class<? extends OUT> outType) {
 		return new Spec.TcpServerSpec<IN, OUT>(type).env(env1).dispatcher("sync").listen(LOCALHOST, port);
 	}
 
-	protected <T> Spec.TcpClientSpec<T, T> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
+	protected <T> Spec.TcpClientSpec<T, T> createTcpClient(Class<? extends reactor.io.netty.tcp.TcpClient> type,
 	                                                  Class<? extends T> dataType) {
 		return createTcpClient(type, dataType, dataType);
 	}
 
-	protected <IN, OUT> Spec.TcpClientSpec<IN, OUT> createTcpClient(Class<? extends reactor.io.net.tcp.TcpClient> type,
+	protected <IN, OUT> Spec.TcpClientSpec<IN, OUT> createTcpClient(Class<? extends reactor.io.netty.tcp.TcpClient> type,
 	                                                           Class<? extends IN> inType,
 	                                                           Class<? extends OUT> outType) {
 		return new Spec.TcpClientSpec<IN, OUT>(type).env(env2).dispatcher("sync").connect(LOCALHOST, port);
 	}
 
-	protected <T> void assertTcpClientServerExchangedData(Class<? extends reactor.io.net.tcp.TcpServer> serverType,
-	                                                      Class<? extends reactor.io.net.tcp.TcpClient> clientType,
+	protected <T> void assertTcpClientServerExchangedData(Class<? extends reactor.io.netty.tcp.TcpServer> serverType,
+	                                                      Class<? extends reactor.io.netty.tcp.TcpClient> clientType,
 	                                                      Buffer data) throws InterruptedException {
 		assertTcpClientServerExchangedData(
 				serverType,
@@ -122,8 +122,8 @@ public class AbstractNetClientServerTest {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected <T> void assertTcpClientServerExchangedData(Class<? extends reactor.io.net.tcp.TcpServer> serverType,
-	                                                      Class<? extends reactor.io.net.tcp.TcpClient> clientType,
+	protected <T> void assertTcpClientServerExchangedData(Class<? extends reactor.io.netty.tcp.TcpServer> serverType,
+	                                                      Class<? extends reactor.io.netty.tcp.TcpClient> clientType,
 	                                                      Codec<Buffer, T, T> codec,
 	                                                      T data,
 	                                                      Predicate<T> replyPredicate)

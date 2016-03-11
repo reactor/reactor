@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.http.model;
+package reactor.io.netty.http.model;
 
 /**
  * Header names common to HTTP requests and responses

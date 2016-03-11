@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.impl.zmq.tcp;
+package reactor.io.netty.impl.zmq.tcp;
 
 import org.reactivestreams.Publisher;
 import org.zeromq.ZContext;
@@ -31,11 +31,11 @@ import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.net.*;
-import reactor.io.net.impl.zmq.ZeroMQClientSocketOptions;
-import reactor.io.net.impl.zmq.ZeroMQServerSocketOptions;
-import reactor.io.net.tcp.TcpClient;
-import reactor.io.net.tcp.TcpServer;
+import reactor.io.netty.*;
+import reactor.io.netty.impl.zmq.ZeroMQClientSocketOptions;
+import reactor.io.netty.impl.zmq.ZeroMQServerSocketOptions;
+import reactor.io.netty.tcp.TcpClient;
+import reactor.io.netty.tcp.TcpServer;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Streams;

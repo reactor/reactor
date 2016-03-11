@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.impl.netty.http;
+package reactor.io.netty.impl.netty.http;
 
 import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
@@ -25,12 +25,12 @@ import io.netty.channel.ChannelPromise;
 import io.netty.handler.codec.http.*;
 import org.reactivestreams.Subscription;
 import reactor.io.buffer.Buffer;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannelHandler;
-import reactor.io.net.http.HttpException;
-import reactor.io.net.http.model.Method;
-import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
-import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.netty.ChannelStream;
+import reactor.io.netty.ReactorChannelHandler;
+import reactor.io.netty.http.HttpException;
+import reactor.io.netty.http.model.Method;
+import reactor.io.netty.impl.netty.NettyChannelHandlerBridge;
+import reactor.io.netty.impl.netty.NettyChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
 
 import java.nio.ByteBuffer;

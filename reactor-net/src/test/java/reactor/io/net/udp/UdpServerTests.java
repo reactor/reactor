@@ -1,4 +1,4 @@
-package reactor.io.net.udp;
+package reactor.io.netty.udp;
 
 import io.netty.util.NetUtil;
 import org.junit.After;
@@ -8,10 +8,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.net.NetStreams;
-import reactor.io.net.config.ServerSocketOptions;
-import reactor.io.net.impl.netty.udp.NettyDatagramServer;
-import reactor.io.net.tcp.support.SocketUtils;
+import reactor.io.netty.NetStreams;
+import reactor.io.netty.config.ServerSocketOptions;
+import reactor.io.netty.impl.netty.udp.NettyDatagramServer;
+import reactor.io.netty.tcp.support.SocketUtils;
 import reactor.rx.Streams;
 
 import java.io.IOException;

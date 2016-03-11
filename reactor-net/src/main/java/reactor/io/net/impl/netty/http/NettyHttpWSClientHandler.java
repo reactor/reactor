@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.impl.netty.http;
+package reactor.io.netty.impl.netty.http;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
@@ -26,9 +26,9 @@ import io.netty.handler.codec.http.websocketx.*;
 import io.netty.util.ReferenceCountUtil;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.StringCodec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannelHandler;
-import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.netty.ChannelStream;
+import reactor.io.netty.ReactorChannelHandler;
+import reactor.io.netty.impl.netty.NettyChannelStream;
 
 /**
  * @author Stephane Maldini

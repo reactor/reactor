@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.io.net.http
+package reactor.io.netty.http
 
 import reactor.Environment
 import reactor.io.codec.StandardCodecs
-import reactor.io.net.NetStreams
+import reactor.io.netty.NetStreams
 import reactor.rx.Streams
 import spock.lang.Specification
 

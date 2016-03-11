@@ -17,4 +17,4 @@
 /**
  * Support classes for Reactor's TCP SSL support.
  */
-package reactor.io.net.tcp.ssl;
+package reactor.io.netty.tcp.ssl;

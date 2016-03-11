@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package reactor.io.net.tcp;
+package reactor.io.netty.tcp;
 
 
 import org.junit.Test;
 import reactor.fn.tuple.Tuple2;
-import reactor.io.net.NetStreams;
-import reactor.io.net.Reconnect;
-import reactor.io.net.Spec;
+import reactor.io.netty.NetStreams;
+import reactor.io.netty.Reconnect;
+import reactor.io.netty.Spec;
 
 import java.net.InetSocketAddress;
 

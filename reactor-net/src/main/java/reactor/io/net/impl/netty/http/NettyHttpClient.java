@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.impl.netty.http;
+package reactor.io.netty.impl.netty.http;
 
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
@@ -32,16 +32,16 @@ import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannelHandler;
-import reactor.io.net.Reconnect;
-import reactor.io.net.config.ClientSocketOptions;
-import reactor.io.net.config.SslOptions;
-import reactor.io.net.http.HttpChannel;
-import reactor.io.net.http.HttpClient;
-import reactor.io.net.http.model.Method;
-import reactor.io.net.impl.netty.NettyChannelStream;
-import reactor.io.net.impl.netty.tcp.NettyTcpClient;
+import reactor.io.netty.ChannelStream;
+import reactor.io.netty.ReactorChannelHandler;
+import reactor.io.netty.Reconnect;
+import reactor.io.netty.config.ClientSocketOptions;
+import reactor.io.netty.config.SslOptions;
+import reactor.io.netty.http.HttpChannel;
+import reactor.io.netty.http.HttpClient;
+import reactor.io.netty.http.model.Method;
+import reactor.io.netty.impl.netty.NettyChannelStream;
+import reactor.io.netty.impl.netty.tcp.NettyTcpClient;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Stream;

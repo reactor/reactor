@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.tcp.syslog.hdfs;
+package reactor.io.netty.tcp.syslog.hdfs;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -22,7 +22,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
-import reactor.io.net.codec.syslog.SyslogMessage;
+import reactor.io.netty.codec.syslog.SyslogMessage;
 
 import java.io.IOException;
 

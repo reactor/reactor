@@ -14,10 +14,10 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.tcp.ssl;
+package reactor.io.netty.tcp.ssl;
 
 import reactor.fn.Supplier;
-import reactor.io.net.config.SslOptions;
+import reactor.io.netty.config.SslOptions;
 
 import javax.net.ssl.*;
 import java.io.FileInputStream;

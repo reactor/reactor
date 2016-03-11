@@ -17,4 +17,4 @@
 /**
  * Components for writing HTTP-based clients and servers using Reactor abstractions.
  */
-package reactor.io.net.http;
+package reactor.io.netty.http;

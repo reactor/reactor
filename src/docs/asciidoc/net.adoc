@@ -6,9 +6,9 @@
 .Head first with a Java 8 example of some Net work
 [source,java]
 ----
-import reactor.io.net.NetStreams;
-import reactor.io.net.tcp.TcpServer;
-import reactor.io.net.tcp.TcpClient;
+import reactor.io.netty.NetStreams;
+import reactor.io.netty.tcp.TcpServer;
+import reactor.io.netty.tcp.TcpClient;
 
 //...
 

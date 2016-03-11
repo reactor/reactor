@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.impl.netty;
+package reactor.io.netty.impl.netty;
 
 import io.netty.channel.*;
 import io.netty.handler.timeout.IdleState;
@@ -28,8 +28,8 @@ import reactor.core.processor.CancelException;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannel;
+import reactor.io.netty.ChannelStream;
+import reactor.io.netty.ReactorChannel;
 import reactor.rx.Streams;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.subscription.PushSubscription;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.tcp.syslog.test;
+package reactor.io.netty.tcp.syslog.test;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.impl.netty.http;
+package reactor.io.netty.impl.netty.http;
 
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -22,7 +22,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.websocketx.*;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.StringCodec;
-import reactor.io.net.http.model.Status;
+import reactor.io.netty.http.model.Status;
 
 /**
  * Conversion between Netty types  and Reactor types ({@link NettyHttpChannel} and {@link Buffer}).

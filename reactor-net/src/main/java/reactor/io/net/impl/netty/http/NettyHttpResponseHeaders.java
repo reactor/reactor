@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package reactor.io.net.impl.netty.http;
+package reactor.io.netty.impl.netty.http;
 
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponse;
-import reactor.io.net.http.model.ResponseHeaders;
+import reactor.io.netty.http.model.ResponseHeaders;
 
 import java.text.ParseException;
 import java.util.Date;

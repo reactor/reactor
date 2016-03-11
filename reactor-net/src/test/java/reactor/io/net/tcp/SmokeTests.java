@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package reactor.io.net.tcp;
+package reactor.io.netty.tcp;
 
 import io.netty.channel.nio.NioEventLoopGroup;
 import org.apache.commons.collections.list.SynchronizedList;
@@ -30,10 +30,10 @@ import reactor.fn.Function;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
 import reactor.io.codec.StringCodec;
-import reactor.io.net.NetStreams;
-import reactor.io.net.http.HttpClient;
-import reactor.io.net.http.HttpServer;
-import reactor.io.net.impl.netty.NettyClientSocketOptions;
+import reactor.io.netty.NetStreams;
+import reactor.io.netty.http.HttpClient;
+import reactor.io.netty.http.HttpServer;
+import reactor.io.netty.impl.netty.NettyClientSocketOptions;
 import reactor.rx.Promise;
 import reactor.rx.Stream;
 import reactor.rx.Streams;

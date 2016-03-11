@@ -1,4 +1,4 @@
-package reactor.io.net.tcp;
+package reactor.io.netty.tcp;
 
 import com.esotericsoftware.kryo.Kryo;
 import org.junit.AfterClass;
@@ -9,10 +9,10 @@ import reactor.core.dispatch.SynchronousDispatcher;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.json.JacksonJsonCodec;
 import reactor.io.codec.kryo.KryoCodec;
-import reactor.io.net.AbstractNetClientServerTest;
-import reactor.io.net.impl.zmq.tcp.ZeroMQ;
-import reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient;
-import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
+import reactor.io.netty.AbstractNetClientServerTest;
+import reactor.io.netty.impl.zmq.tcp.ZeroMQ;
+import reactor.io.netty.impl.zmq.tcp.ZeroMQTcpClient;
+import reactor.io.netty.impl.zmq.tcp.ZeroMQTcpServer;
 import reactor.rx.Streams;
 
 import java.util.concurrent.CountDownLatch;

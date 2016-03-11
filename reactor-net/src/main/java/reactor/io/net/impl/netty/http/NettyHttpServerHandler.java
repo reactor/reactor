@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.impl.netty.http;
+package reactor.io.netty.impl.netty.http;
 
 import io.netty.buffer.ByteBufHolder;
 import io.netty.channel.ChannelFuture;
@@ -29,10 +29,10 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.ReactorChannelHandler;
-import reactor.io.net.impl.netty.NettyChannelHandlerBridge;
-import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.netty.ChannelStream;
+import reactor.io.netty.ReactorChannelHandler;
+import reactor.io.netty.impl.netty.NettyChannelHandlerBridge;
+import reactor.io.netty.impl.netty.NettyChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
 
 /**

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.http.model;
+package reactor.io.netty.http.model;
 
 /**
  * @author Sebastien Deleuze

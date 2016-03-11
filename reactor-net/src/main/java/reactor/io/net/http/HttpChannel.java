@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package reactor.io.net.http;
+package reactor.io.netty.http;
 
 import reactor.Environment;
 import reactor.bus.selector.HeaderResolver;
 import reactor.core.Dispatcher;
-import reactor.io.net.ChannelStream;
-import reactor.io.net.http.model.*;
+import reactor.io.netty.ChannelStream;
+import reactor.io.netty.http.model.*;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.tcp;
+package reactor.io.netty.tcp;
 
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.http.*;
@@ -27,12 +27,12 @@ import reactor.fn.Consumer;
 import reactor.fn.tuple.Tuple;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.StandardCodecs;
-import reactor.io.net.NetStreams;
-import reactor.io.net.impl.netty.NettyClientSocketOptions;
-import reactor.io.net.impl.netty.tcp.NettyTcpClient;
-import reactor.io.net.impl.zmq.tcp.ZeroMQTcpClient;
-import reactor.io.net.impl.zmq.tcp.ZeroMQTcpServer;
-import reactor.io.net.tcp.support.SocketUtils;
+import reactor.io.netty.NetStreams;
+import reactor.io.netty.impl.netty.NettyClientSocketOptions;
+import reactor.io.netty.impl.netty.tcp.NettyTcpClient;
+import reactor.io.netty.impl.zmq.tcp.ZeroMQTcpClient;
+import reactor.io.netty.impl.zmq.tcp.ZeroMQTcpServer;
+import reactor.io.netty.tcp.support.SocketUtils;
 import reactor.rx.Promise;
 import reactor.rx.Promises;
 import reactor.rx.Streams;

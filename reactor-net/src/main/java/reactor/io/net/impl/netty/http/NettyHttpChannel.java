@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package reactor.io.net.impl.netty.http;
+package reactor.io.netty.impl.netty.http;
 
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
@@ -24,9 +24,9 @@ import io.netty.handler.codec.http.*;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.support.Assert;
-import reactor.io.net.http.HttpChannel;
-import reactor.io.net.http.model.*;
-import reactor.io.net.impl.netty.NettyChannelStream;
+import reactor.io.netty.http.HttpChannel;
+import reactor.io.netty.http.model.*;
+import reactor.io.netty.impl.netty.NettyChannelStream;
 
 import java.net.InetSocketAddress;
 

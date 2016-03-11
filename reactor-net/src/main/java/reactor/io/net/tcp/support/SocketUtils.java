@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package reactor.io.net.tcp.support;
+package reactor.io.netty.tcp.support;
 
 import reactor.core.support.Assert;
 

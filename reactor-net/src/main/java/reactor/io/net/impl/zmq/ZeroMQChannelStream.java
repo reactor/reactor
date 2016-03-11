@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.impl.zmq;
+package reactor.io.netty.impl.zmq;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -29,7 +29,7 @@ import reactor.core.support.Exceptions;
 import reactor.fn.Consumer;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
-import reactor.io.net.ChannelStream;
+import reactor.io.netty.ChannelStream;
 import reactor.rx.action.support.DefaultSubscriber;
 import reactor.rx.broadcast.Broadcaster;
 import reactor.rx.subscription.PushSubscription;

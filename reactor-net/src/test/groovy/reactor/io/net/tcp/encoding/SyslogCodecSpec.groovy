@@ -1,7 +1,7 @@
-package reactor.io.net.tcp.encoding
+package reactor.io.netty.tcp.encoding
 
 import reactor.io.buffer.Buffer
-import reactor.io.net.codec.syslog.SyslogCodec
+import reactor.io.netty.codec.syslog.SyslogCodec
 import spock.lang.Specification
 
 /**

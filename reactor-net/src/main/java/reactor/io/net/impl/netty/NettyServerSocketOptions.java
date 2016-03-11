@@ -14,12 +14,12 @@
  *  limitations under the License.
  */
 
-package reactor.io.net.impl.netty;
+package reactor.io.netty.impl.netty;
 
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.EventLoopGroup;
 import reactor.fn.Consumer;
-import reactor.io.net.config.ServerSocketOptions;
+import reactor.io.netty.config.ServerSocketOptions;
 
 /**
  * Extends standard {@link ServerSocketOptions} with Netty-specific options.
