@@ -26,7 +26,7 @@ _2.5.0.BUILD-SNAPSHPOT_
     - reactor-io : Memory and InterProcessCommunication abstractions
     - reactor-aeron : Efficient unicast/multicast messaging
     - reactor-codec: JSON, compression, Kryo, Protobuf codecs
-    - reactor-net: TCP and HTTP client and server
+    - reactor-netty: TCP and HTTP client and server
 
 # Reactor Addons
 _2.5.0.BUILD-SNAPSHPOT_
@@ -83,7 +83,7 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
       // compile "io.projectreactor:reactor-pipes:2.5.0.BUILD-SNAPSHOT"
 
        // Reactor Netty4
-       // compile "io.projectreactor:reactor-net:2.5.0.BUILD-SNAPSHOT"
+       // compile "io.projectreactor:reactor-netty:2.5.0.BUILD-SNAPSHOT"
 
        // Netty for Reactor Net (auto detects if in classpath)
        // compile 'io.netty:netty-all:4.0.34.Final'
