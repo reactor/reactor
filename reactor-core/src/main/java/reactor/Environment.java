@@ -600,7 +600,7 @@ public class Environment implements Iterable<Map.Entry<String, Dispatcher>>, Clo
 		if (null == val) {
 			return defaultValue;
 		}
-		return Long.parseLong(key);
+		return Long.parseLong(val);
 	}
 
 	/**
