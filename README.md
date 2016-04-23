@@ -22,7 +22,7 @@ _2.5.0.BUILD-SNAPSHPOT_
 - Documentation source : http://projectreactor.io/io/docs/reference
 - API space : http://projectreactor.io/io/docs/api
 - Sub-modules:
-    - reactor-io : Memory and InterProcessCommunication abstractions
+    - reactor-ipc : Memory and InterProcessCommunication abstractions
     - reactor-aeron : Efficient unicast/multicast messaging
     - reactor-codec: JSON, compression, Kryo, Protobuf codecs
     - reactor-netty: TCP and HTTP client and server
@@ -83,9 +83,6 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
 
        // Reactor Netty4
        // compile "io.projectreactor:reactor-netty:2.5.0.BUILD-SNAPSHOT"
-
-       // Netty for Reactor Net (auto detects if in classpath)
-       // compile 'io.netty:netty-all:4.0.34.Final'
 
        // Reactor Codecs (Jackson, Kryo...)
        // compile "io.projectreactor:reactor-codec:2.5.0.BUILD-SNAPSHOT"
