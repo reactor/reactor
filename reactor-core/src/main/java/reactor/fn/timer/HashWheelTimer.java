@@ -26,6 +26,7 @@ import reactor.jarjar.com.lmax.disruptor.RingBuffer;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -240,6 +241,9 @@ public class HashWheelTimer implements Timer {
 	 */
 	public void cancel() {
 		this.loop.interrupt();
+		if(executor instanceof ExecutorService){
+			((ExecutorService)executor).shutdown();
+		}
 	}
 
 	@Override
