@@ -16,13 +16,6 @@
 
 package reactor.fn.timer;
 
-import reactor.core.support.Assert;
-import reactor.core.support.NamedDaemonThreadFactory;
-import reactor.fn.Consumer;
-import reactor.fn.Pausable;
-import reactor.jarjar.com.lmax.disruptor.EventFactory;
-import reactor.jarjar.com.lmax.disruptor.RingBuffer;
-
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Executor;
@@ -32,6 +25,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import reactor.core.support.Assert;
+import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.fn.Consumer;
+import reactor.fn.Pausable;
+import reactor.jarjar.com.lmax.disruptor.EventFactory;
+import reactor.jarjar.com.lmax.disruptor.RingBuffer;
 
 /**
  * Hash Wheel Timer, as per the paper:
@@ -326,7 +326,7 @@ public class HashWheelTimer implements Timer {
 		 */
 		@Override
 		public void run() {
-			delegate.accept(TimeUtils.approxCurrentTimeMillis());
+			delegate.accept(System.currentTimeMillis());
 		}
 
 		/**

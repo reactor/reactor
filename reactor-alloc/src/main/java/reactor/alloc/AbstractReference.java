@@ -34,7 +34,7 @@ public abstract class AbstractReference<T extends Recyclable> implements Referen
 
 	protected AbstractReference(T obj) {
 		this.obj = obj;
-		this.inception = TimeUtils.approxCurrentTimeMillis();
+		this.inception = System.currentTimeMillis();
 	}
 
 	@Override
