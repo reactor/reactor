@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * @author Jon Brisbin
  */
+@Deprecated
 public abstract class TimeUtils {
 
 	private static final int        DEFAULT_RESOLUTION = 100;

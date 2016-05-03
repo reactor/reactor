@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import reactor.core.support.Assert;
 import reactor.core.support.NamedDaemonThreadFactory;
+import reactor.core.support.ReactorFatalException;
 import reactor.fn.Consumer;
 import reactor.fn.Pausable;
 import reactor.jarjar.com.lmax.disruptor.EventFactory;
@@ -204,7 +205,7 @@ public class HashWheelTimer implements Timer {
 	                                                             long firstDelay,
 	                                                             Consumer<Long> consumer) {
 		if(recurringTimeout != 0) {
-			TimeUtils.checkResolution(recurringTimeout, resolution);
+			checkResolution(recurringTimeout, resolution);
 		}
 
 		long offset = recurringTimeout / resolution;
@@ -216,6 +217,15 @@ public class HashWheelTimer implements Timer {
 		TimerPausable r = new TimerPausable(firstFireRounds, offset, consumer, rounds);
 		wheel.get(wheel.getCursor() + firstFireOffset + (recurringTimeout != 0 ? 1 : 0)).add(r);
 		return r;
+	}
+
+	public static void checkResolution(long time, long resolution) {
+		if (time % resolution != 0) {
+			throw ReactorFatalException.create(new IllegalArgumentException(
+					"Period must be a multiple of Timer resolution (e.g. period % resolution == 0 ). " +
+							"Resolution for this Timer is: " + resolution + "ms"
+			));
+		}
 	}
 
 	/**
