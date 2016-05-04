@@ -38,7 +38,7 @@ public abstract class AbstractReference<T extends Recyclable> implements Referen
 
 	@Override
 	public long getAge() {
-		return TimeUtils.approxCurrentTimeMillis() - inception;
+		return System.currentTimeMillis() - inception;
 	}
 
 	@Override
