@@ -178,7 +178,7 @@ public interface Spec {
 
 		private final Constructor<reactor.io.net.tcp.TcpClient> clientImplConstructor;
 
-		private InetSocketAddress connectAddress;
+		private Supplier<InetSocketAddress> connectAddress;
 
 		private ClientSocketOptions options = new ClientSocketOptions();
 
@@ -198,7 +198,7 @@ public interface Spec {
 				this.clientImplConstructor = (Constructor<reactor.io.net.tcp.TcpClient>) clientImpl.getDeclaredConstructor(
 						Environment.class,
 						Dispatcher.class,
-						InetSocketAddress.class,
+						Supplier.class,
 						ClientSocketOptions.class,
 						SslOptions.class,
 						Codec.class
@@ -247,8 +247,13 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public TcpClientSpec<IN, OUT> connect(@Nonnull String host, int port) {
-			return connect(new InetSocketAddress(host, port));
+		public TcpClientSpec<IN, OUT> connect(final @Nonnull String host, final int port) {
+			return connect(new Supplier<InetSocketAddress>() {
+				@Override
+				public InetSocketAddress get() {
+					return new InetSocketAddress(host, port);
+				}
+			});
 		}
 
 		/**
@@ -259,7 +264,24 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public TcpClientSpec<IN, OUT> connect(@Nonnull InetSocketAddress connectAddress) {
+		public TcpClientSpec<IN, OUT> connect(final @Nonnull InetSocketAddress connectAddress) {
+			return connect(new Supplier<InetSocketAddress>() {
+				@Override
+				public InetSocketAddress get() {
+					return connectAddress;
+				}
+			});
+		}
+
+		/**
+		 * The eventual address to which this client should connect.
+		 *
+		 * @param connectAddress
+		 * 		The address to connect to.
+		 *
+		 * @return {@literal this}
+		 */
+		public TcpClientSpec<IN, OUT> connect(@Nonnull Supplier<InetSocketAddress> connectAddress) {
 			Assert.isNull(this.connectAddress, "Connect address is already set.");
 			this.connectAddress = connectAddress;
 			return this;
@@ -540,7 +562,7 @@ public interface Spec {
 
 		private final Constructor<reactor.io.net.http.HttpClient> clientImplConstructor;
 
-		private InetSocketAddress connectAddress;
+		private Supplier<InetSocketAddress> connectAddress;
 		private ClientSocketOptions options    = new ClientSocketOptions();
 		private SslOptions          sslOptions = null;
 		private Codec<Buffer, IN, OUT> codec;
@@ -558,7 +580,7 @@ public interface Spec {
 				this.clientImplConstructor = (Constructor<reactor.io.net.http.HttpClient>) clientImpl.getDeclaredConstructor(
 						Environment.class,
 						Dispatcher.class,
-						InetSocketAddress.class,
+						Supplier.class,
 						ClientSocketOptions.class,
 						SslOptions.class,
 						Codec.class
@@ -607,8 +629,13 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public HttpClientSpec<IN, OUT> connect(@Nonnull String host, int port) {
-			return connect(new InetSocketAddress(host, port));
+		public HttpClientSpec<IN, OUT> connect(@Nonnull final String host, final int port) {
+			return connect(new Supplier<InetSocketAddress>() {
+				@Override
+				public InetSocketAddress get() {
+					return new InetSocketAddress(host, port);
+				}
+			});
 		}
 
 		/**
@@ -619,7 +646,24 @@ public interface Spec {
 		 *
 		 * @return {@literal this}
 		 */
-		public HttpClientSpec<IN, OUT> connect(@Nonnull InetSocketAddress connectAddress) {
+		public HttpClientSpec<IN, OUT> connect(@Nonnull final InetSocketAddress connectAddress) {
+			return connect(new Supplier<InetSocketAddress>() {
+				@Override
+				public InetSocketAddress get() {
+					return connectAddress;
+				}
+			});
+		}
+
+		/**
+		 * The address to which this client should connect.
+		 *
+		 * @param connectAddress
+		 * 		The address to connect to.
+		 *
+		 * @return {@literal this}
+		 */
+		public HttpClientSpec<IN, OUT> connect(@Nonnull Supplier<InetSocketAddress> connectAddress) {
 			Assert.isNull(this.connectAddress, "Connect address is already set.");
 			this.connectAddress = connectAddress;
 			return this;

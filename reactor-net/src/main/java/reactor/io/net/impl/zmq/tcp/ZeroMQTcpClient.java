@@ -28,6 +28,7 @@ import reactor.core.Dispatcher;
 import reactor.core.support.NamedDaemonThreadFactory;
 import reactor.core.support.UUIDUtils;
 import reactor.fn.Consumer;
+import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -69,7 +70,7 @@ public class ZeroMQTcpClient<IN, OUT> extends TcpClient<IN, OUT> {
 
 	public ZeroMQTcpClient(@Nonnull Environment env,
 	                       @Nonnull Dispatcher eventsDispatcher,
-	                       @Nonnull InetSocketAddress connectAddress,
+	                       @Nonnull Supplier<InetSocketAddress> connectAddress,
 	                       @Nullable ClientSocketOptions options,
 	                       @Nullable SslOptions sslOptions,
 	                       @Nullable Codec<Buffer, IN, OUT> codec) {

@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import reactor.Environment;
 import reactor.core.Dispatcher;
 import reactor.core.support.Assert;
+import reactor.fn.Supplier;
 import reactor.fn.tuple.Tuple2;
 import reactor.io.buffer.Buffer;
 import reactor.io.codec.Codec;
@@ -84,16 +85,40 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 	 */
 	public NettyHttpClient(final Environment env,
 	                       final Dispatcher dispatcher,
-	                       final InetSocketAddress connectAddress,
+	                       final Supplier<InetSocketAddress> connectAddress,
 	                       final ClientSocketOptions options,
 	                       final SslOptions sslOptions,
 	                       final Codec<Buffer, IN, OUT> codec) {
 		super(env, dispatcher, codec, options);
 
+		Supplier<InetSocketAddress> _connectAddress = connectAddress == null ? new Supplier<InetSocketAddress>() {
+			@Override
+			public InetSocketAddress get() {
+				try {
+					URI url = lastURI;
+					String host = url != null && url.getHost() != null ? url.getHost() : "localhost";
+					int port = url != null ? url.getPort() : -1;
+					if (port == -1) {
+						if (url != null && url.getScheme() != null && (
+								url.getScheme().toLowerCase().equals(HttpChannel.HTTPS_SCHEME) ||
+										url.getScheme().toLowerCase().equals(HttpChannel.WSS_SCHEME)
+						)) {
+							port = 443;
+						} else {
+							port = 80;
+						}
+					}
+					return new InetSocketAddress(host, port);
+				} catch (Exception e) {
+					throw new IllegalArgumentException(e);
+				}
+			}
+		} : connectAddress;
+
 		this.client = new NettyTcpClient<IN, OUT>(
 				env,
 				dispatcher,
-				connectAddress,
+				_connectAddress,
 				options,
 				sslOptions,
 				codec
@@ -114,29 +139,6 @@ public class NettyHttpClient<IN, OUT> extends HttpClient<IN, OUT> {
 				}
 
 				NettyHttpClient.this.bindChannel(handler, nativeChannel);
-			}
-
-			@Override
-			public InetSocketAddress getConnectAddress() {
-				if (connectAddress != null) return connectAddress;
-				try {
-					URI url = lastURI;
-					String host = url != null && url.getHost() != null ? url.getHost() : "localhost";
-					int port = url != null ? url.getPort() : -1;
-					if (port == -1) {
-						if (url != null && url.getScheme() != null && (
-								url.getScheme().toLowerCase().equals(HttpChannel.HTTPS_SCHEME) ||
-										url.getScheme().toLowerCase().equals(HttpChannel.WSS_SCHEME)
-						)) {
-							port = 443;
-						} else {
-							port = 80;
-						}
-					}
-					return new InetSocketAddress(host, port);
-				} catch (Exception e) {
-					throw new IllegalArgumentException(e);
-				}
 			}
 		};
 
