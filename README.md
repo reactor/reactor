@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/reactor/reactor](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/reactor/reactor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-Starting from 2.5.0, Reactor is now organized into multiple projects:
+Starting from 3.0, Reactor is now organized into multiple projects:
 
 ![Reactor Project](https://raw.githubusercontent.com/reactor/projectreactor.io/master/src/main/static/assets/img/org3.png)
 
@@ -16,7 +16,7 @@ Reactive foundations for apps and frameworks and reactive extensions inspired AP
 - API space : http://projectreactor.io/core/docs/api
 
 # Reactor IO
-_2.5.0.BUILD-SNAPSHPOT_
+_0.5.0.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-io:
 - Documentation source : http://projectreactor.io/io/docs/reference
@@ -28,7 +28,7 @@ _2.5.0.BUILD-SNAPSHPOT_
     - reactor-netty: TCP and HTTP client and server
 
 # Reactor Addons
-_2.5.0.BUILD-SNAPSHPOT_
+_3.0.0.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-addons
 - Documentation source : http://projectreactor.io/ext/docs/reference
@@ -41,7 +41,7 @@ _2.5.0.BUILD-SNAPSHPOT_
     - reactor-pipes
 
 # Reactor Incubator
-_2.5.0.BUILD-SNAPSHPOT_
+_3.0.0.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-incubator
 - Sub-modules:
@@ -73,19 +73,16 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
 
     dependencies {
       // Reactor Core
-      compile "io.projectreactor:reactor-core:2.5.0.BUILD-SNAPSHOT"
+      compile "io.projectreactor:reactor-core:3.0.0.BUILD-SNAPSHOT"
 
       // Reactor Aeron
-      // compile "io.projectreactor:reactor-aeron:2.5.0.BUILD-SNAPSHOT"
-
-       // Reactor Pipes
-      // compile "io.projectreactor:reactor-pipes:2.5.0.BUILD-SNAPSHOT"
+      // compile "io.projectreactor:reactor-aeron:0.5.0.BUILD-SNAPSHOT"
 
        // Reactor Netty4
-       // compile "io.projectreactor:reactor-netty:2.5.0.BUILD-SNAPSHOT"
+       // compile "io.projectreactor:reactor-netty:0.5.0.BUILD-SNAPSHOT"
 
        // Reactor Codecs (Jackson, Kryo...)
-       // compile "io.projectreactor:reactor-codec:2.5.0.BUILD-SNAPSHOT"
+       // compile "io.projectreactor:reactor-codec:0.5.0.BUILD-SNAPSHOT"
 
     }
 ```
