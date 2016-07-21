@@ -15,14 +15,14 @@ Reactive foundations for apps and frameworks and reactive extensions inspired AP
 - Documentation source : http://projectreactor.io/core/docs/reference
 - API space : http://projectreactor.io/core/docs/api
 
-# Reactor IO
+# Reactor IPC
 _0.5.0.BUILD-SNAPSHPOT_
 
-- https://github.com/reactor/reactor-io:
-- Documentation source : http://projectreactor.io/io/docs/reference
-- API space : http://projectreactor.io/io/docs/api
+- https://github.com/reactor/reactor-ipc:
+- Documentation source : http://projectreactor.io/ipc/docs/reference
+- API space : http://projectreactor.io/ipc/docs/api
 - Sub-modules:
-    - reactor-ipc : Memory and InterProcessCommunication abstractions
+    - reactor-ipc-api : Memory and InterProcessCommunication abstractions
     - reactor-aeron : Efficient unicast/multicast messaging
     - reactor-codec: JSON, compression, Kryo, Protobuf codecs
     - reactor-netty: TCP and HTTP client and server
@@ -37,8 +37,6 @@ _3.0.0.BUILD-SNAPSHPOT_
     - reactor-alloc
     - reactor-bus
     - reactor-logback
-    - reactor-pylon
-    - reactor-pipes
 
 # Reactor Incubator
 _3.0.0.BUILD-SNAPSHPOT_
@@ -46,9 +44,7 @@ _3.0.0.BUILD-SNAPSHPOT_
 - https://github.com/reactor/reactor-incubator
 - Sub-modules:
     - reactor-amqp
-    - reactor-chronicle
     - reactor-groovy
-    - reactor-net-0mq
 
 # Reactive Streams Commons
 In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core. Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
@@ -76,13 +72,13 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
       compile "io.projectreactor:reactor-core:3.0.0.BUILD-SNAPSHOT"
 
       // Reactor Aeron
-      // compile "io.projectreactor:reactor-aeron:0.5.0.BUILD-SNAPSHOT"
+      // compile "io.projectreactor.ipc:reactor-aeron:0.5.0.BUILD-SNAPSHOT"
 
        // Reactor Netty4
-       // compile "io.projectreactor:reactor-netty:0.5.0.BUILD-SNAPSHOT"
+       // compile "io.projectreactor.ipc:reactor-netty:0.5.0.BUILD-SNAPSHOT"
 
        // Reactor Codecs (Jackson, Kryo...)
-       // compile "io.projectreactor:reactor-codec:0.5.0.BUILD-SNAPSHOT"
+       // compile "io.projectreactor.ipc:reactor-codec:0.5.0.BUILD-SNAPSHOT"
 
     }
 ```
