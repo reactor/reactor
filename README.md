@@ -18,14 +18,20 @@ Reactive foundations for apps and frameworks and reactive extensions inspired AP
 # Reactor IPC
 _0.5.0.BUILD-SNAPSHPOT_
 
+Memory and InterProcessCommunication abstractions.
+
 - https://github.com/reactor/reactor-ipc:
 - Documentation source : http://projectreactor.io/ipc/docs/reference
 - API space : http://projectreactor.io/ipc/docs/api
-- Sub-modules:
-    - reactor-ipc-api : Memory and InterProcessCommunication abstractions
-    - reactor-aeron : Efficient unicast/multicast messaging
-    - reactor-codec: JSON, compression, Kryo, Protobuf codecs
-    - reactor-netty: TCP and HTTP client and server
+
+# Reactor Netty :
+_0.5.0.BUILD-SNAPSHPOT_
+
+TCP and HTTP client and server
+
+- https://github.com/reactor/reactor-ipc:
+- Documentation source : http://projectreactor.io/netty/docs/reference
+- API space : http://projectreactor.io/netty/docs/api
 
 # Reactor Addons
 _3.0.0.BUILD-SNAPSHPOT_
@@ -34,8 +40,8 @@ _3.0.0.BUILD-SNAPSHPOT_
 - Documentation source : http://projectreactor.io/ext/docs/reference
 - API space : http://projectreactor.io/ext/docs/api
 - Sub-modules:
-    - reactor-alloc
     - reactor-bus
+    - reactor-codec: JSON, compression, Kryo, Protobuf codecs
     - reactor-logback
 
 # Reactor Incubator
