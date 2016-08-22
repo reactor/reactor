@@ -78,13 +78,13 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
       compile "io.projectreactor:reactor-core:3.0.0.BUILD-SNAPSHOT"
 
       // Reactor Aeron
-      // compile "io.projectreactor.ipc:reactor-aeron:0.5.0.BUILD-SNAPSHOT"
+      // compile "io.projectreactor.ipc:reactor-aeron:0.6.0.BUILD-SNAPSHOT"
 
        // Reactor Netty4
-       // compile "io.projectreactor.ipc:reactor-netty:0.5.0.BUILD-SNAPSHOT"
+       // compile "io.projectreactor.ipc:reactor-netty:0.6.0.BUILD-SNAPSHOT"
 
        // Reactor Codecs (Jackson, Kryo...)
-       // compile "io.projectreactor.addons:reactor-codec:0.5.0.BUILD-SNAPSHOT"
+       // compile "io.projectreactor.addons:reactor-codec:0.6.0.BUILD-SNAPSHOT"
 
     }
 ```
