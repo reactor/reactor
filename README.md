@@ -34,7 +34,7 @@ TCP and HTTP client and server
 - API space : http://projectreactor.io/netty/docs/api
 
 # Reactor Addons
-_3.0.0.BUILD-SNAPSHPOT_
+_3.0.1.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-addons
 - Documentation source : http://projectreactor.io/ext/docs/reference
@@ -45,7 +45,7 @@ _3.0.0.BUILD-SNAPSHPOT_
     - reactor-logback
 
 # Reactor Incubator
-_3.0.0.BUILD-SNAPSHPOT_
+_3.0.1.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-incubator
 - Sub-modules:
@@ -75,7 +75,7 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
 
     dependencies {
       // Reactor Core
-      compile "io.projectreactor:reactor-core:3.0.0.BUILD-SNAPSHOT"
+      compile "io.projectreactor:reactor-core:3.0.1.BUILD-SNAPSHOT"
 
       // Reactor Aeron
       // compile "io.projectreactor.ipc:reactor-aeron:0.6.0.BUILD-SNAPSHOT"
