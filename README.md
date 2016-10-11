@@ -16,7 +16,7 @@ Reactive foundations for apps and frameworks and reactive extensions inspired AP
 - API space : http://projectreactor.io/core/docs/api
 
 # Reactor IPC
-_0.5.0.BUILD-SNAPSHPOT_
+[![Reactor IPC](https://maven-badges.herokuapp.com/maven-central/io.projectreactor/reactor-core/badge.svg?style=plastic)](http://mvnrepository.com/artifact/io.projectreactor.ipc/reactor-ipc)
 
 Memory and InterProcessCommunication abstractions.
 
@@ -25,7 +25,7 @@ Memory and InterProcessCommunication abstractions.
 - API space : http://projectreactor.io/ipc/docs/api
 
 # Reactor Netty :
-_0.5.0.BUILD-SNAPSHPOT_
+[![Reactor IPC](https://maven-badges.herokuapp.com/maven-central/io.projectreactor/reactor-core/badge.svg?style=plastic)](http://mvnrepository.com/artifact/io.projectreactor.ipc/reactor-netty)
 
 TCP and HTTP client and server
 
@@ -34,23 +34,14 @@ TCP and HTTP client and server
 - API space : http://projectreactor.io/netty/docs/api
 
 # Reactor Addons
-_3.0.2.BUILD-SNAPSHPOT_
 
 - https://github.com/reactor/reactor-addons
 - Documentation source : http://projectreactor.io/ext/docs/reference
 - API space : http://projectreactor.io/ext/docs/api
 - Sub-modules:
-    - reactor-bus
-    - reactor-codec: JSON, compression, Kryo, Protobuf codecs
+    - reactor-adapter
+    - reactor-test
     - reactor-logback
-
-# Reactor Incubator
-_3.0.2.BUILD-SNAPSHPOT_
-
-- https://github.com/reactor/reactor-incubator
-- Sub-modules:
-    - reactor-amqp
-    - reactor-groovy
 
 # Reactive Streams Commons
 In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core. Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
@@ -82,9 +73,6 @@ Stable Release are synchronozied with Maven Central. To add this repo to your Gr
 
        // Reactor Netty4
        // compile "io.projectreactor.ipc:reactor-netty:0.6.0.BUILD-SNAPSHOT"
-
-       // Reactor Codecs (Jackson, Kryo...)
-       // compile "io.projectreactor.addons:reactor-codec:0.6.0.BUILD-SNAPSHOT"
 
     }
 ```
