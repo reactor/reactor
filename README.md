@@ -77,19 +77,23 @@ The first stable release is simply suffixed with `-RELEASE`, but the equivalent 
 ## Reactor Core
 [![Reactor Core](https://img.shields.io/badge/github-reactor/reactor--core-green.svg)](https://github.com/reactor/reactor-core)
 
-Reactive foundations for apps and frameworks and reactive extensions inspired API with [Mono](http://projectreactor.io/core/docs/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://projectreactor.io/core/docs/api/reactor/core/publisher/Flux.html) (n elements) types
+Reactive foundations for apps and frameworks and reactive extensions inspired API with [Mono](http://projectreactor.io/docs/core/release/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html) (n elements) types
 
- - API documentation: http://projectreactor.io/core/docs/api
+ - API documentation: [/docs/core/release/api](http://projectreactor.io/docs/core/release/api)
 
 ## Reactor IPC
 [![Reactor Core](https://img.shields.io/badge/github-reactor/reactor--ipc-green.svg)](https://github.com/reactor/reactor-ipc)
 
 Memory and InterProcessCommunication abstractions.
 
+ - API documentation: [/docs/ipc/release/api](http://projectreactor.io/docs/ipc/release/api)
+
 ## Reactor Netty
 [![Reactor Netty](https://img.shields.io/badge/github-reactor/reactor--netty-green.svg)](https://github.com/reactor/reactor-netty)
 
-TCP and HTTP client and server
+TCP and HTTP client and server.
+
+ - API documentation: [/docs/netty/release/api](http://projectreactor.io/docs/netty/release/api)
 
 ## Reactor Addons
 [![Reactor Addons](https://img.shields.io/badge/github-reactor/reactor--addons-green.svg)](https://github.com/reactor/reactor-addons)
@@ -97,12 +101,15 @@ TCP and HTTP client and server
 Extra projects adding features to reactor:
 
   - **`reactor-adapter`**: adapt to/from various libraries, mainly RxJava 2.
+    - API documentation: [/docs/adapter/release/api](http://projectreactor.io/docs/adapter/release/api)
   - **`reactor-test`**: test `Flux`, `Mono` and other `Publisher`...
+    - API documentation: [/docs/test/release/api](http://projectreactor.io/docs/test/release/api)
   - **`reactor-logback`**: `logback` adapter for Flux/Mono `log()` feature.
+
 
 ### Snapshot Artifacts
 
-While Stable Releases are synchronized with Maven Central, fresh snapshot and milestone artifacts are provided in the _repo.spring.io_ repositories. 
+While Stable Releases are synchronized with Maven Central, fresh snapshot and milestone artifacts are provided in the _repo.spring.io_ repositories.
 To add this repo to your Gradle build, specify the URL like the following:
 
 ```groovy
