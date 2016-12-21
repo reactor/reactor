@@ -11,9 +11,9 @@
 
     <properties>
         <reactor.core.version>3.0.4.BUILD-SNAPSHOT</reactor.core.version>
-        <reactor.test.version>3.0.3.RELEASE</reactor.test.version>
-        <reactor.adapter.version>3.0.3.RELEASE</reactor.adapter.version>
-        <reactor.logback.version>3.0.3.RELEASE</reactor.logback.version>
+        <reactor.test.version>3.0.4.BUILD-SNAPSHOT</reactor.test.version>
+        <reactor.adapter.version>3.0.4.BUILD-SNAPSHOT</reactor.adapter.version>
+        <reactor.logback.version>3.0.4.BUILD-SNAPSHOT</reactor.logback.version>
         <reactor.ipc.version>0.5.1.RELEASE</reactor.ipc.version>
         <reactor.netty.version>0.5.2.RELEASE</reactor.netty.version>
         <!--<reactor.areon.version>3.0.3.RELEASE</reactor.areon.version>
