@@ -1,0 +1,136 @@
+/*
+ * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+buildscript {
+  repositories {
+	maven { url "https://repo.spring.io/plugins-release" }
+  }
+  dependencies {
+	classpath("org.springframework.build.gradle:propdeps-plugin:0.0.7")
+  }
+}
+
+configure(rootProject) {
+
+  rootProject.group = 'io.projectreactor'
+  rootProject.description = 'Bill of materials to make sure a consistent set of versions is used for Reactor 3.'
+
+
+  ext {
+	gradleVersion = '3.1'
+	gradleScriptDir = "${rootProject.projectDir}/gradle"
+  }
+
+  apply plugin: 'propdeps-maven'
+  apply plugin: 'maven'
+
+  repositories {
+	mavenCentral()
+	jcenter()
+	maven { url 'http://repo.spring.io/release' }
+	maven { url 'http://repo.spring.io/milestone' }
+	maven { url "https://oss.sonatype.org/content/repositories/releases/" }
+
+	mavenLocal()
+	maven { url 'http://repo.spring.io/snapshot' }
+  }
+
+  configurations.archives.artifacts.clear()
+  artifacts {
+	// work around GRADLE-2406 by attaching text artifact
+	archives(file("reactor-bom.txt"))
+  }
+
+  install {
+	repositories.mavenInstaller {
+	  customizePom(pom, rootProject)
+	}
+  }
+
+  dependencies {
+	// Reactive Streams
+	compile "org.reactivestreams:reactive-streams:1.0.0"
+
+	// Reactor Core
+	compile "io.projectreactor:reactor-core:$reactorCoreVersion"
+
+	// Reactor Addons
+	compile "io.projectreactor.addons:reactor-test:$reactorTestVersion"
+	compile "io.projectreactor.addons:reactor-adapter:$reactorAdapterVersion"
+	compile "io.projectreactor.addons:reactor-logback:$reactorLogbackVersion"
+
+	// Reactor IPC
+	compile "io.projectreactor.ipc:reactor-ipc:$reactorIpcVersion"
+	compile "io.projectreactor.ipc:reactor-netty:$reactorNettyVersion"
+
+	// Reactor Kafka
+	compile "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
+  }
+
+}
+
+def customizePom(pom, gradleProject) {
+  pom.whenConfigured { generatedPom ->
+
+	// sort to make pom dependencies order consistent to ease comparison of older poms
+	generatedPom.dependencies = generatedPom.dependencies.sort { dep -> "$dep.scope:$dep.groupId:$dep.artifactId" }
+
+	generatedPom.project {
+	  name = 'Project Reactor 3 Release Train - BOM'
+	  description = gradleProject.description
+	  url = 'http://projectreactor.io'
+
+	  packaging = "pom"
+
+	  organization {
+		name = 'Pivotal Software, Inc.'
+		url = 'https://pivotal.io/'
+	  }
+
+	  licenses {
+		license {
+		  name 'The Apache Software License, Version 2.0'
+		  url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+		  distribution 'repo'
+		}
+	  }
+
+	  developers {
+		developer {
+		  id = 'smaldini'
+		  name = 'Stephane Maldini'
+		  email = 'smaldini at pivotal.io'
+		}
+
+		developer {
+		  id = 'simonbasle'
+		  name = 'Simon Baslé'
+		  email = 'sbasle at pivotal.io'
+		}
+
+		developer {
+		  id = 'akarnokd'
+		  name = 'David Karnok'
+		  email = 'akarnokd at gmail.com'
+		}
+	  }
+	}
+  }.writeTo("$buildDir/poms/reactor-bom-${version}.xml")
+}
+
+task wrapper(type: Wrapper, description: "Create a Gradle self-download wrapper") {
+  group = 'Project Setup'
+  gradleVersion = "$gradleVersion"
+}
