@@ -14,7 +14,7 @@
         <reactor.test.version>3.0.4.RELEASE</reactor.test.version>
         <reactor.adapter.version>3.0.4.RELEASE</reactor.adapter.version>
         <reactor.logback.version>3.0.4.RELEASE</reactor.logback.version>
-        <reactor.ipc.version>0.6.0..RELEASE</reactor.ipc.version>
+        <reactor.ipc.version>0.6.0.RELEASE</reactor.ipc.version>
         <reactor.netty.version>0.6.0.RELEASE</reactor.netty.version>
         <!--
         <reactor.kafka.version>1.0.0.M1</reactor.kafka.version>
