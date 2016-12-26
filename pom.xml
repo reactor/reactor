@@ -10,14 +10,16 @@
     <packaging>pom</packaging>
 
     <properties>
-        <reactor.core.version>3.0.4.BUILD-SNAPSHOT</reactor.core.version>
-        <reactor.test.version>3.0.4.BUILD-SNAPSHOT</reactor.test.version>
-        <reactor.adapter.version>3.0.4.BUILD-SNAPSHOT</reactor.adapter.version>
-        <reactor.logback.version>3.0.4.BUILD-SNAPSHOT</reactor.logback.version>
-        <reactor.ipc.version>0.5.1.RELEASE</reactor.ipc.version>
-        <reactor.netty.version>0.5.2.RELEASE</reactor.netty.version>
-        <!--<reactor.areon.version>3.0.3.RELEASE</reactor.areon.version>
-        <reactor.kafka.version>3.0.3.RELEASE</reactor.kafka.version>-->
+        <reactor.core.version>3.0.4.RELEASE</reactor.core.version>
+        <reactor.test.version>3.0.4.RELEASE</reactor.test.version>
+        <reactor.adapter.version>3.0.4.RELEASE</reactor.adapter.version>
+        <reactor.logback.version>3.0.4.RELEASE</reactor.logback.version>
+        <reactor.ipc.version>0.6.0..RELEASE</reactor.ipc.version>
+        <reactor.netty.version>0.6.0.RELEASE</reactor.netty.version>
+        <!--
+        <reactor.kafka.version>1.0.0.M1</reactor.kafka.version>
+        <reactor.areon.version>3.0.3.RELEASE</reactor.areon.version>
+        -->
     </properties>
 
     <name>Project Reactor 3 Release Train - BOM</name>
@@ -75,16 +77,18 @@
                 <artifactId>reactor-netty</artifactId>
                 <version>${reactor.netty.version}</version>
             </dependency>
-           <!-- <dependency>
+           <!--
+            <dependency>
                 <groupId>io.projectreactor.ipc</groupId>
                 <artifactId>reactor-aeron</artifactId>
                 <version>${reactor.aeron.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.projectreactor.ipc</groupId>
+                <groupId>io.projectreactor.kafka</groupId>
                 <artifactId>reactor-kafka</artifactId>
                 <version>${reactor.kafka.version}</version>
-            </dependency>-->
+            </dependency>
+            -->
         </dependencies>
     </dependencyManagement>
 
@@ -102,7 +106,7 @@
         </developer>
         <developer>
             <id>simonbasle</id>
-            <name>Simon Basle</name>
+            <name>Simon Baslé</name>
             <email>sbasle at pivotal.io</email>
             <organization>Pivotal Software, Inc.</organization>
             <organizationUrl>http://www.spring.io</organizationUrl>
