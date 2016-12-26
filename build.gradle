@@ -84,8 +84,13 @@ configure(rootProject) {
 def customizePom(pom, gradleProject) {
   pom.whenConfigured { generatedPom ->
 
-	// sort to make pom dependencies order consistent to ease comparison of older poms
-	generatedPom.dependencies = generatedPom.dependencies.sort { dep -> "$dep.scope:$dep.groupId:$dep.artifactId" }
+	//make sure that dependencies are under <dependencyManagement>
+	generatedPom.withXml {
+	  if (generatedPom.dependencies.size > 0) {
+		asNode().appendNode('dependencyManagement', asNode().dependencies)
+		asNode().dependencies.replaceNode {}
+	  }
+	}
 
 	generatedPom.project {
 	  name = 'Project Reactor 3 Release Train - BOM'
