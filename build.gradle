@@ -114,6 +114,17 @@ def customizePom(pom, gradleProject) {
 		}
 	  }
 
+	  scm {
+		url = 'https://github.com/reactor/reactor'
+		connection = 'scm:git:git://github.com/reactor/reactor'
+		developerConnection = 'scm:git:git://github.com/reactor/reactor'
+	  }
+
+	  issueManagement {
+		system = "GitHub Issues"
+		url = "https://github.com/reactor"
+	  }
+
 	  developers {
 		developer {
 		  id = 'smaldini'
