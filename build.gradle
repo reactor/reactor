@@ -76,7 +76,7 @@ configure(rootProject) {
 	compile "io.projectreactor.ipc:reactor-netty:$reactorNettyVersion"
 
 	// Reactor Kafka
-	compile "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
+	//compile "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
   }
 
 }
