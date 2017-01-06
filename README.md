@@ -2,8 +2,7 @@
 
 [![Join the chat at https://gitter.im/reactor/reactor](	https://img.shields.io/gitter/room/reactor/reactor.svg)](https://gitter.im/reactor/reactor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-<a title="Currently not released">![](https://img.shields.io/badge/current%20release%20train-Aluminium-orange.svg)</a><br/>
-![](https://img.shields.io/badge/current%20stable%20BOM%20%20-n%2Fa-lightgrey.svg)
+ [![Download](https://api.bintray.com/packages/spring/jars/reactor-bom/images/download.svg) ](https://bintray.com/spring/jars/reactor-bom/_latestVersion)
 
 Starting from 3.0, Reactor is now organized into multiple projects:
 
