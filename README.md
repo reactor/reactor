@@ -55,7 +55,7 @@ First, apply the plugin from Gradle Plugin Portal (check and change the version 
 
 ```groovy
 plugins {
-    id "io.spring.dependency-management" version "1.0.0.RC1"
+    id "io.spring.dependency-management" version "1.0.0.RC2"
 }
 ```
 
@@ -63,8 +63,8 @@ Then use it to import the BOM:
 
 ```groovy
 dependencyManagement {
-     dependencies {
-          dependency 'io.projectreactor:reactor-bom:Aluminium-RELEASE'
+     imports {
+          mavenBom "io.projectreactor:reactor-bom:Aluminium-RELEASE"
      }
 }
 ```
