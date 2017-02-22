@@ -10,11 +10,7 @@ Starting from 3.0, Reactor is now organized into multiple projects:
 
 A set of compatible versions for all these projects is curated under a BOM ("Bill of Material").
 
-## Current Release Train
-
-The first release train to follow the new and shiny BOM model will be `Aluminium-RELEASE`.
-
-### Using the BOM with Maven
+## Using the BOM with Maven
 In Maven, you need to import the bom first:
 
 ```xml
@@ -23,7 +19,7 @@ In Maven, you need to import the bom first:
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-bom</artifactId>
-            <version>Aluminium-RELEASE</version>
+            <version>Aluminium-SR1</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -48,7 +44,7 @@ Next, add your dependencies to the relevant reactor projects as usual, except wi
 </dependencies>
 ```
 
-### Using the BOM with Gradle
+## Using the BOM with Gradle
 Gradle has no core support for Maven BOMs, but you can use Spring's [`gradle-dependency-management` plugin](https://github.com/spring-gradle-plugins/dependency-management-plugin).
 
 First, apply the plugin from Gradle Plugin Portal (check and change the version if a new one has been released):
@@ -64,7 +60,7 @@ Then use it to import the BOM:
 ```groovy
 dependencyManagement {
      imports {
-          mavenBom "io.projectreactor:reactor-bom:Aluminium-RELEASE"
+          mavenBom "io.projectreactor:reactor-bom:Aluminium-SR1"
      }
 }
 ```
@@ -78,7 +74,7 @@ dependencies {
 ```
 
 
-### BOM Versionning Scheme
+## BOM Versionning Scheme
 The BOM can be imported in Maven, which will provide a set of default artifact versions to use whenever the corresponding dependency is added to a pom without an explicitly provided version.
 
 As the different artifacts versions are not necessarily aligned, the BOM represents a release train with a codename-based versioning scheme: the usual MAJOR.MINOR numbers are replaced by a chemical name from the [Periodic Table of Elements](https://en.wikipedia.org/wiki/List_of_chemical_elements), in growing alphabetical order.
