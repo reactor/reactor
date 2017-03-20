@@ -51,7 +51,7 @@ First, apply the plugin from Gradle Plugin Portal (check and change the version 
 
 ```groovy
 plugins {
-    id "io.spring.dependency-management" version "1.0.0.RC2"
+    id "io.spring.dependency-management" version "1.0.1.RELEASE"
 }
 ```
 
