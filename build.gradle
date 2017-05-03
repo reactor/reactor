@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2016 Pivotal Software Inc, All Rights Reserved.
+ * Copyright (c) 2011-2017 Pivotal Software Inc, All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,6 +70,7 @@ configure(rootProject) {
 
 	// Reactor Addons
 	compile "io.projectreactor.addons:reactor-test:$reactorTestVersion"
+	compile "io.projectreactor.addons:reactor-extra:$reactorExtraVersion"
 	compile "io.projectreactor.addons:reactor-adapter:$reactorAdapterVersion"
 	compile "io.projectreactor.addons:reactor-logback:$reactorLogbackVersion"
 
@@ -78,7 +79,7 @@ configure(rootProject) {
 	compile "io.projectreactor.ipc:reactor-netty:$reactorNettyVersion"
 
 	// Reactor Kafka
-	//compile "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
+	compile "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
   }
 
 }
@@ -136,6 +137,12 @@ def customizePom(pom, gradleProject) {
 		  id = 'simonbasle'
 		  name = 'Simon Baslé'
 		  email = 'sbasle at pivotal.io'
+		}
+
+		developer {
+		  id = 'akarnokd'
+		  name = 'David Karnok'
+		  email = 'akarnokd at gmail.com'
 		}
 
 		developer {
