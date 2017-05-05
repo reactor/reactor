@@ -146,9 +146,9 @@ def customizePom(pom, gradleProject) {
 		}
 
 		developer {
-		  id = 'akarnokd'
-		  name = 'David Karnok'
-		  email = 'akarnokd at gmail.com'
+		  id = 'rsivaram'
+		  name = 'Rajini Sivaram'
+		  email = 'rsivaram@pivotal.io'
 		}
 	  }
 	}
