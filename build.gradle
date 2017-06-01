@@ -69,7 +69,7 @@ configure(rootProject) {
 	compile "io.projectreactor:reactor-core:$reactorCoreVersion"
 
 	// Reactor Addons
-	compile "io.projectreactor.addons:reactor-test:$reactorTestVersion"
+	compile "io.projectreactor:reactor-test:$reactorCoreVersion"
 	compile "io.projectreactor.addons:reactor-extra:$reactorExtraVersion"
 	compile "io.projectreactor.addons:reactor-adapter:$reactorAdapterVersion"
 	compile "io.projectreactor.addons:reactor-logback:$reactorLogbackVersion"

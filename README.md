@@ -37,7 +37,7 @@ Next, add your dependencies to the relevant reactor projects as usual, except wi
         <artifactId>reactor-core</artifactId>
     </dependency>
     <dependency>
-        <groupId>io.projectreactor.addons</groupId>
+        <groupId>io.projectreactor</groupId>
         <artifactId>reactor-test</artifactId>
         <scope>test</scope>
     </dependency>
