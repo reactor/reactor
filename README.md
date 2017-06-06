@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/reactor/reactor](	https://img.shields.io/gitter/room/reactor/reactor.svg)](https://gitter.im/reactor/reactor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
- [![Download](https://api.bintray.com/packages/spring/jars/reactor-bom/images/download.svg) ](https://bintray.com/spring/jars/reactor-bom/_latestVersion)
+ [![Download](https://img.shields.io/maven-central/v/io.projectreactor/reactor-bom.svg) ](https://img.shields.io/maven-central/v/io.projectreactor/reactor-bom.svg)
 
 Starting from 3.0, Reactor is now organized into multiple projects:
 
@@ -127,7 +127,7 @@ Extra projects adding features to reactor:
 
   - **`reactor-adapter`**: adapt to/from various libraries, mainly RxJava 2.
     - API documentation: [/docs/adapter/release/api](http://projectreactor.io/docs/adapter/release/api)
-  - **`reactor-test`**: test `Flux`, `Mono` and other `Publisher`...
+  - **`reactor-extra`**: Retry utils, Math utils, ...
     - API documentation: [/docs/test/release/api](http://projectreactor.io/docs/test/release/api)
   - **`reactor-logback`**: `logback` adapter for Flux/Mono `log()` feature.
 
