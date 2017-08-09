@@ -63,7 +63,7 @@ configure(rootProject) {
 
   dependencies {
 	// Reactive Streams
-	compile "org.reactivestreams:reactive-streams:1.0.0"
+	compile "org.reactivestreams:reactive-streams:1.0.1"
 
 	// Reactor Core
 	compile "io.projectreactor:reactor-core:$reactorCoreVersion"
