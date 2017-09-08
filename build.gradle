@@ -75,7 +75,6 @@ configure(rootProject) {
 	compile "io.projectreactor.addons:reactor-logback:$reactorLogbackVersion"
 
 	// Reactor IPC
-	compile "io.projectreactor.ipc:reactor-ipc:$reactorIpcVersion"
 	compile "io.projectreactor.ipc:reactor-netty:$reactorNettyVersion"
 
 	// Reactor Kafka
