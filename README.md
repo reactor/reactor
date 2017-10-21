@@ -106,13 +106,6 @@ Reactive foundations for apps and frameworks and reactive extensions inspired AP
 
  - API documentation: [/docs/core/release/api](http://projectreactor.io/docs/core/release/api)
 
-## Reactor IPC
-[![Reactor Core](https://img.shields.io/badge/github-reactor/reactor--ipc-green.svg)](https://github.com/reactor/reactor-ipc)
-
-Memory and InterProcessCommunication abstractions.
-
- - API documentation: [/docs/ipc/release/api](http://projectreactor.io/docs/ipc/release/api)
-
 ## Reactor Netty
 [![Reactor Netty](https://img.shields.io/badge/github-reactor/reactor--netty-green.svg)](https://github.com/reactor/reactor-netty)
 
