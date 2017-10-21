@@ -145,9 +145,9 @@ def customizePom(pom, gradleProject) {
 		}
 
 		developer {
-		  id = 'rsivaram'
-		  name = 'Rajini Sivaram'
-		  email = 'rsivaram at pivotal.io'
+		  id = 'violetagg'
+		  name = 'Violeta Georgieva'
+		  email = 'vgeorgieva at pivotal.io'
 		}
 	  }
 	}
