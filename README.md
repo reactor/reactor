@@ -19,7 +19,7 @@ In Maven, you need to import the bom first:
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-bom</artifactId>
-            <version>Aluminium-SR1</version>
+            <version>Bismuth-SR2</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -60,7 +60,7 @@ Then use it to import the BOM:
 ```groovy
 dependencyManagement {
      imports {
-          mavenBom "io.projectreactor:reactor-bom:Aluminium-SR1"
+          mavenBom "io.projectreactor:reactor-bom:Bismuth-SR2"
      }
 }
 ```
