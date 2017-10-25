@@ -161,3 +161,5 @@ In a continuous mission to design the most efficient concurrency operators for R
 Please note that `Bismuth-SR1` and `Bismuth-SR2`  contain a bad version entry for `reactor-extra`. 
 Avoid using this BOM if possible, in favor of `Bismuth-SR3` (although things should be 
 fine for now if you don't depend on reactor-extra).
+
+_Sponsored by [Pivotal](http://pivotal.io)_
