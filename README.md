@@ -19,7 +19,7 @@ In Maven, you need to import the bom first:
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-bom</artifactId>
-            <version>Bismuth-SR3</version>
+            <version>Bismuth-SR4</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -54,13 +54,12 @@ plugins {
     id "io.spring.dependency-management" version "1.0.1.RELEASE"
 }
 ```
-
 Then use it to import the BOM:
 
 ```groovy
 dependencyManagement {
      imports {
-          mavenBom "io.projectreactor:reactor-bom:Bismuth-SR3"
+          mavenBom "io.projectreactor:reactor-bom:Bismuth-SR4"
      }
 }
 ```
