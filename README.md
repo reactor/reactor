@@ -19,7 +19,7 @@ In Maven, you need to import the bom first:
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-bom</artifactId>
-            <version>Bismuth-SR4</version>
+            <version>Bismuth-SR7</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -59,7 +59,7 @@ Then use it to import the BOM:
 ```groovy
 dependencyManagement {
      imports {
-          mavenBom "io.projectreactor:reactor-bom:Bismuth-SR4"
+          mavenBom "io.projectreactor:reactor-bom:Bismuth-SR7"
      }
 }
 ```
@@ -78,7 +78,13 @@ The BOM can be imported in Maven, which will provide a set of default artifact v
 
 As the different artifacts versions are not necessarily aligned, the BOM represents a release train with a codename-based versioning scheme: the usual MAJOR.MINOR numbers are replaced by a chemical name from the [Periodic Table of Elements](https://en.wikipedia.org/wiki/List_of_chemical_elements), in growing alphabetical order.
 
-The first stable release is simply suffixed with `-RELEASE`, but the equivalent of patch releases are also possible as "Service Releases", appending the suffix `-SR` followed by the number of the service release (eg. `-SR1`, `-SR2`)
+The first stable release is simply suffixed with `-RELEASE`, but the equivalent of patch releases are also possible as "Service Releases", appending the suffix `-SR` followed by the number of the service release (eg. `-SR1`, `-SR2`).
+
+So far, the release trains are named:
+ - `Aluminium` for the `3.0.x` generation of Reactor-Core ([:bulb:](# 'aluminium is shiny, as is this brand new release'))
+ - `Bismuth` for the `3.1.x` generation ([:bulb:](# 'intricate crystaline structure, a bit like this release'))
+ - `Californium` for the `3.2.x` generation ([:bulb:](# 'made in California, can be used to help start up nuclear reactors... shoutout to our own @smaldini moving there'))
+ 
 
 # Enrolling
 
@@ -151,7 +157,7 @@ repositories {
 }
 ```
 
-You should then be able to import a `BUILD-SNAPSHOT` version of the BOM, like `Bismuth.BUILD-SNAPSHOT`.
+You should then be able to import a `BUILD-SNAPSHOT` version of the BOM, like `Californium-BUILD-SNAPSHOT`.
 
 # Reactive Streams Commons
 In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core. Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
