@@ -74,11 +74,8 @@ configure(rootProject) {
 	compile "io.projectreactor.addons:reactor-adapter:$reactorAdapterVersion"
 	compile "io.projectreactor.addons:reactor-logback:$reactorLogbackVersion"
 
-	// Reactor IPC
-	compile "io.projectreactor.ipc:reactor-netty:$reactorNettyVersion"
 	// Reactor Netty
-	// When 0.7.x is removed from the bom, use $reactorNettyVersion
-	compile "io.projectreactor.netty:reactor-netty:0.8.0.BUILD-SNAPSHOT"
+	compile "io.projectreactor.netty:reactor-netty:$reactorNettyVersion"
 
 	// Reactor Kafka
 	compile "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
