@@ -59,7 +59,7 @@ Then use it to import the BOM:
 ```groovy
 dependencyManagement {
      imports {
-          mavenBom "io.projectreactor:reactor-bom:Bismuth-SR10"
+          mavenBom "io.projectreactor:reactor-bom:Bismuth-SR11"
      }
 }
 ```
