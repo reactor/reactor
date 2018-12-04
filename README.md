@@ -45,13 +45,28 @@ Next, add your dependencies to the relevant reactor projects as usual, except wi
 ```
 
 ## Using the BOM with Gradle
-Gradle has no core support for Maven BOMs, but you can use Spring's [`gradle-dependency-management` plugin](https://github.com/spring-gradle-plugins/dependency-management-plugin).
+### Gradle 5.0+
+Use the `platform` keyword to import the Maven BOM within the `dependencies` block, then add dependencies to
+your project without a version number.
+
+```groovy
+dependencies {
+     // import BOM
+     implementation platform('io.projectreactor:reactor-bom:Californium-SR3')
+
+     // add dependencies without a version number
+     implementation 'io.projectreactor:reactor-core'
+}
+```
+
+### Gradle 4.x and earlier
+Gradle versions prior to 5.0 have no core support for Maven BOMs, but you can use Spring's [`gradle-dependency-management` plugin](https://github.com/spring-gradle-plugins/dependency-management-plugin).
 
 First, apply the plugin from Gradle Plugin Portal (check and change the version if a new one has been released):
 
 ```groovy
 plugins {
-    id "io.spring.dependency-management" version "1.0.1.RELEASE"
+    id "io.spring.dependency-management" version "1.0.6.RELEASE"
 }
 ```
 Then use it to import the BOM:
@@ -146,7 +161,7 @@ To add this repo to your Maven build, add it to the `<repositories>` section lik
 	        <enabled>true</enabled>
 	    </snapshots>
 	</repository>
-<repositories>
+</repositories>
 ```
 
 To add it to your Gradle build, use the `repositories` configuration like this:
