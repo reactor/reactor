@@ -52,7 +52,7 @@ your project without a version number.
 ```groovy
 dependencies {
      // import BOM
-     implementation platform('io.projectreactor:reactor-bom:Californium-SR3')
+     implementation platform('io.projectreactor:reactor-bom:Californium-SR4')
 
      // add dependencies without a version number
      implementation 'io.projectreactor:reactor-core'
@@ -74,7 +74,7 @@ Then use it to import the BOM:
 ```groovy
 dependencyManagement {
      imports {
-          mavenBom "io.projectreactor:reactor-bom:Californium-SR3"
+          mavenBom "io.projectreactor:reactor-bom:Californium-SR4"
      }
 }
 ```
