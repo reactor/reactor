@@ -110,7 +110,7 @@ So far, the release trains are named:
 
 ### Documentation
 
-* [Guides](http://projectreactor.io/docs/)
+* [Guides](http://projectreactor.io/docs)
 * [Reactive Streams](http://www.reactive-streams.org/)
 
 ### Community / Support
