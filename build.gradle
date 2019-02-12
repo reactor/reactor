@@ -79,6 +79,9 @@ configure(rootProject) {
 
 	// Reactor Kafka
 	compile "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
+
+	// Reactor RabbitMQ
+	compile "io.projectreactor.rabbitmq:reactor-rabbitmq:$reactorRabbitVersion"
   }
 
 }
@@ -139,15 +142,21 @@ def customizePom(pom, gradleProject) {
 		}
 
 		developer {
-		  id = 'akarnokd'
-		  name = 'David Karnok'
-		  email = 'akarnokd at gmail.com'
-		}
-
-		developer {
 		  id = 'violetagg'
 		  name = 'Violeta Georgieva'
 		  email = 'vgeorgieva at pivotal.io'
+		}
+
+		developer {
+		  id = 'bsideup'
+		  name = 'Sergei Egorov'
+		  email = 'segorov at pivotal.io'
+		}
+		
+		developer {
+		  id = 'akarnokd'
+		  name = 'David Karnok'
+		  email = 'akarnokd at gmail.com'
 		}
 	  }
 	}
