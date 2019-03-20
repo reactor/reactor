@@ -110,8 +110,8 @@ So far, the release trains are named:
 
 ### Documentation
 
-* [Guides](http://projectreactor.io/docs)
-* [Reactive Streams](http://www.reactive-streams.org/)
+* [Guides](https://projectreactor.io/docs)
+* [Reactive Streams](https://www.reactive-streams.org/)
 
 ### Community / Support
 * [![Join the chat at https://gitter.im/reactor/reactor](	https://img.shields.io/gitter/room/reactor/reactor.svg)](https://gitter.im/reactor/reactor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -122,16 +122,16 @@ So far, the release trains are named:
 ## Reactor Core
 [![Reactor Core](https://img.shields.io/badge/github-reactor/reactor--core-green.svg)](https://github.com/reactor/reactor-core)
 
-Reactive foundations for apps and frameworks and reactive extensions inspired API with [Mono](http://projectreactor.io/docs/core/release/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html) (n elements) types
+Reactive foundations for apps and frameworks and reactive extensions inspired API with [Mono](https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html) (n elements) types
 
- - API documentation: [/docs/core/release/api](http://projectreactor.io/docs/core/release/api)
+ - API documentation: [/docs/core/release/api](https://projectreactor.io/docs/core/release/api)
 
 ## Reactor Netty
 [![Reactor Netty](https://img.shields.io/badge/github-reactor/reactor--netty-green.svg)](https://github.com/reactor/reactor-netty)
 
 TCP and HTTP client and server.
 
- - API documentation: [/docs/netty/release/api](http://projectreactor.io/docs/netty/release/api)
+ - API documentation: [/docs/netty/release/api](https://projectreactor.io/docs/netty/release/api)
 
 ## Reactor Addons
 [![Reactor Addons](https://img.shields.io/badge/github-reactor/reactor--addons-green.svg)](https://github.com/reactor/reactor-addons)
@@ -139,9 +139,9 @@ TCP and HTTP client and server.
 Extra projects adding features to reactor:
 
   - **`reactor-adapter`**: adapt to/from various libraries, mainly RxJava 2.
-    - API documentation: [/docs/adapter/release/api](http://projectreactor.io/docs/adapter/release/api)
+    - API documentation: [/docs/adapter/release/api](https://projectreactor.io/docs/adapter/release/api)
   - **`reactor-extra`**: Retry utils, Math utils, ...
-    - API documentation: [/docs/test/release/api](http://projectreactor.io/docs/test/release/api)
+    - API documentation: [/docs/test/release/api](https://projectreactor.io/docs/test/release/api)
   - **`reactor-logback`**: `logback` adapter for Flux/Mono `log()` feature.
 
 
@@ -167,7 +167,7 @@ To add this repo to your Maven build, add it to the `<repositories>` section lik
 To add it to your Gradle build, use the `repositories` configuration like this:
 ```groovy
 repositories {
-	maven { url 'http://repo.spring.io/libs-snapshot' }
+	maven { url 'https://repo.spring.io/libs-snapshot' }
 	mavenCentral()
 }
 ```
@@ -177,4 +177,4 @@ You should then be able to import a `BUILD-SNAPSHOT` version of the BOM, like `C
 # Reactive Streams Commons
 In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core. Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
 
-_Sponsored by [Pivotal](http://pivotal.io)_
+_Sponsored by [Pivotal](https://pivotal.io)_
