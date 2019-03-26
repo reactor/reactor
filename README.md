@@ -90,8 +90,8 @@ The first stable release is simply suffixed with `-RELEASE`, but the equivalent 
 
 ### Documentation
 
-* [Guides](http://projectreactor.io/docs/)
-* [Reactive Streams](http://www.reactive-streams.org/)
+* [Guides](https://projectreactor.io/docs/)
+* [Reactive Streams](https://www.reactive-streams.org/)
 
 ### Community / Support
 * [![Join the chat at https://gitter.im/reactor/reactor](	https://img.shields.io/gitter/room/reactor/reactor.svg)](https://gitter.im/reactor/reactor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -102,23 +102,23 @@ The first stable release is simply suffixed with `-RELEASE`, but the equivalent 
 ## Reactor Core
 [![Reactor Core](https://img.shields.io/badge/github-reactor/reactor--core-green.svg)](https://github.com/reactor/reactor-core)
 
-Reactive foundations for apps and frameworks and reactive extensions inspired API with [Mono](http://projectreactor.io/docs/core/release/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](http://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html) (n elements) types
+Reactive foundations for apps and frameworks and reactive extensions inspired API with [Mono](https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Mono.html) (1 element) and [Flux](https://projectreactor.io/docs/core/release/api/reactor/core/publisher/Flux.html) (n elements) types
 
- - API documentation: [/docs/core/release/api](http://projectreactor.io/docs/core/release/api)
+ - API documentation: [/docs/core/release/api](https://projectreactor.io/docs/core/release/api)
 
 ## Reactor IPC
 [![Reactor Core](https://img.shields.io/badge/github-reactor/reactor--ipc-green.svg)](https://github.com/reactor/reactor-ipc)
 
 Memory and InterProcessCommunication abstractions.
 
- - API documentation: [/docs/ipc/release/api](http://projectreactor.io/docs/ipc/release/api)
+ - API documentation: [/docs/ipc/release/api](https://projectreactor.io/docs/ipc/release/api)
 
 ## Reactor Netty
 [![Reactor Netty](https://img.shields.io/badge/github-reactor/reactor--netty-green.svg)](https://github.com/reactor/reactor-netty)
 
 TCP and HTTP client and server.
 
- - API documentation: [/docs/netty/release/api](http://projectreactor.io/docs/netty/release/api)
+ - API documentation: [/docs/netty/release/api](https://projectreactor.io/docs/netty/release/api)
 
 ## Reactor Addons
 [![Reactor Addons](https://img.shields.io/badge/github-reactor/reactor--addons-green.svg)](https://github.com/reactor/reactor-addons)
@@ -126,9 +126,9 @@ TCP and HTTP client and server.
 Extra projects adding features to reactor:
 
   - **`reactor-adapter`**: adapt to/from various libraries, mainly RxJava 2.
-    - API documentation: [/docs/adapter/release/api](http://projectreactor.io/docs/adapter/release/api)
+    - API documentation: [/docs/adapter/release/api](https://projectreactor.io/docs/adapter/release/api)
   - **`reactor-test`**: test `Flux`, `Mono` and other `Publisher`...
-    - API documentation: [/docs/test/release/api](http://projectreactor.io/docs/test/release/api)
+    - API documentation: [/docs/test/release/api](https://projectreactor.io/docs/test/release/api)
   - **`reactor-logback`**: `logback` adapter for Flux/Mono `log()` feature.
 
 
@@ -154,7 +154,7 @@ To add this repo to your Maven build, add it to the `<repositories>` section lik
 To add it to your Gradle build, use the `repositories` configuration like this:
 ```groovy
 repositories {
-	maven { url 'http://repo.spring.io/libs-snapshot' }
+	maven { url 'https://repo.spring.io/libs-snapshot' }
 	mavenCentral()
 }
 ```
