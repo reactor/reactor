@@ -90,7 +90,7 @@ The first stable release is simply suffixed with `-RELEASE`, but the equivalent 
 
 ### Documentation
 
-* [Guides](https://projectreactor.io/docs/)
+* [Guides](https://projectreactor.io/docs)
 * [Reactive Streams](https://www.reactive-streams.org/)
 
 ### Community / Support
