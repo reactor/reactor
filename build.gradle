@@ -72,7 +72,6 @@ configure(rootProject) {
 	compile "io.projectreactor:reactor-test:$reactorCoreVersion"
 	compile "io.projectreactor.addons:reactor-extra:$reactorExtraVersion"
 	compile "io.projectreactor.addons:reactor-adapter:$reactorAdapterVersion"
-	compile "io.projectreactor.addons:reactor-logback:$reactorLogbackVersion"
 
 	// Reactor Netty
 	compile "io.projectreactor.netty:reactor-netty:$reactorNettyVersion"
@@ -82,6 +81,9 @@ configure(rootProject) {
 
 	// Reactor RabbitMQ
 	compile "io.projectreactor.rabbitmq:reactor-rabbitmq:$reactorRabbitVersion"
+  
+  //Reactor Kotlin Extensions
+  compile "io.projectreactor.kotlin:reactor-kotlin-extensions:$reactorKotlinVersion"
   }
 
 }
