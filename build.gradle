@@ -70,6 +70,7 @@ configure(rootProject) {
 
 	// Reactor Addons
 	compile "io.projectreactor:reactor-test:$reactorCoreVersion"
+	compile "io.projectreactor:reactor-tools:$reactorCoreVersion"
 	compile "io.projectreactor.addons:reactor-extra:$reactorExtraVersion"
 	compile "io.projectreactor.addons:reactor-adapter:$reactorAdapterVersion"
 
