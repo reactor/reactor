@@ -77,6 +77,9 @@ configure(rootProject) {
 	// Reactor Netty
 	compile "io.projectreactor.netty:reactor-netty:$reactorNettyVersion"
 
+	// Reactor Pool
+	compile "io.projectreactor.addons:reactor-pool:$reactorPoolVersion"
+
 	// Reactor Kafka
 	compile "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
 
