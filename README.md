@@ -19,7 +19,7 @@ In Maven, you need to import the bom first:
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-bom</artifactId>
-            <version>Dysprosium-M1</version>
+            <version>Dysprosium-RELEASE</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -52,7 +52,7 @@ your project without a version number.
 ```groovy
 dependencies {
      // import BOM
-     implementation platform('io.projectreactor:reactor-bom:Dysprosium-M1')
+     implementation platform('io.projectreactor:reactor-bom:Dysprosium-RELEASE')
 
      // add dependencies without a version number
      implementation 'io.projectreactor:reactor-core'
@@ -74,7 +74,7 @@ Then use it to import the BOM:
 ```groovy
 dependencyManagement {
      imports {
-          mavenBom "io.projectreactor:reactor-bom:Dysprosium-M1"
+          mavenBom "io.projectreactor:reactor-bom:Dysprosium-RELEASE"
      }
 }
 ```
@@ -99,7 +99,7 @@ So far, the release trains are named:
  - `Aluminium` for the `3.0.x` generation of Reactor-Core ([:bulb:](# 'aluminium is shiny, as is this brand new release'))
  - `Bismuth` for the `3.1.x` generation ([:bulb:](# 'intricate crystaline structure, a bit like this release'))
  - `Californium` for the `3.2.x` generation ([:bulb:](# 'made in California, can be used to help start up nuclear reactors... shoutout to our own @smaldini moving there'))
- - `Dysprosium` for the `3.3.x` generation ([:bulb:](# 'because there are not that many real elements starting with D'))
+ - `Dysprosium` for the `3.3.x` generation ([:bulb:](# 'means hard to get and is used in nuclear reactors'))
  
 
 # Enrolling
