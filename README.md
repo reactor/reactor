@@ -8,7 +8,7 @@ Starting from 3.0, Reactor is now organized into multiple projects:
 
 ![Reactor Project](https://raw.githubusercontent.com/reactor/projectreactor.io/master/src/main/static/assets/img/org3.png)
 
-A set of compatible versions for all these projects is curated under a BOM ("Bill of Material").
+A set of compatible versions for all these projects is curated under a BOM ("Bill of Materials").
 
 ## Using the BOM with Maven
 In Maven, you need to import the bom first:
