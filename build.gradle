@@ -13,151 +13,121 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-buildscript {
-  repositories {
-	maven { url "https://repo.spring.io/plugins-release" }
-  }
-  dependencies {
-	classpath("org.springframework.build.gradle:propdeps-plugin:0.0.7")
-  }
+
+plugins {
+	id "java-platform"
+	id "maven-publish"
 }
 
-configure(rootProject) {
+group = 'io.projectreactor'
+description = 'Bill of materials to make sure a consistent set of versions is used for Reactor 3.'
 
-  rootProject.group = 'io.projectreactor'
-  rootProject.description = 'Bill of materials to make sure a consistent set of versions is used for Reactor 3.'
-
-
-  ext {
-	gradleScriptDir = "${rootProject.projectDir}/gradle"
-  }
-
-  apply plugin: 'propdeps-maven'
-  apply plugin: 'maven'
-
-  repositories {
+repositories {
 	mavenCentral()
 	jcenter()
 	maven { url 'https://repo.spring.io/release' }
 	maven { url 'https://repo.spring.io/milestone' }
 	maven { url "https://oss.sonatype.org/content/repositories/releases/" }
-
 	if (version.endsWith('BUILD-SNAPSHOT') || project.hasProperty('platformVersion')) {
-	  mavenLocal()
-	  maven { url 'https://repo.spring.io/libs-snapshot' }
+		mavenLocal()
+		maven { url 'https://repo.spring.io/libs-snapshot' }
 	}
-  }
-
-  configurations.archives.artifacts.clear()
-  artifacts {
-	// work around GRADLE-2406 by attaching text artifact
-	archives(file("reactor-bom.txt"))
-  }
-
-  install {
-	repositories.mavenInstaller {
-	  customizePom(pom, rootProject)
-	}
-  }
-
-  dependencies {
-	// Reactive Streams
-	compile "org.reactivestreams:reactive-streams:1.0.2"
-
-	// Reactor Core
-	compile "io.projectreactor:reactor-core:$reactorCoreVersion"
-
-	// Reactor Addons
-	compile "io.projectreactor:reactor-test:$reactorCoreVersion"
-	compile "io.projectreactor.addons:reactor-extra:$reactorExtraVersion"
-	compile "io.projectreactor.addons:reactor-adapter:$reactorAdapterVersion"
-	compile "io.projectreactor.addons:reactor-logback:$reactorLogbackVersion"
-
-	// Reactor Netty
-	compile "io.projectreactor.netty:reactor-netty:$reactorNettyVersion"
-
-	// Reactor Kafka
-	compile "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
-
-	// Reactor RabbitMQ
-	compile "io.projectreactor.rabbitmq:reactor-rabbitmq:$reactorRabbitVersion"
-  }
-
 }
 
-def customizePom(pom, gradleProject) {
-  pom.whenConfigured { generatedPom ->
-
-	//make sure that dependencies are under <dependencyManagement>
-	generatedPom.withXml {
-	  if (generatedPom.dependencies.size > 0) {
-		asNode().appendNode('dependencyManagement', asNode().dependencies)
-		asNode().dependencies.replaceNode {}
-	  }
+dependencies {
+	constraints {
+		// Reactive Streams
+		api "org.reactivestreams:reactive-streams:1.0.2"
+		// Reactor Core
+		api "io.projectreactor:reactor-core:$reactorCoreVersion"
+		// Reactor Addons
+		api "io.projectreactor:reactor-test:$reactorCoreVersion"
+		api "io.projectreactor.addons:reactor-extra:$reactorExtraVersion"
+		api "io.projectreactor.addons:reactor-adapter:$reactorAdapterVersion"
+		api "io.projectreactor.addons:reactor-logback:$reactorLogbackVersion"
+		// Reactor Netty
+		api "io.projectreactor.netty:reactor-netty:$reactorNettyVersion"
+		// Reactor Kafka
+		api "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
+		// Reactor RabbitMQ
+		api "io.projectreactor.rabbitmq:reactor-rabbitmq:$reactorRabbitVersion"
 	}
+}
 
-	generatedPom.project {
-	  name = 'Project Reactor 3 Release Train - BOM'
-	  description = gradleProject.description
-	  url = 'https://projectreactor.io'
-
-	  packaging = "pom"
-
-	  organization {
-		name = 'Pivotal Software, Inc.'
-		url = 'https://pivotal.io/'
-	  }
-
-	  licenses {
-		license {
-		  name 'The Apache Software License, Version 2.0'
-		  url 'https://www.apache.org/licenses/LICENSE-2.0.txt'
-		  distribution 'repo'
+publishing {
+	publications {
+		mavenJava(MavenPublication) {
+			artifactId = 'reactor-bom'
+			from components.javaPlatform
+			pom {
+				afterEvaluate {
+					name = 'Project Reactor 3 Release Train - BOM'
+					description = project.description
+				}
+				url = 'https://projectreactor.io'
+				organization {
+					name = 'Pivotal Software, Inc.'
+					url = 'https://pivotal.io/'
+				}
+				licenses {
+					license {
+						name = 'The Apache Software License, Version 2.0'
+						url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+						distribution = 'repo'
+					}
+				}
+				scm {
+					url = 'https://github.com/reactor/reactor'
+					connection = 'scm:git:git://github.com/reactor/reactor'
+					developerConnection = 'scm:git:git://github.com/reactor/reactor'
+				}
+				issueManagement {
+					system = "GitHub Issues"
+					url = "https://github.com/reactor"
+				}
+				developers {
+					developer {
+						id = 'smaldini'
+						name = 'Stephane Maldini'
+						email = 'smaldini at pivotal.io'
+					}
+					developer {
+						id = 'simonbasle'
+						name = 'Simon Baslé'
+						email = 'sbasle at pivotal.io'
+					}
+					developer {
+						id = 'violetagg'
+						name = 'Violeta Georgieva'
+						email = 'vgeorgieva at pivotal.io'
+					}
+					developer {
+						id = 'bsideup'
+						name = 'Sergei Egorov'
+						email = 'segorov at pivotal.io'
+					}
+					developer {
+						id = 'akarnokd'
+						name = 'David Karnok'
+						email = 'akarnokd at gmail.com'
+					}
+				}
+				// remove scope information from published BOM
+				// to be removed after Gradle 6.0 upgrade, see https://github.com/gradle/gradle/issues/10878
+				withXml {
+					asNode().dependencyManagement.first().dependencies.first().each {
+						it.remove(it.scope.first())
+					}
+				}
+			}
+			versionMapping {
+				usage('java-api') {
+					fromResolutionResult()
+				}
+				usage('java-runtime') {
+					fromResolutionResult()
+				}
+			}
 		}
-	  }
-
-	  scm {
-		url = 'https://github.com/reactor/reactor'
-		connection = 'scm:git:git://github.com/reactor/reactor'
-		developerConnection = 'scm:git:git://github.com/reactor/reactor'
-	  }
-
-	  issueManagement {
-		system = "GitHub Issues"
-		url = "https://github.com/reactor"
-	  }
-
-	  developers {
-		developer {
-		  id = 'smaldini'
-		  name = 'Stephane Maldini'
-		  email = 'smaldini at pivotal.io'
-		}
-
-		developer {
-		  id = 'simonbasle'
-		  name = 'Simon Baslé'
-		  email = 'sbasle at pivotal.io'
-		}
-
-		developer {
-		  id = 'violetagg'
-		  name = 'Violeta Georgieva'
-		  email = 'vgeorgieva at pivotal.io'
-		}
-
-		developer {
-		  id = 'bsideup'
-		  name = 'Sergei Egorov'
-		  email = 'segorov at pivotal.io'
-		}
-		
-		developer {
-		  id = 'akarnokd'
-		  name = 'David Karnok'
-		  email = 'akarnokd at gmail.com'
-		}
-	  }
 	}
-  }.writeTo("$buildDir/poms/reactor-bom-${version}.xml")
 }
