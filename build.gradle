@@ -17,6 +17,7 @@
 plugins {
 	id "java-platform"
 	id "maven-publish"
+	id "com.jfrog.artifactory" version '4.9.8'
 }
 
 group = 'io.projectreactor'
@@ -131,3 +132,7 @@ publishing {
 		}
 	}
 }
+artifactoryPublish {
+	publications(publishing.publications.mavenJava)
+}
+
