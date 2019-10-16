@@ -29,7 +29,6 @@ configure(rootProject) {
 
 
   ext {
-	gradleVersion = '3.1'
 	gradleScriptDir = "${rootProject.projectDir}/gradle"
   }
 
@@ -152,9 +151,4 @@ def customizePom(pom, gradleProject) {
 	  }
 	}
   }.writeTo("$buildDir/poms/reactor-bom-${version}.xml")
-}
-
-task wrapper(type: Wrapper, description: "Create a Gradle self-download wrapper") {
-  group = 'Project Setup'
-  gradleVersion = "$gradleVersion"
 }
