@@ -44,8 +44,8 @@ dependencies {
 		// Reactor Addons
 		api "io.projectreactor:reactor-test:$reactorCoreVersion"
 		api "io.projectreactor:reactor-tools:$reactorCoreVersion"
-		api "io.projectreactor.addons:reactor-extra:$reactorExtraVersion"
-		api "io.projectreactor.addons:reactor-adapter:$reactorAdapterVersion"
+		api "io.projectreactor.addons:reactor-extra:$reactorAddonsVersion"
+		api "io.projectreactor.addons:reactor-adapter:$reactorAddonsVersion"
 		// Reactor Netty
 		api "io.projectreactor.netty:reactor-netty:$reactorNettyVersion"
 		// Reactor Pool
@@ -55,7 +55,7 @@ dependencies {
 		// Reactor RabbitMQ
 		api "io.projectreactor.rabbitmq:reactor-rabbitmq:$reactorRabbitVersion"
 		//Reactor Kotlin Extensions
-		api "io.projectreactor.kotlin:reactor-kotlin-extensions:$reactorKotlinVersion"
+		api "io.projectreactor.kotlin:reactor-kotlin-extensions:$reactorKotlinExtensionsVersion"
 	}
 }
 
