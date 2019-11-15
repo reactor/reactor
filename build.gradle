@@ -29,9 +29,15 @@ repositories {
 	maven { url 'https://repo.spring.io/release' }
 	maven { url 'https://repo.spring.io/milestone' }
 	maven { url "https://oss.sonatype.org/content/repositories/releases/" }
-	if (version.endsWith('BUILD-SNAPSHOT') || project.hasProperty('platformVersion')) {
+	if (version.endsWith('BUILD-SNAPSHOT')) {
 		mavenLocal()
 		maven { url 'https://repo.spring.io/libs-snapshot' }
+	}
+}
+
+task groupId(group: "releaser helpers", description: "output the group id of the root project") {
+	doLast {
+		println rootProject.group
 	}
 }
 
@@ -43,15 +49,15 @@ dependencies {
 		api "io.projectreactor:reactor-core:$reactorCoreVersion"
 		// Reactor Addons
 		api "io.projectreactor:reactor-test:$reactorCoreVersion"
-		api "io.projectreactor.addons:reactor-extra:$reactorExtraVersion"
-		api "io.projectreactor.addons:reactor-adapter:$reactorAdapterVersion"
-		api "io.projectreactor.addons:reactor-logback:$reactorLogbackVersion"
+		api "io.projectreactor.addons:reactor-extra:$reactorAddonsVersion"
+		api "io.projectreactor.addons:reactor-adapter:$reactorAddonsVersion"
+		api "io.projectreactor.addons:reactor-logback:$reactorAddonsVersion"
 		// Reactor Netty
 		api "io.projectreactor.netty:reactor-netty:$reactorNettyVersion"
 		// Reactor Kafka
 		api "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
 		// Reactor RabbitMQ
-		api "io.projectreactor.rabbitmq:reactor-rabbitmq:$reactorRabbitVersion"
+		api "io.projectreactor.rabbitmq:reactor-rabbitmq:$reactorRabbitmqVersion"
 	}
 }
 
@@ -135,4 +141,3 @@ publishing {
 artifactoryPublish {
 	publications(publishing.publications.mavenJava)
 }
-
