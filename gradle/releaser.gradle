@@ -43,14 +43,12 @@ task copyReadme(type: Copy, group: "releaser helpers", description: "copies the 
 task bumpVersionsInReadme(type: Copy, group: "releaser helpers", description: "replaces versions in README") {
 	def oldVersion = rootProject.findProperty("oldVersion")
 	def currentVersion = rootProject.findProperty("currentVersion")
-	def nextVersion = rootProject.findProperty("nextVersion")
-	def oldSnapshot = currentVersion?.replace("RELEASE", "BUILD-SNAPSHOT")
 
-	onlyIf { oldVersion != null && currentVersion != null && nextVersion != null }
+	onlyIf { oldVersion != null && currentVersion != null }
 	dependsOn copyReadme
 
 	doLast {
-		println "Will replace $oldVersion with $currentVersion and $oldSnapshot with $nextVersion"
+		println "Will replace $oldVersion with $currentVersion"
 	}
 	from(rootProject.buildDir) {
 		include 'README.md'
@@ -58,7 +56,6 @@ task bumpVersionsInReadme(type: Copy, group: "releaser helpers", description: "r
 	into rootProject.rootDir
 	filter { line -> line
 			.replace(oldVersion, currentVersion)
-			.replace(oldSnapshot, nextVersion)
 	}
 }
 
