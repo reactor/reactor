@@ -1,3 +1,7 @@
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.temporal.ChronoField
+
 /*
  * Copyright (c) 2011-2019 Pivotal Software Inc, All Rights Reserved.
  *
@@ -26,5 +30,75 @@ if (project.hasProperty("releaserDryRun") && project.findProperty("releaserDryRu
 task groupId(group: "releaser helpers", description: "output the group id of the root project") {
 	doLast {
 		println rootProject.group
+	}
+}
+
+task copyReadme(type: Copy, group: "releaser helpers", description: "copies the README in preparation for search and replace") {
+	from(rootProject.rootDir) {
+		include "README.md"
+	}
+	into rootProject.buildDir
+}
+
+task bumpVersionsInReadme(type: Copy, group: "releaser helpers", description: "replaces versions in README") {
+	def oldVersion = rootProject.findProperty("oldVersion")
+	def currentVersion = rootProject.findProperty("currentVersion")
+	def nextVersion = rootProject.findProperty("nextVersion")
+	def oldSnapshot = currentVersion?.replace("RELEASE", "BUILD-SNAPSHOT")
+
+	onlyIf { oldVersion != null && currentVersion != null && nextVersion != null }
+	dependsOn copyReadme
+
+	doLast {
+		println "Will replace $oldVersion with $currentVersion and $oldSnapshot with $nextVersion"
+	}
+	from(rootProject.buildDir) {
+		include 'README.md'
+	}
+	into rootProject.rootDir
+	filter { line -> line
+			.replace(oldVersion, currentVersion)
+			.replace(oldSnapshot, nextVersion)
+	}
+}
+
+String getOrGenerateBuildNumber() {
+	if (project.hasProperty("buildNumber")) {
+		return project.findProperty("buildNumber")
+	}
+	def jenkinsNumber = System.getenv("BUILD_NUMBER")
+	if (jenkinsNumber != null) {
+		return jenkinsNumber
+	}
+	ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC)
+	long secondsInDay = now.toEpochSecond() - ZonedDateTime.now(ZoneOffset.UTC).withSecond(0).withHour(0).withMinute(0).toEpochSecond()
+	String buildNumber = "$version-${now.get(ChronoField.YEAR)}${now.get(ChronoField.MONTH_OF_YEAR).toString().padLeft(2,'0')}${now.get(ChronoField.DAY_OF_MONTH).toString().padLeft(2,'0')}@${secondsInDay}"
+	println "No buildNumber set, generated: $buildNumber"
+	return buildNumber
+}
+
+task printBuildNumber() {
+	doLast {
+		println getOrGenerateBuildNumber()
+	}
+}
+
+if (project.hasProperty("artifactory_publish_password")) {
+	configure(rootProject) { p ->
+		apply plugin: "com.jfrog.artifactory"
+		def buildNumber = getOrGenerateBuildNumber()
+		artifactory {
+			contextUrl = "${artifactory_publish_contextUrl}"
+			publish {
+				repository {
+					repoKey = "${artifactory_publish_repoKey}"
+					username = "${artifactory_publish_username}"
+					password = "${artifactory_publish_password}"
+				}
+			}
+			clientConfig.setIncludeEnvVars(false)
+			clientConfig.info.setBuildName('Reactor - Releaser - BOM')
+			clientConfig.info.setBuildNumber(buildNumber)
+		}
 	}
 }
