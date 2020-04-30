@@ -19,7 +19,7 @@ In Maven, you need to import the bom first:
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-bom</artifactId>
-            <version>Dysprosium-SR7</version>
+            <version>2020.0.0</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -52,7 +52,7 @@ your project without a version number.
 ```groovy
 dependencies {
      // import BOM
-     implementation platform('io.projectreactor:reactor-bom:Dysprosium-SR7')
+     implementation platform('io.projectreactor:reactor-bom:2020.0.0')
 
      // add dependencies without a version number
      implementation 'io.projectreactor:reactor-core'
@@ -74,7 +74,7 @@ Then use it to import the BOM:
 ```groovy
 dependencyManagement {
      imports {
-          mavenBom "io.projectreactor:reactor-bom:Dysprosium-SR7"
+          mavenBom "io.projectreactor:reactor-bom:2020.0.0"
      }
 }
 ```
@@ -91,15 +91,28 @@ dependencies {
 ## BOM Versioning Scheme
 The BOM can be imported in Maven, which will provide a set of default artifact versions to use whenever the corresponding dependency is added to a pom without an explicitly provided version.
 
-As the different artifacts versions are not necessarily aligned, the BOM represents a release train with a codename-based versioning scheme: the usual MAJOR.MINOR numbers are replaced by a chemical name from the [Periodic Table of Elements](https://en.wikipedia.org/wiki/List_of_chemical_elements), in growing alphabetical order.
+As the different artifacts versions are not necessarily aligned, the BOM represents a release train with an heterogeneous range of versions that are curated to work together.
+The artifact version follows the `YYYY.MINOR.MICRO-QUALIFIER` scheme since Europium, where:
 
-The first stable release is simply suffixed with `-RELEASE`, but the equivalent of patch releases are also possible as "Service Releases", appending the suffix `-SR` followed by the number of the service release (eg. `-SR1`, `-SR2`).
+ * `YYYY` is the year of the first GA release in a given release cycle (like 3.4.0 for 3.4.x)
+ * `.MINOR` is a 0-based number incrementing with each new release cycle
+ ** in the case of the BOM it allows discerning between release cycles in case two get first released the same year
+ * `.PATCH` is a 0-based number incrementing with each service release
+ * `-QUALIFIER` is a textual qualifier, which is omitted in the case of GA releases (see below)
+ 
+On top of the artifact version, each release train has an associated codename, a chemical name from the [Periodic Table of Elements](https://en.wikipedia.org/wiki/List_of_chemical_elements) in growing alphabetical order, for reference in discussions.
 
-So far, the release trains are named:
+So far, the release trains code names are:
  - `Aluminium` for the `3.0.x` generation of Reactor-Core ([:bulb:](# 'aluminium is shiny, as is this brand new release'))
  - `Bismuth` for the `3.1.x` generation ([:bulb:](# 'intricate crystaline structure, a bit like this release'))
  - `Californium` for the `3.2.x` generation ([:bulb:](# 'made in California, can be used to help start up nuclear reactors... shoutout to our own @smaldini moving there'))
  - `Dysprosium` for the `3.3.x` generation ([:bulb:](# 'means hard to get and is used in nuclear reactors'))
+ - `Europium` (`2020.0`) for the `3.4.x` generation ([:bulb:](# 'a large part of the team is now based in Europe'))
+
+NOTE: Up until Dysprosium, the BOM was versioned using a release train scheme with a codename followed by a qualifier, and the qualifiers were slightly different.
+For example: Aluminium-RELEASE (first GA release, would now be something like YYYY.0.0), Bismuth-M1, Californium-SR1 (service release
+would now be something like YYYY.0.1), Dysprosium-RC1, Dysprosium-BUILD-SNAPSHOT (after each patch, we'd go back to the same snapshot version. would now be something
+like YYYY.0.X-SNAPSHOT so we get 1 snapshot per PATCH).
  
 
 # Enrolling
@@ -173,7 +186,7 @@ repositories {
 }
 ```
 
-You should then be able to import a `BUILD-SNAPSHOT` version of the BOM, like `Dysprosium-BUILD-SNAPSHOT`.
+You should then be able to import a `-SNAPSHOT` version of the BOM, like `2020.0.1-SNAPSHOT` for the `snapshot` of the `second service release` of `2020.0` (Europium).
 
 # Reactive Streams Commons
 In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core. Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
