@@ -49,6 +49,7 @@ dependencies {
 		api "io.projectreactor.addons:reactor-extra:$reactorAddonsVersion"
 		api "io.projectreactor.addons:reactor-adapter:$reactorAddonsVersion"
 		// Reactor Netty
+		api "io.projectreactor.netty:reactor-netty:$reactorNettyVersion"
 		api "io.projectreactor.netty:reactor-netty-core:$reactorNettyVersion"
 		api "io.projectreactor.netty:reactor-netty-http:$reactorNettyVersion"
 		// Reactor Pool
