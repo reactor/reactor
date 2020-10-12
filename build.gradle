@@ -17,7 +17,7 @@
 plugins {
 	id "java-platform"
 	id "maven-publish"
-	id "com.jfrog.artifactory" version '4.9.8'
+	id "com.jfrog.artifactory" version '4.15.2'
 }
 
 apply from: "gradle/releaser.gradle"
