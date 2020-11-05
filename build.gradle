@@ -57,6 +57,8 @@ dependencies {
 		api "io.projectreactor.addons:reactor-pool:$reactorPoolVersion"
 		// Reactor Kafka
 		api "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
+		// Reactor Kafka Addons
+		api "io.projectreactor.kafka:reactor-kafka-tools:$reactorKafkaVersion"
 		// Reactor RabbitMQ
 		api "io.projectreactor.rabbitmq:reactor-rabbitmq:$reactorRabbitVersion"
 		//Reactor Kotlin Extensions
