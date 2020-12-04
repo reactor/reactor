@@ -26,12 +26,11 @@ description = 'Bill of materials to make sure a consistent set of versions is us
 repositories {
 	mavenCentral()
 	jcenter()
-	maven { url 'https://repo.spring.io/release' }
 	maven { url 'https://repo.spring.io/milestone' }
 	maven { url "https://oss.sonatype.org/content/repositories/releases/" }
 	if (version.endsWith('BUILD-SNAPSHOT')) {
 		mavenLocal()
-		maven { url 'https://repo.spring.io/libs-snapshot' }
+		maven { url 'https://repo.spring.io/snapshot' }
 	}
 }
 
