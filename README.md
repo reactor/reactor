@@ -19,7 +19,7 @@ In Maven, you need to import the bom first:
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-bom</artifactId>
-            <version>2020.0.1</version>
+            <version>2020.0.2</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -52,7 +52,7 @@ your project without a version number.
 ```groovy
 dependencies {
      // import BOM
-     implementation platform('io.projectreactor:reactor-bom:2020.0.1')
+     implementation platform('io.projectreactor:reactor-bom:2020.0.2')
 
      // add dependencies without a version number
      implementation 'io.projectreactor:reactor-core'
@@ -74,7 +74,7 @@ Then use it to import the BOM:
 ```groovy
 dependencyManagement {
      imports {
-          mavenBom "io.projectreactor:reactor-bom:2020.0.1"
+          mavenBom "io.projectreactor:reactor-bom:2020.0.2"
      }
 }
 ```
@@ -186,7 +186,7 @@ repositories {
 }
 ```
 
-You should then be able to import a `-SNAPSHOT` version of the BOM, like `2020.0.1-SNAPSHOT` for the `snapshot` of the `second service release` of `2020.0` (Europium).
+You should then be able to import a `-SNAPSHOT` version of the BOM, like `2020.0.2-SNAPSHOT` for the `snapshot` of the `second service release` of `2020.0` (Europium).
 
 # Reactive Streams Commons
 In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core. Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
