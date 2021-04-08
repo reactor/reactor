@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
+import org.gradle.util.VersionNumber
+
 plugins {
 	id "java-platform"
 	id "maven-publish"
-	id "com.jfrog.artifactory" version '4.9.8'
+	id "com.jfrog.artifactory" version "4.15.2" apply false //we apply the plugin conditionally below
 }
 
 apply from: "gradle/releaser.gradle"
@@ -59,7 +61,61 @@ dependencies {
 	}
 }
 
+
+static def qualifyVersion(String v) {
+	v = v.toUpperCase()
+	if (v.startsWith("DYSPROSIUM")) {
+		//old scheme
+		def qualifier = v.replaceFirst("DYSPROSIUM-", "")
+		if (qualifier == 'RELEASE') return "RELEASE"
+		if (qualifier.matches("(?:SR)\\d+")) return "RELEASE" //old SR
+		if (qualifier.matches("(?:M|RC)\\d+")) return "MILESTONE"
+		if (qualifier == "BUILD-SNAPSHOT") return "SNAPSHOT"
+
+		return "BAD"
+	}
+	//new scheme
+	def versionNumber = VersionNumber.parse(v)
+	if (versionNumber == VersionNumber.UNKNOWN) return "BAD";
+
+	if (versionNumber.qualifier == null || versionNumber.qualifier.size() == 0) return "RELEASE" //new scheme
+	if (versionNumber.qualifier.matches("(?:M|RC)\\d+")) return "MILESTONE"
+	if (versionNumber.qualifier == "SNAPSHOT") return "SNAPSHOT"
+
+	return "BAD"
+}
+
+task qualifyVersionGha() {
+	doLast {
+		def versionType = qualifyVersion("$version")
+
+		println "::set-output name=versionType::$versionType"
+		println "::set-output name=fullVersion::$version"
+		if (versionType == "BAD") {
+			println "::error ::Unable to parse $version to a VersionNumber with recognizable qualifier"
+			throw new TaskExecutionException(tasks.getByName("qualifyVersionGha"), new IllegalArgumentException("Unable to parse $version to a VersionNumber with recognizable qualifier"))
+		}
+	}
+}
+
 publishing {
+	repositories {
+		maven {
+			name = "mock"
+			url = "${rootProject.buildDir}/mockRepo"
+		}
+		if (qualifyVersion("$version") == "RELEASE") {
+			maven {
+				name = "sonatype"
+				url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2"
+				credentials {
+					username findProperty("sonatypeUsername")
+					password findProperty("sonatypePassword")
+				}
+			}
+		}
+	}
+
 	publications {
 		mavenJava(MavenPublication) {
 			artifactId = 'reactor-bom'
@@ -137,8 +193,27 @@ publishing {
 	}
 }
 
-artifactoryPublish {
-	//don't activate the onlyIf clause below yet, so that Bamboo builds will publish stuff...
-	//onlyIf { project.hasProperty("artifactory_publish_password") }
-	publications(publishing.publications.mavenJava)
+if (rootProject.hasProperty("artifactory_publish_password")) {
+	apply plugin: "com.jfrog.artifactory"
+
+	artifactoryPublish {
+		publications(publishing.publications.mavenJava)
+	}
+}
+
+if (qualifyVersion("$version") in ["RELEASE", "MILESTONE"] || rootProject.hasProperty("forceSigning")) {
+	apply plugin: 'signing'
+
+	signing {
+		//requiring signature if there is a publish task that is not to MavenLocal
+		required {  gradle.taskGraph.allTasks.any { it.name.toLowerCase().contains("publish")	&& !it.name.contains("MavenLocal") } }
+		def signingKey = findProperty("signingKey")
+		def signingPassword = findProperty("signingPassword")
+
+		useInMemoryPgpKeys(signingKey, signingPassword)
+
+		afterEvaluate {
+			sign publishing.publications.mavenJava
+		}
+	}
 }
