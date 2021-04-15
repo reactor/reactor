@@ -6,7 +6,7 @@
 
 Starting from 3.0, Reactor is now organized into multiple projects:
 
-![Reactor Project](https://raw.githubusercontent.com/reactor/projectreactor.io/master/src/main/static/assets/img/org3.png)
+![Reactor Project](https://raw.githubusercontent.com/reactor/projectreactor.io/main/src/main/static/assets/img/org3.png)
 
 A set of compatible versions for all these projects is curated under a BOM ("Bill of Materials").
 
@@ -107,7 +107,7 @@ So far, the release trains are named:
 [Join the initiative](https://support.springsource.com/spring_committer_signup), fork, discuss and PR anytime. Roadmap is collaborative and we do enjoy new ideas, simplifications, doc, feedback, and, did we mention feedback already ;) ? As any other open source project, you are the hero, Reactor is only useful because of you and we can't wait to see your pull request mate !
 
 [![GitHub forks](https://img.shields.io/github/forks/reactor/reactor-core.svg?style=social&label=Fork)](https://github.com/reactor/reactor-core/issues#fork-destination-box)
-[![license](https://img.shields.io/github/license/reactor/reactor-core.svg?label=Reactor%20is)](https://github.com/reactor/reactor-core/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/reactor/reactor-core.svg?label=Reactor%20is)](https://github.com/reactor/reactor-core/blob/main/LICENSE)
 
 ### Documentation
 
