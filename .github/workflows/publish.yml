@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-20.04
     outputs:
       versionType: ${{ steps.version.outputs.versionType }}
+      fullVersion: ${{ steps.version.outputs.fullVersion }}
     steps:
       - uses: actions/checkout@v2
       - name: setup java
@@ -29,14 +30,6 @@ jobs:
       - name: run checks
         id: checks
         run: ./gradlew check
-      - name: tag
-        if: steps.version.outputs.versionType == 'RELEASE' || steps.version.outputs.versionType == 'MILESTONE'
-        #specifics: no v prefix for the tag
-        run: |
-          git config --local user.name 'reactorbot'
-          git config --local user.email '32325210+reactorbot@users.noreply.github.com'
-          git tag -m "Release BOM ${{ steps.version.outputs.fullVersion }}" ${{ steps.version.outputs.fullVersion }} ${{ github.sha }}
-          git push --tags
 
   #deploy the snapshot artifacts to Artifactory
   deploySnapshot:
@@ -77,6 +70,13 @@ jobs:
           ORG_GRADLE_PROJECT_signingPassword: ${{secrets.SIGNING_PASSPHRASE}}
         run: |
           ./gradlew assemble sign artifactoryPublish -Partifactory_publish_contextUrl=https://repo.spring.io -Partifactory_publish_repoKey=libs-milestone-local
+      - name: tag
+        #specifics: no v prefix for the tag
+        run: |
+          git config --local user.name 'reactorbot'
+          git config --local user.email '32325210+reactorbot@users.noreply.github.com'
+          git tag -m "Release BOM milestone ${{ needs.prepare.outputs.fullVersion }}" ${{ needs.prepare.outputs.fullVersion }} ${{ github.sha }}
+          git push --tags
 
   #sign the release artifacts and deploy them to Artifactory
   deployRelease:
@@ -100,6 +100,13 @@ jobs:
           ORG_GRADLE_PROJECT_sonatypePassword: ${{secrets.SONATYPE_PASSWORD}}
         run: |
           ./gradlew assemble sign artifactoryPublish -Partifactory_publish_contextUrl=https://repo.spring.io  -Partifactory_publish_repoKey=libs-release-local publishMavenJavaPublicationToSonatypeRepository
+      - name: tag
+        #specifics: no v prefix for the tag
+        run: |
+          git config --local user.name 'reactorbot'
+          git config --local user.email '32325210+reactorbot@users.noreply.github.com'
+          git tag -m "Release BOM ${{ needs.prepare.outputs.fullVersion }}" ${{ needs.prepare.outputs.fullVersion }} ${{ github.sha }}
+          git push --tags
 
 # For Gradle configuration of signing, see https://docs.gradle.org/current/userguide/signing_plugin.html#sec:in-memory-keys
 # publishMavenJavaPublicationToSonatypeRepository only sends to a staging repository
