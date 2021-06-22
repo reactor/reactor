@@ -16,10 +16,19 @@
 
 import org.gradle.util.VersionNumber
 
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath 'org.jfrog.buildinfo:build-info-extractor-gradle:4.24.5' //applied in individual submodules
+	}
+}
+
 plugins {
 	id "java-platform"
 	id "maven-publish"
-	id "com.jfrog.artifactory" version "4.15.2" apply false //we apply the plugin conditionally below
+	//artifactory is now from Maven Central, see above
 }
 
 apply from: "gradle/releaser.gradle"
