@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2011-2017 Pivotal Software Inc, All Rights Reserved.
+ * Copyright (c) 2011-2021 VMware Inc. or its affiliates, All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *       https://www.apache.org/licenses/LICENSE-2.0
+ *   https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -136,8 +136,8 @@ publishing {
 				}
 				url = 'https://projectreactor.io'
 				organization {
-					name = 'Pivotal Software, Inc.'
-					url = 'https://pivotal.io/'
+					name = 'reactor'
+					url = 'https://github.com/reactor'
 				}
 				licenses {
 					license {
@@ -157,29 +157,19 @@ publishing {
 				}
 				developers {
 					developer {
-						id = 'smaldini'
-						name = 'Stephane Maldini'
-						email = 'smaldini at pivotal.io'
-					}
-					developer {
 						id = 'simonbasle'
 						name = 'Simon Baslé'
-						email = 'sbasle at pivotal.io'
+						email = 'sbasle at vmware.com'
 					}
 					developer {
 						id = 'violetagg'
 						name = 'Violeta Georgieva'
-						email = 'vgeorgieva at pivotal.io'
+						email = 'violetag at vmware.com'
 					}
 					developer {
-						id = 'bsideup'
-						name = 'Sergei Egorov'
-						email = 'segorov at pivotal.io'
-					}
-					developer {
-						id = 'akarnokd'
-						name = 'David Karnok'
-						email = 'akarnokd at gmail.com'
+						id = 'odokuka'
+						name = 'Oleh Dokuka'
+						email = 'odokuka at vmware.com'
 					}
 				}
 				// remove scope information from published BOM

@@ -178,4 +178,4 @@ You should then be able to import a `BUILD-SNAPSHOT` version of the BOM, like `D
 # Reactive Streams Commons
 In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core. Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
 
-_Sponsored by [Pivotal](https://pivotal.io)_
+_Sponsored by [VMware](https://tanzu.vmware.com)_
