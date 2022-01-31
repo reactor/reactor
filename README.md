@@ -5,8 +5,10 @@
  [![Download](https://img.shields.io/maven-central/v/io.projectreactor/reactor-bom.svg) ](https://img.shields.io/maven-central/v/io.projectreactor/reactor-bom.svg)
 
 Starting from 3.0, Reactor is now organized into multiple projects:
-
-![Reactor Project](https://raw.githubusercontent.com/reactor/projectreactor.io/main/src/main/static/assets/img/org3.png)
+ - [`reactor-core`](https://github.com/reactor/reactor-core/)
+ - [`reactor-netty`](https://github.com/reactor/reactor-netty/)
+ - addons like [`reactor-extra`](https://github.com/reactor/reactor-addons/) or [`reactor-pool`](https://github.com/reactor/reactor-pool/)
+ - other more community-driven integrations like [`reactor-kafka`](https://github.com/reactor/reactor-kafka/) and [`reactor-rabbitmq`](https://github.com/reactor/reactor-rabbitmq)
 
 A set of compatible versions for all these projects is curated under a BOM ("Bill of Materials") hosted under this very repository.
 
@@ -121,7 +123,7 @@ like YYYY.0.X-SNAPSHOT so we get 1 snapshot per PATCH).
 
 As hinted above, this repository is for hosting the BOM and for transverse issues only. Most of the time, if you're looking to open an issue or a PR, it should be done in a more specific repository corresponding to one of the actual artifacts.
 
-All projects follow the same detailed contributing guidelines which you can find [https://github.com/reactor/.github/blob/main/CONTRIBUTING.md](here).
+All projects follow the same detailed contributing guidelines which you can find [here](https://github.com/reactor/.github/blob/main/CONTRIBUTING.md).
 
 This document also give some ways you can get answers to your [questions](https://github.com/reactor/.github/blob/main/CONTRIBUTING.md#question-do-you-have-a-question).
 
