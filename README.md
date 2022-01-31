@@ -5,10 +5,12 @@
  [![Download](https://img.shields.io/maven-central/v/io.projectreactor/reactor-bom.svg) ](https://img.shields.io/maven-central/v/io.projectreactor/reactor-bom.svg)
 
 Starting from 3.0, Reactor is now organized into multiple projects:
+ - [`reactor-core`](https://github.com/reactor/reactor-core/)
+ - [`reactor-netty`](https://github.com/reactor/reactor-netty/)
+ - addons like [`reactor-extra`](https://github.com/reactor/reactor-addons/) or [`reactor-pool`](https://github.com/reactor/reactor-pool/)
+ - other more community-driven integrations like [`reactor-kafka`](https://github.com/reactor/reactor-kafka/) and [`reactor-rabbitmq`](https://github.com/reactor/reactor-rabbitmq)
 
-![Reactor Project](https://raw.githubusercontent.com/reactor/projectreactor.io/main/src/main/static/assets/img/org3.png)
-
-A set of compatible versions for all these projects is curated under a BOM ("Bill of Materials").
+A set of compatible versions for all these projects is curated under a BOM ("Bill of Materials") hosted under this very repository.
 
 ## Using the BOM with Maven
 In Maven, you need to import the bom first:
@@ -115,22 +117,20 @@ would now be something like YYYY.0.1), Dysprosium-RC1, Dysprosium-BUILD-SNAPSHOT
 like YYYY.0.X-SNAPSHOT so we get 1 snapshot per PATCH).
  
 
-# Enrolling
+# Contributing, Community / Support
 
-[Join the initiative](https://support.springsource.com/spring_committer_signup), fork, discuss and PR anytime. Roadmap is collaborative and we do enjoy new ideas, simplifications, doc, feedback, and, did we mention feedback already ;) ? As any other open source project, you are the hero, Reactor is only useful because of you and we can't wait to see your pull request mate !
+[![license](https://img.shields.io/github/license/reactor/.github.svg?label=Reactor%20is)](https://github.com/reactor/.github/blob/main/LICENSE)
 
-[![GitHub forks](https://img.shields.io/github/forks/reactor/reactor-core.svg?style=social&label=Fork)](https://github.com/reactor/reactor-core/issues#fork-destination-box)
-[![license](https://img.shields.io/github/license/reactor/reactor-core.svg?label=Reactor%20is)](https://github.com/reactor/reactor-core/blob/main/LICENSE)
+As hinted above, this repository is for hosting the BOM and for transverse issues only. Most of the time, if you're looking to open an issue or a PR, it should be done in a more specific repository corresponding to one of the actual artifacts.
+
+All projects follow the same detailed contributing guidelines which you can find [here](https://github.com/reactor/.github/blob/main/CONTRIBUTING.md).
+
+This document also give some ways you can get answers to your [questions](https://github.com/reactor/.github/blob/main/CONTRIBUTING.md#question-do-you-have-a-question).
 
 ### Documentation
 
 * [Guides](https://projectreactor.io/docs)
 * [Reactive Streams](https://www.reactive-streams.org/)
-
-### Community / Support
-* [![Join the chat at https://gitter.im/reactor/reactor](	https://img.shields.io/gitter/room/reactor/reactor.svg)](https://gitter.im/reactor/reactor?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-* [![GitHub issues](https://img.shields.io/github/issues/reactor/reactor-core.svg)](https://github.com/reactor/reactor-core/issues)
-* [![Twitter URL](https://img.shields.io/twitter/url/http/projectreactor.svg?style=social&label=@projectreactor)](https://twitter.com/projectreactor)
 
 # Detail of Projects
 ## Reactor Core
@@ -155,9 +155,7 @@ Extra projects adding features to reactor:
   - **`reactor-adapter`**: adapt to/from various libraries, mainly RxJava 2.
     - API documentation: [/docs/adapter/release/api](https://projectreactor.io/docs/adapter/release/api)
   - **`reactor-extra`**: Retry utils, Math utils, ...
-    - API documentation: [/docs/test/release/api](https://projectreactor.io/docs/test/release/api)
-  - **`reactor-logback`**: `logback` adapter for Flux/Mono `log()` feature.
-
+    - API documentation: [/docs/extra/release/api](https://projectreactor.io/docs/extra/release/api)
 
 ### Snapshot Artifacts
 
@@ -187,8 +185,5 @@ repositories {
 ```
 
 You should then be able to import a `-SNAPSHOT` version of the BOM, like `2020.0.{NUMBER}-SNAPSHOT` for the `snapshot` of the `{NUMBER}th service release` of `2020.0` (Europium).
-
-# Reactive Streams Commons
-In a continuous mission to design the most efficient concurrency operators for Reactive Streams, a common effort -codename [Reactive Streams Commons](https://github.com/reactor/reactive-streams-commons)- has begun. Reactor is fully aligned with _RSC_ design and is directly inlining _RSC_ within its stable API contract scoped under reactor-core. Reactive Streams Commons is a research effort shared with everyone and is demanding of efficient stream processing challengers, therefore it is naturally decoupled of any framework noise.
 
 _Sponsored by [VMware](https://tanzu.vmware.com)_
