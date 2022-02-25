@@ -5,6 +5,7 @@ on:
       - main
       - 2020.0.x
       - Dysprosium
+permissions: read-all
 jobs:
   # General job notes: we DON'T want to cancel any previous runs, especially in the case of a "back to snapshots" build right after a release push
   # We specify the ubuntu version to minimize the chances we have to deal with a migration during a release
@@ -17,10 +18,11 @@ jobs:
       versionType: ${{ steps.version.outputs.versionType }}
       fullVersion: ${{ steps.version.outputs.fullVersion }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2
       - name: setup java
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@f0bb91606209742fe3ea40199be2f3ef195ecabf # renovate: tag=v2
         with:
+          distribution: 'temurin'
           java-version: 8
       - name: interpret version
         id: version
@@ -40,9 +42,10 @@ jobs:
     if: needs.prepare.outputs.versionType == 'SNAPSHOT'
     environment: snapshots
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-java@v1
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2
+      - uses: actions/setup-java@f0bb91606209742fe3ea40199be2f3ef195ecabf # renovate: tag=v2
         with:
+          distribution: 'temurin'
           java-version: 8
       - name: deploy
         env:
@@ -59,9 +62,10 @@ jobs:
     if: needs.prepare.outputs.versionType == 'MILESTONE'
     environment: releases
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-java@v1
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2
+      - uses: actions/setup-java@f0bb91606209742fe3ea40199be2f3ef195ecabf # renovate: tag=v2
         with:
+          distribution: 'temurin'
           java-version: 8
       - name: deploy
         env:
@@ -71,13 +75,6 @@ jobs:
           ORG_GRADLE_PROJECT_signingPassword: ${{secrets.SIGNING_PASSPHRASE}}
         run: |
           ./gradlew assemble sign artifactoryPublish -Partifactory_publish_contextUrl=https://repo.spring.io -Partifactory_publish_repoKey=libs-milestone-local
-      - name: tag
-        #specifics: no v prefix for the tag
-        run: |
-          git config --local user.name 'reactorbot'
-          git config --local user.email '32325210+reactorbot@users.noreply.github.com'
-          git tag -m "Release BOM milestone ${{ needs.prepare.outputs.fullVersion }}" ${{ needs.prepare.outputs.fullVersion }} ${{ github.sha }}
-          git push --tags
 
   #sign the release artifacts and deploy them to Artifactory
   deployRelease:
@@ -87,9 +84,10 @@ jobs:
     if: needs.prepare.outputs.versionType == 'RELEASE'
     environment: releases
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-java@v1
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2
+      - uses: actions/setup-java@f0bb91606209742fe3ea40199be2f3ef195ecabf # renovate: tag=v2
         with:
+          distribution: 'temurin'
           java-version: 8
       - name: deploy
         env:
@@ -101,6 +99,31 @@ jobs:
           ORG_GRADLE_PROJECT_sonatypePassword: ${{secrets.SONATYPE_PASSWORD}}
         run: |
           ./gradlew assemble sign artifactoryPublish -Partifactory_publish_contextUrl=https://repo.spring.io  -Partifactory_publish_repoKey=libs-release-local publishMavenJavaPublicationToSonatypeRepository
+
+  tagMilestone:
+    name: Tag milestone
+    needs: [ prepare, deployMilestone ]
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2
+      - name: tag
+        #specifics: no v prefix for the tag
+        run: |
+          git config --local user.name 'reactorbot'
+          git config --local user.email '32325210+reactorbot@users.noreply.github.com'
+          git tag -m "Release BOM milestone ${{ needs.prepare.outputs.fullVersion }}" ${{ needs.prepare.outputs.fullVersion }} ${{ github.sha }}
+          git push --tags
+
+  tagRelease:
+    name: Tag release
+    needs: [ prepare, deployRelease ]
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579 # renovate: tag=v2
       - name: tag
         #specifics: no v prefix for the tag
         run: |
