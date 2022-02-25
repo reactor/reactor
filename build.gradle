@@ -173,13 +173,6 @@ publishing {
 						email = 'odokuka at vmware.com'
 					}
 				}
-				// remove scope information from published BOM
-				// to be removed after Gradle 6.0 upgrade, see https://github.com/gradle/gradle/issues/10878
-				withXml {
-					asNode().dependencyManagement.first().dependencies.first().each {
-						it.remove(it.scope.first())
-					}
-				}
 			}
 			versionMapping {
 				usage('java-api') {
