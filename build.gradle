@@ -50,9 +50,10 @@ dependencies {
 		api "org.reactivestreams:reactive-streams:1.0.3"
 		// Reactor Core
 		api "io.projectreactor:reactor-core:$reactorCoreVersion"
-		// Reactor Addons
 		api "io.projectreactor:reactor-test:$reactorCoreVersion"
 		api "io.projectreactor:reactor-tools:$reactorCoreVersion"
+		api "io.projectreactor:reactor-core-micrometer:$reactorCoreMicrometerVersion"
+		// Reactor Addons
 		api "io.projectreactor.addons:reactor-extra:$reactorAddonsVersion"
 		api "io.projectreactor.addons:reactor-adapter:$reactorAddonsVersion"
 		// Reactor Netty
