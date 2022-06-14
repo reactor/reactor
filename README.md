@@ -68,7 +68,7 @@ First, apply the plugin from Gradle Plugin Portal (check and change the version 
 
 ```groovy
 plugins {
-    id "io.spring.dependency-management" version "1.0.6.RELEASE"
+    id "io.spring.dependency-management" version "1.0.11.RELEASE"
 }
 ```
 Then use it to import the BOM:
