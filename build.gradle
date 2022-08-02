@@ -56,11 +56,15 @@ dependencies {
 		// Reactor Addons
 		api "io.projectreactor.addons:reactor-extra:$reactorAddonsVersion"
 		api "io.projectreactor.addons:reactor-adapter:$reactorAddonsVersion"
-		// Reactor Netty
+		// Reactor Netty for Netty 4.1
 		api "io.projectreactor.netty:reactor-netty:$reactorNettyVersion"
 		api "io.projectreactor.netty:reactor-netty-core:$reactorNettyVersion"
 		api "io.projectreactor.netty:reactor-netty-http:$reactorNettyVersion"
 		api "io.projectreactor.netty:reactor-netty-http-brave:$reactorNettyVersion"
+		// Reactor Netty for Netty 5
+		api "io.projectreactor.netty:reactor-netty5:$reactorNetty5Version"
+		api "io.projectreactor.netty:reactor-netty5-core:$reactorNetty5Version"
+		api "io.projectreactor.netty:reactor-netty5-http:$reactorNetty5Version"
 		// Reactor Pool
 		api "io.projectreactor.addons:reactor-pool:$reactorPoolVersion"
 		//Reactor Kotlin Extensions
