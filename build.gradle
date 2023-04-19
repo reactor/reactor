@@ -52,6 +52,7 @@ dependencies {
 		api "io.projectreactor:reactor-core:$reactorCoreVersion"
 		api "io.projectreactor:reactor-test:$reactorCoreVersion"
 		api "io.projectreactor:reactor-tools:$reactorCoreVersion"
+		api "io.projectreactor:reactor-tools:$reactorCoreVersion:original"
 		api "io.projectreactor:reactor-core-micrometer:$reactorCoreMicrometerVersion"
 		// Reactor Addons
 		api "io.projectreactor.addons:reactor-extra:$reactorAddonsVersion"
