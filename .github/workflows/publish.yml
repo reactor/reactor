@@ -3,8 +3,9 @@ on:
   push:
     branches: # For branches, better to list them explicitly than include via glob pattern
       - main
+      - 2023.0.x
+      - 2022.0.x
       - 2020.0.x
-      - Dysprosium
 permissions: read-all
 jobs:
   # General job notes: we DON'T want to cancel any previous runs, especially in the case of a "back to snapshots" build right after a release push
