@@ -1,0 +1,9 @@
+version: 2
+updates:
+- package-ecosystem: github-actions
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  target-branch: "2020.0.x"
+  rebase-strategy: disabled
