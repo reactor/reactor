@@ -19,7 +19,7 @@ jobs:
       versionType: ${{ steps.version.outputs.versionType }}
       fullVersion: ${{ steps.version.outputs.fullVersion }}
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
       - name: setup java
         uses: actions/setup-java@b36c23c0d998641eff861008f374ee103c25ac73 # tag=v3
         with:
@@ -43,7 +43,7 @@ jobs:
     if: needs.prepare.outputs.versionType == 'SNAPSHOT'
     environment: snapshots
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
       - uses: actions/setup-java@b36c23c0d998641eff861008f374ee103c25ac73 # tag=v3
         with:
           distribution: 'temurin'
@@ -63,7 +63,7 @@ jobs:
     if: needs.prepare.outputs.versionType == 'MILESTONE'
     environment: releases
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
       - uses: actions/setup-java@b36c23c0d998641eff861008f374ee103c25ac73 # tag=v3
         with:
           distribution: 'temurin'
@@ -85,7 +85,7 @@ jobs:
     if: needs.prepare.outputs.versionType == 'RELEASE'
     environment: releases
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
       - uses: actions/setup-java@b36c23c0d998641eff861008f374ee103c25ac73 # tag=v3
         with:
           distribution: 'temurin'
@@ -108,7 +108,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
       - name: tag
         #specifics: no v prefix for the tag
         run: |
@@ -124,7 +124,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332
+      - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
       - name: tag
         #specifics: no v prefix for the tag
         run: |
