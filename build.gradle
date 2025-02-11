@@ -46,8 +46,6 @@ repositories {
 
 dependencies {
 	constraints {
-		// Reactive Streams
-		api "org.reactivestreams:reactive-streams:$reactiveStreamsVersion"
 		// Reactor Core
 		api "io.projectreactor:reactor-core:$reactorCoreVersion"
 		api "io.projectreactor:reactor-test:$reactorCoreVersion"
@@ -61,10 +59,6 @@ dependencies {
 		api "io.projectreactor.netty:reactor-netty-core:$reactorNettyVersion"
 		api "io.projectreactor.netty:reactor-netty-http:$reactorNettyVersion"
 		api "io.projectreactor.netty:reactor-netty-http-brave:$reactorNettyVersion"
-		// Reactor Netty 2.x for Netty 5
-		// api "io.projectreactor.netty:reactor-netty5:$reactorNetty2Version"
-		// api "io.projectreactor.netty:reactor-netty5-core:$reactorNetty2Version"
-		// api "io.projectreactor.netty:reactor-netty5-http:$reactorNetty2Version"
 		// Reactor Pool
 		api "io.projectreactor.addons:reactor-pool:$reactorPoolVersion"
 		api "io.projectreactor.addons:reactor-pool-micrometer:$reactorPoolMicrometerVersion"
