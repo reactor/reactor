@@ -26,7 +26,7 @@ plugins {
 	id "java-platform"
 	id "maven-publish"
 	//applied in rootProject if credentials provided (see below):
-	id "com.jfrog.artifactory" version "4.27.1" apply false
+	id "com.jfrog.artifactory" version "4.33.1" apply false
 }
 
 apply from: "gradle/releaser.gradle"
