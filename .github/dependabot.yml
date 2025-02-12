@@ -8,6 +8,7 @@ updates:
   target-branch: "2023.0.x"
   labels:
   - type/dependency-upgrade
+  ignore:
   # artifactory: don't upgrade to v5
   - dependency-name: "com.jfrog.artifactory"
     versions:
