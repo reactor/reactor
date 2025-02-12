@@ -6,6 +6,12 @@ updates:
     interval: daily
   open-pull-requests-limit: 10
   target-branch: "2023.0.x"
+  labels:
+  - type/dependency-upgrade
+  # artifactory: don't upgrade to v5
+  - dependency-name: "com.jfrog.artifactory"
+    versions:
+    - ">= 5.0.a"
   rebase-strategy: disabled
 - package-ecosystem: github-actions
   directory: "/"
@@ -13,4 +19,6 @@ updates:
     interval: daily
   open-pull-requests-limit: 10
   target-branch: "2023.0.x"
+  labels:
+  - type/dependency-upgrade
   rebase-strategy: disabled
