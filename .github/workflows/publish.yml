@@ -13,7 +13,7 @@ jobs:
     # Notes on prepare: this job has no access to secrets, only github token. As a result, all non-core actions are centralized here
     # This includes the tagging and drafting of release notes. Still, when possible we favor plain run of gradle tasks
     name: prepare
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       versionType: ${{ steps.version.outputs.versionType }}
       fullVersion: ${{ steps.version.outputs.fullVersion }}
@@ -37,7 +37,7 @@ jobs:
   #deploy the snapshot artifacts to Artifactory
   deploySnapshot:
     name: deploySnapshot
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: prepare
     if: needs.prepare.outputs.versionType == 'SNAPSHOT'
     environment: snapshots
@@ -57,7 +57,7 @@ jobs:
   #sign the milestone artifacts and deploy them to Artifactory
   deployMilestone:
     name: deployMilestone
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: prepare
     if: needs.prepare.outputs.versionType == 'MILESTONE'
     environment: releases
@@ -79,7 +79,7 @@ jobs:
   #sign the release artifacts and deploy them to Artifactory
   deployRelease:
     name: deployRelease
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: prepare
     if: needs.prepare.outputs.versionType == 'RELEASE'
     environment: releases
@@ -103,7 +103,7 @@ jobs:
   tagMilestone:
     name: Tag milestone
     needs: [ prepare, deployMilestone ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
@@ -119,7 +119,7 @@ jobs:
   tagRelease:
     name: Tag release
     needs: [ prepare, deployRelease ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
