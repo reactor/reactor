@@ -134,7 +134,7 @@ publishing {
 			name = "mock"
 			url = "${rootProject.buildDir}/mockRepo"
 		}
-		if (qualifyVersion("$version") == "RELEASE") {
+		if (qualifyVersion("$version") in ["RELEASE", "MILESTONE"]) {
 			maven {
 				name = "sonatype"
 				url = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2"
