@@ -58,6 +58,7 @@ dependencies {
 		api "io.projectreactor.netty:reactor-netty-core:$reactorNettyVersion"
 		api "io.projectreactor.netty:reactor-netty-http:$reactorNettyVersion"
 		api "io.projectreactor.netty:reactor-netty-http-brave:$reactorNettyVersion"
+		api "io.projectreactor.netty:reactor-netty-quic:$reactorNettyQuicVersion"
 		// Reactor Pool
 		api "io.projectreactor.addons:reactor-pool:$reactorPoolVersion"
 		api "io.projectreactor.addons:reactor-pool-micrometer:$reactorPoolMicrometerVersion"
