@@ -63,8 +63,6 @@ dependencies {
 		api "io.projectreactor.addons:reactor-pool-micrometer:$reactorPoolMicrometerVersion"
 		//Reactor Kotlin Extensions
 		api "io.projectreactor.kotlin:reactor-kotlin-extensions:$reactorKotlinExtensionsVersion"
-		//Reactor Kafka should be compatible with both 2020 and 2022 release trains
-		api "io.projectreactor.kafka:reactor-kafka:$reactorKafkaVersion"
 	}
 }
 
