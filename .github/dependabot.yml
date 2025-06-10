@@ -5,5 +5,5 @@ updates:
   schedule:
     interval: daily
   open-pull-requests-limit: 10
-  target-branch: "2023.0.x"
+  target-branch: "2024.0.x"
   rebase-strategy: disabled
