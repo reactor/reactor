@@ -3,7 +3,6 @@ on:
   push:
     branches: # For branches, better to list them explicitly than include via glob pattern
       - main
-      - 2023.0.x
       - 2024.0.x
 permissions: read-all
 jobs:
