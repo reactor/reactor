@@ -4,7 +4,7 @@ on:
     branches: # For branches, better to list them explicitly than include via glob pattern
       - main
       - 2024.0.x
-permissions: read-all
+permissions: {}
 jobs:
   # General job notes: we DON'T want to cancel any previous runs, especially in the case of a "back to snapshots" build right after a release push
   # We specify the ubuntu version to minimize the chances we have to deal with a migration during a release

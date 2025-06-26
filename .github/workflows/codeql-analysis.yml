@@ -18,7 +18,7 @@ on:
     branches: [ "main", "2024.0.x" ]
   schedule:
     - cron: '0 12 * * 6'
-permissions: read-all
+permissions: {}
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
@@ -33,6 +33,8 @@ jobs:
     permissions:
       # required for all workflows
       security-events: write
+      actions: read
+      contents: read
 
     strategy:
       fail-fast: false
