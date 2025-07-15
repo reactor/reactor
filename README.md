@@ -20,7 +20,7 @@ In Maven, you need to import the bom first:
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-bom</artifactId>
-            <version>2025.0.0-M4</version>
+            <version>2025.0.0-M5</version>
             <type>pom</type>
             <scope>import</scope>
         </dependency>
@@ -53,7 +53,7 @@ your project without a version number.
 ```groovy
 dependencies {
      // import BOM
-     implementation platform('io.projectreactor:reactor-bom:2025.0.0-M4')
+     implementation platform('io.projectreactor:reactor-bom:2025.0.0-M5')
 
      // add dependencies without a version number
      implementation 'io.projectreactor:reactor-core'
@@ -75,7 +75,7 @@ Then use it to import the BOM:
 ```groovy
 dependencyManagement {
      imports {
-          mavenBom "io.projectreactor:reactor-bom:2025.0.0-M4"
+          mavenBom "io.projectreactor:reactor-bom:2025.0.0-M5"
      }
 }
 ```
