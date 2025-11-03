@@ -61,7 +61,7 @@ dependencies {
 		api "io.projectreactor.netty:reactor-netty-quic:$reactorNettyVersion"
 		// Reactor Pool
 		api "io.projectreactor.addons:reactor-pool:$reactorPoolVersion"
-		api "io.projectreactor.addons:reactor-pool-micrometer:$reactorPoolMicrometerVersion"
+		api "io.projectreactor.addons:reactor-pool-micrometer:$reactorPoolVersion"
 		//Reactor Kotlin Extensions
 		api "io.projectreactor.kotlin:reactor-kotlin-extensions:$reactorKotlinExtensionsVersion"
 	}
