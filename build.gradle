@@ -42,13 +42,14 @@ repositories {
 		maven { url 'https://repo.spring.io/snapshot' }
 	}
 }
+def classifiers = Attribute.of('classifiers', String) // java-platform doesn't support List
 
 dependencies {
 	constraints {
 		// Reactor Core
 		api "io.projectreactor:reactor-core:$reactorCoreVersion"
 		api "io.projectreactor:reactor-test:$reactorCoreVersion"
-		api "io.projectreactor:reactor-tools:$reactorCoreVersion"
+		api("io.projectreactor:reactor-tools:$reactorCoreVersion") { attributes { attribute(classifiers, ",original") } }
 		api "io.projectreactor:reactor-core-micrometer:$reactorCoreMicrometerVersion"
 		// Reactor Addons
 		api "io.projectreactor.addons:reactor-extra:$reactorAddonsVersion"
@@ -201,6 +202,34 @@ publishing {
 					fromResolutionResult()
 				}
 			}
+			pom.withXml {
+				def dependencies = asNode().dependencyManagement[0].with {
+					// clear the dependencies to rewrite them below
+					it.remove(it.dependencies)
+					it.appendNode("dependencies")
+				}
+
+				components.javaPlatform.usages
+						.collect { it.dependencyConstraints }
+						.flatten()
+						.unique()
+						.each {
+							def classifierValues = [""]
+							if (it.attributes.contains(classifiers)) {
+								classifierValues = it.attributes.findEntry(classifiers.name).get().split(",")
+							}
+							classifierValues.each { classifier ->
+								def newNode = dependencies.appendNode("dependency")
+								newNode.appendNode("groupId", it.group)
+								newNode.appendNode("artifactId", it.name)
+								newNode.appendNode("version", it.version)
+								if (classifier) {
+									newNode.appendNode("classifier", classifier)
+								}
+							}
+						}
+			}
+
 		}
 	}
 }
