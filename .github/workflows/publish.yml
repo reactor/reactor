@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
       - name: setup java
-        uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # tag=v3
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # tag=v3
         with:
           distribution: 'temurin'
           java-version: 8
@@ -42,7 +42,7 @@ jobs:
     environment: snapshots
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
-      - uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # tag=v3
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # tag=v3
         with:
           distribution: 'temurin'
           java-version: 8
@@ -62,7 +62,7 @@ jobs:
     environment: releases
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
-      - uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # tag=v3
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # tag=v3
         with:
           distribution: 'temurin'
           java-version: 8
@@ -101,7 +101,7 @@ jobs:
     environment: releases
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
-      - uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # tag=v3
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # tag=v3
         with:
           distribution: 'temurin'
           java-version: 8
