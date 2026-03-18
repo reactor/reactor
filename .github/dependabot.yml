@@ -8,14 +8,6 @@ updates:
   target-branch: "2024.0.x"
   labels:
   - type/dependency-upgrade
-  ignore:
-  # artifactory: don't upgrade to v5
-  - dependency-name: "com.jfrog.artifactory"
-    versions:
-    - ">= 5.0.a"
-  - dependency-name: gradle-wrapper
-    versions:
-    - "[8.5.a, 10]"
   rebase-strategy: disabled
 - package-ecosystem: github-actions
   directory: "/"
