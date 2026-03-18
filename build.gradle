@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2025 VMware Inc. or its affiliates, All Rights Reserved.
+ * Copyright (c) 2011-2026 VMware Inc. or its affiliates, All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import org.gradle.util.VersionNumber
-
 buildscript {
 	repositories {
 		mavenCentral()
@@ -26,7 +24,7 @@ plugins {
 	id "java-platform"
 	id "maven-publish"
 	//applied in rootProject if credentials provided (see below):
-	id "com.jfrog.artifactory" version "4.33.1" apply false
+	id "com.jfrog.artifactory" version "6.0.4" apply false
 }
 
 apply from: "gradle/releaser.gradle"
@@ -36,10 +34,10 @@ description = 'Bill of materials to make sure a consistent set of versions is us
 
 repositories {
 	mavenCentral()
-	maven { url "https://oss.sonatype.org/content/repositories/releases/" }
+	maven { url = "https://oss.sonatype.org/content/repositories/releases/" }
 	if (version.endsWith('-SNAPSHOT')) {
 		mavenLocal()
-		maven { url 'https://repo.spring.io/snapshot' }
+		maven { url = 'https://repo.spring.io/snapshot' }
 	}
 }
 
@@ -80,13 +78,14 @@ static def qualifyVersion(String v) {
 
 		return "BAD"
 	}
-	//new scheme
-	def versionNumber = VersionNumber.parse(v)
-	if (versionNumber == VersionNumber.UNKNOWN) return "BAD";
+	//new scheme: major.minor.patch[-qualifier]
+	def match = v =~ /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/
+	if (!match.matches()) return "BAD"
 
-	if (versionNumber.qualifier == null || versionNumber.qualifier.size() == 0) return "RELEASE" //new scheme
-	if (versionNumber.qualifier.matches("(?:M|RC)\\d+")) return "MILESTONE"
-	if (versionNumber.qualifier == "SNAPSHOT") return "SNAPSHOT"
+	def qualifier = match.group(4)
+	if (qualifier == null || qualifier.isEmpty()) return "RELEASE"
+	if (qualifier.matches("(?:M|RC)\\d+")) return "MILESTONE"
+	if (qualifier == "SNAPSHOT") return "SNAPSHOT"
 
 	return "BAD"
 }
@@ -131,7 +130,7 @@ publishing {
 	repositories {
 		maven {
 			name = "mock"
-			url = "${rootProject.buildDir}/mockRepo"
+			url = "${rootProject.layout.buildDirectory.get().asFile}/mockRepo"
 		}
 		if (qualifyVersion("$version") in ["RELEASE", "MILESTONE"]) {
 			maven {
