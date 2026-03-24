@@ -109,6 +109,7 @@ static def outputToGha(String versionType, String fullVersion) {
 }
 
 task qualifyVersionGha() {
+	def projectName = project.name
 	doLast {
 		def versionType = qualifyVersion("$version")
 		//we ensure that if at least _one_ submodule version is BAD, we only output versionType=BAD + job fails
@@ -120,7 +121,7 @@ task qualifyVersionGha() {
 		println "Recognized $version as $versionType"
 
 		//only output the versionType and fullVersion for the main artifact
-		if (project.name == 'reactor-bom') {
+		if (projectName == 'reactor-bom') {
 			outputToGha(versionType, version)
 		}
 	}
