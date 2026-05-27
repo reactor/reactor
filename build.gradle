@@ -87,11 +87,11 @@ static def qualifyVersion(String v) {
 		return "BAD"
 	}
 	//new scheme: major.minor.patch[.hotfix][-qualifier]
-	//the hotfix segment uses a non-capturing group (?:...) so the qualifier stays at group(4)
-	def match = v =~ /^(\d+)\.(\d+)\.(\d+)(?:\.\d+)?(?:-(.+))?$/
+	//all numeric segments use (?:...) non-capturing groups since only the qualifier is needed; it lands at group(1)
+	def match = v =~ /^(?:\d+)\.(?:\d+)\.(?:\d+)(?:\.\d+)?(?:-(.+))?$/
 	if (!match.matches()) return "BAD"
 
-	def qualifier = match.group(4)
+	def qualifier = match.group(1)
 	if (qualifier == null || qualifier.isEmpty()) return "RELEASE"
 	if (qualifier.matches("(?:M|RC)\\d+")) return "MILESTONE"
 	if (qualifier == "SNAPSHOT") return "SNAPSHOT"
