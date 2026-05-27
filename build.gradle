@@ -78,8 +78,9 @@ static def qualifyVersion(String v) {
 
 		return "BAD"
 	}
-	//new scheme: major.minor.patch[-qualifier]
-	def match = v =~ /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/
+	//new scheme: major.minor.patch[.hotfix][-qualifier]
+	//the hotfix segment uses a non-capturing group (?:...) so the qualifier stays at group(4)
+	def match = v =~ /^(\d+)\.(\d+)\.(\d+)(?:\.\d+)?(?:-(.+))?$/
 	if (!match.matches()) return "BAD"
 
 	def qualifier = match.group(4)
