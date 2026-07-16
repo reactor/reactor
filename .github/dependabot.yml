@@ -5,7 +5,7 @@ updates:
   schedule:
     interval: daily
   open-pull-requests-limit: 10
-  target-branch: "main"
+  target-branch: "2025.0.x"
   labels:
   - type/dependency-upgrade
   rebase-strategy: disabled
@@ -14,7 +14,7 @@ updates:
   schedule:
     interval: daily
   open-pull-requests-limit: 10
-  target-branch: "main"
+  target-branch: "2025.0.x"
   labels:
   - type/dependency-upgrade
   rebase-strategy: disabled
