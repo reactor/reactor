@@ -34,8 +34,24 @@ description = 'Bill of materials to make sure a consistent set of versions is us
 
 repositories {
 	mavenCentral()
+	maven {
+		name "spring-commercial-release"
+		url System.env.COMMERCIAL_RELEASE_REPO_URL
+		credentials {
+			username System.env.COMMERCIAL_REPO_USERNAME
+			password System.env.COMMERCIAL_REPO_PASSWORD
+		}
+	}
 	maven { url = "https://oss.sonatype.org/content/repositories/releases/" }
 	if (version.endsWith('-SNAPSHOT')) {
+		maven {
+			name "spring-commercial-snapshot"
+			url System.env.COMMERCIAL_SNAPSHOT_REPO_URL
+			credentials {
+				username System.env.COMMERCIAL_REPO_USERNAME
+				password System.env.COMMERCIAL_REPO_PASSWORD
+			}
+		}
 		mavenLocal()
 		maven { url = 'https://repo.spring.io/snapshot' }
 	}
@@ -86,7 +102,7 @@ static def qualifyVersion(String v) {
 	def qualifier = match.group(1)
 	if (qualifier == null || qualifier.isEmpty()) return "RELEASE"
 	if (qualifier.matches("(?:M|RC)\\d+")) return "MILESTONE"
-	if (qualifier == "SNAPSHOT") return "SNAPSHOT"
+	if (qualifier == "SNAPSHOT" || qualifier == "INTERNAL-SNAPSHOT") return "SNAPSHOT"
 
 	return "BAD"
 }
@@ -133,16 +149,6 @@ publishing {
 		maven {
 			name = "mock"
 			url = "${rootProject.layout.buildDirectory.get().asFile}/mockRepo"
-		}
-		if (qualifyVersion("$version") in ["RELEASE", "MILESTONE"]) {
-			maven {
-				name = "sonatype"
-				url = "https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/"
-				credentials {
-					username findProperty("sonatypeUsername")
-					password findProperty("sonatypePassword")
-				}
-			}
 		}
 	}
 
@@ -211,22 +217,5 @@ if (rootProject.hasProperty("artifactory_publish_password")) {
 
 	artifactoryPublish {
 		publications(publishing.publications.mavenJava)
-	}
-}
-
-if (qualifyVersion("$version") in ["RELEASE", "MILESTONE"] || rootProject.hasProperty("forceSigning")) {
-	apply plugin: 'signing'
-
-	signing {
-		//requiring signature if there is a publish task that is not to MavenLocal
-		required {  gradle.taskGraph.allTasks.any { it.name.toLowerCase().contains("publish")	&& !it.name.contains("MavenLocal") } }
-		def signingKey = findProperty("signingKey")
-		def signingPassword = findProperty("signingPassword")
-
-		useInMemoryPgpKeys(signingKey, signingPassword)
-
-		afterEvaluate {
-			sign publishing.publications.mavenJava
-		}
 	}
 }
