@@ -94,8 +94,9 @@ if (project.hasProperty("artifactory_publish_password")) {
 			}
 			clientConfig.includeEnvVars = false
 			buildInfo {
-				setBuildName('Reactor - BOM')
+				setBuildName('reactor-commercial-' + (p.version.endsWith('-SNAPSHOT') ? '2026.0.x-internal' : p.version))
 				setBuildNumber(buildNumber)
+				setProject('spring')
 				if (System.getenv("GITHUB_ACTIONS") == "true") {
 					setBuildUrl(System.getenv("GITHUB_SERVER_URL") + "/" + System.getenv("GITHUB_REPOSITORY") + "/actions/runs/" + System.getenv("GITHUB_RUN_ID"))
 					setVcsRevision(System.getenv("GITHUB_SHA"))

@@ -16,13 +16,21 @@
 
 pluginManagement {
 	repositories {
-		gradlePluginPortal()
-		mavenCentral()
+		// On CI use only USW1 (proxies the Gradle Plugin Portal) to avoid 429 from Maven Central
+		if (System.getenv("GITHUB_ACTION") != null && System.getenv("GITHUB_ACTOR") != "dependabot[bot]") {
+			maven {
+				name = "usw1-spring-plugins-gradle-virtual"
+				url = "https://usw1.packages.broadcom.com/artifactory/spring-plugins-gradle-virtual"
+				credentials {
+					username = System.getenv("COMMERCIAL_REPO_USERNAME")
+					password = System.getenv("COMMERCIAL_REPO_PASSWORD")
+				}
+			}
+		}
+		else {
+			gradlePluginPortal()
+		}
 	}
-}
-
-plugins {
-	id "io.spring.develocity.conventions" version "0.0.27"
 }
 
 rootProject.name = "reactor-bom"
