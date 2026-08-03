@@ -14,15 +14,4 @@
  * limitations under the License.
  */
 
-pluginManagement {
-	repositories {
-		gradlePluginPortal()
-		mavenCentral()
-	}
-}
-
-plugins {
-	id "io.spring.develocity.conventions" version "0.0.27"
-}
-
 rootProject.name = "reactor-bom"
