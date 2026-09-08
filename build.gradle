@@ -34,6 +34,16 @@ description = 'Bill of materials to make sure a consistent set of versions is us
 
 repositories {
 	mavenCentral()
+	if (System.getenv("RELEASE_TRAIN_MAVEN_REPOSITORY_URL") != null) {
+		maven {
+			name = "Release Train"
+			url = System.getenv("RELEASE_TRAIN_MAVEN_REPOSITORY_URL")
+			credentials {
+				username = System.getenv("RELEASE_TRAIN_MAVEN_REPOSITORY_USERNAME")
+				password = System.getenv("RELEASE_TRAIN_MAVEN_REPOSITORY_PASSWORD")
+			}
+		}
+	}
 	maven {
 		name "spring-commercial-release"
 		url System.env.COMMERCIAL_RELEASE_REPO_URL
@@ -149,6 +159,12 @@ publishing {
 		maven {
 			name = "mock"
 			url = "${rootProject.layout.buildDirectory.get().asFile}/mockRepo"
+		}
+		if (project.hasProperty("deploymentRepository")) {
+			maven {
+				name = 'Deployment'
+				url = project.property("deploymentRepository")
+			}
 		}
 	}
 
